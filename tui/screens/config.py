@@ -191,7 +191,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         form     = self.query_one(ProfileForm)
         profiles = self._app.profiles
         if is_new:
-            default_data = profiles["default"].data.copy()
+            default_data = profiles["serie_basic"].data.copy()
             form.load("", default_data, is_new=True, is_builtin=False)
         else:
             p = profiles[profile_id]
@@ -246,7 +246,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         profiles = self._app.profiles
         del profiles[name]
         if self._app.active_profile_id == name:
-            self._app.active_profile_id = "default"
+            self._app.active_profile_id = "serie_basic"
         prof_mod.save_all(profiles)
         self._changed = True
         self._build_table()

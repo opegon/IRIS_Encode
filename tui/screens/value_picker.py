@@ -16,6 +16,7 @@ class ValuePickerScreen(ModalScreen[int | None]):
     """
     Modal léger : liste de valeurs sélectionnables.
     Retourne l'index de la valeur choisie, ou None si annulé.
+    width=None → calculé automatiquement depuis le contenu (min 40).
     """
 
     CSS = """
@@ -25,9 +26,8 @@ class ValuePickerScreen(ModalScreen[int | None]):
     #picker-box {
         background: $surface;
         border: thick $accent;
-        width: 40;
         height: auto;
-        max-height: 20;
+        max-height: 24;
         padding: 1 2;
     }
     #picker-title {
@@ -49,11 +49,15 @@ class ValuePickerScreen(ModalScreen[int | None]):
         title: str,
         options: list[str],
         current_idx: int = 0,
+        width: int | None = None,
     ) -> None:
         super().__init__()
-        self._title      = title
-        self._options    = options
+        self._title       = title
+        self._options     = options
         self._current_idx = current_idx
+        # "→ " (2) + option + padding (4) + border (4) = 10 overhead
+        auto = max(40, max((len(o) for o in options), default=0) + 10)
+        self._width       = width if width is not None else auto
 
     def compose(self) -> ComposeResult:
         with Static(id="picker-box"):
@@ -62,6 +66,7 @@ class ValuePickerScreen(ModalScreen[int | None]):
                             show_header=False, zebra_stripes=True)
 
     def on_mount(self) -> None:
+        self.query_one("#picker-box").styles.width = self._width
         table = self.query_one(DataTable)
         table.add_column("", width=None, key="val")
         for i, opt in enumerate(self._options):

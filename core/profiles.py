@@ -17,7 +17,7 @@ APP_DIR       = Path(__file__).resolve().parent.parent
 PROFILES_PATH = APP_DIR / "profiles.toml"
 
 BUILTIN_NAMES = frozenset({
-    "default", "serie_hd", "cinema_4k_basic",
+    "serie_basic", "serie_hd", "cinema_4k_basic",
     "cinema_4k_hd", "basic_delete", "archivage",
 })
 
@@ -34,7 +34,7 @@ _BASE_AUDIO = {
 }
 
 _BUILTINS: dict[str, dict[str, Any]] = {
-    "default": {
+    "serie_basic": {
         "bitrate_720p_kbps":  1500,
         "bitrate_1080p_kbps": 2200,
         "bitrate_4k_kbps":    5000,

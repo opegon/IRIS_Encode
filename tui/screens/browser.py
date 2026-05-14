@@ -362,16 +362,31 @@ class BrowserScreen(TableNavMixin, Screen):
 
     def action_open_profile_picker(self) -> None:
         from .value_picker import ValuePickerScreen
-        pl      = list(self._app.profiles.keys())
-        cur     = self._app.active_profile_id
-        cur_idx = pl.index(cur) if cur in pl else 0
+        profiles = self._app.profiles
+        names    = list(profiles.keys())
+        cur      = self._app.active_profile_id
+        cur_idx  = names.index(cur) if cur in names else 0
+        pad      = max(len(n) for n in names)
+
+        opts = []
+        for name, prof in profiles.items():
+            f       = prof.summary_fields()
+            keep_4k = prof.data.get("keep_4k", False)
+            k4_str  = f"4K {f['4k']}" if keep_4k else "4K→1080p"
+            parts   = [f["1080p"], k4_str, f"DV {f['dv']}", f["preset"]]
+            if prof.data.get("preserve_hd_audio"):
+                parts.append("HD audio")
+            if prof.data.get("delete_source"):
+                parts.append("⚠ suppr.")
+            opts.append(f"{name:<{pad}}   {'  ·  '.join(parts)}")
+
         def _on_pick(idx: int | None) -> None:
             if idx is None:
                 return
-            self._app.active_profile_id = pl[idx]
+            self._app.active_profile_id = names[idx]
             self._update_profile_bar()
             self._refresh_view()
-        self.app.push_screen(ValuePickerScreen("Sélectionner un profil", pl, cur_idx), _on_pick)
+        self.app.push_screen(ValuePickerScreen("Sélectionner un profil", opts, cur_idx), _on_pick)
 
     # ─── Resize colonnes ─────────────────────────────────────────────────────────────
 

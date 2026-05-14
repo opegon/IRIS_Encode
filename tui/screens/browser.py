@@ -104,6 +104,9 @@ class BrowserScreen(TableNavMixin, Screen):
     BrowserScreen {
         layout: vertical;
     }
+    TwoLineFooter {
+        dock: bottom;
+    }
     #status-bar {
         height: 1;
         background: $accent;
@@ -125,7 +128,7 @@ class BrowserScreen(TableNavMixin, Screen):
         color: $text-muted;
         padding: 0 2;
     }
-    DataTable { height: 1fr; }
+    DataTable { height: 1fr; margin-bottom: 2; }
     """
 
     def __init__(self, path: Path, start_virtual: bool = False) -> None:

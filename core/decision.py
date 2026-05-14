@@ -174,12 +174,14 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     limit_w, limit_h, _  = _resolve_limits(info, profile)
     dv_action            = _decide_dv(info, profile)
 
-    # Si keep_4k=true, on gardera la résolution 4K → utiliser bitrate 4K
-    # Sinon, utiliser le bitrate basé sur la hauteur cible
-    if profile.get("keep_4k", False) and (info.height >= 2000 or info.width >= 3840):
+    # Source 4K → seuil 4K (qu'on la garde ou non).
+    # Source non-4K → seuil basé sur limit_h (résolution cible), pas info.height.
+    # Ex. : 1920x822 → limit_h=1080 → bucket 1080p, pas 720p.
+    is_4k_source = info.height >= 2000 or info.width >= 3840
+    if is_4k_source:
         target_bps = profile.get("bitrate_4k_kbps", 5000) * 1000
     else:
-        target_bps = profile.bitrate_for_height(info.height)
+        target_bps = profile.bitrate_for_height(limit_h)
 
     # Pour les cibles < 1080p, H264 compresse mieux que HEVC
     sub_1080  = limit_h < 1080

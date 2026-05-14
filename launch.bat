@@ -46,11 +46,11 @@ if "%WT_SESSION%"=="" (
 )
 
 REM --- Vérification des dépendances Python ---
-python -c "import textual, requests, tomli_w, bs4; from imdb import Cinemagoer" >nul 2>&1
+python -c "import textual, requests, tomli_w, bs4" >nul 2>&1
 if errorlevel 1 (
     echo.
     echo  [INFO] Dépendances manquantes — installation en cours...
-    pip install -r "%~dp0requirements.txt"
+    pip install -q -r "%~dp0requirements.txt"
     if errorlevel 1 (
         echo.
         echo  [ERREUR] Impossible d'installer les dépendances.

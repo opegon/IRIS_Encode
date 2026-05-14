@@ -16,7 +16,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.message import Message
 from textual.screen import Screen
-from textual.widgets import Button, DataTable, Header, Label, ProgressBar, Static
+from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 from ..widgets.footer import TwoLineFooter
 from ..mixins import TableNavMixin
 
@@ -75,9 +75,11 @@ class RunScreen(TableNavMixin, Screen):
     """Écran d'encodage séquentiel avec suivi progression."""
 
     BINDINGS = [
-        Binding("p",      "pause_resume", "⏸ Pause / Reprendre", show=True),
-        Binding("left",   "go_back",      "← Retour",            show=True),
-        Binding("escape", "go_back",      "Retour",              show=False, priority=True),
+        Binding("enter",     "start",        "Démarrer",           show=True, priority=True),
+        Binding("r",         "start",        "Démarrer",           show=False),
+        Binding("p",         "pause_resume", "Pause / Reprendre",  show=True),
+        Binding("backspace", "go_back",      "Retour",             show=True),
+        Binding("escape",    "go_back",      "Retour",             show=False, priority=True),
     ]
 
     DEFAULT_CSS = """
@@ -115,12 +117,6 @@ class RunScreen(TableNavMixin, Screen):
     #global-bar {
         width: 1fr;
     }
-    #run-actions {
-        height: 3;
-        layout: horizontal;
-        padding: 0 2;
-    }
-    #run-actions Button { margin-right: 2; }
     """
 
     def __init__(
@@ -149,19 +145,16 @@ class RunScreen(TableNavMixin, Screen):
         with Static(id="cmd-zone"):
             yield Static("", id="cmd-line")
             yield Static("", id="ffmpeg-line")
-        with Static(id="run-actions"):
-            yield Button("▶ Démarrer",     id="btn-start",  variant="primary")
-            yield Button("← Retour",       id="btn-back",   variant="default")
         yield TwoLineFooter(
             line1=[
-                ("r",         "Démarrer"),
+                ("enter",     "Démarrer"),
                 ("p",         "Pause / Reprendre"),
                 ("backspace", "Retour"),
             ],
             line2=[
                 ("home",     "Début liste"),
                 ("end",      "Fin liste"),
-                ("ctrl+x",   "Quitter"),
+                ("f10",      "Quitter"),
             ],
         )
 
@@ -227,12 +220,10 @@ class RunScreen(TableNavMixin, Screen):
 
     # ─── Encodage ─────────────────────────────────────────────────────────────
 
-    @on(Button.Pressed, "#btn-start")
-    def _on_start(self) -> None:
+    def action_start(self) -> None:
         if self._started:
             return
         self._started = True
-        self.query_one("#btn-start", Button).disabled = True
         self._encode_next()
 
     @work(thread=True, name="encoder")
@@ -310,8 +301,6 @@ class RunScreen(TableNavMixin, Screen):
         self._update_header()
         self.query_one("#cmd-line",    Static).update("Terminé.")
         self.query_one("#ffmpeg-line", Static).update("")
-        self.query_one("#btn-back", Button).label = "← Retour"
-        self.query_one("#btn-back", Button).variant = "primary"
 
     # ─── Pause/Resume ─────────────────────────────────────────────────────────
 
@@ -329,7 +318,3 @@ class RunScreen(TableNavMixin, Screen):
         if self._process and not self._done:
             self._process.terminate()
         self.app.pop_screen()
-
-    @on(Button.Pressed, "#btn-back")
-    def _on_back(self) -> None:
-        self.action_go_back()

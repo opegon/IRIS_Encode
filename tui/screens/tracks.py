@@ -13,7 +13,8 @@ Quand le curseur est sur la ligne vidéo :
 Quand le curseur est sur une piste audio/sous-titre :
   Espace   toggle sélection
 
-L   → lancer directement  |  ↵ → valider + retour  |  ⌫ → annuler
+L   → lancer directement  |  ↵ → valider (ou sur ligne Valider)  |  ⌫ → annuler
+Tab/Shift+Tab → colonne suivante/précédente  |  < / > → rétrécir/élargir
 """
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
 from textual import on
-from textual.widgets import Button, DataTable, Header, Static
+from textual.widgets import DataTable, Header, Static
 from ..mixins import TableNavMixin
 from ..widgets.footer import TwoLineFooter
 
@@ -31,6 +32,7 @@ from core.decision import (
     AudioAction, DVAction, FileDecision, TracksSelection,
     VideoAction, VideoOverride, decide_audio,
 )
+import core.config as cfg_mod
 
 # ── Types de lignes ───────────────────────────────────────────────────────────
 _ROW_VIDEO    = "video"
@@ -67,19 +69,29 @@ _DV_SHORT = {
     DVAction.SDR:      ("SDR ⚠", "yellow"),
 }
 
+# Colonnes redimensionnables
+_RESIZE_COLS   = ["codec", "fmt", "src"]
+_RESIZE_LABELS = {"codec": "Codec", "fmt": "Format", "src": "Source"}
+_RESIZE_STEP   = 2
+_RESIZE_MIN    = 6
+
 
 class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
 
     BINDINGS = [
-        Binding("space",     "toggle_row",    "Sélect",                 show=True),
-        Binding("left",      "field_prev",    "< Champ",        show=True),
-        Binding("right",     "field_next",    "> Champ",        show=True),
-        Binding("+",         "val_up",        "+ Val.",          show=True),
-        Binding("-",         "val_down",      "- Val.",          show=True),
-        Binding("enter",     "enter_action",  "Enter Choisir",  show=True, priority=True),
-        Binding("l",         "launch",        "L  Lance",       show=True),
-        Binding("backspace", "dismiss_cancel","Back Retour",    show=True),
-        Binding("escape",    "dismiss_cancel","Retour",         show=False, priority=True),
+        Binding("space",     "toggle_row",    "Sélect",                show=True),
+        Binding("left",      "field_prev",    "< Champ",               show=True),
+        Binding("right",     "field_next",    "> Champ",               show=True),
+        Binding("+",         "val_up",        "+ Val.",                 show=True),
+        Binding("-",         "val_down",      "- Val.",                 show=True),
+        Binding("enter",     "enter_action",  "Valider",               show=True, priority=True),
+        Binding("l",         "launch",        "L  Lance",              show=True),
+        Binding("backspace", "dismiss_cancel","Retour",                show=True),
+        Binding("escape",    "dismiss_cancel","Retour",                show=False, priority=True),
+        Binding("shift+tab", "col_prev",      "Col préc.",             show=True, priority=True),
+        Binding("tab",       "col_next",      "Col suiv.",             show=True, priority=True),
+        Binding("<",         "col_shrink",    "Rétrécir",              show=True),
+        Binding(">",         "col_grow",      "Élargir",               show=True),
     ]
 
     DEFAULT_CSS = """
@@ -89,17 +101,6 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         background: $accent;
         color: $text;
         padding: 0 2;
-    }
-    #btn-validate {
-        width: 100%;
-        height: 3;
-        background: darkgreen;
-        color: white;
-        border: none;
-        text-style: bold;
-    }
-    #btn-validate:focus {
-        background: green;
     }
     DataTable { height: 1fr; }
     """
@@ -116,6 +117,8 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         self._ov_bitrate:  int | None         = None
         self._ov_dv:       DVAction | None    = None
         self._ov_delete:   bool | None        = None
+        # Resize colonnes
+        self._resize_col_idx: int = 0
 
     # ── Initialisation ────────────────────────────────────────────────────────
 
@@ -147,20 +150,23 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         yield Static("", id="status-bar")
         yield DataTable(id="tracks-table", cursor_type="row",
                         zebra_stripes=False, show_header=True)
-        yield Button("[ ✓  Valider la sélection ]", id="btn-validate")
         yield TwoLineFooter(
             line1=[
-                ("space", "Sélect"),
-                ("left",  "Champ préc."),
-                ("right", "Champ suiv."),
-                ("+",     "Valeur ↑"),
-                ("-",     "Valeur ↓"),
+                ("space",     "Sélect"),
+                ("left",      "Champ préc."),
+                ("right",     "Champ suiv."),
+                ("+",         "Valeur ↑"),
+                ("-",         "Valeur ↓"),
+                ("enter",     "Valider"),
             ],
             line2=[
-                ("enter",    "Valider → browser"),
-                ("l",        "Lancer maintenant"),
-                ("backspace","Retour"),
-                ("ctrl+x",  "Quitter"),
+                ("l",         "Lancer maintenant"),
+                ("backspace", "Retour"),
+                ("shift+tab", "Col préc."),
+                ("tab",       "Col suiv."),
+                ("<",         "Rétrécir"),
+                (">",         "Élargir"),
+                ("f10",       "Quitter"),
             ],
         )
 
@@ -177,14 +183,20 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         cursor_row = table.cursor_row if keep_cursor else 0
         table.clear(columns=True)
 
-        # Colonnes
-        table.add_column("",              width=5,   key="check")
-        table.add_column("Piste",         width=10,  key="idx")
-        table.add_column("Codec",         width=12,  key="codec")
-        table.add_column("Format",        width=14,  key="fmt")
-        table.add_column("Langue",        width=8,   key="lang")
-        table.add_column("Source",        width=20,  key="src")
-        table.add_column("Décision / Cible", width=None, key="dec")
+        widths = cfg_mod.get_tracks_column_widths(self.app.cfg)  # type: ignore[attr-defined]
+        active = _RESIZE_COLS[self._resize_col_idx]
+
+        def _hdr(key: str) -> str:
+            label = _RESIZE_LABELS[key]
+            return f"{label} ◄►" if key == active else label
+
+        table.add_column("",           width=5,                        key="check")
+        table.add_column("Piste",      width=10,                       key="idx")
+        table.add_column(_hdr("codec"),width=max(_RESIZE_MIN, widths["codec"]), key="codec")
+        table.add_column(_hdr("fmt"),  width=max(_RESIZE_MIN, widths["fmt"]),   key="fmt")
+        table.add_column("Langue",     width=8,                        key="lang")
+        table.add_column(_hdr("src"),  width=max(_RESIZE_MIN, widths["src"]),   key="src")
+        table.add_column("Décision / Cible", width=None,               key="dec")
         self._rows = []
 
         # ── Section VIDÉO ─────────────────────────────────────────────────────
@@ -254,7 +266,20 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
                 )
                 self._rows.append((_ROW_SUBTITLE, st.index))
 
-        # ── Ligne Valider ─────────────────────────────────────────────────
+        # ── Ligne Valider ─────────────────────────────────────────────────────
+        table.add_row(
+            Text(""), Text("", style="dim"),
+            Text(""), Text(""), Text(""), Text(""), Text(""),
+            key="__sep_val__",
+        )
+        self._rows.append((_ROW_SECTION, -1))
+        table.add_row(
+            Text("[ ✓ ]", style="bold green"),
+            Text("Valider la sélection", style="bold green"),
+            Text(""), Text(""), Text(""), Text(""), Text(""),
+            key="__validate__",
+        )
+        self._rows.append((_ROW_VALIDATE, -1))
 
         if keep_cursor and table.row_count > 0:
             table.move_cursor(row=min(cursor_row, table.row_count - 1))
@@ -295,7 +320,7 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         dec_txt.append_text(_f("action", f"→ {_ACTION_SHORT.get(action,('?',''))[0]}",
                                 _ACTION_SHORT.get(action,('?',''))[1]))
         dec_txt.append("  ·  ")
-        dec_txt.append_text(_f("bitrate", f"{bitrate//1000}\u202fkbps", ""))
+        dec_txt.append_text(_f("bitrate", f"{bitrate//1000} kbps", ""))
         if action != VideoAction.SKIP:
             dec_txt.append(f"  ·  {vid.target_width}x{vid.target_height}")
             dec_txt.append(f"  ·  {self._decision.output_container.upper().lstrip('.')}")
@@ -334,7 +359,6 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         return Text("[x]" if sel else "[ ]", no_wrap=True)
 
     def _update_video_row(self) -> None:
-        """Reconstruit uniquement la ligne vidéo (évite de reconstruire toute la table)."""
         self._build_table(keep_cursor=True)
 
     def _update_track_cell(self, row_type: str, idx: int) -> None:
@@ -351,18 +375,20 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         n_a     = len(self._sel_audio);  tot_a = len(self._decision.audio)
         n_s     = len(self._sel_subs);   tot_s = len(self._decision.info.subtitle_tracks)
         ovr_str = "  ·  ★ vidéo modifiée" if self._has_override() else ""
+        col_lbl = _RESIZE_LABELS[_RESIZE_COLS[self._resize_col_idx]]
         self.query_one("#status-bar", Static).update(
             f" {fname}    "
-            f"Audio\u202f: {n_a}/{tot_a}  ·  "
-            f"Sous-titres\u202f: {n_s}/{tot_s}"
+            f"Audio : {n_a}/{tot_a}  ·  "
+            f"Sous-titres : {n_s}/{tot_s}"
             f"{ovr_str}"
+            f"  ·  Col : {col_lbl} [</>]"
         )
 
     def _current_row(self) -> tuple[str, int] | None:
         row = self.query_one(DataTable).cursor_row
         if 0 <= row < len(self._rows):
             rt, idx = self._rows[row]
-            if rt not in (_ROW_SECTION,):
+            if rt != _ROW_SECTION:
                 return rt, idx
         return None
 
@@ -460,10 +486,13 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
 
     def action_enter_action(self) -> None:
         info = self._current_row()
-        if self._on_video_row():
+        if info is None:
+            return
+        rt, _ = info
+        if rt == _ROW_VIDEO:
             self._open_picker()
-        else:
-            pass   # pistes : Enter ne valide pas (évite sortie accidentelle)
+        elif rt == _ROW_VALIDATE:
+            self.action_dismiss_ok()
 
     def _open_picker(self) -> None:
         field       = _EDIT_FIELDS[self._edit_idx]
@@ -527,10 +556,34 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
             title, opts, cur, callback = cfg
             self.app.push_screen(ValuePickerScreen(title, opts, cur), callback)
 
-    @on(Button.Pressed, "#btn-validate")
-    def _on_validate_btn(self, _) -> None:
-        self.dismiss(self._make_selection(False))
-
     def action_dismiss_ok(self)     -> None: self.dismiss(self._make_selection(False))
     def action_launch(self)         -> None: self.dismiss(self._make_selection(True))
     def action_dismiss_cancel(self) -> None: self.dismiss(None)
+
+    # ── Resize colonnes ───────────────────────────────────────────────────────
+
+    def action_col_prev(self) -> None:
+        self._resize_col_idx = (self._resize_col_idx - 1) % len(_RESIZE_COLS)
+        self._build_table(keep_cursor=True)
+        self._update_status()
+
+    def action_col_next(self) -> None:
+        self._resize_col_idx = (self._resize_col_idx + 1) % len(_RESIZE_COLS)
+        self._build_table(keep_cursor=True)
+        self._update_status()
+
+    def action_col_shrink(self) -> None: self._apply_resize(-_RESIZE_STEP)
+    def action_col_grow(self)   -> None: self._apply_resize(+_RESIZE_STEP)
+
+    def _apply_resize(self, delta: int) -> None:
+        key     = _RESIZE_COLS[self._resize_col_idx]
+        cfg     = self.app.cfg  # type: ignore[attr-defined]
+        widths  = cfg_mod.get_tracks_column_widths(cfg)
+        current = widths.get(key, 12)
+        new_w   = max(_RESIZE_MIN, current + delta)
+        if new_w == current:
+            return
+        cfg_mod.set_tracks_column_width(cfg, key, new_w)
+        cfg_mod.save(cfg)
+        self._build_table(keep_cursor=True)
+        self._update_status()

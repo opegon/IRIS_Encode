@@ -115,3 +115,24 @@ def set_dryrun_column_width(cfg: dict[str, Any], col: str, width: int) -> None:
      .setdefault("tui", {})
      .setdefault("dryrun", {})
      .setdefault("columns", {}))[col] = width
+
+
+_TRACKS_COL_DEFAULTS: dict[str, int] = {
+    "codec": 12,
+    "fmt":   16,
+    "src":   32,
+}
+
+
+def get_tracks_column_widths(cfg: dict[str, Any]) -> dict[str, int]:
+    return dict(
+        _TRACKS_COL_DEFAULTS
+        | cfg.get("tui", {}).get("tracks", {}).get("columns", {})
+    )
+
+
+def set_tracks_column_width(cfg: dict[str, Any], col: str, width: int) -> None:
+    (cfg
+     .setdefault("tui", {})
+     .setdefault("tracks", {})
+     .setdefault("columns", {}))[col] = width

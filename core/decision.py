@@ -175,28 +175,33 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     limit_w, limit_h, _  = _resolve_limits(info, profile)
     dv_action             = _decide_dv(info, profile)
 
+    # Pour les cibles < 1080p, H264 compresse mieux que HEVC
+    sub_1080  = limit_h < 1080
+    action    = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
+    suffix    = "_[H264]"              if sub_1080 else "_[hevc]"
+
     # CAS 1 — Bitrate source ≥ seuil cible
     if info.bitrate >= target_bps:
         return VideoDecision(
-            action=VideoAction.ENCODE_HEVC,
+            action=action,
             reason=f"Débit {info.kbps}k ≥ {target_bps // 1000}k cible",
             target_bitrate=target_bps,
             target_width=limit_w,
             target_height=limit_h,
             dv_action=dv_action,
-            output_suffix="_[hevc]",
+            output_suffix=suffix,
         )
 
     # CAS 2 — Résolution trop grande (débit OK)
     if info.width > limit_w or info.height > limit_h:
         return VideoDecision(
-            action=VideoAction.ENCODE_HEVC,
+            action=action,
             reason=f"Résolution {info.width}x{info.height} > {limit_w}x{limit_h}",
             target_bitrate=info.bitrate,
             target_width=limit_w,
             target_height=limit_h,
             dv_action=dv_action,
-            output_suffix="_[hevc]",
+            output_suffix=suffix,
         )
 
     # CAS 3 — Codec non-standard sur source < 1080p

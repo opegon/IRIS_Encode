@@ -67,8 +67,7 @@ Cette commande installe :
 | `rich`          | Rendu console enrichi (couleurs, tableaux) |
 | `tomli-w`       | Écriture de fichiers TOML (config, profils) |
 | `requests`      | Téléchargement automatique de ffmpeg |
-| `cinemagoer`    | Recherche de métadonnées IMDB (F8) |
-| `beautifulsoup4`| Scraping AlloCiné pour les métadonnées (F7) |
+| `beautifulsoup4`| Scraping IMDB (F8) et AlloCiné (F7) pour les métadonnées |
 
 > `launch.bat` vérifie les dépendances à chaque démarrage et lance automatiquement
 > `pip install -r requirements.txt` si l'une d'elles est manquante.
@@ -250,7 +249,7 @@ Si le titre mentionne *Windows Terminal* ou l'icône est celle de WT, le rendu s
 IRIS ENCODE ne modifie aucun paramètre système. Pour désinstaller :
 
 1. Supprimez le dossier `iris_encode/`
-2. (Optionnel) Désinstallez les bibliothèques Python : `pip uninstall textual rich tomli-w requests cinemagoer beautifulsoup4`
+2. (Optionnel) Désinstallez les bibliothèques Python : `pip uninstall textual rich tomli-w requests beautifulsoup4`
 
 Les fichiers `config.toml` et `profiles.toml` sont supprimés avec le dossier.
 

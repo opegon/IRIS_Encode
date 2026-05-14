@@ -66,55 +66,98 @@ class MovieMeta:
     url:        str              = ""
 
 
-# ─── IMDB via cinemagoer ──────────────────────────────────────────────────────
+# ─── IMDB via scraping JSON-LD ───────────────────────────────────────────────
 
 def fetch_imdb(title: str, year: Optional[int] = None) -> MovieMeta:
-    try:
-        from imdb import Cinemagoer  # type: ignore
-    except ImportError:
-        raise RuntimeError("cinemagoer non installé — pip install cinemagoer")
+    """Scrape IMDB via le JSON-LD embarqué dans chaque page titre."""
+    import json
+    import requests
+    from bs4 import BeautifulSoup
+    from urllib.parse import quote
 
-    ia      = Cinemagoer()
-    results = ia.search_movie(title)
-    if not results:
+    # 1. Recherche
+    search_url = f"https://www.imdb.com/find/?q={quote(title)}&s=tt"
+    r = requests.get(search_url, headers=_HEADERS, timeout=12)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    # Premier lien /title/ttXXX/
+    title_url: str | None = None
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "/title/tt" in href:
+            path = href.split("?")[0].rstrip("/")
+            title_url = "https://www.imdb.com" + path if href.startswith("/") else href
+            break
+    if not title_url:
         raise RuntimeError(f"Aucun résultat IMDB pour « {title} »")
 
-    best = results[0]
-    if year:
-        for r in results[:6]:
-            if r.get("year") == year:
-                best = r
-                break
+    # 2. Page titre — extraction du JSON-LD
+    r2 = requests.get(title_url, headers=_HEADERS, timeout=12)
+    r2.raise_for_status()
+    soup2 = BeautifulSoup(r2.text, "html.parser")
 
-    movie = ia.get_movie(best.movieID)
+    ld_tag = soup2.find("script", {"type": "application/ld+json"})
+    if not ld_tag:
+        raise RuntimeError("Impossible de lire les données IMDB (JSON-LD absent)")
+    data = json.loads(ld_tag.string)
 
     kind_map = {
-        "movie":          "Film",
-        "tv movie":       "Téléfilm",
-        "tv series":      "Série",
-        "tv mini series": "Mini-série",
-        "short":          "Court-métrage",
-        "video movie":    "Vidéo",
+        "Movie":       "Film",
+        "TVMovie":     "Téléfilm",
+        "TVSeries":    "Série",
+        "TVMiniSeries":"Mini-série",
+        "Short":       "Court-métrage",
     }
-    kind      = kind_map.get(movie.get("kind", "movie"), "Film")
-    directors = [p["name"] for p in movie.get("directors", [])[:3]]
-    cast      = [p["name"] for p in movie.get("cast", [])[:8]]
-    genres    = movie.get("genres", [])[:5]
-    plots     = movie.get("plot", [])
-    synopsis  = plots[0].split("::")[0].strip() if plots else movie.get("plot outline", "")
+    kind = kind_map.get(data.get("@type", "Movie"), "Film")
+
+    # Réalisateurs
+    raw_dir = data.get("director", [])
+    if isinstance(raw_dir, dict):
+        raw_dir = [raw_dir]
+    directors = [d.get("name", "") for d in raw_dir[:3] if d.get("name")]
+
+    # Casting
+    raw_act = data.get("actor", [])
+    if isinstance(raw_act, dict):
+        raw_act = [raw_act]
+    cast = [a.get("name", "") for a in raw_act[:8] if a.get("name")]
+
+    # Genres
+    genres = data.get("genre", [])[:5]
+    if isinstance(genres, str):
+        genres = [genres]
+
+    # Note
+    rating: Optional[float] = None
+    agg = data.get("aggregateRating", {})
+    if agg:
+        try:
+            rating = float(agg.get("ratingValue", 0)) or None
+        except (ValueError, TypeError):
+            pass
+
+    # Année
+    year_out: Optional[int] = None
+    date_str = data.get("datePublished", "")
+    m = _YEAR_RE.search(date_str)
+    if m:
+        year_out = int(m.group())
+
+    synopsis = data.get("description", "")
 
     return MovieMeta(
         source     = "imdb",
-        title      = movie.get("title", best["title"]),
-        year       = movie.get("year"),
+        title      = data.get("name", title),
+        year       = year_out or year,
         kind       = kind,
-        rating     = movie.get("rating"),
+        rating     = rating,
         rating_max = 10.0,
         genres     = genres,
         directors  = directors,
         cast       = cast,
         synopsis   = synopsis,
-        url        = f"https://www.imdb.com/title/tt{best.movieID}/",
+        url        = title_url,
     )
 
 

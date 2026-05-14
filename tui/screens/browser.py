@@ -515,7 +515,7 @@ class BrowserScreen(TableNavMixin, Screen):
             self._subtitle_overrides[path] = result.subtitles
             # Recalculer la décision audio
             dec.audio            = decide_audio(dec.info, dec.profile, result.audio)
-            dec.subtitle_indices = result.subtitles if result.subtitles else None
+            dec.subtitle_indices = result.subtitles
             # Appliquer les overrides vidéo
             if result.video_override:
                 from dataclasses import replace as dc_replace

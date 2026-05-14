@@ -188,8 +188,12 @@ class ProfileForm(Widget):
             yield Checkbox("audio_copy_compatible (AAC/AC3 → copy)",    id="field-copy-compat")
 
         # ── Pied ──────────────────────────────────────────────────────────────
-        yield Static("  Ctrl+S  Enregistrer     Esc  Annuler",
-                     classes="form-hint")
+        yield Static(
+            "  Tab / Shift+Tab : champ suiv./préc.    "
+            "Enter : ouvrir une liste    +/- : valeur suiv./préc.    "
+            "Ctrl+S : enregistrer    Esc : annuler",
+            classes="form-hint",
+        )
         yield Static("", id="form-error", classes="form-error")
 
     # ── Chargement / Dump ─────────────────────────────────────────────────────
@@ -292,6 +296,39 @@ class ProfileForm(Widget):
 
     # ── Clavier ───────────────────────────────────────────────────────────────
 
+    # Mapping champ → liste d'options (pour le cycling +/-)
+    _SELECT_OPTS: dict[str, list] = {
+        "#field-720p":   _BITRATE_720P,
+        "#field-1080p":  _BITRATE_1080P,
+        "#field-4k":     _BITRATE_4K,
+        "#field-dv":     _DV_OPTIONS,
+        "#field-preset": _PRESET,
+        "#field-stereo": _BR_STEREO,
+        "#field-51":     _BR_SURROUND,
+        "#field-71":     _BR_71,
+    }
+
+    def _cycle_focused_select(self, delta: int) -> bool:
+        """Cycle la valeur du Select focalisé. Retourne True si géré."""
+        focused = self.app.focused
+        if not isinstance(focused, Select):
+            return False
+        for field_id, opts in self._SELECT_OPTS.items():
+            try:
+                widget = self.query_one(field_id, Select)
+            except Exception:
+                continue
+            if widget is not focused:
+                continue
+            vals = [v for _, v in opts]
+            cur  = widget.value
+            if cur in vals:
+                widget.value = vals[(vals.index(cur) + delta) % len(vals)]
+            elif vals:
+                widget.value = vals[0]
+            return True
+        return False
+
     def on_key(self, event) -> None:
         if event.key == "ctrl+s":
             event.stop()
@@ -310,3 +347,6 @@ class ProfileForm(Widget):
         elif event.key == "escape":
             event.stop()
             self.post_message(ProfileCancelled())
+        elif event.key in ("+", "-"):
+            if self._cycle_focused_select(1 if event.key == "+" else -1):
+                event.stop()

@@ -2,19 +2,23 @@
 language = "fr"
 
 [ffmpeg]
-fetch_url    = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+fetch_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
 auto_install = true
-bin_dir      = "./bin"
+bin_dir = "./bin"
 
 [updates]
 check_on_startup = true
 
 [tui.browser.columns]
-# Largeurs en caractères terminaux — persistées après redimensionnement
-fichier      = 50
-resolution   = 14
-debit        = 10
-codec        = 10
+fichier = 50
+resolution = 14
+duree = 9
+debit = 10
+codec = 10
 dolby_vision = 12
-decision     = 24
-audio        = 24
+decision = 24
+audio = 24
+
+[tui.dryrun.columns]
+fichier = 42
+conteneur = 16

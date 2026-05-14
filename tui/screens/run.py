@@ -166,10 +166,17 @@ class RunScreen(TableNavMixin, Screen):
 
     def _build_table(self) -> None:
         table = self.query_one(DataTable)
-        table.add_column("",        width=3,  key="icon")
-        table.add_column("Fichier", width=32, key="file")
-        table.add_column("Action",  width=20, key="action")
-        table.add_column("État",    width=None, key="state")
+
+        def _cw(header: str, vals: list[str]) -> int:
+            return max(len(header), max((len(v) for v in vals), default=0))
+
+        names   = [s.decision.info.path.name for s in self._statuses]
+        actions = [s.decision.video.label()  for s in self._statuses]
+
+        table.add_column("",        width=3,                              key="icon")
+        table.add_column("Fichier", width=max(20, _cw("Fichier", names)), key="file")
+        table.add_column("Action",  width=_cw("Action", actions),         key="action")
+        table.add_column("État",    width=None,                            key="state")
 
         for i, s in enumerate(self._statuses):
             dec   = s.decision

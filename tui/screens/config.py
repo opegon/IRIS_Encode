@@ -97,19 +97,31 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
     # ─── Table ────────────────────────────────────────────────────────────────
 
     def _build_table(self) -> None:
-        table = self.query_one(DataTable)
+        table    = self.query_one(DataTable)
         table.clear(columns=True)
-        table.add_column("Profil",    width=18,  key="name")
-        table.add_column("Type",      width=9,   key="type")
-        table.add_column("Dolby V.",  width=11,  key="dv")
-        table.add_column("1080p",     width=8,   key="br1080")
-        table.add_column("4K",        width=11,  key="br4k")
-        table.add_column("Preset",    width=9,   key="preset")
-        table.add_column("HD Audio",  width=10,  key="hd")
-        table.add_column("Suppr.",    width=8,   key="del")
-        table.add_column("Actions",   width=None, key="actions")
+        profiles = self._app.profiles
+        active   = self._app.active_profile_id
 
-        for name, profile in self._app.profiles.items():
+        def _cw(header: str, vals: list[str]) -> int:
+            return max(len(header), max((len(v) for v in vals), default=0))
+
+        names        = list(profiles.keys())
+        fields_list  = [profiles[n].summary_fields() for n in names]
+        name_vals    = [f"[{n}] ✓" if n == active else f"[{n}]" for n in names]
+        type_vals    = ["user" if profiles[n].user else "builtin" for n in names]
+        action_vals  = ["✎ éditer  ✕ suppr." if profiles[n].user else "✎ éditer" for n in names]
+
+        table.add_column("Profil",   width=_cw("Profil",   name_vals),                       key="name")
+        table.add_column("Type",     width=_cw("Type",     type_vals),                       key="type")
+        table.add_column("Dolby V.", width=_cw("Dolby V.", [f["dv"]       for f in fields_list]), key="dv")
+        table.add_column("1080p",    width=_cw("1080p",    [f["1080p"]    for f in fields_list]), key="br1080")
+        table.add_column("4K",       width=_cw("4K",       [f["4k"]       for f in fields_list]), key="br4k")
+        table.add_column("Preset",   width=_cw("Preset",   [f["preset"]   for f in fields_list]), key="preset")
+        table.add_column("HD Audio", width=_cw("HD Audio", [f["hd_audio"] for f in fields_list]), key="hd")
+        table.add_column("Suppr.",   width=_cw("Suppr.",   [f["del_src"]  for f in fields_list]), key="del")
+        table.add_column("Actions",  width=_cw("Actions",  action_vals),                     key="actions")
+
+        for name, profile in profiles.items():
             is_active = (name == self._app.active_profile_id)
             f         = profile.summary_fields()
 
@@ -155,6 +167,11 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         return None
 
     # ─── Actions ──────────────────────────────────────────────────────────────
+
+    def check_action(self, action: str, parameters: tuple) -> bool | None:
+        if action == "activate" and self._form_mode:
+            return False  # laisse Enter atteindre le widget focalisé (Select)
+        return True
 
     def on_key(self, event) -> None:
         if event.key == "enter" and not self._form_mode:

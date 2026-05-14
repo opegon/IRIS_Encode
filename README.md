@@ -49,7 +49,7 @@ Résultat attendu : `Python 3.11.x` (ou version supérieure).
 
 ## 2. Installer les dépendances Python
 
-IRIS ENCODE utilise quatre bibliothèques tierces listées dans `requirements.txt`.
+IRIS ENCODE utilise plusieurs bibliothèques tierces listées dans `requirements.txt`.
 
 ### 2.1 Installation automatique (recommandée)
 
@@ -61,12 +61,17 @@ pip install -r requirements.txt
 
 Cette commande installe :
 
-| Bibliothèque | Rôle |
-|--------------|------|
-| `textual`    | Interface TUI (Terminal User Interface) |
-| `rich`       | Rendu console enrichi (couleurs, tableaux) |
-| `tomli-w`    | Écriture de fichiers TOML (config, profils) |
-| `requests`   | Téléchargement automatique de ffmpeg |
+| Bibliothèque    | Rôle |
+|-----------------|------|
+| `textual`       | Interface TUI (Terminal User Interface) |
+| `rich`          | Rendu console enrichi (couleurs, tableaux) |
+| `tomli-w`       | Écriture de fichiers TOML (config, profils) |
+| `requests`      | Téléchargement automatique de ffmpeg |
+| `cinemagoer`    | Recherche de métadonnées IMDB (F8) |
+| `beautifulsoup4`| Scraping AlloCiné pour les métadonnées (F7) |
+
+> `launch.bat` vérifie les dépendances à chaque démarrage et lance automatiquement
+> `pip install -r requirements.txt` si l'une d'elles est manquante.
 
 ### 2.2 En cas d'erreur `pip introuvable`
 
@@ -159,6 +164,7 @@ launch.bat
 
 Le lanceur vérifie automatiquement :
 - La présence de Python 3.11+
+- La présence et l'installation des dépendances Python
 - La présence de ffmpeg / ffprobe
 - La validité de la configuration
 
@@ -189,8 +195,10 @@ Les fichiers `config.toml` et `profiles.toml` sont éditables à la main avec n'
 **`config.toml`** — largeurs des colonnes de l'interface, langue, chemins :
 ```toml
 [tui.browser.columns]
-fichier      = 92     # largeur de la colonne nom de fichier
-audio        = 16     # largeur de la colonne pistes audio
+# La colonne "fichier" s'étend automatiquement à l'espace disponible
+resolution   = 12     # largeur de la colonne résolution
+audio        = 20     # largeur de la colonne pistes audio
+decision     = 12     # largeur de la colonne décision
 ```
 
 **`profiles.toml`** — profils d'encodage (bitrate, résolution, audio, Dolby Vision) :
@@ -242,7 +250,7 @@ Si le titre mentionne *Windows Terminal* ou l'icône est celle de WT, le rendu s
 IRIS ENCODE ne modifie aucun paramètre système. Pour désinstaller :
 
 1. Supprimez le dossier `iris_encode/`
-2. (Optionnel) Désinstallez les bibliothèques Python : `pip uninstall textual rich tomli-w requests`
+2. (Optionnel) Désinstallez les bibliothèques Python : `pip uninstall textual rich tomli-w requests cinemagoer beautifulsoup4`
 
 Les fichiers `config.toml` et `profiles.toml` sont supprimés avec le dossier.
 

@@ -45,6 +45,23 @@ if "%WT_SESSION%"=="" (
     echo.
 )
 
+REM --- Vérification des dépendances Python ---
+python -c "import textual, requests, tomli_w, bs4; from imdb import Cinemagoer" >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo  [INFO] Dépendances manquantes — installation en cours...
+    pip install -r "%~dp0requirements.txt"
+    if errorlevel 1 (
+        echo.
+        echo  [ERREUR] Impossible d'installer les dépendances.
+        echo  Essayez manuellement : pip install -r requirements.txt
+        echo.
+        pause
+        exit /b 1
+    )
+    echo.
+)
+
 REM --- Nettoyage des caches .pyc (évite les conflits après mise à jour) ---
 cd /d "%~dp0"
 for /d /r . %%d in (__pycache__) do (

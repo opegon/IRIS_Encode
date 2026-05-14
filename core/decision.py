@@ -103,10 +103,11 @@ class TracksSelection:
     """Sélection manuelle audio + sous-titres + override vidéo depuis le TUI.
     launch=True : le browser lance l'encodage immédiatement après.
     """
-    audio:          list[int]                 = field(default_factory=list)
-    subtitles:      list[int]                 = field(default_factory=list)
-    launch:         bool                      = False
-    video_override: Optional["VideoOverride"] = None
+    audio:             list[int]                 = field(default_factory=list)
+    subtitles:         list[int]                 = field(default_factory=list)
+    launch:            bool                      = False
+    video_override:    Optional["VideoOverride"] = None
+    subtitle_indices:  Optional[list[int]]       = None  # None = toutes les pistes
 
 
 

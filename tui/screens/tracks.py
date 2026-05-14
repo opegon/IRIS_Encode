@@ -126,8 +126,12 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         for ad in self._decision.audio:
             if ad.action != AudioAction.EXCLUDE:
                 self._sel_audio.add(ad.track.index)
-        for st in self._decision.info.subtitle_tracks:
-            if (st.language or "").lower() in _DEFAULT_SUB_LANGS:
+        if self._decision.subtitle_indices is not None:
+            # Restaure une sélection déjà explicite
+            self._sel_subs = set(self._decision.subtitle_indices)
+        else:
+            # Par défaut : toutes les pistes sélectionnées
+            for st in self._decision.info.subtitle_tracks:
                 self._sel_subs.add(st.index)
 
     # ── Décision effective ────────────────────────────────────────────────────
@@ -399,11 +403,14 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
             dv_action     = self._ov_dv,
             delete_source = self._ov_delete,
         ) if self._has_override() else None
+        all_subs = {st.index for st in self._decision.info.subtitle_tracks}
+        sub_indices = None if self._sel_subs == all_subs else sorted(self._sel_subs)
         return TracksSelection(
             audio=sorted(self._sel_audio),
             subtitles=sorted(self._sel_subs),
             launch=launch,
             video_override=ovr,
+            subtitle_indices=sub_indices,
         )
 
     # ── Actions pistes ────────────────────────────────────────────────────────
@@ -486,12 +493,9 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
 
     def action_enter_action(self) -> None:
         info = self._current_row()
-        if info is None:
-            return
-        rt, _ = info
-        if rt == _ROW_VIDEO:
+        if info is not None and info[0] == _ROW_VIDEO:
             self._open_picker()
-        elif rt == _ROW_VALIDATE:
+        else:
             self.action_dismiss_ok()
 
     def _open_picker(self) -> None:

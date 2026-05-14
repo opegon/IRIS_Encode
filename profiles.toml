@@ -1,0 +1,99 @@
+# IRIS ENCODE — Profils d'encodage
+# Fichier régénéré automatiquement au premier lancement si absent.
+# Les profils builtin peuvent être édités mais pas supprimés.
+
+[default]
+# Profil polyvalent — séries et films standard 1080p
+bitrate_720p_kbps        = 1500
+bitrate_1080p_kbps       = 2200
+bitrate_4k_kbps          = 5000
+keep_4k                  = false
+delete_source            = false
+preset_encoder           = "medium"
+dolby_vision             = "strip"
+audio_languages          = ["fre", "eng"]
+preserve_hd_audio        = false
+audio_stereo_kbps        = 192
+audio_surround_kbps      = 448
+audio_surround_7_1_kbps  = 640
+audio_copy_compatible    = true
+
+[serie_hd]
+# Séries HD — débit légèrement supérieur au default
+bitrate_720p_kbps        = 1500
+bitrate_1080p_kbps       = 2500
+bitrate_4k_kbps          = 5000
+keep_4k                  = false
+delete_source            = false
+preset_encoder           = "medium"
+dolby_vision             = "strip"
+audio_languages          = ["fre", "eng"]
+preserve_hd_audio        = false
+audio_stereo_kbps        = 192
+audio_surround_kbps      = 448
+audio_surround_7_1_kbps  = 640
+audio_copy_compatible    = true
+
+[cinema_4k_basic]
+# Cinéma 4K — conservation 4K, audio HD, pas de DV
+bitrate_720p_kbps        = 2000
+bitrate_1080p_kbps       = 5000
+bitrate_4k_kbps          = 8000
+keep_4k                  = true
+delete_source            = false
+preset_encoder           = "slow"
+dolby_vision             = "strip"
+audio_languages          = ["fre", "eng"]
+preserve_hd_audio        = true
+audio_stereo_kbps        = 192
+audio_surround_kbps      = 448
+audio_surround_7_1_kbps  = 640
+audio_copy_compatible    = true
+
+[cinema_4k_hd]
+# Cinéma 4K premium — Dolby Vision préservé, audio HD, haut débit
+bitrate_720p_kbps        = 2000
+bitrate_1080p_kbps       = 5000
+bitrate_4k_kbps          = 12000
+keep_4k                  = true
+delete_source            = false
+preset_encoder           = "slow"
+dolby_vision             = "preserve"
+audio_languages          = ["fre", "eng"]
+preserve_hd_audio        = true
+audio_stereo_kbps        = 192
+audio_surround_kbps      = 448
+audio_surround_7_1_kbps  = 640
+audio_copy_compatible    = true
+
+[basic_delete]
+# Réencodage rapide avec suppression de l'original
+bitrate_720p_kbps        = 1500
+bitrate_1080p_kbps       = 2000
+bitrate_4k_kbps          = 3500
+keep_4k                  = false
+delete_source            = true
+preset_encoder           = "fast"
+dolby_vision             = "sdr"
+audio_languages          = ["fre", "eng"]
+preserve_hd_audio        = false
+audio_stereo_kbps        = 192
+audio_surround_kbps      = 448
+audio_surround_7_1_kbps  = 640
+audio_copy_compatible    = true
+
+[archivage]
+# Archivage — compression maximale, suppression source, SDR
+bitrate_720p_kbps        = 1500
+bitrate_1080p_kbps       = 2000
+bitrate_4k_kbps          = 5000
+keep_4k                  = false
+delete_source            = true
+preset_encoder           = "fast"
+dolby_vision             = "sdr"
+audio_languages          = ["fre", "eng"]
+preserve_hd_audio        = false
+audio_stereo_kbps        = 192
+audio_surround_kbps      = 448
+audio_surround_7_1_kbps  = 640
+audio_copy_compatible    = true

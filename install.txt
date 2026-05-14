@@ -1,0 +1,8 @@
+# Installer Python
+# https://www.python.org/downloads/
+
+https://www.python.org/downloads/release/pymanager-262/
+# Surtout répondre oui à la mise à jour du path
+
+pip install -r requirements.txt
+python main.py

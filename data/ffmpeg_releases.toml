@@ -1,0 +1,19 @@
+# Sources statiques ffmpeg — fallback si réseau indisponible
+# Mise à jour manuelle à chaque release majeure
+
+[ffmpeg.windows]
+url     = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+sha256  = ""   # à renseigner lors du packaging
+version = "7.1.1"
+build   = "essentials"
+
+[ffmpeg.linux]
+url     = "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+sha256  = ""
+version = "7.1.1"
+build   = "static"
+
+[dovi_tool.windows]
+url     = "https://github.com/quietvoid/dovi_tool/releases/download/2.1.0/dovi_tool-2.1.0-x86_64-pc-windows-msvc.zip"
+sha256  = ""
+version = "2.1.0"

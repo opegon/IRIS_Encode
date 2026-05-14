@@ -27,6 +27,9 @@ _DEFAULTS: dict[str, Any] = {
     "updates": {
         "check_on_startup": True,
     },
+    "meta": {
+        "omdb_api_key": "",
+    },
     "tui": {
         "browser": {
             "columns": {

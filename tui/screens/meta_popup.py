@@ -69,7 +69,7 @@ class MetaPopup(ModalScreen):
         margin-top: 1;
     }
     #meta-error {
-        color: dark_orange;
+        color: darkorange;
         text-style: bold;
         margin-top: 2;
     }
@@ -105,7 +105,10 @@ class MetaPopup(ModalScreen):
     def _fetch(self, title: str, year) -> None:
         try:
             if self._source == "imdb":
-                meta = fetch_imdb(title, year)
+                from core import config as cfg_mod
+                cfg     = cfg_mod.load()
+                omdb_key = cfg.get("meta", {}).get("omdb_api_key", "")
+                meta = fetch_imdb(title, year, omdb_key=omdb_key)
             else:
                 meta = fetch_allocine(title, year)
             self.app.call_from_thread(self._show_result, meta)

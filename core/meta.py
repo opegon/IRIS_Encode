@@ -66,89 +66,53 @@ class MovieMeta:
     url:        str              = ""
 
 
-# ─── IMDB via scraping JSON-LD ───────────────────────────────────────────────
+# ─── IMDB : OMDb API (clé config) + suggestions API (fallback) ───────────────
 
-def fetch_imdb(title: str, year: Optional[int] = None) -> MovieMeta:
-    """Scrape IMDB via le JSON-LD embarqué dans chaque page titre."""
-    import json
-    import requests
-    from bs4 import BeautifulSoup
+def fetch_imdb(title: str, year: Optional[int] = None,
+               omdb_key: str = "") -> MovieMeta:
+    import json, requests
     from urllib.parse import quote
 
-    # 1. Recherche
-    search_url = f"https://www.imdb.com/find/?q={quote(title)}&s=tt"
-    r = requests.get(search_url, headers=_HEADERS, timeout=12)
+    if omdb_key:
+        return _fetch_imdb_omdb(title, year, omdb_key)
+    return _fetch_imdb_suggestions(title, year)
+
+
+def _fetch_imdb_omdb(title: str, year: Optional[int], key: str) -> MovieMeta:
+    """Données complètes via OMDb API (nécessite clé gratuite sur omdbapi.com)."""
+    import requests
+    from urllib.parse import quote
+
+    params = f"t={quote(title)}&apikey={key}&type=movie"
+    if year:
+        params += f"&y={year}"
+    r = requests.get(f"http://www.omdbapi.com/?{params}", headers=_HEADERS, timeout=12)
     r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
+    d = r.json()
+    if d.get("Response") == "False":
+        raise RuntimeError(f"OMDb : {d.get('Error', 'résultat introuvable')}")
 
-    # Premier lien /title/ttXXX/
-    title_url: str | None = None
-    for a in soup.find_all("a", href=True):
-        href = a["href"]
-        if "/title/tt" in href:
-            path = href.split("?")[0].rstrip("/")
-            title_url = "https://www.imdb.com" + path if href.startswith("/") else href
-            break
-    if not title_url:
-        raise RuntimeError(f"Aucun résultat IMDB pour « {title} »")
+    kind_map = {"movie": "Film", "series": "Série", "episode": "Épisode"}
+    kind = kind_map.get(d.get("Type", "movie"), "Film")
 
-    # 2. Page titre — extraction du JSON-LD
-    r2 = requests.get(title_url, headers=_HEADERS, timeout=12)
-    r2.raise_for_status()
-    soup2 = BeautifulSoup(r2.text, "html.parser")
+    try:
+        rating = float(d.get("imdbRating", "N/A").replace(",", "."))
+    except ValueError:
+        rating = None
 
-    ld_tag = soup2.find("script", {"type": "application/ld+json"})
-    if not ld_tag:
-        raise RuntimeError("Impossible de lire les données IMDB (JSON-LD absent)")
-    data = json.loads(ld_tag.string)
-
-    kind_map = {
-        "Movie":       "Film",
-        "TVMovie":     "Téléfilm",
-        "TVSeries":    "Série",
-        "TVMiniSeries":"Mini-série",
-        "Short":       "Court-métrage",
-    }
-    kind = kind_map.get(data.get("@type", "Movie"), "Film")
-
-    # Réalisateurs
-    raw_dir = data.get("director", [])
-    if isinstance(raw_dir, dict):
-        raw_dir = [raw_dir]
-    directors = [d.get("name", "") for d in raw_dir[:3] if d.get("name")]
-
-    # Casting
-    raw_act = data.get("actor", [])
-    if isinstance(raw_act, dict):
-        raw_act = [raw_act]
-    cast = [a.get("name", "") for a in raw_act[:8] if a.get("name")]
-
-    # Genres
-    genres = data.get("genre", [])[:5]
-    if isinstance(genres, str):
-        genres = [genres]
-
-    # Note
-    rating: Optional[float] = None
-    agg = data.get("aggregateRating", {})
-    if agg:
-        try:
-            rating = float(agg.get("ratingValue", 0)) or None
-        except (ValueError, TypeError):
-            pass
-
-    # Année
     year_out: Optional[int] = None
-    date_str = data.get("datePublished", "")
-    m = _YEAR_RE.search(date_str)
+    m = _YEAR_RE.search(d.get("Year", ""))
     if m:
         year_out = int(m.group())
 
-    synopsis = data.get("description", "")
+    genres    = [g.strip() for g in d.get("Genre", "").split(",") if g.strip()][:5]
+    directors = [g.strip() for g in d.get("Director", "").split(",") if g.strip()][:3]
+    cast      = [g.strip() for g in d.get("Actors", "").split(",") if g.strip()][:8]
+    imdb_id   = d.get("imdbID", "")
 
     return MovieMeta(
         source     = "imdb",
-        title      = data.get("name", title),
+        title      = d.get("Title", title),
         year       = year_out or year,
         kind       = kind,
         rating     = rating,
@@ -156,8 +120,57 @@ def fetch_imdb(title: str, year: Optional[int] = None) -> MovieMeta:
         genres     = genres,
         directors  = directors,
         cast       = cast,
-        synopsis   = synopsis,
-        url        = title_url,
+        synopsis   = d.get("Plot", ""),
+        url        = f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else "",
+    )
+
+
+def _fetch_imdb_suggestions(title: str, year: Optional[int]) -> MovieMeta:
+    """Données partielles via l'API suggestions IMDB (sans clé, sans scraping)."""
+    import json, requests, re as _re
+    from urllib.parse import quote
+
+    query = _re.sub(r"\s+", "_", title.lower())
+    url   = f"https://v2.sg.media-imdb.com/suggests/t/{quote(query)}.json"
+    r     = requests.get(url, headers=_HEADERS, timeout=12)
+    r.raise_for_status()
+
+    # Réponse JSONP : imdb$xxx(data)
+    m = _re.search(r"\((.+)\)$", r.text, _re.DOTALL)
+    if not m:
+        raise RuntimeError("Réponse IMDB inattendue")
+    results = json.loads(m.group(1)).get("d", [])
+
+    best = None
+    for res in results:
+        if res.get("qid") not in ("movie", "tvSeries", "tvMiniSeries", "tvMovie"):
+            continue
+        if best is None:
+            best = res
+        if year and res.get("y") == year:
+            best = res
+            break
+    if not best:
+        raise RuntimeError(f"Aucun résultat IMDB pour « {title} »")
+
+    kind_map = {"movie": "Film", "tvSeries": "Série",
+                "tvMiniSeries": "Mini-série", "tvMovie": "Téléfilm"}
+    kind  = kind_map.get(best.get("qid", "movie"), "Film")
+    stars = [s.strip() for s in best.get("s", "").split(",") if s.strip()]
+    imdb_id = best.get("id", "")
+
+    return MovieMeta(
+        source     = "imdb",
+        title      = best.get("l", title),
+        year       = best.get("y") or year,
+        kind       = kind,
+        rating     = None,
+        rating_max = 10.0,
+        genres     = [],
+        directors  = [],
+        cast       = stars,
+        synopsis   = "Note et synopsis disponibles avec une clé OMDb (omdbapi.com — gratuit).",
+        url        = f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else "",
     )
 
 
@@ -175,117 +188,99 @@ _HEADERS = {
 
 
 def fetch_allocine(title: str, year: Optional[int] = None) -> MovieMeta:
-    try:
-        import requests
-        from bs4 import BeautifulSoup
-    except ImportError:
-        raise RuntimeError("beautifulsoup4 non installé — pip install beautifulsoup4")
-
+    """Scrape AlloCiné via l'autocomplete JSON + JSON-LD de la fiche."""
+    import json
+    import requests
+    from bs4 import BeautifulSoup
     from urllib.parse import quote
 
-    # 1. Recherche
-    search_url = f"https://www.allocine.fr/rechercher/1/?q={quote(title)}"
-    r = requests.get(search_url, headers=_HEADERS, timeout=12)
+    # 1. Autocomplete → entity_id + entity_type
+    ac_url = f"https://www.allocine.fr/_/autocomplete/{quote(title)}"
+    r = requests.get(ac_url, headers=_HEADERS, timeout=12)
     r.raise_for_status()
-    soup = BeautifulSoup(r.text, "html.parser")
+    results = r.json().get("results", [])
 
-    # Premier résultat film ou série
-    link = soup.select_one("a.meta-title-link")
-    if not link:
-        for a in soup.find_all("a", href=True):
-            h = a["href"]
-            if ("/film/fichefilm" in h or "/series/ficheserie" in h):
-                link = a
-                break
-    if not link:
+    # Préférer le résultat dont le label correspond le mieux (et l'année si dispo)
+    best = None
+    for res in results[:8]:
+        if res.get("entity_type") not in ("movie", "tvseries"):
+            continue
+        if best is None:
+            best = res
+        if year and str(year) in res.get("label", ""):
+            best = res
+            break
+    if best is None:
         raise RuntimeError(f"Aucun résultat AlloCiné pour « {title} »")
 
-    href = link["href"]
-    if href.startswith("/"):
-        href = "https://www.allocine.fr" + href
-    is_serie = "/series/" in href
+    entity_id   = best["entity_id"]
+    is_serie    = best["entity_type"] == "tvseries"
+    if is_serie:
+        fiche_url = f"https://www.allocine.fr/series/ficheserie_gen_cserie={entity_id}.html"
+    else:
+        fiche_url = f"https://www.allocine.fr/film/fichefilm_gen_cfilm={entity_id}.html"
 
-    # 2. Page fiche
-    r2 = requests.get(href, headers=_HEADERS, timeout=12)
+    # 2. Fiche — JSON-LD
+    r2 = requests.get(fiche_url, headers=_HEADERS, timeout=12)
     r2.raise_for_status()
-    soup2 = BeautifulSoup(r2.text, "html.parser")
+    soup = BeautifulSoup(r2.text, "html.parser")
 
-    def _text(selector: str) -> str:
-        el = soup2.select_one(selector)
-        return el.get_text(strip=True) if el else ""
+    ld_tag = soup.find("script", {"type": "application/ld+json"})
+    if not ld_tag:
+        raise RuntimeError("Impossible de lire les données AlloCiné (JSON-LD absent)")
+    data = json.loads(ld_tag.string)
 
-    def _texts(selector: str, limit: int = 8) -> list[str]:
-        return [el.get_text(strip=True) for el in soup2.select(selector)[:limit]]
+    # Réalisateurs
+    raw_dir = data.get("director", [])
+    if isinstance(raw_dir, dict):
+        raw_dir = [raw_dir]
+    directors = [d.get("name", "") for d in raw_dir[:3] if d.get("name")]
 
-    # Titre
-    title_out = (_text("h1.title") or _text("[itemprop='name']") or
-                 _text(".titlebar-title") or title)
+    # Casting — JSON-LD d'abord, sinon fallback HTML (.meta-body-actor)
+    raw_act = data.get("actor", [])
+    if isinstance(raw_act, dict):
+        raw_act = [raw_act]
+    cast = [a.get("name", "") for a in raw_act[:8] if a.get("name")]
+    if not cast:
+        actor_el = soup.select_one(".meta-body-actor")
+        if actor_el:
+            raw = actor_el.get_text(strip=True).removeprefix("Avec")
+            cast = [n.strip() for n in raw.split(",") if n.strip()][:8]
+
+    # Genres
+    genres = data.get("genre", [])[:5]
+    if isinstance(genres, str):
+        genres = [genres]
+
+    # Note (format français : virgule → point)
+    rating: Optional[float] = None
+    agg = data.get("aggregateRating", {})
+    if agg:
+        try:
+            rating = float(str(agg.get("ratingValue", "")).replace(",", ".")) or None
+        except (ValueError, TypeError):
+            pass
 
     # Année
     year_out: Optional[int] = None
-    for sel in ("time[itemprop='startDate']", ".meta-body-item time",
-                "[itemprop='datePublished']"):
-        raw = _text(sel)
-        m = _YEAR_RE.search(raw)
-        if m:
-            year_out = int(m.group())
-            break
+    date_str = data.get("datePublished", "")
+    m = _YEAR_RE.search(date_str)
+    if m:
+        year_out = int(m.group())
 
-    # Note spectateurs (plus représentative que la presse)
-    rating: Optional[float] = None
-    for sel in (".rating-item .stareval-note", "[itemprop='ratingValue']",
-                ".rating-mdl .stareval-note"):
-        raw = _text(sel)
-        if raw:
-            try:
-                rating = float(raw.replace(",", "."))
-                break
-            except ValueError:
-                continue
-
-    # Genres
-    genres: list[str] = []
-    for sel in (".meta-body-item.meta-body-info .dark-grey",
-                "[itemprop='genre']", ".genre"):
-        genres = [t for t in _texts(sel, 5) if t and len(t) < 30]
-        if genres:
-            break
-
-    # Réalisateurs
-    directors: list[str] = []
-    for sel in ("[itemprop='director'] [itemprop='name']",
-                ".meta-body-direction .dark-grey",
-                ".meta-body-direction a"):
-        directors = [t for t in _texts(sel, 3) if t]
-        if directors:
-            break
-
-    # Casting
-    cast: list[str] = []
-    for sel in ("[itemprop='actor'] [itemprop='name']",
-                ".casting-card-name", ".cast-list a"):
-        cast = [t for t in _texts(sel, 8) if t and len(t) < 40]
-        if cast:
-            break
-
-    # Synopsis
-    synopsis = ""
-    for sel in ("[itemprop='description']", ".synopsis-container .content-txt",
-                ".synopsis .content-txt", ".blk-synopsis"):
-        synopsis = _text(sel)
-        if synopsis:
-            break
+    kind_map = {"Movie": "Film", "TVSeries": "Série", "TVMiniSeries": "Mini-série"}
+    kind = kind_map.get(data.get("@type", ""), "Série" if is_serie else "Film")
 
     return MovieMeta(
         source     = "allocine",
-        title      = title_out,
+        title      = data.get("name", best.get("label", title)),
         year       = year_out or year,
-        kind       = "Série" if is_serie else "Film",
+        kind       = kind,
         rating     = rating,
         rating_max = 5.0,
         genres     = genres,
         directors  = directors,
         cast       = cast,
-        synopsis   = synopsis,
-        url        = href,
+        synopsis   = data.get("description", ""),
+        url        = fiche_url,
     )

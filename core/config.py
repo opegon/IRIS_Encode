@@ -34,6 +34,7 @@ _DEFAULTS: dict[str, Any] = {
         "browser": {
             "columns": {
                 "fichier":      50,
+                "taille":        8,
                 "resolution":   12,
                 "duree":        12,
                 "debit":        10,
@@ -97,6 +98,7 @@ def set_column_width(cfg: dict[str, Any], col: str, width: int) -> None:
 
 _DRYRUN_COL_DEFAULTS: dict[str, int] = {
     "fichier":   30,
+    "taille":     8,
     "action":    16,
     "conteneur":  7,
     "dv":        10,

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.2 — Windows (support macOS/Linux prévu)
+**Version** : 0.3 — Windows (support macOS/Linux prévu)
 
 ---
 
@@ -195,6 +195,7 @@ Les fichiers `config.toml` et `profiles.toml` sont éditables à la main avec n'
 ```toml
 [tui.browser.columns]
 # La colonne "fichier" s'étend automatiquement à l'espace disponible
+taille       = 8      # largeur de la colonne taille fichier
 resolution   = 12     # largeur de la colonne résolution
 audio        = 20     # largeur de la colonne pistes audio
 decision     = 12     # largeur de la colonne décision
@@ -295,4 +296,4 @@ Les fichiers `config.toml` et `profiles.toml` sont supprimés avec le dossier.
 
 ---
 
-*IRIS ENCODE v0.2 — Interface Relationnelle d'Intelligence Servicielle*
+*IRIS ENCODE v0.3 — Interface Relationnelle d'Intelligence Servicielle*

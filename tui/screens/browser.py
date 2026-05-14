@@ -45,14 +45,26 @@ _ROW_TYPE_FILE  = "file"
 _ROW_TYPE_EMPTY = "empty"  # placeholder dossier vide
 
 # Colonnes redimensionnables (ordre d'affichage)
-_RESIZE_COLS   = ["resolution", "duree", "debit", "codec", "dolby_vision", "decision", "audio"]
-_RESIZE_LABELS = {"fichier":"Fichier", "resolution":"Résol.", "duree":"Durée",
+_RESIZE_COLS   = ["taille", "resolution", "duree", "debit", "codec", "dolby_vision", "decision", "audio"]
+_RESIZE_LABELS = {"fichier":"Fichier", "taille":"Taille", "resolution":"Résol.", "duree":"Durée",
                    "debit":"Débit", "codec":"Codec", "dolby_vision":"Dolby V.",
                    "decision":"Décision", "audio":"Audio"}
 _RESIZE_STEP   = 2
 _RESIZE_MIN         = 6
 _RESIZE_MIN_FICHIER = 20   # minimum plus large pour la colonne nom
 _RESIZE_MIN_AUDIO   = 10   # minimum pour la colonne audio
+
+
+def _fmt_size(path: Path) -> str:
+    try:
+        b = path.stat().st_size
+    except OSError:
+        return "—"
+    if b >= 1_073_741_824:
+        return f"{b / 1_073_741_824:.1f} Go"
+    if b >= 1_048_576:
+        return f"{b / 1_048_576:.0f} Mo"
+    return f"{b // 1024} Ko"
 
 
 def _fmt_duration(seconds: float) -> str:
@@ -188,7 +200,8 @@ class BrowserScreen(TableNavMixin, Screen):
             return f"{label} ◄►" if key == active else label
 
         table.add_column("",            width=3,    key="check")
-        table.add_column(_hdr("fichier"),      width=None, key="fichier")
+        table.add_column(_hdr("fichier"),      width=None,                   key="fichier")
+        table.add_column(_hdr("taille"),       width=widths["taille"],       key="taille")
         table.add_column(_hdr("resolution"),   width=widths["resolution"],   key="resolution")
         table.add_column(_hdr("duree"),        width=widths["duree"],        key="duree")
         table.add_column(_hdr("debit"),        width=widths["debit"],        key="debit")
@@ -268,7 +281,7 @@ class BrowserScreen(TableNavMixin, Screen):
             table.add_row(
                 "",
                 Text(f"{icon} {label}", style="bold cyan" if is_virtual else "bold blue"),
-                "", "", "", "", "", "", "",
+                "", "", "", "", "", "", "", "",
                 key=row_key,
             )
             self._rows.append((_ROW_TYPE_DIR, d))
@@ -290,7 +303,7 @@ class BrowserScreen(TableNavMixin, Screen):
                 "",
                 Text("⚠  Aucun fichier vidéo dans ce dossier  —  ⌫ pour remonter",
                      style="dim italic"),
-                "", "", "", "", "", "", "",
+                "", "", "", "", "", "", "", "",
                 key="__empty__",
             )
             self._rows.append((_ROW_TYPE_EMPTY, None))
@@ -305,6 +318,9 @@ class BrowserScreen(TableNavMixin, Screen):
         # Nom (tronqué)
         name     = info.path.name
         name_txt = Text(f"{_FILE_ICON} {name}", overflow="ellipsis", no_wrap=True)
+
+        # Taille
+        size_txt = Text(_fmt_size(info.path), style="dim", no_wrap=True)
 
         # Résolution
         res_txt  = Text(f"{info.width}x{info.height}")
@@ -329,7 +345,7 @@ class BrowserScreen(TableNavMixin, Screen):
         # Audio résumé
         audio_txt = Text(dec.audio_summary, overflow="ellipsis", no_wrap=True)
 
-        return (check, name_txt, res_txt, dur_txt, kbps_txt, codec_txt, dv_txt, dec_txt, audio_txt)
+        return (check, name_txt, size_txt, res_txt, dur_txt, kbps_txt, codec_txt, dv_txt, dec_txt, audio_txt)
 
     def _check_str(self, path: Path) -> Text:
         # Text() évite l'interprétation des crochets comme balises Rich markup

@@ -54,7 +54,6 @@ class TwoLineFooter(Widget):
     DEFAULT_CSS = """
     TwoLineFooter {
         height: 2;
-        dock: bottom;
         layout: vertical;
     }
     TwoLineFooter .footer-row {

@@ -26,9 +26,10 @@ if TYPE_CHECKING:
 
 # ── Colonnes redimensionnables ─────────────────────────────────────────────────
 
-_RESIZE_COLS   = ["fichier", "action", "conteneur", "dv", "bitrate", "res", "audio"]
+_RESIZE_COLS   = ["fichier", "taille", "action", "conteneur", "dv", "bitrate", "res", "audio"]
 _RESIZE_LABELS = {
     "fichier":   "Fichier",
+    "taille":    "Taille",
     "action":    "Action",
     "conteneur": "Conteneur",
     "dv":        "DV",
@@ -36,6 +37,18 @@ _RESIZE_LABELS = {
     "res":       "Résolution",
     "audio":     "Audio",
 }
+
+
+def _fmt_size(path) -> str:
+    try:
+        b = path.stat().st_size
+    except OSError:
+        return "—"
+    if b >= 1_073_741_824:
+        return f"{b / 1_073_741_824:.1f} Go"
+    if b >= 1_048_576:
+        return f"{b / 1_048_576:.0f} Mo"
+    return f"{b // 1024} Ko"
 _RESIZE_STEP        = 2
 _RESIZE_MIN         = 6
 _RESIZE_MIN_FICHIER = 20
@@ -121,7 +134,8 @@ class DryrunScreen(TableNavMixin, Screen):
             label = _RESIZE_LABELS[key]
             return f"{label} ◄►" if key == active else label
 
-        table.add_column(_hdr("fichier"),   width=max(_RESIZE_MIN_FICHIER, widths["fichier"]),  key="file")
+        table.add_column(_hdr("fichier"),   width=max(_RESIZE_MIN_FICHIER, widths["fichier"]), key="file")
+        table.add_column(_hdr("taille"),    width=widths["taille"],    key="taille")
         table.add_column(_hdr("action"),    width=widths["action"],    key="action")
         table.add_column(_hdr("conteneur"), width=widths["conteneur"], key="container")
         table.add_column(_hdr("dv"),        width=widths["dv"],        key="dv")
@@ -156,6 +170,7 @@ class DryrunScreen(TableNavMixin, Screen):
 
             table.add_row(
                 Text(info.path.name, overflow="ellipsis", no_wrap=True),
+                Text(_fmt_size(info.path), style="dim", no_wrap=True),
                 Text(vid.label(), style=vid.style()),
                 Text(container, no_wrap=True),
                 Text(dv_str, no_wrap=True),

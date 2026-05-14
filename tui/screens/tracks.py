@@ -158,6 +158,12 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
             return self._ov_delete
         return self._decision.profile.data.get("delete_source", False)
 
+    def _dovi_available(self) -> bool:
+        """True si dovi_tool est trouvé (PATH ou ./bin/)."""
+        from core import dovi
+        from core import config as cfg_mod
+        return dovi.is_available(cfg_mod.get_bin_dir(self.app.cfg))  # type: ignore[attr-defined]
+
     def _has_override(self) -> bool:
         return any(x is not None for x in (self._ov_action, self._ov_bitrate, self._ov_dv, self._ov_delete))
 
@@ -326,8 +332,13 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         check_txt.append("✎ " if ovr else "  ", style="bold yellow" if ovr else "")
         check_txt.append(act_short, style=act_col)
 
-        # Colonne "src" : infos source
-        dv_src = f" DV:P{info.dv_profile}" if info.dv_profile else ""
+        # Colonne "src" : infos source. Affiche le sous-profil DV si connu (8.1, 7.06…).
+        if info.dv_subprofile:
+            dv_src = f" DV:P{info.dv_subprofile}"
+        elif info.dv_profile:
+            dv_src = f" DV:P{info.dv_profile}"
+        else:
+            dv_src = ""
         src_txt = Text(f"{info.width}x{info.height}  {info.kbps}k{dv_src}", no_wrap=True, style="dim")
 
         # Colonne "dec" : décision éditable avec champ actif surligné
@@ -356,6 +367,10 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         else:
             dv_lbl, dv_sty = _DV_SHORT.get(dv, ("—", ""))
             dec_txt.append_text(_f("dv", f"DV → {dv_lbl}", dv_sty))
+            # Avertissement si HDR10 demandé mais dovi_tool absent → qualité dégradée
+            if dv == DVAction.HDR10 and not self._dovi_available():
+                dec_txt.append("  ")
+                dec_txt.append("⚠ dovi_tool absent", style="bold dark_orange")
         # Champ original
         if self._ov_delete is None:
             del_profile = self._decision.profile.data.get("delete_source", False)

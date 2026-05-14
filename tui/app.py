@@ -52,6 +52,17 @@ class IrisEncodeApp(App):
         self.profiles          = prof_mod.load_all()
         self.active_profile_id = "serie_basic"
         self.platform:         PlatformProfile = detect_platform()
+        # Câble dovi_tool dans le scanner (enrichissement DV au scan)
+        from core import dovi, scanner
+        bin_dir   = cfg_mod.get_bin_dir(self.cfg)
+        dovi_path = dovi.get_path(bin_dir)
+        if dovi_path is not None:
+            scanner.set_dovi_path(dovi_path)
+        # Précise le chemin ffmpeg utilisé pour le probing DV
+        from core.preflight import get_tool_path
+        ffmpeg_p = get_tool_path("ffmpeg", bin_dir)
+        if ffmpeg_p:
+            scanner.set_ffmpeg_path(ffmpeg_p)
 
     def on_mount(self) -> None:
         from tui.screens.browser import BrowserScreen

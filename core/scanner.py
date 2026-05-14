@@ -25,6 +25,22 @@ _LOSSLESS_CODECS = frozenset({"truehd", "dts-hd ma", "dtshd", "mlp"})
 _IMAGE_SUB_CODECS = frozenset({"hdmv_pgs_subtitle", "dvd_subtitle", "dvdsub", "pgssub"})
 _COPY_COMPAT_CODECS = frozenset({"aac", "ac3", "eac3"})
 
+# ── Chemin dovi_tool (singleton, settable par l'app au démarrage) ────────────
+_dovi_path: Optional[Path] = None
+_ffmpeg_path: str = "ffmpeg"
+
+
+def set_dovi_path(path: Optional[Path]) -> None:
+    """Active l'enrichissement DV au scan en fournissant le chemin dovi_tool."""
+    global _dovi_path
+    _dovi_path = path
+
+
+def set_ffmpeg_path(path: str) -> None:
+    """Précise l'exécutable ffmpeg à utiliser pour le probing (défaut: 'ffmpeg' du PATH)."""
+    global _ffmpeg_path
+    _ffmpeg_path = path
+
 
 # ─── Modèles ──────────────────────────────────────────────────────────────────
 
@@ -81,6 +97,10 @@ class VideoInfo:
     dv_profile:      Optional[int]
     audio_tracks:    list[AudioTrack]    = field(default_factory=list)
     subtitle_tracks: list[SubtitleTrack] = field(default_factory=list)
+    # ── Métadonnées Dolby Vision enrichies (dovi_tool, optionnel) ────────────
+    dv_subprofile:   Optional[str]              = None   # "5", "7.06", "8.1"…
+    hdr10_master_display: Optional[str]         = None   # G(...)B(...)R(...)WP(...)L(...)
+    hdr10_max_cll:        Optional[tuple[int, int]] = None  # (MaxCLL, MaxFALL)
 
     # ── Propriétés dérivées ──────────────────────────────────────────────────
 
@@ -223,6 +243,20 @@ def scan(path: Path) -> VideoInfo:
     # ── Dolby Vision ──────────────────────────────────────────────────────────
     dv_profile = _detect_dv_profile(path)
 
+    # Enrichissement DV via dovi_tool (sous-profil + master display + MaxCLL)
+    dv_subprofile        = None
+    hdr10_master_display = None
+    hdr10_max_cll        = None
+    if dv_profile is not None and _dovi_path is not None:
+        try:
+            from . import dovi
+            extra = dovi.probe_file(path, _dovi_path, _ffmpeg_path)
+            dv_subprofile        = extra.get("dv_subprofile")
+            hdr10_master_display = extra.get("master_display")
+            hdr10_max_cll        = extra.get("max_cll")
+        except Exception as e:
+            _log.debug("dovi probe failed for %s: %s", path, e)
+
     return VideoInfo(
         path=path,
         width=width,
@@ -234,6 +268,9 @@ def scan(path: Path) -> VideoInfo:
         dv_profile=dv_profile,
         audio_tracks=audio_tracks,
         subtitle_tracks=subtitle_tracks,
+        dv_subprofile=dv_subprofile,
+        hdr10_master_display=hdr10_master_display,
+        hdr10_max_cll=hdr10_max_cll,
     )
 
 

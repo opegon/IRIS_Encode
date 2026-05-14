@@ -6,11 +6,9 @@ EncoderProcess  → wrapper autour du sous-processus ffmpeg.
 """
 from __future__ import annotations
 
-import json
 import re
 import subprocess
 import sys
-import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,43 +63,6 @@ _SDR_TONEMAP_FILTER = (
     "zscale=t=bt709:m=bt709:r=tv,"
     "format=yuv420p"
 )
-
-# ─── Conversion DV → HDR10 avec dovi_tool ─────────────────────────────────────
-
-def _extract_dv_to_hdr10_json(input_path: Path) -> Optional[dict]:
-    """
-    Extrait les métadonnées DV et les convertit en HDR10 JSON avec dovi_tool.
-    Retourne le dict JSON des métadonnées ou None si impossible.
-    """
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_p = Path(tmpdir)
-            rpu_file = tmpdir_p / "rpu.bin"
-            json_file = tmpdir_p / "hdr10.json"
-
-            # Étape 1 : extraire RPU avec dovi_tool
-            r = subprocess.run(
-                ["dovi_tool", "extract-rpu", str(input_path), "-o", str(rpu_file)],
-                capture_output=True,
-                timeout=60,
-            )
-            if r.returncode != 0 or not rpu_file.exists():
-                return None
-
-            # Étape 2 : convertir RPU → HDR10 JSON
-            r = subprocess.run(
-                ["dovi_tool", "convert", str(rpu_file), "-o", str(json_file)],
-                capture_output=True,
-                timeout=60,
-            )
-            if r.returncode != 0 or not json_file.exists():
-                return None
-
-            # Étape 3 : charger le JSON
-            with json_file.open() as f:
-                return json.load(f)
-    except Exception:
-        return None
 
 # Regex pour parser la ligne de progression ffmpeg
 _PROGRESS_RE = re.compile(
@@ -166,6 +127,14 @@ def build_command(
 
     if vid.action == VideoAction.SKIP:
         return []
+
+    # Garde-fou : ne JAMAIS écraser le fichier source
+    if decision.output_path.resolve() == info.path.resolve():
+        raise ValueError(
+            f"Chemin de sortie identique à la source ({info.path}). "
+            f"Suffixe vide et conteneur identique — encodage refusé pour éviter "
+            f"la corruption du fichier source."
+        )
 
     cmd: list[str] = ["ffmpeg"]
 

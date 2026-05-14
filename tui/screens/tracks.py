@@ -147,9 +147,12 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
 
     # ── Décision effective ────────────────────────────────────────────────────
 
-    def _eff_action(self)  -> VideoAction: return self._ov_action  or self._decision.video.action
-    def _eff_bitrate(self) -> int:         return self._ov_bitrate or self._decision.video.target_bitrate
-    def _eff_dv(self)      -> DVAction:    return self._ov_dv      or self._decision.video.dv_action
+    def _eff_action(self)  -> VideoAction:
+        return self._ov_action  if self._ov_action  is not None else self._decision.video.action
+    def _eff_bitrate(self) -> int:
+        return self._ov_bitrate if self._ov_bitrate is not None else self._decision.video.target_bitrate
+    def _eff_dv(self)      -> DVAction:
+        return self._ov_dv      if self._ov_dv      is not None else self._decision.video.dv_action
     def _eff_delete(self)  -> bool:
         if self._ov_delete is not None:
             return self._ov_delete
@@ -397,12 +400,14 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
 
     def _update_status(self) -> None:
         fname   = self._decision.info.path.name
+        prof_id = self._decision.profile.id
         n_a     = len(self._sel_audio);  tot_a = len(self._decision.audio)
         n_s     = len(self._sel_subs);   tot_s = len(self._decision.info.subtitle_tracks)
         ovr_str = "  ·  ★ vidéo modifiée" if self._has_override() else ""
         col_lbl = _RESIZE_LABELS[_RESIZE_COLS[self._resize_col_idx]]
         self.query_one("#status-bar", Static).update(
             f" {fname}    "
+            f"Profil : [{prof_id}]  ·  "
             f"Audio : {n_a}/{tot_a}  ·  "
             f"Sous-titres : {n_s}/{tot_s}"
             f"{ovr_str}"

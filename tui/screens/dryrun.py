@@ -26,10 +26,11 @@ if TYPE_CHECKING:
 
 # ── Colonnes redimensionnables ─────────────────────────────────────────────────
 
-_RESIZE_COLS   = ["fichier", "taille", "action", "conteneur", "dv", "bitrate", "res", "audio"]
+_RESIZE_COLS   = ["fichier", "taille", "estim", "action", "conteneur", "dv", "bitrate", "res", "audio"]
 _RESIZE_LABELS = {
     "fichier":   "Fichier",
     "taille":    "Taille",
+    "estim":     "Estim. (Δ%)",
     "action":    "Action",
     "conteneur": "Conteneur",
     "dv":        "DV",
@@ -44,11 +45,36 @@ def _fmt_size(path) -> str:
         b = path.stat().st_size
     except OSError:
         return "—"
+    return _fmt_bytes(b)
+
+
+def _fmt_bytes(b: int) -> str:
     if b >= 1_073_741_824:
         return f"{b / 1_073_741_824:.1f} Go"
     if b >= 1_048_576:
         return f"{b / 1_048_576:.0f} Mo"
     return f"{b // 1024} Ko"
+
+
+def _estimate_output_bytes(dec) -> int:
+    """Taille estimée de sortie (vidéo + audio conservé).
+    Retourne 0 si action=SKIP ou durée inconnue."""
+    if dec.video.action == VideoAction.SKIP:
+        return 0
+    duration = dec.info.duration
+    if duration <= 0:
+        return 0
+    video_bps = dec.video.target_bitrate
+    audio_bps = 0
+    for ad in dec.audio:
+        if ad.action == AudioAction.EXCLUDE:
+            continue
+        if ad.action == AudioAction.COPY:
+            audio_bps += ad.track.bitrate or 192_000
+        else:
+            audio_bps += ad.output_bitrate
+    total_bits = (video_bps + audio_bps) * duration
+    return int(total_bits / 8)
 _RESIZE_STEP        = 2
 _RESIZE_MIN         = 6
 _RESIZE_MIN_FICHIER = 20
@@ -115,7 +141,7 @@ class DryrunScreen(TableNavMixin, Screen):
                 ("end",       "Fin"),
                 ("pageup",    "Page préc."),
                 ("pagedown",  "Page suiv."),
-                ("ctrl+x",    "Quitter"),
+                ("f10",       "Quitter"),
             ],
         )
 
@@ -136,6 +162,7 @@ class DryrunScreen(TableNavMixin, Screen):
 
         table.add_column(_hdr("fichier"),   width=max(_RESIZE_MIN_FICHIER, widths["fichier"]), key="file")
         table.add_column(_hdr("taille"),    width=widths["taille"],    key="taille")
+        table.add_column(_hdr("estim"),     width=widths["estim"],     key="estim")
         table.add_column(_hdr("action"),    width=widths["action"],    key="action")
         table.add_column(_hdr("conteneur"), width=widths["conteneur"], key="container")
         table.add_column(_hdr("dv"),        width=widths["dv"],        key="dv")
@@ -168,9 +195,30 @@ class DryrunScreen(TableNavMixin, Screen):
 
             container = dec.output_container.upper().lstrip(".")
 
+            # Estimation taille de sortie
+            try:
+                src_bytes = info.path.stat().st_size
+            except OSError:
+                src_bytes = 0
+            est_bytes = _estimate_output_bytes(dec)
+            if est_bytes == 0:
+                estim_txt = Text("—", style="dim", no_wrap=True)
+            else:
+                if src_bytes > 0:
+                    delta_pct = (est_bytes - src_bytes) * 100 / src_bytes
+                    sign      = "+" if delta_pct > 0 else ""
+                    color     = "dark_orange" if delta_pct > 0 else "green"
+                    estim_txt = Text(
+                        f"{_fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)",
+                        style=color, no_wrap=True,
+                    )
+                else:
+                    estim_txt = Text(_fmt_bytes(est_bytes), no_wrap=True)
+
             table.add_row(
                 Text(info.path.name, overflow="ellipsis", no_wrap=True),
                 Text(_fmt_size(info.path), style="dim", no_wrap=True),
+                estim_txt,
                 Text(vid.label(), style=vid.style()),
                 Text(container, no_wrap=True),
                 Text(dv_str, no_wrap=True),
@@ -187,12 +235,38 @@ class DryrunScreen(TableNavMixin, Screen):
         skip   = counts[VideoAction.SKIP]
         col    = _RESIZE_LABELS[_RESIZE_COLS[self._resize_col_idx]]
 
+        # Total source / estimé
+        total_src = 0
+        total_est = 0
+        for dec in self._decisions:
+            try:
+                total_src += dec.info.path.stat().st_size
+            except OSError:
+                pass
+            est = _estimate_output_bytes(dec)
+            # SKIP : le fichier reste tel quel, on compte sa taille source
+            if est == 0 and dec.video.action == VideoAction.SKIP:
+                try:
+                    total_est += dec.info.path.stat().st_size
+                except OSError:
+                    pass
+            else:
+                total_est += est
+        gain_str = ""
+        if total_src > 0 and total_est > 0:
+            delta_pct = (total_est - total_src) * 100 / total_src
+            sign      = "+" if delta_pct > 0 else ""
+            gain_str  = (
+                f"  ·  Source : {_fmt_bytes(total_src)}  →  "
+                f"Estimé : {_fmt_bytes(total_est)} ({sign}{delta_pct:.0f}%)"
+            )
+
         self.query_one("#status-bar", Static).update(
             f" Dry-run — {total} fichier(s) sélectionné(s)"
             f"  ·  Col: {col} [</>]"
         )
         self.query_one("#dryrun-summary", Static).update(
-            f" À encoder : HEVC {hevc}  ·  H264 {h264}  ·  SKIP {skip}"
+            f" À encoder : HEVC {hevc}  ·  H264 {h264}  ·  SKIP {skip}{gain_str}"
         )
 
     # ── Resize colonnes ───────────────────────────────────────────────────────

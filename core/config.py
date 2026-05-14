@@ -99,6 +99,7 @@ def set_column_width(cfg: dict[str, Any], col: str, width: int) -> None:
 _DRYRUN_COL_DEFAULTS: dict[str, int] = {
     "fichier":   30,
     "taille":     8,
+    "estim":     12,
     "action":    16,
     "conteneur":  7,
     "dv":        10,

@@ -5,6 +5,7 @@ Point d'entrée TUI. Maintient l'état global (profils, config, platform).
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from textual.app import App
@@ -15,11 +16,22 @@ import core.profiles as prof_mod
 from core.platform import PlatformProfile, detect as detect_platform
 
 
+def _setup_logging() -> None:
+    """Logge dans iris_encode.log à côté du dossier de l'app (warnings et +)."""
+    log_path = Path.home() / ".iris_encode" / "iris_encode.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        filename=str(log_path),
+        level=logging.WARNING,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
+
 class IrisEncodeApp(App):
     """Application principale IRIS ENCODE."""
 
     TITLE     = "IRIS ENCODE"
-    SUB_TITLE = "v0.1"
+    SUB_TITLE = "v0.5"
 
     CSS = """
     Screen { background: $surface; }
@@ -34,6 +46,7 @@ class IrisEncodeApp(App):
 
     def __init__(self, start_path: Path | None = None) -> None:
         super().__init__()
+        _setup_logging()
         self.start_path        = (start_path or Path.cwd()).resolve()
         self.cfg               = cfg_mod.load()
         self.profiles          = prof_mod.load_all()

@@ -7,10 +7,13 @@ sous-titres et profil Dolby Vision.
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
+
+_log = logging.getLogger("iris_encode.scanner")
 
 
 SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
@@ -154,8 +157,8 @@ def _detect_dv_profile(path: Path) -> Optional[int]:
             for sd in stream.get("side_data_list", []):
                 if "dv_profile" in sd:
                     return int(sd["dv_profile"])
-    except Exception:
-        pass
+    except Exception as e:
+        _log.debug("dv_profile probe failed for %s: %s", path, e)
     return None
 
 
@@ -249,8 +252,8 @@ def scan_directory(directory: Path) -> list[VideoInfo]:
             continue
         try:
             results.append(scan(path))
-        except Exception:
-            pass
+        except Exception as e:
+            _log.warning("scan failed for %s: %s", path, e)
     return results
 
 
@@ -271,8 +274,8 @@ def scan_directory_recursive(root: Path) -> list[VideoInfo]:
             continue
         try:
             results.append(scan(path))
-        except Exception:
-            pass
+        except Exception as e:
+            _log.warning("scan failed for %s: %s", path, e)
     return results
 
 

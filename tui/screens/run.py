@@ -75,8 +75,8 @@ class RunScreen(TableNavMixin, Screen):
     """Écran d'encodage séquentiel avec suivi progression."""
 
     BINDINGS = [
-        Binding("enter",     "start",        "Démarrer",           show=True, priority=True),
         Binding("p",         "pause_resume", "Pause / Reprendre",  show=True),
+        Binding("s",         "skip_current", "Passer le fichier",  show=True),
         Binding("backspace", "go_back",      "Retour",             show=True),
         Binding("escape",    "go_back",      "Retour",             show=False, priority=True),
     ]
@@ -149,8 +149,8 @@ class RunScreen(TableNavMixin, Screen):
             yield Static("", id="ffmpeg-line")
         yield TwoLineFooter(
             line1=[
-                ("enter",     "Démarrer"),
                 ("p",         "Pause / Reprendre"),
+                ("s",         "Passer le fichier"),
                 ("backspace", "Retour"),
             ],
             line2=[
@@ -268,7 +268,15 @@ class RunScreen(TableNavMixin, Screen):
         s.state = FileState.RUNNING
         self.app.call_from_thread(self._update_row, next_idx)
 
-        cmd = build_command(dec, self._platform)
+        try:
+            cmd = build_command(dec, self._platform)
+        except ValueError as e:
+            s.state     = FileState.ERROR
+            s.last_line = str(e)
+            s.error_msg = str(e)[:60]
+            self.app.call_from_thread(self._update_row, next_idx)
+            self._encode_next()  # passe au suivant
+            return
         self.app.call_from_thread(
             self.query_one("#cmd-lines", Static).update,
             " ".join(cmd),
@@ -314,9 +322,11 @@ class RunScreen(TableNavMixin, Screen):
             except Exception:
                 pass
 
-        s.state = FileState.SUCCESS if success else FileState.ERROR
-        if not success:
-            s.error_msg = s.last_line[:60]
+        # Préserve l'état SKIPPED posé par action_skip_current()
+        if s.state != FileState.SKIPPED:
+            s.state = FileState.SUCCESS if success else FileState.ERROR
+            if not success:
+                s.error_msg = s.last_line[:60]
 
         self.app.call_from_thread(self._update_row, next_idx)
         self.app.call_from_thread(self._update_header)
@@ -348,6 +358,20 @@ class RunScreen(TableNavMixin, Screen):
         else:
             self._process.pause()
             self._paused = True
+
+    def action_skip_current(self) -> None:
+        """Termine l'encodage en cours et passe au fichier suivant."""
+        if self._process is None or self._done:
+            return
+        if 0 <= self._current_idx < len(self._statuses):
+            s = self._statuses[self._current_idx]
+            s.state    = FileState.SKIPPED
+            s.last_line = "Passé manuellement"
+            self._update_row(self._current_idx)
+        # terminate() ferme le process : la boucle iter_progress se termine,
+        # _encode_next() enchaîne automatiquement sur le suivant
+        self._process.terminate()
+        self._paused = False
 
     def action_go_back(self) -> None:
         if self._process and not self._done:

@@ -571,7 +571,24 @@ class BrowserScreen(TableNavMixin, Screen):
             if result.video_override:
                 from dataclasses import replace as dc_replace
                 ov = result.video_override
-                if ov.action        is not None: dec.video = dc_replace(dec.video, action=ov.action)
+                _SUFFIX_BY_ACTION = {
+                    VideoAction.ENCODE_HEVC: "_[hevc]",
+                    VideoAction.ENCODE_H264: "_[H264]",
+                    VideoAction.ENCODE_AV1:  "_[av1]",
+                    VideoAction.SKIP:        "",
+                }
+                was_skip = (dec.video.action == VideoAction.SKIP)
+                if ov.action        is not None:
+                    # Recalculer le suffixe selon la nouvelle action
+                    dec.video = dc_replace(
+                        dec.video,
+                        action       = ov.action,
+                        output_suffix= _SUFFIX_BY_ACTION.get(ov.action, dec.video.output_suffix),
+                    )
+                    # Si l'originale était SKIP (bitrate=0) et qu'on encode désormais,
+                    # poser le débit source par défaut si non spécifié explicitement
+                    if was_skip and ov.bitrate is None and ov.action != VideoAction.SKIP:
+                        dec.video = dc_replace(dec.video, target_bitrate=dec.info.bitrate)
                 if ov.bitrate       is not None: dec.video = dc_replace(dec.video, target_bitrate=ov.bitrate)
                 if ov.dv_action     is not None: dec.video = dc_replace(dec.video, dv_action=ov.dv_action)
                 if ov.delete_source is not None: dec.delete_source_override = ov.delete_source
@@ -594,48 +611,50 @@ class BrowserScreen(TableNavMixin, Screen):
                     RunScreen([dec], self.app.platform)  # type: ignore[attr-defined]
                 )
         self.app.push_screen(TracksScreen(dec), _on_tracks_return)
-    def action_open_dryrun(self) -> None:
+    @staticmethod
+    def _force_skip_to_encode(dec: FileDecision) -> FileDecision:
+        """Force un fichier SKIP en encodage (HEVC ou H264 si < 1080p).
+
+        Conserve le débit source (pas de gonflement), ajuste dv_action :
+        - H264 ne peut pas porter de RPU DV → DV→HDR10 forcé si source DV
+        """
         from dataclasses import replace as dc_replace
-        decisions = []
-        for p in self._selected:
-            if p not in self._decisions:
-                continue
-            dec = self._decisions[p]
-            if dec.video.action == VideoAction.SKIP:
-                sub_1080   = dec.info.height < 1080
-                forced_act = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
-                dec = dc_replace(dec, video=dc_replace(
-                    dec.video,
-                    action        = forced_act,
-                    target_bitrate= dec.info.bitrate,
-                    output_suffix = "_[H264]" if sub_1080 else "_[hevc]",
-                    reason        = "Forcé manuellement (était SKIP)",
-                ))
-            decisions.append(dec)
+        from core.decision import DVAction
+        if dec.video.action != VideoAction.SKIP:
+            return dec
+        sub_1080   = dec.info.height < 1080
+        forced_act = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
+        # H264 incompatible avec DV : si la source est DV et qu'on force H264,
+        # convertir en HDR10 (suppression du RPU)
+        forced_dv = dec.video.dv_action
+        if sub_1080 and forced_dv == DVAction.DV:
+            forced_dv = DVAction.HDR10
+        return dc_replace(dec, video=dc_replace(
+            dec.video,
+            action        = forced_act,
+            target_bitrate= dec.info.bitrate,
+            output_suffix = "_[H264]" if sub_1080 else "_[hevc]",
+            dv_action     = forced_dv,
+            reason        = "Forcé manuellement (était SKIP)",
+        ))
+
+    def action_open_dryrun(self) -> None:
+        decisions = [
+            self._force_skip_to_encode(self._decisions[p])
+            for p in self._selected
+            if p in self._decisions
+        ]
         if not decisions:
             return
         from .dryrun import DryrunScreen
         self.app.push_screen(DryrunScreen(decisions))
 
     def action_open_run(self) -> None:
-        from dataclasses import replace as dc_replace
-        decisions = []
-        for p in self._selected:
-            if p not in self._decisions:
-                continue
-            dec = self._decisions[p]
-            if dec.video.action == VideoAction.SKIP:
-                # Fichier sélectionné manuellement malgré SKIP : forcer l'encodage
-                sub_1080   = dec.info.height < 1080
-                forced_act = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
-                dec = dc_replace(dec, video=dc_replace(
-                    dec.video,
-                    action        = forced_act,
-                    target_bitrate= dec.info.bitrate,
-                    output_suffix = "_[H264]" if sub_1080 else "_[hevc]",
-                    reason        = "Forcé manuellement (était SKIP)",
-                ))
-            decisions.append(dec)
+        decisions = [
+            self._force_skip_to_encode(self._decisions[p])
+            for p in self._selected
+            if p in self._decisions
+        ]
         if not decisions:
             return
         from .run import RunScreen
@@ -672,7 +691,7 @@ class BrowserScreen(TableNavMixin, Screen):
         infos     = scan_directory_recursive(directory)
         profile   = self._active_profile()
         decisions = [decide(info, profile) for info in infos]
-        decisions = [d for d in decisions if d.video.action.name != "SKIP"]
+        decisions = [d for d in decisions if d.video.action != VideoAction.SKIP]
 
         def _push() -> None:
             self.query_one("#scan-notice", Static).update("")

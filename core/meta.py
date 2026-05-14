@@ -9,41 +9,41 @@ from typing import Optional
 
 # ─── Nettoyage nom de fichier ─────────────────────────────────────────────────
 
-_TAGS = re.compile(
+# Marqueurs qui indiquent la fin du titre — on tronque au premier trouvé
+_CUT_RE = re.compile(
     r"""(?ix)
+    [\[\(]?                              # bracket optionnel avant
     \b(
-      \d{3,4}p | 4k | uhd | hdr10?\+ | hdr | dv | dolby\.?vision |
-      hevc | h\.?26[45] | x26[45] | av1 |
-      blu[\-\.]?ray | bdrip | web[\-\.]?dl | webrip | dvdrip | remux |
-      proper | repack | multi | extended | theatrical | unrated |
-      french | english | vf | vfq | vostfr | trueHD | dts[\-\.]?hd |
-      dts | aac | ac3 | atmos | \d{3,4}kbps
+      \d{3,4}p | 4k | uhd |             # résolution
+      (19|20)\d{2} |                     # année
+      S\d{1,2}E\d{1,2} |                # épisode série
+      blu[\-\.]?ray | bdrip |            # source
+      web[\-\.]?dl | webrip | dvdrip |
+      hdtv | remux | proper | repack |
+      extended | theatrical | unrated
     )\b
 """,
 )
-_BRACKETS   = re.compile(r"[\[({].*?[\])}]")
 _SEPARATORS = re.compile(r"[._\-]+")
 _SPACES     = re.compile(r"\s{2,}")
 _YEAR_RE    = re.compile(r"\b(19|20)\d{2}\b")
-_EPISODE_RE = re.compile(r"\bS\d{1,2}E\d{1,2}\b", re.IGNORECASE)
 
 
 def parse_title(path: Path) -> tuple[str, Optional[int]]:
-    """Retourne (titre nettoyé, année détectée ou None) depuis le nom de fichier."""
+    """Tronque au premier marqueur de format, retourne (titre, année)."""
     name = path.stem
 
+    # Extraire l'année depuis le nom complet avant de couper
     year: Optional[int] = None
     m = _YEAR_RE.search(name)
     if m:
         year = int(m.group())
-        name = name[: m.start()]
 
-    m2 = _EPISODE_RE.search(name)
-    if m2:
-        name = name[: m2.start()]
+    # Tronquer au premier marqueur (résolution, année, source…)
+    m_cut = _CUT_RE.search(name)
+    if m_cut:
+        name = name[: m_cut.start()]
 
-    name = _BRACKETS.sub(" ", name)
-    name = _TAGS.sub(" ", name)
     name = _SEPARATORS.sub(" ", name)
     name = _SPACES.sub(" ", name).strip()
     return name, year

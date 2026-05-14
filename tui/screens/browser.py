@@ -43,7 +43,7 @@ _ROW_TYPE_FILE  = "file"
 _ROW_TYPE_EMPTY = "empty"  # placeholder dossier vide
 
 # Colonnes redimensionnables (ordre d'affichage)
-_RESIZE_COLS   = ["fichier", "resolution", "duree", "debit", "codec", "dolby_vision", "decision", "audio"]
+_RESIZE_COLS   = ["resolution", "duree", "debit", "codec", "dolby_vision", "decision", "audio"]
 _RESIZE_LABELS = {"fichier":"Fichier", "resolution":"Résol.", "duree":"Durée",
                    "debit":"Débit", "codec":"Codec", "dolby_vision":"Dolby V.",
                    "decision":"Décision", "audio":"Audio"}
@@ -179,8 +179,8 @@ class BrowserScreen(TableNavMixin, Screen):
             label = _RESIZE_LABELS[key]
             return f"{label} ◄►" if key == active else label
 
-        table.add_column("",            width=3,                          key="check")
-        table.add_column(_hdr("fichier"),      width=max(20, widths["fichier"]), key="fichier")
+        table.add_column("",            width=3,    key="check")
+        table.add_column(_hdr("fichier"),      width=None, key="fichier")
         table.add_column(_hdr("resolution"),   width=widths["resolution"],   key="resolution")
         table.add_column(_hdr("duree"),        width=widths["duree"],        key="duree")
         table.add_column(_hdr("debit"),        width=widths["debit"],        key="debit")

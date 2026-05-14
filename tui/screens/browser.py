@@ -57,22 +57,22 @@ class BrowserScreen(TableNavMixin, Screen):
     """Écran principal — navigation + sélection fichiers."""
 
     BINDINGS = [
-        Binding("space",  "toggle_select",  "Sélect",    show=True),
-        Binding("a",      "select_all",     "Tout",      show=True),
-        Binding("n",      "select_none",    "Aucun",     show=True),
-        Binding("enter",     "enter_dir", "Entrer ↵",   show=True, priority=True),
-        Binding("backspace", "go_up",     "⌫ Remonter", show=True),
-        Binding("t",      "open_tracks",    "Pistes T",  show=True),
-        Binding("d",      "open_dryrun",    "Dry-run D", show=True),
-        Binding("r",      "open_run",       "Run R",     show=True),
-        Binding("c",      "open_config",    "Config C",  show=True),
-        Binding("+",      "profile_next",   "+ Profil",  show=True),
-        Binding("-",      "profile_prev",   "- Profil",  show=True),
+        Binding("space",     "toggle_select", "Sélect",    show=True),
+        Binding("a",         "select_all",    "Tout",      show=True),
+        Binding("n",         "select_none",   "Aucun",     show=True),
+        Binding("enter",     "enter_dir",     "Entrer ↵",  show=True, priority=True),
+        Binding("backspace", "go_up",         "Remonter",  show=True),
+        Binding("t",         "open_tracks",   "Pistes",    show=True),
+        Binding("f1",        "open_dryrun",   "Dry-run",   show=True),
+        Binding("f2",        "open_run",      "Run",       show=True),
+        Binding("f5",        "open_config",   "Config",    show=True),
+        Binding("+",         "profile_next",  "+ Profil",  show=True),
+        Binding("-",         "profile_prev",  "- Profil",  show=True),
         # ── Resize colonnes ──────────────────────────────────────
-        Binding("shift+tab", "col_prev",   "⇧Tab Col préc.", show=True,  priority=True),
-        Binding("tab",       "col_next",   "Tab Col suiv.",  show=True,  priority=True),
-        Binding("<",         "col_shrink", "< Rétrécir",     show=True),
-        Binding(">",         "col_grow",   "> Élargir",      show=True),
+        Binding("shift+tab", "col_prev",   "Col préc.", show=True, priority=True),
+        Binding("tab",       "col_next",   "Col suiv.", show=True, priority=True),
+        Binding("<",         "col_shrink", "Rétrécir",  show=True),
+        Binding(">",         "col_grow",   "Élargir",   show=True),
     ]
 
     DEFAULT_CSS = """
@@ -130,24 +130,28 @@ class BrowserScreen(TableNavMixin, Screen):
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
         yield TwoLineFooter(
             line1=[
-                ("space",     "Sélect"),
-                ("a",         "Tout"),
-                ("n",         "Aucun"),
-                ("enter",     "Entrer / Pistes"),
-                ("backspace", "Remonter"),
-                ("t",         "Pistes audio"),
+                ("space",    "Sélect"),
+                ("a",        "Tout"),
+                ("n",        "Aucun"),
+                ("enter",    "Entrer"),
+                ("backspace","Remonter"),
+                ("t",        "Pistes"),
+                ("pageup",   "Haut"),
+                ("pagedown", "Bas"),
+                ("home",     "Début"),
+                ("end",      "Fin"),
             ],
             line2=[
-                ("d",         "Dry-run"),
-                ("r",         "Run"),
-                ("c",         "Config"),
-                ("-",         "Profil préc."),
-                ("+",         "Profil suiv."),
+                ("f1",        "Dry-run"),
+                ("f2",        "Run"),
+                ("f5",        "Config"),
+                ("-",         "Profil −"),
+                ("+",         "Profil +"),
                 ("shift+tab", "Col préc."),
                 ("tab",       "Col suiv."),
                 ("<",         "Rétrécir"),
                 (">",         "Élargir"),
-                ("ctrl+x",    "Quitter"),
+                ("f10",       "Quitter"),
             ],
         )
 

@@ -28,8 +28,8 @@ class IrisEncodeApp(App):
     """
 
     BINDINGS = [
-        Binding("ctrl+x", "request_quit", "Ctrl+X Quitter", show=True,  priority=True),
-        Binding("ctrl+c", "request_quit", "Quitter",        show=False, priority=True),
+        Binding("f10",    "request_quit", "F10 Quitter", show=True,  priority=True),
+        Binding("ctrl+c", "request_quit", "Quitter",     show=False, priority=True),
     ]
 
     def __init__(self, start_path: Path | None = None) -> None:

@@ -25,6 +25,10 @@ _KEY_LABELS: dict[str, str] = {
     "pagedown":  "PgDn",
     "home":      "Home",
     "end":       "End",
+    "f1":        "F1",
+    "f2":        "F2",
+    "f5":        "F5",
+    "f10":       "F10",
 }
 
 

@@ -10,7 +10,7 @@ import json
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 
 SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({

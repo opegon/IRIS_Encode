@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,42 @@ from typing import Callable, Iterator, Optional
 
 from .decision import AudioAction, DVAction, FileDecision, VideoAction
 from .platform import PlatformProfile
+
+
+# ─── Suspend / Resume multiplateforme ────────────────────────────────────────
+
+def _suspend_process(pid: int) -> bool:
+    if sys.platform == "win32":
+        import ctypes
+        h = ctypes.windll.kernel32.OpenProcess(0x1F0FFF, False, pid)
+        if not h:
+            return False
+        ctypes.windll.ntdll.NtSuspendProcess(h)
+        ctypes.windll.kernel32.CloseHandle(h)
+        return True
+    else:
+        import signal
+        try:
+            import os; os.kill(pid, signal.SIGSTOP); return True
+        except OSError:
+            return False
+
+
+def _resume_process(pid: int) -> bool:
+    if sys.platform == "win32":
+        import ctypes
+        h = ctypes.windll.kernel32.OpenProcess(0x1F0FFF, False, pid)
+        if not h:
+            return False
+        ctypes.windll.ntdll.NtResumeProcess(h)
+        ctypes.windll.kernel32.CloseHandle(h)
+        return True
+    else:
+        import signal
+        try:
+            import os; os.kill(pid, signal.SIGCONT); return True
+        except OSError:
+            return False
 
 
 # Pipeline tone mapping Dolby Vision P5 → SDR (CPU, algorithme Hable)
@@ -200,22 +237,14 @@ class EncoderProcess:
             yield line, progress
 
     def pause(self) -> None:
-        import signal
         if self._proc and not self._paused:
-            try:
-                self._proc.send_signal(signal.SIGSTOP)
+            if _suspend_process(self._proc.pid):
                 self._paused = True
-            except (AttributeError, OSError):
-                pass   # Windows ne supporte pas SIGSTOP
 
     def resume(self) -> None:
-        import signal
         if self._proc and self._paused:
-            try:
-                self._proc.send_signal(signal.SIGCONT)
+            if _resume_process(self._proc.pid):
                 self._paused = False
-            except (AttributeError, OSError):
-                pass
 
     def terminate(self) -> None:
         if self._proc:

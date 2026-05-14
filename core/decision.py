@@ -91,16 +91,6 @@ class AudioDecision:
 
 @dataclass
 class VideoOverride:
-    """Surcharges vidéo par fichier depuis le TUI Tracks."""
-    bitrate_kbps:  int | None        = None  # None = valeur profil
-    preset:        str | None        = None
-    dv_action:     "DVAction | None" = None
-    keep_4k:       bool | None       = None
-    force_action:  "VideoAction | None" = None  # forcer SKIP/HEVC/H264
-
-
-@dataclass
-class VideoOverride:
     """Surcharge manuelle des paramètres vidéo depuis le TUI (par fichier)."""
     action:        Optional["VideoAction"]  = None
     bitrate:       Optional[int]            = None  # bps, None = conserver

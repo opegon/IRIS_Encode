@@ -31,13 +31,13 @@ _DEFAULTS: dict[str, Any] = {
         "browser": {
             "columns": {
                 "fichier":      50,
-                "resolution":   14,
-                "duree":         9,
+                "resolution":   12,
+                "duree":        12,
                 "debit":        10,
-                "codec":        10,
+                "codec":         8,
                 "dolby_vision": 12,
-                "decision":     24,
-                "audio":        24,
+                "decision":     12,
+                "audio":        20,
             }
         }
     },

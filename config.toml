@@ -9,16 +9,25 @@ bin_dir = "./bin"
 [updates]
 check_on_startup = true
 
+[meta]
+omdb_api_key = ""
+
 [tui.browser.columns]
 fichier = 50
+taille = 10
 resolution = 14
 duree = 9
-debit = 10
-codec = 10
-dolby_vision = 12
-decision = 24
-audio = 24
+debit = 6
+codec = 6
+dolby_vision = 10
+decision = 12
+audio = 14
 
 [tui.dryrun.columns]
 fichier = 42
 conteneur = 16
+audio = 30
+
+[tui.tracks.columns]
+codec = 12
+src = 26

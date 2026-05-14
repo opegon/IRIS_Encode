@@ -102,8 +102,8 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         profiles = self._app.profiles
         active   = self._app.active_profile_id
 
-        def _cw(header: str, vals: list[str]) -> int:
-            return max(len(header), max((len(v) for v in vals), default=0))
+        def _cw(header: str, vals: list[str], min_width: int = 0) -> int:
+            return max(len(header), max((len(v) for v in vals), default=0), min_width)
 
         names        = list(profiles.keys())
         fields_list  = [profiles[n].summary_fields() for n in names]
@@ -111,15 +111,15 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         type_vals    = ["user" if profiles[n].user else "builtin" for n in names]
         action_vals  = ["✎ éditer  ✕ suppr." if profiles[n].user else "✎ éditer" for n in names]
 
-        table.add_column("Profil",   width=_cw("Profil",   name_vals),                       key="name")
-        table.add_column("Type",     width=_cw("Type",     type_vals),                       key="type")
-        table.add_column("Dolby V.", width=_cw("Dolby V.", [f["dv"]       for f in fields_list]), key="dv")
-        table.add_column("1080p",    width=_cw("1080p",    [f["1080p"]    for f in fields_list]), key="br1080")
-        table.add_column("4K",       width=_cw("4K",       [f["4k"]       for f in fields_list]), key="br4k")
-        table.add_column("Preset",   width=_cw("Preset",   [f["preset"]   for f in fields_list]), key="preset")
-        table.add_column("HD Audio", width=_cw("HD Audio", [f["hd_audio"] for f in fields_list]), key="hd")
-        table.add_column("Suppr.",   width=_cw("Suppr.",   [f["del_src"]  for f in fields_list]), key="del")
-        table.add_column("Actions",  width=_cw("Actions",  action_vals),                     key="actions")
+        table.add_column("Profil",   width=_cw("Profil",   name_vals,                       min_width=15), key="name")
+        table.add_column("Type",     width=_cw("Type",     type_vals,                       min_width=7),  key="type")
+        table.add_column("Dolby V.", width=_cw("Dolby V.", [f["dv"]       for f in fields_list], min_width=9),  key="dv")
+        table.add_column("1080p",    width=_cw("1080p",    [f["1080p"]    for f in fields_list], min_width=7),  key="br1080")
+        table.add_column("4K",       width=_cw("4K",       [f["4k"]       for f in fields_list], min_width=10), key="br4k")
+        table.add_column("Preset",   width=_cw("Preset",   [f["preset"]   for f in fields_list], min_width=8),  key="preset")
+        table.add_column("HD Audio", width=_cw("HD Audio", [f["hd_audio"] for f in fields_list], min_width=9),  key="hd")
+        table.add_column("Suppr.",   width=_cw("Suppr.",   [f["del_src"]  for f in fields_list], min_width=7),  key="del")
+        table.add_column("Actions",  width=_cw("Actions",  action_vals,                     min_width=20), key="actions")
 
         for name, profile in profiles.items():
             is_active = (name == self._app.active_profile_id)
@@ -133,7 +133,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
                 "user" if profile.user else "builtin",
                 style="dim cyan" if profile.user else "dim",
             )
-            dv_style  = {"hdr": "yellow", "preserve": "green", "sdr": "bold dark_orange"}.get(f["dv"], "")
+            dv_style  = {"hdr10": "yellow", "dv": "green", "sdr": "bold dark_orange"}.get(f["dv"], "")
             actions   = Text("✎ éditer" + ("  ✕ suppr." if profile.user else ""), no_wrap=True)
 
             table.add_row(

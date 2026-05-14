@@ -85,7 +85,7 @@ class BrowserScreen(TableNavMixin, Screen):
         Binding("n",         "select_none",        "Aucun",    show=True),
         Binding("enter",     "enter_dir",          "Entrer ↵", show=True, priority=True),
         Binding("backspace", "go_up",              "Remonter", show=True),
-        Binding("t",         "open_tracks",        "Pistes",   show=True),
+        Binding("t",         "open_tracks",        "Pistes",   show=False),
         Binding("f1",        "open_dryrun",        "Dry-run",  show=True),
         Binding("f2",        "open_run",           "Run",      show=True),
         Binding("f4",        "open_profile_picker","Profil",   show=True),
@@ -110,11 +110,15 @@ class BrowserScreen(TableNavMixin, Screen):
         color: $text;
         padding: 0 2;
     }
-    #profile-bar {
+    #spacer-1 {
         height: 1;
+    }
+    #profile-bar {
+        height: 2;
         background: $primary-darken-1;
         color: $text;
-        padding: 0 2;
+        padding: 0 1;
+        border-bottom: solid $primary;
     }
     #scan-notice {
         height: 1;
@@ -150,6 +154,7 @@ class BrowserScreen(TableNavMixin, Screen):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Static("", id="status-bar")
+        yield Static("", id="spacer-1")
         yield Static("", id="profile-bar")
         yield Static("⏳ Analyse en cours…", id="scan-notice")
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
@@ -158,9 +163,8 @@ class BrowserScreen(TableNavMixin, Screen):
                 ("space",    "Sélect"),
                 ("a",        "Tout"),
                 ("n",        "Aucun"),
-                ("enter",    "Entrer"),
+                ("enter",    "Détails fichier"),
                 ("backspace","Remonter"),
-                ("t",        "Pistes"),
                 ("pageup",   "Haut"),
                 ("pagedown", "Bas"),
                 ("home",     "Début"),
@@ -236,25 +240,34 @@ class BrowserScreen(TableNavMixin, Screen):
         keep_4k  = prof.data.get("keep_4k", False)
         k4_str   = f"4K : {f['4k']}" if keep_4k else "4K → 1080p"
         k4_style = "green"              if keep_4k else "dim"
-        dv_color = {"hdr": "yellow", "preserve": "green", "sdr": "bold dark_orange"}.get(f["dv"], "")
+        dv_color = {"hdr10": "yellow", "dv": "green", "sdr": "bold dark_orange"}.get(f["dv"], "")
 
-        txt = Text(no_wrap=True)
-        txt.append(" Profil : ", style="dim")
-        txt.append(f" {pid} ", style="bold white")
-        txt.append("   ")
-        txt.append("1080p ", style="dim"); txt.append(f["1080p"], style="bold")
-        txt.append("  ·  ")
-        txt.append(k4_str, style=k4_style)
-        txt.append("  ·  ")
-        txt.append("DV ", style="dim"); txt.append(f["dv"], style=dv_color or "bold")
-        txt.append("  ·  ")
-        txt.append("preset ", style="dim"); txt.append(f["preset"], style="bold")
-        txt.append("  ·  ")
-        txt.append("HD audio ", style="dim"); txt.append(f["hd_audio"], style="bold")
+        # Ligne 1 : raccourci + nom du profil + infos techniques
+        line1 = Text()
+        line1.append("[F4] ", style="dim")
         if prof.data.get("delete_source", False):
-            txt.append("  ·  ")
-            txt.append("⚠ SUPPRESSION ORIGINAUX", style="bold dark_orange")
-        txt.append("   F4 changer", style="dim")
+            line1.append("⚠ ", style="bold dark_orange")
+        line1.append(f"🎬 {pid.upper()} 🎬 ", style="bold yellow")
+        line1.append(" • ", style="dim")
+        line1.append("1080p ", style="dim"); line1.append(f["1080p"], style="bold")
+        line1.append("  ·  ")
+        line1.append(k4_str, style=k4_style)
+        line1.append("  ·  ")
+        line1.append("DV ", style="dim"); line1.append(f["dv"], style=dv_color or "bold")
+        line1.append("  ·  ")
+        line1.append("preset ", style="dim"); line1.append(f["preset"], style="bold")
+
+        # Ligne 2 : autres infos
+        line2 = Text()
+        line2.append("HD audio ", style="dim"); line2.append(f["hd_audio"], style="bold")
+        if prof.data.get("delete_source", False):
+            line2.append("  ·  ")
+            line2.append("⚠ SUPPRESSION", style="bold dark_orange")
+
+        txt = Text()
+        txt.append(line1)
+        txt.append("\n")
+        txt.append(line2)
         self.query_one("#profile-bar", Static).update(txt)
 
     def _populate_table(
@@ -403,19 +416,33 @@ class BrowserScreen(TableNavMixin, Screen):
         names    = list(profiles.keys())
         cur      = self._app.active_profile_id
         cur_idx  = names.index(cur) if cur in names else 0
-        pad      = max(len(n) for n in names)
 
         opts = []
         for name, prof in profiles.items():
             f       = prof.summary_fields()
             keep_4k = prof.data.get("keep_4k", False)
             k4_str  = f"4K {f['4k']}" if keep_4k else "4K→1080p"
-            parts   = [f["1080p"], k4_str, f"DV {f['dv']}", f["preset"]]
-            if prof.data.get("preserve_hd_audio"):
-                parts.append("HD audio")
-            if prof.data.get("delete_source"):
-                parts.append("⚠ suppr.")
-            opts.append(f"{name:<{pad}}   {'  ·  '.join(parts)}")
+            delete  = prof.data.get("delete_source", False)
+
+            # Format avec colonnes alignées
+            alert   = "⚠" if delete else ""
+            alert_col = f"{alert:<3}"  # Colonne pour l'alerte avec padding
+            br_1080 = f["1080p"].rjust(6)
+            br_4k   = k4_str.ljust(12)
+            dv_info = f"DV {f['dv']}".ljust(12)
+            preset  = f["preset"].ljust(8)
+
+            # Colonne HD audio (vide ou remplie)
+            hd_audio_str = "HD audio" if prof.data.get("preserve_hd_audio") else ""
+            hd_col = f"  ·  {hd_audio_str:<10}" if hd_audio_str or delete else ""
+
+            # Colonne alerte finale (suppression)
+            alert_final = "⚠" if delete else ""
+            alert_final_col = f"  ·  {alert_final:<3}"
+
+            line = f"{alert_col}{name:<15}  {br_1080}  ·  {br_4k}  ·  {dv_info}  ·  {preset}{hd_col}{alert_final_col}"
+
+            opts.append(line)
 
         def _on_pick(idx: int | None) -> None:
             if idx is None:
@@ -558,30 +585,57 @@ class BrowserScreen(TableNavMixin, Screen):
             except Exception:
                 pass
             # Lancement direct demandé depuis TracksScreen
-            if result.launch:
+            if result.launch_mode == "dryrun":
+                from .dryrun import DryrunScreen
+                self.app.push_screen(DryrunScreen([dec]))
+            elif result.launch_mode == "run":
                 from .run import RunScreen
                 self.app.push_screen(
                     RunScreen([dec], self.app.platform)  # type: ignore[attr-defined]
                 )
         self.app.push_screen(TracksScreen(dec), _on_tracks_return)
     def action_open_dryrun(self) -> None:
-        decisions = [
-            self._decisions[p]
-            for p in self._selected
-            if p in self._decisions
-        ]
+        from dataclasses import replace as dc_replace
+        decisions = []
+        for p in self._selected:
+            if p not in self._decisions:
+                continue
+            dec = self._decisions[p]
+            if dec.video.action == VideoAction.SKIP:
+                sub_1080   = dec.info.height < 1080
+                forced_act = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
+                dec = dc_replace(dec, video=dc_replace(
+                    dec.video,
+                    action        = forced_act,
+                    target_bitrate= dec.info.bitrate,
+                    output_suffix = "_[H264]" if sub_1080 else "_[hevc]",
+                    reason        = "Forcé manuellement (était SKIP)",
+                ))
+            decisions.append(dec)
         if not decisions:
             return
         from .dryrun import DryrunScreen
         self.app.push_screen(DryrunScreen(decisions))
 
     def action_open_run(self) -> None:
-        decisions = [
-            self._decisions[p]
-            for p in self._selected
-            if p in self._decisions
-            and self._decisions[p].video.action != VideoAction.SKIP
-        ]
+        from dataclasses import replace as dc_replace
+        decisions = []
+        for p in self._selected:
+            if p not in self._decisions:
+                continue
+            dec = self._decisions[p]
+            if dec.video.action == VideoAction.SKIP:
+                # Fichier sélectionné manuellement malgré SKIP : forcer l'encodage
+                sub_1080   = dec.info.height < 1080
+                forced_act = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
+                dec = dc_replace(dec, video=dc_replace(
+                    dec.video,
+                    action        = forced_act,
+                    target_bitrate= dec.info.bitrate,
+                    output_suffix = "_[H264]" if sub_1080 else "_[hevc]",
+                    reason        = "Forcé manuellement (était SKIP)",
+                ))
+            decisions.append(dec)
         if not decisions:
             return
         from .run import RunScreen

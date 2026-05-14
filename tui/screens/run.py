@@ -76,7 +76,6 @@ class RunScreen(TableNavMixin, Screen):
 
     BINDINGS = [
         Binding("enter",     "start",        "Démarrer",           show=True, priority=True),
-        Binding("r",         "start",        "Démarrer",           show=False),
         Binding("p",         "pause_resume", "Pause / Reprendre",  show=True),
         Binding("backspace", "go_back",      "Retour",             show=True),
         Binding("escape",    "go_back",      "Retour",             show=False, priority=True),
@@ -97,13 +96,16 @@ class RunScreen(TableNavMixin, Screen):
         background: $panel;
         padding: 0 1;
         border-top: solid $primary;
+        layout: vertical;
     }
-    #cmd-line {
+    #cmd-lines {
+        height: auto;
         color: $text-muted;
-        overflow: hidden;
+        width: 1fr;
     }
     #ffmpeg-line {
         color: $text;
+        height: 1;
     }
     #global-bar-row {
         height: 2;
@@ -143,7 +145,7 @@ class RunScreen(TableNavMixin, Screen):
             yield Label("Global", id="global-label")
             yield ProgressBar(total=100, show_eta=False, id="global-bar")
         with Static(id="cmd-zone"):
-            yield Static("", id="cmd-line")
+            yield Static("", id="cmd-lines")
             yield Static("", id="ffmpeg-line")
         yield TwoLineFooter(
             line1=[
@@ -161,6 +163,7 @@ class RunScreen(TableNavMixin, Screen):
     def on_mount(self) -> None:
         self._build_table()
         self._update_header()
+        self.action_start()
 
     # ─── Table ────────────────────────────────────────────────────────────────
 
@@ -202,13 +205,21 @@ class RunScreen(TableNavMixin, Screen):
     def _update_row(self, index: int) -> None:
         s     = self._statuses[index]
         table = self.query_one(DataTable)
-        state_txt = {
-            FileState.PENDING:  Text("en attente",      style="dim"),
-            FileState.RUNNING:  Text(f"{s.percent * 100:.0f}%", style="yellow"),
-            FileState.SUCCESS:  Text("✓ SUCCÈS",         style="bold green"),
-            FileState.ERROR:    Text(f"✗ ERREUR : {s.error_msg[:30]}", style="bold dark_orange"),
-            FileState.SKIPPED:  Text("ignoré",           style="dim"),
-        }[s.state]
+
+        # Gère le cas où la durée est inconnue (percent = -1)
+        if s.state == FileState.RUNNING:
+            if s.percent < 0:
+                running_txt = "en cours…"
+            else:
+                running_txt = f"{s.percent * 100:.0f}%"
+            state_txt = Text(running_txt, style="yellow")
+        else:
+            state_txt = {
+                FileState.PENDING:  Text("en attente",      style="dim"),
+                FileState.SUCCESS:  Text("✓ SUCCÈS",         style="bold green"),
+                FileState.ERROR:    Text(f"✗ ERREUR : {s.error_msg[:30]}", style="bold dark_orange"),
+                FileState.SKIPPED:  Text("ignoré",           style="dim"),
+            }[s.state]
         try:
             table.update_cell(str(index), "icon",  self._icon(s),  update_width=False)
             table.update_cell(str(index), "state", state_txt,       update_width=False)
@@ -259,18 +270,35 @@ class RunScreen(TableNavMixin, Screen):
 
         cmd = build_command(dec, self._platform)
         self.app.call_from_thread(
-            self.query_one("#cmd-line", Static).update,
-            " ".join(cmd[:12]) + " …",   # tronqué
+            self.query_one("#cmd-lines", Static).update,
+            " ".join(cmd),
         )
 
         proc = EncoderProcess(cmd, dec.info.duration)
         self._process = proc
         proc.start()
 
+        # Affiche "Encodage lancé" jusqu'à première ligne
+        self.app.call_from_thread(
+            self.query_one("#ffmpeg-line", Static).update,
+            "▶ Encodage lancé, initialisation en cours…"
+        )
+        s.percent = -1  # Force "en cours…" au lieu de "0%"
+        self.app.call_from_thread(self._update_row, next_idx)
+
+        # Affiche toutes les lignes (avec ou sans progression)
         for line, progress in proc.iter_progress():
+            s.last_line = line
             if progress:
                 s.percent = progress.percent
-                self.app.call_from_thread(self._update_progress, next_idx, line, progress)
+            self.app.call_from_thread(
+                self.query_one("#ffmpeg-line", Static).update,
+                line
+            )
+            # Met à jour row et header seulement si progression
+            if progress:
+                self.app.call_from_thread(self._update_row, next_idx)
+                self.app.call_from_thread(self._update_header)
 
         rc = proc.wait()
         success = rc == 0
@@ -306,7 +334,7 @@ class RunScreen(TableNavMixin, Screen):
 
     def _on_all_done(self) -> None:
         self._update_header()
-        self.query_one("#cmd-line",    Static).update("Terminé.")
+        self.query_one("#cmd-lines",   Static).update("Terminé.")
         self.query_one("#ffmpeg-line", Static).update("")
 
     # ─── Pause/Resume ─────────────────────────────────────────────────────────

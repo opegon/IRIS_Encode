@@ -25,10 +25,10 @@ class VideoAction(Enum):
 
 
 class DVAction(Enum):
-    NONE     = auto()   # pas de DV détecté
-    STRIP    = auto()   # supprime RPU → HDR10
-    PRESERVE = auto()   # copy sans modification
-    SDR      = auto()   # tone map → SDR (P5, CPU, lent)
+    NONE   = auto()   # pas de DV détecté
+    HDR10  = auto()   # DV → HDR10 (enlève RPU)
+    DV     = auto()   # DV → DV (copy sans modification)
+    SDR    = auto()   # DV → SDR (tone map P5, CPU, lent)
 
 
 @dataclass
@@ -46,9 +46,9 @@ class VideoDecision:
             return "← SKIP"
         codec = "HEVC" if self.action == VideoAction.ENCODE_HEVC else "H264"
         dv = ""
-        if self.dv_action == DVAction.STRIP:    dv = " → HDR10"
-        if self.dv_action == DVAction.PRESERVE: dv = " → DV"
-        if self.dv_action == DVAction.SDR:      dv = " → SDR ⚠"
+        if self.dv_action == DVAction.HDR10: dv = " → HDR10"
+        if self.dv_action == DVAction.DV:    dv = " → DV"
+        if self.dv_action == DVAction.SDR:   dv = " → SDR ⚠"
         return f"→ {codec}{dv}"
 
     def style(self) -> str:
@@ -101,11 +101,11 @@ class VideoOverride:
 @dataclass
 class TracksSelection:
     """Sélection manuelle audio + sous-titres + override vidéo depuis le TUI.
-    launch=True : le browser lance l'encodage immédiatement après.
+    launch_mode : None = pas de lancement, "dryrun" = dry run, "run" = run immédiat.
     """
     audio:             list[int]                 = field(default_factory=list)
     subtitles:         list[int]                 = field(default_factory=list)
-    launch:            bool                      = False
+    launch_mode:       str | None                = None  # None | "dryrun" | "run"
     video_override:    Optional["VideoOverride"] = None
     subtitle_indices:  Optional[list[int]]       = None  # None = toutes les pistes
 
@@ -161,19 +161,25 @@ def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, str]:
 def _decide_dv(info: VideoInfo, profile: Profile) -> DVAction:
     if info.dv_profile is None:
         return DVAction.NONE
-    opt = profile.get("dolby_vision", "hdr")
-    if opt == "preserve":
-        return DVAction.PRESERVE
+    opt = profile.get("dolby_vision", "hdr10").lower()
+    if opt == "dv":
+        return DVAction.DV
     if opt == "sdr":
         return DVAction.SDR
-    return DVAction.STRIP  # "hdr" ou valeur inconnue
+    return DVAction.HDR10  # "hdr10" ou valeur inconnue
 
 
 def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     """Applique les 4 cas de la spec et retourne la décision vidéo."""
-    target_bps            = profile.bitrate_for_height(info.height)
     limit_w, limit_h, _  = _resolve_limits(info, profile)
-    dv_action             = _decide_dv(info, profile)
+    dv_action            = _decide_dv(info, profile)
+
+    # Si keep_4k=true, on gardera la résolution 4K → utiliser bitrate 4K
+    # Sinon, utiliser le bitrate basé sur la hauteur cible
+    if profile.get("keep_4k", False) and (info.height >= 2000 or info.width >= 3840):
+        target_bps = profile.get("bitrate_4k_kbps", 5000) * 1000
+    else:
+        target_bps = profile.bitrate_for_height(info.height)
 
     # Pour les cibles < 1080p, H264 compresse mieux que HEVC
     sub_1080  = limit_h < 1080

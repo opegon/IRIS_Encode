@@ -61,7 +61,7 @@ class DryrunScreen(TableNavMixin, Screen):
     BINDINGS = [
         Binding("backspace", "go_back",    "⌫ Retour",    show=True),
         Binding("escape",    "go_back",    "Retour",       show=False, priority=True),
-        Binding("r",         "run",        "R  ▶ Lancer",  show=True),
+        Binding("f2",        "run",        "F2 ▶ Lancer",  show=True),
         Binding("enter",     "run",        "↵  ▶ Lancer",  show=False, priority=True),
         Binding("shift+tab", "col_prev",   "⇧Tab Col préc.", show=True,  priority=True),
         Binding("tab",       "col_next",   "Tab Col suiv.",  show=True,  priority=True),
@@ -103,7 +103,7 @@ class DryrunScreen(TableNavMixin, Screen):
         yield TwoLineFooter(
             line1=[
                 ("backspace", "Retour"),
-                ("r",         "Lancer l'encodage"),
+                ("f2",        "Lancer l'encodage"),
                 ("enter",     "Lancer"),
             ],
             line2=[
@@ -148,10 +148,10 @@ class DryrunScreen(TableNavMixin, Screen):
             info = dec.info
 
             dv_str = {
-                DVAction.NONE:     "—",
-                DVAction.STRIP:    "→ HDR10",
-                DVAction.PRESERVE: "→ DV",
-                DVAction.SDR:      "→ SDR ⚠",
+                DVAction.NONE:  "—",
+                DVAction.HDR10: "→ HDR10",
+                DVAction.DV:    "→ DV",
+                DVAction.SDR:   "→ SDR ⚠",
             }.get(vid.dv_action, "?")
 
             if vid.action == VideoAction.SKIP:

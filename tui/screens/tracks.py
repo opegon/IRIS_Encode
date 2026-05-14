@@ -52,21 +52,21 @@ _ACTION_CYCLE = [
     VideoAction.ENCODE_AV1,
     VideoAction.SKIP,
 ]
-_DV_CYCLE     = [DVAction.STRIP, DVAction.PRESERVE, DVAction.SDR]
+_DV_CYCLE     = [DVAction.HDR10, DVAction.DV, DVAction.SDR]
 _BITRATE_OPTS     = [500, 800, 1000, 1500, 2000, 2200, 2500, 3000, 3500, 5000, 8000, 12000]
 _AV1_BITRATE_OPTS = [300, 500, 800, 1000, 1500, 2000, 2500, 3000, 4000, 6000]
 
 _ACTION_SHORT = {
-    VideoAction.ENCODE_HEVC: ("HEVC",   "magenta"),
+    VideoAction.ENCODE_HEVC: ("HEVC",   "dark_orange"),
     VideoAction.ENCODE_H264: ("H264",   "cyan"),
-    VideoAction.ENCODE_AV1:  ("AV1 ⚠", "dark_orange"),
+    VideoAction.ENCODE_AV1:  ("AV1 ⚠", "bold dark_orange"),
     VideoAction.SKIP:        ("SKIP",   "dim"),
 }
 _DV_SHORT = {
-    DVAction.NONE:     ("—",      ""),
-    DVAction.STRIP:    ("HDR10",  ""),
-    DVAction.PRESERVE: ("DV copy","green"),
-    DVAction.SDR:      ("SDR ⚠", "yellow"),
+    DVAction.NONE:   ("—",     ""),
+    DVAction.HDR10:  ("HDR10", ""),
+    DVAction.DV:     ("DV",    "green"),
+    DVAction.SDR:    ("SDR ⚠", "yellow"),
 }
 
 # Colonnes redimensionnables
@@ -80,12 +80,17 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
 
     BINDINGS = [
         Binding("space",     "toggle_row",    "Sélect",                show=True),
-        Binding("left",      "field_prev",    "< Champ",               show=True),
-        Binding("right",     "field_next",    "> Champ",               show=True),
-        Binding("+",         "val_up",        "+ Val.",                 show=True),
-        Binding("-",         "val_down",      "- Val.",                 show=True),
+        Binding("left",      "field_prev",    "< Champ",               show=False),
+        Binding("right",     "field_next",    "> Champ",               show=False),
+        Binding("+",         "val_up",        "+ Val.",                 show=False),
+        Binding("-",         "val_down",      "- Val.",                 show=False),
         Binding("enter",     "enter_action",  "Valider",               show=True, priority=True),
-        Binding("l",         "launch",        "L  Lance",              show=True),
+        Binding("f4",        "change_profile","⚙ Profil",              show=True),
+        Binding("f6",        "open_codec",    "Codec",                 show=True),
+        Binding("f7",        "open_bitrate",  "Débit",                 show=True),
+        Binding("f8",        "toggle_delete", "Suppr./Garder source",    show=True),
+        Binding("f1",        "dryrun",        "Dry-run",               show=True),
+        Binding("f2",        "run",           "Run",                   show=True),
         Binding("backspace", "dismiss_cancel","Retour",                show=True),
         Binding("escape",    "dismiss_cancel","Retour",                show=False, priority=True),
         Binding("shift+tab", "col_prev",      "Col préc.",             show=True, priority=True),
@@ -102,7 +107,13 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         color: $text;
         padding: 0 2;
     }
-    DataTable { height: 1fr; }
+    #tracks-table { height: 1fr; }
+    #validate-bar {
+        height: 1;
+        background: $primary-darken-1;
+        padding: 0 2;
+        border-top: solid $primary;
+    }
     """
 
     def __init__(self, decision: FileDecision) -> None:
@@ -154,23 +165,25 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         yield Static("", id="status-bar")
         yield DataTable(id="tracks-table", cursor_type="row",
                         zebra_stripes=False, show_header=True)
+        yield Static("[ ✓ ] Valider la sélection", id="validate-bar")
         yield TwoLineFooter(
             line1=[
                 ("space",     "Sélect"),
-                ("left",      "Champ préc."),
-                ("right",     "Champ suiv."),
-                ("+",         "Valeur ↑"),
-                ("-",         "Valeur ↓"),
                 ("enter",     "Valider"),
+                ("f1",        "Dry-run"),
+                ("f2",        "Run"),
+                ("f4",        "Profil"),
+                ("f6",        "Codec"),
+                ("f7",        "Débit"),
+                ("f8",        "Suppr./Garder source"),
             ],
             line2=[
-                ("l",         "Lancer maintenant"),
+                ("f10",       "Quitter"),
                 ("backspace", "Retour"),
                 ("shift+tab", "Col préc."),
                 ("tab",       "Col suiv."),
                 ("<",         "Rétrécir"),
                 (">",         "Élargir"),
-                ("f10",       "Quitter"),
             ],
         )
 
@@ -194,7 +207,7 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
             label = _RESIZE_LABELS[key]
             return f"{label} ◄►" if key == active else label
 
-        table.add_column("",           width=5,                        key="check")
+        table.add_column("",           width=7,                        key="check")
         table.add_column("Piste",      width=10,                       key="idx")
         table.add_column(_hdr("codec"),width=max(_RESIZE_MIN, widths["codec"]), key="codec")
         table.add_column(_hdr("fmt"),  width=max(_RESIZE_MIN, widths["fmt"]),   key="fmt")
@@ -225,13 +238,22 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
             excl = ad.action == AudioAction.EXCLUDE
             dim  = "dim" if excl else ""
             lock = " ⚑" if idx == 0 else ""
+
+            # Raison simplifiée pour l'affichage
+            if excl:
+                reason = "exclu manuellement"
+            elif idx == 0:
+                reason = "défaut"
+            else:
+                reason = "sélectionné"
+
             table.add_row(
                 self._check_text(_ROW_AUDIO, idx),
                 Text(f"0:a:{idx}{lock}", no_wrap=True, style=dim),
                 Text(t.codec,            no_wrap=True, style=dim),
                 Text(t.channel_layout,   no_wrap=True, style=dim),
                 Text(t.language or "?",  no_wrap=True, style=dim),
-                Text(ad.reason,          overflow="ellipsis", no_wrap=True, style=dim),
+                Text(reason,             overflow="ellipsis", no_wrap=True, style=dim),
                 Text(ad.display() or "—", style="green" if not excl else "dim"),
                 key=f"a:{idx}",
             )
@@ -258,32 +280,28 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
                 style = "" if sel else "dim"
                 type_str = "image" if st.is_image_based else "texte"
                 cont_str = "→ MKV copy" if st.is_image_based else "→ MP4 copy"
+
+                # Raison simplifiée pour l'affichage
+                if sel:
+                    if st.index == 0:
+                        reason = "défaut"
+                    else:
+                        reason = "sélectionné"
+                else:
+                    reason = "exclu manuellement"
+
                 table.add_row(
                     self._check_text(_ROW_SUBTITLE, st.index),
                     Text(f"0:s:{st.index}", no_wrap=True, style=style),
                     Text(st.codec,          no_wrap=True, style=style),
                     Text(type_str,          no_wrap=True, style=style),
                     Text(st.language or "?",no_wrap=True, style=style),
-                    Text("sélectionné" if sel else "—", style=style),
+                    Text(reason, style=style),
                     Text(cont_str, style="green" if sel else "dim"),
                     key=f"s:{st.index}",
                 )
                 self._rows.append((_ROW_SUBTITLE, st.index))
 
-        # ── Ligne Valider ─────────────────────────────────────────────────────
-        table.add_row(
-            Text(""), Text("", style="dim"),
-            Text(""), Text(""), Text(""), Text(""), Text(""),
-            key="__sep_val__",
-        )
-        self._rows.append((_ROW_SECTION, -1))
-        table.add_row(
-            Text("[ ✓ ]", style="bold green"),
-            Text("Valider la sélection", style="bold green"),
-            Text(""), Text(""), Text(""), Text(""), Text(""),
-            key="__validate__",
-        )
-        self._rows.append((_ROW_VALIDATE, -1))
 
         if keep_cursor and table.row_count > 0:
             table.move_cursor(row=min(cursor_row, table.row_count - 1))
@@ -328,15 +346,18 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         if action != VideoAction.SKIP:
             dec_txt.append(f"  ·  {vid.target_width}x{vid.target_height}")
             dec_txt.append(f"  ·  {self._decision.output_container.upper().lstrip('.')}")
-        dv_lbl, dv_sty = _DV_SHORT.get(dv, ("—", ""))
-        if dv != DVAction.NONE:
-            dec_txt.append("  ·  ")
-            dec_txt.append_text(_f("dv", dv_lbl, dv_sty))
+        # Affichage DV : toujours visible
+        dec_txt.append("  ·  ")
+        if info.dv_profile is None:
+            dec_txt.append_text(_f("dv", "DV - N/A", "dim"))
+        else:
+            dv_lbl, dv_sty = _DV_SHORT.get(dv, ("—", ""))
+            dec_txt.append_text(_f("dv", f"DV → {dv_lbl}", dv_sty))
         # Champ original
         if self._ov_delete is None:
             del_profile = self._decision.profile.data.get("delete_source", False)
             orig_lbl = ("⚠ supprimer" if del_profile else "○ garder") + " (profil)"
-            orig_sty = "dim"
+            orig_sty = "bold dark_orange" if del_profile else "green"
         elif del_src:
             orig_lbl, orig_sty = "⚠ SUPPRIMER", "bold dark_orange"
         else:
@@ -396,7 +417,7 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
                 return rt, idx
         return None
 
-    def _make_selection(self, launch: bool = False) -> TracksSelection:
+    def _make_selection(self) -> TracksSelection:
         ovr = VideoOverride(
             action        = self._ov_action,
             bitrate       = self._ov_bitrate,
@@ -408,7 +429,6 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         return TracksSelection(
             audio=sorted(self._sel_audio),
             subtitles=sorted(self._sel_subs),
-            launch=launch,
             video_override=ovr,
             subtitle_indices=sub_indices,
         )
@@ -498,6 +518,23 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
         else:
             self.action_dismiss_ok()
 
+    def action_open_codec(self) -> None:
+        """Ouvre le picker pour changer le codec."""
+        self._edit_idx = _EDIT_FIELDS.index("action")
+        self._open_picker()
+
+    def action_open_bitrate(self) -> None:
+        """Ouvre le picker pour changer le débit."""
+        self._edit_idx = _EDIT_FIELDS.index("bitrate")
+        self._open_picker()
+
+    def action_toggle_delete(self) -> None:
+        """Toggle suppression/conservation des fichiers originaux."""
+        profile_val = self._decision.profile.data.get("delete_source", False)
+        self._ov_delete = None if self._ov_delete is not None else not profile_val
+        self._update_video_row()
+        self._update_status()
+
     def _open_picker(self) -> None:
         field       = _EDIT_FIELDS[self._edit_idx]
         profile_del = self._decision.profile.data.get("delete_source", False)
@@ -560,8 +597,64 @@ class TracksScreen(TableNavMixin, Screen["TracksSelection | None"]):
             title, opts, cur, callback = cfg
             self.app.push_screen(ValuePickerScreen(title, opts, cur), callback)
 
-    def action_dismiss_ok(self)     -> None: self.dismiss(self._make_selection(False))
-    def action_launch(self)         -> None: self.dismiss(self._make_selection(True))
+    def action_dismiss_ok(self)     -> None: self.dismiss(self._make_selection())
+    def action_change_profile(self) -> None:
+        """Ouvre un sélecteur de profils (même style que l'écran d'accueil)."""
+        from .value_picker import ValuePickerScreen
+        from core.decision import decide_video, decide_audio
+
+        profiles = self.app.profiles  # type: ignore[attr-defined]
+        names    = list(profiles.keys())
+        cur      = self._decision.profile.id
+        cur_idx  = names.index(cur) if cur in names else 0
+
+        opts = []
+        for name, prof in profiles.items():
+            f       = prof.summary_fields()
+            keep_4k = prof.data.get("keep_4k", False)
+            k4_str  = f"4K {f['4k']}" if keep_4k else "4K→1080p"
+            delete  = prof.data.get("delete_source", False)
+
+            # Format avec colonnes alignées
+            alert   = "⚠" if delete else ""
+            alert_col = f"{alert:<3}"
+            br_1080 = f["1080p"].rjust(6)
+            br_4k   = k4_str.ljust(12)
+            dv_info = f"DV {f['dv']}".ljust(12)
+            preset  = f["preset"].ljust(8)
+
+            # Colonne HD audio
+            hd_audio_str = "HD audio" if prof.data.get("preserve_hd_audio") else ""
+            hd_col = f"  ·  {hd_audio_str:<10}" if hd_audio_str or delete else ""
+
+            # Colonne alerte finale
+            alert_final = "⚠" if delete else ""
+            alert_final_col = f"  ·  {alert_final:<3}"
+
+            line = f"{alert_col}{name:<15}  {br_1080}  ·  {br_4k}  ·  {dv_info}  ·  {preset}{hd_col}{alert_final_col}"
+            opts.append(line)
+
+        def _on_pick(idx: int | None) -> None:
+            if idx is None:
+                return
+            name = names[idx]
+            new_profile = profiles[name]
+            self._decision.profile = new_profile
+            self._decision.video = decide_video(self._decision.info, new_profile)
+            self._decision.audio = decide_audio(self._decision.info, new_profile)
+            self._build_table()
+
+        self.app.push_screen(ValuePickerScreen("Sélectionner un profil", opts, cur_idx), _on_pick)
+
+    def action_dryrun(self) -> None:
+        sel = self._make_selection()
+        sel.launch_mode = "dryrun"
+        self.dismiss(sel)
+
+    def action_run(self) -> None:
+        sel = self._make_selection()
+        sel.launch_mode = "run"
+        self.dismiss(sel)
     def action_dismiss_cancel(self) -> None: self.dismiss(None)
 
     # ── Resize colonnes ───────────────────────────────────────────────────────

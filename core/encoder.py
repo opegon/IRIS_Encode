@@ -6,9 +6,11 @@ EncoderProcess  → wrapper autour du sous-processus ffmpeg.
 """
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -64,6 +66,43 @@ _SDR_TONEMAP_FILTER = (
     "format=yuv420p"
 )
 
+# ─── Conversion DV → HDR10 avec dovi_tool ─────────────────────────────────────
+
+def _extract_dv_to_hdr10_json(input_path: Path) -> Optional[dict]:
+    """
+    Extrait les métadonnées DV et les convertit en HDR10 JSON avec dovi_tool.
+    Retourne le dict JSON des métadonnées ou None si impossible.
+    """
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_p = Path(tmpdir)
+            rpu_file = tmpdir_p / "rpu.bin"
+            json_file = tmpdir_p / "hdr10.json"
+
+            # Étape 1 : extraire RPU avec dovi_tool
+            r = subprocess.run(
+                ["dovi_tool", "extract-rpu", str(input_path), "-o", str(rpu_file)],
+                capture_output=True,
+                timeout=60,
+            )
+            if r.returncode != 0 or not rpu_file.exists():
+                return None
+
+            # Étape 2 : convertir RPU → HDR10 JSON
+            r = subprocess.run(
+                ["dovi_tool", "convert", str(rpu_file), "-o", str(json_file)],
+                capture_output=True,
+                timeout=60,
+            )
+            if r.returncode != 0 or not json_file.exists():
+                return None
+
+            # Étape 3 : charger le JSON
+            with json_file.open() as f:
+                return json.load(f)
+    except Exception:
+        return None
+
 # Regex pour parser la ligne de progression ffmpeg
 _PROGRESS_RE = re.compile(
     r"frame=\s*(?P<frame>\d+)"
@@ -99,14 +138,15 @@ def parse_progress(line: str, total_duration: float) -> Optional[ProgressInfo]:
     if not m:
         return None
     elapsed = _time_to_seconds(m.group("time"))
-    percent = (elapsed / total_duration) if total_duration > 0 else -1.0
+    # Si durée inconnue, montre au moins la progression temporelle
+    percent = (elapsed / total_duration) if total_duration > 0 else elapsed
     return ProgressInfo(
         frame=int(m.group("frame")),
         fps=float(m.group("fps")),
         elapsed=elapsed,
         bitrate=float(m.group("bitrate")),
         speed=float(m.group("speed")),
-        percent=min(percent, 1.0),
+        percent=min(percent, 1.0) if total_duration > 0 else -1.0,  # -1 = durée inconnue
     )
 
 
@@ -130,45 +170,56 @@ def build_command(
     cmd: list[str] = ["ffmpeg"]
 
     # hwaccel — absent pour SDR tone map (CPU obligatoire pour zscale)
-    if platform.hwaccel and vid.dv_action != DVAction.SDR:
+    # Aussi absent pour DV car on fait du copy
+    preserve_video = (vid.dv_action == DVAction.DV)
+    if platform.hwaccel and vid.dv_action != DVAction.SDR and not preserve_video:
         cmd += ["-hwaccel", platform.hwaccel]
 
     cmd += ["-i", str(info.path)]
 
     # ── Filtre vidéo ──────────────────────────────────────────────────────────
-    scale = (
-        f"scale={vid.target_width}:{vid.target_height}"
-        ":force_original_aspect_ratio=decrease"
-        ":force_divisible_by=2"
-    )
-    vf = f"{scale},{_SDR_TONEMAP_FILTER}" if vid.dv_action == DVAction.SDR else scale
-    cmd += ["-vf", vf]
+    if not preserve_video:
+        scale = (
+            f"scale={vid.target_width}:{vid.target_height}"
+            ":force_original_aspect_ratio=decrease"
+            ":force_divisible_by=2"
+        )
+        vf = f"{scale},{_SDR_TONEMAP_FILTER}" if vid.dv_action == DVAction.SDR else scale
+        cmd += ["-vf", vf]
 
     # ── Encodeur vidéo ────────────────────────────────────────────────────────
-    is_av1 = (vid.action == VideoAction.ENCODE_AV1)
-    if vid.action == VideoAction.ENCODE_HEVC:
-        encoder, prof_str = platform.encoder_hevc, "main"
-    elif is_av1:
-        encoder, prof_str = platform.encoder_av1, "main"
+    # DV : copy flux vidéo DV intégralement
+    # HDR10 : re-encode normal (enlève RPU automatiquement)
+    #   Note: pour une conversion DV→HDR10 complète avec métadonnées,
+    #   voir _extract_dv_to_hdr10_json() qui utilise dovi_tool
+    # SDR : re-encode + tone-mapping vers SDR (CPU intensif)
+    if preserve_video:
+        cmd += ["-c:v", "copy"]
     else:
-        encoder, prof_str = platform.encoder_h264, "high"
+        is_av1 = (vid.action == VideoAction.ENCODE_AV1)
+        if vid.action == VideoAction.ENCODE_HEVC:
+            encoder, prof_str = platform.encoder_hevc, "main"
+        elif is_av1:
+            encoder, prof_str = platform.encoder_av1, "main"
+        else:
+            encoder, prof_str = platform.encoder_h264, "high"
 
-    bufsize_k = max(vid.target_bitrate * 2 // 1000, 1)
-    preset    = profile.get("preset_encoder", "medium")
+        bufsize_k = max(vid.target_bitrate * 2 // 1000, 1)
+        preset    = profile.get("preset_encoder", "medium")
 
-    cmd += [
-        "-c:v",      encoder,
-        "-pix_fmt",  "yuv420p",
-        "-b:v",      str(vid.target_bitrate),
-        "-maxrate",  str(vid.target_bitrate),
-        "-bufsize",  f"{bufsize_k}k",
-    ]
-    if not is_av1:
-        cmd += ["-rc", "cbr"]
-    cmd += [
-        "-preset",   preset,
-        "-profile:v", prof_str,
-    ]
+        cmd += [
+            "-c:v",      encoder,
+            "-pix_fmt",  "yuv420p",
+            "-b:v",      str(vid.target_bitrate),
+            "-maxrate",  str(vid.target_bitrate),
+            "-bufsize",  f"{bufsize_k}k",
+        ]
+        if not is_av1:
+            cmd += ["-rc", "cbr"]
+        cmd += [
+            "-preset",   preset,
+            "-profile:v", prof_str,
+        ]
 
     # ── Mapping ───────────────────────────────────────────────────────────────
     cmd += ["-map", "0:v:0"]
@@ -224,6 +275,7 @@ class EncoderProcess:
     def start(self) -> None:
         self._proc = subprocess.Popen(
             self.cmd,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             text=True,

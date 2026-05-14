@@ -17,8 +17,9 @@ APP_DIR       = Path(__file__).resolve().parent.parent
 PROFILES_PATH = APP_DIR / "profiles.toml"
 
 BUILTIN_NAMES = frozenset({
-    "serie_basic", "serie_hd", "cinema_4k_basic",
-    "cinema_4k_hd", "basic_delete", "archivage",
+    "serie_anime", "serie_basic", "serie_hd",
+    "film_basic", "film_hd", "cinema_4k_basic",
+    "cinema_4k_hd", "basic_delete",
 })
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,32}$")
@@ -34,6 +35,17 @@ _BASE_AUDIO = {
 }
 
 _BUILTINS: dict[str, dict[str, Any]] = {
+    "serie_anime": {
+        "bitrate_720p_kbps":  1500,
+        "bitrate_1080p_kbps": 2000,
+        "bitrate_4k_kbps":    3500,
+        "keep_4k":            False,
+        "delete_source":      False,
+        "preset_encoder":     "fast",
+        "dolby_vision":       "sdr",
+        "preserve_hd_audio":  False,
+        **_BASE_AUDIO,
+    },
     "serie_basic": {
         "bitrate_720p_kbps":  1500,
         "bitrate_1080p_kbps": 2200,
@@ -41,7 +53,7 @@ _BUILTINS: dict[str, dict[str, Any]] = {
         "keep_4k":            False,
         "delete_source":      False,
         "preset_encoder":     "medium",
-        "dolby_vision":       "hdr",
+        "dolby_vision":       "hdr10",
         "preserve_hd_audio":  False,
         **_BASE_AUDIO,
     },
@@ -52,8 +64,30 @@ _BUILTINS: dict[str, dict[str, Any]] = {
         "keep_4k":            False,
         "delete_source":      False,
         "preset_encoder":     "medium",
-        "dolby_vision":       "hdr",
+        "dolby_vision":       "hdr10",
         "preserve_hd_audio":  False,
+        **_BASE_AUDIO,
+    },
+    "film_basic": {
+        "bitrate_720p_kbps":  2000,
+        "bitrate_1080p_kbps": 3000,
+        "bitrate_4k_kbps":    5000,
+        "keep_4k":            False,
+        "delete_source":      False,
+        "preset_encoder":     "medium",
+        "dolby_vision":       "sdr",
+        "preserve_hd_audio":  False,
+        **_BASE_AUDIO,
+    },
+    "film_hd": {
+        "bitrate_720p_kbps":  3000,
+        "bitrate_1080p_kbps": 5000,
+        "bitrate_4k_kbps":    8000,
+        "keep_4k":            False,
+        "delete_source":      False,
+        "preset_encoder":     "slow",
+        "dolby_vision":       "hdr10",
+        "preserve_hd_audio":  True,
         **_BASE_AUDIO,
     },
     "cinema_4k_basic": {
@@ -63,7 +97,7 @@ _BUILTINS: dict[str, dict[str, Any]] = {
         "keep_4k":            True,
         "delete_source":      False,
         "preset_encoder":     "slow",
-        "dolby_vision":       "hdr",
+        "dolby_vision":       "hdr10",
         "preserve_hd_audio":  True,
         **_BASE_AUDIO,
     },
@@ -74,7 +108,7 @@ _BUILTINS: dict[str, dict[str, Any]] = {
         "keep_4k":            True,
         "delete_source":      False,
         "preset_encoder":     "slow",
-        "dolby_vision":       "preserve",
+        "dolby_vision":       "dv",
         "preserve_hd_audio":  True,
         **_BASE_AUDIO,
     },
@@ -82,17 +116,6 @@ _BUILTINS: dict[str, dict[str, Any]] = {
         "bitrate_720p_kbps":  1500,
         "bitrate_1080p_kbps": 2000,
         "bitrate_4k_kbps":    3500,
-        "keep_4k":            False,
-        "delete_source":      True,
-        "preset_encoder":     "fast",
-        "dolby_vision":       "sdr",
-        "preserve_hd_audio":  False,
-        **_BASE_AUDIO,
-    },
-    "archivage": {
-        "bitrate_720p_kbps":  1500,
-        "bitrate_1080p_kbps": 2000,
-        "bitrate_4k_kbps":    5000,
         "keep_4k":            False,
         "delete_source":      True,
         "preset_encoder":     "fast",

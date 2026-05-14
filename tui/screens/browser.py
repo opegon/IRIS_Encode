@@ -19,6 +19,7 @@ from ..mixins import TableNavMixin
 
 from core import config as cfg_mod
 from core.decision import FileDecision, VideoAction, decide
+from core.meta import parse_title
 from core.scanner import VideoInfo, scan, scan_directory
 from ..widgets.file_tree import FileNavigator
 
@@ -76,6 +77,8 @@ class BrowserScreen(TableNavMixin, Screen):
         Binding("f2",        "open_run",           "Run",      show=True),
         Binding("f4",        "open_profile_picker","Profil",   show=True),
         Binding("f5",        "open_config",        "Config",   show=True),
+        Binding("f7",        "open_allocine",      "AlloCiné", show=True),
+        Binding("f8",        "open_imdb",          "IMDB",     show=True),
         # ── Resize colonnes ──────────────────────────────────────
         Binding("shift+tab", "col_prev",   "Col préc.", show=True, priority=True),
         Binding("tab",       "col_next",   "Col suiv.", show=True, priority=True),
@@ -154,6 +157,8 @@ class BrowserScreen(TableNavMixin, Screen):
                 ("f2",        "Run"),
                 ("f4",        "Profil"),
                 ("f5",        "Config"),
+                ("f7",        "AlloCiné"),
+                ("f8",        "IMDB"),
                 ("shift+tab", "Col préc."),
                 ("tab",       "Col suiv."),
                 ("<",         "Rétrécir"),
@@ -571,6 +576,21 @@ class BrowserScreen(TableNavMixin, Screen):
                 self._decisions.clear()
                 self._refresh_view()
         self.app.push_screen(ConfigScreen(), _on_config_return)
+
+    # ─── Métadonnées IMDB / AlloCiné ─────────────────────────────────────────
+
+    def _open_meta(self, source: str) -> None:
+        row_type, path = self._current_row_info()
+        if row_type != _ROW_TYPE_FILE or path is None:
+            return
+        from .meta_popup import MetaPopup
+        self.app.push_screen(MetaPopup(path, source))
+
+    def action_open_imdb(self) -> None:
+        self._open_meta("imdb")
+
+    def action_open_allocine(self) -> None:
+        self._open_meta("allocine")
 
     # ─── Mise à jour profil actif (depuis ConfigScreen) ───────────────────────
 

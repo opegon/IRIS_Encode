@@ -27,6 +27,7 @@ _KEY_LABELS: dict[str, str] = {
     "end":       "End",
     "f1":        "F1",
     "f2":        "F2",
+    "f4":        "F4",
     "f5":        "F5",
     "f10":       "F10",
 }

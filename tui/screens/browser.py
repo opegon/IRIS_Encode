@@ -57,17 +57,16 @@ class BrowserScreen(TableNavMixin, Screen):
     """Écran principal — navigation + sélection fichiers."""
 
     BINDINGS = [
-        Binding("space",     "toggle_select", "Sélect",    show=True),
-        Binding("a",         "select_all",    "Tout",      show=True),
-        Binding("n",         "select_none",   "Aucun",     show=True),
-        Binding("enter",     "enter_dir",     "Entrer ↵",  show=True, priority=True),
-        Binding("backspace", "go_up",         "Remonter",  show=True),
-        Binding("t",         "open_tracks",   "Pistes",    show=True),
-        Binding("f1",        "open_dryrun",   "Dry-run",   show=True),
-        Binding("f2",        "open_run",      "Run",       show=True),
-        Binding("f5",        "open_config",   "Config",    show=True),
-        Binding("+",         "profile_next",  "+ Profil",  show=True),
-        Binding("-",         "profile_prev",  "- Profil",  show=True),
+        Binding("space",     "toggle_select",      "Sélect",   show=True),
+        Binding("a",         "select_all",         "Tout",     show=True),
+        Binding("n",         "select_none",        "Aucun",    show=True),
+        Binding("enter",     "enter_dir",          "Entrer ↵", show=True, priority=True),
+        Binding("backspace", "go_up",              "Remonter", show=True),
+        Binding("t",         "open_tracks",        "Pistes",   show=True),
+        Binding("f1",        "open_dryrun",        "Dry-run",  show=True),
+        Binding("f2",        "open_run",           "Run",      show=True),
+        Binding("f4",        "open_profile_picker","Profil",   show=True),
+        Binding("f5",        "open_config",        "Config",   show=True),
         # ── Resize colonnes ──────────────────────────────────────
         Binding("shift+tab", "col_prev",   "Col préc.", show=True, priority=True),
         Binding("tab",       "col_next",   "Col suiv.", show=True, priority=True),
@@ -144,9 +143,8 @@ class BrowserScreen(TableNavMixin, Screen):
             line2=[
                 ("f1",        "Dry-run"),
                 ("f2",        "Run"),
+                ("f4",        "Profil"),
                 ("f5",        "Config"),
-                ("-",         "Profil −"),
-                ("+",         "Profil +"),
                 ("shift+tab", "Col préc."),
                 ("tab",       "Col suiv."),
                 ("<",         "Rétrécir"),
@@ -202,33 +200,30 @@ class BrowserScreen(TableNavMixin, Screen):
         prof = self._app.profiles.get(pid)
         if prof is None:
             return
-        f    = prof.summary_fields()
-        pl   = list(self._app.profiles.keys())
-        idx  = pl.index(pid) if pid in pl else 0
+        f = prof.summary_fields()
 
-        # Info 4K
-        keep_4k = prof.data.get("keep_4k", False)
-        if keep_4k:
-            k4_str  = f"4K : {f['4k']} (conservé)"
-            k4_style = "green"
-        else:
-            k4_str  = "4K → 1080p"
-            k4_style = "dim"
+        keep_4k  = prof.data.get("keep_4k", False)
+        k4_str   = f"4K : {f['4k']}" if keep_4k else "4K → 1080p"
+        k4_style = "green"              if keep_4k else "dim"
+        dv_color = {"strip": "yellow", "preserve": "green", "sdr": "bold dark_orange"}.get(f["dv"], "")
 
         txt = Text(no_wrap=True)
-        txt.append(f" ● Profil : ")
-        txt.append(f"[ {pid} ]", style="bold white")
-        txt.append(f"  ({idx + 1}/{len(pl)})")
-        txt.append(f"   1080p : {f['1080p']}")
-        txt.append(f"  ·  ", style="")
+        txt.append(" Profil : ", style="dim")
+        txt.append(f" {pid} ", style="bold white")
+        txt.append("   ")
+        txt.append("1080p ", style="dim"); txt.append(f["1080p"], style="bold")
+        txt.append("  ·  ")
         txt.append(k4_str, style=k4_style)
-        txt.append(f"  ·  DV : {f['dv']}")
-        txt.append(f"  ·  preset : {f['preset']}")
-        txt.append(f"  ·  HD audio : {f['hd_audio']}")
+        txt.append("  ·  ")
+        txt.append("DV ", style="dim"); txt.append(f["dv"], style=dv_color or "bold")
+        txt.append("  ·  ")
+        txt.append("preset ", style="dim"); txt.append(f["preset"], style="bold")
+        txt.append("  ·  ")
+        txt.append("HD audio ", style="dim"); txt.append(f["hd_audio"], style="bold")
         if prof.data.get("delete_source", False):
-            txt.append("  ·  ", style="")
+            txt.append("  ·  ")
             txt.append("⚠ SUPPRESSION ORIGINAUX", style="bold dark_orange")
-        txt.append("  ·  −/+ pour changer", style="dim")
+        txt.append("   F4 changer", style="dim")
         self.query_one("#profile-bar", Static).update(txt)
 
     def _populate_table(
@@ -363,23 +358,20 @@ class BrowserScreen(TableNavMixin, Screen):
         self.app.call_from_thread(self._populate_table, subdirs, decisions, epoch)
 
 
-    # ─── Changement de profil ───────────────────────────────────────────────────────────
+    # ─── Sélection de profil (F4) ──────────────────────────────────────────────
 
-    def _cycle_profile(self, direction: int) -> None:
-        pl  = list(self._app.profiles.keys())
-        if not pl:
-            return
-        cur = self._app.active_profile_id
-        idx = pl.index(cur) if cur in pl else 0
-        self._app.active_profile_id = pl[(idx + direction) % len(pl)]
-        self._update_profile_bar()
-        self._refresh_view()
-
-    def action_profile_next(self) -> None:
-        self._cycle_profile(+1)
-
-    def action_profile_prev(self) -> None:
-        self._cycle_profile(-1)
+    def action_open_profile_picker(self) -> None:
+        from .value_picker import ValuePickerScreen
+        pl      = list(self._app.profiles.keys())
+        cur     = self._app.active_profile_id
+        cur_idx = pl.index(cur) if cur in pl else 0
+        def _on_pick(idx: int | None) -> None:
+            if idx is None:
+                return
+            self._app.active_profile_id = pl[idx]
+            self._update_profile_bar()
+            self._refresh_view()
+        self.app.push_screen(ValuePickerScreen("Sélectionner un profil", pl, cur_idx), _on_pick)
 
     # ─── Resize colonnes ─────────────────────────────────────────────────────────────
 

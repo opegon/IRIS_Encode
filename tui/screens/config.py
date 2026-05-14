@@ -86,7 +86,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
                 ("end",      "Fin"),
                 ("pageup",   "Page préc."),
                 ("pagedown", "Page suiv."),
-                ("ctrl+x",   "Quitter"),
+                ("f10",      "Quitter"),
             ],
         )
 

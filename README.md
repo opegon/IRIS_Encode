@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.1 — Windows (support macOS/Linux prévu)
+**Version** : 0.2 — Windows (support macOS/Linux prévu)
 
 ---
 
@@ -21,7 +21,7 @@
 
 ### 1.1 Téléchargement
 
-Rendez-vous sur **https://www.python.org/downloads/** et téléchargez la dernière version **3.11 ou supérieure** (3.12, 3.13…).
+Rendez-vous sur **https://www.python.org/downloads/** et téléchargez la dernière version **3.11 ou supérieure** (3.12, 3.13, 3.14…).
 
 > ⚠ Ne pas utiliser Python 3.10 ou antérieur — IRIS ENCODE utilise des fonctionnalités de syntaxe introduites en 3.11.
 
@@ -182,7 +182,7 @@ iris_encode/
 ├── data/               ← Sources de téléchargement (embarquées)
 ├── core/               ← Logique métier
 ├── tui/                ← Interface utilisateur
-└── logger/             ← Module de journalisation (inactif en v0.1)
+└── logger/             ← Module de journalisation
 ```
 
 ---
@@ -191,26 +191,68 @@ iris_encode/
 
 Les fichiers `config.toml` et `profiles.toml` sont éditables à la main avec n'importe quel éditeur de texte (Notepad, VS Code, etc.).
 
-**`config.toml`** — largeurs des colonnes de l'interface, langue, chemins :
+**`config.toml`** — largeurs des colonnes, langue, chemins, clé OMDb :
 ```toml
 [tui.browser.columns]
 # La colonne "fichier" s'étend automatiquement à l'espace disponible
 resolution   = 12     # largeur de la colonne résolution
 audio        = 20     # largeur de la colonne pistes audio
 decision     = 12     # largeur de la colonne décision
+
+[meta]
+omdb_api_key = ""     # clé gratuite sur omdbapi.com (données IMDB complètes)
 ```
 
 **`profiles.toml`** — profils d'encodage (bitrate, résolution, audio, Dolby Vision) :
 ```toml
-[default]
+[serie_basic]
 bitrate_1080p_kbps = 2500
 keep_4k            = false
-dolby_vision       = "strip"
+dolby_vision       = "hdr"
 ```
 
 ---
 
-## 8. Terminal recommandé
+## 8. Raccourcis clavier (écran Browser)
+
+| Touche | Action |
+|--------|--------|
+| `Space` | Sélectionner / désélectionner un fichier |
+| `A` / `N` | Tout sélectionner / Aucun |
+| `Enter` | Entrer dans un dossier |
+| `Backspace` | Remonter d'un niveau |
+| `T` | Sélection manuelle des pistes (audio, sous-titres) |
+| `F1` | Dry-run (prévisualisation) |
+| `F2` | Lancer l'encodage |
+| `F3` | Run récursif (dossier sélectionné + tous ses sous-dossiers) |
+| `F4` | Changer de profil d'encodage |
+| `F5` | Gérer les profils (CRUD) |
+| `F7` | Recherche AlloCiné (métadonnées film/série) |
+| `F8` | Recherche IMDB (métadonnées film/série) |
+| `Tab` / `Shift+Tab` | Colonne suivante / précédente (redimensionnement) |
+| `<` / `>` | Rétrécir / élargir la colonne active |
+| `F10` | Quitter |
+
+---
+
+## 9. Métadonnées IMDB (F8)
+
+IMDB bloque le scraping direct. IRIS ENCODE utilise deux modes :
+
+- **Sans clé** : données partielles via l'API de suggestions IMDB (titre, année, type, stars de base)
+- **Avec clé OMDb** : données complètes (note, réalisateur, synopsis, genres)
+
+Pour obtenir une clé gratuite (1 000 req/jour) :
+1. S'inscrire sur [omdbapi.com](https://www.omdbapi.com/apikey.aspx)
+2. Ajouter dans `config.toml` :
+   ```toml
+   [meta]
+   omdb_api_key = "votre_clé"
+   ```
+
+---
+
+## 10. Terminal recommandé
 
 IRIS ENCODE utilise Textual pour son interface graphique TUI. Le rendu dépend du **terminal hôte**, pas du shell (cmd ou PowerShell).
 
@@ -226,12 +268,9 @@ IRIS ENCODE utilise Textual pour son interface graphique TUI. Le rendu dépend d
 > et est installé par défaut sur Windows 11.
 > Pour Windows 10 : https://aka.ms/terminal
 
-**Vérifier son terminal hôte :** clic droit sur la barre de titre de la fenêtre.
-Si le titre mentionne *Windows Terminal* ou l'icône est celle de WT, le rendu sera optimal.
-
 ---
 
-## 9. Résolution des problèmes courants
+## 11. Résolution des problèmes courants
 
 | Symptôme | Cause probable | Solution |
 |----------|---------------|----------|
@@ -241,10 +280,11 @@ Si le titre mentionne *Windows Terminal* ou l'icône est celle de WT, le rendu s
 | Encodage lent | Pas de GPU NVIDIA détecté | Normal — encodage CPU activé automatiquement |
 | `dovi_tool introuvable` | Optionnel non installé | Voir section 4 — uniquement si fichiers Dolby Vision |
 | Erreur à l'import d'un module | Dépendances manquantes | Relancer `pip install -r requirements.txt` |
+| IMDB : note/synopsis absents | Clé OMDb non configurée | Voir section 9 |
 
 ---
 
-## 10. Désinstallation
+## 12. Désinstallation
 
 IRIS ENCODE ne modifie aucun paramètre système. Pour désinstaller :
 
@@ -255,4 +295,4 @@ Les fichiers `config.toml` et `profiles.toml` sont supprimés avec le dossier.
 
 ---
 
-*IRIS ENCODE v0.1 — Interface Relationnelle d'Intelligence Servicielle*
+*IRIS ENCODE v0.2 — Interface Relationnelle d'Intelligence Servicielle*

@@ -177,7 +177,12 @@ def build_command(
     for ad in included_audio:
         cmd += ["-map", f"0:a:{ad.track.index}"]
 
-    cmd += ["-map", "0:s?"]
+    sub_indices = decision.subtitle_indices
+    if sub_indices is None:
+        cmd += ["-map", "0:s?"]
+    else:
+        for si in sub_indices:
+            cmd += ["-map", f"0:s:{si}"]
 
     # ── Encodage audio ────────────────────────────────────────────────────────
     for out_i, ad in enumerate(included_audio):
@@ -192,10 +197,12 @@ def build_command(
                 cmd += [f"-ar:{out_i}", "48000"]
 
     # ── Sous-titres ───────────────────────────────────────────────────────────
-    if info.has_image_subs:
-        cmd += ["-c:s", "copy"]
-    else:
-        cmd += ["-c:s", "mov_text"]
+    has_subs = sub_indices is None or len(sub_indices) > 0
+    if has_subs:
+        if info.has_image_subs:
+            cmd += ["-c:s", "copy"]
+        else:
+            cmd += ["-c:s", "mov_text"]
 
     cmd += ["-movflags", "+faststart"]
     cmd += ["-y", str(decision.output_path)]

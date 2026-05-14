@@ -121,7 +121,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
                 "user" if profile.user else "builtin",
                 style="dim cyan" if profile.user else "dim",
             )
-            dv_style  = {"hdr": "yellow", "preserve": "green", "sdr": "red"}.get(f["dv"], "")
+            dv_style  = {"hdr": "yellow", "preserve": "green", "sdr": "bold dark_orange"}.get(f["dv"], "")
             actions   = Text("✎ éditer" + ("  ✕ suppr." if profile.user else ""), no_wrap=True)
 
             table.add_row(

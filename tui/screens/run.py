@@ -199,7 +199,7 @@ class RunScreen(TableNavMixin, Screen):
             FileState.PENDING:  Text("en attente",      style="dim"),
             FileState.RUNNING:  Text(f"{s.percent * 100:.0f}%", style="yellow"),
             FileState.SUCCESS:  Text("✓ SUCCÈS",         style="bold green"),
-            FileState.ERROR:    Text(f"✗ ERREUR : {s.error_msg[:30]}", style="bold red"),
+            FileState.ERROR:    Text(f"✗ ERREUR : {s.error_msg[:30]}", style="bold dark_orange"),
             FileState.SKIPPED:  Text("ignoré",           style="dim"),
         }[s.state]
         try:

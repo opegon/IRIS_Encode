@@ -31,7 +31,7 @@ class IrisEncodeApp(App):
     """Application principale IRIS ENCODE."""
 
     TITLE     = "IRIS ENCODE"
-    SUB_TITLE = "v0.5"
+    SUB_TITLE = "v0.6"
 
     CSS = """
     Screen { background: $surface; }

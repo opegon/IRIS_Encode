@@ -138,10 +138,23 @@ def build_command(
 
     cmd: list[str] = ["ffmpeg"]
 
-    # hwaccel — absent pour SDR tone map (CPU obligatoire pour zscale)
-    # Aussi absent pour DV car on fait du copy
-    preserve_video = (vid.dv_action == DVAction.DV)
-    if platform.hwaccel and vid.dv_action != DVAction.SDR and not preserve_video:
+    # hwaccel — absent pour :
+    #   - SDR tone map (CPU obligatoire pour zscale)
+    #   - DV preserve (copy)
+    #   - HDR10 quality (libx265 CPU pour metadata propres)
+    preserve_video      = (vid.dv_action == DVAction.DV)
+    hdr10_quality_check = (
+        vid.dv_action == DVAction.HDR10
+        and vid.action == VideoAction.ENCODE_HEVC
+        and profile.get("hdr10_quality") == "quality"
+    )
+    use_hwaccel = (
+        platform.hwaccel
+        and vid.dv_action != DVAction.SDR
+        and not preserve_video
+        and not hdr10_quality_check
+    )
+    if use_hwaccel:
         cmd += ["-hwaccel", platform.hwaccel]
 
     cmd += ["-i", str(info.path)]
@@ -157,13 +170,37 @@ def build_command(
         cmd += ["-vf", vf]
 
     # ── Encodeur vidéo ────────────────────────────────────────────────────────
-    # DV : copy flux vidéo DV intégralement
-    # HDR10 : re-encode normal (enlève RPU automatiquement)
-    #   Note: pour une conversion DV→HDR10 complète avec métadonnées,
-    #   voir _extract_dv_to_hdr10_json() qui utilise dovi_tool
+    # DV : copy flux vidéo DV intégralement (preserve_video)
+    # HDR10 compat : re-encode NVENC standard (supprime RPU, pas de metadata HDR10 fines)
+    # HDR10 quality : libx265 CPU + master-display + max-cll → compatibilité TV LG
     # SDR : re-encode + tone-mapping vers SDR (CPU intensif)
+    hdr10_quality = (
+        vid.dv_action == DVAction.HDR10
+        and vid.action == VideoAction.ENCODE_HEVC
+        and profile.get("hdr10_quality") == "quality"
+    )
+
     if preserve_video:
         cmd += ["-c:v", "copy"]
+    elif hdr10_quality:
+        # Mode CPU/libx265 avec métadonnées HDR10 statiques injectées
+        bufsize_k = max(vid.target_bitrate * 2 // 1000, 1)
+        preset    = profile.get("preset_encoder", "medium")
+        from . import dovi
+        x265_params = dovi.make_x265_hdr_params(
+            master_display=info.hdr10_master_display,
+            max_cll=info.hdr10_max_cll,
+        )
+        cmd += [
+            "-c:v",         "libx265",
+            "-pix_fmt",     "yuv420p10le",
+            "-b:v",         str(vid.target_bitrate),
+            "-maxrate",     str(vid.target_bitrate),
+            "-bufsize",     f"{bufsize_k}k",
+            "-preset",      preset,
+            "-profile:v",   "main10",
+            "-x265-params", dovi.x265_params_string(x265_params),
+        ]
     else:
         is_av1 = (vid.action == VideoAction.ENCODE_AV1)
         if vid.action == VideoAction.ENCODE_HEVC:

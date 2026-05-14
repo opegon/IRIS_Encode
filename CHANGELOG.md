@@ -1,5 +1,40 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.6] — 2026-05-14
+
+### Intégration Dolby Vision via dovi_tool
+
+Trois PRs internes pour intégrer pleinement `dovi_tool` dans le pipeline d'encodage.
+
+#### PR1 — Module `core/dovi.py`
+- Wrapper standalone autour de `dovi_tool` :
+  - `get_path()` / `is_available()` : détection (PATH + `./bin/`)
+  - `probe_file()` : extrait sous-profil DV + master display + MaxCLL en un appel (50-150ms)
+  - `extract_hevc_stream()` / `extract_rpu()` / `convert_p7_to_p8()`
+  - `rpu_info()` : parsing structuré de la sortie `dovi_tool info`
+  - `make_x265_hdr_params()` : construction des tokens `-x265-params` HDR10
+- 15 tests unitaires (mock subprocess)
+- URL Linux ajoutée dans `data/ffmpeg_releases.toml` (l'install auto Windows était déjà gérée par `preflight.py`)
+
+#### PR2 — Scanner enrichi
+- `VideoInfo` gagne 3 champs optionnels : `dv_subprofile`, `hdr10_master_display`, `hdr10_max_cll`
+- `scanner.scan()` appelle `dovi.probe_file()` si DV détecté et `dovi_tool` disponible — pas de surcoût sur les fichiers non-DV
+- `TracksScreen` affiche désormais le sous-profil exact (`DV:P8.1`, `DV:P5`…) en colonne Source
+- Avertissement inline `⚠ dovi_tool absent` si HDR10 demandé sans dovi_tool
+
+#### PR3 — Pipeline HDR10 quality
+- Nouveau champ profil `hdr10_quality` : `"compat"` (NVENC, défaut) | `"quality"` (libx265 CPU)
+- Nouveau profil builtin **`cinema_4k_quality`** : `hdr10_quality = "quality"`, encodage CPU avec :
+  - `libx265` + `yuv420p10le` + `profile main10`
+  - `-x265-params` injecté avec `master-display`, `max-cll`, `hdr10-opt=1`, `colorprim=bt2020`, etc.
+  - hwaccel désactivé automatiquement (CPU obligatoire pour metadata HDR10 fines)
+- `ProfileForm` expose le champ HDR10 mode
+
+### Reporté en v0.7
+- **Conversion P7→P8 pour DV preserve** : pertinent uniquement quand `dv_action == DV` (LG préfère P8). Pour `dv_action == HDR10`, le RPU est de toute façon supprimé et la conversion P7→P8 du RPU n'apporte rien — donc non implémenté ici.
+
+---
+
 ## [v0.5] — 2026-05-14
 
 ### Correctifs critiques

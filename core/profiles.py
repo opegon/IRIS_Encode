@@ -19,7 +19,7 @@ PROFILES_PATH = APP_DIR / "profiles.toml"
 BUILTIN_NAMES = frozenset({
     "serie_anime", "serie_basic", "serie_hd",
     "film_basic", "film_hd", "cinema_4k_basic",
-    "cinema_4k_hd", "basic_delete",
+    "cinema_4k_hd", "cinema_4k_quality", "basic_delete",
 })
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,32}$")
@@ -109,6 +109,18 @@ _BUILTINS: dict[str, dict[str, Any]] = {
         "delete_source":      False,
         "preset_encoder":     "slow",
         "dolby_vision":       "dv",
+        "preserve_hd_audio":  True,
+        **_BASE_AUDIO,
+    },
+    "cinema_4k_quality": {
+        "bitrate_720p_kbps":  2000,
+        "bitrate_1080p_kbps": 5000,
+        "bitrate_4k_kbps":    12000,
+        "keep_4k":            True,
+        "delete_source":      False,
+        "preset_encoder":     "slow",
+        "dolby_vision":       "hdr10",
+        "hdr10_quality":      "quality",   # libx265 CPU + métadonnées HDR10 propres
         "preserve_hd_audio":  True,
         **_BASE_AUDIO,
     },

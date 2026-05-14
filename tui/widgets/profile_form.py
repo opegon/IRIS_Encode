@@ -37,6 +37,8 @@ _BITRATE_1080P = [("2000k", 2000), ("2200k", 2200), ("2500k", 2500),
 _BITRATE_4K    = [("3000k", 3000), ("5000k", 5000),
                   ("8000k ⚠ recommandé", 8000), ("12000k", 12000)]
 _DV_OPTIONS    = [("hdr10", "hdr10"), ("dv", "dv"), ("sdr", "sdr")]
+_HDR10_QUALITY = [("compat (NVENC, rapide)", "compat"),
+                  ("quality (CPU x265, TV-grade)", "quality")]
 _PRESET        = [("fast", "fast"), ("medium", "medium"), ("slow", "slow")]
 _BR_STEREO     = [("96k", 96), ("128k", 128), ("192k", 192), ("320k", 320)]
 _BR_SURROUND   = [("320k", 320), ("448k", 448), ("640k", 640)]
@@ -152,7 +154,8 @@ class ProfileForm(Widget):
                 yield Label("Preset",      classes="form-lbl")
                 yield Select(_opts(_PRESET),        id="field-preset", classes="form-ctrl")
             with Widget(classes="form-cell"):
-                pass
+                yield Label("HDR10 mode",  classes="form-lbl")
+                yield Select(_opts(_HDR10_QUALITY), id="field-hdr10q", classes="form-ctrl")
 
         with Widget(classes="check-row"):
             yield Checkbox("keep_4k",       id="field-keep4k")
@@ -228,6 +231,7 @@ class ProfileForm(Widget):
         _set_sel("#field-4k",     data.get("bitrate_4k_kbps",         5000))
         _set_sel("#field-dv",     data.get("dolby_vision",        "hdr10"))
         _set_sel("#field-preset", data.get("preset_encoder",    "medium"))
+        _set_sel("#field-hdr10q", data.get("hdr10_quality",     "compat"))
         _set_chk("#field-keep4k", data.get("keep_4k",                False))
         _set_chk("#field-delsrc", data.get("delete_source",          False))
         _set_inp("#field-langs",
@@ -272,6 +276,7 @@ class ProfileForm(Widget):
             "bitrate_4k_kbps":         _g_sel("#field-4k",     5000),
             "dolby_vision":            _g_sel("#field-dv",  "hdr10"),
             "preset_encoder":          _g_sel("#field-preset","medium"),
+            "hdr10_quality":           _g_sel("#field-hdr10q","compat"),
             "keep_4k":                 _g_chk("#field-keep4k"),
             "delete_source":           _g_chk("#field-delsrc"),
             "audio_languages":         langs,
@@ -303,6 +308,7 @@ class ProfileForm(Widget):
         "#field-4k":     _BITRATE_4K,
         "#field-dv":     _DV_OPTIONS,
         "#field-preset": _PRESET,
+        "#field-hdr10q": _HDR10_QUALITY,
         "#field-stereo": _BR_STEREO,
         "#field-51":     _BR_SURROUND,
         "#field-71":     _BR_71,

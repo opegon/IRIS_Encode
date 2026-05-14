@@ -5,7 +5,7 @@ bitrate_4k_kbps = 5000
 keep_4k = false
 delete_source = false
 preset_encoder = "medium"
-dolby_vision = "strip"
+dolby_vision = "hdr"
 preserve_hd_audio = false
 audio_languages = [
     "fre",
@@ -23,7 +23,7 @@ bitrate_4k_kbps = 5000
 keep_4k = false
 delete_source = false
 preset_encoder = "medium"
-dolby_vision = "strip"
+dolby_vision = "hdr"
 preserve_hd_audio = false
 audio_languages = [
     "fre",
@@ -41,7 +41,7 @@ bitrate_4k_kbps = 8000
 keep_4k = true
 delete_source = false
 preset_encoder = "slow"
-dolby_vision = "strip"
+dolby_vision = "hdr"
 preserve_hd_audio = true
 audio_languages = [
     "fre",

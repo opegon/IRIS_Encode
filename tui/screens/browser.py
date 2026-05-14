@@ -215,7 +215,7 @@ class BrowserScreen(TableNavMixin, Screen):
         keep_4k  = prof.data.get("keep_4k", False)
         k4_str   = f"4K : {f['4k']}" if keep_4k else "4K → 1080p"
         k4_style = "green"              if keep_4k else "dim"
-        dv_color = {"strip": "yellow", "preserve": "green", "sdr": "bold dark_orange"}.get(f["dv"], "")
+        dv_color = {"hdr": "yellow", "preserve": "green", "sdr": "bold dark_orange"}.get(f["dv"], "")
 
         txt = Text(no_wrap=True)
         txt.append(" Profil : ", style="dim")

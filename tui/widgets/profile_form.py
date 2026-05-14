@@ -36,7 +36,7 @@ _BITRATE_1080P = [("2000k", 2000), ("2200k", 2200), ("2500k", 2500),
                   ("3000k", 3000), ("3500k", 3500), ("5000k", 5000)]
 _BITRATE_4K    = [("3000k", 3000), ("5000k", 5000),
                   ("8000k ⚠ recommandé", 8000), ("12000k", 12000)]
-_DV_OPTIONS    = [("strip", "strip"), ("preserve", "preserve"), ("sdr", "sdr")]
+_DV_OPTIONS    = [("hdr", "hdr"), ("preserve", "preserve"), ("sdr", "sdr")]
 _PRESET        = [("fast", "fast"), ("medium", "medium"), ("slow", "slow")]
 _BR_STEREO     = [("96k", 96), ("128k", 128), ("192k", 192), ("320k", 320)]
 _BR_SURROUND   = [("320k", 320), ("448k", 448), ("640k", 640)]
@@ -222,7 +222,7 @@ class ProfileForm(Widget):
         _set_sel("#field-720p",   data.get("bitrate_720p_kbps",       1500))
         _set_sel("#field-1080p",  data.get("bitrate_1080p_kbps",      2500))
         _set_sel("#field-4k",     data.get("bitrate_4k_kbps",         5000))
-        _set_sel("#field-dv",     data.get("dolby_vision",        "strip"))
+        _set_sel("#field-dv",     data.get("dolby_vision",        "hdr"))
         _set_sel("#field-preset", data.get("preset_encoder",    "medium"))
         _set_chk("#field-keep4k", data.get("keep_4k",                False))
         _set_chk("#field-delsrc", data.get("delete_source",          False))

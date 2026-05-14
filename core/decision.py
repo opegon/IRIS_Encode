@@ -160,12 +160,12 @@ def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, str]:
 def _decide_dv(info: VideoInfo, profile: Profile) -> DVAction:
     if info.dv_profile is None:
         return DVAction.NONE
-    opt = profile.get("dolby_vision", "strip")
+    opt = profile.get("dolby_vision", "hdr")
     if opt == "preserve":
         return DVAction.PRESERVE
     if opt == "sdr":
         return DVAction.SDR
-    return DVAction.STRIP
+    return DVAction.STRIP  # "hdr" ou valeur inconnue
 
 
 def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:

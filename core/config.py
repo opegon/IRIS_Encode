@@ -32,6 +32,7 @@ _DEFAULTS: dict[str, Any] = {
             "columns": {
                 "fichier":      50,
                 "resolution":   14,
+                "duree":         9,
                 "debit":        10,
                 "codec":        10,
                 "dolby_vision": 12,

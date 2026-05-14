@@ -20,6 +20,7 @@ from ..mixins import TableNavMixin
 from core import config as cfg_mod
 from core.decision import FileDecision, VideoAction, decide
 from core.meta import parse_title
+from core.scanner import scan_directory_recursive
 from core.scanner import VideoInfo, scan, scan_directory
 from ..widgets.file_tree import FileNavigator
 
@@ -76,6 +77,7 @@ class BrowserScreen(TableNavMixin, Screen):
         Binding("f1",        "open_dryrun",        "Dry-run",  show=True),
         Binding("f2",        "open_run",           "Run",      show=True),
         Binding("f4",        "open_profile_picker","Profil",   show=True),
+        Binding("f3",        "recursive_run",      "Run récursif", show=True),
         Binding("f5",        "open_config",        "Config",   show=True),
         Binding("f7",        "open_allocine",      "AlloCiné", show=True),
         Binding("f8",        "open_imdb",          "IMDB",     show=True),
@@ -155,6 +157,7 @@ class BrowserScreen(TableNavMixin, Screen):
             line2=[
                 ("f1",        "Dry-run"),
                 ("f2",        "Run"),
+                ("f3",        "Récursif"),
                 ("f4",        "Profil"),
                 ("f5",        "Config"),
                 ("f7",        "AlloCiné"),
@@ -576,6 +579,42 @@ class BrowserScreen(TableNavMixin, Screen):
                 self._decisions.clear()
                 self._refresh_view()
         self.app.push_screen(ConfigScreen(), _on_config_return)
+
+    # ─── Run récursif (F3) ────────────────────────────────────────────────────
+
+    def action_recursive_run(self) -> None:
+        row_type, path = self._current_row_info()
+        if row_type != _ROW_TYPE_DIR or path is None:
+            return
+        from .recursive_confirm import RecursiveConfirmModal
+        def _on_confirm(ok: bool) -> None:
+            if ok:
+                self._launch_recursive_scan(path)
+        self.app.push_screen(RecursiveConfirmModal(path, self._app.active_profile_id),
+                             _on_confirm)
+
+    @work(thread=True, name="recursive-scan")
+    def _launch_recursive_scan(self, directory: Path) -> None:
+        self.app.call_from_thread(
+            self.query_one("#scan-notice", Static).update,
+            f"⏳ Scan récursif de {directory.name}…",
+        )
+        infos     = scan_directory_recursive(directory)
+        profile   = self._active_profile()
+        decisions = [decide(info, profile) for info in infos]
+        decisions = [d for d in decisions if d.video.action.name != "SKIP"]
+
+        def _push() -> None:
+            self.query_one("#scan-notice", Static).update("")
+            if not decisions:
+                self.query_one("#scan-notice", Static).update(
+                    "⚠ Aucun fichier à encoder dans ce répertoire."
+                )
+                return
+            from .dryrun import DryrunScreen
+            self.app.push_screen(DryrunScreen(decisions))
+
+        self.app.call_from_thread(_push)
 
     # ─── Métadonnées IMDB / AlloCiné ─────────────────────────────────────────
 

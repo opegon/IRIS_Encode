@@ -254,6 +254,28 @@ def scan_directory(directory: Path) -> list[VideoInfo]:
     return results
 
 
+def scan_directory_recursive(root: Path) -> list[VideoInfo]:
+    """
+    Scanne récursivement tous les fichiers vidéo sous root (tous niveaux).
+    Même filtres que scan_directory : extensions supportées, pas d'encodés.
+    Tri par chemin complet pour un ordre prévisible (saison → épisode).
+    """
+    results: list[VideoInfo] = []
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            continue
+        stem = path.stem
+        if "_[hevc]" in stem or "_[H264]" in stem:
+            continue
+        try:
+            results.append(scan(path))
+        except Exception:
+            pass
+    return results
+
+
 def list_subdirs(directory: Path) -> list[Path]:
     """Liste les sous-répertoires (pour la navigation du browser)."""
     try:

@@ -278,17 +278,17 @@ audio        = 0        # 0 = colonne extensible (prend l'espace restant)
 
 Format TOML, éditable à la main, dans le dossier de l'application.  
 
-Un profil `\[default]` est toujours présent.
+Un profil `\[serie\_basic]` est toujours présent.
 
 
 
-\*\*Profils builtin :\*\* `default`, `serie\_hd`, `cinema\_4k\_basic`, `cinema\_4k\_hd`, `basic\_delete`, `archivage` — éditables, non supprimables depuis l'interface.
+\*\*Profils builtin :\*\* `serie\_basic`, `serie\_hd`, `cinema\_4k\_basic`, `cinema\_4k\_hd`, `basic\_delete`, `archivage` — éditables, non supprimables depuis l'interface.
 
 
 
 ```toml
 
-\[default]
+\[serie\_basic]
 
 \# Vidéo
 
@@ -500,7 +500,7 @@ audio\_copy\_compatible    = true
 
 ⚠ profiles.toml illisible (erreur syntaxe ligne 12).
 
-&#x20; Chargement du profil \[default] intégré.
+&#x20; Chargement du profil \[serie\_basic] intégré.
 
 ```
 
@@ -706,7 +706,7 @@ Framework : \*\*Textual\*\* (Python)
 
 ┌─ IRIS ENCODE ────────────────────────────────────────────────────────────────┐
 
-│ 📁 D:\\Videos                              3/7 sélectionnés · Profil: default │
+│ 📁 D:\\Videos                              3/7 sélectionnés · Profil: serie\_basic │
 
 ├─ Fichier ⇔──────┬─ Résolution ─┬─ Débit ─┬─ Codec ─┬─ Dolby V. ─┬─ Décision ──────┬─ Audio ──────────────┤
 
@@ -756,6 +756,41 @@ Framework : \*\*Textual\*\* (Python)
 
 \- Actions : `\[F1]` Dry-run · `\[F2]` Run · `\[F5]` Config · `\[F10]` Quitter
 
+
+
+
+
+\#### Barre de profil actif
+
+
+
+Ligne fixe sous la barre de statut. Affiche en permanence :
+
+\- Nom du profil actif (en gras)
+\- Bitrate 1080p cible
+\- Comportement 4K (conservé ou réduit 1080p, coloré en vert si conservé)
+\- Mode Dolby Vision (coloré : jaune strip, vert preserve, orange sdr)
+\- Preset encodeur
+\- HD audio
+\- Avertissement `⚠ SUPPRESSION ORIGINAUX` si `delete\_source = true`
+\- Indice `F4 changer` en fin de ligne (dim)
+
+
+
+Raccourci `\[F4]` : ouvre une modal de sélection de profil (`ValuePickerScreen`).
+
+Chaque ligne de la modal affiche le nom du profil aligné + ses caractéristiques :
+
+```
+→ serie\_basic        2200k  ·  4K→1080p  ·  DV strip   ·  medium
+  serie\_hd           2500k  ·  4K→1080p  ·  DV strip   ·  medium
+  cinema\_4k\_basic    5000k  ·  4K 8000k  ·  DV strip   ·  slow  ·  HD audio
+  cinema\_4k\_hd       5000k  ·  4K 12000k ·  DV preserve·  slow  ·  HD audio
+  basic\_delete       2000k  ·  4K→1080p  ·  DV sdr     ·  fast  ·  ⚠ suppr.
+  archivage          2000k  ·  4K→1080p  ·  DV sdr     ·  fast  ·  ⚠ suppr.
+```
+
+La largeur de la fenêtre s'adapte automatiquement à la ligne la plus longue (minimum 40 caractères).
 
 
 \#### Colonnes redimensionnables — implémentation `DataTable`
@@ -928,7 +963,7 @@ Retour au browser via `\[←]`.
 
 ```
 
-┌─ Encodage — 5 fichiers · Profil : default ──────────── Global : 42% ────────┐
+┌─ Encodage — 5 fichiers · Profil : serie\_basic ──────────── Global : 42% ────────┐
 
 │                                                                              │
 
@@ -1024,13 +1059,13 @@ Retour au browser via `\[←]`.
 
 ```
 
-┌─ Configuration — Profils d'encodage ─────── profiles.toml · Actif : default ┐
+┌─ Configuration — Profils d'encodage ─────── profiles.toml · Actif : serie\_basic ┐
 
 │                                                                              │
 
-│  \[default]                                               \[ACTIF] \[✎ éditer] │
+│  \[serie\_basic]                                           \[ACTIF] \[✎ éditer] │
 
-│  Usage général · 1080p max · 2200k                                           │
+│  Séries basiques · 1080p max · 2200k                                           │
 
 │  dv: strip  · 1080p: 2200k  · preset: medium  · hd-audio: non               │
 
@@ -1094,7 +1129,7 @@ Retour au browser via `\[←]`.
 
 \*\*Règles :\*\*
 
-\- Profils \*\*builtin\*\* (`default`, `serie\_hd`, `cinema\_4k\_basic`, `cinema\_4k\_hd`, `basic\_delete`, `archivage`) : éditables, \*\*non supprimables\*\*
+\- Profils \*\*builtin\*\* (`serie\_basic`, `serie\_hd`, `cinema\_4k\_basic`, `cinema\_4k\_hd`, `basic\_delete`, `archivage`) : éditables, \*\*non supprimables\*\*
 
 \- Profils \*\*user\*\* (créés via l'interface) : éditables et supprimables
 
@@ -1118,11 +1153,11 @@ Le formulaire remplace la liste dans l'écran Config. Retour à la liste par `\[
 
 ```
 
-┌─ Éditer \[default] ─────────────────────────────────── profiles.toml ────────┐
+┌─ Éditer \[serie\_basic] ─────────────────────────────────── profiles.toml ────────┐
 
 │                                                                              │
 
-│  id (nom du profil)    \[default\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_]  (identifiant figé)        │
+│  id (nom du profil)    \[serie\_basic\_\_\_\_\_\_\_\_\_\_]  (identifiant figé)        │
 
 │                                                                              │
 
@@ -1425,6 +1460,7 @@ requests       ← téléchargement ffmpeg
 | 0.5 | 2026-05-13 | Browser : correction scroll — spécification explicite `cursor\_type="row"`, `show\_cursor=True`, CSS `height: 1fr` sur `DataTable` (pas de conteneur à hauteur fixe) · Navigation : ajout `\[PageUp]` / `\[PageDown]` / `\[Home]` / `\[End]` · Barre de statut : ajout chemin absolu complet + indicateur `ligne N / N` aligné à droite · Profils : remplacement des builtins (`cinema\_4k` → `serie\_hd`, `cinema\_4k\_basic`, `cinema\_4k\_hd`, `basic\_delete`) — 6 profils builtin au total · `\[default]` : `bitrate\_1080p\_kbps` 2500k → 2200k · `\[basic\_delete]` : `bitrate\_4k\_kbps` corrigé 3500 → 3000 (hors spec) · §8.5 : mockup Config mis à jour |
 
 | 0.6 | 2026-05-14 | Browser — raccourcis clavier : `\[F1]` dry-run · `\[F2]` run · `\[F5]` config · `\[F10]` quitter (remplace D/R/C/Q et Ctrl+X) · suppression flèches ←/→ pour navigation dossier (Enter/Back conservés) · `\[PgUp]` `\[PgDn]` `\[Home]` `\[End]` documentés dans le footer · footer mis à jour (2 lignes) |
+| 0.7 | 2026-05-14 | Profil — rename builtin `default` → `serie\_basic` (code + profiles.toml + spec) · Browser : barre de profil redessinée (labels explicites, DV coloré, indice F4) · `\[F4]` ouvre la sélection de profil via modal avec caractéristiques par ligne · `ValuePickerScreen` largeur automatique (min 40) · marqueur `→` (remplace `▶`) · §8.1 : ajout section Barre de profil actif |
 
 
 

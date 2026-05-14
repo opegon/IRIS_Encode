@@ -65,7 +65,7 @@ class ValuePickerScreen(ModalScreen[int | None]):
         table = self.query_one(DataTable)
         table.add_column("", width=None, key="val")
         for i, opt in enumerate(self._options):
-            marker = "▶ " if i == self._current_idx else "  "
+            marker = "→ " if i == self._current_idx else "  "
             style  = "bold white" if i == self._current_idx else ""
             table.add_row(
                 Text(marker + opt, style=style, no_wrap=True),

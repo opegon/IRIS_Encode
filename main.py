@@ -68,7 +68,7 @@ def main() -> None:
 
     print()
     print("╔═══════════════════════════════════════════╗")
-    print("║  IRIS ENCODE  v0.1                        ║")
+    print("║  IRIS ENCODE  v0.6                        ║")
     print("╚═══════════════════════════════════════════╝")
     print()
     print("Vérification des outils :")

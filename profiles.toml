@@ -55,7 +55,7 @@ audio_copy_compatible = true
 [film_basic]
 bitrate_720p_kbps = 2000
 bitrate_1080p_kbps = 3000
-bitrate_4k_kbps = 5000
+bitrate_4k_kbps = 3000
 keep_4k = false
 delete_source = false
 preset_encoder = "medium"
@@ -73,7 +73,7 @@ audio_copy_compatible = true
 [film_hd]
 bitrate_720p_kbps = 3000
 bitrate_1080p_kbps = 5000
-bitrate_4k_kbps = 8000
+bitrate_4k_kbps = 5000
 keep_4k = false
 delete_source = false
 preset_encoder = "slow"
@@ -127,7 +127,7 @@ audio_copy_compatible = true
 [basic_delete]
 bitrate_720p_kbps = 1500
 bitrate_1080p_kbps = 2000
-bitrate_4k_kbps = 3500
+bitrate_4k_kbps = 2000
 keep_4k = false
 delete_source = true
 preset_encoder = "fast"

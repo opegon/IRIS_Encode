@@ -573,13 +573,8 @@ class BrowserScreen(TableNavMixin, Screen):
             # Appliquer les overrides vidéo
             if result.video_override:
                 from dataclasses import replace as dc_replace
+                from core.decision import SUFFIX_BY_ACTION as _SUFFIX_BY_ACTION
                 ov = result.video_override
-                _SUFFIX_BY_ACTION = {
-                    VideoAction.ENCODE_HEVC: "_[hevc]",
-                    VideoAction.ENCODE_H264: "_[H264]",
-                    VideoAction.ENCODE_AV1:  "_[av1]",
-                    VideoAction.SKIP:        "",
-                }
                 was_skip = (dec.video.action == VideoAction.SKIP)
                 if ov.action        is not None:
                     # Recalculer le suffixe selon la nouvelle action

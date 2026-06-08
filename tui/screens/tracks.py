@@ -29,6 +29,9 @@ from ..widgets.footer import TwoLineFooter
 
 from .value_picker import ValuePickerScreen
 from core.decision import (
+    ACTION_CYCLE as _ACTION_CYCLE,
+    AV1_BITRATE_OPTS_KBPS as _AV1_BITRATE_OPTS,
+    BITRATE_OPTS_KBPS as _BITRATE_OPTS,
     AudioAction, DVAction, FileDecision, TracksSelection,
     VideoAction, VideoOverride, decide_audio,
 )
@@ -46,15 +49,7 @@ _DEFAULT_SUB_LANGS = {"fre", "fra", "fr", "eng", "en"}
 # Champs éditables (vidéo)
 _EDIT_FIELDS = ["action", "bitrate", "dv", "orig"]
 
-_ACTION_CYCLE = [
-    VideoAction.ENCODE_HEVC,
-    VideoAction.ENCODE_H264,
-    VideoAction.ENCODE_AV1,
-    VideoAction.SKIP,
-]
 _DV_CYCLE     = [DVAction.HDR10, DVAction.DV, DVAction.SDR]
-_BITRATE_OPTS     = [500, 800, 1000, 1500, 2000, 2200, 2500, 3000, 3500, 5000, 8000, 12000]
-_AV1_BITRATE_OPTS = [300, 500, 800, 1000, 1500, 2000, 2500, 3000, 4000, 6000]
 
 _ACTION_SHORT = {
     VideoAction.ENCODE_HEVC: ("HEVC",   "dark_orange"),

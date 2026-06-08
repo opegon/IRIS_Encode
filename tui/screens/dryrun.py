@@ -18,7 +18,14 @@ from ..widgets.footer import TwoLineFooter
 from ..mixins import TableNavMixin
 
 from core import config as cfg_mod
-from core.decision import AudioAction, DVAction, FileDecision, VideoAction
+from core.decision import (
+    ACTION_CYCLE,
+    AV1_BITRATE_OPTS_KBPS,
+    BITRATE_OPTS_KBPS,
+    SUFFIX_BY_ACTION,
+    AudioAction, DVAction, FileDecision, VideoAction,
+)
+from .value_picker import ValuePickerScreen
 
 if TYPE_CHECKING:
     from ..app import IrisEncodeApp
@@ -85,14 +92,16 @@ class DryrunScreen(TableNavMixin, Screen):
     """Écran de prévisualisation des décisions d'encodage."""
 
     BINDINGS = [
-        Binding("backspace", "go_back",    "⌫ Retour",    show=True),
-        Binding("escape",    "go_back",    "Retour",       show=False, priority=True),
-        Binding("f2",        "run",        "F2 ▶ Lancer",  show=True),
-        Binding("enter",     "run",        "↵  ▶ Lancer",  show=False, priority=True),
-        Binding("shift+tab", "col_prev",   "⇧Tab Col préc.", show=True,  priority=True),
-        Binding("tab",       "col_next",   "Tab Col suiv.",  show=True,  priority=True),
-        Binding("<",         "col_shrink", "< Rétrécir",     show=True),
-        Binding(">",         "col_grow",   "> Élargir",      show=True),
+        Binding("backspace", "go_back",     "⌫ Retour",       show=True),
+        Binding("escape",    "go_back",     "Retour",          show=False, priority=True),
+        Binding("f2",        "run",         "F2 ▶ Lancer",     show=True),
+        Binding("f6",        "open_codec",  "F6 Codec",        show=True),
+        Binding("f7",        "open_bitrate","F7 Débit",        show=True),
+        Binding("enter",     "run",         "↵  ▶ Lancer",     show=False, priority=True),
+        Binding("shift+tab", "col_prev",    "⇧Tab Col préc.",  show=True,  priority=True),
+        Binding("tab",       "col_next",    "Tab Col suiv.",   show=True,  priority=True),
+        Binding("<",         "col_shrink",  "< Rétrécir",      show=True),
+        Binding(">",         "col_grow",    "> Élargir",       show=True),
     ]
 
     DEFAULT_CSS = """
@@ -130,6 +139,8 @@ class DryrunScreen(TableNavMixin, Screen):
             line1=[
                 ("backspace", "Retour"),
                 ("f2",        "Lancer l'encodage"),
+                ("f6",        "Codec"),
+                ("f7",        "Débit"),
                 ("enter",     "Lancer"),
             ],
             line2=[
@@ -308,6 +319,92 @@ class DryrunScreen(TableNavMixin, Screen):
 
     def action_col_grow(self) -> None:
         self._apply_resize(+_RESIZE_STEP)
+
+    # ── Édition par ligne (codec / débit) ────────────────────────────────────
+
+    def _current_decision(self) -> FileDecision | None:
+        """Décision sous le curseur, ou None si la table est vide."""
+        table = self.query_one(DataTable)
+        idx   = table.cursor_row
+        if idx is None or idx < 0 or idx >= len(self._decisions):
+            return None
+        return self._decisions[idx]
+
+    def _apply_codec(self, dec: FileDecision, new_action: VideoAction) -> None:
+        """Change le codec d'une décision et ajuste suffix/bitrate cohérents."""
+        from dataclasses import replace as dc_replace
+        old_action = dec.video.action
+        if new_action == old_action:
+            return
+        was_skip   = (old_action == VideoAction.SKIP)
+        new_bitrate = dec.video.target_bitrate
+        if was_skip and new_action != VideoAction.SKIP:
+            # SKIP → encodage : repart du débit source comme valeur par défaut
+            new_bitrate = dec.info.bitrate
+        # H264 ne peut pas porter de RPU DV → DV→HDR10 forcé
+        new_dv = dec.video.dv_action
+        if new_action == VideoAction.ENCODE_H264 and new_dv == DVAction.DV:
+            new_dv = DVAction.HDR10
+        dec.video = dc_replace(
+            dec.video,
+            action         = new_action,
+            target_bitrate = new_bitrate if new_action != VideoAction.SKIP else 0,
+            output_suffix  = SUFFIX_BY_ACTION.get(new_action, dec.video.output_suffix),
+            dv_action      = new_dv,
+            reason         = f"Modifié manuellement (dry-run) : {new_action.name}",
+        )
+
+    def _apply_bitrate(self, dec: FileDecision, new_bitrate_bps: int) -> None:
+        from dataclasses import replace as dc_replace
+        if dec.video.action == VideoAction.SKIP:
+            return
+        dec.video = dc_replace(
+            dec.video,
+            target_bitrate = new_bitrate_bps,
+            reason         = f"Débit modifié manuellement (dry-run) : {new_bitrate_bps // 1000}k",
+        )
+
+    def action_open_codec(self) -> None:
+        dec = self._current_decision()
+        if dec is None:
+            return
+        opts    = [
+            "HEVC",
+            "H264",
+            "AV1  (⚠ très gourmand CPU/GPU RTX30+)",
+            "SKIP",
+        ]
+        current = ACTION_CYCLE.index(dec.video.action) if dec.video.action in ACTION_CYCLE else 0
+        def _on_pick(idx: int | None, d=dec) -> None:
+            if idx is None:
+                return
+            new_action = ACTION_CYCLE[idx]
+            self._apply_codec(d, new_action)
+            # AV1 a sa propre échelle de débits — clamp si le débit courant ne s'y trouve pas
+            if new_action == VideoAction.ENCODE_AV1:
+                cur_k = d.video.target_bitrate // 1000
+                if cur_k not in AV1_BITRATE_OPTS_KBPS:
+                    closest = min(AV1_BITRATE_OPTS_KBPS, key=lambda v: abs(v - cur_k))
+                    self._apply_bitrate(d, closest * 1000)
+            self._rebuild_table()
+        self.app.push_screen(ValuePickerScreen("Codec", opts, current), _on_pick)
+
+    def action_open_bitrate(self) -> None:
+        dec = self._current_decision()
+        if dec is None or dec.video.action == VideoAction.SKIP:
+            return
+        is_av1 = (dec.video.action == VideoAction.ENCODE_AV1)
+        blist  = AV1_BITRATE_OPTS_KBPS if is_av1 else BITRATE_OPTS_KBPS
+        title  = "Débit (AV1)" if is_av1 else "Débit cible"
+        opts   = [f"{v} kbps" for v in blist]
+        cur_k  = dec.video.target_bitrate // 1000
+        current = min(range(len(blist)), key=lambda i: abs(blist[i] - cur_k))
+        def _on_pick(idx: int | None, d=dec, bl=blist) -> None:
+            if idx is None:
+                return
+            self._apply_bitrate(d, bl[idx] * 1000)
+            self._rebuild_table()
+        self.app.push_screen(ValuePickerScreen(title, opts, current), _on_pick)
 
     # ── Navigation ────────────────────────────────────────────────────────────
 

@@ -10,23 +10,33 @@ bin_dir = "./bin"
 check_on_startup = true
 
 [meta]
-omdb_api_key = ""
+omdb_api_key = "REVOQUEE"
+
+[decision]
+# Sources dont width OU height dépasse ces seuils sont traitées comme du 1080p :
+# résolution d'origine conservée (pas de downscale 720p) et encodage HEVC.
+# Utile pour les fichiers proches du 1080p mais rognés (ex. 1918x1040, 1920x800).
+near_1080p_min_width = 1600
+near_1080p_min_height = 850
 
 [tui.browser.columns]
 fichier = 50
-taille = 10
-resolution = 14
-duree = 9
+taille = 8
+resolution = 10
+duree = 6
 debit = 6
 codec = 6
-dolby_vision = 10
-decision = 12
-audio = 14
+dolby_vision = 8
+decision = 8
+audio = 16
 
 [tui.dryrun.columns]
-fichier = 42
-conteneur = 16
-audio = 30
+fichier = 48
+conteneur = 10
+audio = 54
+estim = 18
+action = 10
+dv = 6
 
 [tui.tracks.columns]
 codec = 12

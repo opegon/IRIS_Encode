@@ -87,6 +87,26 @@ class AudioDecision:
         return f"→ {self.output_codec} {self.output_bitrate // 1000}k"
 
 
+# ─── Constantes partagées TUI (cycle codec / options bitrate / suffixes) ─────
+
+ACTION_CYCLE: list["VideoAction"] = [
+    VideoAction.ENCODE_HEVC,
+    VideoAction.ENCODE_H264,
+    VideoAction.ENCODE_AV1,
+    VideoAction.SKIP,
+]
+
+BITRATE_OPTS_KBPS:     list[int] = [500, 800, 1000, 1500, 2000, 2200, 2500, 3000, 3500, 5000, 8000, 12000]
+AV1_BITRATE_OPTS_KBPS: list[int] = [300, 500, 800, 1000, 1500, 2000, 2500, 3000, 4000, 6000]
+
+SUFFIX_BY_ACTION: dict["VideoAction", str] = {
+    VideoAction.ENCODE_HEVC: "_[hevc]",
+    VideoAction.ENCODE_H264: "_[H264]",
+    VideoAction.ENCODE_AV1:  "_[av1]",
+    VideoAction.SKIP:        "",
+}
+
+
 # ─── Décision globale ─────────────────────────────────────────────────────────
 
 @dataclass
@@ -144,18 +164,49 @@ class FileDecision:
 
 # ─── Logique vidéo ────────────────────────────────────────────────────────────
 
-def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, str]:
-    """Retourne (limit_w, limit_h, label) selon résolution source et profil."""
-    keep_4k = profile.get("keep_4k", False)
-    is_4k   = info.height >= 2160 or info.width >= 3840
-    is_1080 = info.height >= 1080 or info.width >= 1920
+_NEAR_1080P_CACHE: tuple[int, int] | None = None
 
-    if is_4k or is_1080:
+
+def _near_1080p_thresholds() -> tuple[int, int]:
+    """Seuils (largeur, hauteur) au-delà desquels une source est traitée 1080p.
+
+    Lus depuis [decision] dans config.toml, mis en cache au premier appel.
+    Permet de couvrir les sources rognées (ex. 1918x1040) sans rabattre en 720p.
+    """
+    global _NEAR_1080P_CACHE
+    if _NEAR_1080P_CACHE is None:
+        try:
+            from . import config as _cfg
+            d = _cfg.load().get("decision", {})
+            _NEAR_1080P_CACHE = (
+                int(d.get("near_1080p_min_width",  1600)),
+                int(d.get("near_1080p_min_height",  850)),
+            )
+        except Exception:
+            _NEAR_1080P_CACHE = (1600, 850)
+    return _NEAR_1080P_CACHE
+
+
+def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, int, str]:
+    """Retourne (limit_w, limit_h, bucket_h, label).
+
+    limit_w/limit_h : dimensions max de la sortie (downscale si source > limit).
+    bucket_h        : hauteur de référence pour le calcul du bitrate (720/1080/2160).
+    """
+    keep_4k      = profile.get("keep_4k", False)
+    is_4k_source = info.height >= 2160 or info.width >= 3840
+
+    if is_4k_source:
         if keep_4k:
-            return info.width, info.height, f"Original {info.width}x{info.height}"
-        return 1920, 1080, "1080p"
+            return info.width, info.height, 2160, f"Original {info.width}x{info.height}"
+        return 1920, 1080, 1080, "1080p"
 
-    return 1280, 720, "720p"
+    near_w, near_h = _near_1080p_thresholds()
+    if info.width >= near_w or info.height >= near_h:
+        # Source ≈ 1080p (possiblement rognée) → conserve la résolution d'origine.
+        return info.width, info.height, 1080, f"Original {info.width}x{info.height}"
+
+    return 1280, 720, 720, "720p"
 
 
 def _decide_dv(info: VideoInfo, profile: Profile) -> DVAction:
@@ -171,20 +222,16 @@ def _decide_dv(info: VideoInfo, profile: Profile) -> DVAction:
 
 def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     """Applique les 4 cas de la spec et retourne la décision vidéo."""
-    limit_w, limit_h, _  = _resolve_limits(info, profile)
-    dv_action            = _decide_dv(info, profile)
+    limit_w, limit_h, bucket_h, _ = _resolve_limits(info, profile)
+    dv_action                     = _decide_dv(info, profile)
 
-    # Source 4K → seuil 4K (qu'on la garde ou non).
-    # Source non-4K → seuil basé sur limit_h (résolution cible), pas info.height.
-    # Ex. : 1920x822 → limit_h=1080 → bucket 1080p, pas 720p.
-    is_4k_source = info.height >= 2000 or info.width >= 3840
-    if is_4k_source:
-        target_bps = profile.get("bitrate_4k_kbps", 5000) * 1000
-    else:
-        target_bps = profile.bitrate_for_height(limit_h)
+    # bucket_h = hauteur de référence du bucket de bitrate (720/1080/2160),
+    # indépendante de limit_h pour gérer les sources rognées (ex. 1918x1040
+    # → limit_h=1040 mais bucket_h=1080).
+    target_bps = profile.bitrate_for_height(bucket_h)
 
     # Pour les cibles < 1080p, H264 compresse mieux que HEVC
-    sub_1080  = limit_h < 1080
+    sub_1080  = bucket_h < 1080
     action    = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
     suffix    = "_[H264]"              if sub_1080 else "_[hevc]"
 

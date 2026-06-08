@@ -30,6 +30,10 @@ _DEFAULTS: dict[str, Any] = {
     "meta": {
         "omdb_api_key": "",
     },
+    "decision": {
+        "near_1080p_min_width":  1600,
+        "near_1080p_min_height":  850,
+    },
     "tui": {
         "browser": {
             "columns": {

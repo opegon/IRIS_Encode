@@ -1,5 +1,83 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.7.0] — 2026-06-10
+
+### Normalisation UIX
+
+- **Touches « Retour » unifiées** : `Backspace` / `Esc` sur tous les écrans. ConfigScreen
+  utilisait `←` (et son footer affichait à tort `Backspace`) — corrigé.
+- **Modale de confirmation générique** (`tui/screens/confirm.py`) : quitter, run récursif
+  et suppression de profil partagent désormais le même style (bordure `$warning` si
+  destructif), les mêmes touches (`←/→` focus, `↵` valide le bouton focalisé,
+  `Esc`/`⌫` annule) et un rappel des touches intégré.
+- **Modale Quitter sécurisée** : `Enter` validait la sortie même avec le focus sur
+  *Annuler* (binding priority) — désormais `Enter` active le bouton focalisé.
+- **Suppression de profil enfin câblée** : la colonne Actions de ConfigScreen affichait
+  « ✕ suppr. » sans qu'aucune touche n'y mène. `D`/`Suppr` supprime le profil user
+  sous le curseur (confirmation, builtins protégés avec message).
+- **Footers normalisés** (`tui/common.py`) : libellés identiques pour les mêmes touches
+  (Début/Fin/Page ↑/Page ↓), groupes navigation + resize partagés, `F10 Quitter`
+  toujours en dernier, doublon `↵`/`F2` du dry-run supprimé.
+- **Hints contextuels** : TracksScreen affiche les contrôles selon la ligne (champs
+  ←/→ et +/- sur la ligne vidéo, Espace/↵ sur les pistes) — ils étaient documentés
+  mais invisibles. ValuePicker affiche `↵ Choisir · Esc Annuler`.
+- **Version unique** (`version.py`) : le header TUI affichait `v0.6` et la bannière
+  console `v0.6.5` — les deux lisent la même constante.
+- **Barre de statut commune** : classe CSS `.status-bar` au niveau App (le même bloc
+  était dupliqué dans 5 écrans), couleurs DV des profils centralisées.
+- ConfigScreen : compteur AV1 ajouté au résumé dry-run ; la barre profil du browser
+  se rafraîchit après activation d'un profil dans ConfigScreen (elle restait sur
+  l'ancien profil).
+
+### Corrections
+
+- **Home/End/PgUp/PgDn restaurés sur Tracks et Config** : leurs `on_key` locaux
+  écrasaient celui de `TableNavMixin` (les touches scrollaient sans déplacer le
+  curseur). Les écrans délèguent désormais à `super().on_key()`.
+- Les erreurs de scan du browser sont logguées (`~/.iris_encode/iris_encode.log`)
+  au lieu d'être avalées silencieusement.
+
+### Optimisations
+
+- **Scan parallèle** : le browser analyse les fichiers avec 4 workers ffprobe
+  simultanés (ordre des résultats préservé) au lieu d'un scan séquentiel ; la
+  navigation pendant un scan abandonne les analyses restantes au lieu de les
+  terminer pour rien.
+- Dry-run : un seul `stat()` par fichier (taille réutilisée entre la ligne et le
+  résumé, soit 2-3× moins d'appels disque).
+- **Dé-duplication** (~150 lignes) : sélecteur de profils (browser/tracks), resize
+  de colonnes (`ColumnResizeMixin` — browser/tracks/dryrun), formatage
+  tailles/durées, options des pickers codec/débit (`tui/common.py`).
+- Code mort retiré : messages Textual jamais postés et `_update_progress` (run),
+  styles `_STYLE_*` et imports inutilisés (browser), `_force_nav` (mixins),
+  constante `_ROW_VALIDATE` (tracks).
+
+### Tests
+
+- `tests/smoke_tui.py` : smoke test headless (Textual `run_test`) — navigation,
+  modales, resize, scan parallèle. Lancement manuel : `python tests/smoke_tui.py`.
+
+---
+
+## [v0.6.5] — 2026-06-09
+
+### Décision d'encodage
+- **Seuils `near_1080p` paramétrables** (`config.toml`, section `[decision]`, 1600×850 par défaut) : les sources rognées (typ. 1918×1040, 1920×800 HDLight) sont désormais traitées comme du 1080p — résolution d'origine conservée, codec HEVC. Auparavant rabattues en 720p H264.
+- `_resolve_limits` dissocie `limit_h` (cap résolution) et `bucket_h` (référence bitrate) pour éviter les rabats incohérents quand la source est entre 720p et 1080p strict.
+
+### Dry-run — édition par fichier
+- **F6 / F7** sur l'écran dry-run : picker `Codec` (HEVC / H264 / AV1 / SKIP) et `Débit cible` (échelle dédiée si AV1), appliqués à la ligne sous le curseur.
+- Cohérence garantie à la modif : `output_suffix` aligné sur le codec, `DV → HDR10` forcé si passage en H264 (RPU incompatible), débit source pré-rempli sur `SKIP → encodage`, snap d'échelle si passage à AV1, recalcul auto de l'estimation et du résumé.
+
+### Profils
+- `bitrate_4k_kbps` réduit sur `film_basic` (5000→3000), `film_hd` (8000→5000), `basic_delete` (3500→2000).
+
+### Interne
+- Constantes vidéo mutualisées dans `core/decision.py` : `ACTION_CYCLE`, `BITRATE_OPTS_KBPS`, `AV1_BITRATE_OPTS_KBPS`, `SUFFIX_BY_ACTION` (fin de duplication entre `tracks.py`, `browser.py`, `dryrun.py`).
+- Spec `iris_encode_spec_v0_5.md` retirée (remplacée par v0.6 depuis `58a3923`).
+
+---
+
 ## [v0.6] — 2026-05-14
 
 ### Intégration Dolby Vision via dovi_tool

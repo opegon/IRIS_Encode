@@ -2,7 +2,7 @@
 tui/screens/dryrun.py — Écran Dry-run.
 
 Prévisualise les décisions pour tous les fichiers sélectionnés.
-Colonnes redimensionnables via [/] (sélection) et </> (resize).
+Colonnes redimensionnables via Tab/Shift+Tab (sélection) et </> (resize).
 """
 from __future__ import annotations
 
@@ -14,56 +14,29 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Header, Static
-from ..widgets.footer import TwoLineFooter
-from ..mixins import TableNavMixin
 
 from core import config as cfg_mod
 from core.decision import (
     ACTION_CYCLE,
     AV1_BITRATE_OPTS_KBPS,
-    BITRATE_OPTS_KBPS,
     SUFFIX_BY_ACTION,
     AudioAction, DVAction, FileDecision, VideoAction,
 )
+from ..common import (
+    CODEC_PICKER_OPTS,
+    bitrate_picker_config,
+    fmt_bytes,
+    footer_line2,
+)
+from ..mixins import ColumnResizeMixin, TableNavMixin
+from ..widgets.footer import TwoLineFooter
 from .value_picker import ValuePickerScreen
 
 if TYPE_CHECKING:
     from ..app import IrisEncodeApp
 
 
-# ── Colonnes redimensionnables ─────────────────────────────────────────────────
-
-_RESIZE_COLS   = ["fichier", "taille", "estim", "action", "conteneur", "dv", "bitrate", "res", "audio"]
-_RESIZE_LABELS = {
-    "fichier":   "Fichier",
-    "taille":    "Taille",
-    "estim":     "Estim. (Δ%)",
-    "action":    "Action",
-    "conteneur": "Conteneur",
-    "dv":        "DV",
-    "bitrate":   "Débit cible",
-    "res":       "Résolution",
-    "audio":     "Audio",
-}
-
-
-def _fmt_size(path) -> str:
-    try:
-        b = path.stat().st_size
-    except OSError:
-        return "—"
-    return _fmt_bytes(b)
-
-
-def _fmt_bytes(b: int) -> str:
-    if b >= 1_073_741_824:
-        return f"{b / 1_073_741_824:.1f} Go"
-    if b >= 1_048_576:
-        return f"{b / 1_048_576:.0f} Mo"
-    return f"{b // 1024} Ko"
-
-
-def _estimate_output_bytes(dec) -> int:
+def _estimate_output_bytes(dec: FileDecision) -> int:
     """Taille estimée de sortie (vidéo + audio conservé).
     Retourne 0 si action=SKIP ou durée inconnue."""
     if dec.video.action == VideoAction.SKIP:
@@ -82,36 +55,38 @@ def _estimate_output_bytes(dec) -> int:
             audio_bps += ad.output_bitrate
     total_bits = (video_bps + audio_bps) * duration
     return int(total_bits / 8)
-_RESIZE_STEP        = 2
-_RESIZE_MIN         = 6
-_RESIZE_MIN_FICHIER = 20
-_RESIZE_MIN_AUDIO   = 10
 
 
-class DryrunScreen(TableNavMixin, Screen):
+class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
     """Écran de prévisualisation des décisions d'encodage."""
 
     BINDINGS = [
-        Binding("backspace", "go_back",     "⌫ Retour",       show=True),
-        Binding("escape",    "go_back",     "Retour",          show=False, priority=True),
-        Binding("f2",        "run",         "F2 ▶ Lancer",     show=True),
-        Binding("f6",        "open_codec",  "F6 Codec",        show=True),
-        Binding("f7",        "open_bitrate","F7 Débit",        show=True),
-        Binding("enter",     "run",         "↵  ▶ Lancer",     show=False, priority=True),
-        Binding("shift+tab", "col_prev",    "⇧Tab Col préc.",  show=True,  priority=True),
-        Binding("tab",       "col_next",    "Tab Col suiv.",   show=True,  priority=True),
-        Binding("<",         "col_shrink",  "< Rétrécir",      show=True),
-        Binding(">",         "col_grow",    "> Élargir",       show=True),
+        Binding("f2",        "run",         "Lancer",  show=True),
+        Binding("enter",     "run",         "Lancer",  show=False, priority=True),
+        Binding("f6",        "open_codec",  "Codec",   show=True),
+        Binding("f7",        "open_bitrate","Débit",   show=True),
+        Binding("backspace", "go_back",     "Retour",  show=True),
+        Binding("escape",    "go_back",     "Retour",  show=False, priority=True),
     ]
+
+    # Colonnes redimensionnables (ColumnResizeMixin)
+    RESIZE_COLS   = ["fichier", "taille", "estim", "action", "conteneur",
+                     "dv", "bitrate", "res", "audio"]
+    RESIZE_LABELS = {
+        "fichier":   "Fichier",
+        "taille":    "Taille",
+        "estim":     "Estim. (Δ%)",
+        "action":    "Action",
+        "conteneur": "Conteneur",
+        "dv":        "DV",
+        "bitrate":   "Débit cible",
+        "res":       "Résolution",
+        "audio":     "Audio",
+    }
+    RESIZE_MIN    = {"fichier": 20, "audio": 10}
 
     DEFAULT_CSS = """
     DryrunScreen { layout: vertical; }
-    #status-bar {
-        height: 1;
-        background: $accent;
-        color: $text;
-        padding: 0 2;
-    }
     #dryrun-summary {
         height: 1;
         background: $panel;
@@ -123,8 +98,8 @@ class DryrunScreen(TableNavMixin, Screen):
 
     def __init__(self, decisions: list[FileDecision]) -> None:
         super().__init__()
-        self._decisions      = decisions
-        self._resize_col_idx = 0
+        self._decisions = decisions
+        self._totals    = (0, 0)   # (source, estimé) en octets — posés par _build_table
 
     @property
     def _app(self) -> "IrisEncodeApp":
@@ -132,28 +107,17 @@ class DryrunScreen(TableNavMixin, Screen):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield Static("", id="status-bar")
+        yield Static("", id="status-bar", classes="status-bar")
         yield DataTable(id="dryrun-table", cursor_type="row", zebra_stripes=True)
         yield Static("", id="dryrun-summary")
         yield TwoLineFooter(
             line1=[
-                ("backspace", "Retour"),
                 ("f2",        "Lancer l'encodage"),
                 ("f6",        "Codec"),
                 ("f7",        "Débit"),
-                ("enter",     "Lancer"),
+                ("backspace", "Retour"),
             ],
-            line2=[
-                ("shift+tab", "Col préc."),
-                ("tab",       "Col suiv."),
-                ("<",         "Rétrécir"),
-                (">",         "Élargir"),
-                ("home",      "Début"),
-                ("end",       "Fin"),
-                ("pageup",    "Page préc."),
-                ("pagedown",  "Page suiv."),
-                ("f10",       "Quitter"),
-            ],
+            line2=footer_line2(nav=True, resize=True),
         )
 
     def on_mount(self) -> None:
@@ -165,22 +129,14 @@ class DryrunScreen(TableNavMixin, Screen):
     def _build_table(self) -> None:
         table  = self.query_one(DataTable)
         widths = cfg_mod.get_dryrun_column_widths(self._app.cfg)
-        active = _RESIZE_COLS[self._resize_col_idx]
 
-        def _hdr(key: str) -> str:
-            label = _RESIZE_LABELS[key]
-            return f"{label} ◄►" if key == active else label
+        table.add_column(self.resize_header("fichier"),
+                         width=max(self.RESIZE_MIN["fichier"], widths["fichier"]), key="file")
+        for col in self.RESIZE_COLS[1:]:
+            table.add_column(self.resize_header(col), width=widths[col], key=col)
 
-        table.add_column(_hdr("fichier"),   width=max(_RESIZE_MIN_FICHIER, widths["fichier"]), key="file")
-        table.add_column(_hdr("taille"),    width=widths["taille"],    key="taille")
-        table.add_column(_hdr("estim"),     width=widths["estim"],     key="estim")
-        table.add_column(_hdr("action"),    width=widths["action"],    key="action")
-        table.add_column(_hdr("conteneur"), width=widths["conteneur"], key="container")
-        table.add_column(_hdr("dv"),        width=widths["dv"],        key="dv")
-        table.add_column(_hdr("bitrate"),   width=widths["bitrate"],   key="bitrate")
-        table.add_column(_hdr("res"),       width=widths["res"],       key="res")
-        table.add_column(_hdr("audio"),     width=widths["audio"],     key="audio")
-
+        total_src = 0
+        total_est = 0
         for dec in self._decisions:
             vid  = dec.video
             info = dec.info
@@ -206,29 +162,37 @@ class DryrunScreen(TableNavMixin, Screen):
 
             container = dec.output_container.upper().lstrip(".")
 
-            # Estimation taille de sortie
+            # Estimation taille de sortie — un seul stat() par fichier,
+            # réutilisé pour la ligne ET les totaux du summary
             try:
                 src_bytes = info.path.stat().st_size
             except OSError:
                 src_bytes = 0
             est_bytes = _estimate_output_bytes(dec)
+
+            total_src += src_bytes
+            if est_bytes:
+                total_est += est_bytes
+            elif vid.action == VideoAction.SKIP:
+                # SKIP : le fichier reste tel quel, on compte sa taille source
+                total_est += src_bytes
+
             if est_bytes == 0:
                 estim_txt = Text("—", style="dim", no_wrap=True)
+            elif src_bytes > 0:
+                delta_pct = (est_bytes - src_bytes) * 100 / src_bytes
+                sign      = "+" if delta_pct > 0 else ""
+                color     = "dark_orange" if delta_pct > 0 else "green"
+                estim_txt = Text(
+                    f"{fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)",
+                    style=color, no_wrap=True,
+                )
             else:
-                if src_bytes > 0:
-                    delta_pct = (est_bytes - src_bytes) * 100 / src_bytes
-                    sign      = "+" if delta_pct > 0 else ""
-                    color     = "dark_orange" if delta_pct > 0 else "green"
-                    estim_txt = Text(
-                        f"{_fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)",
-                        style=color, no_wrap=True,
-                    )
-                else:
-                    estim_txt = Text(_fmt_bytes(est_bytes), no_wrap=True)
+                estim_txt = Text(fmt_bytes(est_bytes), no_wrap=True)
 
             table.add_row(
                 Text(info.path.name, overflow="ellipsis", no_wrap=True),
-                Text(_fmt_size(info.path), style="dim", no_wrap=True),
+                Text(fmt_bytes(src_bytes) if src_bytes else "—", style="dim", no_wrap=True),
                 estim_txt,
                 Text(vid.label(), style=vid.style()),
                 Text(container, no_wrap=True),
@@ -238,51 +202,45 @@ class DryrunScreen(TableNavMixin, Screen):
                 Text("  |  ".join(audio_parts) or "—", overflow="ellipsis", no_wrap=True),
             )
 
+        self._totals = (total_src, total_est)
+
     def _build_summary(self) -> None:
         counts = Counter(dec.video.action for dec in self._decisions)
         total  = len(self._decisions)
         hevc   = counts[VideoAction.ENCODE_HEVC]
         h264   = counts[VideoAction.ENCODE_H264]
+        av1    = counts[VideoAction.ENCODE_AV1]
         skip   = counts[VideoAction.SKIP]
-        col    = _RESIZE_LABELS[_RESIZE_COLS[self._resize_col_idx]]
 
-        # Total source / estimé
-        total_src = 0
-        total_est = 0
-        for dec in self._decisions:
-            try:
-                total_src += dec.info.path.stat().st_size
-            except OSError:
-                pass
-            est = _estimate_output_bytes(dec)
-            # SKIP : le fichier reste tel quel, on compte sa taille source
-            if est == 0 and dec.video.action == VideoAction.SKIP:
-                try:
-                    total_est += dec.info.path.stat().st_size
-                except OSError:
-                    pass
-            else:
-                total_est += est
+        total_src, total_est = self._totals
         gain_str = ""
         if total_src > 0 and total_est > 0:
             delta_pct = (total_est - total_src) * 100 / total_src
             sign      = "+" if delta_pct > 0 else ""
             gain_str  = (
-                f"  ·  Source : {_fmt_bytes(total_src)}  →  "
-                f"Estimé : {_fmt_bytes(total_est)} ({sign}{delta_pct:.0f}%)"
+                f"  ·  Source : {fmt_bytes(total_src)}  →  "
+                f"Estimé : {fmt_bytes(total_est)} ({sign}{delta_pct:.0f}%)"
             )
 
+        av1_str = f"  ·  AV1 {av1}" if av1 else ""
         self.query_one("#status-bar", Static).update(
             f" Dry-run — {total} fichier(s) sélectionné(s)"
-            f"  ·  Col: {col} [</>]"
+            f"  ·  Col : {self.resize_col_label} [</>]"
         )
         self.query_one("#dryrun-summary", Static).update(
-            f" À encoder : HEVC {hevc}  ·  H264 {h264}  ·  SKIP {skip}{gain_str}"
+            f" À encoder : HEVC {hevc}  ·  H264 {h264}{av1_str}  ·  SKIP {skip}{gain_str}"
         )
 
-    # ── Resize colonnes ───────────────────────────────────────────────────────
+    # ── Resize colonnes (ColumnResizeMixin) ───────────────────────────────────
 
-    def _rebuild_table(self) -> None:
+    def _resize_widths(self) -> dict[str, int]:
+        return cfg_mod.get_dryrun_column_widths(self._app.cfg)
+
+    def _resize_persist(self, key: str, width: int) -> None:
+        cfg_mod.set_dryrun_column_width(self._app.cfg, key, width)
+        cfg_mod.save(self._app.cfg)
+
+    def _resize_rebuild(self) -> None:
         table      = self.query_one(DataTable)
         cursor_row = table.cursor_row
         table.clear(columns=True)
@@ -290,35 +248,6 @@ class DryrunScreen(TableNavMixin, Screen):
         self._build_summary()
         if table.row_count > 0:
             table.move_cursor(row=min(cursor_row, table.row_count - 1))
-
-    def _apply_resize(self, delta: int) -> None:
-        key     = _RESIZE_COLS[self._resize_col_idx]
-        cfg     = self._app.cfg
-        widths  = cfg_mod.get_dryrun_column_widths(cfg)
-        current = widths.get(key, 10)
-        floor   = (_RESIZE_MIN_FICHIER if key == "fichier"
-                   else _RESIZE_MIN_AUDIO if key == "audio"
-                   else _RESIZE_MIN)
-        new_w   = max(floor, current + delta)
-        if new_w == current:
-            return
-        cfg_mod.set_dryrun_column_width(cfg, key, new_w)
-        cfg_mod.save(cfg)
-        self._rebuild_table()
-
-    def action_col_prev(self) -> None:
-        self._resize_col_idx = (self._resize_col_idx - 1) % len(_RESIZE_COLS)
-        self._rebuild_table()
-
-    def action_col_next(self) -> None:
-        self._resize_col_idx = (self._resize_col_idx + 1) % len(_RESIZE_COLS)
-        self._rebuild_table()
-
-    def action_col_shrink(self) -> None:
-        self._apply_resize(-_RESIZE_STEP)
-
-    def action_col_grow(self) -> None:
-        self._apply_resize(+_RESIZE_STEP)
 
     # ── Édition par ligne (codec / débit) ────────────────────────────────────
 
@@ -368,12 +297,6 @@ class DryrunScreen(TableNavMixin, Screen):
         dec = self._current_decision()
         if dec is None:
             return
-        opts    = [
-            "HEVC",
-            "H264",
-            "AV1  (⚠ très gourmand CPU/GPU RTX30+)",
-            "SKIP",
-        ]
         current = ACTION_CYCLE.index(dec.video.action) if dec.video.action in ACTION_CYCLE else 0
         def _on_pick(idx: int | None, d=dec) -> None:
             if idx is None:
@@ -386,24 +309,21 @@ class DryrunScreen(TableNavMixin, Screen):
                 if cur_k not in AV1_BITRATE_OPTS_KBPS:
                     closest = min(AV1_BITRATE_OPTS_KBPS, key=lambda v: abs(v - cur_k))
                     self._apply_bitrate(d, closest * 1000)
-            self._rebuild_table()
-        self.app.push_screen(ValuePickerScreen("Codec", opts, current), _on_pick)
+            self._resize_rebuild()
+        self.app.push_screen(ValuePickerScreen("Codec", CODEC_PICKER_OPTS, current), _on_pick)
 
     def action_open_bitrate(self) -> None:
         dec = self._current_decision()
         if dec is None or dec.video.action == VideoAction.SKIP:
             return
-        is_av1 = (dec.video.action == VideoAction.ENCODE_AV1)
-        blist  = AV1_BITRATE_OPTS_KBPS if is_av1 else BITRATE_OPTS_KBPS
-        title  = "Débit (AV1)" if is_av1 else "Débit cible"
-        opts   = [f"{v} kbps" for v in blist]
-        cur_k  = dec.video.target_bitrate // 1000
-        current = min(range(len(blist)), key=lambda i: abs(blist[i] - cur_k))
+        title, opts, current, blist = bitrate_picker_config(
+            dec.video.action, dec.video.target_bitrate
+        )
         def _on_pick(idx: int | None, d=dec, bl=blist) -> None:
             if idx is None:
                 return
             self._apply_bitrate(d, bl[idx] * 1000)
-            self._rebuild_table()
+            self._resize_rebuild()
         self.app.push_screen(ValuePickerScreen(title, opts, current), _on_pick)
 
     # ── Navigation ────────────────────────────────────────────────────────────

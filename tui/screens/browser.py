@@ -5,6 +5,9 @@ Navigation fichiers avec DataTable, sélection par case, colonnes redimensionnab
 """
 from __future__ import annotations
 
+import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,19 +16,29 @@ from textual import on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import DataTable, Header, Label, Static
-from ..widgets.footer import TwoLineFooter
-from ..mixins import TableNavMixin
+from textual.widgets import DataTable, Header, Static
 
 from core import config as cfg_mod
 from core.decision import FileDecision, VideoAction, decide
-from core.meta import parse_title
-from core.scanner import scan_directory_recursive
-from core.scanner import VideoInfo, scan, scan_directory
+from core.scanner import scan, scan_directory_recursive
+from ..common import (
+    DV_VALUE_STYLES,
+    fmt_duration,
+    fmt_size,
+    footer_line2,
+    profile_picker_options,
+)
+from ..mixins import ColumnResizeMixin, TableNavMixin
 from ..widgets.file_tree import FileNavigator
+from ..widgets.footer import TwoLineFooter
 
 if TYPE_CHECKING:
     from ..app import IrisEncodeApp
+
+_LOG = logging.getLogger(__name__)
+
+# Nombre max de scans ffprobe simultanés (I/O bound — process externes)
+_SCAN_WORKERS = 4
 
 
 # ─── Constantes ───────────────────────────────────────────────────────────────
@@ -34,71 +47,38 @@ _DIR_ICON  = "📁"
 _DISK_ICON = "💾"   # icône volume/disque
 _FILE_ICON = "🎬"
 
-_STYLE_HEVC = "bold magenta"
-_STYLE_H264 = "bold cyan"
-_STYLE_SDR  = "bold yellow"
-_STYLE_SKIP = "dim"
-
 # Marqueurs de ligne dans la table
-_ROW_TYPE_DIR  = "dir"
+_ROW_TYPE_DIR   = "dir"
 _ROW_TYPE_FILE  = "file"
 _ROW_TYPE_EMPTY = "empty"  # placeholder dossier vide
 
-# Colonnes redimensionnables (ordre d'affichage)
-_RESIZE_COLS   = ["taille", "resolution", "duree", "debit", "codec", "dolby_vision", "decision", "audio"]
-_RESIZE_LABELS = {"fichier":"Fichier", "taille":"Taille", "resolution":"Résol.", "duree":"Durée",
-                   "debit":"Débit", "codec":"Codec", "dolby_vision":"Dolby V.",
-                   "decision":"Décision", "audio":"Audio"}
-_RESIZE_STEP   = 2
-_RESIZE_MIN         = 6
-_RESIZE_MIN_FICHIER = 20   # minimum plus large pour la colonne nom
-_RESIZE_MIN_AUDIO   = 10   # minimum pour la colonne audio
 
-
-def _fmt_size(path: Path) -> str:
-    try:
-        b = path.stat().st_size
-    except OSError:
-        return "—"
-    if b >= 1_073_741_824:
-        return f"{b / 1_073_741_824:.1f} Go"
-    if b >= 1_048_576:
-        return f"{b / 1_048_576:.0f} Mo"
-    return f"{b // 1024} Ko"
-
-
-def _fmt_duration(seconds: float) -> str:
-    if seconds <= 0:
-        return "—"
-    s = int(seconds)
-    h, rem = divmod(s, 3600)
-    m, s   = divmod(rem, 60)
-    return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
-
-
-class BrowserScreen(TableNavMixin, Screen):
+class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     """Écran principal — navigation + sélection fichiers."""
 
     BINDINGS = [
         Binding("space",     "toggle_select",      "Sélect",   show=True),
         Binding("a",         "select_all",         "Tout",     show=True),
         Binding("n",         "select_none",        "Aucun",    show=True),
-        Binding("enter",     "enter_dir",          "Entrer ↵", show=True, priority=True),
+        Binding("enter",     "enter_dir",          "Ouvrir",   show=True, priority=True),
         Binding("backspace", "go_up",              "Remonter", show=True),
         Binding("t",         "open_tracks",        "Pistes",   show=False),
         Binding("f1",        "open_dryrun",        "Dry-run",  show=True),
         Binding("f2",        "open_run",           "Run",      show=True),
+        Binding("f3",        "recursive_run",      "Récursif", show=True),
         Binding("f4",        "open_profile_picker","Profil",   show=True),
-        Binding("f3",        "recursive_run",      "Run récursif", show=True),
-        Binding("f5",        "open_config",        "Config",   show=True),
+        Binding("f5",        "open_config",        "Gérer profils", show=True),
         Binding("f7",        "open_allocine",      "AlloCiné", show=True),
         Binding("f8",        "open_imdb",          "IMDB",     show=True),
-        # ── Resize colonnes ──────────────────────────────────────
-        Binding("shift+tab", "col_prev",   "Col préc.", show=True, priority=True),
-        Binding("tab",       "col_next",   "Col suiv.", show=True, priority=True),
-        Binding("<",         "col_shrink", "Rétrécir",  show=True),
-        Binding(">",         "col_grow",   "Élargir",   show=True),
     ]
+
+    # Colonnes redimensionnables (ColumnResizeMixin)
+    RESIZE_COLS   = ["taille", "resolution", "duree", "debit", "codec",
+                     "dolby_vision", "decision", "audio"]
+    RESIZE_LABELS = {"fichier": "Fichier", "taille": "Taille", "resolution": "Résol.",
+                     "duree": "Durée", "debit": "Débit", "codec": "Codec",
+                     "dolby_vision": "Dolby V.", "decision": "Décision", "audio": "Audio"}
+    RESIZE_MIN    = {"fichier": 20, "audio": 10}
 
     DEFAULT_CSS = """
     BrowserScreen {
@@ -106,12 +86,6 @@ class BrowserScreen(TableNavMixin, Screen):
     }
     TwoLineFooter {
         dock: bottom;
-    }
-    #status-bar {
-        height: 1;
-        background: $accent;
-        color: $text;
-        padding: 0 2;
     }
     #spacer-1 {
         height: 1;
@@ -140,8 +114,7 @@ class BrowserScreen(TableNavMixin, Screen):
         # Override audio par fichier (TUI tracks)
         self._audio_overrides:    dict[Path, list[int]] = {}
         self._subtitle_overrides: dict[Path, list[int]] = {}
-        self._resize_col_idx:  int                  = 0
-        self._scan_epoch:      int                  = 0
+        self._scan_epoch: int = 0
 
     # ─── Accesseurs app ───────────────────────────────────────────────────────
 
@@ -156,37 +129,36 @@ class BrowserScreen(TableNavMixin, Screen):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield Static("", id="status-bar")
+        yield Static("", id="status-bar", classes="status-bar")
         yield Static("", id="spacer-1")
         yield Static("", id="profile-bar")
         yield Static("⏳ Analyse en cours…", id="scan-notice")
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
         yield TwoLineFooter(
             line1=[
-                ("space",    "Sélect"),
-                ("a",        "Tout"),
-                ("n",        "Aucun"),
-                ("enter",    "Détails fichier"),
-                ("backspace","Remonter"),
-                ("pageup",   "Haut"),
-                ("pagedown", "Bas"),
-                ("home",     "Début"),
-                ("end",      "Fin"),
+                ("space",     "Sélect"),
+                ("a",         "Tout"),
+                ("n",         "Aucun"),
+                ("enter",     "Ouvrir"),
+                ("backspace", "Remonter"),
+                ("home",      "Début"),
+                ("end",       "Fin"),
+                ("pageup",    "Page ↑"),
+                ("pagedown",  "Page ↓"),
             ],
-            line2=[
-                ("f1",        "Dry-run"),
-                ("f2",        "Run"),
-                ("f3",        "Récursif"),
-                ("f4",        "Profil"),
-                ("f5",        "Config"),
-                ("f7",        "AlloCiné"),
-                ("f8",        "IMDB"),
-                ("shift+tab", "Col préc."),
-                ("tab",       "Col suiv."),
-                ("<",         "Rétrécir"),
-                (">",         "Élargir"),
-                ("f10",       "Quitter"),
-            ],
+            line2=footer_line2(
+                nav=False,
+                resize=True,
+                extra=(
+                    ("f1", "Dry-run"),
+                    ("f2", "Run"),
+                    ("f3", "Récursif"),
+                    ("f4", "Profil"),
+                    ("f5", "Gérer profils"),
+                    ("f7", "AlloCiné"),
+                    ("f8", "IMDB"),
+                ),
+            ),
         )
 
     def on_mount(self) -> None:
@@ -200,22 +172,11 @@ class BrowserScreen(TableNavMixin, Screen):
     def _build_columns(self) -> None:
         table  = self.query_one(DataTable)
         widths = cfg_mod.get_column_widths(self._app.cfg)
-        active = _RESIZE_COLS[self._resize_col_idx]
 
-        def _hdr(key: str) -> str:
-            label = _RESIZE_LABELS[key]
-            return f"{label} ◄►" if key == active else label
-
-        table.add_column("",            width=3,    key="check")
-        table.add_column(_hdr("fichier"),      width=None,                   key="fichier")
-        table.add_column(_hdr("taille"),       width=widths["taille"],       key="taille")
-        table.add_column(_hdr("resolution"),   width=widths["resolution"],   key="resolution")
-        table.add_column(_hdr("duree"),        width=widths["duree"],        key="duree")
-        table.add_column(_hdr("debit"),        width=widths["debit"],        key="debit")
-        table.add_column(_hdr("codec"),        width=widths["codec"],        key="codec")
-        table.add_column(_hdr("dolby_vision"), width=widths["dolby_vision"], key="dolby_vision")
-        table.add_column(_hdr("decision"),     width=widths["decision"],     key="decision")
-        table.add_column(_hdr("audio"),        width=widths["audio"],        key="audio")
+        table.add_column("",                                width=3,    key="check")
+        table.add_column(self.resize_header("fichier"),     width=None, key="fichier")
+        for col in self.RESIZE_COLS:
+            table.add_column(self.resize_header(col), width=widths[col], key=col)
 
     def _refresh_view(self) -> None:
         """Reconstruit la vue complète (dirs + fichiers)."""
@@ -226,11 +187,10 @@ class BrowserScreen(TableNavMixin, Screen):
     def _update_status(self) -> None:
         sel_count   = len(self._selected)
         total_files = sum(1 for t, _ in self._rows if t == _ROW_TYPE_FILE)
-        col_label   = _RESIZE_LABELS[_RESIZE_COLS[self._resize_col_idx]]
         self.query_one("#status-bar", Static).update(
             f" {self._nav.breadcrumb()}    "
             f"{sel_count}/{total_files} sélectionné(s)"
-            f"  ·  Col : {col_label} [</>]"
+            f"  ·  Col : {self.resize_col_label} [</>]"
         )
 
     def _update_profile_bar(self) -> None:
@@ -243,7 +203,7 @@ class BrowserScreen(TableNavMixin, Screen):
         keep_4k  = prof.data.get("keep_4k", False)
         k4_str   = f"4K : {f['4k']}" if keep_4k else "4K → 1080p"
         k4_style = "green"              if keep_4k else "dim"
-        dv_color = {"hdr10": "yellow", "dv": "green", "sdr": "bold dark_orange"}.get(f["dv"], "")
+        dv_color = DV_VALUE_STYLES.get(f["dv"], "")
 
         # Ligne 1 : raccourci + nom du profil + infos techniques
         line1 = Text()
@@ -327,38 +287,18 @@ class BrowserScreen(TableNavMixin, Screen):
         self.query_one("#scan-notice", Static).update("")
         self._update_status()
 
-    def _row_cells(self, dec: FileDecision, check: str) -> tuple:
+    def _row_cells(self, dec: FileDecision, check: Text) -> tuple:
         info = dec.info
         vid  = dec.video
 
-        # Nom (tronqué)
-        name     = info.path.name
-        name_txt = Text(f"{_FILE_ICON} {name}", overflow="ellipsis", no_wrap=True)
-
-        # Taille
-        size_txt = Text(_fmt_size(info.path), style="dim", no_wrap=True)
-
-        # Résolution
-        res_txt  = Text(f"{info.width}x{info.height}")
-
-        # Durée
-        dur_txt  = Text(_fmt_duration(info.duration), style="dim")
-
-        # Débit
-        kbps_txt = Text(f"{info.kbps}k")
-
-        # Codec
+        name_txt  = Text(f"{_FILE_ICON} {info.path.name}", overflow="ellipsis", no_wrap=True)
+        size_txt  = Text(fmt_size(info.path), style="dim", no_wrap=True)
+        res_txt   = Text(f"{info.width}x{info.height}")
+        dur_txt   = Text(fmt_duration(info.duration), style="dim")
+        kbps_txt  = Text(f"{info.kbps}k")
         codec_txt = Text(info.codec)
-
-        # Dolby Vision
-        dv_txt   = Text(info.dv_label)
-
-        # Décision (colorée)
-        label    = vid.label()
-        style    = vid.style()
-        dec_txt  = Text(label, style=style)
-
-        # Audio résumé
+        dv_txt    = Text(info.dv_label)
+        dec_txt   = Text(vid.label(), style=vid.style())
         audio_txt = Text(dec.audio_summary, overflow="ellipsis", no_wrap=True)
 
         return (check, name_txt, size_txt, res_txt, dur_txt, kbps_txt, codec_txt, dv_txt, dec_txt, audio_txt)
@@ -395,21 +335,39 @@ class BrowserScreen(TableNavMixin, Screen):
 
         _set_notice(f"⏳ Analyse en cours… 0 / {total}")
 
-        decisions: list[FileDecision] = []
-        for i, vpath in enumerate(videos, 1):
+        # Scans ffprobe parallélisés (ordre des résultats préservé par map)
+        done = 0
+        lock = threading.Lock()
+
+        def _scan_one(vpath: Path) -> FileDecision | None:
+            nonlocal done
+            if self._scan_epoch != epoch:
+                return None                 # navigation entre-temps : abandon anticipé
+            dec: FileDecision | None = None
             try:
                 info = scan(vpath)
-                override_a = self._audio_overrides.get(vpath)
-                override_s = self._subtitle_overrides.get(vpath)
-                decisions.append(decide(info, profile, override_a, override_s))
+                dec  = decide(
+                    info, profile,
+                    self._audio_overrides.get(vpath),
+                    self._subtitle_overrides.get(vpath),
+                )
             except Exception:
-                pass
-            _set_notice(f"⏳ Analyse en cours… {i} / {total}")
+                _LOG.warning("Échec du scan : %s", vpath, exc_info=True)
+            with lock:
+                done += 1
+                _set_notice(f"⏳ Analyse en cours… {done} / {total}")
+            return dec
+
+        decisions: list[FileDecision] = []
+        if videos:
+            with ThreadPoolExecutor(
+                max_workers=min(_SCAN_WORKERS, total), thread_name_prefix="scan"
+            ) as pool:
+                decisions = [d for d in pool.map(_scan_one, videos) if d is not None]
 
         if self._scan_epoch != epoch:
             return                          # navigation entre-temps : ne pas peupler
         self.app.call_from_thread(self._populate_table, subdirs, decisions, epoch)
-
 
     # ─── Sélection de profil (F4) ──────────────────────────────────────────────
 
@@ -420,44 +378,28 @@ class BrowserScreen(TableNavMixin, Screen):
         cur      = self._app.active_profile_id
         cur_idx  = names.index(cur) if cur in names else 0
 
-        opts = []
-        for name, prof in profiles.items():
-            f       = prof.summary_fields()
-            keep_4k = prof.data.get("keep_4k", False)
-            k4_str  = f"4K {f['4k']}" if keep_4k else "4K→1080p"
-            delete  = prof.data.get("delete_source", False)
-
-            # Format avec colonnes alignées
-            alert   = "⚠" if delete else ""
-            alert_col = f"{alert:<3}"  # Colonne pour l'alerte avec padding
-            br_1080 = f["1080p"].rjust(6)
-            br_4k   = k4_str.ljust(12)
-            dv_info = f"DV {f['dv']}".ljust(12)
-            preset  = f["preset"].ljust(8)
-
-            # Colonne HD audio (vide ou remplie)
-            hd_audio_str = "HD audio" if prof.data.get("preserve_hd_audio") else ""
-            hd_col = f"  ·  {hd_audio_str:<10}" if hd_audio_str or delete else ""
-
-            # Colonne alerte finale (suppression)
-            alert_final = "⚠" if delete else ""
-            alert_final_col = f"  ·  {alert_final:<3}"
-
-            line = f"{alert_col}{name:<15}  {br_1080}  ·  {br_4k}  ·  {dv_info}  ·  {preset}{hd_col}{alert_final_col}"
-
-            opts.append(line)
-
         def _on_pick(idx: int | None) -> None:
             if idx is None:
                 return
             self._app.active_profile_id = names[idx]
             self._update_profile_bar()
             self._refresh_view()
-        self.app.push_screen(ValuePickerScreen("Sélectionner un profil", opts, cur_idx), _on_pick)
+        self.app.push_screen(
+            ValuePickerScreen("Sélectionner un profil",
+                              profile_picker_options(profiles), cur_idx),
+            _on_pick,
+        )
 
-    # ─── Resize colonnes ─────────────────────────────────────────────────────────────
+    # ─── Resize colonnes (ColumnResizeMixin) ──────────────────────────────────
 
-    def _rebuild_columns(self) -> None:
+    def _resize_widths(self) -> dict[str, int]:
+        return cfg_mod.get_column_widths(self._app.cfg)
+
+    def _resize_persist(self, key: str, width: int) -> None:
+        cfg_mod.set_column_width(self._app.cfg, key, width)
+        cfg_mod.save(self._app.cfg)
+
+    def _resize_rebuild(self) -> None:
         """Reconstruit colonnes + données après resize. Conserve curseur + sélection."""
         table      = self.query_one(DataTable)
         cursor_row = table.cursor_row
@@ -469,35 +411,6 @@ class BrowserScreen(TableNavMixin, Screen):
         self._populate_table(subdirs, decisions)
         if table.row_count > 0:
             table.move_cursor(row=min(cursor_row, table.row_count - 1))
-
-    def _apply_resize(self, delta: int) -> None:
-        key     = _RESIZE_COLS[self._resize_col_idx]
-        cfg     = self._app.cfg
-        widths  = cfg_mod.get_column_widths(cfg)
-        current = widths.get(key, 12)
-        floor   = (_RESIZE_MIN_FICHIER if key == "fichier"
-                   else _RESIZE_MIN_AUDIO if key == "audio"
-                   else _RESIZE_MIN)
-        new_w   = max(floor, current + delta)
-        if new_w == current:
-            return
-        cfg_mod.set_column_width(cfg, key, new_w)
-        cfg_mod.save(cfg)
-        self._rebuild_columns()
-
-    def action_col_prev(self) -> None:
-        self._resize_col_idx = (self._resize_col_idx - 1) % len(_RESIZE_COLS)
-        self._rebuild_columns()
-
-    def action_col_next(self) -> None:
-        self._resize_col_idx = (self._resize_col_idx + 1) % len(_RESIZE_COLS)
-        self._rebuild_columns()
-
-    def action_col_shrink(self) -> None:
-        self._apply_resize(-_RESIZE_STEP)
-
-    def action_col_grow(self) -> None:
-        self._apply_resize(+_RESIZE_STEP)
 
     # ─── Navigation ───────────────────────────────────────────────────────────
 
@@ -609,6 +522,7 @@ class BrowserScreen(TableNavMixin, Screen):
                     RunScreen([dec], self.app.platform)  # type: ignore[attr-defined]
                 )
         self.app.push_screen(TracksScreen(dec), _on_tracks_return)
+
     @staticmethod
     def _force_skip_to_encode(dec: FileDecision) -> FileDecision:
         """Force un fichier SKIP en encodage (HEVC ou H264 si < 1080p).
@@ -664,6 +578,7 @@ class BrowserScreen(TableNavMixin, Screen):
             if changed:
                 # Recalcul des décisions avec le nouveau profil
                 self._decisions.clear()
+                self._update_profile_bar()
                 self._refresh_view()
         self.app.push_screen(ConfigScreen(), _on_config_return)
 
@@ -718,7 +633,7 @@ class BrowserScreen(TableNavMixin, Screen):
     def action_open_allocine(self) -> None:
         self._open_meta("allocine")
 
-    # ─── Mise à jour profil actif (depuis ConfigScreen) ───────────────────────
+    # ─── Survol : chemin complet dans la zone notice ──────────────────────────
 
     @on(DataTable.RowHighlighted)
     def _on_row_highlight(self, event: DataTable.RowHighlighted) -> None:

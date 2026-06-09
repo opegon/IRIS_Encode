@@ -6,9 +6,10 @@ REM  IRIS ENCODE — Lanceur Windows
 REM  Vérifie Python 3.11+, délègue à main.py
 REM ============================================================
 
-title IRIS ENCODE v0.6
+REM La version exacte est affichée par main.py (source unique : version.py)
+title IRIS ENCODE
 
-echo  IRIS ENCODE v0.6
+echo  IRIS ENCODE
 echo.
 
 REM --- Vérification Python ---

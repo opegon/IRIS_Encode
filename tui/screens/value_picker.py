@@ -36,6 +36,12 @@ class ValuePickerScreen(ModalScreen[int | None]):
         color: $accent;
         margin-bottom: 1;
     }
+    #picker-hint {
+        color: $text-muted;
+        width: 100%;
+        text-align: center;
+        margin-top: 1;
+    }
     """
 
     BINDINGS = [
@@ -64,6 +70,7 @@ class ValuePickerScreen(ModalScreen[int | None]):
             yield Label(self._title, id="picker-title")
             yield DataTable(id="picker-table", cursor_type="row",
                             show_header=False, zebra_stripes=True)
+            yield Static("↵  Choisir     Esc  Annuler", id="picker-hint")
 
     def on_mount(self) -> None:
         self.query_one("#picker-box").styles.width = self._width

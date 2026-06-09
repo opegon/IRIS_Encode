@@ -5,27 +5,22 @@ Zone commande ffmpeg + ligne de retour live (non scrollable).
 """
 from __future__ import annotations
 
-import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
-from typing import TYPE_CHECKING
 
 from rich.text import Text
-from textual import on, work
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.message import Message
 from textual.screen import Screen
 from textual.widgets import DataTable, Header, Label, ProgressBar, Static
-from ..widgets.footer import TwoLineFooter
-from ..mixins import TableNavMixin
 
 from core.decision import FileDecision, VideoAction
-from core.encoder import EncoderProcess, ProgressInfo, build_command
+from core.encoder import EncoderProcess, build_command
 from core.platform import PlatformProfile
-
-if TYPE_CHECKING:
-    pass
+from ..common import footer_line2
+from ..mixins import TableNavMixin
+from ..widgets.footer import TwoLineFooter
 
 
 # ─── État fichier ─────────────────────────────────────────────────────────────
@@ -47,28 +42,6 @@ class FileRunStatus:
     error_msg: str       = ""
 
 
-# ─── Messages inter-threads ───────────────────────────────────────────────────
-
-class ProgressUpdate(Message):
-    def __init__(self, index: int, info: ProgressInfo, line: str) -> None:
-        super().__init__()
-        self.index = index
-        self.info  = info
-        self.line  = line
-
-
-class EncodeFinished(Message):
-    def __init__(self, index: int, success: bool, error: str = "") -> None:
-        super().__init__()
-        self.index   = index
-        self.success = success
-        self.error   = error
-
-
-class AllFinished(Message):
-    pass
-
-
 # ─── Écran ────────────────────────────────────────────────────────────────────
 
 class RunScreen(TableNavMixin, Screen):
@@ -83,11 +56,6 @@ class RunScreen(TableNavMixin, Screen):
 
     DEFAULT_CSS = """
     RunScreen { layout: vertical; }
-    #run-header-bar {
-        height: 1;
-        background: $accent;
-        padding: 0 2;
-    }
     #file-table {
         height: 1fr;
     }
@@ -139,7 +107,7 @@ class RunScreen(TableNavMixin, Screen):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield Static("", id="run-header-bar")
+        yield Static("", id="run-header-bar", classes="status-bar")
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
         with Static(id="global-bar-row"):
             yield Label("Global", id="global-label")
@@ -153,11 +121,7 @@ class RunScreen(TableNavMixin, Screen):
                 ("s",         "Passer le fichier"),
                 ("backspace", "Retour"),
             ],
-            line2=[
-                ("home",     "Début liste"),
-                ("end",      "Fin liste"),
-                ("f10",      "Quitter"),
-            ],
+            line2=footer_line2(nav=True),
         )
 
     def on_mount(self) -> None:
@@ -334,13 +298,6 @@ class RunScreen(TableNavMixin, Screen):
 
         # Enchaîne le suivant
         self._encode_next()
-
-    def _update_progress(self, index: int, line: str, info: ProgressInfo) -> None:
-        s = self._statuses[index]
-        s.last_line = line
-        s.percent   = info.percent
-        self._update_row(index)
-        self.query_one("#ffmpeg-line", Static).update(line)
 
     def _on_all_done(self) -> None:
         self._update_header()

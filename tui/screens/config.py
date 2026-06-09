@@ -14,11 +14,12 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Button, DataTable, Header, Static
-from ..widgets.footer import TwoLineFooter
-from ..mixins import TableNavMixin
 
 from core import profiles as prof_mod
-from core.profiles import BUILTIN_NAMES, Profile
+from core.profiles import Profile
+from ..common import DV_VALUE_STYLES, footer_line2
+from ..mixins import TableNavMixin
+from ..widgets.footer import TwoLineFooter
 from ..widgets.profile_form import ProfileCancelled, ProfileForm, ProfileSaved
 
 if TYPE_CHECKING:
@@ -29,20 +30,17 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
     """Écran Config — CRUD profils d'encodage."""
 
     BINDINGS = [
-        Binding("n",      "new_profile",  "+ Nouveau",  show=True),
-        Binding("e",      "edit_focused", "✎ Éditer",   show=True),
-        Binding("left",   "go_back",      "← Retour",   show=True),
-        Binding("escape", "go_back",      "Retour",     show=False),
-        Binding("enter",  "activate",     "Activer",    show=True, priority=True),
+        Binding("enter",     "activate",       "Activer",   show=True, priority=True),
+        Binding("n",         "new_profile",    "Nouveau",   show=True),
+        Binding("e",         "edit_focused",   "Éditer",    show=True),
+        Binding("d",         "delete_focused", "Supprimer", show=True),
+        Binding("delete",    "delete_focused", "Supprimer", show=False),
+        Binding("backspace", "go_back",        "Retour",    show=True),
+        Binding("escape",    "go_back",        "Retour",    show=False),
     ]
 
     DEFAULT_CSS = """
     ConfigScreen { layout: vertical; }
-    #config-header-bar {
-        height: 1;
-        background: $accent;
-        padding: 0 2;
-    }
     #profile-table { height: 1fr; }
     #form-container {
         height: 1fr;
@@ -68,7 +66,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield Static("", id="config-header-bar")
+        yield Static("", id="config-header-bar", classes="status-bar")
         yield DataTable(id="profile-table", cursor_type="row", zebra_stripes=True)
         yield ProfileForm(id="form-container", classes="hidden")
         with Static(id="config-actions"):
@@ -77,17 +75,12 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         yield TwoLineFooter(
             line1=[
                 ("enter",     "Activer profil"),
+                ("n",         "Nouveau"),
                 ("e",         "Éditer"),
-                ("n",         "Nouveau profil"),
+                ("d",         "Supprimer"),
                 ("backspace", "Retour"),
             ],
-            line2=[
-                ("home",     "Début"),
-                ("end",      "Fin"),
-                ("pageup",   "Page préc."),
-                ("pagedown", "Page suiv."),
-                ("f10",      "Quitter"),
-            ],
+            line2=footer_line2(nav=True),
         )
 
     def on_mount(self) -> None:
@@ -133,7 +126,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
                 "user" if profile.user else "builtin",
                 style="dim cyan" if profile.user else "dim",
             )
-            dv_style  = {"hdr10": "yellow", "dv": "green", "sdr": "bold dark_orange"}.get(f["dv"], "")
+            dv_style  = DV_VALUE_STYLES.get(f["dv"], "")
             actions   = Text("✎ éditer" + ("  ✕ suppr." if profile.user else ""), no_wrap=True)
 
             table.add_row(
@@ -169,14 +162,12 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
     # ─── Actions ──────────────────────────────────────────────────────────────
 
     def check_action(self, action: str, parameters: tuple) -> bool | None:
-        if action == "activate" and self._form_mode:
-            return False  # laisse Enter atteindre le widget focalisé (Select)
+        # En mode formulaire, les touches restent au widget focalisé (Select/Input)
+        if self._form_mode and action in {
+            "activate", "new_profile", "edit_focused", "delete_focused",
+        }:
+            return False
         return True
-
-    def on_key(self, event) -> None:
-        if event.key == "enter" and not self._form_mode:
-            self.action_activate()
-            event.stop()
 
     def action_activate(self) -> None:
         name = self._focused_profile_name()
@@ -193,6 +184,32 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
     def action_new_profile(self) -> None:
         self._open_form("", is_new=True)
+
+    def action_delete_focused(self) -> None:
+        """Supprime le profil sous le curseur (user uniquement), avec confirmation."""
+        name = self._focused_profile_name()
+        if name is None:
+            return
+        prof = self._app.profiles.get(name)
+        if prof is None:
+            return
+        if not prof.user:
+            self._flash_header(f"✗ [{name}] est un profil builtin — non supprimable")
+            return
+        from .confirm import ConfirmModal
+        def _on_answer(ok: bool) -> None:
+            if ok:
+                self._delete_profile(name)
+                self._flash_header(f"✓ Profil [{name}] supprimé")
+        self.app.push_screen(
+            ConfirmModal(
+                title=f"Supprimer le profil [{name}] ?",
+                body="Le profil sera retiré définitivement de profiles.toml.",
+                confirm_label="Supprimer",
+                danger=True,
+            ),
+            _on_answer,
+        )
 
     def _open_form(self, profile_id: str, is_new: bool) -> None:
         self._form_mode = True
@@ -222,7 +239,6 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
     @on(ProfileSaved)
     def _on_profile_saved(self, msg: ProfileSaved) -> None:
-        from core.profiles import Profile
         profiles = self._app.profiles
         is_new   = msg.profile_id not in profiles
 
@@ -248,19 +264,21 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
     def _on_profile_cancelled(self, _: ProfileCancelled) -> None:
         self._close_form()
 
-    def _show_save_notice(self, profile_id: str) -> None:
-        """Affiche une confirmation de sauvegarde dans le header."""
-        bar = self.query_one("#config-header-bar", Static)
-        bar.update(
-            f" Configuration — Profils d'encodage   ✓ Profil [{profile_id}] enregistré et actif"
-        )
-        # Remet le header normal après 3 secondes
+    def _flash_header(self, msg: str) -> None:
+        """Affiche un message temporaire dans le header (3 s), puis restaure."""
+        self.query_one("#config-header-bar", Static).update(f" {msg}")
         self.set_timer(3.0, self._update_header)
 
+    def _show_save_notice(self, profile_id: str) -> None:
+        self._flash_header(
+            f"Configuration — Profils d'encodage   ✓ Profil [{profile_id}] enregistré et actif"
+        )
+
     def _delete_profile(self, name: str) -> None:
-        if name in BUILTIN_NAMES:
-            return
         profiles = self._app.profiles
+        prof     = profiles.get(name)
+        if prof is None or not prof.user:
+            return  # builtin ou inexistant — jamais supprimé
         del profiles[name]
         if self._app.active_profile_id == name:
             self._app.active_profile_id = "serie_basic"

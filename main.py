@@ -65,11 +65,13 @@ def main() -> None:
     # ── Preflight ─────────────────────────────────────────────────────────────
     from core import config as cfg_mod
     from core.preflight import run_preflight
+    from version import __version__
 
+    inner = 43
     print()
-    print("╔═══════════════════════════════════════════╗")
-    print("║  IRIS ENCODE  v0.6                        ║")
-    print("╚═══════════════════════════════════════════╝")
+    print("╔" + "═" * inner + "╗")
+    print(f"║  {f'IRIS ENCODE  v{__version__}':<{inner - 2}}║")
+    print("╚" + "═" * inner + "╝")
     print()
     print("Vérification des outils :")
 

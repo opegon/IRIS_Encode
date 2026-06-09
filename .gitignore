@@ -1,0 +1,13 @@
+# Caches Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Binaires installés automatiquement (ffmpeg, ffprobe, dovi_tool)
+bin/
+
+# Configuration locale Claude Code
+.claude/
+
+# Logs
+*.log

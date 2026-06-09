@@ -12,24 +12,23 @@ from textual.widget import Widget
 from textual.widgets import Static
 
 
-# Raccourcis clés → affichage lisible
+# Raccourcis clés → affichage lisible (les touches absentes passent en .upper())
 _KEY_LABELS: dict[str, str] = {
-    "ctrl+x":    "Ctrl+X",
+    "ctrl+s":    "Ctrl+S",
     "ctrl+c":    "Ctrl+C",
     "shift+tab": "Sh+Tab",
+    "tab":       "Tab",
     "backspace": "Back",
     "space":     "Space",
     "enter":     "Enter",
     "escape":    "Esc",
+    "delete":    "Suppr",
     "pageup":    "PgUp",
     "pagedown":  "PgDn",
     "home":      "Home",
     "end":       "End",
-    "f1":        "F1",
-    "f2":        "F2",
-    "f4":        "F4",
-    "f5":        "F5",
-    "f10":       "F10",
+    "left":      "←",
+    "right":     "→",
 }
 
 

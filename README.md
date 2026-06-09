@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.4 — Windows (support macOS/Linux prévu)
+**Version** : 0.7.0 — Windows (support macOS/Linux prévu)
 
 ---
 
@@ -227,7 +227,7 @@ dolby_vision       = "hdr"
 | `F2` | Lancer l'encodage |
 | `F3` | Run récursif (dossier sélectionné + tous ses sous-dossiers) |
 | `F4` | Changer de profil d'encodage |
-| `F5` | Gérer les profils (CRUD) |
+| `F5` | Gérer les profils (créer `N`, éditer `E`, supprimer `D`) |
 | `F7` | Recherche AlloCiné (métadonnées film/série) |
 | `F8` | Recherche IMDB (métadonnées film/série) |
 | `Tab` / `Shift+Tab` | Colonne suivante / précédente (redimensionnement) |
@@ -296,4 +296,4 @@ Les fichiers `config.toml` et `profiles.toml` sont supprimés avec le dossier.
 
 ---
 
-*IRIS ENCODE v0.3 — Interface Relationnelle d'Intelligence Servicielle*
+*IRIS ENCODE — Interface Relationnelle d'Intelligence Servicielle*

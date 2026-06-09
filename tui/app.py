@@ -14,6 +14,7 @@ from textual.binding import Binding
 import core.config as cfg_mod
 import core.profiles as prof_mod
 from core.platform import PlatformProfile, detect as detect_platform
+from version import __version__
 
 
 def _setup_logging() -> None:
@@ -31,12 +32,20 @@ class IrisEncodeApp(App):
     """Application principale IRIS ENCODE."""
 
     TITLE     = "IRIS ENCODE"
-    SUB_TITLE = "v0.6"
+    SUB_TITLE = f"v{__version__}"
 
+    # CSS global — styles communs à tous les écrans (évite la duplication
+    # des barres de statut dans chaque DEFAULT_CSS d'écran).
     CSS = """
     Screen { background: $surface; }
     Header { background: $primary; }
     Footer { background: $primary-darken-2; }
+    .status-bar {
+        height: 1;
+        background: $accent;
+        color: $text;
+        padding: 0 2;
+    }
     """
 
     BINDINGS = [

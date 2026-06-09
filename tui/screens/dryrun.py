@@ -26,6 +26,7 @@ from ..common import (
     CODEC_PICKER_OPTS,
     bitrate_picker_config,
     fmt_bytes,
+    fmt_duration,
     footer_line2,
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
@@ -70,11 +71,12 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
     ]
 
     # Colonnes redimensionnables (ColumnResizeMixin)
-    RESIZE_COLS   = ["fichier", "taille", "estim", "action", "conteneur",
+    RESIZE_COLS   = ["fichier", "taille", "duree", "estim", "action", "conteneur",
                      "dv", "bitrate", "res", "audio"]
     RESIZE_LABELS = {
         "fichier":   "Fichier",
         "taille":    "Taille",
+        "duree":     "Durée",
         "estim":     "Estim. (Δ%)",
         "action":    "Action",
         "conteneur": "Conteneur",
@@ -193,6 +195,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             table.add_row(
                 Text(info.path.name, overflow="ellipsis", no_wrap=True),
                 Text(fmt_bytes(src_bytes) if src_bytes else "—", style="dim", no_wrap=True),
+                Text(fmt_duration(info.duration), style="dim", no_wrap=True),
                 estim_txt,
                 Text(vid.label(), style=vid.style()),
                 Text(container, no_wrap=True),

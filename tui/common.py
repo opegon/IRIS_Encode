@@ -3,21 +3,17 @@ tui/common.py — Formatage, styles et libellés partagés entre les écrans.
 
 Centralise ce qui était dupliqué entre browser/tracks/dryrun/config :
 formatage tailles/durées, couleurs Dolby Vision, options des pickers
-codec/débit/profil, groupes de raccourcis standard pour le TwoLineFooter.
+codec/débit, groupes de raccourcis standard pour le TwoLineFooter.
 """
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from core.decision import (
     AV1_BITRATE_OPTS_KBPS,
     BITRATE_OPTS_KBPS,
     VideoAction,
 )
-
-if TYPE_CHECKING:
-    from core.profiles import Profile
 
 
 # ─── Styles partagés ──────────────────────────────────────────────────────────
@@ -83,31 +79,6 @@ def bitrate_picker_config(
     cur_k  = current_bps // 1000
     idx    = min(range(len(blist)), key=lambda i: abs(blist[i] - cur_k))
     return title, opts, idx, blist
-
-
-def profile_picker_options(profiles: dict[str, "Profile"]) -> list[str]:
-    """Lignes alignées du sélecteur de profils (F4) — browser et tracks."""
-    opts: list[str] = []
-    for name, prof in profiles.items():
-        f       = prof.summary_fields()
-        keep_4k = prof.data.get("keep_4k", False)
-        delete  = prof.data.get("delete_source", False)
-
-        alert_col = f"{'⚠' if delete else '':<3}"
-        br_1080   = f["1080p"].rjust(6)
-        br_4k     = (f"4K {f['4k']}" if keep_4k else "4K→1080p").ljust(12)
-        dv_info   = f"DV {f['dv']}".ljust(12)
-        preset    = f["preset"].ljust(8)
-
-        hd_audio  = "HD audio" if prof.data.get("preserve_hd_audio") else ""
-        hd_col    = f"  ·  {hd_audio:<10}" if hd_audio or delete else ""
-        alert_end = f"  ·  {'⚠' if delete else '':<3}"
-
-        opts.append(
-            f"{alert_col}{name:<15}  {br_1080}  ·  {br_4k}  ·  "
-            f"{dv_info}  ·  {preset}{hd_col}{alert_end}"
-        )
-    return opts
 
 
 # ─── Footer : groupes de raccourcis standard ──────────────────────────────────

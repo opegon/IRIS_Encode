@@ -26,7 +26,6 @@ from ..common import (
     fmt_duration,
     fmt_size,
     footer_line2,
-    profile_picker_options,
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
 from ..widgets.file_tree import FileNavigator
@@ -372,21 +371,16 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     # ─── Sélection de profil (F4) ──────────────────────────────────────────────
 
     def action_open_profile_picker(self) -> None:
-        from .value_picker import ValuePickerScreen
-        profiles = self._app.profiles
-        names    = list(profiles.keys())
-        cur      = self._app.active_profile_id
-        cur_idx  = names.index(cur) if cur in names else 0
+        from .profile_picker import ProfilePickerScreen
 
-        def _on_pick(idx: int | None) -> None:
-            if idx is None:
+        def _on_pick(pid: str | None) -> None:
+            if pid is None:
                 return
-            self._app.active_profile_id = names[idx]
+            self._app.active_profile_id = pid
             self._update_profile_bar()
             self._refresh_view()
         self.app.push_screen(
-            ValuePickerScreen("Sélectionner un profil",
-                              profile_picker_options(profiles), cur_idx),
+            ProfilePickerScreen(self._app.profiles, self._app.active_profile_id),
             _on_pick,
         )
 

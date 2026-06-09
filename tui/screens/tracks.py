@@ -40,7 +40,6 @@ from ..common import (
     CODEC_PICKER_OPTS,
     bitrate_picker_config,
     footer_line2,
-    profile_picker_options,
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
 from ..widgets.footer import TwoLineFooter
@@ -598,16 +597,14 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         self.dismiss(self._make_selection())
 
     def action_change_profile(self) -> None:
-        """Ouvre un sélecteur de profils (même style que l'écran d'accueil)."""
+        """Ouvre le sélecteur de profils (même table que l'écran d'accueil)."""
+        from .profile_picker import ProfilePickerScreen
         profiles = self.app.profiles  # type: ignore[attr-defined]
-        names    = list(profiles.keys())
-        cur      = self._decision.profile.id
-        cur_idx  = names.index(cur) if cur in names else 0
 
-        def _on_pick(idx: int | None) -> None:
-            if idx is None:
+        def _on_pick(pid: str | None) -> None:
+            if pid is None:
                 return
-            new_profile = profiles[names[idx]]
+            new_profile = profiles[pid]
             self._decision.profile = new_profile
             self._decision.video = decide_video(self._decision.info, new_profile)
             self._decision.audio = decide_audio(self._decision.info, new_profile)
@@ -615,8 +612,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             self._update_status()
 
         self.app.push_screen(
-            ValuePickerScreen("Sélectionner un profil",
-                              profile_picker_options(profiles), cur_idx),
+            ProfilePickerScreen(profiles, self._decision.profile.id),
             _on_pick,
         )
 

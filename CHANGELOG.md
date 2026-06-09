@@ -1,5 +1,19 @@
 # CHANGELOG — IRIS ENCODE
 
+## [Non publié]
+
+- **Dry-run : colonne « Durée »** entre Taille et Estim. (Δ%) — durée de chaque
+  fichier au format h:mm:ss, redimensionnable comme les autres colonnes
+  (largeur persistée dans `config.toml`).
+- **Sélecteur de profils (F4) en vraie table** (`tui/screens/profile_picker.py`) :
+  colonnes alignées (Profil, 1080p, 4K, DV, Preset, HD audio, Source), profil
+  actif marqué ✓, valeurs DV colorées, alerte `⚠ suppr.` sur les profils qui
+  suppriment la source. Remplace les chaînes paddées à la main ; le callback
+  reçoit l'id du profil (plus robuste qu'un index). Utilisé par Browser et
+  TracksScreen.
+
+---
+
 ## [v0.7.0] — 2026-06-10
 
 ### Normalisation UIX

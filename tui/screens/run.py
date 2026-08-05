@@ -35,11 +35,12 @@ class FileState(Enum):
 
 @dataclass
 class FileRunStatus:
-    decision:  FileDecision
-    state:     FileState = FileState.PENDING
-    percent:   float     = 0.0
-    last_line: str       = ""
-    error_msg: str       = ""
+    decision:       FileDecision
+    state:          FileState = FileState.PENDING
+    percent:        float     = 0.0
+    last_line:      str       = ""
+    error_msg:      str       = ""
+    _last_progress: object    = None  # ProgressInfo pour affichage ETA
 
 
 # ─── Écran ────────────────────────────────────────────────────────────────────
@@ -143,7 +144,7 @@ class RunScreen(TableNavMixin, Screen):
         table.add_column("",        width=3,                              key="icon")
         table.add_column("Fichier", width=max(20, _cw("Fichier", names)), key="file")
         table.add_column("Action",  width=_cw("Action", actions),         key="action")
-        table.add_column("État",    width=None,                            key="state")
+        table.add_column("État",    width=50,                             key="state")
 
         for i, s in enumerate(self._statuses):
             dec   = s.decision
@@ -167,38 +168,61 @@ class RunScreen(TableNavMixin, Screen):
         }[s.state]
 
     def _update_row(self, index: int) -> None:
-        s     = self._statuses[index]
-        table = self.query_one(DataTable)
-
-        # Gère le cas où la durée est inconnue (percent = -1)
-        if s.state == FileState.RUNNING:
-            if s.percent < 0:
-                running_txt = "en cours…"
-            else:
-                running_txt = f"{s.percent * 100:.0f}%"
-            state_txt = Text(running_txt, style="yellow")
-        else:
-            state_txt = {
-                FileState.PENDING:  Text("en attente",      style="dim"),
-                FileState.SUCCESS:  Text("✓ SUCCÈS",         style="bold green"),
-                FileState.ERROR:    Text(f"✗ ERREUR : {s.error_msg[:30]}", style="bold dark_orange"),
-                FileState.SKIPPED:  Text("ignoré",           style="dim"),
-            }[s.state]
         try:
+            s     = self._statuses[index]
+            table = self.query_one(DataTable)
+
+            # Gère le cas où la durée est inconnue (percent = -1)
+            if s.state == FileState.RUNNING:
+                if s.percent < 0:
+                    running_txt = "en cours…"
+                else:
+                    # Affiche : "45% (2m30s / 3m45s · 3.71x)"
+                    prog_pct = f"{s.percent * 100:.0f}%"
+                    if hasattr(s, '_last_progress') and s._last_progress:
+                        elapsed = s._last_progress.format_elapsed()
+                        remaining = s._last_progress.format_remaining()
+                        speed = f"{s._last_progress.speed:.2f}x"
+                        running_txt = f"{prog_pct} ({elapsed} / {remaining} · {speed})"
+                    else:
+                        running_txt = prog_pct
+                state_txt = Text(running_txt, style="yellow")
+            else:
+                state_txt = {
+                    FileState.PENDING:  Text("en attente",      style="dim"),
+                    FileState.SUCCESS:  Text("✓ SUCCÈS",         style="bold green"),
+                    FileState.ERROR:    Text(f"✗ ERREUR : {s.error_msg[:30]}", style="bold dark_orange"),
+                    FileState.SKIPPED:  Text("ignoré",           style="dim"),
+                }[s.state]
             table.update_cell(str(index), "icon",  self._icon(s),  update_width=False)
             table.update_cell(str(index), "state", state_txt,       update_width=False)
         except Exception:
             pass
 
     def _update_header(self) -> None:
-        done    = sum(1 for s in self._statuses if s.state in {FileState.SUCCESS, FileState.ERROR})
-        total   = len(self._statuses)
-        profile = self.app.active_profile_id  # type: ignore[attr-defined]
-        bar_pct = int(done / total * 100) if total else 0
-        self.query_one("#run-header-bar", Static).update(
-            f" Encodage — {total} fichiers · Profil : {profile} ── Global : {bar_pct}%"
-        )
-        self.query_one("#global-bar", ProgressBar).progress = bar_pct
+        try:
+            done    = sum(1 for s in self._statuses if s.state in {FileState.SUCCESS, FileState.ERROR})
+            total   = len(self._statuses)
+            profile = self.app.active_profile_id  # type: ignore[attr-defined]
+            bar_pct = int(done / total * 100) if total else 0
+            self.query_one("#run-header-bar", Static).update(
+                f" Encodage — {total} fichiers · Profil : {profile} ── Global : {bar_pct}%"
+            )
+            self.query_one("#global-bar", ProgressBar).progress = bar_pct
+        except Exception:
+            pass
+
+    def _update_cmd_lines(self, text: str) -> None:
+        try:
+            self.query_one("#cmd-lines", Static).update(text)
+        except Exception:
+            pass
+
+    def _update_ffmpeg_line(self, text: str) -> None:
+        try:
+            self.query_one("#ffmpeg-line", Static).update(text)
+        except Exception:
+            pass
 
     # ─── Encodage ─────────────────────────────────────────────────────────────
 
@@ -242,7 +266,7 @@ class RunScreen(TableNavMixin, Screen):
             self._encode_next()  # passe au suivant
             return
         self.app.call_from_thread(
-            self.query_one("#cmd-lines", Static).update,
+            self._update_cmd_lines,
             " ".join(cmd),
         )
 
@@ -252,7 +276,7 @@ class RunScreen(TableNavMixin, Screen):
 
         # Affiche "Encodage lancé" jusqu'à première ligne
         self.app.call_from_thread(
-            self.query_one("#ffmpeg-line", Static).update,
+            self._update_ffmpeg_line,
             "▶ Encodage lancé, initialisation en cours…"
         )
         s.percent = -1  # Force "en cours…" au lieu de "0%"
@@ -263,9 +287,18 @@ class RunScreen(TableNavMixin, Screen):
             s.last_line = line
             if progress:
                 s.percent = progress.percent
+                s._last_progress = progress  # Stocke pour affichage ETA
+                # Formate une ligne de statut enrichie pour ffmpeg-line
+                display_line = (
+                    f"frame={progress.frame} fps={progress.fps:.1f} "
+                    f"elapsed={progress.format_elapsed()} remaining≈{progress.format_remaining()} "
+                    f"speed={progress.speed:.2f}x bitrate={progress.bitrate:.0f}kbits/s"
+                )
+            else:
+                display_line = line
             self.app.call_from_thread(
-                self.query_one("#ffmpeg-line", Static).update,
-                line
+                self._update_ffmpeg_line,
+                display_line
             )
             # Met à jour row et header seulement si progression
             if progress:
@@ -300,9 +333,12 @@ class RunScreen(TableNavMixin, Screen):
         self._encode_next()
 
     def _on_all_done(self) -> None:
-        self._update_header()
-        self.query_one("#cmd-lines",   Static).update("Terminé.")
-        self.query_one("#ffmpeg-line", Static).update("")
+        try:
+            self._update_header()
+            self.query_one("#cmd-lines",   Static).update("Terminé.")
+            self.query_one("#ffmpeg-line", Static).update("")
+        except Exception:
+            pass
 
     # ─── Pause/Resume ─────────────────────────────────────────────────────────
 

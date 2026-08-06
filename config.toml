@@ -10,7 +10,7 @@ bin_dir = "./bin"
 check_on_startup = true
 
 [meta]
-omdb_api_key = "REVOQUEE"
+omdb_api_key = ""
 
 [decision]
 # Sources dont width OU height dépasse ces seuils sont traitées comme du 1080p :

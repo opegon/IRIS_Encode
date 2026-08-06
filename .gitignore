@@ -1,13 +1,40 @@
-# Caches Python
+# Configuration personnelle (clés API, préférences utilisateur)
+config.toml
+profiles.toml
+
+# Cache Python
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
 .pytest_cache/
+*.egg-info/
 
-# Binaires installés automatiquement (ffmpeg, ffprobe, dovi_tool)
-bin/
+# Environnement virtuel
+venv/
+env/
+.venv
 
-# Configuration locale Claude Code
-.claude/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Logs
 *.log
+iris_encode.log
+
+# Fichiers encodés (ne pas tracker)
+*_[hevc].mp4
+*_[hevc].mkv
+*_[H264].mp4
+*_[H264].mkv
+*_[av1].mp4
+*_[av1].mkv
+
+# Fichiers temporaires
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db

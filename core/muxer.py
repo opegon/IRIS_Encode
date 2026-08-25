@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
@@ -236,3 +236,56 @@ def parse_error(line: str) -> Optional[str]:
     """Message d'une ligne `#GUI#error ...`, ou None."""
     m = _ERROR_RE.match(line.strip())
     return m.group(1).strip() if m else None
+
+
+# ─── Processus de mux ─────────────────────────────────────────────────────────
+
+class MuxProcess:
+    """
+    Wraps un processus mkvmerge actif.
+
+    mkvmerge écrit sa progression sur stdout (--gui-mode), là où ffmpeg
+    utilise stderr : les deux runners ne sont donc pas interchangeables.
+    """
+
+    def __init__(self, cmd: list[str]):
+        self.cmd = cmd
+        self._proc: Optional[subprocess.Popen] = None
+        self._errors: list[str] = []
+
+    def start(self) -> None:
+        self._proc = subprocess.Popen(
+            self.cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+
+    def iter_progress(self):
+        """Itère en retournant (ligne_brute, pourcentage|None)."""
+        if self._proc is None or self._proc.stdout is None:
+            return
+        for raw in self._proc.stdout:
+            line = raw.rstrip()
+            err = parse_error(line)
+            if err:
+                self._errors.append(err)
+            yield line, parse_progress(line)
+
+    @property
+    def errors(self) -> list[str]:
+        """Messages #GUI#error rencontrés pendant le mux."""
+        return self._errors
+
+    def terminate(self) -> None:
+        if self._proc:
+            self._proc.terminate()
+
+    @property
+    def returncode(self) -> Optional[int]:
+        return self._proc.poll() if self._proc else None
+
+    def wait(self) -> int:
+        return self._proc.wait() if self._proc else -1

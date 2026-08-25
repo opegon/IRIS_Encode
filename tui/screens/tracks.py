@@ -20,6 +20,8 @@ Tab/Shift+Tab → colonne suivante/précédente  |  < / > → rétrécir/élargi
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
@@ -30,6 +32,7 @@ from textual.widgets import DataTable, Header, Static
 
 import core.config as cfg_mod
 from core import dovi
+from core.muxer import ExternalTrack, TrackKind
 from core.decision import (
     ACTION_CYCLE as _ACTION_CYCLE,
     BITRATE_OPTS_KBPS as _BITRATE_OPTS,
@@ -49,6 +52,7 @@ from .value_picker import ValuePickerScreen
 _ROW_VIDEO    = "video"
 _ROW_AUDIO    = "audio"
 _ROW_SUBTITLE = "subtitle"
+_ROW_EXTERNAL = "external"
 _ROW_SECTION  = "section"
 
 # Champs éditables (vidéo)
@@ -89,6 +93,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         Binding("f6",        "open_codec",    "Codec",                show=True),
         Binding("f7",        "open_bitrate",  "Débit",                show=True),
         Binding("f8",        "toggle_delete", "Suppr./garder source", show=True),
+        Binding("f9",        "add_external",  "Piste externe",        show=True),
         Binding("backspace", "dismiss_cancel","Retour",               show=True),
         Binding("escape",    "dismiss_cancel","Retour",               show=False, priority=True),
     ]
@@ -115,6 +120,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         self._sel_audio: set[int] = set()
         self._sel_subs:  set[int] = set()
         self._rows: list[tuple[str, int]] = []
+        self._donor: Path | None = None   # dernier fichier donneur choisi
         # Édition vidéo
         self._edit_idx     = 0
         self._ov_action:   VideoAction | None = None
@@ -174,6 +180,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 ("f6",    "Codec"),
                 ("f7",    "Débit"),
                 ("f8",    "Suppr./garder source"),
+                ("f9",    "Piste externe"),
             ],
             line2=footer_line2(back=True, nav=True, resize=True),
         )
@@ -285,6 +292,30 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                     key=f"s:{st.index}",
                 )
                 self._rows.append((_ROW_SUBTITLE, st.index))
+
+        # ── Section PISTES EXTERNES ───────────────────────────────────────────
+        ext = self._decision.external_tracks
+        if ext:
+            table.add_row(
+                Text(""), Text("── PISTES EXTERNES ─────", style="bold dim"),
+                Text(""), Text(""), Text(""), Text(""), Text(""),
+                key="__sec_ext__",
+            )
+            self._rows.append((_ROW_SECTION, -1))
+            for i, et in enumerate(ext):
+                kind = "audio" if et.kind == TrackKind.AUDIO else "sous-titre"
+                table.add_row(
+                    Text("  ✓  ", style="bold green"),
+                    Text(f"ext #{et.source_tid}", no_wrap=True),
+                    Text(et.codec or kind, no_wrap=True),
+                    Text(et.sync_label(),   no_wrap=True),
+                    Text(et.language or "?", no_wrap=True,
+                         style="" if et.language else "bold dark_orange"),
+                    Text(et.source_path.name, overflow="ellipsis", no_wrap=True),
+                    Text(f"→ greffe {kind}", style="green"),
+                    key=f"e:{i}",
+                )
+                self._rows.append((_ROW_EXTERNAL, i))
 
         if keep_cursor and table.row_count > 0:
             table.move_cursor(row=min(cursor_row, table.row_count - 1))
@@ -520,8 +551,66 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         info = self._current_row()
         if info is not None and info[0] == _ROW_VIDEO:
             self._open_picker()
+        elif info is not None and info[0] == _ROW_EXTERNAL:
+            self._open_sync()
         else:
             self.action_dismiss_ok()
+
+    # ── Pistes externes ───────────────────────────────────────────────────────
+
+    def action_add_external(self) -> None:
+        """
+        Greffe une piste venue d'un autre fichier : donneur → pistes → recalage.
+
+        Les tid viennent de mkvmerge -J, jamais des index ffprobe affichés
+        dans les sections AUDIO et SOUS-TITRES : les deux numérotations sont
+        incompatibles.
+        """
+        if not getattr(self.app, "mkvmerge_available", False):
+            self.app.bell()
+            self.query_one("#hint-bar", Static).update(
+                "mkvmerge absent — relancez le preflight pour l'installer."
+            )
+            return
+
+        from .donor_picker import DonorFileScreen, DonorTrackScreen
+        source = self._decision.info.path
+
+        def _on_tracks(chosen) -> None:
+            if not chosen:
+                return
+            for it in chosen:
+                self._decision.external_tracks.append(ExternalTrack(
+                    source_path=self._donor,
+                    source_tid=it.tid,
+                    kind=it.kind,
+                    codec=it.codec,
+                    language=it.language,
+                    track_name=it.track_name,
+                ))
+            self._open_sync()
+
+        def _on_donor(donor) -> None:
+            if donor is None:
+                return
+            self._donor = donor
+            self.app.push_screen(DonorTrackScreen(donor), _on_tracks)
+
+        self.app.push_screen(
+            DonorFileScreen(source.parent, exclude=source), _on_donor
+        )
+
+    def _open_sync(self) -> None:
+        from .sync import SyncScreen
+
+        def _back(_tracks) -> None:
+            self._build_table(keep_cursor=True)
+            self._update_status()
+
+        self.app.push_screen(
+            SyncScreen(self._decision.info.path, self._decision.external_tracks),
+            _back,
+        )
 
     def action_open_codec(self) -> None:
         """Ouvre le picker pour changer le codec."""

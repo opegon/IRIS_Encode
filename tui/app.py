@@ -72,6 +72,12 @@ class IrisEncodeApp(App):
         ffmpeg_p = get_tool_path("ffmpeg", bin_dir)
         if ffmpeg_p:
             scanner.set_ffmpeg_path(ffmpeg_p)
+        # Câble mkvmerge pour la greffe de pistes externes (optionnel)
+        from core import muxer
+        mkvmerge_p = get_tool_path("mkvmerge", bin_dir)
+        self.mkvmerge_available = mkvmerge_p is not None
+        if mkvmerge_p:
+            muxer.set_mkvmerge_path(mkvmerge_p)
 
     def on_mount(self) -> None:
         from tui.screens.browser import BrowserScreen

@@ -160,9 +160,139 @@ async def scenario_parallel_scan() -> None:
             print(f"[9] DryrunScreen : 3 lignes, {len(cols)} colonnes, Duree affichee ({duree}), retour OK")
 
 
+_SRT = """1
+00:00:01,000 --> 00:00:03,000
+Bonjour.
+"""
+
+
+def _make_donor_set(td: Path) -> bool:
+    """Cible video+audio, donneur audio (VF) et sous-titre externe."""
+    from core import config as cfg_mod
+    from core.preflight import get_tool_path
+    ffmpeg = get_tool_path("ffmpeg", cfg_mod.get_bin_dir(cfg_mod.load()))
+    if not ffmpeg:
+        return False
+    subprocess.run(
+        [str(ffmpeg), "-y", "-loglevel", "error",
+         "-f", "lavfi", "-i", "testsrc=duration=2:size=320x240:rate=10",
+         "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+         "-c:v", "libx264", "-c:a", "ac3", str(td / "film.mkv")],
+        check=True, capture_output=True,
+    )
+    subprocess.run(
+        [str(ffmpeg), "-y", "-loglevel", "error",
+         "-f", "lavfi", "-i", "sine=frequency=880:duration=2",
+         "-c:a", "ac3", str(td / "film.VF.mka")],
+        check=True, capture_output=True,
+    )
+    (td / "film.fr.srt").write_text(_SRT, encoding="utf-8")
+    return True
+
+
+async def _add_donor(pilot, app, filename: str) -> None:
+    """F9 -> choisit un donneur -> valide ses pistes -> revient sur SyncScreen."""
+    await pilot.press("f9")
+    await pilot.pause(0.6)
+    table = app.screen.query_one(DataTable)
+    noms  = [str(table.get_row_at(i)[0]) for i in range(table.row_count)]
+    table.move_cursor(row=noms.index(filename))
+    await pilot.press("enter")
+    await pilot.pause(0.6)
+    await pilot.press("enter")     # piste unique, déjà présélectionnée
+    await pilot.pause(0.8)
+
+
+async def scenario_external_tracks() -> None:
+    """Greffe d'une VF et d'un sous-titre externes, recalés indépendamment."""
+    with tempfile.TemporaryDirectory() as td_str:
+        td = Path(td_str)
+        if not _make_donor_set(td):
+            print("[10-12] SKIP : ffmpeg introuvable")
+            return
+
+        app = IrisEncodeApp(start_path=td)
+        if not app.mkvmerge_available:
+            print("[10-12] SKIP : mkvmerge introuvable, greffe non testee")
+            return
+
+        async with app.run_test(size=(160, 45)) as pilot:
+            await pilot.pause(0.5)
+            from tui.screens.browser import BrowserScreen
+            app.push_screen(BrowserScreen(td, start_virtual=False))
+            await pilot.pause(4.0)
+
+            await pilot.press("t")
+            await pilot.pause(0.8)
+            assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
+
+            # F9 : le donneur ne doit jamais proposer la source elle-meme
+            await pilot.press("f9")
+            await pilot.pause(0.6)
+            assert type(app.screen).__name__ == "DonorFileScreen", type(app.screen).__name__
+            dtab = app.screen.query_one(DataTable)
+            noms = [str(dtab.get_row_at(i)[0]) for i in range(dtab.row_count)]
+            assert "film.mkv" not in noms, f"source proposee comme donneur : {noms}"
+            await pilot.press("escape")
+            await pilot.pause(0.4)
+            print("[10] DonorFileScreen : source exclue de la liste")
+
+            # Piste audio VF
+            await _add_donor(pilot, app, "film.VF.mka")
+            assert type(app.screen).__name__ == "SyncScreen", type(app.screen).__name__
+            sync = app.screen
+            await pilot.press("minus")        # -100 ms
+            await pilot.press("shift+down")   # -1 s
+            await pilot.pause(0.3)
+            vf = sync._tracks[0]
+            assert vf.delay_ms == -1100, vf.delay_ms
+            await pilot.press("right")        # champ etirement
+            await pilot.press("plus")
+            await pilot.pause(0.3)
+            assert vf.stretch == (24000, 25025), vf.stretch
+            await pilot.press("right")        # champ langue
+            await pilot.press("plus")
+            await pilot.pause(0.3)
+            assert vf.language == "fre", vf.language
+
+            # Retour aux pistes, puis sous-titre externe depuis un autre fichier
+            await pilot.press("backspace")
+            await pilot.pause(0.5)
+            assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
+            await _add_donor(pilot, app, "film.fr.srt")
+            assert type(app.screen).__name__ == "SyncScreen", type(app.screen).__name__
+            sync = app.screen
+            assert len(sync._tracks) == 2, len(sync._tracks)
+
+            # Le sous-titre garde son propre decalage : independance des pistes
+            sub = sync._tracks[1]
+            sub.language = "fre"
+            sub.delay_ms = 850
+            assert vf.delay_ms == -1100 and sub.delay_ms == 850
+            print("[11] SyncScreen : 2 pistes, decalages independants "
+                  f"({vf.delay_ms} ms / {sub.delay_ms} ms)")
+
+            # Mux reel
+            await pilot.press("f2")
+            await pilot.pause(4.0)
+            assert type(app.screen).__name__ == "MuxScreen", type(app.screen).__name__
+            assert app.screen._done, "mux non termine"
+            assert app.screen._ok, "mux en echec"
+
+            out = td / "film_[mux].mkv"
+            assert out.exists(), "fichier muxe absent"
+            from core import muxer
+            produced = muxer.identify(out)
+            langs = [t.language for t in produced]
+            assert langs.count("fre") == 2, [t.display() for t in produced]
+            print(f"[12] Mux : {out.name} produit, "
+                  f"{len(produced)} pistes dont 2 en 'fre'")
+
+
 async def main() -> None:
     await scenario_navigation()
     await scenario_parallel_scan()
+    await scenario_external_tracks()
     print("SMOKE OK")
 
 

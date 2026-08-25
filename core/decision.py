@@ -11,6 +11,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
+from .muxer import MUX_SUFFIX, ExternalTrack
 from .profiles import Profile
 from .scanner import AudioTrack, VideoInfo
 
@@ -139,9 +140,14 @@ class FileDecision:
     audio:             list[AudioDecision]  = field(default_factory=list)
     subtitle_indices:       list[int] | None = None  # None = tout garder
     delete_source_override: bool | None      = None  # None = suivre profil
+    external_tracks:   list["ExternalTrack"] = field(default_factory=list)
 
     @property
     def output_container(self) -> str:
+        # Une piste externe impose le MKV : le MP4 ne porte ni ASS ni la
+        # plupart des pistes audio HD.
+        if self.external_tracks:
+            return ".mkv"
         return ".mkv" if self.info.has_image_subs else ".mp4"
 
     @property
@@ -149,6 +155,10 @@ class FileDecision:
         stem   = self.info.path.stem
         suffix = self.video.output_suffix
         ext    = self.output_container
+        # SKIP + pistes externes : pas de suffixe de codec, donc rien ne
+        # distinguerait la sortie de la source. On mux sous _[mux].
+        if not suffix and self.external_tracks:
+            suffix = MUX_SUFFIX
         return self.info.path.parent / f"{stem}{suffix}{ext}"
 
     @property

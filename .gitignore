@@ -32,6 +32,7 @@ iris_encode.log
 *_[H264].mkv
 *_[av1].mp4
 *_[av1].mkv
+*_[mux].mkv
 
 # Fichiers temporaires
 *.tmp

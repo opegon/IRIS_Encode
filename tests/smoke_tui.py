@@ -148,14 +148,16 @@ async def scenario_parallel_scan() -> None:
             assert type(app.screen).__name__ == "DryrunScreen", type(app.screen).__name__
             dr_table = app.screen.query_one(DataTable)
             assert dr_table.row_count == 3, f"dryrun row_count={dr_table.row_count}"
-            assert len(dr_table.columns) == 10, f"colonnes={len(dr_table.columns)}"
-            # Colonne Duree (index 2) remplie : clips d'1 s -> "0:01"
-            duree = dr_table.get_row_at(0)[2].plain
+            cols = [str(k.value) for k in dr_table.columns.keys()]
+            assert len(cols) == 12, f"colonnes={len(cols)} {cols}"
+            # Colonne Duree reperee par sa cle (l'index bouge a chaque ajout
+            # de colonne) : clips d'1 s -> "0:01"
+            duree = dr_table.get_row_at(0)[cols.index("duree")].plain
             assert duree.startswith("0:0"), f"duree={duree!r}"
             await pilot.press("backspace")
             await pilot.pause(0.3)
             assert type(app.screen).__name__ == "BrowserScreen"
-            print(f"[9] DryrunScreen : 3 lignes, 10 colonnes, Duree affichee ({duree}), retour OK")
+            print(f"[9] DryrunScreen : 3 lignes, {len(cols)} colonnes, Duree affichee ({duree}), retour OK")
 
 
 async def main() -> None:

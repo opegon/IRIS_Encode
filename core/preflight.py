@@ -23,7 +23,7 @@ CACHE_FILE  = DATA_DIR / "ffmpeg_releases_cache.toml"
 STATIC_FILE = DATA_DIR / "ffmpeg_releases.toml"
 
 ESSENTIAL_TOOLS = ("ffmpeg", "ffprobe")
-OPTIONAL_TOOLS  = ("dovi_tool",)
+OPTIONAL_TOOLS  = ("dovi_tool", "mkvmerge")
 ALL_TOOLS       = ESSENTIAL_TOOLS + OPTIONAL_TOOLS
 
 
@@ -45,7 +45,7 @@ def _exe(name: str) -> str:
 
 def _get_version(path: str) -> str:
     """
-    Tente -version (ffmpeg/ffprobe) puis --version (dovi_tool, GNU).
+    Tente -version (ffmpeg/ffprobe) puis --version (dovi_tool, mkvmerge, GNU).
     Retourne la version extraite ou une chaîne vide.
     """
     for flag in ("-version", "--version"):
@@ -57,8 +57,10 @@ def _get_version(path: str) -> str:
             output = (r.stdout or r.stderr or "").strip()
             if not output or r.returncode not in (0, 1):
                 continue
-            # Cherche un numéro de version semver (X.Y ou X.Y.Z) en priorité
-            m = __import__('re').search(r'\b(\d+\.\d+(?:\.\d+)*)\b', output)
+            # Cherche un numéro de version semver (X.Y ou X.Y.Z) en priorité.
+            # Le 'v?' couvre les versions collées à leur préfixe (mkvmerge v99.0),
+            # où \b ne s'applique pas entre la lettre et le premier chiffre.
+            m = __import__('re').search(r'\bv?(\d+\.\d+(?:\.\d+)*)\b', output)
             if m:
                 return m.group(1)
             # Fallback : dernier token de la première ligne (hash, build id…)
@@ -181,6 +183,29 @@ def install_dovi_tool(bin_dir: Path, releases: dict) -> bool:
     return True
 
 
+def install_mkvtoolnix(bin_dir: Path, releases: dict) -> bool:
+    """
+    Télécharge l'archive portable MKVToolNix et en extrait mkvmerge.
+
+    Les exécutables CLI sont liés statiquement : mkvmerge.exe fonctionne seul,
+    sorti de l'arborescence de l'archive. Windows uniquement — sous Linux,
+    mkvtoolnix s'installe par le gestionnaire de paquets.
+    """
+    if not _is_windows():
+        print("  Sous Linux, installez mkvtoolnix via votre gestionnaire de paquets.")
+        return False
+    info = releases.get("mkvtoolnix", {}).get("windows", {})
+    url  = info.get("url", "")
+    if not url:
+        print("  ✗ URL mkvtoolnix introuvable dans les sources.")
+        return False
+    print(f"  Téléchargement depuis {url}")
+    data = _download(url)
+    if data is None:
+        return False
+    return _install_from_zip(data, bin_dir, {_exe("mkvmerge")})
+
+
 def print_status(statuses: list[ToolStatus]) -> None:
     for s in statuses:
         icon = "✓" if s.found else "✗"
@@ -207,13 +232,18 @@ def run_preflight(cfg: dict) -> bool:
         if s.name in ESSENTIAL_TOOLS and not s.found
     ]
 
-    missing_dovi = next((s for s in statuses if s.name == "dovi_tool" and not s.found), None)
+    missing_dovi     = next((s for s in statuses if s.name == "dovi_tool" and not s.found), None)
+    missing_mkvmerge = next((s for s in statuses if s.name == "mkvmerge"  and not s.found), None)
 
     if not missing_essential:
-        # ffmpeg OK — proposer dovi_tool si absent
+        # ffmpeg OK — proposer les outils optionnels absents
         if missing_dovi:
             print("  dovi_tool absent (optionnel — nécessaire pour le Dolby Vision).")
             _offer_dovi_install(bin_dir)
+            print()
+        if missing_mkvmerge:
+            print("  mkvmerge absent (optionnel — nécessaire pour ajouter des pistes externes).")
+            _offer_mkvmerge_install(bin_dir)
             print()
         return True
 
@@ -256,6 +286,20 @@ def _offer_dovi_install(bin_dir: Path) -> None:
             print("  ✗ Installation dovi_tool échouée — fonctionnalité Dolby Vision indisponible.")
     else:
         print("  dovi_tool ignoré — les fichiers Dolby Vision ne seront pas traités de façon optimale.")
+
+
+def _offer_mkvmerge_install(bin_dir: Path) -> None:
+    """Propose l'installation de mkvmerge si absent (optionnel)."""
+    releases = _load_releases()
+    answer   = input(
+        "  Télécharger et installer mkvmerge (pistes externes) dans ./bin/ ? (o/N) : "
+    ).strip().lower()
+    if answer == "o":
+        ok = install_mkvtoolnix(bin_dir, releases)
+        if not ok:
+            print("  ✗ Installation mkvmerge échouée — ajout de pistes externes indisponible.")
+    else:
+        print("  mkvmerge ignoré — l'ajout de pistes audio/sous-titres externes sera indisponible.")
 
 
 def get_tool_path(name: str, bin_dir: Path) -> Optional[str]:

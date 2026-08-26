@@ -158,6 +158,18 @@ def test_speech_mask_is_binary_and_follows_energy():
     assert mask[500:].sum() == 500
 
 
+def test_count_speech_blocks():
+    """Côté audio, les « repères » sont les plages de parole."""
+    mask = np.zeros(1000, dtype=np.float32)
+    mask[100:200] = 1.0
+    mask[400:450] = 1.0
+    mask[900:]    = 1.0
+    assert sync._count_speech_blocks(mask) == 3
+    assert sync._count_speech_blocks(np.zeros(100, dtype=np.float32)) == 0
+    assert sync._count_speech_blocks(np.ones(100, dtype=np.float32)) == 1
+    assert sync._count_speech_blocks(np.zeros(0, dtype=np.float32)) == 0
+
+
 def test_speech_mask_on_silent_track():
     """Une piste muette ne doit pas produire un masque plein de 1."""
     assert sync._speech_mask(np.full(1000, -80.0)).sum() == 0

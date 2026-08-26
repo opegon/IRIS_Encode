@@ -204,6 +204,13 @@ def _decode_envelope(path: Path, track: int = 0,
     return 20.0 * np.log10(rms + 1.0)
 
 
+def _count_speech_blocks(mask: np.ndarray) -> int:
+    """Nombre de plages de parole — l'équivalent des répliques, côté audio."""
+    if mask.size == 0:
+        return 0
+    return int(np.count_nonzero(np.diff(mask, prepend=0.0) > 0))
+
+
 def _speech_mask(envelope: np.ndarray) -> np.ndarray:
     """
     Masque binaire « il y a de la parole », par seuil adaptatif local.
@@ -476,12 +483,14 @@ def measure_audio(target: Path, donor: Path, donor_track: int = 0,
     if ref.size == 0 or sig.size == 0:
         return SyncResult(0, None, 0.0, False, "aucun audio exploitable")
 
-    speech = float(_speech_mask(ref).mean())
+    mask   = _speech_mask(ref)
+    speech = float(mask.mean())
     drift  = abs(ref.size - sig.size) / max(ref.size, sig.size)
     lag, ratio, conf, salience = _search(
         ref, lambda r: _rescale(sig, r), progress)
     agreed, dispersion = _cross_validate(ref, _rescale(sig, ratio), lag)
     res = _finish(lag, ratio, conf, salience, speech_ratio=speech,
+                  n_events=_count_speech_blocks(mask),
                   agreed=agreed, dispersion_ms=dispersion)
     if res.ok and ratio == (1, 1) and drift > MAX_DURATION_DRIFT:
         res.reason = (f"durées écartées de {drift:.0%} — vérifiez qu'il s'agit "

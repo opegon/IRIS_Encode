@@ -116,6 +116,10 @@ def test_osd_is_enabled():
     assert "--osd-level=1" in preview.build_command(Path("/films/f.mkv"), _sub())
 
 
-def test_keys_hint_matches_the_track_kind():
-    assert "z" in preview.keys_hint(_sub())
-    assert "Ctrl" in preview.keys_hint(_audio())
+def test_keys_hint_names_the_real_mpv_bindings():
+    """
+    Ce sont les noms de bindings mpv, pas les touches physiques : mpv lie
+    littéralement Ctrl++ et Ctrl+-, pas Ctrl+= comme sur un clavier US.
+    """
+    assert "z / Z" in preview.keys_hint(_sub())
+    assert "Ctrl++ / Ctrl+-" in preview.keys_hint(_audio())

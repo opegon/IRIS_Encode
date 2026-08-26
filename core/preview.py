@@ -8,8 +8,8 @@ courant appliqué, positionné sur un passage dialogué.
 L'utilisateur ajuste ensuite avec les touches de mpv, qui affiche la valeur
 en OSD, puis la reporte dans l'écran de recalage :
 
-    audio        Ctrl + +  /  Ctrl + -     pas de 100 ms
-    sous-titres  z  /  Z                   pas de 100 ms
+    audio        Ctrl++  /  Ctrl+-     pas de 100 ms
+    sous-titres  z  /  Z               pas de 100 ms
 """
 from __future__ import annotations
 
@@ -105,4 +105,4 @@ def keys_hint(track: ExternalTrack) -> str:
     """Touches mpv à utiliser pour ajuster ce type de piste."""
     if track.kind == TrackKind.SUBTITLE:
         return "dans mpv : z / Z décalent les sous-titres par pas de 100 ms"
-    return "dans mpv : Ctrl+= / Ctrl+- décalent l'audio par pas de 100 ms"
+    return "dans mpv : Ctrl++ / Ctrl+- décalent l'audio par pas de 100 ms"

@@ -57,6 +57,11 @@ SURE_CONFIDENCE = 0.40    # en dessous : on propose, mais on dit de vérifier
 # Garde-fou contre une courbe plate dont l'argmax ne veut rien dire. Bas
 # volontairement : la saillance est bruitée, elle ne sert qu'aux cas dégénérés.
 MIN_SALIENCE    = 8.0
+
+# Recoupement par tiers : critère principal quand le film est assez long.
+# Un vrai alignement tient sur chaque tiers ; du bruit se disperse.
+CROSS_TOLERANCE_MS = 500
+_MIN_SEGMENT_BINS  = 6_000    # 60 s : en dessous, un tiers ne prouve rien
 # Écart de durée au-delà duquel les fichiers ne sont pas le même montage
 MAX_DURATION_DRIFT = 0.06
 
@@ -87,11 +92,20 @@ class SyncResult:
     floor:         float = 0.0    # confiance qu'il aurait fallu atteindre
     n_events:      int   = 0      # répliques, ou blocs de parole
     speech_ratio:  float = 0.0    # part du film détectée comme parlée
+    cross_checked: bool  = False  # les trois tiers donnent le même décalage
+    dispersion_ms: int   = 0      # écart entre tiers
 
     @property
     def sure(self) -> bool:
-        """Résultat exploitable sans vérification supplémentaire."""
-        return self.ok and self.confidence >= SURE_CONFIDENCE
+        """
+        Résultat exploitable sans vérification supplémentaire.
+
+        Le recoupement par tiers prime sur le niveau de corrélation : une
+        corrélation médiocre dont les trois tiers concordent au dixième de
+        seconde est bien plus fiable qu'un score élevé isolé.
+        """
+        return self.ok and (self.cross_checked
+                            or self.confidence >= SURE_CONFIDENCE)
 
     def label(self) -> str:
         if not self.ok:
@@ -104,9 +118,13 @@ class SyncResult:
 
     def report(self) -> str:
         """Compte rendu détaillé, lisible dans la TUI."""
+        recoupe = (f"tiers concordants à {self.dispersion_ms} ms près"
+                   if self.cross_checked
+                   else f"tiers discordants ({self.dispersion_ms} ms d'écart)")
         mesures = (f"confiance {self.confidence:.2f} / seuil {self.floor:.2f}"
+                   f" · {recoupe}"
                    f" · {self.n_events} repères"
-                   f" · parole {self.speech_ratio:.0%} du film")
+                   f" · parole {self.speech_ratio:.0%}")
         if self.ok:
             head = f"{'✓' if self.sure else '⚠'} {self.label()}"
             if not self.sure:
@@ -340,6 +358,33 @@ def _pearson_at(a: np.ndarray, b: np.ndarray, lag: int) -> float:
     return float(np.dot(x, y) / denom) if denom > 0 else 0.0
 
 
+def _cross_validate(ref: np.ndarray, sig: np.ndarray,
+                    lag: int) -> tuple[Optional[bool], int]:
+    """
+    Le décalage tient-il sur chaque tiers du film pris isolément ?
+
+    C'est la preuve la plus solide dont on dispose, et elle ne dépend pas du
+    niveau de corrélation. Mesuré sur un vrai film : un sous-titre juste donne
+    trois tiers à 60 ms d'écart, un sous-titre mélangé les disperse sur
+    192 secondes. Une corrélation de 0.20 peut donc être parfaitement bonne.
+
+    Retourne (None, 0) si les segments sont trop courts pour conclure.
+    """
+    n = min(ref.size, sig.size)
+    if n // 3 < _MIN_SEGMENT_BINS:
+        return None, 0
+
+    lags = []
+    for k in range(3):
+        a, b = k * n // 3, (k + 1) * n // 3
+        seg_lag, _, _ = _best_lag(ref[a:b], sig[a:b])
+        lags.append(seg_lag)
+
+    dispersion = (max(lags) - min(lags)) * BIN_MS
+    worst_gap  = max(abs(l - lag) for l in lags) * BIN_MS
+    return worst_gap <= CROSS_TOLERANCE_MS, dispersion
+
+
 def _search(ref: np.ndarray, build,
             progress: Optional[Progress] = None,
             ) -> tuple[int, tuple[int, int], float, float]:
@@ -382,12 +427,23 @@ def confidence_floor(n_events: int) -> float:
 
 def _finish(lag: int, ratio: tuple[int, int], conf: float, salience: float,
             floor: float = MIN_CONFIDENCE, n_events: int = 0,
-            speech_ratio: float = 0.0) -> SyncResult:
+            speech_ratio: float = 0.0, agreed: Optional[bool] = None,
+            dispersion_ms: int = 0) -> SyncResult:
     candidate = int(round(lag * BIN_MS))
     common = dict(best_delay_ms=candidate, floor=floor,
-                  n_events=n_events, speech_ratio=speech_ratio)
+                  n_events=n_events, speech_ratio=speech_ratio,
+                  cross_checked=bool(agreed), dispersion_ms=dispersion_ms)
 
-    if salience < MIN_SALIENCE or conf < floor:
+    # Le recoupement par tiers tranche quand il est disponible : il constate
+    # que le décalage tient sur tout le film, ce qu'aucun seuil de corrélation
+    # ne sait faire. Mesuré sur un vrai film, un alignement juste sortait à
+    # 0.20 — sous le seuil — avec trois tiers concordants à 60 ms.
+    if agreed is not None:
+        rejected = not agreed
+    else:
+        rejected = salience < MIN_SALIENCE or conf < floor
+
+    if rejected:
         res = SyncResult(
             delay_ms=0, stretch=None, confidence=conf, ok=False, **common,
         )
@@ -424,7 +480,9 @@ def measure_audio(target: Path, donor: Path, donor_track: int = 0,
     drift  = abs(ref.size - sig.size) / max(ref.size, sig.size)
     lag, ratio, conf, salience = _search(
         ref, lambda r: _rescale(sig, r), progress)
-    res = _finish(lag, ratio, conf, salience, speech_ratio=speech)
+    agreed, dispersion = _cross_validate(ref, _rescale(sig, ratio), lag)
+    res = _finish(lag, ratio, conf, salience, speech_ratio=speech,
+                  agreed=agreed, dispersion_ms=dispersion)
     if res.ok and ratio == (1, 1) and drift > MAX_DURATION_DRIFT:
         res.reason = (f"durées écartées de {drift:.0%} — vérifiez qu'il s'agit "
                       f"bien du même montage")
@@ -454,6 +512,8 @@ def measure_subtitle(video: Path, subtitle: Path,
     # jamais des fenêtres de quelques secondes.
     lag, ratio, conf, salience = _search(
         ref, lambda r: _cue_mask(cues, n_bins, r), progress)
+    agreed, dispersion = _cross_validate(ref, _cue_mask(cues, n_bins, ratio), lag)
     return _finish(lag, ratio, conf, salience,
                    floor=confidence_floor(len(cues)),
-                   n_events=len(cues), speech_ratio=float(ref.mean()))
+                   n_events=len(cues), speech_ratio=float(ref.mean()),
+                   agreed=agreed, dispersion_ms=dispersion)

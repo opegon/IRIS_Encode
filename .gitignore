@@ -34,6 +34,9 @@ iris_encode.log
 *_[av1].mkv
 *_[mux].mkv
 
+# Matériel de test local (films, sous-titres) — jamais versionné
+resources_files/
+
 # Fichiers temporaires
 *.tmp
 *.temp

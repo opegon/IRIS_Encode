@@ -69,6 +69,60 @@ def test_empty_signal_is_not_a_crash():
     assert sync._best_lag(_speech(), np.zeros(0)) == (0, 0.0, 0.0)
 
 
+# ─── Recoupement par tiers ────────────────────────────────────────────────────
+
+def test_cross_validation_confirms_a_real_shift():
+    """
+    Un vrai décalage tient sur chaque tiers du film pris isolément.
+
+    C'est le critère qui prime : mesuré sur un long métrage réel, un
+    alignement juste sortait à 0.20 de corrélation — sous le seuil — avec
+    trois tiers concordants à 60 ms.
+    """
+    ref = _speech(n=60_000, n_events=900)
+    sig = _shift(ref, 400)
+    agreed, dispersion = sync._cross_validate(ref, sig, -400)
+    assert agreed is True
+    assert dispersion <= sync.CROSS_TOLERANCE_MS
+
+
+def test_cross_validation_rejects_noise():
+    """Deux signaux sans rapport donnent des tiers qui partent dans tous les sens."""
+    ref = _speech(n=60_000, n_events=900, seed=1)
+    sig = _speech(n=60_000, n_events=900, seed=2)
+    lag, _, _ = sync._best_lag(ref, sig)
+    agreed, dispersion = sync._cross_validate(ref, sig, lag)
+    assert agreed is False
+    assert dispersion > sync.CROSS_TOLERANCE_MS
+
+
+def test_cross_validation_abstains_on_short_files():
+    """Sous une minute par tiers, le recoupement ne prouve rien : il s'abstient."""
+    ref = _speech(n=3_000, n_events=40)
+    agreed, dispersion = sync._cross_validate(ref, _shift(ref, 20), -20)
+    assert agreed is None
+    assert dispersion == 0
+
+
+def test_agreement_beats_a_low_correlation():
+    """Le cas du film réel : corrélation sous le seuil, tiers concordants."""
+    res = sync._finish(lag=3968, ratio=(1, 1), conf=0.20, salience=37.0,
+                       floor=0.25, n_events=1327, speech_ratio=0.56,
+                       agreed=True, dispersion_ms=60)
+    assert res.ok and res.sure
+    assert res.delay_ms == 39680
+    assert "concordants" in res.report()
+
+
+def test_disagreement_beats_a_high_correlation():
+    """À l'inverse, des tiers discordants doivent l'emporter sur un bon score."""
+    res = sync._finish(lag=100, ratio=(1, 1), conf=0.85, salience=200.0,
+                       floor=0.25, n_events=500, speech_ratio=0.40,
+                       agreed=False, dispersion_ms=94_460)
+    assert not res.ok
+    assert "discordants" in res.report()
+
+
 # ─── Seuil adaptatif ──────────────────────────────────────────────────────────
 
 def test_confidence_floor_decreases_with_events():

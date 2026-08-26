@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 
-def _force_utf8_output() -> None:
+def force_utf8_output() -> None:
     """Force stdout/stderr en UTF-8.
 
     Sur Windows, Python n'utilise l'UTF-8 que face à une vraie console : dès que
@@ -54,7 +54,7 @@ def _ensure_deps() -> None:
 
 
 def main() -> None:
-    _force_utf8_output()   # avant tout print : la vérification ci-dessous en fait
+    force_utf8_output()    # avant tout print : la vérification ci-dessous en fait
     _check_python_version()
     _ensure_deps()
 

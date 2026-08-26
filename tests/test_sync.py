@@ -7,6 +7,7 @@ corrélation. Le décodage audio est couvert par le smoke test.
 from __future__ import annotations
 
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 import pytest
@@ -347,3 +348,140 @@ def test_confident_result_is_clean():
     assert res.delay_ms == -2450
     assert res.stretch == (24000, 25025)
     assert res.reason == ""
+
+
+# ─── Découpage en plages ──────────────────────────────────────────────────────
+
+def _with_inserts(sig: np.ndarray, cuts: list[int],
+                  gap_bins: int = 200) -> np.ndarray:
+    """
+    Réinjecte `gap_bins` de silence à chaque position de `cuts`.
+
+    C'est le montage broadcast face au montage streaming : même contenu, des
+    noirs de coupure publicitaire en plus, et tout ce qui suit décalé d'autant.
+    """
+    parts, prev = [], 0
+    for c in cuts:
+        parts.append(sig[prev:c])
+        parts.append(np.zeros(gap_bins, dtype=np.float32))
+        prev = c
+    parts.append(sig[prev:])
+    return np.concatenate(parts)
+
+
+def test_segments_find_each_insertion():
+    ref  = _speech(n=240_000, n_events=3_000, seed=1)
+    cuts = [40_000, 90_000, 140_000, 180_000, 215_000]
+    segs = sync._segment_lags(ref, _with_inserts(ref, cuts))
+
+    assert len(segs) == len(cuts) + 1
+    # Un palier de 2 s de plus à chaque coupure franchie
+    assert [s.delay_ms for s in segs] == [0, -2000, -4000, -6000, -8000, -10000]
+    # Frontières retrouvées au pas de balayage près
+    trouvees = [s.end_s for s in segs[:-1]]
+    for attendue, obtenue in zip([c * sync.BIN_MS / 1000 for c in cuts], trouvees):
+        assert abs(obtenue - attendue) <= 2.0
+
+
+def test_constant_delay_yields_no_segments():
+    """Un décalage qui tient partout n'a aucune plage à exhiber."""
+    ref = _speech(n=240_000, n_events=3_000, seed=2)
+    assert sync._segment_lags(ref, _shift(ref, 300)) == []
+
+
+def test_noise_yields_no_segments():
+    ref = _speech(n=240_000, n_events=3_000, seed=3)
+    sig = _speech(n=240_000, n_events=3_000, seed=4)
+    # Du bruit n'a pas de paliers : mieux vaut ne rien montrer que d'exhiber
+    # un découpage inventé.
+    assert sync._segment_lags(ref, sig) == []
+
+
+def test_segments_stay_ordered():
+    """Aucune plage ne peut finir avant de commencer."""
+    ref  = _speech(n=240_000, n_events=3_000, seed=7)
+    cuts = [30_000, 35_000, 120_000, 125_000, 200_000]
+    for seg in sync._segment_lags(ref, _with_inserts(ref, cuts)):
+        assert seg.end_s > seg.start_s, seg.label()
+
+
+def test_short_file_abstains():
+    ref = _speech(n=8_000, n_events=100, seed=5)
+    assert sync._segment_lags(ref, _with_inserts(ref, [4_000])) == []
+
+
+def test_segments_explain_the_refusal():
+    """Le refus nomme le montage plutôt que de rester sur l'hypothèse générique."""
+    segs = [sync.Segment(0.0, 500.0, 0, 0.7),
+            sync.Segment(500.0, 1000.0, 2000, 0.6)]
+    res = sync._finish(lag=200, ratio=(1, 1), conf=0.36, salience=50.0,
+                       n_events=12_499, speech_ratio=0.55,
+                       agreed=False, dispersion_ms=6010, segments=segs)
+    assert not res.ok
+    assert "2 plages" in res.reason
+    assert "montage" in res.reason
+    # Le compte rendu tient dans les 3 lignes du bandeau et renvoie vers 's'
+    rapport = res.report()
+    assert len(rapport.splitlines()) == 3
+    assert "+2000" in rapport and "'s'" in rapport
+
+
+def test_no_segments_keeps_the_previous_diagnosis():
+    res = sync._finish(lag=200, ratio=(1, 1), conf=0.1, salience=1.0,
+                       n_events=500, speech_ratio=0.35, agreed=False)
+    assert not res.ok and res.segments == []
+    assert "plages" not in res.reason
+
+
+# ─── Sous-titres embarqués ────────────────────────────────────────────────────
+
+def test_extract_subtitle_asks_ffmpeg_for_the_right_track(tmp_path: Path):
+    cible = tmp_path / "donneur_2_[sync].srt"
+
+    def _fake_run(cmd, **kw):
+        Path(cmd[-1]).write_text("1\n00:00:01,000 --> 00:00:02,000\nX\n",
+                                 encoding="utf-8")
+        return mock.Mock(returncode=0)
+
+    with mock.patch("core.sync.tempfile.gettempdir", return_value=str(tmp_path)), \
+         mock.patch("core.sync.subprocess.run", side_effect=_fake_run) as run:
+        out = sync.extract_subtitle(tmp_path / "donneur.mkv", 2)
+
+    assert out == cible
+    cmd = run.call_args[0][0]
+    assert "-map" in cmd and cmd[cmd.index("-map") + 1] == "0:s:2"
+    assert cmd[cmd.index("-c:s") + 1] == "srt"
+
+
+def test_extract_subtitle_returns_none_on_failure(tmp_path: Path):
+    """Un sous-titre image fait échouer ffmpeg : pas de fichier, pas de mesure."""
+    with mock.patch("core.sync.tempfile.gettempdir", return_value=str(tmp_path)), \
+         mock.patch("core.sync.subprocess.run",
+                    return_value=mock.Mock(returncode=1)):
+        assert sync.extract_subtitle(tmp_path / "donneur.mkv", 0) is None
+
+
+def test_measure_subtitle_refuses_an_image_track(tmp_path: Path):
+    video = tmp_path / "film.mkv"
+    with mock.patch("core.sync.extract_subtitle", return_value=None):
+        res = sync.measure_subtitle(video, tmp_path / "donneur.mkv",
+                                    donor_track=0)
+    assert not res.ok
+    assert "image" in res.reason
+
+
+def test_measure_subtitle_needs_a_track_index_for_a_container(tmp_path: Path):
+    res = sync.measure_subtitle(tmp_path / "film.mkv", tmp_path / "donneur.mkv")
+    assert not res.ok
+    assert "embarquée" in res.reason
+
+
+def test_measure_subtitle_reads_a_plain_file_without_extracting(tmp_path: Path):
+    """Un .srt nu ne doit jamais déclencher d'extraction."""
+    srt = tmp_path / "film.fr.srt"
+    srt.write_text("1\n00:00:01,000 --> 00:00:02,000\nX\n", encoding="utf-8")
+    with mock.patch("core.sync.extract_subtitle") as extract, \
+         mock.patch("core.sync._decode_envelope",
+                    return_value=np.zeros(0, dtype=np.float32)):
+        sync.measure_subtitle(tmp_path / "film.mkv", srt)
+    extract.assert_not_called()

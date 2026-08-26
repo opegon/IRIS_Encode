@@ -1,5 +1,37 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0.3] — 2026-08-26
+
+### Recalage — détection des montages différents
+
+- **Sous-titres embarqués mesurables.** `read_cues()` ne sait lire qu'un fichier
+  texte : une piste `mov_text` ou SRT logée dans un mkv/mp4 n'avait aucune
+  réplique lisible, et la mesure refusait pour « format inconnu ». La piste est
+  désormais extraite du conteneur vers un `.srt` temporaire avant d'être
+  corrélée. Un sous-titre image (PGS, VobSub) est refusé pour ce motif propre,
+  au lieu d'être confondu avec un fichier illisible.
+- **Découpage en plages** (`s` sur l'écran de recalage). Quand le recoupement
+  constate que le décalage ne tient pas sur tout le film, la mesure cherche
+  désormais s'il tient *par morceaux* : fenêtres de 2 min, fusion des voisines
+  concordantes, puis affinage de chaque frontière au pas de la seconde. C'est la
+  signature de deux montages du même contenu — les noirs de coupure publicitaire
+  d'un rip broadcast face à un rip streaming décalent tout ce qui suit.
+  Relevé sur un épisode réel : 6 plages, cinq paliers de +2 000 ms, confiances
+  0,64 à 0,87.
+- Le refus nomme maintenant ce qu'il a vu — « montage différent — 6 plages,
+  chacune alignée mais à un décalage propre » — au lieu de l'hypothèse générique.
+- Les plages sont **montrées, jamais appliquées** : `--sync` de mkvmerge et
+  `-itsoffset` de ffmpeg n'expriment qu'une transformation linéaire, et poser un
+  palier sur toute la piste serait faux partout ailleurs. Deux garde-fous
+  écartent un découpage qui ne serait que du bruit de corrélation.
+
+### Corrections
+
+- `tests/smoke_tui.py` mourait sur un `UnicodeEncodeError` dès que sa sortie
+  était redirigée — même cause que le correctif v0.8.0.2, ce point d'entrée ne
+  passant pas par `main()`. Le forçage UTF-8 devient réutilisable
+  (`main.force_utf8_output`) plutôt que dupliqué.
+
 ## [v0.8.0.2] — 2026-08-26
 
 - **Démarrage hors console corrigé.** `main.py` mourait sur un

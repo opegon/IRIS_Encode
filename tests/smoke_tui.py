@@ -17,7 +17,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from textual.widgets import DataTable
 
 from core.decision import VideoAction
+from main import force_utf8_output
 from tui.app import IrisEncodeApp
+
+# Ce harnais affiche des symboles absents du cp1252 : sans ca, il meurt sur un
+# UnicodeEncodeError des que sa sortie est redirigee (pipe, fichier, Git Bash).
+force_utf8_output()
 
 
 def _make_test_videos(td: Path, n: int) -> bool:
@@ -479,6 +484,15 @@ def _make_measurable_set(td: Path) -> bool:
                    f"{ts(a + _MEASURE_OFFSET)} --> {ts(b + _MEASURE_OFFSET)}",
                    f"Replique {k}", ""]
     (td / "film.fr.srt").write_text("\n".join(lignes), encoding="utf-8")
+
+    # Meme sous-titre, mais embarque dans un conteneur : read_cues() ne
+    # sait pas le lire tel quel, il doit d'abord en etre extrait.
+    subprocess.run(
+        [str(ffmpeg), "-y", "-loglevel", "error",
+         "-i", str(td / "film.fr.srt"), "-c:s", "srt",
+         str(td / "sous_titres.mkv")],
+        check=True, capture_output=True,
+    )
     return True
 
 
@@ -524,6 +538,25 @@ async def scenario_measure() -> None:
             assert ecart <= 50, f"mesure {piste.delay_ms} ms, attendu {attendu} ms"
             print(f"[14] Mesure auto : SRT decale de {_MEASURE_OFFSET * 1000:.0f} ms "
                   f"-> correction {piste.delay_ms} ms (ecart {ecart} ms)")
+
+            # Meme mesure, mais sur une piste embarquee dans un conteneur
+            await _add_donor(pilot, app, "sous_titres.mkv")
+            assert len(sync_scr._tracks) == 2, len(sync_scr._tracks)
+            embarque = sync_scr._tracks[1]
+            sync_scr.query_one(DataTable).move_cursor(row=1)
+            await pilot.pause(0.3)
+            await pilot.press("m")
+            for _ in range(40):
+                await pilot.pause(0.5)
+                if not sync_scr._measuring:
+                    break
+            assert not sync_scr._measuring, "mesure embarquee jamais terminee"
+            assert embarque.sync_origin == SyncOrigin.MEASURED, (
+                f"piste embarquee non mesuree : {embarque.sync_origin}")
+            ecart2 = abs(embarque.delay_ms - attendu)
+            assert ecart2 <= 50, f"mesure {embarque.delay_ms} ms, attendu {attendu} ms"
+            print(f"[14b] Sous-titre embarque : extrait du conteneur puis mesure "
+                  f"-> {embarque.delay_ms} ms (ecart {ecart2} ms)")
 
 
 async def main() -> None:

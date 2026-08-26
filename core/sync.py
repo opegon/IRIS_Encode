@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import re
 import subprocess
-from dataclasses import dataclass
+import tempfile
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -65,6 +66,21 @@ _MIN_SEGMENT_BINS  = 6_000    # 60 s : en dessous, un tiers ne prouve rien
 # Écart de durée au-delà duquel les fichiers ne sont pas le même montage
 MAX_DURATION_DRIFT = 0.06
 
+# Découpage en plages, quand le recoupement constate que le décalage ne tient
+# pas sur tout le film. Une fenêtre de 2 min est assez longue pour que la
+# corrélation ait de quoi mordre, assez courte pour isoler une coupure
+# publicitaire. Les bornes évitent 200 fenêtres sur une intégrale et 3 sur un
+# épisode court.
+_SEGMENT_WINDOW_S    = 120
+_SEGMENT_MIN_WINDOWS = 8
+_SEGMENT_MAX_WINDOWS = 32
+# Pas du balayage qui affine une frontière entre deux plages
+_BOUNDARY_STEP_S     = 1.0
+
+# Sous-titres lisibles directement : tout le reste est une piste embarquée,
+# qu'il faut extraire du conteneur avant d'en tirer des répliques.
+_TEXT_SUB_EXT = {".srt", ".ass", ".ssa", ".vtt", ".sub"}
+
 # Bande de la parole. Sur un film, la bande-son occupe surtout les graves et
 # les aigus : sans ce filtre, une musique continue remplit le masque de VAD et
 # la corrélation s'effondre (mesuré : 1.00 sans musique, 0.24 avec).
@@ -77,6 +93,33 @@ def set_ffmpeg_path(path: str) -> None:
     """Précise l'exécutable ffmpeg utilisé pour décoder l'audio."""
     global _ffmpeg_path
     _ffmpeg_path = path
+
+
+def mmss(seconds: float) -> str:
+    """Secondes → m:ss, pour situer une plage dans le film."""
+    s = max(0, int(seconds))
+    return f"{s // 60}:{s % 60:02d}"
+
+
+@dataclass
+class Segment:
+    """
+    Plage du film sur laquelle un même décalage tient.
+
+    Existe parce qu'un décalage unique ne décrit pas tous les cas réels : deux
+    montages du même épisode diffèrent par des insertions ponctuelles — noirs
+    de coupure publicitaire, bumpers — qui décalent tout ce qui suit sans rien
+    changer au contenu. Chaque plage est alors juste, et c'est seulement leur
+    réunion qui ne l'est pas.
+    """
+    start_s:    float
+    end_s:      float
+    delay_ms:   int
+    confidence: float
+
+    def label(self) -> str:
+        return (f"{mmss(self.start_s)}–{mmss(self.end_s)}"
+                f"  {self.delay_ms:+d} ms")
 
 
 @dataclass
@@ -94,6 +137,9 @@ class SyncResult:
     speech_ratio:  float = 0.0    # part du film détectée comme parlée
     cross_checked: bool  = False  # les trois tiers donnent le même décalage
     dispersion_ms: int   = 0      # écart entre tiers
+    # Plages détectées quand le décalage ne tient pas sur tout le film. Jamais
+    # appliquées : elles expliquent un refus, elles ne le contournent pas.
+    segments:      list["Segment"] = field(default_factory=list)
 
     @property
     def sure(self) -> bool:
@@ -132,12 +178,23 @@ class SyncResult:
             return f"{head}\n{mesures}"
 
         candidat = f"meilleur candidat {self.best_delay_ms:+d} ms"
+        if self.segments:
+            # Une ligne, quel que soit le nombre de plages : le détail tient
+            # dans son propre écran, le bandeau n'a que trois lignes.
+            paliers = " · ".join(f"{s.delay_ms:+d}" for s in self.segments)
+            return (f"✗ Mesure refusée — {self.reason}\n"
+                    f"{mesures}\n"
+                    f"plages (ms) : {paliers}   —   's' pour le détail")
         return f"✗ Mesure refusée — {self.reason}\n{mesures} · {candidat}"
 
     def diagnosis(self) -> str:
         """Piste la plus probable derrière un refus."""
         if self.ok:
             return ""
+        if self.segments:
+            # Constat, pas hypothèse : chaque plage a été vérifiée isolément.
+            return (f"montage différent — {len(self.segments)} plages, chacune "
+                    f"alignée mais à un décalage propre")
         if self.n_events < 20:
             return ("trop peu de repères : sous-titre très court, ou format "
                     "mal lu")
@@ -292,6 +349,31 @@ def read_cues(path: Path) -> list[tuple[float, float]]:
     return cues
 
 
+def extract_subtitle(video: Path, ffmpeg_index: int) -> Optional[Path]:
+    """
+    Sort une piste de sous-titres embarquée du conteneur, vers un .srt temporaire.
+
+    read_cues() ne sait lire qu'un fichier texte. Une piste greffée depuis un
+    mkv ou un mp4 — le cas courant quand le donneur est un autre montage du
+    même épisode — n'a donc aucune réplique lisible tant qu'elle n'en est pas
+    extraite.
+
+    Retourne None si ffmpeg refuse la conversion : c'est ce qui arrive aux
+    sous-titres image (PGS, VobSub), qui ne contiennent pas de texte.
+    """
+    out = Path(tempfile.gettempdir()) / f"{video.stem}_{ffmpeg_index}_[sync].srt"
+    cmd = [_ffmpeg_path, "-y", "-v", "error",
+           "-i", str(video), "-map", f"0:s:{ffmpeg_index}",
+           "-c:s", "srt", str(out)]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0 or not out.exists() or out.stat().st_size == 0:
+        return None
+    return out
+
+
 def _cue_mask(cues: list[tuple[float, float]], n_bins: int,
               ratio: tuple[int, int] = (1, 1)) -> np.ndarray:
     """Masque binaire des répliques, éventuellement rééchelonné."""
@@ -392,6 +474,109 @@ def _cross_validate(ref: np.ndarray, sig: np.ndarray,
     return worst_gap <= CROSS_TOLERANCE_MS, dispersion
 
 
+def _refine_boundary(ref: np.ndarray, sig: np.ndarray, approx: int,
+                     lag_left: int, lag_right: int, span: int) -> int:
+    """
+    Situe précisément la bascule entre deux plages voisines.
+
+    La passe grossière ne sait que désigner la fenêtre où le décalage change ;
+    la fenêtre qui chevauche la bascule reçoit celui de ses deux décalages qui
+    y domine. On balaie donc l'intervalle en cherchant le point qui maximise la
+    corrélation des deux côtés, chacun à *son* décalage.
+    """
+    n  = min(ref.size, sig.size)
+    lo = max(0, approx - span)
+    hi = min(n, approx + span)
+    step = max(1, int(_BOUNDARY_STEP_S * 1000 / BIN_MS))
+    if hi - lo < 4 * step:
+        return approx
+
+    best, best_score = approx, -2.0
+    for split in range(lo + step, hi - step, step):
+        score = (_pearson_at(ref[lo:split],  sig[lo:split],  lag_left)
+                 + _pearson_at(ref[split:hi], sig[split:hi], lag_right))
+        if score > best_score:
+            best_score, best = score, split
+    return best
+
+
+def _segment_lags(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
+    """
+    Découpe le film en plages de décalage constant.
+
+    N'est appelée qu'après l'échec du recoupement : si le décalage tient sur
+    tout le film, il n'y a rien à découper. Retourne [] dès qu'on ne peut pas
+    conclure — une plage unique n'apprend rien, et un film trop court ne donne
+    pas de fenêtres exploitables.
+    """
+    n = min(ref.size, sig.size)
+    if n < 2 * _MIN_SEGMENT_BINS:
+        return []
+
+    total_s = n * BIN_MS / 1000
+    windows = int(round(total_s / _SEGMENT_WINDOW_S))
+    windows = max(_SEGMENT_MIN_WINDOWS, min(_SEGMENT_MAX_WINDOWS, windows))
+    win_len = n // windows
+    if win_len < 100:                # moins d'une seconde : rien à corréler
+        return []
+
+    # 1. Décalage fenêtre par fenêtre
+    coarse: list[tuple[int, int, int, float]] = []
+    for k in range(windows):
+        a, b = k * n // windows, (k + 1) * n // windows
+        lag, conf, _ = _best_lag(ref[a:b], sig[a:b])
+        coarse.append((a, b, lag, conf))
+
+    # 2. Fusion des fenêtres voisines qui s'accordent. Même tolérance que le
+    #    recoupement : en deçà, c'est du bruit de mesure, pas une bascule.
+    runs: list[list] = []
+    for a, b, lag, conf in coarse:
+        if runs and abs(lag - runs[-1][2]) * BIN_MS <= CROSS_TOLERANCE_MS:
+            runs[-1][1] = b
+            runs[-1][3] = max(runs[-1][3], conf)
+        else:
+            runs.append([a, b, lag, conf])
+    if len(runs) < 2:
+        return []
+
+    # 2 bis. Un découpage n'a de sens que s'il montre une structure. Quand
+    #        presque chaque fenêtre tombe sur son propre décalage, il n'y a pas
+    #        de paliers à lire : c'est du bruit de corrélation, et en exhiber
+    #        vingt serait pire que de ne rien dire.
+    if len(runs) > windows // 2:
+        return []
+    if float(np.median([r[3] for r in runs])) < MIN_CONFIDENCE:
+        return []
+
+    # 3. Affinage des frontières. La borne trouvée est bridée à l'intérieur des
+    #    deux plages : sur des plages courtes, les intervalles de recherche se
+    #    chevauchent et un point de bascule pourrait remonter avant le début de
+    #    la plage de gauche.
+    for i in range(len(runs) - 1):
+        split = _refine_boundary(ref, sig, runs[i][1],
+                                 runs[i][2], runs[i + 1][2], win_len)
+        split = max(runs[i][0] + 1, min(split, runs[i + 1][1] - 1))
+        runs[i][1]     = split
+        runs[i + 1][0] = split
+
+    # 4. Décalage repris sur l'étendue définitive de chaque plage. Celui de la
+    #    passe grossière a été mesuré sur des fenêtres qui chevauchaient une
+    #    bascule : il en portait la moyenne, à quelques dizaines de ms près.
+    #    Seules les plages assez longues sont remesurées : sous une minute, le
+    #    même raisonnement que pour le recoupement s'applique — un extrait
+    #    court ne prouve rien, et la fenêtre large de la passe grossière reste
+    #    le meilleur estimateur disponible.
+    for run in runs:
+        a, b = run[0], run[1]
+        if b - a >= _MIN_SEGMENT_BINS:
+            lag, conf, _ = _best_lag(ref[a:b], sig[a:b])
+            run[2], run[3] = lag, conf
+
+    return [Segment(start_s=a * BIN_MS / 1000, end_s=b * BIN_MS / 1000,
+                    delay_ms=int(round(lag * BIN_MS)), confidence=conf)
+            for a, b, lag, conf in runs]
+
+
 def _search(ref: np.ndarray, build,
             progress: Optional[Progress] = None,
             ) -> tuple[int, tuple[int, int], float, float]:
@@ -435,11 +620,13 @@ def confidence_floor(n_events: int) -> float:
 def _finish(lag: int, ratio: tuple[int, int], conf: float, salience: float,
             floor: float = MIN_CONFIDENCE, n_events: int = 0,
             speech_ratio: float = 0.0, agreed: Optional[bool] = None,
-            dispersion_ms: int = 0) -> SyncResult:
+            dispersion_ms: int = 0,
+            segments: Optional[list[Segment]] = None) -> SyncResult:
     candidate = int(round(lag * BIN_MS))
     common = dict(best_delay_ms=candidate, floor=floor,
                   n_events=n_events, speech_ratio=speech_ratio,
-                  cross_checked=bool(agreed), dispersion_ms=dispersion_ms)
+                  cross_checked=bool(agreed), dispersion_ms=dispersion_ms,
+                  segments=segments or [])
 
     # Le recoupement par tiers tranche quand il est disponible : il constate
     # que le décalage tient sur tout le film, ce qu'aucun seuil de corrélation
@@ -488,10 +675,14 @@ def measure_audio(target: Path, donor: Path, donor_track: int = 0,
     drift  = abs(ref.size - sig.size) / max(ref.size, sig.size)
     lag, ratio, conf, salience = _search(
         ref, lambda r: _rescale(sig, r), progress)
-    agreed, dispersion = _cross_validate(ref, _rescale(sig, ratio), lag)
+    scaled = _rescale(sig, ratio)
+    agreed, dispersion = _cross_validate(ref, scaled, lag)
+    # Le découpage ne sert qu'à expliquer un refus : quand le décalage tient
+    # sur tout le film, il n'y a rien à découper et le cas nominal ne paie rien.
+    segments = _segment_lags(ref, scaled) if agreed is False else []
     res = _finish(lag, ratio, conf, salience, speech_ratio=speech,
                   n_events=_count_speech_blocks(mask),
-                  agreed=agreed, dispersion_ms=dispersion)
+                  agreed=agreed, dispersion_ms=dispersion, segments=segments)
     if res.ok and ratio == (1, 1) and drift > MAX_DURATION_DRIFT:
         res.reason = (f"durées écartées de {drift:.0%} — vérifiez qu'il s'agit "
                       f"bien du même montage")
@@ -500,9 +691,27 @@ def measure_audio(target: Path, donor: Path, donor_track: int = 0,
 
 def measure_subtitle(video: Path, subtitle: Path,
                      progress: Optional[Progress] = None,
-                     duration: float = 0.0) -> SyncResult:
-    """Décalage d'un fichier de sous-titres par rapport à la parole de la vidéo."""
-    cues = read_cues(subtitle)
+                     duration: float = 0.0,
+                     donor_track: Optional[int] = None) -> SyncResult:
+    """
+    Décalage d'un sous-titre par rapport à la parole de la vidéo.
+
+    `subtitle` est soit un fichier texte, soit un conteneur dont il faut
+    extraire la piste `donor_track` (index ffmpeg parmi les sous-titres).
+    """
+    path = subtitle
+    if subtitle.suffix.lower() not in _TEXT_SUB_EXT:
+        if donor_track is None:
+            return SyncResult(0, None, 0.0, False,
+                              "piste embarquée sans index de piste — "
+                              "impossible de l'extraire")
+        path = extract_subtitle(subtitle, donor_track)
+        if path is None:
+            return SyncResult(0, None, 0.0, False,
+                              "sous-titre image (PGS, VobSub) — aucun texte "
+                              "à corréler")
+
+    cues = read_cues(path)
     if not cues:
         return SyncResult(0, None, 0.0, False,
                           "aucune réplique lisible — format inconnu ou "
@@ -521,8 +730,10 @@ def measure_subtitle(video: Path, subtitle: Path,
     # jamais des fenêtres de quelques secondes.
     lag, ratio, conf, salience = _search(
         ref, lambda r: _cue_mask(cues, n_bins, r), progress)
-    agreed, dispersion = _cross_validate(ref, _cue_mask(cues, n_bins, ratio), lag)
+    scaled = _cue_mask(cues, n_bins, ratio)
+    agreed, dispersion = _cross_validate(ref, scaled, lag)
+    segments = _segment_lags(ref, scaled) if agreed is False else []
     return _finish(lag, ratio, conf, salience,
                    floor=confidence_floor(len(cues)),
                    n_events=len(cues), speech_ratio=float(ref.mean()),
-                   agreed=agreed, dispersion_ms=dispersion)
+                   agreed=agreed, dispersion_ms=dispersion, segments=segments)

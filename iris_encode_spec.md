@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.0.2 — document de référence courant
+**Version** : 0.8.0.3 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 
@@ -69,6 +69,7 @@ iris_encode/
 │   │   ├── profile_picker.py     ← sélection de profil (table)
 │   │   ├── value_picker.py       ← modal sélection de valeur
 │   │   ├── meta_popup.py         ← popup métadonnées IMDB / AlloCiné
+│   │   ├── segments.py           ← plages de décalage détectées (lecture seule)
 │   │   ├── confirm.py            ← ConfirmModal générique
 │   │   ├── delete_confirm.py     ← confirmation suppression fichier
 │   │   ├── recursive_confirm.py  ← confirmation run récursif
@@ -578,9 +579,15 @@ sur une grille de ratios.
 | Fonction | Référence | Signal comparé |
 |---|---|---|
 | `measure_audio(target, donor, …)` | enveloppe d'énergie de la cible | enveloppe d'énergie du donneur |
-| `measure_subtitle(video, subtitle, …)` | VAD appliqué à la parole du film | répliques du fichier de sous-titres |
+| `measure_subtitle(video, subtitle, …, donor_track)` | VAD appliqué à la parole du film | répliques du sous-titre |
 
 `read_cues()` lit les timings SRT/ASS ; `_speech_mask()` construit le masque de parole.
+
+Un sous-titre embarqué dans un conteneur n'a pas de timings lisibles tel quel :
+`extract_subtitle(video, ffmpeg_index)` le sort d'abord vers un `.srt` temporaire
+(`ffmpeg -map 0:s:N -c:s srt`). L'appelant fournit l'index via
+`muxer.ffmpeg_stream_index()`. Un sous-titre image (PGS, VobSub) fait échouer la
+conversion : il est refusé pour ce motif, et non pour un format « mal lu ».
 
 ### 10.3 Garde-fou
 
@@ -591,6 +598,34 @@ du bruit se disperse.
 
 Sous le seuil, ou si les sondes se contredisent sans dériver linéairement, le résultat
 est **refusé** plutôt que proposé. *Un chiffre faux est pire que pas de chiffre.*
+
+### 10.4 Découpage en plages
+
+Un refus par recoupement discordant a deux causes possibles : les fichiers n'ont rien
+à voir, ou ce sont deux **montages** du même contenu. `_segment_lags()` tranche.
+
+Le film est découpé en fenêtres de 2 min ; les voisines qui s'accordent à moins de
+`CROSS_TOLERANCE_MS` fusionnent ; chaque frontière est ensuite affinée au pas de 1 s, en
+cherchant le point de bascule qui maximise la corrélation des deux côtés — chacun à
+*son* décalage. Le décalage de chaque plage est enfin repris sur son étendue
+définitive, les fenêtres de la passe grossière ayant pu chevaucher une bascule.
+
+Deux garde-fous, parce qu'un découpage inventé est pire qu'un refus sec :
+
+- plus de la moitié des fenêtres formant leur propre plage → aucune structure, on rend `[]` ;
+- confiance médiane des plages sous `MIN_CONFIDENCE` → idem.
+
+Le calcul n'est lancé **que** lorsque le recoupement a échoué : le cas nominal ne le
+paie jamais, et les enveloppes sont déjà décodées.
+
+Mesuré sur deux rips d'un même épisode (broadcast VFF contre streaming VO) :
+6 plages, cinq paliers de +2 000 ms — les noirs de coupure publicitaire — aux
+confiances 0.64 à 0.87.
+
+Les plages sont **exposées, jamais appliquées** : constater deux montages ne donne pas
+le moyen de les recaler. `--sync` de mkvmerge et `-itsoffset` de ffmpeg n'expriment
+qu'une transformation linéaire ; poser un palier sur toute la piste serait faux
+partout ailleurs. Une correction demanderait de fabriquer une piste corrigée.
 
 ---
 
@@ -886,6 +921,7 @@ Une piste externe = une ligne. Champs éditables par ligne : **décalage**, **é
 | `↵` | Ouvre la liste des valeurs du champ courant |
 | `M` | **Mesure automatique** (§ 10) |
 | `A` | Applique le candidat mesuré |
+| `S` | **Plages détectées** (§ 10.4) — lecture seule |
 | `V` | **Visualiser dans mpv**, piste greffée et décalage appliqué |
 | `K` | **Extrait de contrôle** réellement muxé |
 | `C` | Copie le décalage d'une autre piste externe → `sync_origin = COPIED` |

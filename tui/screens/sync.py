@@ -30,11 +30,14 @@ from core.muxer import (
     ExternalTrack, MuxProcess, SyncOrigin, TrackKind, build_sample_command,
     ffmpeg_stream_index, sample_output_path, sample_windows, timecode,
 )
-from core.sync import SyncResult, measure_audio, measure_subtitle, read_cues
+from core.sync import (
+    Segment, SyncResult, measure_audio, measure_subtitle, read_cues,
+)
 
 from ..common import footer_line2
 from ..mixins import TableNavMixin
 from ..widgets.footer import TwoLineFooter
+from .segments import SegmentsScreen
 from .value_picker import ValuePickerScreen
 
 # Champs éditables, dans l'ordre de parcours ←/→
@@ -98,6 +101,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("k",         "sample",       "Extrait",       show=True),
         Binding("a",         "apply_candidate",
                 "Appliquer quand même",  show=True),
+        Binding("s",         "show_segments", "Plages",        show=True),
         Binding("c",         "copy_delay",   "Copier décalage", show=True),
         Binding("d",         "remove_track", "Retirer",       show=True),
         # F1/F2 gardent partout le même sens : dry-run et encodage. Le mux,
@@ -148,6 +152,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._hint_override: str = ""
         # (ligne, décalage) proposé par une mesure refusée
         self._candidate: tuple[int, int] | None = None
+        # (ligne, plages) de la dernière mesure ayant constaté un montage
+        # différent — consultables avec 's', jamais appliquées
+        self._segments: tuple[int, list[Segment]] | None = None
 
     # ── Composition ───────────────────────────────────────────────────────────
 
@@ -166,6 +173,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 ("v",         "Visualiser dans mpv"),
                 ("k",         "Extrait de contrôle"),
                 ("a",         "Appliquer quand même"),
+                ("s",         "Plages détectées"),
                 ("c",         "Copier décalage"),
                 ("d",         "Retirer"),
                 ("f9",        "Ajouter piste"),
@@ -446,8 +454,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         try:
             duree = self._decision.info.duration
             if t.kind == TrackKind.SUBTITLE:
+                # Une piste embarquée doit être extraite du conteneur avant
+                # d'avoir des répliques à corréler — même traduction de tid
+                # que pour l'audio ci-dessous.
+                idx = ffmpeg_stream_index(t.source_path, t.source_tid,
+                                          TrackKind.SUBTITLE)
                 res = measure_subtitle(self._source, t.source_path,
-                                       progress=report, duration=duree)
+                                       progress=report, duration=duree,
+                                       donor_track=idx)
             else:
                 # Le tid mkvmerge n'est pas l'index ffmpeg : il faut traduire
                 idx = ffmpeg_stream_index(t.source_path, t.source_tid, TrackKind.AUDIO)
@@ -469,11 +483,19 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             # malgré une confiance basse, et un décalage d'une minute est
             # hors de portée des touches +/-.
             self._candidate = (i, res.best_delay_ms)
-            self._set_hint(f"{res.report()}\n"
-                           f"'a' applique quand même {res.best_delay_ms:+d} ms "
-                           f"— à vérifier dans un lecteur.")
+            self._segments  = (i, res.segments) if res.segments else None
+            if res.segments:
+                # report() porte déjà les paliers et renvoie vers 's' :
+                # proposer d'appliquer un décalage unique serait ici trompeur.
+                self._set_hint(res.report())
+            else:
+                self._set_hint(f"{res.report()}\n"
+                               f"'a' applique quand même "
+                               f"{res.best_delay_ms:+d} ms "
+                               f"— à vérifier dans un lecteur.")
             return
         self._candidate = None
+        self._segments  = None
         t = self._tracks[i]
         t.delay_ms    = res.delay_ms
         t.stretch     = res.stretch
@@ -514,6 +536,23 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._set_hint(f"Candidat appliqué : {delay:+d} ms — non confirmé par "
                        f"la mesure, vérifiez dans un lecteur avant de muxer.")
         self._update_status()
+
+    def action_show_segments(self) -> None:
+        """
+        Détail des plages relevées par la dernière mesure refusée.
+
+        Lecture seule : constater que les deux fichiers sont deux montages ne
+        donne pas le moyen de les recaler, et poser l'un des paliers sur toute
+        la piste serait faux partout ailleurs.
+        """
+        if self._segments is None:
+            self._set_hint("Aucune plage à montrer — elles n'apparaissent "
+                           "qu'après une mesure ayant constaté un montage "
+                           "différent.")
+            return
+        i, segs = self._segments
+        nom = self._tracks[i].source_path.name if 0 <= i < len(self._tracks) else ""
+        self.app.push_screen(SegmentsScreen(segs, nom))
 
     # ── Contrôle à l'œil ──────────────────────────────────────────────────────
 

@@ -20,8 +20,6 @@ Tab/Shift+Tab → colonne suivante/précédente  |  < / > → rétrécir/élargi
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
@@ -32,7 +30,7 @@ from textual.widgets import DataTable, Header, Static
 
 import core.config as cfg_mod
 from core import dovi
-from core.muxer import ExternalTrack, TrackKind, guess_language
+from core.muxer import TrackKind
 from core.decision import (
     ACTION_CYCLE as _ACTION_CYCLE,
     BITRATE_OPTS_KBPS as _BITRATE_OPTS,
@@ -120,7 +118,6 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         self._sel_audio: set[int] = set()
         self._sel_subs:  set[int] = set()
         self._rows: list[tuple[str, int]] = []
-        self._donor: Path | None = None   # dernier fichier donneur choisi
         # Édition vidéo
         self._edit_idx     = 0
         self._ov_action:   VideoAction | None = None
@@ -573,37 +570,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             )
             return
 
-        from .donor_picker import DonorFileScreen, DonorTrackScreen
-        source = self._decision.info.path
-
-        def _on_tracks(chosen) -> None:
-            if not chosen:
-                return
-            for it in chosen:
-                # Un .srt nu n'a aucune langue déclarée : on la déduit du nom
-                # de fichier, sinon la piste sortirait en « und ».
-                lang = it.language
-                if lang in ("", "und"):
-                    lang = guess_language(self._donor) or lang
-                self._decision.external_tracks.append(ExternalTrack(
-                    source_path=self._donor,
-                    source_tid=it.tid,
-                    kind=it.kind,
-                    codec=it.codec,
-                    language=lang,
-                    track_name=it.track_name,
-                ))
-            self._open_sync()
-
-        def _on_donor(donor) -> None:
-            if donor is None:
-                return
-            self._donor = donor
-            self.app.push_screen(DonorTrackScreen(donor), _on_tracks)
-
-        self.app.push_screen(
-            DonorFileScreen(source.parent, exclude=source), _on_donor
-        )
+        from .donor_picker import pick_external_tracks
+        pick_external_tracks(self, self._decision, self._open_sync)
 
     def _open_sync(self) -> None:
         from .sync import SyncScreen

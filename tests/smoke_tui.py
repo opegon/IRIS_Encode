@@ -257,13 +257,12 @@ async def scenario_external_tracks() -> None:
             # "film.VF.mka" : la langue est deduite du nom, rien a saisir
             assert vf.language == "fre", vf.language
 
-            # Retour aux pistes, puis sous-titre externe depuis un autre fichier
-            await pilot.press("backspace")
-            await pilot.pause(0.5)
-            assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
+            # F9 depuis l'ecran de recalage : on greffe le sous-titre sans
+            # repasser par l'ecran des pistes. La VF et ses sous-titres
+            # viennent de deux fichiers, mais une seule passe suffit.
             await _add_donor(pilot, app, "film.fr.srt")
             assert type(app.screen).__name__ == "SyncScreen", type(app.screen).__name__
-            sync = app.screen
+            assert app.screen is sync, "SyncScreen recree au lieu d'etre enrichi"
             assert len(sync._tracks) == 2, len(sync._tracks)
 
             # Langue deduite du nom de fichier : un .srt nu n'en declare aucune

@@ -70,7 +70,7 @@ _DELAY_STEP_MS = 100
 _DELAY_JUMP_MS = 1000
 
 _HINT = ("←/→  Champ     +/-  ±100 ms     Shift+↑/↓  ±1 s     ↵  Liste     "
-         "m  Mesurer     c  Copier décalage     d  Retirer")
+         "m  Mesurer     c  Copier décalage     F9  Ajouter     d  Retirer")
 _HINT_NO_LANG = ("⚠ Langue manquante — +/- ou ↵ pour la choisir. "
                  "Sans elle, la piste sortirait en « und ».")
 
@@ -93,6 +93,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("c",         "copy_delay",   "Copier décalage", show=True),
         Binding("d",         "remove_track", "Retirer",       show=True),
         Binding("f2",        "run_mux",      "Muxer",         show=True),
+        Binding("f9",        "add_track",    "Ajouter piste", show=True),
         Binding("backspace", "go_back",      "Retour",        show=True),
         Binding("escape",    "go_back",      "Retour",        show=False, priority=True),
     ]
@@ -150,6 +151,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 ("a",         "Appliquer candidat"),
                 ("c",         "Copier décalage"),
                 ("d",         "Retirer"),
+                ("f9",        "Ajouter piste"),
                 ("f2",        "Muxer"),
                 ("backspace", "Retour"),
             ],
@@ -526,6 +528,28 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self.app.push_screen(
             ValuePickerScreen("Reprendre le décalage de", opts, 0), _apply
         )
+
+    def action_add_track(self) -> None:
+        """
+        Greffe une piste supplémentaire sans quitter l'écran.
+
+        Une VF et ses sous-titres vivent dans deux fichiers distincts : les
+        ajouter devait sinon passer par un aller-retour vers l'écran des
+        pistes entre les deux.
+        """
+        if self._measuring:
+            self._set_hint("Mesure en cours — attendez sa fin avant d'ajouter "
+                           "une piste.")
+            return
+        from .donor_picker import pick_external_tracks
+
+        def _added() -> None:
+            self._hint_override = ""
+            self._candidate = None
+            self._build_table(keep_cursor=True)
+            self._update_status()
+
+        pick_external_tracks(self, self._decision, _added)
 
     def action_remove_track(self) -> None:
         i = self._current()

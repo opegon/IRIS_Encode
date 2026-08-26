@@ -18,7 +18,9 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
-from core.muxer import IdentifiedTrack, TrackKind, identify
+from core.muxer import (
+    ExternalTrack, IdentifiedTrack, TrackKind, guess_language, identify,
+)
 
 # Conteneurs pouvant porter une piste audio ou des sous-titres
 DONOR_EXTS = frozenset({
@@ -26,6 +28,47 @@ DONOR_EXTS = frozenset({
     ".mka", ".ac3", ".eac3", ".dts", ".flac", ".aac", ".mp3", ".opus",
     ".srt", ".ass", ".ssa", ".sub", ".vtt",
 })
+
+
+def pick_external_tracks(screen, decision, on_added) -> None:
+    """
+    Enchaîne donneur → pistes → ajout à `decision.external_tracks`.
+
+    Partagé par l'écran des pistes et celui du recalage : greffer une VF puis
+    ses sous-titres ne doit pas obliger à remonter d'un écran entre les deux.
+    `on_added` n'est appelé que si au moins une piste a été ajoutée.
+    """
+    source = decision.info.path
+    chosen_donor: Path | None = None
+
+    def _on_tracks(chosen) -> None:
+        if not chosen or chosen_donor is None:
+            return
+        for it in chosen:
+            # Un .srt nu n'a aucune langue déclarée : on la déduit du nom de
+            # fichier, sinon la piste sortirait en « und ».
+            lang = it.language
+            if lang in ("", "und"):
+                lang = guess_language(chosen_donor) or lang
+            decision.external_tracks.append(ExternalTrack(
+                source_path=chosen_donor,
+                source_tid=it.tid,
+                kind=it.kind,
+                codec=it.codec,
+                language=lang,
+                track_name=it.track_name,
+            ))
+        on_added()
+
+    def _on_donor(donor) -> None:
+        nonlocal chosen_donor
+        if donor is None:
+            return
+        chosen_donor = donor
+        screen.app.push_screen(DonorTrackScreen(donor), _on_tracks)
+
+    screen.app.push_screen(
+        DonorFileScreen(source.parent, exclude=source), _on_donor)
 
 
 class DonorFileScreen(ModalScreen["Path | None"]):

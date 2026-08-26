@@ -129,9 +129,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     #sync-bar-label { width: 22; color: $warning; }
     #sync-bar { width: 1fr; }
     #sync-hint {
-        /* 3 lignes : un compte rendu de mesure en occupe deux, plus la
-           proposition d'appliquer quand même une valeur refusée. */
-        height: 3;
+        /* 3 lignes de texte + 1 pour la bordure : `height` couvre la boîte
+           entière, bordure comprise. À 3, la troisième ligne disparaissait —
+           celle qui renvoie vers 'a' ou 's', donc précisément l'indication
+           dont l'utilisateur a besoin après un refus. */
+        height: 4;
         background: $primary-darken-1;
         color: $text;
         padding: 0 2;

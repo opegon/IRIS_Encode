@@ -1,5 +1,16 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0.8] — 2026-08-27
+
+- **Troisième ligne du bandeau de recalage invisible.** `#sync-hint` déclarait
+  `height: 3` avec une bordure haute ; or la hauteur couvre la boîte entière,
+  bordure comprise — il ne restait que deux lignes de texte. La ligne perdue
+  était systématiquement la dernière, c'est-à-dire celle qui renvoie vers `a`
+  ou `s` : l'indication dont l'utilisateur a précisément besoin après un
+  refus de mesure. Défaut présent depuis la v0.8.0, où le commentaire du CSS
+  annonçait pourtant trois lignes.
+- Le smoke test mesure désormais la hauteur utile du bandeau.
+
 ## [v0.8.0.7] — 2026-08-27
 
 - **Une piste étirée n'interdit plus l'encodage.** `F2` refusait et renvoyait

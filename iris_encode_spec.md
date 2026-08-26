@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.0.7 — document de référence courant
+**Version** : 0.8.0.8 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 

@@ -378,6 +378,18 @@ async def scenario_external_tracks() -> None:
             assert "-itsoffset" in _cmd, "decalage positif perdu"
             print("[11d] Decalage negatif : -ss en entree, positif : -itsoffset")
 
+            # Le bandeau doit pouvoir afficher les 3 lignes d'un compte rendu :
+            # la derniere porte le renvoi vers 'a' ou 's'. La bordure compte
+            # dans `height`, d'ou une hauteur de 4 pour 3 lignes utiles.
+            from textual.widgets import Static as _Static
+            _hint = sync.query_one("#sync-hint", _Static)
+            sync._set_hint(chr(10).join(["ligne 1", "ligne 2", "ligne 3"]))
+            await pilot.pause(0.3)
+            assert _hint.content_size.height >= 3, (
+                f"bandeau trop court : {_hint.content_size.height} lignes")
+            print(f"[11e] Bandeau : {_hint.content_size.height} lignes utiles "
+                  f"(3 requises pour le renvoi vers 'a'/'s')")
+
             # 'k' : extrait de controle reellement muxe. mpv est neutralise
             # pour que le test ne fasse pas surgir de fenetre.
             from core import preview as preview_mod

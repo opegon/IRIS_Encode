@@ -222,10 +222,44 @@ def test_search_prefers_no_stretch_when_aligned():
 # ─── Verdict ──────────────────────────────────────────────────────────────────
 
 def test_result_below_floor_is_refused():
-    res = sync._finish(lag=10, ratio=(1, 1), conf=0.05, salience=100.0)
+    res = sync._finish(lag=10, ratio=(1, 1), conf=0.05, salience=100.0,
+                       n_events=400, speech_ratio=0.4)
     assert not res.ok
     assert res.delay_ms == 0          # ne pas proposer une valeur qu'on rejette
-    assert "aucun décalage" in res.reason
+    # …mais le candidat reste consultable pour comprendre l'échec
+    assert res.best_delay_ms == 100
+    assert res.floor > 0
+
+
+@pytest.mark.parametrize("n_events,speech,attendu", [
+    (5,   0.40, "repères"),          # sous-titre trop court ou mal lu
+    (400, 0.95, "bande-son"),        # VAD saturé par la musique
+    (400, 0.01, "piste audio"),      # mauvaise piste sélectionnée
+    (400, 0.40, "montage"),          # tout va bien, mais rien ne s'aligne
+])
+def test_diagnosis_names_the_likely_cause(n_events, speech, attendu):
+    """Un refus doit être analysable, pas un simple « non »."""
+    res = sync._finish(lag=10, ratio=(1, 1), conf=0.05, salience=100.0,
+                       n_events=n_events, speech_ratio=speech)
+    assert not res.ok
+    assert attendu in res.diagnosis()
+
+
+def test_report_carries_the_numbers():
+    res = sync._finish(lag=-245, ratio=(1, 1), conf=0.62, salience=90.0,
+                       floor=0.25, n_events=342, speech_ratio=0.41)
+    texte = res.report()
+    assert "0.62" in texte and "0.25" in texte
+    assert "342" in texte and "41" in texte
+    assert len(texte.splitlines()) == 2
+
+
+def test_report_of_a_failure_shows_the_candidate():
+    res = sync._finish(lag=-5499, ratio=(1, 1), conf=0.10, salience=100.0,
+                       floor=0.25, n_events=269, speech_ratio=0.72)
+    texte = res.report()
+    assert "refusée" in texte
+    assert "-54990" in texte          # le candidat trouvé reste visible
 
 
 def test_flat_curve_is_refused_even_with_good_correlation():

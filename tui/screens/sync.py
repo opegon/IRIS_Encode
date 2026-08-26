@@ -22,7 +22,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.events import Key
 from textual.screen import Screen
-from textual.widgets import DataTable, Header, Static
+from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 
 from core.decision import FileDecision
 from core.muxer import ExternalTrack, SyncOrigin, TrackKind, ffmpeg_stream_index
@@ -89,6 +89,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("shift+down","jump_down",    "-1 s",          show=False),
         Binding("enter",     "open_picker",  "Liste",         show=True, priority=True),
         Binding("m",         "measure",      "Mesurer",       show=True),
+        Binding("a",         "apply_candidate", "Appliquer candidat", show=True),
         Binding("c",         "copy_delay",   "Copier décalage", show=True),
         Binding("d",         "remove_track", "Retirer",       show=True),
         Binding("f2",        "run_mux",      "Muxer",         show=True),
@@ -99,8 +100,17 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     DEFAULT_CSS = """
     SyncScreen { layout: vertical; }
     #sync-table { height: 1fr; }
-    #sync-hint {
+    #sync-bar-row {
         height: 1;
+        layout: horizontal;
+        padding: 0 2;
+        display: none;
+    }
+    #sync-bar-row.mesure { display: block; }
+    #sync-bar-label { width: 22; color: $warning; }
+    #sync-bar { width: 1fr; }
+    #sync-hint {
+        height: 2;
         background: $primary-darken-1;
         color: $text;
         padding: 0 2;
@@ -120,6 +130,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                            if any(not t.language for t in tracks) else 0)
         self._measuring = False
         self._hint_override: str = ""
+        # (ligne, décalage) proposé par une mesure refusée
+        self._candidate: tuple[int, int] | None = None
 
     # ── Composition ───────────────────────────────────────────────────────────
 
@@ -127,11 +139,15 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         yield Header(show_clock=True)
         yield Static("", id="status-bar", classes="status-bar")
         yield DataTable(id="sync-table", cursor_type="row", zebra_stripes=False)
+        with Static(id="sync-bar-row"):
+            yield Label("Mesure en cours", id="sync-bar-label")
+            yield ProgressBar(total=100, show_eta=False, id="sync-bar")
         yield Static(_HINT, id="sync-hint")
         yield TwoLineFooter(
             line1=[
                 ("enter",     "Liste de choix"),
                 ("m",         "Mesurer"),
+                ("a",         "Appliquer candidat"),
                 ("c",         "Copier décalage"),
                 ("d",         "Retirer"),
                 ("f2",        "Muxer"),
@@ -369,11 +385,12 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self._set_hint("Une mesure est déjà en cours — laissez-la finir.")
             return
         self._measuring = True
-        self._set_hint(f"⏳ Mesure de « {self._tracks[i].source_path.name} » — "
-                       f"décodage de l'audio du film, cela peut prendre "
-                       f"plusieurs dizaines de secondes…")
+        self._set_hint(f"⏳ Mesure de « {self._tracks[i].source_path.name} »\n"
+                       f"Décodage de l'audio du film — sur un long métrage, "
+                       f"comptez plusieurs dizaines de secondes.")
         # Visible dans la ligne elle-même : la barre du bas peut passer inaperçue
         self._set_origin_cell(i, Text("mesure…", style="yellow"))
+        self._show_bar(True)
         self._measure(i)
 
     def _set_origin_cell(self, i: int, text: Text) -> None:
@@ -383,43 +400,97 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         except Exception:
             pass
 
+    def _show_bar(self, visible: bool) -> None:
+        try:
+            self.query_one("#sync-bar-row").set_class(visible, "mesure")
+            if visible:
+                self.query_one("#sync-bar", ProgressBar).progress = 0
+        except Exception:
+            pass
+
+    def _set_progress(self, fraction: float) -> None:
+        try:
+            self.query_one("#sync-bar", ProgressBar).progress = int(fraction * 100)
+        except Exception:
+            pass
+
     @work(thread=True, name="sync-measure")
     def _measure(self, i: int) -> None:
         """Corrélation hors du thread UI : le décodage audio prend du temps."""
         t = self._tracks[i]
+
+        def report(fraction: float) -> None:
+            self.app.call_from_thread(self._set_progress, fraction)
+
         try:
+            duree = self._decision.info.duration
             if t.kind == TrackKind.SUBTITLE:
-                res = measure_subtitle(self._source, t.source_path)
+                res = measure_subtitle(self._source, t.source_path,
+                                       progress=report, duration=duree)
             else:
                 # Le tid mkvmerge n'est pas l'index ffmpeg : il faut traduire
                 idx = ffmpeg_stream_index(t.source_path, t.source_tid, TrackKind.AUDIO)
-                res = measure_audio(self._source, t.source_path, idx)
+                res = measure_audio(self._source, t.source_path, idx,
+                                    progress=report, duration=duree)
         except Exception as e:                       # ffmpeg absent, fichier illisible…
             res = SyncResult(0, None, 0.0, False, f"mesure impossible : {e}")
         self.app.call_from_thread(self._apply_measure, i, res)
 
     def _apply_measure(self, i: int, res: SyncResult) -> None:
         self._measuring = False
+        self._show_bar(False)
         if not (0 <= i < len(self._tracks)):
             return                                   # piste retirée entre-temps
         if not res.ok:
             self.app.bell()
             self._set_origin_cell(i, Text("échec", style="bold dark_orange"))
-            self._set_hint(f"✗ {res.reason} — réglez le décalage à la main.")
+            # Le candidat refusé reste applicable : il est souvent correct
+            # malgré une confiance basse, et un décalage d'une minute est
+            # hors de portée des touches +/-.
+            self._candidate = (i, res.best_delay_ms)
+            self._set_hint(f"{res.report()}  ·  'a' pour appliquer le candidat")
             return
+        self._candidate = None
         t = self._tracks[i]
         t.delay_ms    = res.delay_ms
         t.stretch     = res.stretch
         t.sync_origin = SyncOrigin.MEASURED
         t.copied_from = None
         self._refresh_row(i)
-        self._set_hint(f"{'✓' if res.sure else '⚠'} {res.label()}")
+        self._set_hint(res.report())
         self._update_status()
 
     def _set_hint(self, text: str) -> None:
         """Message persistant : il survit à la navigation entre champs."""
         self._hint_override = text
         self.query_one("#sync-hint", Static).update(text)
+
+    def action_apply_candidate(self) -> None:
+        """
+        Applique le décalage d'une mesure refusée.
+
+        Une confiance basse ne veut pas dire que la valeur est fausse : sur
+        une bande-son dense, le bon décalage sort souvent avec un score
+        médiocre. Et un décalage de l'ordre de la minute serait inatteignable
+        avec +/-.
+        """
+        if self._candidate is None:
+            self._set_hint("Aucun candidat en attente — lancez d'abord une "
+                           "mesure avec 'm'.")
+            return
+        i, delay = self._candidate
+        if not (0 <= i < len(self._tracks)):
+            self._candidate = None
+            return
+        t = self._tracks[i]
+        t.delay_ms    = delay
+        t.sync_origin = SyncOrigin.MANUAL     # non validé par la corrélation
+        t.copied_from = None
+        self._candidate = None
+        self._refresh_row(i)
+        self._set_hint(f"Candidat appliqué : {delay:+d} ms — non confirmé par "
+                       f"la mesure, vérifiez dans un lecteur avant de muxer.")
+        self._update_status()
 
     # ── Reprise de décalage ───────────────────────────────────────────────────
 

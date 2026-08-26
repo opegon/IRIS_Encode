@@ -20,9 +20,16 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
+
+# Rapporte l'avancement entre 0 et 1
+Progress = Callable[[float], None]
+
+# Part de la barre consacrée au décodage : c'est la phase longue, la
+# corrélation ne prend qu'une poignée de FFT.
+DECODE_SHARE = 0.85
 
 # Résolution temporelle de l'analyse
 BIN_MS       = 10
@@ -74,6 +81,12 @@ class SyncResult:
     confidence: float
     ok:         bool
     reason:     str = ""
+    # Diagnostic : renseigné même en cas de refus, pour qu'un échec soit
+    # analysable au lieu d'être un simple « non ».
+    best_delay_ms: int   = 0      # candidat trouvé, appliqué ou non
+    floor:         float = 0.0    # confiance qu'il aurait fallu atteindre
+    n_events:      int   = 0      # répliques, ou blocs de parole
+    speech_ratio:  float = 0.0    # part du film détectée comme parlée
 
     @property
     def sure(self) -> bool:
@@ -89,15 +102,50 @@ class SyncResult:
         out += f" (confiance {self.confidence:.2f})"
         return out if self.sure else f"{out} — à vérifier"
 
+    def report(self) -> str:
+        """Compte rendu détaillé, lisible dans la TUI."""
+        mesures = (f"confiance {self.confidence:.2f} / seuil {self.floor:.2f}"
+                   f" · {self.n_events} repères"
+                   f" · parole {self.speech_ratio:.0%} du film")
+        if self.ok:
+            head = f"{'✓' if self.sure else '⚠'} {self.label()}"
+            if not self.sure:
+                head += "  → contrôlez avant de muxer"
+            return f"{head}\n{mesures}"
+
+        candidat = f"meilleur candidat {self.best_delay_ms:+d} ms"
+        return f"✗ Mesure refusée — {self.reason}\n{mesures} · {candidat}"
+
+    def diagnosis(self) -> str:
+        """Piste la plus probable derrière un refus."""
+        if self.ok:
+            return ""
+        if self.n_events < 20:
+            return ("trop peu de repères : sous-titre très court, ou format "
+                    "mal lu")
+        # Dans un film, la parole occupe 30 à 50 % du temps. Nettement au-delà,
+        # c'est le VAD qui déborde sur la musique, pas le film qui bavarde.
+        if self.speech_ratio > 0.60:
+            return ("la bande-son sature la détection de parole — musique ou "
+                    "ambiance continue ; le candidat ci-dessous est peut-être "
+                    "bon malgré tout")
+        if self.speech_ratio < 0.05:
+            return "presque aucune parole détectée — mauvaise piste audio ?"
+        return ("aucun alignement commun : montage différent, ou sous-titre "
+                "d'une autre version")
+
 
 # ─── Décodage et enveloppe d'énergie ──────────────────────────────────────────
 
-def _decode_envelope(path: Path, track: int = 0) -> np.ndarray:
+def _decode_envelope(path: Path, track: int = 0,
+                     progress: Optional[Progress] = None,
+                     expected_bins: int = 0) -> np.ndarray:
     """
     Enveloppe d'énergie en dB, un point par bin de 10 ms.
 
     L'audio est réduit au fil du flux : on ne garde jamais le PCM complet
-    (2 h à 16 kHz feraient 230 Mo pour 3 Mo d'enveloppe utile).
+    (2 h à 16 kHz feraient 230 Mo pour 3 Mo d'enveloppe utile). C'est aussi
+    ce qui permet d'avancer la jauge : le décodage est la phase longue.
     """
     cmd = [
         _ffmpeg_path, "-loglevel", "error",
@@ -126,6 +174,9 @@ def _decode_envelope(path: Path, track: int = 0) -> np.ndarray:
         samples = np.frombuffer(block, dtype="<i2").astype(np.float32)
         frames  = samples.reshape(-1, _BIN_SAMPLES)
         chunks.append(np.sqrt(np.mean(frames * frames, axis=1)))
+        if progress and expected_bins > 0:
+            done = sum(c.size for c in chunks)
+            progress(DECODE_SHARE * min(1.0, done / expected_bins))
     proc.wait()
 
     if not chunks:
@@ -289,7 +340,9 @@ def _pearson_at(a: np.ndarray, b: np.ndarray, lag: int) -> float:
     return float(np.dot(x, y) / denom) if denom > 0 else 0.0
 
 
-def _search(ref: np.ndarray, build) -> tuple[int, tuple[int, int], float, float]:
+def _search(ref: np.ndarray, build,
+            progress: Optional[Progress] = None,
+            ) -> tuple[int, tuple[int, int], float, float]:
     """
     Cherche (décalage, ratio) sur la grille et retient le pic le plus saillant.
 
@@ -302,10 +355,12 @@ def _search(ref: np.ndarray, build) -> tuple[int, tuple[int, int], float, float]
     honorable tout en n'ayant plus aucun pic.
     """
     best = (0, (1, 1), 0.0, -1.0)
-    for ratio in RATIO_GRID:
+    for k, ratio in enumerate(RATIO_GRID, start=1):
         lag, conf, salience = _best_lag(ref, build(ratio))
         if salience > best[3]:
             best = (lag, ratio, conf, salience)
+        if progress:
+            progress(DECODE_SHARE + (1 - DECODE_SHARE) * k / len(RATIO_GRID))
     return best
 
 
@@ -326,18 +381,23 @@ def confidence_floor(n_events: int) -> float:
 
 
 def _finish(lag: int, ratio: tuple[int, int], conf: float, salience: float,
-            floor: float = MIN_CONFIDENCE) -> SyncResult:
+            floor: float = MIN_CONFIDENCE, n_events: int = 0,
+            speech_ratio: float = 0.0) -> SyncResult:
+    candidate = int(round(lag * BIN_MS))
+    common = dict(best_delay_ms=candidate, floor=floor,
+                  n_events=n_events, speech_ratio=speech_ratio)
+
     if salience < MIN_SALIENCE or conf < floor:
-        return SyncResult(
-            delay_ms=0, stretch=None, confidence=conf, ok=False,
-            reason=(f"aucun décalage ne se détache (corrélation {conf:.2f}, "
-                    f"saillance {salience:.0f}) — montages différents, ou "
-                    f"piste sans rapport"),
+        res = SyncResult(
+            delay_ms=0, stretch=None, confidence=conf, ok=False, **common,
         )
+        res.reason = res.diagnosis()
+        return res
+
     res = SyncResult(
-        delay_ms=int(round(lag * BIN_MS)),
+        delay_ms=candidate,
         stretch=None if ratio == (1, 1) else ratio,
-        confidence=conf, ok=True,
+        confidence=conf, ok=True, **common,
     )
     if not res.sure:
         res.reason = (f"corrélation moyenne ({conf:.2f}) — contrôlez le "
@@ -345,31 +405,44 @@ def _finish(lag: int, ratio: tuple[int, int], conf: float, salience: float,
     return res
 
 
-def measure_audio(target: Path, donor: Path,
-                  donor_track: int = 0) -> SyncResult:
+def measure_audio(target: Path, donor: Path, donor_track: int = 0,
+                  progress: Optional[Progress] = None,
+                  duration: float = 0.0) -> SyncResult:
     """Décalage d'une piste audio donneuse par rapport à l'audio de la cible."""
-    ref = _decode_envelope(target)
-    sig = _decode_envelope(donor, donor_track)
+    expected = int(duration * 1000 / BIN_MS)
+    # Deux décodages : chacun occupe la moitié de la phase de décodage
+    ref = _decode_envelope(
+        target, 0, (lambda f: progress(f / 2)) if progress else None, expected)
+    sig = _decode_envelope(
+        donor, donor_track,
+        (lambda f: progress(DECODE_SHARE / 2 + f / 2)) if progress else None,
+        expected)
     if ref.size == 0 or sig.size == 0:
         return SyncResult(0, None, 0.0, False, "aucun audio exploitable")
 
-    drift = abs(ref.size - sig.size) / max(ref.size, sig.size)
-    lag, ratio, conf, salience = _search(ref, lambda r: _rescale(sig, r))
-    res = _finish(lag, ratio, conf, salience)
+    speech = float(_speech_mask(ref).mean())
+    drift  = abs(ref.size - sig.size) / max(ref.size, sig.size)
+    lag, ratio, conf, salience = _search(
+        ref, lambda r: _rescale(sig, r), progress)
+    res = _finish(lag, ratio, conf, salience, speech_ratio=speech)
     if res.ok and ratio == (1, 1) and drift > MAX_DURATION_DRIFT:
         res.reason = (f"durées écartées de {drift:.0%} — vérifiez qu'il s'agit "
                       f"bien du même montage")
     return res
 
 
-def measure_subtitle(video: Path, subtitle: Path) -> SyncResult:
+def measure_subtitle(video: Path, subtitle: Path,
+                     progress: Optional[Progress] = None,
+                     duration: float = 0.0) -> SyncResult:
     """Décalage d'un fichier de sous-titres par rapport à la parole de la vidéo."""
     cues = read_cues(subtitle)
     if not cues:
         return SyncResult(0, None, 0.0, False,
-                          "aucune réplique lisible dans le fichier")
+                          "aucune réplique lisible — format inconnu ou "
+                          "fichier vide")
 
-    envelope = _decode_envelope(video)
+    envelope = _decode_envelope(
+        video, 0, progress, int(duration * 1000 / BIN_MS))
     if envelope.size == 0:
         return SyncResult(0, None, 0.0, False,
                           "aucun audio dans la vidéo pour servir de référence")
@@ -379,5 +452,8 @@ def measure_subtitle(video: Path, subtitle: Path) -> SyncResult:
 
     # Le signal d'un sous-titre est creux : on corrèle le fichier entier,
     # jamais des fenêtres de quelques secondes.
-    lag, ratio, conf, salience = _search(ref, lambda r: _cue_mask(cues, n_bins, r))
-    return _finish(lag, ratio, conf, salience, confidence_floor(len(cues)))
+    lag, ratio, conf, salience = _search(
+        ref, lambda r: _cue_mask(cues, n_bins, r), progress)
+    return _finish(lag, ratio, conf, salience,
+                   floor=confidence_floor(len(cues)),
+                   n_events=len(cues), speech_ratio=float(ref.mean()))

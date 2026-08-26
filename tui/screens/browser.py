@@ -19,7 +19,9 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Header, Static
 
 from core import config as cfg_mod
-from core.decision import AudioAction, FileDecision, VideoAction, decide
+from core.decision import (
+    AudioAction, FileDecision, VideoAction, decide, force_skip_to_encode,
+)
 from core.scanner import scan, scan_directory_recursive
 from ..common import (
     DV_VALUE_STYLES,
@@ -597,36 +599,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 )
         self.app.push_screen(TracksScreen(dec), _on_tracks_return)
 
-    @staticmethod
-    def _force_skip_to_encode(dec: FileDecision) -> FileDecision:
-        """Force un fichier SKIP en encodage (HEVC ou H264 si < 1080p).
-
-        Conserve le débit source (pas de gonflement), ajuste dv_action :
-        - H264 ne peut pas porter de RPU DV → DV→HDR10 forcé si source DV
-        """
-        from dataclasses import replace as dc_replace
-        from core.decision import DVAction
-        if dec.video.action != VideoAction.SKIP:
-            return dec
-        sub_1080   = dec.info.height < 1080
-        forced_act = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
-        # H264 incompatible avec DV : si la source est DV et qu'on force H264,
-        # convertir en HDR10 (suppression du RPU)
-        forced_dv = dec.video.dv_action
-        if sub_1080 and forced_dv == DVAction.DV:
-            forced_dv = DVAction.HDR10
-        return dc_replace(dec, video=dc_replace(
-            dec.video,
-            action        = forced_act,
-            target_bitrate= dec.info.bitrate,
-            output_suffix = "_[H264]" if sub_1080 else "_[hevc]",
-            dv_action     = forced_dv,
-            reason        = "Forcé manuellement (était SKIP)",
-        ))
-
     def action_open_dryrun(self) -> None:
         decisions = [
-            self._force_skip_to_encode(self._decisions[p])
+            force_skip_to_encode(self._decisions[p])
             for p in self._selected
             if p in self._decisions
         ]
@@ -637,7 +612,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     def action_open_run(self) -> None:
         decisions = [
-            self._force_skip_to_encode(self._decisions[p])
+            force_skip_to_encode(self._decisions[p])
             for p in self._selected
             if p in self._decisions
         ]

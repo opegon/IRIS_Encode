@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from textual.widgets import DataTable
 
+from core.decision import VideoAction
 from tui.app import IrisEncodeApp
 
 
@@ -322,22 +323,25 @@ async def scenario_external_tracks() -> None:
             assert not dec.external_tracks, "pistes externes non videes"
             assert dec.force_mkv, "le MKV doit rester MKV a l'encodage"
 
+            # F1 depuis l'ecran de mux : dry-run sur le fichier produit
+            await pilot.press("f1")
+            await pilot.pause(1.0)
+            assert type(app.screen).__name__ == "DryrunScreen", type(app.screen).__name__
             await pilot.press("backspace")
             await pilot.pause(0.6)
-            assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
+            assert type(app.screen).__name__ == "MuxScreen", type(app.screen).__name__
 
-            # La commande d'encodage doit viser le fichier muxe, en MKV
-            from dataclasses import replace as dc_replace
-            from core.decision import VideoAction
-            from core.encoder import build_command
-            dec.video = dc_replace(dec.video, action=VideoAction.ENCODE_HEVC,
-                                   output_suffix="_[hevc]", target_bitrate=1_000_000)
-            cmd = build_command(dec, app.platform)
-            entree = Path(cmd[cmd.index("-i") + 1])
-            assert entree == out, f"encodage de {entree.name} au lieu de {out.name}"
-            assert dec.output_path.suffix == ".mkv", dec.output_path.name
-            print(f"[13] Apres mux : encodage de {entree.name} "
-                  f"-> {dec.output_path.name}")
+            # F2 depuis l'ecran de mux : encodage direct, sans repasser par
+            # les ecrans precedents — et sur le fichier muxe, en MKV
+            await pilot.press("f2")
+            await pilot.pause(1.5)
+            assert type(app.screen).__name__ == "RunScreen", type(app.screen).__name__
+            run_dec = app.screen._statuses[0].decision
+            assert run_dec.info.path == out, run_dec.info.path
+            assert run_dec.output_path.suffix == ".mkv", run_dec.output_path.name
+            assert run_dec.video.action != VideoAction.SKIP, "SKIP non force en encodage"
+            print(f"[13] Depuis l'ecran de mux : F1 dry-run OK, F2 encode "
+                  f"{run_dec.info.path.name} -> {run_dec.output_path.name}")
 
 
 async def main() -> None:

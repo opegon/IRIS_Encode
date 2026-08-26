@@ -385,6 +385,32 @@ def decide_audio(
 
 # ─── Point d'entrée ───────────────────────────────────────────────────────────
 
+def force_skip_to_encode(dec: FileDecision) -> FileDecision:
+    """Force un fichier SKIP en encodage (HEVC ou H264 si < 1080p).
+
+    Conserve le débit source (pas de gonflement), ajuste dv_action :
+    - H264 ne peut pas porter de RPU DV → DV→HDR10 forcé si source DV
+    """
+    from dataclasses import replace as dc_replace
+    if dec.video.action != VideoAction.SKIP:
+        return dec
+    sub_1080   = dec.info.height < 1080
+    forced_act = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
+    # H264 incompatible avec DV : si la source est DV et qu'on force H264,
+    # convertir en HDR10 (suppression du RPU)
+    forced_dv = dec.video.dv_action
+    if sub_1080 and forced_dv == DVAction.DV:
+        forced_dv = DVAction.HDR10
+    return dc_replace(dec, video=dc_replace(
+        dec.video,
+        action        = forced_act,
+        target_bitrate= dec.info.bitrate,
+        output_suffix = "_[H264]" if sub_1080 else "_[hevc]",
+        dv_action     = forced_dv,
+        reason        = "Forcé manuellement (était SKIP)",
+    ))
+
+
 def decide(
     info:               VideoInfo,
     profile:            Profile,

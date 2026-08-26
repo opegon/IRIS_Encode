@@ -15,7 +15,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Header, Label, ProgressBar, Static
 
-from core.decision import FileDecision
+from core.decision import FileDecision, force_skip_to_encode
 from core.muxer import MuxProcess, build_mux_command, mux_output_path
 
 from ..common import footer_line2
@@ -26,8 +26,10 @@ class MuxScreen(Screen[bool]):
     """Lance mkvmerge et suit sa progression."""
 
     BINDINGS = [
-        Binding("backspace", "go_back", "Retour", show=True),
-        Binding("escape",    "go_back", "Retour", show=False, priority=True),
+        Binding("f1",        "dryrun",  "Dry-run", show=True),
+        Binding("f2",        "encode",  "Encoder", show=True),
+        Binding("backspace", "go_back", "Retour",  show=True),
+        Binding("escape",    "go_back", "Retour",  show=False, priority=True),
     ]
 
     DEFAULT_CSS = """
@@ -74,7 +76,11 @@ class MuxScreen(Screen[bool]):
             yield Static("", id="mux-state")
             yield Static("", id="mux-cmd")
         yield TwoLineFooter(
-            line1=[("backspace", "Retour")],
+            line1=[
+                ("f1",        "Dry-run"),
+                ("f2",        "Encoder"),
+                ("backspace", "Retour"),
+            ],
             line2=footer_line2(nav=False),
         )
 
@@ -164,10 +170,43 @@ class MuxScreen(Screen[bool]):
         # doit pas le reconvertir en MP4.
         self._decision.force_mkv = True
 
+        # Annonce ce que F2 fera : l'action dépend du profil et du fichier
+        # produit, autant l'afficher plutôt que de la faire découvrir.
+        planned = force_skip_to_encode(self._decision).video.label()
         self._set("#mux-state",
-                  f"✓ Terminé — {self._output.name}. "
-                  f"C'est désormais ce fichier qui sera encodé.")
-        self._set("#mux-out", f"Fichier de travail : {self._output.name}")
+                  f"✓ Terminé — {self._output.name}")
+        self._set("#mux-out",
+                  f"Fichier de travail : {self._output.name}\n"
+                  f"F2 encodera ce fichier  {planned}")
+
+    # ── Enchaînement direct sur l'encodage ────────────────────────────────────
+
+    def _ready(self) -> bool:
+        """Le mux doit être terminé et réussi avant d'enchaîner."""
+        if self._done and self._ok:
+            return True
+        self.app.bell()
+        self._set("#mux-state",
+                  "Mux en cours…" if not self._done
+                  else "✗ Mux en échec — rien à encoder.")
+        return False
+
+    def action_encode(self) -> None:
+        if not self._ready():
+            return
+        from .run import RunScreen
+        self.app.push_screen(
+            RunScreen([force_skip_to_encode(self._decision)],
+                      self.app.platform)  # type: ignore[attr-defined]
+        )
+
+    def action_dryrun(self) -> None:
+        if not self._ready():
+            return
+        from .dryrun import DryrunScreen
+        self.app.push_screen(
+            DryrunScreen([force_skip_to_encode(self._decision)])
+        )
 
     # ── Sortie ────────────────────────────────────────────────────────────────
 

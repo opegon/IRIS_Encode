@@ -126,7 +126,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         display: none;
     }
     #sync-bar-row.mesure { display: block; }
-    #sync-bar-label { width: 22; color: $warning; }
+    #sync-bar-label { width: 20; color: $warning; }
     #sync-bar { width: 1fr; }
     #sync-hint {
         /* 3 lignes de texte + 1 pour la bordure : `height` couvre la boîte
@@ -434,10 +434,17 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         except Exception:
             pass
 
-    def _show_bar(self, visible: bool) -> None:
+    def _show_bar(self, visible: bool, libelle: str = "Mesure en cours") -> None:
+        """Affiche la barre, en nommant le travail réellement en cours.
+
+        Un libellé qui parle de mesure pendant un recalage laisse croire à un
+        blocage : l'opération semble ne jamais finir puisqu'elle n'a pas
+        commencé.
+        """
         try:
             self.query_one("#sync-bar-row").set_class(visible, "mesure")
             if visible:
+                self.query_one("#sync-bar-label", Label).update(libelle)
                 self.query_one("#sync-bar", ProgressBar).progress = 0
         except Exception:
             pass
@@ -598,7 +605,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                        f"{len(segs)} plages.\nDécodage puis réencodage de la "
                        f"piste — comptez une poignée de minutes.")
         self._set_origin_cell(i, Text("recalage…", style="yellow"))
-        self._show_bar(True)
+        self._show_bar(True, "Recalage en cours")
         self._retime(i, segs)
 
     @work(thread=True, name="sync-retime")

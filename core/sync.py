@@ -549,6 +549,9 @@ def build_retime_command(donor: Path, audio_index: int,
     filtres.append(f"{''.join(etiquettes)}concat=n={len(etiquettes)}:v=0:a=1[out]")
 
     return [_ffmpeg_path, "-y", "-v", "error",
+            # Progression sur stdout : le réencodage est la phase longue,
+            # une barre figée pendant plusieurs minutes passe pour un blocage.
+            "-progress", "pipe:1", "-nostats",
             "-i", str(donor),
             "-filter_complex", ";".join(filtres),
             "-map", "[out]",
@@ -895,14 +898,31 @@ def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
     if not inserts:
         return None, approx or ["aucune insertion exploitable"]
 
+    # Durée attendue en sortie : l'enveloppe du donneur, allongée des insertions
+    duree = envelope.size * BIN_MS / 1000.0 + sum(d for _, d in inserts)
+
     cmd = build_retime_command(donor, audio_index, inserts, out, bitrate_kbps)
     try:
-        proc = subprocess.run(cmd, capture_output=True, timeout=1800)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, text=True, bufsize=1)
     except (OSError, subprocess.SubprocessError) as e:
         return None, [f"ffmpeg a échoué : {e}"]
-    if proc.returncode != 0 or not out.exists() or out.stat().st_size == 0:
-        detail = proc.stderr.decode("utf-8", "replace").strip().splitlines()
-        return None, [f"ffmpeg a échoué : {detail[-1] if detail else '?'}"]
+
+    if proc.stdout is not None:
+        for ligne in proc.stdout:
+            if progress and duree > 0 and ligne.startswith("out_time_ms="):
+                try:
+                    fait = int(ligne.split("=", 1)[1]) / 1_000_000.0
+                except ValueError:
+                    continue
+                part = min(1.0, max(0.0, fait / duree))
+                progress(DECODE_SHARE + (1 - DECODE_SHARE) * part)
+    code   = proc.wait()
+    erreur = proc.stderr.read().strip() if proc.stderr else ""
+
+    if code != 0 or not out.exists() or out.stat().st_size == 0:
+        detail = erreur.splitlines()
+        return None, [f"ffmpeg a échoué : {detail[-1] if detail else f'code {code}'}"]
 
     if progress:
         progress(1.0)

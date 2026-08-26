@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.0.9 — document de référence courant
+**Version** : 0.8.0.10 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 
@@ -669,6 +669,11 @@ audiblement. Le silence intercalé est un extrait du donneur passé à `volume=0
 un `anullsrc` : il porte ainsi d'office la fréquence et la disposition de canaux que
 `concat` exige identiques sur tous ses segments. Le prix est une génération de
 réencodage AAC, négligeable sur une piste déjà compressée.
+
+**Progression.** Le décodage occupe `DECODE_SHARE` de la barre, le réencodage le reste,
+suivi par `-progress pipe:1` sur `out_time_ms`. Sans lui, la barre se figeait à 85 %
+pendant toute la phase longue — l'opération semblait bloquée alors qu'elle tournait
+(mesuré : 14 s de décodage, puis 65 s de réencodage muet sur 82 s au total).
 
 Vérifié sur un épisode réel — la piste produite mesure **+0 ms, confiance 0.72, trois
 tiers concordants à 0 ms**, et passe donc sans réserve.

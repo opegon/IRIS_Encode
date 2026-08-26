@@ -1,5 +1,17 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0.10] — 2026-08-27
+
+- **Le recalage d'une piste audio ne donnait aucun signe d'activité.** La
+  barre atteignait 85 % à la fin du décodage puis restait figée pendant tout
+  le réencodage — soit 65 des 82 secondes de l'opération sur un épisode réel.
+  Le résultat finissait par arriver, mais rien ne le laissait présager.
+  ffmpeg rapporte désormais sa progression (`-progress pipe:1`), suivie sur
+  `out_time_ms`.
+- **La barre annonçait « Mesure en cours » pendant un recalage.** Un libellé
+  qui parle d'une opération qui n'a pas lieu laisse croire à un blocage. Il
+  suit désormais le travail réellement en cours.
+
 ## [v0.8.0.9] — 2026-08-27
 
 ### Footer utilisable sous 1920×1080

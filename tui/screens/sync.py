@@ -936,15 +936,25 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         if not self._ready():
             return False
         stretched = next((t for t in self._tracks if t.stretch), None)
-        if stretched is not None:
-            self.app.bell()
+        if stretched is None:
+            return True
+
+        # mkvmerge sait étirer : la greffe passera par lui juste avant
+        # l'encodage, sans que l'utilisateur ait à enchaîner deux écrans.
+        if getattr(self.app, "mkvmerge_available", False):
             self._set_hint(
-                f"« {stretched.source_path.name} » demande un étirement, que "
-                f"ffmpeg ne sait pas appliquer en une passe.\n"
-                f"Muxez d'abord avec F3, puis encodez le résultat."
-            )
-            return False
-        return True
+                f"« {stretched.source_path.name} » demande un étirement : "
+                f"mkvmerge greffera les pistes\njuste avant l'encodage, puis "
+                f"ffmpeg encodera le résultat. Le fichier intermédiaire est "
+                f"temporaire.")
+            return True
+
+        self.app.bell()
+        self._set_hint(
+            f"« {stretched.source_path.name} » demande un étirement, que "
+            f"ffmpeg ne sait pas appliquer\nen une passe. Seul mkvmerge en "
+            f"est capable — relancez le preflight pour l'installer.")
+        return False
 
     def _launch(self, screen_factory) -> None:
         from core.decision import force_skip_to_encode

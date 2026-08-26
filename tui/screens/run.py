@@ -17,6 +17,9 @@ from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 
 from core.decision import FileDecision, VideoAction
 from core.encoder import EncoderProcess, build_command
+from core.muxer import (
+    MuxProcess, build_mux_command, needs_premux, premux_output_path,
+)
 from core.platform import PlatformProfile
 from ..common import footer_line2, record_measured_speed
 from ..mixins import TableNavMixin
@@ -256,6 +259,13 @@ class RunScreen(TableNavMixin, Screen):
         s.state = FileState.RUNNING
         self.app.call_from_thread(self._update_row, next_idx)
 
+        # Une piste étirée ne peut pas être absorbée par ffmpeg : mkvmerge la
+        # greffe d'abord, ffmpeg encode l'intermédiaire. Transparent pour
+        # l'utilisateur, et payé seulement quand c'est nécessaire.
+        if needs_premux(dec.external_tracks) and not self._premux(next_idx, dec):
+            self._encode_next()
+            return
+
         try:
             cmd = build_command(dec, self._platform)
         except ValueError as e:
@@ -322,6 +332,16 @@ class RunScreen(TableNavMixin, Screen):
             except Exception:
                 pass
 
+        # L'intermédiaire d'un mux préalable n'a plus de raison d'être, que
+        # l'encodage ait réussi ou non : il pèse le poids du film et se
+        # refabrique en quelques secondes.
+        if dec.encode_source is not None:
+            try:
+                dec.encode_source.unlink()
+            except OSError:
+                pass                      # tenu par un lecteur : on n'insiste pas
+            dec.encode_source = None
+
         # Préserve l'état SKIPPED posé par action_skip_current()
         if s.state != FileState.SKIPPED:
             s.state = FileState.SUCCESS if success else FileState.ERROR
@@ -334,6 +354,61 @@ class RunScreen(TableNavMixin, Screen):
 
         # Enchaîne le suivant
         self._encode_next()
+
+    def _premux(self, index: int, dec: FileDecision) -> bool:
+        """
+        Greffe les pistes par mkvmerge avant l'encodage. False si ça échoue.
+
+        Appelée depuis le thread d'encodage : mkvmerge tourne jusqu'au bout
+        avant que ffmpeg démarre.
+        """
+        s = self._statuses[index]
+        if not getattr(self.app, "mkvmerge_available", False):
+            s.state     = FileState.ERROR
+            s.error_msg = "mkvmerge requis (étirement)"
+            s.last_line = ("Une piste demande un facteur d'étirement : seul "
+                           "mkvmerge sait l'appliquer. Relancez le preflight "
+                           "pour l'installer.")
+            self.app.call_from_thread(self._update_row, index)
+            return False
+
+        sortie = premux_output_path(dec.info.path)
+        try:
+            cmd = build_mux_command(dec.info.path, dec.external_tracks, sortie)
+        except ValueError as e:
+            s.state, s.error_msg, s.last_line = FileState.ERROR, str(e)[:60], str(e)
+            self.app.call_from_thread(self._update_row, index)
+            return False
+
+        self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+        self.app.call_from_thread(
+            self._update_ffmpeg_line,
+            "▶ Greffe des pistes par mkvmerge (étirement) avant encodage…")
+
+        proc = MuxProcess(cmd)
+        proc.start()
+        for ligne, pourcent in proc.iter_progress():
+            if pourcent is not None:
+                s.percent = pourcent
+                self.app.call_from_thread(self._update_row, index)
+            elif ligne:
+                self.app.call_from_thread(self._update_ffmpeg_line, ligne)
+        code = proc.wait()
+
+        if code != 0 or not sortie.exists():
+            detail = proc.errors[-1] if proc.errors else f"code {code}"
+            s.state, s.error_msg = FileState.ERROR, f"mux : {detail}"[:60]
+            s.last_line = f"Mux préalable échoué — {detail}"
+            self.app.call_from_thread(self._update_row, index)
+            return False
+
+        # L'intermédiaire porte désormais les pistes : ffmpeg n'a plus qu'à
+        # l'encoder. info.path reste la source, dont dépend le nom de sortie.
+        dec.encode_source   = sortie
+        dec.external_tracks = []
+        s.percent = -1
+        self.app.call_from_thread(self._update_row, index)
+        return True
 
     def _on_all_done(self) -> None:
         try:

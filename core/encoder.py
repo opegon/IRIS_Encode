@@ -186,7 +186,9 @@ def build_command(
     if use_hwaccel:
         cmd += ["-hwaccel", platform.hwaccel]
 
-    cmd += ["-i", str(info.path)]
+    # Après un mux préalable, l'entrée est l'intermédiaire, pas la source.
+    # `info.path` reste la source : c'est d'elle que dépend le nom de sortie.
+    cmd += ["-i", str(decision.encode_source or info.path)]
 
     # ── Entrées supplémentaires : pistes externes greffées ────────────────────
     # ffmpeg les absorbe dans la même passe que l'encodage : inutile de muxer
@@ -194,11 +196,13 @@ def build_command(
     ext_tracks = decision.external_tracks
     stretched  = [t for t in ext_tracks if t.stretch]
     if stretched:
+        # Le mux préalable est censé avoir absorbé ces pistes en amont : y
+        # arriver ici signifie qu'il n'a pas eu lieu, faute de mkvmerge.
         raise ValueError(
             f"La piste « {stretched[0].source_path.name} » demande un facteur "
             f"d'étirement, que ffmpeg ne sait pas appliquer en une passe "
-            f"(-itsoffset ne fait qu'un décalage constant). "
-            f"Muxez-la d'abord avec F9, puis encodez le résultat."
+            f"(-itsoffset ne fait qu'un décalage constant). mkvmerge sait le "
+            f"faire : installez-le pour que la greffe passe par lui."
         )
     for ext in ext_tracks:
         if ext.delay_ms > 0:

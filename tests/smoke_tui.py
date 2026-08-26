@@ -346,24 +346,20 @@ async def scenario_external_tracks() -> None:
                   f"independants ({vf.delay_ms} ms / {sub.delay_ms} ms), "
                   "↵ ouvre une liste sur les 6 champs")
 
-            # F1 refuse tant qu'une piste demande un etirement : -itsoffset ne
-            # fait qu'un decalage constant, ffmpeg ne peut pas la greffer.
+            # Un etirement ne bloque plus : mkvmerge greffera les pistes juste
+            # avant l'encodage. Le bandeau l'annonce, et le dry-run passe.
             assert vf.stretch is not None
             await pilot.press("f1")
-            await pilot.pause(1.0)
-            assert type(app.screen).__name__ == "SyncScreen", \
-                "encodage lance malgre un etirement"
-
-            # Sans etirement, F1 passe : l'edition clavier est deja verifiee
-            # plus haut, on se contente ici de poser la condition.
-            vf.stretch = None
-            await pilot.press("f1")
             await pilot.pause(1.2)
-            assert type(app.screen).__name__ == "DryrunScreen", type(app.screen).__name__
+            assert type(app.screen).__name__ == "DryrunScreen", (
+                "dry-run bloque par un etirement")
             await pilot.press("backspace")
             await pilot.pause(0.6)
             assert type(app.screen).__name__ == "SyncScreen", type(app.screen).__name__
-            print("[11b] SyncScreen : F1 refuse un etirement, puis lance le dry-run")
+            assert "mkvmerge" in sync._hint_override, sync._hint_override
+            print("[11b] SyncScreen : etirement -> mux prealable annonce, dry-run OK")
+
+            vf.stretch = None
 
             # Un decalage negatif ne doit jamais sortir en -itsoffset : ffmpeg
             # decalerait tout le fichier vers l'avant et la video ne

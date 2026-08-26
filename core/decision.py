@@ -156,6 +156,11 @@ class FileDecision:
     subtitle_indices:       list[int] | None = None  # None = tout garder
     delete_source_override: bool | None      = None  # None = suivre profil
     external_tracks:   list["ExternalTrack"] = field(default_factory=list)
+    # Fichier réellement donné à ffmpeg, quand il diffère de la source : c'est
+    # le cas après un mux préalable, qu'une piste étirée impose. `info.path`
+    # reste la source, dont dépend le nom de sortie — l'intermédiaire vit dans
+    # le dossier temporaire et ne doit pas déterminer où le résultat atterrit.
+    encode_source:     Path | None = None
 
     @property
     def kept_subtitles(self) -> list:

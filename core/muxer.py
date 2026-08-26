@@ -333,6 +333,32 @@ def mux_output_path(source: Path) -> Path:
     return source.parent / f"{source.stem}{MUX_SUFFIX}.mkv"
 
 
+# ─── Mux préalable à un encodage ──────────────────────────────────────────────
+
+def needs_premux(tracks: list[ExternalTrack]) -> bool:
+    """
+    Ces pistes exigent-elles un mux avant l'encodage ?
+
+    ffmpeg absorbe une piste greffée en une passe, décalage compris — mais pas
+    un facteur d'étirement : `-itsoffset` ne fait qu'un décalage constant.
+    mkvmerge, lui, sait étirer. On lui confie donc la greffe, puis ffmpeg
+    encode le résultat.
+    """
+    return any(t.stretch for t in tracks)
+
+
+def premux_output_path(source: Path) -> Path:
+    """
+    Intermédiaire d'un mux préalable, écrit hors du dossier du film.
+
+    Il ne survit pas à l'encodage et n'a rien à faire à côté des originaux ;
+    son nom ne doit pas non plus ressembler à une sortie que l'utilisateur
+    voudrait garder.
+    """
+    import tempfile
+    return Path(tempfile.gettempdir()) / f"{source.stem}_[premux].mkv"
+
+
 # ─── Progression (--gui-mode) ─────────────────────────────────────────────────
 
 _PROGRESS_RE = re.compile(r"^#GUI#progress\s+(\d+)%")

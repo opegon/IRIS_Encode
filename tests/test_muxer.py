@@ -540,3 +540,48 @@ def test_skip_with_external_track_gets_a_distinct_name():
     assert dec.output_container == ".mp4"
     assert dec.output_path.name == "Film_[mux].mp4"
     assert dec.output_path != info.path
+
+
+# ─── Mux préalable à un encodage ──────────────────────────────────────────────
+
+def test_needs_premux_only_on_stretch(vf: ExternalTrack):
+    vf.stretch = None
+    vf.delay_ms = -2450
+    assert not muxer.needs_premux([vf])
+    vf.stretch = (24000, 25025)
+    assert muxer.needs_premux([vf])
+
+
+def test_needs_premux_on_empty_list():
+    assert not muxer.needs_premux([])
+
+
+def test_premux_output_stays_out_of_the_film_folder(tmp_path: Path):
+    source = tmp_path / "films" / "Film.mkv"
+    out    = muxer.premux_output_path(source)
+    assert out.parent != source.parent
+    assert out.suffix == ".mkv"
+    assert "premux" in out.name
+
+
+def test_encode_reads_the_premuxed_file(vf: ExternalTrack):
+    """
+    Après un mux préalable, ffmpeg lit l'intermédiaire — mais la sortie
+    continue de suivre la source, dont dépend son nom et son dossier.
+    """
+    from core.encoder import build_command
+    dec = _encode_decision([])                  # pistes déjà absorbées
+    intermediaire = Path("/tmp/Film_[premux].mkv")
+    dec.encode_source = intermediaire
+    cmd = build_command(dec, _plat())
+    assert cmd[cmd.index("-i") + 1] == str(intermediaire)
+    assert str(dec.output_path.parent) == str(dec.info.path.parent)
+    assert "premux" not in dec.output_path.name
+
+
+def test_encode_without_premux_reads_the_source():
+    from core.encoder import build_command
+    dec = _encode_decision([])
+    assert dec.encode_source is None
+    cmd = build_command(dec, _plat())
+    assert cmd[cmd.index("-i") + 1] == str(dec.info.path)

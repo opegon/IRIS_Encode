@@ -1,5 +1,20 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0.7] — 2026-08-27
+
+- **Une piste étirée n'interdit plus l'encodage.** `F2` refusait et renvoyait
+  l'utilisateur muxer lui-même avec `F3` avant de revenir encoder le résultat
+  — un travail que l'outil sait faire. mkvmerge greffe désormais les pistes
+  vers un intermédiaire temporaire juste avant l'encodage, puis ffmpeg encode
+  celui-ci. Deux écrans enchaînés à la main deviennent une seule commande.
+- Le surcoût, une écriture complète du film, n'est payé que dans ce cas :
+  ffmpeg continue d'absorber en une passe tout ce qu'il sait absorber.
+- L'intermédiaire vit hors du dossier du film et disparaît à la fin de la
+  passe, réussie ou non. `FileDecision.encode_source` le porte ; `info.path`
+  reste la source, dont dépendent le nom et le dossier de sortie.
+- Sans mkvmerge, l'opération est refusée en amont, sur l'écran de recalage,
+  plutôt que d'échouer au milieu d'un encodage.
+
 ## [v0.8.0.6] — 2026-08-27
 
 - **Fichiers illisibles sur téléviseur après un encodage `F2` avec piste

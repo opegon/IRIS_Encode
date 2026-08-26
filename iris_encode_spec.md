@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.0.6 — document de référence courant
+**Version** : 0.8.0.7 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 
@@ -713,8 +713,18 @@ durée du conteneur correcte. Un décalage **positif** garde `-itsoffset` : il n
 aucun horodatage négatif, et seule la piste greffée démarre plus tard — ce que
 mkvmerge produit également.
 
-Seul l'**étirement** reste hors de portée d'une passe unique et fait lever une erreur
-renvoyant vers le mux.
+**L'étirement passe par un mux préalable, automatiquement.** ffmpeg ne sait pas le
+appliquer en une passe ; mkvmerge si. `needs_premux()` le détecte, `RunScreen._premux()`
+greffe les pistes vers un intermédiaire temporaire (`premux_output_path()`, hors du
+dossier du film), puis ffmpeg encode celui-ci. L'utilisateur n'enchaîne plus deux écrans
+à la main.
+
+`FileDecision.encode_source` porte cet intermédiaire ; `info.path` reste la source,
+dont dépendent le nom et le dossier de sortie — l'intermédiaire ne doit pas décider où
+le résultat atterrit. Il est supprimé à la fin de la passe, réussie ou non.
+
+Le surcoût — une écriture complète du film — n'est payé que dans ce cas. Sans mkvmerge,
+l'opération est refusée en amont plutôt que d'échouer en cours d'encodage.
 
 ### 12.1 Modes d'encodage vidéo
 

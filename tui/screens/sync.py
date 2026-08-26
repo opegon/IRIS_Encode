@@ -102,6 +102,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("a",         "apply_candidate",
                 "Appliquer quand même",  show=True),
         Binding("s",         "show_segments", "Plages",        show=True),
+        Binding("p",         "apply_segments",
+                "Appliquer les plages",  show=True),
         Binding("c",         "copy_delay",   "Copier décalage", show=True),
         Binding("d",         "remove_track", "Retirer",       show=True),
         # F1/F2 gardent partout le même sens : dry-run et encodage. Le mux,
@@ -174,6 +176,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 ("k",         "Extrait de contrôle"),
                 ("a",         "Appliquer quand même"),
                 ("s",         "Plages détectées"),
+                ("p",         "Appliquer les plages"),
                 ("c",         "Copier décalage"),
                 ("d",         "Retirer"),
                 ("f9",        "Ajouter piste"),
@@ -553,6 +556,77 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         i, segs = self._segments
         nom = self._tracks[i].source_path.name if 0 <= i < len(self._tracks) else ""
         self.app.push_screen(SegmentsScreen(segs, nom))
+
+    def action_apply_segments(self) -> None:
+        """
+        Applique à un sous-titre les plages relevées sur l'audio.
+
+        Les trois pistes d'un même donneur portent le même montage : les
+        coupures mesurées sur l'audio valent pour les sous-titres, dont le
+        signal est trop creux pour les retrouver seul.
+
+        Un sous-titre se corrige exactement — il n'y a que des nombres à
+        décaler. On produit donc un .srt recalé qui devient la source de la
+        piste, avec un décalage nul : mpv, l'extrait de contrôle et le mux le
+        traitent ensuite comme n'importe quel fichier.
+        """
+        i = self._current()
+        if i is None:
+            return
+        if self._segments is None:
+            self._set_hint("Aucune plage connue — mesurez d'abord la piste "
+                           "audio du donneur avec 'm'.")
+            return
+
+        t = self._tracks[i]
+        if t.kind != TrackKind.SUBTITLE:
+            # Corriger l'audio demanderait de le recouper et de le réencoder :
+            # ce n'est pas un simple décalage de nombres.
+            self._set_hint("Seuls les sous-titres se corrigent ainsi. Une "
+                           "piste audio devrait être recoupée et réencodée, "
+                           "ce que l'outil ne fait pas encore.")
+            return
+
+        _, segs = self._segments
+        self._build_corrected_subtitle(i, segs)
+
+    def _build_corrected_subtitle(self, i: int, segs: list[Segment]) -> None:
+        import tempfile
+        from core.sync import extract_subtitle, shift_srt
+
+        t = self._tracks[i]
+        try:
+            src = t.source_path
+            if src.suffix.lower() != ".srt":
+                idx = ffmpeg_stream_index(src, t.source_tid, TrackKind.SUBTITLE)
+                src = extract_subtitle(t.source_path, idx)
+                if src is None:
+                    self.app.bell()
+                    self._set_hint("Extraction impossible — sous-titre image "
+                                   "(PGS, VobSub) ou piste illisible.")
+                    return
+            out = (Path(tempfile.gettempdir())
+                   / f"{self._source.stem}_{t.language or 'und'}_[recale].srt")
+            shift_srt(src, segs, out)
+        except Exception as e:
+            self.app.bell()
+            self._set_hint(f"Correction impossible : {e}")
+            return
+
+        t.source_path = out
+        t.source_tid  = 0            # un .srt nu n'a qu'une piste, d'id 0
+        t.delay_ms    = 0
+        t.stretch     = None
+        t.sync_origin = SyncOrigin.MEASURED
+        t.copied_from = None
+        self._refresh_row(i)
+        self._update_status()
+        paliers = " · ".join(f"{s.delay_ms:+d}" for s in segs)
+        self._set_hint(
+            f"Sous-titre recalé sur {len(segs)} plages ({paliers} ms) — "
+            f"décalage nul désormais.\n"
+            f"{out.name}\n"
+            f"'v' pour contrôler dans mpv, 'k' pour un extrait muxé.")
 
     # ── Contrôle à l'œil ──────────────────────────────────────────────────────
 

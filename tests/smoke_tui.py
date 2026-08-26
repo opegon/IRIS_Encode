@@ -558,6 +558,15 @@ async def scenario_measure() -> None:
             print(f"[14b] Sous-titre embarque : extrait du conteneur puis mesure "
                   f"-> {embarque.delay_ms} ms (ecart {ecart2} ms)")
 
+            # 'p' sans plage connue : refus explicite, pas de crash ni de piste
+            # silencieusement modifiee.
+            avant = (embarque.source_path, embarque.delay_ms)
+            await pilot.press("p")
+            await pilot.pause(0.3)
+            assert (embarque.source_path, embarque.delay_ms) == avant, (
+                "'p' a modifie la piste sans plages connues")
+            print("[14c] 'p' sans plages : refus explicite, piste intacte")
+
 
 async def main() -> None:
     await scenario_navigation()

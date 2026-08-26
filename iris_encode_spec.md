@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.0.3 — document de référence courant
+**Version** : 0.8.0.4 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 
@@ -622,10 +622,29 @@ Mesuré sur deux rips d'un même épisode (broadcast VFF contre streaming VO) :
 6 plages, cinq paliers de +2 000 ms — les noirs de coupure publicitaire — aux
 confiances 0.64 à 0.87.
 
-Les plages sont **exposées, jamais appliquées** : constater deux montages ne donne pas
-le moyen de les recaler. `--sync` de mkvmerge et `-itsoffset` de ffmpeg n'expriment
-qu'une transformation linéaire ; poser un palier sur toute la piste serait faux
-partout ailleurs. Une correction demanderait de fabriquer une piste corrigée.
+`--sync` de mkvmerge et `-itsoffset` de ffmpeg n'expriment qu'une transformation
+linéaire : un décalage par plages ne peut pas être passé en option. Corriger suppose
+donc de **fabriquer une piste corrigée**, greffée ensuite avec un décalage nul —
+l'aval (mpv, extrait, mux, encodage) la traite alors comme n'importe quel fichier.
+
+### 10.5 Correction d'un sous-titre — `shift_srt()`
+
+Un sous-titre se corrige **exactement** : il n'y a que des horodatages à décaler,
+rien à rééchantillonner. `shift_srt()` réécrit chaque cue avec le décalage de sa
+plage (`delay_at()`), en ne touchant qu'aux horodatages — texte, numérotation et
+balisage passent tels quels, quel que soit l'encodage du fichier source.
+
+Au-delà de la dernière plage, celle-ci est prolongée plutôt que ramenée à zéro : un
+générique de fin suit le même montage que ce qui le précède.
+
+Les plages viennent de l'**audio du donneur**, jamais du sous-titre lui-même : son
+signal est trop creux pour les retrouver seul, et les trois pistes d'un même donneur
+portent le même montage. Vérifié sur un épisode réel — le sous-titre corrigé sort à
+**+0 ms de décalage résiduel, trois tiers concordants à 100 ms**, donc accepté par le
+garde-fou du § 10.3 alors que sa corrélation brute (0.17) reste sous le seuil.
+
+**L'audio n'est pas corrigeable de cette façon** : il faudrait le recouper aux points
+de bascule et le réencoder. Non implémenté.
 
 ---
 
@@ -922,6 +941,7 @@ Une piste externe = une ligne. Champs éditables par ligne : **décalage**, **é
 | `M` | **Mesure automatique** (§ 10) |
 | `A` | Applique le candidat mesuré |
 | `S` | **Plages détectées** (§ 10.4) — lecture seule |
+| `P` | **Applique les plages** à un sous-titre (§ 10.5) — produit un `.srt` recalé qui devient la source de la piste |
 | `V` | **Visualiser dans mpv**, piste greffée et décalage appliqué |
 | `K` | **Extrait de contrôle** réellement muxé |
 | `C` | Copie le décalage d'une autre piste externe → `sync_origin = COPIED` |

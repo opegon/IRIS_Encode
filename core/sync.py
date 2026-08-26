@@ -374,6 +374,54 @@ def extract_subtitle(video: Path, ffmpeg_index: int) -> Optional[Path]:
     return out
 
 
+def delay_at(segments: list[Segment], t: float) -> int:
+    """
+    Décalage applicable à l'instant `t`, en millisecondes.
+
+    Hors des plages connues, on prolonge celle du bord le plus proche plutôt
+    que de retomber à zéro : un générique de fin au-delà de la dernière plage
+    suit le même montage que ce qui le précède.
+    """
+    if not segments:
+        return 0
+    for seg in segments:
+        if t < seg.end_s:
+            return seg.delay_ms
+    return segments[-1].delay_ms
+
+
+def _srt_stamp(seconds: float) -> str:
+    s = max(0.0, seconds)
+    h, r = divmod(int(s), 3600)
+    m, sec = divmod(r, 60)
+    return f"{h:02d}:{m:02d}:{sec:02d},{int(round((s % 1) * 1000)):03d}"
+
+
+def shift_srt(src: Path, segments: list[Segment], out: Path) -> Path:
+    """
+    Réécrit un `.srt` en appliquant un décalage propre à chaque plage.
+
+    Seuls les horodatages sont touchés : le texte, la numérotation et tout ce
+    que le fichier porte par ailleurs passent tels quels. C'est ce qui rend la
+    correction exacte pour un sous-titre — contrairement à l'audio, il n'y a
+    rien à rééchantillonner, juste des nombres à décaler.
+
+    La plage est choisie sur l'instant de départ de la réplique : une réplique
+    ne chevauche pas une coupure, qui tombe sur un noir sans dialogue.
+    """
+    text = _read_text(src)
+
+    def _rewrite(m: re.Match) -> str:
+        h1, m1, s1, ms1, h2, m2, s2, ms2 = (int(g) for g in m.groups())
+        start = h1 * 3600 + m1 * 60 + s1 + ms1 / 1000.0
+        end   = h2 * 3600 + m2 * 60 + s2 + ms2 / 1000.0
+        d = delay_at(segments, start) / 1000.0
+        return f"{_srt_stamp(start + d)} --> {_srt_stamp(end + d)}"
+
+    out.write_text(_SRT_TIME.sub(_rewrite, text), encoding="utf-8")
+    return out
+
+
 def _cue_mask(cues: list[tuple[float, float]], n_bins: int,
               ratio: tuple[int, int] = (1, 1)) -> np.ndarray:
     """Masque binaire des répliques, éventuellement rééchelonné."""

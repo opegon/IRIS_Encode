@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0.4] — 2026-08-26
+
+- **`p` — recaler un sous-titre sur les plages de l'audio.** Les plages
+  détectées en v0.8.0.3 se constataient sans pouvoir s'appliquer. Un sous-titre
+  se corrige pourtant exactement : il n'y a que des horodatages à décaler.
+  `shift_srt()` réécrit chaque réplique avec le décalage de sa plage et produit
+  un `.srt` recalé, qui devient la source de la piste avec un décalage nul —
+  mpv (`v`), l'extrait de contrôle (`k`) et le mux (`F3`) le traitent ensuite
+  comme n'importe quel fichier, sans rien changer à l'aval.
+- Les plages viennent de l'audio du donneur, jamais du sous-titre : son signal
+  est trop creux pour les retrouver seul, et les pistes d'un même donneur
+  portent le même montage. Vérifié sur un épisode réel — le sous-titre corrigé
+  sort à **+0 ms de décalage résiduel, trois tiers concordants à 100 ms**, et
+  passe donc le garde-fou alors que sa corrélation brute reste sous le seuil.
+- Une piste audio refuse `p` avec un message explicite : la corriger
+  demanderait de la recouper aux points de bascule et de la réencoder, ce que
+  l'outil ne fait pas.
+
 ## [v0.8.0.3] — 2026-08-26
 
 ### Recalage — détection des montages différents

@@ -485,3 +485,66 @@ def test_measure_subtitle_reads_a_plain_file_without_extracting(tmp_path: Path):
                     return_value=np.zeros(0, dtype=np.float32)):
         sync.measure_subtitle(tmp_path / "film.mkv", srt)
     extract.assert_not_called()
+
+
+# ─── Correction d'un sous-titre par plages ────────────────────────────────────
+
+_SEGS = [
+    sync.Segment(0.0,    600.0,  0,    0.8),
+    sync.Segment(600.0,  1200.0, 2000, 0.8),
+    sync.Segment(1200.0, 1800.0, 4000, 0.8),
+]
+
+
+def test_delay_at_picks_the_right_segment():
+    assert sync.delay_at(_SEGS, 0.0)    == 0
+    assert sync.delay_at(_SEGS, 599.9)  == 0
+    assert sync.delay_at(_SEGS, 600.0)  == 2000
+    assert sync.delay_at(_SEGS, 1500.0) == 4000
+
+
+def test_delay_at_extends_the_last_segment():
+    """Au-delà de la dernière plage — générique — le montage ne change plus."""
+    assert sync.delay_at(_SEGS, 9_999.0) == 4000
+
+
+def test_delay_at_without_segments_is_zero():
+    assert sync.delay_at([], 42.0) == 0
+
+
+def test_shift_srt_moves_each_cue_by_its_segment(tmp_path: Path):
+    src = tmp_path / "vf.srt"
+    src.write_text(
+        "1\n00:00:10,000 --> 00:00:12,000\nAvant la premiere coupure\n\n"
+        "2\n00:10:30,000 --> 00:10:32,500\nApres la premiere\n\n"
+        "3\n00:25:00,000 --> 00:25:01,000\nApres la seconde\n",
+        encoding="utf-8",
+    )
+    out = sync.shift_srt(src, _SEGS, tmp_path / "corrige.srt")
+    cues = sync.read_cues(out)
+
+    assert cues[0] == (10.0, 12.0)          # plage à +0
+    assert cues[1] == (632.0, 634.5)        # 630 s + 2 s
+    assert cues[2] == (1504.0, 1505.0)      # 1500 s + 4 s
+
+
+def test_shift_srt_preserves_the_text(tmp_path: Path):
+    """Seuls les horodatages bougent : le reste du fichier est intouché."""
+    src = tmp_path / "vf.srt"
+    src.write_text(
+        "1\n00:00:10,000 --> 00:00:12,000\n<i>Ça alors — 100 %</i>\n",
+        encoding="utf-8",
+    )
+    out = sync.shift_srt(src, _SEGS, tmp_path / "corrige.srt")
+    contenu = out.read_text(encoding="utf-8")
+    assert "<i>Ça alors — 100 %</i>" in contenu
+    assert contenu.startswith("1\n")
+
+
+def test_shift_srt_reads_a_cp1252_source(tmp_path: Path):
+    src = tmp_path / "vf.srt"
+    src.write_bytes(
+        "1\n00:10:30,000 --> 00:10:32,000\nDéjà vu\n".encode("cp1252"))
+    out = sync.shift_srt(src, _SEGS, tmp_path / "corrige.srt")
+    assert "Déjà vu" in out.read_text(encoding="utf-8")
+    assert sync.read_cues(out)[0][0] == 632.0

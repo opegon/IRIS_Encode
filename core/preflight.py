@@ -44,6 +44,20 @@ def _exe(name: str) -> str:
     return name + ".exe" if _is_windows() else name
 
 
+def _ask(prompt: str) -> str:
+    """
+    Question oui/non tolérante à l'absence d'entrée.
+
+    Sans terminal — tâche planifiée, sortie redirigée — input() lève EOFError
+    et emportait tout le démarrage. Pas de réponse vaut refus.
+    """
+    try:
+        return input(prompt).strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return "n"
+
+
 def _get_version(path: str) -> str:
     """
     Tente -version (ffmpeg/ffprobe) puis --version (dovi_tool, mkvmerge, GNU).
@@ -341,9 +355,7 @@ def run_preflight(cfg: dict) -> bool:
         return False
 
     if auto_install:
-        answer = input(
-            "  Télécharger et installer ffmpeg dans ./bin/ ? (o/N) : "
-        ).strip().lower()
+        answer = _ask("  Télécharger et installer ffmpeg dans ./bin/ ? (o/N) : ")
         if answer == "o":
             ok = install_ffmpeg(bin_dir, fetch_url)
             if ok:
@@ -360,9 +372,8 @@ def run_preflight(cfg: dict) -> bool:
 def _offer_dovi_install(bin_dir: Path) -> None:
     """Propose l'installation de dovi_tool si absent (optionnel)."""
     releases = _load_releases()
-    answer   = input(
-        "  Télécharger et installer dovi_tool (Dolby Vision) dans ./bin/ ? (o/N) : "
-    ).strip().lower()
+    answer   = _ask(
+        "  Télécharger et installer dovi_tool (Dolby Vision) dans ./bin/ ? (o/N) : ")
     if answer == "o":
         ok = install_dovi_tool(bin_dir, releases)
         if not ok:
@@ -374,9 +385,8 @@ def _offer_dovi_install(bin_dir: Path) -> None:
 def _offer_mkvmerge_install(bin_dir: Path) -> None:
     """Propose l'installation de mkvmerge si absent (optionnel)."""
     releases = _load_releases()
-    answer   = input(
-        "  Télécharger et installer mkvmerge (pistes externes) dans ./bin/ ? (o/N) : "
-    ).strip().lower()
+    answer   = _ask(
+        "  Télécharger et installer mkvmerge (pistes externes) dans ./bin/ ? (o/N) : ")
     if answer == "o":
         ok = install_mkvtoolnix(bin_dir, releases)
         if not ok:
@@ -388,9 +398,8 @@ def _offer_mkvmerge_install(bin_dir: Path) -> None:
 def _offer_mpv_install(bin_dir: Path) -> None:
     """Propose l'installation de mpv si absent (optionnel)."""
     releases = _load_releases()
-    answer   = input(
-        "  Télécharger et installer mpv (contrôle du recalage) dans ./bin/ ? (o/N) : "
-    ).strip().lower()
+    answer   = _ask(
+        "  Télécharger et installer mpv (contrôle du recalage) dans ./bin/ ? (o/N) : ")
     if answer == "o":
         ok = install_mpv(bin_dir, releases)
         if not ok:
@@ -450,7 +459,7 @@ def check_for_updates(cfg: dict, statuses: list[ToolStatus],
     print()
     for u in en_retard:
         print(f"  ↑ {u.label()}")
-    answer = input("  Mettre à jour ces outils ? (o/N) : ").strip().lower()
+    answer = _ask("  Mettre à jour ces outils ? (o/N) : ")
     if answer != "o":
         print("  Mise à jour ignorée — les versions installées restent en place.")
         return

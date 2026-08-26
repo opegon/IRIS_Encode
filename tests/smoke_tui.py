@@ -301,8 +301,27 @@ async def scenario_external_tracks() -> None:
                   f"independants ({vf.delay_ms} ms / {sub.delay_ms} ms), "
                   "↵ ouvre une liste sur les 6 champs")
 
-            # Mux reel
-            await pilot.press("f2")
+            # F1 refuse tant qu'une piste demande un etirement : -itsoffset ne
+            # fait qu'un decalage constant, ffmpeg ne peut pas la greffer.
+            assert vf.stretch is not None
+            await pilot.press("f1")
+            await pilot.pause(1.0)
+            assert type(app.screen).__name__ == "SyncScreen", \
+                "encodage lance malgre un etirement"
+
+            # Sans etirement, F1 passe : l'edition clavier est deja verifiee
+            # plus haut, on se contente ici de poser la condition.
+            vf.stretch = None
+            await pilot.press("f1")
+            await pilot.pause(1.2)
+            assert type(app.screen).__name__ == "DryrunScreen", type(app.screen).__name__
+            await pilot.press("backspace")
+            await pilot.pause(0.6)
+            assert type(app.screen).__name__ == "SyncScreen", type(app.screen).__name__
+            print("[11b] SyncScreen : F1 refuse un etirement, puis lance le dry-run")
+
+            # Mux reel (F3 : F1/F2 restent dry-run et encodage partout)
+            await pilot.press("f3")
             await pilot.pause(4.0)
             assert type(app.screen).__name__ == "MuxScreen", type(app.screen).__name__
             assert app.screen._done, "mux non termine"

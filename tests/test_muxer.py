@@ -381,10 +381,48 @@ def test_lossless_audio_kept_forces_mkv():
     assert dec.needs_mkv is False
 
 
+def _sub(index: int, codec: str, image: bool):
+    st = mock.Mock()
+    st.index          = index
+    st.codec          = codec
+    st.is_image_based = image
+    return st
+
+
 def test_image_subs_force_mkv():
-    dec = _encode_decision([])
-    dec.info.has_image_subs = True
+    dec = _encode_decision([], subs=[_sub(0, "dvd_subtitle", True)])
+    dec.subtitle_indices = None            # on garde tout
     assert dec.output_container == ".mkv"
+
+
+def test_deselecting_image_subs_frees_the_container():
+    """
+    Écarter la seule piste image doit libérer le MP4.
+
+    Le critère porte sur les pistes conservées : consulter le drapeau global
+    du fichier rendait la désélection sans effet.
+    """
+    subs = [_sub(0, "subrip", False), _sub(1, "dvd_subtitle", True)]
+    dec = _encode_decision([], subs=subs)
+
+    dec.subtitle_indices = None            # tout gardé → le DVD impose le MKV
+    assert dec.output_container == ".mkv"
+
+    dec.subtitle_indices = [0]             # seul le SubRip reste
+    assert dec.output_container == ".mp4"
+
+    dec.subtitle_indices = []              # plus aucun sous-titre
+    assert dec.output_container == ".mp4"
+
+
+def test_deselected_image_subs_do_not_force_copy():
+    """Le codec de sous-titres suit le conteneur réel, pas le fichier source."""
+    from core.encoder import build_command
+    dec = _encode_decision([], subs=[_sub(0, "subrip", False),
+                                     _sub(1, "dvd_subtitle", True)])
+    dec.subtitle_indices = [0]
+    cmd = build_command(dec, _plat())
+    assert cmd[cmd.index("-c:s") + 1] == "mov_text"
 
 
 # ─── Intégration avec FileDecision ────────────────────────────────────────────

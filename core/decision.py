@@ -158,25 +158,27 @@ class FileDecision:
     external_tracks:   list["ExternalTrack"] = field(default_factory=list)
 
     @property
+    def kept_subtitles(self) -> list:
+        """Pistes de sous-titres réellement conservées (None = toutes)."""
+        if self.subtitle_indices is None:
+            return list(self.info.subtitle_tracks)
+        return [st for st in self.info.subtitle_tracks
+                if st.index in self.subtitle_indices]
+
+    @property
     def needs_mkv(self) -> bool:
         """
         Le contenu impose-t-il le Matroska ?
 
-        Le critère porte sur ce que le fichier va contenir, pas sur son
-        histoire : un MKV dont tout tient en MP4 peut ressortir en MP4. Seuls
-        les sous-titres image, les sous-titres stylés (ASS/SSA) et l'audio
-        sans perte obligent au MKV — un SubRip n'a aucun style à perdre en
-        devenant mov_text.
+        Le critère porte sur ce que le fichier de sortie va contenir : pas son
+        histoire, et pas non plus les pistes écartées. Un MKV dont tout tient
+        en MP4 peut ressortir en MP4, et désélectionner la seule piste de
+        sous-titres image doit libérer le conteneur. Seuls les sous-titres
+        image, les sous-titres stylés (ASS/SSA) et l'audio sans perte
+        obligent au MKV — un SubRip n'a aucun style à perdre en mov_text.
         """
-        if self.info.has_image_subs:
-            return True
-
-        kept_subs = (
-            self.info.subtitle_tracks if self.subtitle_indices is None
-            else [st for st in self.info.subtitle_tracks
-                  if st.index in self.subtitle_indices]
-        )
-        if any(_needs_mkv_codec(st.codec) for st in kept_subs):
+        if any(st.is_image_based or _needs_mkv_codec(st.codec)
+               for st in self.kept_subtitles):
             return True
 
         # Une piste sans perte recopiée telle quelle ne tient pas en MP4

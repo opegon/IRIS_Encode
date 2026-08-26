@@ -93,7 +93,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 "Appliquer quand même",  show=True),
         Binding("c",         "copy_delay",   "Copier décalage", show=True),
         Binding("d",         "remove_track", "Retirer",       show=True),
-        Binding("f2",        "run_mux",      "Muxer",         show=True),
+        # F1/F2 gardent partout le même sens : dry-run et encodage. Le mux,
+        # propre à cet écran, prend F3.
+        Binding("f1",        "dryrun",       "Dry-run",       show=True),
+        Binding("f2",        "run",          "Encoder",       show=True),
+        Binding("f3",        "run_mux",      "Muxer",         show=True),
         Binding("f9",        "add_track",    "Ajouter piste", show=True),
         Binding("backspace", "go_back",      "Retour",        show=True),
         Binding("escape",    "go_back",      "Retour",        show=False, priority=True),
@@ -155,7 +159,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 ("c",         "Copier décalage"),
                 ("d",         "Retirer"),
                 ("f9",        "Ajouter piste"),
-                ("f2",        "Muxer"),
+                ("f1",        "Dry-run"),
+                ("f2",        "Encoder"),
+                ("f3",        "Muxer"),
                 ("backspace", "Retour"),
             ],
             line2=footer_line2(nav=True),
@@ -574,13 +580,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
 
     # ── Sortie ────────────────────────────────────────────────────────────────
 
-    def action_run_mux(self) -> None:
+    def _ready(self) -> bool:
+        """Pistes présentes et toutes étiquetées, sinon on dit quoi corriger."""
         if not self._tracks:
             self.app.bell()
             self._set_hint(
-                "Aucune piste à greffer — revenez aux pistes et ajoutez-en une avec F9."
+                "Aucune piste à greffer — ajoutez-en une avec F9."
             )
-            return
+            return False
         # Piste sans langue : on amène le curseur dessus au lieu de bloquer
         missing = next((i for i, t in enumerate(self._tracks) if not t.language), None)
         if missing is not None:
@@ -593,6 +600,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 f"n'a pas de langue. Choisissez-la avec +/- ou ↵."
             )
             self._update_status()
+            return False
+        return True
+
+    def action_run_mux(self) -> None:
+        if not self._ready():
             return
         from .mux_run import MuxScreen
 
@@ -607,6 +619,45 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self._update_status()
 
         self.app.push_screen(MuxScreen(self._decision), _after_mux)
+
+    # ── Encodage direct : ffmpeg absorbe les pistes dans la même passe ────────
+
+    def _encode_ready(self) -> bool:
+        """
+        Encoder greffe les pistes en une seule passe ffmpeg — sauf étirement.
+
+        -itsoffset ne fait qu'un décalage constant : une piste à rééchelonner
+        doit passer par mkvmerge d'abord.
+        """
+        if not self._ready():
+            return False
+        stretched = next((t for t in self._tracks if t.stretch), None)
+        if stretched is not None:
+            self.app.bell()
+            self._set_hint(
+                f"« {stretched.source_path.name} » demande un étirement, que "
+                f"ffmpeg ne sait pas appliquer en une passe.\n"
+                f"Muxez d'abord avec F3, puis encodez le résultat."
+            )
+            return False
+        return True
+
+    def _launch(self, screen_factory) -> None:
+        from core.decision import force_skip_to_encode
+        self.app.push_screen(screen_factory(force_skip_to_encode(self._decision)))
+
+    def action_dryrun(self) -> None:
+        if not self._encode_ready():
+            return
+        from .dryrun import DryrunScreen
+        self._launch(lambda dec: DryrunScreen([dec]))
+
+    def action_run(self) -> None:
+        if not self._encode_ready():
+            return
+        from .run import RunScreen
+        self._launch(
+            lambda dec: RunScreen([dec], self.app.platform))  # type: ignore[attr-defined]
 
     def action_go_back(self) -> None:
         self.dismiss(self._tracks)

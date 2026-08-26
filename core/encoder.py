@@ -339,11 +339,9 @@ def build_command(
     container = decision.output_container
     has_subs  = (sub_indices is None or len(sub_indices) > 0) or bool(ext_subs)
     if has_subs:
-        # mov_text n'existe qu'en MP4 : en MKV, on copie tel quel.
-        if container == ".mkv" or info.has_image_subs:
-            cmd += ["-c:s", "copy"]
-        else:
-            cmd += ["-c:s", "mov_text"]
+        # Le conteneur découle déjà des pistes conservées : s'il sort en MP4,
+        # c'est qu'aucun sous-titre image n'est gardé, donc mov_text convient.
+        cmd += ["-c:s", "copy" if container == ".mkv" else "mov_text"]
 
     # faststart est un réglage MP4 ; ffmpeg l'ignore en avertissant sur MKV
     if container == ".mp4":

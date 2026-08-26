@@ -109,6 +109,26 @@ def test_speech_mask_on_silent_track():
     assert sync._speech_mask(np.full(1000, -80.0)).sum() == 0
 
 
+def test_speech_mask_follows_a_rising_floor():
+    """
+    La bande-son d'un film monte et descend : un seuil global calé sur les
+    passages calmes sature dès que la musique entre, et le masque ne veut
+    plus rien dire dans la seconde moitié.
+    """
+    n = 12_000
+    env = np.linspace(-60.0, -20.0, n)          # plancher qui monte
+    for start in range(500, n - 500, 900):      # répliques au-dessus du plancher
+        env[start:start + 200] += 15.0
+
+    mask = sync._speech_mask(env)
+    debut, fin = mask[:n // 2].mean(), mask[n // 2:].mean()
+
+    assert 0.05 < debut < 0.5, debut
+    assert 0.05 < fin < 0.5, fin
+    # Même densité des deux côtés : le seuil a suivi le plancher
+    assert abs(debut - fin) < 0.15, (debut, fin)
+
+
 # ─── Lecture des sous-titres ──────────────────────────────────────────────────
 
 _SRT = (

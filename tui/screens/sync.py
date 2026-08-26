@@ -119,6 +119,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._field_idx = (_FIELDS.index("lang")
                            if any(not t.language for t in tracks) else 0)
         self._measuring = False
+        self._hint_override: str = ""
 
     # ── Composition ───────────────────────────────────────────────────────────
 
@@ -237,8 +238,10 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             f" {self._source.name} ── {n} piste(s) à greffer"
             f" ── Champ : {_FIELD_LABELS[_FIELDS[self._field_idx]]}{warn}"
         )
+        # Un message de mesure survit à la navigation : sans ça, la moindre
+        # flèche effaçait le résultat et l'écran semblait n'avoir rien fait.
         self.query_one("#sync-hint", Static).update(
-            _HINT_NO_LANG if missing else _HINT
+            self._hint_override or (_HINT_NO_LANG if missing else _HINT)
         )
 
     @on(DataTable.RowHighlighted)
@@ -282,6 +285,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return
         t     = self._tracks[i]
         field = _FIELDS[self._field_idx]
+        # Une saisie manuelle périme le message de la mesure précédente
+        self._hint_override = ""
 
         if field == "delay":
             t.delay_ms += delta * step
@@ -358,12 +363,25 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
 
     def action_measure(self) -> None:
         i = self._current()
-        if i is None or self._measuring:
+        if i is None:
+            return
+        if self._measuring:
+            self._set_hint("Une mesure est déjà en cours — laissez-la finir.")
             return
         self._measuring = True
-        self._set_hint(f"Mesure de « {self._tracks[i].source_path.name} » — "
-                       f"analyse de l'audio, patientez…")
+        self._set_hint(f"⏳ Mesure de « {self._tracks[i].source_path.name} » — "
+                       f"décodage de l'audio du film, cela peut prendre "
+                       f"plusieurs dizaines de secondes…")
+        # Visible dans la ligne elle-même : la barre du bas peut passer inaperçue
+        self._set_origin_cell(i, Text("mesure…", style="yellow"))
         self._measure(i)
+
+    def _set_origin_cell(self, i: int, text: Text) -> None:
+        try:
+            self.query_one(DataTable).update_cell(
+                str(i), "origin", text, update_width=False)
+        except Exception:
+            pass
 
     @work(thread=True, name="sync-measure")
     def _measure(self, i: int) -> None:
@@ -386,6 +404,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return                                   # piste retirée entre-temps
         if not res.ok:
             self.app.bell()
+            self._set_origin_cell(i, Text("échec", style="bold dark_orange"))
             self._set_hint(f"✗ {res.reason} — réglez le décalage à la main.")
             return
         t = self._tracks[i]
@@ -394,10 +413,12 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         t.sync_origin = SyncOrigin.MEASURED
         t.copied_from = None
         self._refresh_row(i)
-        self._update_status()
         self._set_hint(f"{'✓' if res.sure else '⚠'} {res.label()}")
+        self._update_status()
 
     def _set_hint(self, text: str) -> None:
+        """Message persistant : il survit à la navigation entre champs."""
+        self._hint_override = text
         self.query_one("#sync-hint", Static).update(text)
 
     # ── Reprise de décalage ───────────────────────────────────────────────────
@@ -456,7 +477,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     def action_run_mux(self) -> None:
         if not self._tracks:
             self.app.bell()
-            self.query_one("#sync-hint", Static).update(
+            self._set_hint(
                 "Aucune piste à greffer — revenez aux pistes et ajoutez-en une avec F9."
             )
             return
@@ -467,11 +488,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self._field_idx = _FIELDS.index("lang")
             self.query_one(DataTable).move_cursor(row=missing)
             self._refresh_all()
-            self._update_status()
-            self.query_one("#sync-hint", Static).update(
+            self._set_hint(
                 f"⚠ Mux impossible : « {self._tracks[missing].source_path.name} » "
                 f"n'a pas de langue. Choisissez-la avec +/- ou ↵."
             )
+            self._update_status()
             return
         from .mux_run import MuxScreen
 

@@ -89,7 +89,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("shift+down","jump_down",    "-1 s",          show=False),
         Binding("enter",     "open_picker",  "Liste",         show=True, priority=True),
         Binding("m",         "measure",      "Mesurer",       show=True),
-        Binding("a",         "apply_candidate", "Appliquer candidat", show=True),
+        Binding("a",         "apply_candidate",
+                "Appliquer quand même",  show=True),
         Binding("c",         "copy_delay",   "Copier décalage", show=True),
         Binding("d",         "remove_track", "Retirer",       show=True),
         Binding("f2",        "run_mux",      "Muxer",         show=True),
@@ -111,7 +112,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     #sync-bar-label { width: 22; color: $warning; }
     #sync-bar { width: 1fr; }
     #sync-hint {
-        height: 2;
+        /* 3 lignes : un compte rendu de mesure en occupe deux, plus la
+           proposition d'appliquer quand même une valeur refusée. */
+        height: 3;
         background: $primary-darken-1;
         color: $text;
         padding: 0 2;
@@ -148,7 +151,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             line1=[
                 ("enter",     "Liste de choix"),
                 ("m",         "Mesurer"),
-                ("a",         "Appliquer candidat"),
+                ("a",         "Appliquer quand même"),
                 ("c",         "Copier décalage"),
                 ("d",         "Retirer"),
                 ("f9",        "Ajouter piste"),
@@ -450,7 +453,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             # malgré une confiance basse, et un décalage d'une minute est
             # hors de portée des touches +/-.
             self._candidate = (i, res.best_delay_ms)
-            self._set_hint(f"{res.report()}  ·  'a' pour appliquer le candidat")
+            self._set_hint(f"{res.report()}\n"
+                           f"'a' applique quand même {res.best_delay_ms:+d} ms "
+                           f"— à vérifier dans un lecteur.")
             return
         self._candidate = None
         t = self._tracks[i]

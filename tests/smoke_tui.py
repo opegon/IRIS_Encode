@@ -314,6 +314,31 @@ async def scenario_external_tracks() -> None:
             print(f"[12] Mux : {out.name} produit, "
                   f"{len(produced)} pistes dont 2 en 'fre'")
 
+            # Apres le mux, c'est le fichier MUXE qui devient le fichier de
+            # travail : sans ca, un encodage viserait l'original et la greffe
+            # n'aurait servi a rien.
+            dec = app.screen._decision
+            assert dec.info.path == out, dec.info.path
+            assert not dec.external_tracks, "pistes externes non videes"
+            assert dec.force_mkv, "le MKV doit rester MKV a l'encodage"
+
+            await pilot.press("backspace")
+            await pilot.pause(0.6)
+            assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
+
+            # La commande d'encodage doit viser le fichier muxe, en MKV
+            from dataclasses import replace as dc_replace
+            from core.decision import VideoAction
+            from core.encoder import build_command
+            dec.video = dc_replace(dec.video, action=VideoAction.ENCODE_HEVC,
+                                   output_suffix="_[hevc]", target_bitrate=1_000_000)
+            cmd = build_command(dec, app.platform)
+            entree = Path(cmd[cmd.index("-i") + 1])
+            assert entree == out, f"encodage de {entree.name} au lieu de {out.name}"
+            assert dec.output_path.suffix == ".mkv", dec.output_path.name
+            print(f"[13] Apres mux : encodage de {entree.name} "
+                  f"-> {dec.output_path.name}")
+
 
 async def main() -> None:
     await scenario_navigation()

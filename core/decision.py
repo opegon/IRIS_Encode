@@ -141,12 +141,15 @@ class FileDecision:
     subtitle_indices:       list[int] | None = None  # None = tout garder
     delete_source_override: bool | None      = None  # None = suivre profil
     external_tracks:   list["ExternalTrack"] = field(default_factory=list)
+    force_mkv:         bool                  = False
 
     @property
     def output_container(self) -> str:
         # Une piste externe impose le MKV : le MP4 ne porte ni ASS ni la
-        # plupart des pistes audio HD.
-        if self.external_tracks:
+        # plupart des pistes audio HD. force_mkv garde cette contrainte après
+        # un mux, une fois les pistes intégrées et external_tracks vidée —
+        # sinon l'encodage reconvertirait en MP4 ce qu'on vient de greffer.
+        if self.external_tracks or self.force_mkv:
             return ".mkv"
         return ".mkv" if self.info.has_image_subs else ".mp4"
 

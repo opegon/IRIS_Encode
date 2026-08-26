@@ -255,6 +255,88 @@ def test_parse_error():
     assert muxer.parse_error("#GUI#progress 50%") is None
 
 
+# ─── Absorption des pistes externes par l'encodeur ────────────────────────────
+
+def _encode_decision(ext: list[ExternalTrack], *, subs=None, force_mkv=False):
+    """Décision d'encodage HEVC minimale, avec pistes externes greffées."""
+    from core.decision import DVAction, FileDecision, VideoAction, VideoDecision
+
+    info = mock.Mock()
+    info.path            = Path("/films/film.mkv")
+    info.has_image_subs  = False
+    info.subtitle_tracks = subs if subs is not None else []
+    info.duration        = 100.0
+    info.hdr10_master_display = ""
+    info.hdr10_max_cll        = ""
+
+    video = VideoDecision(
+        action=VideoAction.ENCODE_HEVC, reason="test", target_bitrate=2_000_000,
+        target_width=1920, target_height=1080,
+        dv_action=DVAction.NONE, output_suffix="_[hevc]",
+    )
+    return FileDecision(info=info, profile={}, video=video, audio=[],
+                        subtitle_indices=[], external_tracks=ext,
+                        force_mkv=force_mkv)
+
+
+def _plat():
+    from core.platform import GPU, OS, PlatformProfile
+    return PlatformProfile(os=OS.WINDOWS, gpu=GPU.NONE, hwaccel=None,
+                           encoder_hevc="libx265", encoder_h264="libx264",
+                           encoder_av1="libaom-av1")
+
+
+def test_encode_absorbs_external_track(vf: ExternalTrack):
+    """Encoder un fichier avec pistes externes ne doit pas les perdre."""
+    from core.encoder import build_command
+
+    vf.stretch = None          # l'étirement a son propre test
+    dec = _encode_decision([vf])
+    cmd = build_command(dec, _plat())
+
+    assert cmd.count("-i") == 2, cmd
+    assert str(vf.source_path) in cmd
+    assert "1:a:0" in cmd, "piste externe non mappée"
+    assert "-metadata:s:a:0" in cmd
+    assert f"language={vf.language}" in cmd
+
+
+def test_encode_applies_itsoffset(vf: ExternalTrack):
+    from core.encoder import build_command
+    vf.stretch  = None
+    vf.delay_ms = -2450
+    cmd = build_command(_encode_decision([vf]), _plat())
+    assert cmd[cmd.index("-itsoffset") + 1] == "-2.450"
+    # -itsoffset doit précéder le -i qu'il décale
+    assert cmd.index("-itsoffset") < cmd.index(str(vf.source_path))
+
+
+def test_encode_refuses_stretch(vf: ExternalTrack):
+    """-itsoffset ne fait qu'un décalage constant : il faut le dire, pas mentir."""
+    from core.encoder import build_command
+    vf.stretch = (24000, 25025)
+    with pytest.raises(ValueError, match="étirement"):
+        build_command(_encode_decision([vf]), _plat())
+
+
+def test_encode_never_uses_mov_text_in_mkv(subs: ExternalTrack):
+    """mov_text n'existe pas en Matroska : ffmpeg refuserait de muxer."""
+    from core.encoder import build_command
+    cmd = build_command(_encode_decision([subs]), _plat())
+    assert "mov_text" not in cmd
+    assert cmd[cmd.index("-c:s") + 1] == "copy"
+    assert "+faststart" not in cmd, "faststart est un réglage MP4"
+
+
+def test_force_mkv_survives_empty_external_tracks():
+    """Après un mux, le fichier reste MKV même sans piste externe en attente."""
+    dec = _encode_decision([], force_mkv=True)
+    assert dec.output_container == ".mkv"
+    assert dec.output_path.name == "film_[hevc].mkv"
+    # Sans le drapeau, la règle par défaut s'applique
+    assert _encode_decision([]).output_container == ".mp4"
+
+
 # ─── Intégration avec FileDecision ────────────────────────────────────────────
 
 def test_external_track_forces_mkv_and_suffix():

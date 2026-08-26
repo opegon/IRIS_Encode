@@ -19,13 +19,16 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Header, Static
 
 from core import config as cfg_mod
-from core.decision import FileDecision, VideoAction, decide
+from core.decision import AudioAction, FileDecision, VideoAction, decide
 from core.scanner import scan, scan_directory_recursive
 from ..common import (
     DV_VALUE_STYLES,
+    estimate_encoding_duration,
+    fmt_bytes,
     fmt_duration,
     fmt_size,
     footer_line2,
+    get_measured_speed,
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
 from ..widgets.file_tree import FileNavigator
@@ -45,6 +48,29 @@ _SCAN_WORKERS = 4
 _DIR_ICON  = "📁"
 _DISK_ICON = "💾"   # icône volume/disque
 _FILE_ICON = "🎬"
+
+
+# ─── Estimation de taille ─────────────────────────────────────────────────────
+
+def _estimate_output_bytes(dec: FileDecision) -> int:
+    """Taille estimée de sortie (vidéo + audio conservé).
+    Retourne 0 si action=SKIP ou durée inconnue."""
+    if dec.video.action == VideoAction.SKIP:
+        return 0
+    duration = dec.info.duration
+    if duration <= 0:
+        return 0
+    video_bps = dec.video.target_bitrate
+    audio_bps = 0
+    for ad in dec.audio:
+        if ad.action == AudioAction.EXCLUDE:
+            continue
+        if ad.action == AudioAction.COPY:
+            audio_bps += ad.track.bitrate or 192_000
+        else:
+            audio_bps += ad.output_bitrate
+    total_bits = (video_bps + audio_bps) * duration
+    return int(total_bits / 8)
 
 # Marqueurs de ligne dans la table
 _ROW_TYPE_DIR   = "dir"
@@ -71,13 +97,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("f8",        "open_imdb",          "IMDB",     show=True),
     ]
 
-    # Colonnes redimensionnables (ColumnResizeMixin)
-    RESIZE_COLS   = ["taille", "resolution", "duree", "debit", "codec",
-                     "dolby_vision", "decision", "audio"]
+    # Colonnes redimensionnables (ColumnResizeMixin) — fichier en premier pour accès au focus
+    RESIZE_COLS   = ["fichier", "taille", "resolution", "duree", "debit", "codec",
+                     "dolby_vision", "decision", "estim", "temps_estim", "audio"]
     RESIZE_LABELS = {"fichier": "Fichier", "taille": "Taille", "resolution": "Résol.",
                      "duree": "Durée", "debit": "Débit", "codec": "Codec",
-                     "dolby_vision": "Dolby V.", "decision": "Décision", "audio": "Audio"}
-    RESIZE_MIN    = {"fichier": 20, "audio": 10}
+                     "dolby_vision": "Dolby V.", "decision": "Décision", "estim": "Estim. (Δ%)",
+                     "temps_estim": "Temps estim.", "audio": "Audio"}
+    RESIZE_MIN    = {"fichier": 30, "audio": 10}
 
     DEFAULT_CSS = """
     BrowserScreen {
@@ -161,6 +188,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         )
 
     def on_mount(self) -> None:
+        self._resize_col_idx = 0  # Initialise le focus sur "fichier" (première colonne redimensionnable)
         self._build_columns()
         self._update_profile_bar()
         self._refresh_view()
@@ -173,8 +201,16 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         widths = cfg_mod.get_column_widths(self._app.cfg)
 
         table.add_column("",                                width=3,    key="check")
-        table.add_column(self.resize_header("fichier"),     width=None, key="fichier")
-        for col in self.RESIZE_COLS:
+        # Colonne fichier : 50% de la largeur de l'écran (ou largeur sauvegardée)
+        if "fichier" in widths:
+            fichier_width = widths["fichier"]
+        else:
+            # 50% de la largeur disponible (moins la colonne check et marges)
+            terminal_width = self.size.width if hasattr(self, 'size') else 120
+            fichier_width = max(self.RESIZE_MIN["fichier"], (terminal_width - 8) // 2)
+        table.add_column(self.resize_header("fichier"), width=fichier_width, key="fichier")
+
+        for col in self.RESIZE_COLS[1:]:  # Skip fichier, déjà ajoutée
             table.add_column(self.resize_header(col), width=widths[col], key=col)
 
     def _refresh_view(self) -> None:
@@ -298,9 +334,40 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         codec_txt = Text(info.codec)
         dv_txt    = Text(info.dv_label)
         dec_txt   = Text(vid.label(), style=vid.style())
+
+        # Estimation taille de sortie
+        try:
+            src_bytes = info.path.stat().st_size
+        except OSError:
+            src_bytes = 0
+        est_bytes = _estimate_output_bytes(dec)
+
+        if est_bytes == 0:
+            estim_txt = Text("—", style="dim", no_wrap=True)
+        elif src_bytes > 0:
+            delta_pct = (est_bytes - src_bytes) * 100 / src_bytes
+            sign      = "+" if delta_pct > 0 else ""
+            color     = "dark_orange" if delta_pct > 0 else "green"
+            estim_txt = Text(
+                f"{fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)",
+                style=color, no_wrap=True,
+            )
+        else:
+            estim_txt = Text(fmt_bytes(est_bytes), no_wrap=True)
+
+        # Estimation temps d'encodage
+        prof = self._active_profile()
+        preset = prof.data.get("preset_encoder", "medium")
+        measured_speed = get_measured_speed(self._app.cfg, vid.action)
+        est_duration = estimate_encoding_duration(
+            info.duration, info.kbps * 1000, vid.target_bitrate,
+            vid.action, preset, measured_speed
+        )
+        temps_txt = Text(fmt_duration(est_duration), style="dim" if vid.action == VideoAction.SKIP else "")
+
         audio_txt = Text(dec.audio_summary, overflow="ellipsis", no_wrap=True)
 
-        return (check, name_txt, size_txt, res_txt, dur_txt, kbps_txt, codec_txt, dv_txt, dec_txt, audio_txt)
+        return (check, name_txt, size_txt, res_txt, dur_txt, kbps_txt, codec_txt, dv_txt, dec_txt, estim_txt, temps_txt, audio_txt)
 
     def _check_str(self, path: Path) -> Text:
         # Text() évite l'interprétation des crochets comme balises Rich markup
@@ -471,12 +538,22 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         def _on_tracks_return(result: TracksSelection | None) -> None:
             if result is None:
                 return
-            # Stocker les overrides pistes
-            self._audio_overrides[path]    = result.audio
-            self._subtitle_overrides[path] = result.subtitle_indices
-            # Recalculer la décision audio
-            dec.audio            = decide_audio(dec.info, dec.profile, result.audio)
-            dec.subtitle_indices = result.subtitle_indices
+            # Un mux a pu adopter un nouveau fichier : la décision ne porte
+            # plus sur `path`. On la ré-indexe, et les sélections de pistes
+            # faites sur l'ancien fichier ne s'appliquent plus.
+            adopted = dec.info.path != path
+            if adopted:
+                self._decisions.pop(path, None)
+                self._decisions[dec.info.path] = dec
+                self._audio_overrides.pop(path, None)
+                self._subtitle_overrides.pop(path, None)
+            else:
+                # Stocker les overrides pistes
+                self._audio_overrides[path]    = result.audio
+                self._subtitle_overrides[path] = result.subtitle_indices
+                # Recalculer la décision audio
+                dec.audio            = decide_audio(dec.info, dec.profile, result.audio)
+                dec.subtitle_indices = result.subtitle_indices
             # Appliquer les overrides vidéo
             if result.video_override:
                 from dataclasses import replace as dc_replace
@@ -498,14 +575,17 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 if ov.dv_action     is not None: dec.video = dc_replace(dec.video, dv_action=ov.dv_action)
                 if ov.delete_source is not None: dec.delete_source_override = ov.delete_source
             # Mettre à jour la cellule audio dans la table
-            try:
-                self.query_one(DataTable).update_cell(
-                    str(path), "audio",
-                    Text(dec.audio_summary, overflow="ellipsis", no_wrap=True),
-                    update_width=False,
-                )
-            except Exception:
-                pass
+            if adopted:
+                self._refresh_view()   # le fichier muxé remplace l'ancien
+            else:
+                try:
+                    self.query_one(DataTable).update_cell(
+                        str(path), "audio",
+                        Text(dec.audio_summary, overflow="ellipsis", no_wrap=True),
+                        update_width=False,
+                    )
+                except Exception:
+                    pass
             # Lancement direct demandé depuis TracksScreen
             if result.launch_mode == "dryrun":
                 from .dryrun import DryrunScreen

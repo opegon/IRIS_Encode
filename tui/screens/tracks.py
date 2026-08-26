@@ -607,15 +607,19 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
     def _open_sync(self) -> None:
         from .sync import SyncScreen
+        before = self._decision.info.path
 
         def _back(_tracks) -> None:
+            if self._decision.info.path != before:
+                # Le mux a été adopté : la sélection portait sur l'ancien
+                # fichier, dont la liste de pistes n'est plus celle-ci.
+                self._sel_audio.clear()
+                self._sel_subs.clear()
+                self._init_selection()
             self._build_table(keep_cursor=True)
             self._update_status()
 
-        self.app.push_screen(
-            SyncScreen(self._decision.info.path, self._decision.external_tracks),
-            _back,
-        )
+        self.app.push_screen(SyncScreen(self._decision), _back)
 
     def action_open_codec(self) -> None:
         """Ouvre le picker pour changer le codec."""

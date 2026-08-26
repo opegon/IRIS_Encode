@@ -15,13 +15,14 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Header, Label, ProgressBar, Static
 
-from core.muxer import ExternalTrack, MuxProcess, build_mux_command, mux_output_path
+from core.decision import FileDecision
+from core.muxer import MuxProcess, build_mux_command, mux_output_path
 
 from ..common import footer_line2
 from ..widgets.footer import TwoLineFooter
 
 
-class MuxScreen(Screen):
+class MuxScreen(Screen[bool]):
     """Lance mkvmerge et suit sa progression."""
 
     BINDINGS = [
@@ -52,14 +53,15 @@ class MuxScreen(Screen):
     }
     """
 
-    def __init__(self, source: Path, tracks: list[ExternalTrack]) -> None:
+    def __init__(self, decision: FileDecision) -> None:
         super().__init__()
-        self._source  = source
-        self._tracks  = tracks
-        self._output  = mux_output_path(source)
+        self._decision = decision
+        self._source   = decision.info.path
+        self._tracks   = list(decision.external_tracks)
+        self._output   = mux_output_path(self._source)
         self._process: MuxProcess | None = None
-        self._done    = False
-        self._ok      = False
+        self._done     = False
+        self._ok       = False
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -127,12 +129,45 @@ class MuxScreen(Screen):
 
         if self._ok:
             self.app.call_from_thread(self._set_progress, 100)
-            self.app.call_from_thread(
-                self._set, "#mux-state", f"✓ Terminé — {self._output.name}")
+            self.app.call_from_thread(self._adopt_output)
         else:
             detail = proc.errors[0] if proc.errors else f"code {rc}"
             self.app.call_from_thread(
                 self._set, "#mux-state", f"✗ Échec du mux : {detail}")
+
+    def _adopt_output(self) -> None:
+        """
+        Bascule la décision sur le fichier muxé.
+
+        Sans ça, tout ce qui suit (dry-run, encodage) continuerait à viser le
+        fichier d'origine : on aurait greffé des pistes pour rien.
+        Les pistes externes sont vidées — elles font désormais partie du fichier.
+        """
+        from core.decision import decide
+        from core import scanner
+
+        try:
+            new_info = scanner.scan(self._output)
+        except Exception as e:
+            self._set("#mux-state",
+                      f"✓ Mux réussi ({self._output.name}) mais relecture "
+                      f"impossible : {e}. L'encodage viserait le fichier d'origine.")
+            return
+
+        fresh = decide(new_info, self._decision.profile)
+        self._decision.info             = new_info
+        self._decision.video            = fresh.video
+        self._decision.audio            = fresh.audio
+        self._decision.subtitle_indices = None
+        self._decision.external_tracks.clear()
+        # Les pistes greffées vivent dans un MKV : un encodage ultérieur ne
+        # doit pas le reconvertir en MP4.
+        self._decision.force_mkv = True
+
+        self._set("#mux-state",
+                  f"✓ Terminé — {self._output.name}. "
+                  f"C'est désormais ce fichier qui sera encodé.")
+        self._set("#mux-out", f"Fichier de travail : {self._output.name}")
 
     # ── Sortie ────────────────────────────────────────────────────────────────
 
@@ -145,4 +180,4 @@ class MuxScreen(Screen):
                 self._output.unlink(missing_ok=True)
             except OSError:
                 pass
-        self.app.pop_screen()
+        self.dismiss(self._ok)

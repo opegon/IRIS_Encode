@@ -24,6 +24,7 @@ from textual.events import Key
 from textual.screen import Screen
 from textual.widgets import DataTable, Header, Static
 
+from core.decision import FileDecision
 from core.muxer import ExternalTrack, SyncOrigin, TrackKind
 
 from ..common import footer_line2
@@ -105,9 +106,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     }
     """
 
-    def __init__(self, source: Path, tracks: list[ExternalTrack]) -> None:
+    def __init__(self, decision: FileDecision) -> None:
         super().__init__()
-        self._source    = source
+        self._decision  = decision
+        self._source    = decision.info.path
+        tracks          = decision.external_tracks
         self._tracks    = tracks
         # Une piste sans langue bloque le mux : on ouvre directement sur ce
         # champ plutôt que de laisser chercher.
@@ -421,7 +424,18 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             )
             return
         from .mux_run import MuxScreen
-        self.app.push_screen(MuxScreen(self._source, list(self._tracks)))
+
+        def _after_mux(_res) -> None:
+            # Le mux a pu adopter le fichier produit : la liste locale doit
+            # refléter external_tracks, que MuxScreen vide en cas de succès.
+            self._tracks = self._decision.external_tracks
+            if not self._tracks:
+                self.dismiss(self._tracks)
+                return
+            self._build_table(keep_cursor=True)
+            self._update_status()
+
+        self.app.push_screen(MuxScreen(self._decision), _after_mux)
 
     def action_go_back(self) -> None:
         self.dismiss(self._tracks)

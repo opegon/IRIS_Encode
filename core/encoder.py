@@ -83,14 +83,42 @@ def _time_to_seconds(t: str) -> float:
         return 0.0
 
 
+def _seconds_to_time(seconds: float) -> str:
+    """Convertit des secondes en "HH:MM:SS"."""
+    if seconds <= 0:
+        return "0:00:00"
+    s = int(seconds)
+    h = s // 3600
+    m = (s % 3600) // 60
+    sec = s % 60
+    return f"{h}:{m:02d}:{sec:02d}"
+
+
 @dataclass
 class ProgressInfo:
-    frame:   int
-    fps:     float
-    elapsed: float   # secondes encodées
-    bitrate: float   # kbits/s
-    speed:   float   # x réel
-    percent: float   # 0.0–1.0, -1 si inconnu
+    frame:    int
+    fps:      float
+    elapsed:  float   # secondes encodées
+    bitrate:  float   # kbits/s
+    speed:    float   # x réel (ex: 3.71x)
+    percent:  float   # 0.0–1.0, -1 si inconnu
+    duration: float   # durée totale du fichier (secondes)
+
+    @property
+    def remaining(self) -> float:
+        """Temps restant estimé en secondes (basé sur speed)."""
+        if self.speed <= 0 or self.duration <= 0:
+            return 0.0
+        remaining_duration = self.duration - self.elapsed
+        return max(0.0, remaining_duration / self.speed)
+
+    def format_remaining(self) -> str:
+        """Formate le temps restant comme 'HH:MM:SS'."""
+        return _seconds_to_time(self.remaining)
+
+    def format_elapsed(self) -> str:
+        """Formate le temps écoulé comme 'HH:MM:SS'."""
+        return _seconds_to_time(self.elapsed)
 
 
 def parse_progress(line: str, total_duration: float) -> Optional[ProgressInfo]:
@@ -108,6 +136,7 @@ def parse_progress(line: str, total_duration: float) -> Optional[ProgressInfo]:
         bitrate=float(m.group("bitrate")),
         speed=float(m.group("speed")),
         percent=min(percent, 1.0) if total_duration > 0 else -1.0,  # -1 = durée inconnue
+        duration=total_duration,
     )
 
 
@@ -158,6 +187,23 @@ def build_command(
         cmd += ["-hwaccel", platform.hwaccel]
 
     cmd += ["-i", str(info.path)]
+
+    # ── Entrées supplémentaires : pistes externes greffées ────────────────────
+    # ffmpeg les absorbe dans la même passe que l'encodage : inutile de muxer
+    # séparément quand le fichier est de toute façon réencodé.
+    ext_tracks = decision.external_tracks
+    stretched  = [t for t in ext_tracks if t.stretch]
+    if stretched:
+        raise ValueError(
+            f"La piste « {stretched[0].source_path.name} » demande un facteur "
+            f"d'étirement, que ffmpeg ne sait pas appliquer en une passe "
+            f"(-itsoffset ne fait qu'un décalage constant). "
+            f"Muxez-la d'abord avec F9, puis encodez le résultat."
+        )
+    for ext in ext_tracks:
+        if ext.delay_ms:
+            cmd += ["-itsoffset", f"{ext.delay_ms / 1000:.3f}"]
+        cmd += ["-i", str(ext.source_path)]
 
     # ── Filtre vidéo ──────────────────────────────────────────────────────────
     if not preserve_video:
@@ -237,9 +283,17 @@ def build_command(
     sub_indices = decision.subtitle_indices
     if sub_indices is None:
         cmd += ["-map", "0:s?"]
+        n_src_subs = len(info.subtitle_tracks)
     else:
         for si in sub_indices:
             cmd += ["-map", f"0:s:{si}"]
+        n_src_subs = len(sub_indices)
+
+    # Pistes externes : chacune est l'unique flux utile de son entrée
+    from .muxer import TrackKind
+    for n, ext in enumerate(ext_tracks, start=1):
+        stream = "a" if ext.kind == TrackKind.AUDIO else "s"
+        cmd += ["-map", f"{n}:{stream}:0"]
 
     # ── Encodage audio ────────────────────────────────────────────────────────
     for out_i, ad in enumerate(included_audio):
@@ -253,15 +307,47 @@ def build_command(
             if ad.output_codec == "aac":
                 cmd += [f"-ar:{out_i}", "48000"]
 
+    # ── Pistes externes : copie, langue, nom, drapeaux ────────────────────────
+    ext_audio = [t for t in ext_tracks if t.kind == TrackKind.AUDIO]
+    ext_subs  = [t for t in ext_tracks if t.kind != TrackKind.AUDIO]
+
+    # Une piste externe marquée « défaut » retire le drapeau des pistes source
+    if any(t.is_default for t in ext_audio):
+        for out_i in range(len(included_audio)):
+            cmd += [f"-disposition:a:{out_i}", "0"]
+
+    for j, ext in enumerate(ext_audio):
+        out_i = len(included_audio) + j
+        cmd += [f"-c:a:{out_i}", "copy"]
+        cmd += [f"-metadata:s:a:{out_i}", f"language={ext.language}"]
+        if ext.track_name:
+            cmd += [f"-metadata:s:a:{out_i}", f"title={ext.track_name}"]
+        flags = [f for f, on in (("default", ext.is_default),
+                                 ("forced", ext.is_forced)) if on]
+        cmd += [f"-disposition:a:{out_i}", "+".join(flags) if flags else "0"]
+
+    for j, ext in enumerate(ext_subs):
+        out_i = n_src_subs + j
+        cmd += [f"-metadata:s:s:{out_i}", f"language={ext.language}"]
+        if ext.track_name:
+            cmd += [f"-metadata:s:s:{out_i}", f"title={ext.track_name}"]
+        flags = [f for f, on in (("default", ext.is_default),
+                                 ("forced", ext.is_forced)) if on]
+        cmd += [f"-disposition:s:{out_i}", "+".join(flags) if flags else "0"]
+
     # ── Sous-titres ───────────────────────────────────────────────────────────
-    has_subs = sub_indices is None or len(sub_indices) > 0
+    container = decision.output_container
+    has_subs  = (sub_indices is None or len(sub_indices) > 0) or bool(ext_subs)
     if has_subs:
-        if info.has_image_subs:
+        # mov_text n'existe qu'en MP4 : en MKV, on copie tel quel.
+        if container == ".mkv" or info.has_image_subs:
             cmd += ["-c:s", "copy"]
         else:
             cmd += ["-c:s", "mov_text"]
 
-    cmd += ["-movflags", "+faststart"]
+    # faststart est un réglage MP4 ; ffmpeg l'ignore en avertissant sur MKV
+    if container == ".mp4":
+        cmd += ["-movflags", "+faststart"]
     cmd += ["-y", str(decision.output_path)]
 
     return cmd

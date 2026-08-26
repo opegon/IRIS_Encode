@@ -92,6 +92,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("backspace", "go_up",              "Remonter", show=True),
         Binding("t",         "open_tracks",        "Pistes",   show=False),
         Binding("v",         "play",               "Visualiser", show=True),
+        Binding("ctrl+d",    "delete_file",        "Supprimer", show=True),
         Binding("f1",        "open_dryrun",        "Dry-run",  show=True),
         Binding("f2",        "open_run",           "Run",      show=True),
         Binding("f3",        "recursive_run",      "Récursif", show=True),
@@ -171,6 +172,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 ("n",         "Aucun"),
                 ("enter",     "Ouvrir"),
                 ("v",         "Visualiser"),
+                ("ctrl+d",    "Supprimer"),
                 ("backspace", "Remonter"),
                 ("home",      "Début"),
                 ("end",       "Fin"),
@@ -507,6 +509,57 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         except Exception as e:
             self.app.bell()
             self._flash_status(f"Lecture impossible : {e}")
+
+    def action_delete_file(self) -> None:
+        """
+        Supprime définitivement le fichier sous le curseur, après confirmation.
+
+        Pendant du Visualiser : juger une source amène parfois à constater
+        qu'elle ne vaut rien. Autant s'en débarrasser sans quitter l'écran.
+        """
+        row_type, path = self._current_row_info()
+        if row_type != _ROW_TYPE_FILE or path is None:
+            return
+
+        def _on_confirm(ok: bool | None) -> None:
+            if ok:
+                self._delete_now(path)
+
+        from .delete_confirm import DeleteConfirmModal
+        self.app.push_screen(DeleteConfirmModal(path), _on_confirm)
+
+    def _delete_now(self, path: Path) -> None:
+        """Supprime le fichier et retire sa ligne, sans re-scanner le dossier."""
+        try:
+            path.unlink()
+        except Exception as e:
+            # Cas courant sous Windows : mpv tient encore le fichier ouvert.
+            self.app.bell()
+            self._flash_status(f"Suppression impossible : {e}")
+            return
+
+        self._decisions.pop(path, None)
+        self._selected.discard(path)
+        self._audio_overrides.pop(path, None)
+        self._subtitle_overrides.pop(path, None)
+
+        idx = next(
+            (i for i, (t, p) in enumerate(self._rows)
+             if t == _ROW_TYPE_FILE and p == path),
+            None,
+        )
+        if idx is None:
+            return
+        del self._rows[idx]
+        try:
+            self.query_one(DataTable).remove_row(str(path))
+        except Exception:
+            pass
+
+        if not self._rows:
+            self._refresh_view()   # dossier vidé : faire apparaître le placeholder
+        else:
+            self._update_status()
 
     def _flash_status(self, message: str) -> None:
         """Message ponctuel dans la barre d'état, effacé au prochain rafraîchissement."""

@@ -16,6 +16,7 @@ from textual.widgets import Static
 _KEY_LABELS: dict[str, str] = {
     "ctrl+s":    "Ctrl+S",
     "ctrl+c":    "Ctrl+C",
+    "ctrl+d":    "Ctrl+D",
     "shift+tab": "Sh+Tab",
     "tab":       "Tab",
     "backspace": "Back",

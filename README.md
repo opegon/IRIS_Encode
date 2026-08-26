@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.7.0 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.0.1 — Windows (support macOS/Linux prévu)
 
 ---
 
@@ -13,6 +13,8 @@
 | ffmpeg    | 7.x             | ✓ (auto-installable) |
 | ffprobe   | 7.x             | ✓ (inclus avec ffmpeg) |
 | dovi_tool | 2.x             | ✗ (optionnel — Dolby Vision) |
+| mkvmerge  | 99.x            | ✗ (optionnel — greffe de pistes externes) |
+| mpv       | récent          | ✗ (optionnel — visualisation) |
 | GPU NVIDIA | driver récent  | ✗ (recommandé — encodage accéléré CUDA) |
 
 ---
@@ -123,33 +125,52 @@ Si ffmpeg est déjà installé sur le système (accessible via `ffmpeg` dans un 
 
 ---
 
-## 4. (Optionnel) Installer dovi_tool
+## 4. (Optionnel) Installer les outils complémentaires
 
-`dovi_tool` est nécessaire uniquement pour traiter les contenus **Dolby Vision**.
-Si vous ne travaillez pas avec des fichiers DV, vous pouvez répondre `N` à la question.
+Trois outils sont optionnels. Aucun n'est nécessaire pour encoder : leur absence
+désactive une fonction, elle ne bloque jamais le lancement.
+
+| Outil | Nécessaire pour | Taille |
+|---|---|---|
+| `dovi_tool` | contenus **Dolby Vision** (probe RPU, métadonnées HDR10) | ~2 Mo |
+| `mkvmerge` | **greffe de pistes externes** (VF, sous-titres) et extraits de contrôle | ~22 Mo |
+| `mpv` | **visualisation** d'un fichier ou d'un recalage | ~50 Mo |
 
 ### Option A — Installation automatique (recommandée)
 
-Au premier lancement, si `dovi_tool` est absent, IRIS ENCODE propose :
+Au premier lancement, IRIS ENCODE propose d'installer chaque outil manquant :
 
 ```
   dovi_tool absent (optionnel — nécessaire pour le Dolby Vision).
   Télécharger et installer dovi_tool (Dolby Vision) dans ./bin/ ? (o/N) :
 ```
 
-Répondez `o`. Le binaire (~2 Mo) est téléchargé depuis GitHub
-(quietvoid/dovi_tool) et extrait dans `bin/`.
+Répondez `o`. Le binaire est téléchargé depuis la source officielle, vérifié par son
+empreinte SHA256, puis extrait dans `bin/`.
+
+> `mpv` n'est publié qu'en archive `.7z` : l'extraction passe par le `tar` livré avec
+> Windows 10/11, sans dépendance supplémentaire.
 
 ### Option B — Installation manuelle dans `bin/`
 
-1. Téléchargez le binaire Windows depuis :
-   https://github.com/quietvoid/dovi_tool/releases
-2. Extrayez `dovi_tool.exe` et placez-le dans le dossier `bin/` :
-   ```
-   iris_encode/
-   └── bin/
-       └── dovi_tool.exe
-   ```
+Téléchargez les binaires Windows et placez les exécutables directement dans `bin/`
+(sans sous-dossier) :
+
+| Outil | Source |
+|---|---|
+| `dovi_tool.exe` | https://github.com/quietvoid/dovi_tool/releases |
+| `mkvmerge.exe` | https://mkvtoolnix.download/downloads.html (archive ZIP 64-bit) |
+| `mpv.exe` | https://mpv.io/installation/ (build Windows portable) |
+
+```
+iris_encode/
+└── bin/
+    ├── dovi_tool.exe
+    ├── mkvmerge.exe
+    └── mpv.exe
+```
+
+> Un outil déjà présent dans le PATH système est détecté automatiquement — rien à faire.
 
 ---
 
@@ -178,10 +199,12 @@ iris_encode/
 ├── config.toml         ← Configuration générale (éditable)
 ├── profiles.toml       ← Profils d'encodage (éditable)
 ├── requirements.txt    ← Dépendances Python
-├── bin/                ← ffmpeg / ffprobe / dovi_tool (créé automatiquement)
+├── version.py          ← Version de l'application (source unique)
+├── bin/                ← ffmpeg / ffprobe / dovi_tool / mkvmerge / mpv (auto)
 ├── data/               ← Sources de téléchargement (embarquées)
 ├── core/               ← Logique métier
 ├── tui/                ← Interface utilisateur
+├── tests/              ← Tests et smoke test TUI
 └── logger/             ← Module de journalisation
 ```
 

@@ -177,6 +177,29 @@ async def scenario_parallel_scan() -> None:
             assert type(app.screen).__name__ == "BrowserScreen"
             print(f"[9] DryrunScreen : 3 lignes, {len(cols)} colonnes, Duree affichee ({duree}), retour OK")
 
+            # Ctrl+D : suppression du fichier sous le curseur, avec confirmation.
+            table.move_cursor(row=0)
+            await pilot.pause(0.2)
+            cible = scr._rows[0][1]
+            # 1er passage : Esc annule, le fichier survit
+            await pilot.press("ctrl+d")
+            await pilot.pause(0.4)
+            assert type(app.screen).__name__ == "DeleteConfirmModal", type(app.screen).__name__
+            await pilot.press("escape")
+            await pilot.pause(0.4)
+            assert cible.exists(), "Esc a supprime le fichier"
+            assert table.row_count == 3, f"apres annulation : {table.row_count}"
+            # 2e passage : le focus part sur Annuler, -> puis Enter confirment
+            await pilot.press("ctrl+d")
+            await pilot.pause(0.4)
+            await pilot.press("right", "enter")
+            await pilot.pause(0.5)
+            assert not cible.exists(), f"{cible.name} existe encore"
+            assert table.row_count == 2, f"apres suppression : {table.row_count}"
+            assert len(scr._decisions) == 2, f"decisions={len(scr._decisions)}"
+            assert cible not in scr._selected
+            print(f"[9b] Ctrl+D : Esc annule, confirmation supprime {cible.name} (3 -> 2 lignes)")
+
 
 _SRT = """1
 00:00:01,000 --> 00:00:03,000

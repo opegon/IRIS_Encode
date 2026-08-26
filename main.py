@@ -24,7 +24,9 @@ def _check_python_version() -> None:
 def _ensure_deps() -> None:
     """Vérifie que les dépendances Python sont installées."""
     missing = []
-    for pkg in ("textual", "rich", "tomli_w", "requests", "numpy"):
+    # Doit couvrir requirements.txt : bs4 sert au scraping des métadonnées,
+    # son absence ne se manifestait qu'au moment d'ouvrir une fiche film.
+    for pkg in ("textual", "rich", "tomli_w", "requests", "bs4", "numpy"):
         try:
             __import__(pkg)
         except ImportError:

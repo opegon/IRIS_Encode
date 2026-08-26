@@ -50,7 +50,9 @@ if "%WT_SESSION%"=="" (
 )
 
 REM --- Vérification des dépendances Python ---
-python -c "import textual, requests, tomli_w, bs4" >nul 2>&1
+REM La liste doit suivre requirements.txt : un module oublié ici ne déclenche
+REM pas l'installation, et main.py s'arrête ensuite sur une dépendance absente.
+python -c "import textual, rich, requests, tomli_w, bs4, numpy" >nul 2>&1
 if errorlevel 1 (
     echo.
     echo  [INFO] Dépendances manquantes — installation en cours...

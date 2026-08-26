@@ -264,6 +264,70 @@ def build_mux_command(
     return cmd
 
 
+# ─── Extrait de contrôle ──────────────────────────────────────────────────────
+
+SAMPLE_SECONDS = 60
+
+
+def timecode(seconds: float) -> str:
+    """Secondes → HH:MM:SS, format attendu par --split."""
+    s = max(0, int(seconds))
+    return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+
+
+def sample_windows(duration: float, has_stretch: bool,
+                   first_cue: Optional[float] = None) -> list[float]:
+    """
+    Positions de départ des extraits de contrôle.
+
+    Sans étirement, un seul extrait suffit : le décalage est constant, le
+    vérifier une fois le vérifie partout. Avec étirement, la dérive
+    s'accumule — il faut regarder tôt *et* tard, sinon on valide un début
+    correct au-dessus d'une fin qui part.
+    """
+    if duration <= 0:
+        return [0.0]
+    if has_stretch:
+        return [duration * 0.10, duration * 0.85]
+    if first_cue is not None and first_cue > 3:
+        return [first_cue - 3.0]
+    return [duration * 0.25]
+
+
+def build_sample_command(
+    source:  Path,
+    tracks:  list[ExternalTrack],
+    output:  Path,
+    starts:  list[float],
+    length:  int = SAMPLE_SECONDS,
+) -> list[str]:
+    """
+    Commande produisant un court extrait du résultat muxé.
+
+    Le découpage est confié à mkvmerge, qui l'applique au flux **de sortie**,
+    une fois le décalage et l'étirement posés. Découper les fichiers d'entrée
+    séparément serait faux : chacun se calerait sur son propre keyframe et
+    leur décalage relatif changerait, ce qui invaliderait justement ce qu'on
+    cherche à vérifier.
+
+    Plusieurs fenêtres sont concaténées dans un seul fichier (« + »), pour
+    juger début et fin d'affilée.
+    """
+    cmd = build_mux_command(source, tracks, output)
+    parts = ",+".join(
+        f"{timecode(s)}-{timecode(s + length)}" for s in sorted(starts)
+    )
+    # Option globale : elle doit précéder le premier fichier d'entrée
+    insert_at = cmd.index("-o")
+    return cmd[:insert_at] + ["--split", f"parts:{parts}"] + cmd[insert_at:]
+
+
+def sample_output_path(source: Path) -> Path:
+    """Extrait de contrôle, écrit hors du dossier du film."""
+    import tempfile
+    return Path(tempfile.gettempdir()) / f"{source.stem}_[extrait].mkv"
+
+
 def mux_output_path(source: Path) -> Path:
     """Chemin de sortie d'un mux sans réencodage (toujours MKV, jamais la source)."""
     return source.parent / f"{source.stem}{MUX_SUFFIX}.mkv"

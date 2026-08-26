@@ -234,6 +234,66 @@ def test_guess_language(nom: str, attendu: str):
     assert muxer.guess_language(Path(nom)) == attendu
 
 
+# ─── Extrait de contrôle ──────────────────────────────────────────────────────
+
+def test_timecode_formats_for_split():
+    assert muxer.timecode(0)     == "00:00:00"
+    assert muxer.timecode(85)    == "00:01:25"
+    assert muxer.timecode(7588)  == "02:06:28"
+    assert muxer.timecode(-10)   == "00:00:00"
+
+
+def test_one_window_without_stretch():
+    """Un décalage constant vérifié une fois est vérifié partout."""
+    assert muxer.sample_windows(7200.0, has_stretch=False) == [1800.0]
+
+
+def test_window_prefers_a_dialogue_point():
+    assert muxer.sample_windows(7200.0, False, first_cue=88.6) == [85.6]
+
+
+def test_two_windows_with_stretch():
+    """La dérive s'accumule : valider le début ne dit rien de la fin."""
+    fen = muxer.sample_windows(7200.0, has_stretch=True, first_cue=88.6)
+    assert len(fen) == 2
+    assert fen[0] < 7200.0 * 0.2 and fen[1] > 7200.0 * 0.8
+
+
+def test_sample_command_splits_the_output_not_the_inputs(tmp_path: Path,
+                                                         vf: ExternalTrack):
+    """
+    Découper les entrées séparément fausserait le test : chacune se calerait
+    sur son propre keyframe. --split agit sur le flux de sortie, après sync.
+    """
+    src = tmp_path / "Film.mkv"
+    out = tmp_path / "extrait.mkv"
+    cmd = muxer.build_sample_command(src, [vf], out, starts=[600.0], length=60)
+
+    split = cmd[cmd.index("--split") + 1]
+    assert split == "parts:00:10:00-00:11:00"
+    # Option globale : elle doit précéder la source et le donneur
+    assert cmd.index("--split") < cmd.index(str(src))
+    assert cmd.index("--split") < cmd.index(str(vf.source_path))
+    # Le sync de la piste reste posé
+    assert "--sync" in cmd
+
+
+def test_sample_command_concatenates_windows(tmp_path: Path, vf: ExternalTrack):
+    cmd = muxer.build_sample_command(
+        tmp_path / "Film.mkv", [vf], tmp_path / "e.mkv",
+        starts=[6447.0, 758.0], length=60)
+    # Fenêtres remises dans l'ordre, et jointes par « + » pour un seul fichier
+    assert cmd[cmd.index("--split") + 1] == \
+        "parts:00:12:38-00:13:38,+01:47:27-01:48:27"
+
+
+def test_sample_lands_outside_the_film_directory(tmp_path: Path):
+    """Ne pas semer des extraits dans la médiathèque de l'utilisateur."""
+    out = muxer.sample_output_path(tmp_path / "films" / "Film.mkv")
+    assert out.parent != (tmp_path / "films")
+    assert out.name == "Film_[extrait].mkv"
+
+
 # ─── Progression --gui-mode ───────────────────────────────────────────────────
 
 @pytest.mark.parametrize("line,expected", [

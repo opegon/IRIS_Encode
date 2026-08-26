@@ -101,6 +101,13 @@ def launch(cmd: list[str]) -> subprocess.Popen:
     )
 
 
+def open_file(path: Path) -> subprocess.Popen:
+    """Ouvre un fichier déjà prêt (extrait de contrôle) dans mpv."""
+    if _mpv_path is None:
+        raise RuntimeError("mpv n'est pas installé.")
+    return launch([_mpv_path, "--osd-level=1", str(path)])
+
+
 def keys_hint(track: ExternalTrack) -> str:
     """Touches mpv à utiliser pour ajuster ce type de piste."""
     if track.kind == TrackKind.SUBTITLE:

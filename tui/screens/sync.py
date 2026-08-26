@@ -26,7 +26,10 @@ from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 
 from core import preview
 from core.decision import FileDecision
-from core.muxer import ExternalTrack, SyncOrigin, TrackKind, ffmpeg_stream_index
+from core.muxer import (
+    ExternalTrack, MuxProcess, SyncOrigin, TrackKind, build_sample_command,
+    ffmpeg_stream_index, sample_output_path, sample_windows, timecode,
+)
 from core.sync import SyncResult, measure_audio, measure_subtitle, read_cues
 
 from ..common import footer_line2
@@ -71,8 +74,8 @@ _DELAY_STEP_MS = 100
 _DELAY_JUMP_MS = 1000
 
 _HINT = ("←/→  Champ     +/-  ±100 ms     Shift+↑/↓  ±1 s     ↵  Liste\n"
-         "m  Mesurer     p  Contrôler     c  Copier décalage     "
-         "F9  Ajouter     d  Retirer")
+         "m  Mesurer     p  Contrôler     v  Extrait     "
+         "c  Copier     F9  Ajouter     d  Retirer")
 _HINT_NO_LANG = ("⚠ Langue manquante — +/- ou ↵ pour la choisir. "
                  "Sans elle, la piste sortirait en « und ».")
 
@@ -92,6 +95,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("enter",     "open_picker",  "Liste",         show=True, priority=True),
         Binding("m",         "measure",      "Mesurer",       show=True),
         Binding("p",         "preview",      "Contrôler",     show=True),
+        Binding("v",         "sample",       "Extrait",       show=True),
         Binding("a",         "apply_candidate",
                 "Appliquer quand même",  show=True),
         Binding("c",         "copy_delay",   "Copier décalage", show=True),
@@ -140,6 +144,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._field_idx = (_FIELDS.index("lang")
                            if any(not t.language for t in tracks) else 0)
         self._measuring = False
+        self._sampling  = False
         self._hint_override: str = ""
         # (ligne, décalage) proposé par une mesure refusée
         self._candidate: tuple[int, int] | None = None
@@ -159,6 +164,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 ("enter",     "Liste de choix"),
                 ("m",         "Mesurer"),
                 ("p",         "Contrôler dans mpv"),
+                ("v",         "Extrait de contrôle"),
                 ("a",         "Appliquer quand même"),
                 ("c",         "Copier décalage"),
                 ("d",         "Retirer"),
@@ -562,6 +568,76 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 f"mpv ouvert avec {t.delay_ms:+d} ms appliqués.\n"
                 f"{preview.keys_hint(t)}.\n"
                 f"Reportez ensuite la valeur corrigée dans cet écran.")
+
+    # ── Extrait de contrôle ───────────────────────────────────────────────────
+
+    def action_sample(self) -> None:
+        """
+        Produit un court extrait réellement muxé, puis l'ouvre dans mpv.
+
+        C'est le seul contrôle honnête d'un facteur d'étirement : ni mpv ni la
+        corrélation ne le prévisualisent. Sans étirement, une fenêtre suffit ;
+        avec, on en prend deux — tôt et tard — parce que la dérive s'accumule.
+        """
+        if self._measuring or self._sampling:
+            self._set_hint("Une opération est déjà en cours.")
+            return
+        if not self._ready():
+            return
+        self._sampling = True
+        self._show_bar(True)
+        self._set_hint("⏳ Construction de l'extrait de contrôle…")
+        self._build_sample()
+
+    @work(thread=True, name="sync-sample")
+    def _build_sample(self) -> None:
+        first_cue = None
+        subs = next((t for t in self._tracks if t.kind == TrackKind.SUBTITLE), None)
+        if subs is not None:
+            cues = read_cues(subs.source_path)
+            first_cue = cues[0][0] if cues else None
+
+        has_stretch = any(t.stretch for t in self._tracks)
+        starts = sample_windows(self._decision.info.duration, has_stretch, first_cue)
+        out    = sample_output_path(self._source)
+        try:
+            out.unlink(missing_ok=True)      # une relance remplace l'ancien
+            cmd = build_sample_command(self._source, list(self._tracks), out, starts)
+        except (ValueError, OSError) as e:
+            self.app.call_from_thread(self._sample_done, None, str(e), starts)
+            return
+
+        proc = MuxProcess(cmd)
+        proc.start()
+        for _line, pct in proc.iter_progress():
+            if pct is not None:
+                self.app.call_from_thread(self._set_progress, pct / 100)
+        rc = proc.wait()
+        erreur = None if rc == 0 else (proc.errors[0] if proc.errors else f"code {rc}")
+        self.app.call_from_thread(self._sample_done, out, erreur, starts)
+
+    def _sample_done(self, out, erreur: str | None, starts: list[float]) -> None:
+        self._sampling = False
+        self._show_bar(False)
+        if erreur:
+            self.app.bell()
+            self._set_hint(f"✗ Extrait impossible : {erreur}")
+            return
+
+        fenetres = " et ".join(timecode(s) for s in starts)
+        if preview.available():
+            try:
+                preview.open_file(out)
+            except Exception as e:
+                self._set_hint(f"Extrait prêt : {out}\nmpv n'a pas pu l'ouvrir : {e}")
+                return
+            self._set_hint(
+                f"Extrait ouvert dans mpv — fenêtres à {fenetres}.\n"
+                f"C'est le résultat réel du mux : ce que vous entendez est "
+                f"ce que produira F3.")
+        else:
+            self._set_hint(f"Extrait prêt (mpv absent) : {out}\n"
+                           f"Fenêtres à {fenetres}.")
 
     # ── Reprise de décalage ───────────────────────────────────────────────────
 

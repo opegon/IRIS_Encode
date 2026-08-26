@@ -320,6 +320,30 @@ async def scenario_external_tracks() -> None:
             assert type(app.screen).__name__ == "SyncScreen", type(app.screen).__name__
             print("[11b] SyncScreen : F1 refuse un etirement, puis lance le dry-run")
 
+            # 'v' : extrait de controle reellement muxe. mpv est neutralise
+            # pour que le test ne fasse pas surgir de fenetre.
+            from core import preview as preview_mod
+            mpv_reel = preview_mod._mpv_path
+            preview_mod.set_mpv_path(None)
+            try:
+                await pilot.press("v")
+                for _ in range(40):
+                    await pilot.pause(0.5)
+                    if not sync._sampling:
+                        break
+                assert not sync._sampling, "extrait jamais termine"
+                from core.muxer import identify, sample_output_path
+                extrait = sample_output_path(sync._source)
+                assert extrait.exists(), f"extrait absent : {extrait}"
+                pistes = identify(extrait)
+                assert len(pistes) >= 3, [p.display() for p in pistes]
+                taille = extrait.stat().st_size
+                extrait.unlink(missing_ok=True)
+                print(f"[11c] Extrait de controle : {len(pistes)} pistes, "
+                      f"{taille / 1024:.0f} Ko")
+            finally:
+                preview_mod.set_mpv_path(mpv_reel)
+
             # Mux reel (F3 : F1/F2 restent dry-run et encodage partout)
             await pilot.press("f3")
             await pilot.pause(4.0)

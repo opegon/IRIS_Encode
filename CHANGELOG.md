@@ -1,5 +1,16 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0.2] — 2026-08-26
+
+- **Démarrage hors console corrigé.** `main.py` mourait sur un
+  `UnicodeEncodeError` avant d'afficher quoi que ce soit dès que sa sortie
+  n'était pas une vraie console Windows — redirection vers un fichier, pipe,
+  lancement depuis Git Bash, WSL ou une tâche planifiée. Python retombe alors
+  sur l'encodage local (cp1252 en français), où le cadre de la bannière et les
+  coches `✓`/`✗` n'existent pas. `stdout` et `stderr` sont désormais forcés en
+  UTF-8 avant le premier `print`. Le double-clic sur `launch.bat` n'était pas
+  affecté, ce qui explique que le défaut ait survécu depuis la v0.7.0.
+
 ## [v0.8.0.1] — 2026-08-26
 
 - **`Ctrl+D` — supprimer le fichier sous le curseur** depuis le browser, avec

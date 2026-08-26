@@ -11,6 +11,20 @@ import sys
 from pathlib import Path
 
 
+def _force_utf8_output() -> None:
+    """Force stdout/stderr en UTF-8.
+
+    Sur Windows, Python n'utilise l'UTF-8 que face à une vraie console : dès que
+    la sortie part dans un pipe, un fichier ou un terminal tiers (Git Bash), il
+    retombe sur l'encodage local — cp1252 en français. Le cadre de la bannière
+    et les coches ✓/✗ n'y existent pas, et le programme meurt sur un
+    UnicodeEncodeError avant même d'avoir affiché quoi que ce soit.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
 def _check_python_version() -> None:
     if sys.version_info < (3, 11):
         print(
@@ -40,6 +54,7 @@ def _ensure_deps() -> None:
 
 
 def main() -> None:
+    _force_utf8_output()   # avant tout print : la vérification ci-dessous en fait
     _check_python_version()
     _ensure_deps()
 

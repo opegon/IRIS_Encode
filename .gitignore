@@ -37,6 +37,9 @@ iris_encode.log
 # Matériel de test local (films, sous-titres) — jamais versionné
 resources_files/
 
+# Cache des dernières versions d'outils : régénéré, propre à la machine
+data/ffmpeg_releases_cache.toml
+
 # Fichiers temporaires
 *.tmp
 *.temp

@@ -112,15 +112,30 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest().lower()
 
 
-def _download(url: str) -> Optional[bytes]:
+def _download(url: str, expected_sha256: str = "") -> Optional[bytes]:
+    """
+    Télécharge, et vérifie l'empreinte quand la source en fournit une.
+
+    Les URL découvertes dynamiquement n'ont pas d'empreinte connue : on ne
+    vérifie que ce qui est épinglé dans les sources statiques.
+    """
     try:
         import requests
         r = requests.get(url, stream=True, timeout=120)
         r.raise_for_status()
-        return r.content
+        data = r.content
     except Exception as e:
         print(f"  ✗ Téléchargement échoué : {e}")
         return None
+
+    if expected_sha256:
+        got = _sha256(data)
+        if got != expected_sha256.lower():
+            print("  ✗ Empreinte SHA256 incorrecte — téléchargement rejeté.")
+            print(f"    attendu : {expected_sha256.lower()}")
+            print(f"    obtenu  : {got}")
+            return None
+    return data
 
 
 def _install_from_zip(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
@@ -239,7 +254,7 @@ def install_mpv(bin_dir: Path, releases: dict) -> bool:
         print("  ✗ URL mpv introuvable dans les sources.")
         return False
     print(f"  Téléchargement depuis {url}")
-    data = _download(url)
+    data = _download(url, info.get("sha256", ""))
     if data is None:
         return False
     return _install_from_7z(data, bin_dir, {_exe("mpv")})
@@ -262,7 +277,7 @@ def install_mkvtoolnix(bin_dir: Path, releases: dict) -> bool:
         print("  ✗ URL mkvtoolnix introuvable dans les sources.")
         return False
     print(f"  Téléchargement depuis {url}")
-    data = _download(url)
+    data = _download(url, info.get("sha256", ""))
     if data is None:
         return False
     return _install_from_zip(data, bin_dir, {_exe("mkvmerge")})
@@ -312,6 +327,7 @@ def run_preflight(cfg: dict) -> bool:
             print("  mpv absent (optionnel — sert à contrôler un recalage à l'œil).")
             _offer_mpv_install(bin_dir)
             print()
+        check_for_updates(cfg, statuses, bin_dir)
         return True
 
     fetch_url    = cfg.get("ffmpeg", {}).get("fetch_url", "")
@@ -381,6 +397,76 @@ def _offer_mpv_install(bin_dir: Path) -> None:
             print("  ✗ Installation mpv échouée — le recalage restera réglable à l'aveugle.")
     else:
         print("  mpv ignoré — vous ne pourrez pas contrôler un recalage à l'œil.")
+
+
+def _installer_for(name: str):
+    """Fonction d'installation associée à un outil, ou None."""
+    return {
+        "ffmpeg":    lambda bd, url: install_ffmpeg(bd, url),
+        "mkvmerge":  lambda bd, url: _install_from_zip(
+            _download(url) or b"", bd, {_exe("mkvmerge")}),
+        "dovi_tool": lambda bd, url: _install_from_zip(
+            _download(url) or b"", bd, {_exe("dovi_tool")}),
+        "mpv":       lambda bd, url: _install_from_7z(
+            _download(url) or b"", bd, {_exe("mpv")}),
+    }.get(name)
+
+
+def check_for_updates(cfg: dict, statuses: list[ToolStatus],
+                      bin_dir: Path) -> None:
+    """
+    Signale les outils dépassés et propose de les remettre à jour.
+
+    Interrogé au plus une fois par jour : ces outils sortent au mieux
+    mensuellement, et un démarrage ne doit pas attendre le réseau. Une source
+    injoignable est ignorée — hors ligne, le lancement se poursuit.
+    """
+    if not cfg.get("ffmpeg", {}).get("check_on_startup", True):
+        return
+
+    from . import updates
+
+    releases = updates.load_cache(CACHE_FILE)
+    if releases is None:
+        print("  Vérification des mises à jour…")
+        releases = updates.fetch_latest()
+        if releases:
+            updates.save_cache(CACHE_FILE, releases)
+
+    # Ne proposer que ce qu'on gère réellement : un outil trouvé dans le PATH
+    # y reste prioritaire sur ./bin/, le mettre à jour ici ne changerait rien.
+    installed = {
+        s.name: s.version
+        for s in statuses
+        if s.found and s.path is not None and s.path.parent == bin_dir
+    }
+    # ffprobe suit ffmpeg : même archive, inutile de le traiter à part
+    installed.pop("ffprobe", None)
+
+    en_retard = updates.pending(installed, releases or {})
+    if not en_retard:
+        return
+
+    print()
+    for u in en_retard:
+        print(f"  ↑ {u.label()}")
+    answer = input("  Mettre à jour ces outils ? (o/N) : ").strip().lower()
+    if answer != "o":
+        print("  Mise à jour ignorée — les versions installées restent en place.")
+        return
+
+    for u in en_retard:
+        installer = _installer_for(u.tool)
+        if installer is None:
+            continue
+        print(f"  {u.tool} : téléchargement de {u.latest}…")
+        try:
+            ok = installer(bin_dir, u.url)
+        except Exception as e:
+            ok = False
+            print(f"  ✗ {e}")
+        if not ok:
+            print(f"  ✗ Mise à jour de {u.tool} échouée — version précédente conservée.")
 
 
 def get_tool_path(name: str, bin_dir: Path) -> Optional[str]:

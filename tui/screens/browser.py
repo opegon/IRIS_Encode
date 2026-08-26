@@ -19,6 +19,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Header, Static
 
 from core import config as cfg_mod
+from core import preview
 from core.decision import (
     AudioAction, FileDecision, VideoAction, decide, force_skip_to_encode,
 )
@@ -90,6 +91,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("enter",     "enter_dir",          "Ouvrir",   show=True, priority=True),
         Binding("backspace", "go_up",              "Remonter", show=True),
         Binding("t",         "open_tracks",        "Pistes",   show=False),
+        Binding("v",         "play",               "Visualiser", show=True),
         Binding("f1",        "open_dryrun",        "Dry-run",  show=True),
         Binding("f2",        "open_run",           "Run",      show=True),
         Binding("f3",        "recursive_run",      "Récursif", show=True),
@@ -168,6 +170,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 ("a",         "Tout"),
                 ("n",         "Aucun"),
                 ("enter",     "Ouvrir"),
+                ("v",         "Visualiser"),
                 ("backspace", "Remonter"),
                 ("home",      "Début"),
                 ("end",       "Fin"),
@@ -483,6 +486,34 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if 0 <= idx < len(self._rows):
             return self._rows[idx]
         return ("", None)
+
+    def action_play(self) -> None:
+        """
+        Ouvre le fichier sous le curseur dans mpv.
+
+        Juger une source avant de décider quoi en faire évite d'ouvrir un
+        lecteur à côté : c'est souvent la première chose qu'on veut faire
+        devant une liste de fichiers.
+        """
+        row_type, path = self._current_row_info()
+        if row_type != _ROW_TYPE_FILE or path is None:
+            return
+        if not preview.available():
+            self.app.bell()
+            self._flash_status("mpv absent — relancez le preflight pour l'installer.")
+            return
+        try:
+            preview.open_file(path)
+        except Exception as e:
+            self.app.bell()
+            self._flash_status(f"Lecture impossible : {e}")
+
+    def _flash_status(self, message: str) -> None:
+        """Message ponctuel dans la barre d'état, effacé au prochain rafraîchissement."""
+        try:
+            self.query_one("#status-bar", Static).update(f" {message}")
+        except Exception:
+            pass
 
     def action_enter_dir(self) -> None:
         row_type, path = self._current_row_info()

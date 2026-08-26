@@ -74,7 +74,7 @@ _DELAY_STEP_MS = 100
 _DELAY_JUMP_MS = 1000
 
 _HINT = ("←/→  Champ     +/-  ±100 ms     Shift+↑/↓  ±1 s     ↵  Liste\n"
-         "m  Mesurer     p  Contrôler     v  Extrait     "
+         "m  Mesurer     v  Visualiser     k  Extrait de contrôle     "
          "c  Copier     F9  Ajouter     d  Retirer")
 _HINT_NO_LANG = ("⚠ Langue manquante — +/- ou ↵ pour la choisir. "
                  "Sans elle, la piste sortirait en « und ».")
@@ -94,8 +94,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("shift+down","jump_down",    "-1 s",          show=False),
         Binding("enter",     "open_picker",  "Liste",         show=True, priority=True),
         Binding("m",         "measure",      "Mesurer",       show=True),
-        Binding("p",         "preview",      "Contrôler",     show=True),
-        Binding("v",         "sample",       "Extrait",       show=True),
+        Binding("v",         "preview",      "Visualiser",    show=True),
+        Binding("k",         "sample",       "Extrait",       show=True),
         Binding("a",         "apply_candidate",
                 "Appliquer quand même",  show=True),
         Binding("c",         "copy_delay",   "Copier décalage", show=True),
@@ -163,8 +163,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             line1=[
                 ("enter",     "Liste de choix"),
                 ("m",         "Mesurer"),
-                ("p",         "Contrôler dans mpv"),
-                ("v",         "Extrait de contrôle"),
+                ("v",         "Visualiser dans mpv"),
+                ("k",         "Extrait de contrôle"),
                 ("a",         "Appliquer quand même"),
                 ("c",         "Copier décalage"),
                 ("d",         "Retirer"),

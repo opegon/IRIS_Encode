@@ -143,6 +143,23 @@ async def scenario_parallel_scan() -> None:
             assert len(scr._selected) == 3
             print("[8] Scan parallele reel : 3 clips + 1 corrompu ecarte, selection A, refresh, resize OK")
 
+            # 'v' : visualisation du fichier sous le curseur. On intercepte mpv
+            # pour verifier la cible sans faire surgir de fenetre.
+            from core import preview as preview_mod
+            ouverts: list[Path] = []
+            vrai_open, vrai_dispo = preview_mod.open_file, preview_mod.available
+            preview_mod.open_file = lambda p: ouverts.append(p)
+            preview_mod.available = lambda: True
+            try:
+                await pilot.press("v")
+                await pilot.pause(0.4)
+                assert len(ouverts) == 1, ouverts
+                assert ouverts[0].suffix == ".mkv", ouverts[0]
+                assert ouverts[0].parent == td, ouverts[0]
+            finally:
+                preview_mod.open_file, preview_mod.available = vrai_open, vrai_dispo
+            print(f"[8b] Lecture depuis le browser : {ouverts[0].name}")
+
             # F1 -> dry-run : la table (avec colonne Duree) se construit
             await pilot.press("f1")
             await pilot.pause(0.8)
@@ -320,13 +337,13 @@ async def scenario_external_tracks() -> None:
             assert type(app.screen).__name__ == "SyncScreen", type(app.screen).__name__
             print("[11b] SyncScreen : F1 refuse un etirement, puis lance le dry-run")
 
-            # 'v' : extrait de controle reellement muxe. mpv est neutralise
+            # 'k' : extrait de controle reellement muxe. mpv est neutralise
             # pour que le test ne fasse pas surgir de fenetre.
             from core import preview as preview_mod
             mpv_reel = preview_mod._mpv_path
             preview_mod.set_mpv_path(None)
             try:
-                await pilot.press("v")
+                await pilot.press("k")
                 for _ in range(40):
                     await pilot.pause(0.5)
                     if not sync._sampling:

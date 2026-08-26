@@ -80,6 +80,9 @@ class IrisEncodeApp(App):
         self.mkvmerge_available = mkvmerge_p is not None
         if mkvmerge_p:
             muxer.set_mkvmerge_path(mkvmerge_p)
+        # Câble mpv pour le contrôle du recalage à l'œil (optionnel)
+        from core import preview as preview_mod
+        preview_mod.set_mpv_path(get_tool_path("mpv", bin_dir))
 
     def on_mount(self) -> None:
         from tui.screens.browser import BrowserScreen

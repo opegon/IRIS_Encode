@@ -26,6 +26,14 @@ version = "2.1.0"
 # Archive portable : exécutables CLI liés statiquement, aucune DLL.
 # Seul mkvmerge.exe est extrait vers ./bin/.
 # Pas de build statique officiel sous Linux → gestionnaire de paquets.
+# Build portable : mpv.exe est autonome, les DLL de l'archive ne servent
+# qu'aux anciennes versions de Windows. Pas de .zip publié, d'où l'extraction
+# 7z via le tar/libarchive fourni avec Windows.
+[mpv.windows]
+url     = "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260814/mpv-x86_64-20260814-git-7b8915bc1d.7z"
+sha256  = "1bf3b029da2c98e605e00e85f21ee3142f22a1dcc4ceb5c827b5c51e36e390f9"
+version = "0.41.0"
+
 [mkvtoolnix.windows]
 url     = "https://mkvtoolnix.download/windows/releases/99.0/mkvtoolnix-64-bit-99.0.zip"
 sha256  = "9929554403e1ed920baa708a0f77967816f5f1c02de0b44ae320d6f8c367e876"

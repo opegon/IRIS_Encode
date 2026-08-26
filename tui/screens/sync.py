@@ -24,9 +24,10 @@ from textual.events import Key
 from textual.screen import Screen
 from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 
+from core import preview
 from core.decision import FileDecision
 from core.muxer import ExternalTrack, SyncOrigin, TrackKind, ffmpeg_stream_index
-from core.sync import SyncResult, measure_audio, measure_subtitle
+from core.sync import SyncResult, measure_audio, measure_subtitle, read_cues
 
 from ..common import footer_line2
 from ..mixins import TableNavMixin
@@ -69,8 +70,9 @@ _BOOLS = ["non", "oui"]
 _DELAY_STEP_MS = 100
 _DELAY_JUMP_MS = 1000
 
-_HINT = ("←/→  Champ     +/-  ±100 ms     Shift+↑/↓  ±1 s     ↵  Liste     "
-         "m  Mesurer     c  Copier décalage     F9  Ajouter     d  Retirer")
+_HINT = ("←/→  Champ     +/-  ±100 ms     Shift+↑/↓  ±1 s     ↵  Liste\n"
+         "m  Mesurer     p  Contrôler     c  Copier décalage     "
+         "F9  Ajouter     d  Retirer")
 _HINT_NO_LANG = ("⚠ Langue manquante — +/- ou ↵ pour la choisir. "
                  "Sans elle, la piste sortirait en « und ».")
 
@@ -89,6 +91,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("shift+down","jump_down",    "-1 s",          show=False),
         Binding("enter",     "open_picker",  "Liste",         show=True, priority=True),
         Binding("m",         "measure",      "Mesurer",       show=True),
+        Binding("p",         "preview",      "Contrôler",     show=True),
         Binding("a",         "apply_candidate",
                 "Appliquer quand même",  show=True),
         Binding("c",         "copy_delay",   "Copier décalage", show=True),
@@ -155,6 +158,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             line1=[
                 ("enter",     "Liste de choix"),
                 ("m",         "Mesurer"),
+                ("p",         "Contrôler dans mpv"),
                 ("a",         "Appliquer quand même"),
                 ("c",         "Copier décalage"),
                 ("d",         "Retirer"),
@@ -504,6 +508,60 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._set_hint(f"Candidat appliqué : {delay:+d} ms — non confirmé par "
                        f"la mesure, vérifiez dans un lecteur avant de muxer.")
         self._update_status()
+
+    # ── Contrôle à l'œil ──────────────────────────────────────────────────────
+
+    def action_preview(self) -> None:
+        """
+        Ouvre le film dans mpv avec la piste greffée et le décalage courant.
+
+        La corrélation donne un chiffre ; elle ne dit pas si le résultat sonne
+        juste. mpv se positionne sur un passage dialogué plutôt qu'au début,
+        souvent muet.
+        """
+        i = self._current()
+        if i is None:
+            return
+        if not preview.available():
+            self.app.bell()
+            self._set_hint("mpv absent — relancez le preflight pour l'installer.")
+            return
+
+        t = self._tracks[i]
+        try:
+            first_cue = None
+            donor_idx = 0
+            if t.kind == TrackKind.SUBTITLE:
+                cues = read_cues(t.source_path)
+                first_cue = cues[0][0] if cues else None
+            else:
+                donor_idx = ffmpeg_stream_index(
+                    t.source_path, t.source_tid, TrackKind.AUDIO)
+
+            cmd = preview.build_command(
+                self._source, t,
+                duration=self._decision.info.duration,
+                n_internal_audio=len(self._decision.info.audio_tracks),
+                donor_audio_index=donor_idx,
+                first_cue=first_cue,
+            )
+            preview.launch(cmd)
+        except Exception as e:
+            self.app.bell()
+            self._set_hint(f"Lancement de mpv impossible : {e}")
+            return
+
+        if t.stretch:
+            self._set_hint(
+                f"mpv ouvert avec {t.delay_ms:+d} ms.\n"
+                f"⚠ L'étirement n'est pas prévisualisable — mpv ne sait "
+                f"appliquer qu'un décalage constant.\n"
+                f"{preview.keys_hint(t)}, puis reportez la valeur ici.")
+        else:
+            self._set_hint(
+                f"mpv ouvert avec {t.delay_ms:+d} ms appliqués.\n"
+                f"{preview.keys_hint(t)}.\n"
+                f"Reportez ensuite la valeur corrigée dans cet écran.")
 
     # ── Reprise de décalage ───────────────────────────────────────────────────
 

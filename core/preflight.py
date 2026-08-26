@@ -11,6 +11,7 @@ import io
 import platform
 import shutil
 import subprocess
+import tempfile
 import tomllib
 import zipfile
 from dataclasses import dataclass
@@ -23,7 +24,7 @@ CACHE_FILE  = DATA_DIR / "ffmpeg_releases_cache.toml"
 STATIC_FILE = DATA_DIR / "ffmpeg_releases.toml"
 
 ESSENTIAL_TOOLS = ("ffmpeg", "ffprobe")
-OPTIONAL_TOOLS  = ("dovi_tool", "mkvmerge")
+OPTIONAL_TOOLS  = ("dovi_tool", "mkvmerge", "mpv")
 ALL_TOOLS       = ESSENTIAL_TOOLS + OPTIONAL_TOOLS
 
 
@@ -183,6 +184,67 @@ def install_dovi_tool(bin_dir: Path, releases: dict) -> bool:
     return True
 
 
+def _install_from_7z(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
+    """
+    Extrait les exécutables ciblés depuis une archive 7z.
+
+    Passe par le tar de Windows, qui embarque libarchive et lit le 7z : cela
+    évite une dépendance Python supplémentaire pour la seule archive du lot
+    qui n'est pas publiée en ZIP.
+    """
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    installed = 0
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
+        archive = tmp_dir / "download.7z"
+        archive.write_bytes(data)
+        extract_dir = tmp_dir / "x"
+        extract_dir.mkdir()
+        try:
+            r = subprocess.run(
+                ["tar", "-xf", str(archive), "-C", str(extract_dir)],
+                capture_output=True, timeout=300,
+            )
+        except (OSError, subprocess.SubprocessError) as e:
+            print(f"  ✗ Extraction impossible ({e}) — tar introuvable ?")
+            return False
+        if r.returncode != 0:
+            print("  ✗ Archive 7z illisible par tar.")
+            return False
+
+        for found in extract_dir.rglob("*"):
+            if found.is_file() and found.name in targets:
+                target = bin_dir / found.name
+                shutil.copy2(found, target)
+                if not _is_windows():
+                    target.chmod(0o755)
+                print(f"  ✓ Installé : {target}")
+                installed += 1
+    return installed > 0
+
+
+def install_mpv(bin_dir: Path, releases: dict) -> bool:
+    """
+    Télécharge le build portable mpv et en extrait l'exécutable.
+
+    mpv.exe est autonome ; les DLL de l'archive ne servent qu'aux anciennes
+    versions de Windows. Sous Linux, mpv passe par le gestionnaire de paquets.
+    """
+    if not _is_windows():
+        print("  Sous Linux, installez mpv via votre gestionnaire de paquets.")
+        return False
+    info = releases.get("mpv", {}).get("windows", {})
+    url  = info.get("url", "")
+    if not url:
+        print("  ✗ URL mpv introuvable dans les sources.")
+        return False
+    print(f"  Téléchargement depuis {url}")
+    data = _download(url)
+    if data is None:
+        return False
+    return _install_from_7z(data, bin_dir, {_exe("mpv")})
+
+
 def install_mkvtoolnix(bin_dir: Path, releases: dict) -> bool:
     """
     Télécharge l'archive portable MKVToolNix et en extrait mkvmerge.
@@ -234,6 +296,7 @@ def run_preflight(cfg: dict) -> bool:
 
     missing_dovi     = next((s for s in statuses if s.name == "dovi_tool" and not s.found), None)
     missing_mkvmerge = next((s for s in statuses if s.name == "mkvmerge"  and not s.found), None)
+    missing_mpv      = next((s for s in statuses if s.name == "mpv"       and not s.found), None)
 
     if not missing_essential:
         # ffmpeg OK — proposer les outils optionnels absents
@@ -244,6 +307,10 @@ def run_preflight(cfg: dict) -> bool:
         if missing_mkvmerge:
             print("  mkvmerge absent (optionnel — nécessaire pour ajouter des pistes externes).")
             _offer_mkvmerge_install(bin_dir)
+            print()
+        if missing_mpv:
+            print("  mpv absent (optionnel — sert à contrôler un recalage à l'œil).")
+            _offer_mpv_install(bin_dir)
             print()
         return True
 
@@ -300,6 +367,20 @@ def _offer_mkvmerge_install(bin_dir: Path) -> None:
             print("  ✗ Installation mkvmerge échouée — ajout de pistes externes indisponible.")
     else:
         print("  mkvmerge ignoré — l'ajout de pistes audio/sous-titres externes sera indisponible.")
+
+
+def _offer_mpv_install(bin_dir: Path) -> None:
+    """Propose l'installation de mpv si absent (optionnel)."""
+    releases = _load_releases()
+    answer   = input(
+        "  Télécharger et installer mpv (contrôle du recalage) dans ./bin/ ? (o/N) : "
+    ).strip().lower()
+    if answer == "o":
+        ok = install_mpv(bin_dir, releases)
+        if not ok:
+            print("  ✗ Installation mpv échouée — le recalage restera réglable à l'aveugle.")
+    else:
+        print("  mpv ignoré — vous ne pourrez pas contrôler un recalage à l'œil.")
 
 
 def get_tool_path(name: str, bin_dir: Path) -> Optional[str]:

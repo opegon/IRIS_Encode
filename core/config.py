@@ -34,6 +34,9 @@ _DEFAULTS: dict[str, Any] = {
         "near_1080p_min_width":  1600,
         "near_1080p_min_height":  850,
     },
+    "stats": {
+        "encode_speed": {},
+    },
     "tui": {
         "browser": {
             "columns": {
@@ -45,6 +48,8 @@ _DEFAULTS: dict[str, Any] = {
                 "codec":         8,
                 "dolby_vision": 12,
                 "decision":     12,
+                "estim":        16,
+                "temps_estim":  14,
                 "audio":        20,
             }
         }
@@ -100,17 +105,33 @@ def set_column_width(cfg: dict[str, Any], col: str, width: int) -> None:
      .setdefault("columns", {}))[col] = width
 
 
+def get_encode_speed(cfg: dict[str, Any], codec: str) -> float | None:
+    """Vitesse d'encodage mesurée (x temps réel) pour un codec, ou None si pas encore de donnée."""
+    v = cfg.get("stats", {}).get("encode_speed", {}).get(codec)
+    return float(v) if v else None
+
+
+def update_encode_speed(cfg: dict[str, Any], codec: str, measured: float, alpha: float = 0.25) -> None:
+    """Met à jour la moyenne mobile de vitesse d'encodage mesurée pour un codec."""
+    if measured <= 0:
+        return
+    speeds = cfg.setdefault("stats", {}).setdefault("encode_speed", {})
+    prev = speeds.get(codec)
+    speeds[codec] = measured if not prev else prev + (measured - prev) * alpha
+
+
 _DRYRUN_COL_DEFAULTS: dict[str, int] = {
-    "fichier":   30,
-    "taille":     8,
-    "duree":     10,
-    "estim":     12,
-    "action":    16,
-    "conteneur":  7,
-    "dv":        10,
-    "bitrate":   12,
-    "res":       12,
-    "audio":     16,
+    "fichier":     30,
+    "taille":       8,
+    "duree":       10,
+    "estim":       12,
+    "temps_estim": 14,
+    "action":      16,
+    "conteneur":    7,
+    "dv":          10,
+    "bitrate":     12,
+    "res":         12,
+    "audio":       16,
 }
 
 

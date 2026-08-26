@@ -107,6 +107,13 @@ class ColumnResizeMixin:
       _resize_widths()       → dict clé → largeur courante
       _resize_persist(k, w)  → écrit la largeur en config
       _resize_rebuild()      → reconstruit la table (curseur conservé)
+
+    Stratégie : Tab/Shift+Tab/</>  sont interceptés en phase bubble via on_key
+    (après le widget focalisé, comme TableNavMixin pour Home/End/PageUp/PageDown),
+    pour éviter que DataTable les capture et les bloque.
+
+    ⚠ Un écran qui définit son propre on_key doit appeler super().on_key(event)
+    pour les touches qu'il ne consomme pas.
     """
 
     RESIZE_COLS:        list[str]      = []
@@ -123,6 +130,22 @@ class ColumnResizeMixin:
     ]
 
     _resize_col_idx: int = 0
+
+    def on_key(self, event: Key) -> None:
+        """
+        Intercepte Tab/Shift+Tab/</>  en phase bubble.
+        Appelé après le widget focalisé — si DataTable n'a pas stoppé
+        l'événement, on l'attrape ici et on change de colonne ou redimensionne.
+        """
+        handlers = {
+            "tab":               self.action_col_next,
+            "shift+tab":         self.action_col_prev,
+            "less_than_sign":    self.action_col_shrink,
+            "greater_than_sign": self.action_col_grow,
+        }
+        if event.key in handlers:
+            handlers[event.key]()
+            event.stop()
 
     # ── À implémenter par l'écran ─────────────────────────────────────────────
 

@@ -25,9 +25,11 @@ from core.decision import (
 from ..common import (
     CODEC_PICKER_OPTS,
     bitrate_picker_config,
+    estimate_encoding_duration,
     fmt_bytes,
     fmt_duration,
     footer_line2,
+    get_measured_speed,
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
 from ..widgets.footer import TwoLineFooter
@@ -62,6 +64,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
     """Écran de prévisualisation des décisions d'encodage."""
 
     BINDINGS = [
+        Binding("space",     "toggle_select",        "Sélect",  show=True),
         Binding("f2",        "run",         "Lancer",  show=True),
         Binding("enter",     "run",         "Lancer",  show=False, priority=True),
         Binding("f6",        "open_codec",  "Codec",   show=True),
@@ -70,20 +73,21 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("escape",    "go_back",     "Retour",  show=False, priority=True),
     ]
 
-    # Colonnes redimensionnables (ColumnResizeMixin)
-    RESIZE_COLS   = ["fichier", "taille", "duree", "estim", "action", "conteneur",
+    # Colonnes redimensionnables (ColumnResizeMixin) — fichier en premier pour accès au focus
+    RESIZE_COLS   = ["fichier", "taille", "duree", "estim", "temps_estim", "action", "conteneur",
                      "dv", "bitrate", "res", "audio"]
     RESIZE_LABELS = {
-        "fichier":   "Fichier",
-        "taille":    "Taille",
-        "duree":     "Durée",
-        "estim":     "Estim. (Δ%)",
-        "action":    "Action",
-        "conteneur": "Conteneur",
-        "dv":        "DV",
-        "bitrate":   "Débit cible",
-        "res":       "Résolution",
-        "audio":     "Audio",
+        "fichier":     "Fichier",
+        "taille":      "Taille",
+        "duree":       "Durée",
+        "estim":       "Estim. (Δ%)",
+        "temps_estim": "Temps estim.",
+        "action":      "Action",
+        "conteneur":   "Conteneur",
+        "dv":          "DV",
+        "bitrate":     "Débit cible",
+        "res":         "Résolution",
+        "audio":       "Audio",
     }
     RESIZE_MIN    = {"fichier": 20, "audio": 10}
 
@@ -101,6 +105,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def __init__(self, decisions: list[FileDecision]) -> None:
         super().__init__()
         self._decisions = decisions
+        self._selected  = set(range(len(decisions)))  # indices des décisions sélectionnées
         self._totals    = (0, 0)   # (source, estimé) en octets — posés par _build_table
 
     @property
@@ -123,6 +128,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         )
 
     def on_mount(self) -> None:
+        self._resize_col_idx = 0  # Initialise le focus sur "fichier" (première colonne redimensionnable)
         self._build_table()
         self._build_summary()
 
@@ -132,14 +138,22 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         table  = self.query_one(DataTable)
         widths = cfg_mod.get_dryrun_column_widths(self._app.cfg)
 
-        table.add_column(self.resize_header("fichier"),
-                         width=max(self.RESIZE_MIN["fichier"], widths["fichier"]), key="file")
+        table.add_column("",                            width=3,    key="check")
+        # Colonne fichier : 50% de la largeur de l'écran (ou largeur sauvegardée)
+        if "fichier" in widths and widths["fichier"] > self.RESIZE_MIN["fichier"]:
+            fichier_width = widths["fichier"]
+        else:
+            # 50% de la largeur disponible (moins la colonne check et marges)
+            terminal_width = self.size.width if hasattr(self, 'size') else 120
+            fichier_width = max(self.RESIZE_MIN["fichier"], (terminal_width - 8) // 2)
+        table.add_column(self.resize_header("fichier"), width=fichier_width, key="fichier")
+
         for col in self.RESIZE_COLS[1:]:
             table.add_column(self.resize_header(col), width=widths[col], key=col)
 
         total_src = 0
         total_est = 0
-        for dec in self._decisions:
+        for idx, dec in enumerate(self._decisions):
             vid  = dec.video
             info = dec.info
 
@@ -192,11 +206,24 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             else:
                 estim_txt = Text(fmt_bytes(est_bytes), no_wrap=True)
 
+            # Estimation temps d'encodage
+            prof = self._app.profiles.get(self._app.active_profile_id)
+            preset = prof.data.get("preset_encoder", "medium") if prof else "medium"
+            measured_speed = get_measured_speed(self._app.cfg, vid.action)
+            est_enc_duration = estimate_encoding_duration(
+                info.duration, info.kbps * 1000, vid.target_bitrate,
+                vid.action, preset, measured_speed
+            )
+            temps_txt = Text(fmt_duration(est_enc_duration), style="dim" if vid.action == VideoAction.SKIP else "")
+
+            check_str = Text("[x]", no_wrap=True) if idx in self._selected else Text("[ ]", no_wrap=True)
             table.add_row(
+                check_str,
                 Text(info.path.name, overflow="ellipsis", no_wrap=True),
                 Text(fmt_bytes(src_bytes) if src_bytes else "—", style="dim", no_wrap=True),
                 Text(fmt_duration(info.duration), style="dim", no_wrap=True),
                 estim_txt,
+                temps_txt,
                 Text(vid.label(), style=vid.style()),
                 Text(container, no_wrap=True),
                 Text(dv_str, no_wrap=True),
@@ -251,6 +278,18 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._build_summary()
         if table.row_count > 0:
             table.move_cursor(row=min(cursor_row, table.row_count - 1))
+
+    # ── Sélection des lignes ──────────────────────────────────────────────────
+
+    def action_toggle_select(self) -> None:
+        table = self.query_one(DataTable)
+        idx   = table.cursor_row
+        if idx is not None and 0 <= idx < len(self._decisions):
+            if idx in self._selected:
+                self._selected.discard(idx)
+            else:
+                self._selected.add(idx)
+            self._resize_rebuild()
 
     # ── Édition par ligne (codec / débit) ────────────────────────────────────
 
@@ -335,7 +374,8 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self.app.pop_screen()
 
     def action_run(self) -> None:
-        to_encode = [d for d in self._decisions if d.video.action != VideoAction.SKIP]
+        to_encode = [self._decisions[idx] for idx in self._selected
+                     if idx < len(self._decisions) and self._decisions[idx].video.action != VideoAction.SKIP]
         if not to_encode:
             return
         from .run import RunScreen

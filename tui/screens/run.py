@@ -18,7 +18,7 @@ from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 from core.decision import FileDecision, VideoAction
 from core.encoder import EncoderProcess, build_command
 from core.platform import PlatformProfile
-from ..common import footer_line2
+from ..common import footer_line2, record_measured_speed
 from ..mixins import TableNavMixin
 from ..widgets.footer import TwoLineFooter
 
@@ -308,6 +308,9 @@ class RunScreen(TableNavMixin, Screen):
         rc = proc.wait()
         success = rc == 0
 
+        if success and s._last_progress:
+            record_measured_speed(self.app.cfg, dec.video.action, s._last_progress.speed)  # type: ignore[attr-defined]
+
         should_delete = (
             dec.delete_source_override
             if dec.delete_source_override is not None
@@ -368,5 +371,14 @@ class RunScreen(TableNavMixin, Screen):
 
     def action_go_back(self) -> None:
         if self._process and not self._done:
+            output_path = None
+            if 0 <= self._current_idx < len(self._statuses):
+                output_path = self._statuses[self._current_idx].decision.output_path
             self._process.terminate()
+            self._process.wait()  # attend la libération du fichier par ffmpeg
+            if output_path is not None:
+                try:
+                    output_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
         self.app.pop_screen()

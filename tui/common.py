@@ -9,11 +9,34 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from core import config as cfg_mod
 from core.decision import (
     AV1_BITRATE_OPTS_KBPS,
     BITRATE_OPTS_KBPS,
     VideoAction,
 )
+
+# Codec → clé de stockage des vitesses mesurées (config.toml [stats.encode_speed])
+_CODEC_SPEED_KEYS: dict[VideoAction, str] = {
+    VideoAction.ENCODE_HEVC: "hevc",
+    VideoAction.ENCODE_H264: "h264",
+    VideoAction.ENCODE_AV1:  "av1",
+}
+
+
+def get_measured_speed(cfg: dict, action: VideoAction) -> float | None:
+    """Vitesse d'encodage réelle moyenne (x temps réel) mesurée sur les runs précédents."""
+    key = _CODEC_SPEED_KEYS.get(action)
+    return cfg_mod.get_encode_speed(cfg, key) if key else None
+
+
+def record_measured_speed(cfg: dict, action: VideoAction, speed: float) -> None:
+    """Enregistre la vitesse réelle mesurée pour ce codec (moyenne mobile) et persiste."""
+    key = _CODEC_SPEED_KEYS.get(action)
+    if key is None or speed <= 0:
+        return
+    cfg_mod.update_encode_speed(cfg, key, speed)
+    cfg_mod.save(cfg)
 
 
 # ─── Styles partagés ──────────────────────────────────────────────────────────
@@ -50,6 +73,64 @@ def fmt_duration(seconds: float) -> str:
     h, rem = divmod(s, 3600)
     m, s   = divmod(rem, 60)
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+
+def estimate_encoding_duration(
+    source_duration: float,
+    source_bitrate: int,
+    target_bitrate: int,
+    action: VideoAction,
+    preset: str = "medium",
+    measured_speed: float | None = None,
+) -> float:
+    """
+    Estime la durée d'encodage en secondes.
+
+    Si measured_speed est fourni (vitesse réelle x temps réel, mesurée lors
+    d'encodages précédents pour ce codec — voir get_measured_speed), elle est
+    utilisée directement et remplace l'heuristique bitrate/codec/preset ci-dessous.
+
+    Heuristique de repli (tant qu'aucune mesure réelle n'est disponible) :
+    - Ratio bitrate (source → cible)
+    - Facteur codec (HEVC plus lent qu'H264, AV1 bien plus lent)
+    - Facteur preset (fast plus rapide, slow plus lent)
+
+    Formule : durée_estimée = source_duration * (source_bitrate / target_bitrate) * factor_codec * factor_preset
+    """
+    if source_duration <= 0 or target_bitrate <= 0:
+        return 0.0
+
+    if measured_speed and measured_speed > 0:
+        return source_duration / measured_speed
+
+    # Ratio bitrate : réduction de bitrate = encodage plus rapide
+    bitrate_ratio = source_bitrate / max(target_bitrate, 1)
+
+    # Facteurs codec (basés sur GPU NVIDIA pour durée réelle approximative)
+    # Les facteurs sont relatifs au temps réel du fichier
+    # H264 NVENC : ~0.8x (20% plus rapide que temps réel grâce au GPU)
+    # HEVC NVENC : ~0.6x (40% plus rapide que temps réel, encodeur très optimisé)
+    # AV1 NVENC  : ~1.5x (50% plus lent que temps réel)
+    codec_factors = {
+        VideoAction.ENCODE_H264: 0.8,    # H264 NVENC rapide
+        VideoAction.ENCODE_HEVC: 0.6,    # HEVC NVENC très rapide
+        VideoAction.ENCODE_AV1:  1.5,    # AV1 plus lent
+        VideoAction.SKIP:        0.0,
+    }
+    codec_factor = codec_factors.get(action, 1.0)
+
+    # Facteurs preset (relatif à medium=1.0)
+    # Impact du preset sur le temps de traitement
+    preset_factors = {
+        "fast":   0.7,     # 70% du temps de medium (plus rapide)
+        "medium": 1.0,     # baseline
+        "slow":   1.3,     # 130% du temps de medium (plus lent mais meilleure qualité)
+    }
+    preset_factor = preset_factors.get(preset, 1.0)
+
+    # Formule d'estimation
+    estimated = source_duration * bitrate_ratio * codec_factor * preset_factor
+    return max(0.0, estimated)
 
 
 # ─── Pickers partagés (codec / débit / profil) ────────────────────────────────

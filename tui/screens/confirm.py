@@ -32,7 +32,7 @@ class ConfirmModal(ModalScreen[bool]):
         width: 70;
         height: auto;
         background: $surface;
-        border: solid $accent;
+        border: solid $primary;
         padding: 1 2;
     }
     ConfirmModal.danger #confirm-panel {

@@ -1,0 +1,5 @@
+# Scripts Windows : cmd.exe exige des fins de ligne CRLF.
+# Sans cette regle, un outil d'edition qui normalise en LF casse le lanceur.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

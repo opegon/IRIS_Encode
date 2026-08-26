@@ -6,10 +6,18 @@ REM  IRIS ENCODE — Lanceur Windows
 REM  Vérifie Python 3.11+, délègue à main.py
 REM ============================================================
 
-REM La version exacte est affichée par main.py (source unique : version.py)
-title IRIS ENCODE
+REM Version lue dans version.py : la coder en dur ici la dupliquerait, et les
+REM deux finiraient par diverger. main.py affiche la même source.
+set "APPVER="
+for /f "usebackq delims=" %%v in (`python -c "import sys;sys.path.insert(0,r'%~dp0.');from version import __version__;print(__version__)" 2^>nul`) do set "APPVER=%%v"
 
-echo  IRIS ENCODE
+if defined APPVER (
+    title IRIS ENCODE v%APPVER%
+    echo  IRIS ENCODE v%APPVER%
+) else (
+    title IRIS ENCODE
+    echo  IRIS ENCODE
+)
 echo.
 
 REM --- Vérification Python ---

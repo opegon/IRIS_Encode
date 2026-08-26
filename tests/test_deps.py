@@ -40,8 +40,13 @@ def _main_py_modules() -> set[str]:
 
 
 def _launch_bat_modules() -> set[str]:
+    """
+    launch.bat contient plusieurs `python -c` : celui qui lit la version, et
+    celui qui teste les dépendances. On ne veut que le second, reconnaissable
+    à sa liste d'imports séparés par des virgules et sans point-virgule.
+    """
     txt = (ROOT / "launch.bat").read_text(encoding="utf-8", errors="replace")
-    m = re.search(r'python -c "import ([^"]+)"', txt)
+    m = re.search(r'python -c "import ([a-z0-9_]+(?:\s*,\s*[a-z0-9_]+)+)"', txt)
     assert m, "la vérification des dépendances a changé de forme dans launch.bat"
     return {x.strip() for x in m.group(1).split(",")}
 

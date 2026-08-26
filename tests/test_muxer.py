@@ -213,6 +213,27 @@ def test_identify_survives_missing_binary(tmp_path: Path):
         assert muxer.identify(tmp_path / "Film.mkv") == []
 
 
+# ─── Langue déduite du nom de fichier ─────────────────────────────────────────
+
+@pytest.mark.parametrize("nom,attendu", [
+    ("film.fr.srt",               "fre"),
+    ("Film.VF.mka",               "fre"),
+    ("Le.Film.2019.VOSTFR.srt",   "fre"),
+    ("Film.TRUEFRENCH.1080p.mkv", "fre"),
+    ("Movie.english.srt",         "eng"),
+    ("Movie.eng.forced.srt",      "eng"),
+    ("Movie [ITA].ass",           "ita"),
+    ("Serie.S01E02.jpn.srt",      "jpn"),
+    ("Film.German.srt",           "ger"),
+    # Rien de reconnaissable : ne rien inventer
+    ("sous-titres.srt",           ""),
+    ("film.mkv",                  ""),
+    ("Film.2019.1080p.x265.mkv",  ""),
+])
+def test_guess_language(nom: str, attendu: str):
+    assert muxer.guess_language(Path(nom)) == attendu
+
+
 # ─── Progression --gui-mode ───────────────────────────────────────────────────
 
 @pytest.mark.parametrize("line,expected", [

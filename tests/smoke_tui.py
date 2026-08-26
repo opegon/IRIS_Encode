@@ -250,9 +250,7 @@ async def scenario_external_tracks() -> None:
             await pilot.press("plus")
             await pilot.pause(0.3)
             assert vf.stretch == (24000, 25025), vf.stretch
-            await pilot.press("right")        # champ langue
-            await pilot.press("plus")
-            await pilot.pause(0.3)
+            # "film.VF.mka" : la langue est deduite du nom, rien a saisir
             assert vf.language == "fre", vf.language
 
             # Retour aux pistes, puis sous-titre externe depuis un autre fichier
@@ -264,13 +262,41 @@ async def scenario_external_tracks() -> None:
             sync = app.screen
             assert len(sync._tracks) == 2, len(sync._tracks)
 
-            # Le sous-titre garde son propre decalage : independance des pistes
+            # Langue deduite du nom de fichier : un .srt nu n'en declare aucune
             sub = sync._tracks[1]
-            sub.language = "fre"
-            sub.delay_ms = 850
-            assert vf.delay_ms == -1100 and sub.delay_ms == 850
-            print("[11] SyncScreen : 2 pistes, decalages independants "
-                  f"({vf.delay_ms} ms / {sub.delay_ms} ms)")
+            assert sub.language == "fre", f"langue non deduite : {sub.language!r}"
+
+            # Le sous-titre se regle AU CLAVIER, comme le ferait l'utilisateur :
+            # regler ces valeurs par code masquerait toute panne d'edition.
+            table = sync.query_one(DataTable)
+            table.move_cursor(row=1)
+            await pilot.pause(0.2)
+            while sync._field_idx != 0:              # revient sur Decalage
+                await pilot.press("left")
+                await pilot.pause(0.1)
+            for _ in range(8):                       # 8 x +100 ms
+                await pilot.press("plus")
+            await pilot.press("shift+up")            # +1 s
+            await pilot.pause(0.3)
+            assert sub.delay_ms == 1800, sub.delay_ms
+
+            # ↵ doit ouvrir une liste sur CHAQUE champ, decalage compris
+            for field_idx in range(6):
+                while sync._field_idx != field_idx:
+                    await pilot.press("right")
+                    await pilot.pause(0.1)
+                await pilot.press("enter")
+                await pilot.pause(0.4)
+                assert type(app.screen).__name__ == "ValuePickerScreen", \
+                    f"champ {field_idx} : aucune liste ouverte"
+                await pilot.press("escape")
+                await pilot.pause(0.3)
+
+            # Les deux pistes gardent bien des decalages distincts
+            assert vf.delay_ms == -1100 and sub.delay_ms == 1800
+            print("[11] SyncScreen : 2 pistes reglees au clavier, decalages "
+                  f"independants ({vf.delay_ms} ms / {sub.delay_ms} ms), "
+                  "↵ ouvre une liste sur les 6 champs")
 
             # Mux reel
             await pilot.press("f2")

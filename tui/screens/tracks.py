@@ -32,7 +32,7 @@ from textual.widgets import DataTable, Header, Static
 
 import core.config as cfg_mod
 from core import dovi
-from core.muxer import ExternalTrack, TrackKind
+from core.muxer import ExternalTrack, TrackKind, guess_language
 from core.decision import (
     ACTION_CYCLE as _ACTION_CYCLE,
     BITRATE_OPTS_KBPS as _BITRATE_OPTS,
@@ -580,12 +580,17 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             if not chosen:
                 return
             for it in chosen:
+                # Un .srt nu n'a aucune langue déclarée : on la déduit du nom
+                # de fichier, sinon la piste sortirait en « und ».
+                lang = it.language
+                if lang in ("", "und"):
+                    lang = guess_language(self._donor) or lang
                 self._decision.external_tracks.append(ExternalTrack(
                     source_path=self._donor,
                     source_tid=it.tid,
                     kind=it.kind,
                     codec=it.codec,
-                    language=it.language,
+                    language=lang,
                     track_name=it.track_name,
                 ))
             self._open_sync()

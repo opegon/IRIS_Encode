@@ -58,11 +58,19 @@ _STRETCH_LABELS = {
 _LANGS = ["fre", "eng", "ger", "spa", "ita", "jpn", "por", "rus", "und"]
 _NAMES = ["—", "VF", "VOSTFR", "VO", "Forcés", "Commentaires", "SDH"]
 
+# Décalages proposés par ↵ sur le champ Décalage : le réglage fin reste
+# sur +/-, mais la liste évite de marteler une touche pour partir de loin.
+_DELAY_PRESETS = [-5000, -3000, -2000, -1000, -500, -250, 0,
+                  250, 500, 1000, 2000, 3000, 5000]
+_BOOLS = ["non", "oui"]
+
 _DELAY_STEP_MS = 100
 _DELAY_JUMP_MS = 1000
 
 _HINT = ("←/→  Champ     +/-  ±100 ms     Shift+↑/↓  ±1 s     "
          "↵  Liste     c  Copier décalage     d  Retirer")
+_HINT_NO_LANG = ("⚠ Langue manquante — +/- ou ↵ pour la choisir. "
+                 "Sans elle, la piste sortirait en « und ».")
 
 
 class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
@@ -71,8 +79,10 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     BINDINGS = [
         Binding("left",      "field_prev",   "Champ préc.",   show=False),
         Binding("right",     "field_next",   "Champ suiv.",   show=False),
-        Binding("+",         "val_up",       "Valeur suiv.",  show=False),
-        Binding("-",         "val_down",     "Valeur préc.",  show=False),
+        # Alias clavier : selon la disposition, '+' arrive en 'plus',
+        # 'equals_sign' ou depuis le pavé numérique.
+        Binding("+,plus,equals_sign,kp_plus",   "val_up",   "Valeur suiv.", show=False),
+        Binding("-,minus,kp_minus",             "val_down", "Valeur préc.", show=False),
         Binding("shift+up",  "jump_up",      "+1 s",          show=False),
         Binding("shift+down","jump_down",    "-1 s",          show=False),
         Binding("enter",     "open_picker",  "Liste",         show=True, priority=True),
@@ -99,7 +109,10 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         super().__init__()
         self._source    = source
         self._tracks    = tracks
-        self._field_idx = 0
+        # Une piste sans langue bloque le mux : on ouvre directement sur ce
+        # champ plutôt que de laisser chercher.
+        self._field_idx = (_FIELDS.index("lang")
+                           if any(not t.language for t in tracks) else 0)
 
     # ── Composition ───────────────────────────────────────────────────────────
 
@@ -121,7 +134,13 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
 
     def on_mount(self) -> None:
         self._build_table()
+        # Curseur aligné sur le champ d'ouverture : s'il pointe la langue,
+        # c'est qu'une piste en manque — autant se poser dessus.
+        missing = next((i for i, t in enumerate(self._tracks) if not t.language), None)
+        if missing is not None:
+            self.query_one(DataTable).move_cursor(row=missing)
         self._update_status()
+        self._refresh_all()
         self.query_one(DataTable).focus()
 
     # ── Table ─────────────────────────────────────────────────────────────────
@@ -211,6 +230,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             f" {self._source.name} ── {n} piste(s) à greffer"
             f" ── Champ : {_FIELD_LABELS[_FIELDS[self._field_idx]]}{warn}"
         )
+        self.query_one("#sync-hint", Static).update(
+            _HINT_NO_LANG if missing else _HINT
+        )
 
     @on(DataTable.RowHighlighted)
     def _on_row_highlight(self, _: DataTable.RowHighlighted) -> None:
@@ -292,9 +314,13 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         elif field == "stretch":
             opts = [_STRETCH_LABELS[s] for s in _STRETCH_CYCLE]
             cur  = _STRETCH_CYCLE.index(t.stretch) if t.stretch in _STRETCH_CYCLE else 0
+        elif field == "delay":
+            opts = [f"{d:+d} ms" for d in _DELAY_PRESETS]
+            cur  = min(range(len(_DELAY_PRESETS)),
+                       key=lambda k: abs(_DELAY_PRESETS[k] - t.delay_ms))
         else:
-            # Décalage et drapeaux se règlent avec +/- : pas de liste
-            return
+            opts = _BOOLS
+            cur  = int(t.is_default if field == "default" else t.is_forced)
 
         def _apply(choice: int | None) -> None:
             if choice is None:
@@ -303,9 +329,17 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 t.language = _LANGS[choice]
             elif field == "name":
                 t.track_name = "" if _NAMES[choice] == "—" else _NAMES[choice]
-            else:
+            elif field == "stretch":
                 t.stretch = _STRETCH_CYCLE[choice]
                 t.sync_origin = SyncOrigin.MANUAL
+            elif field == "delay":
+                t.delay_ms    = _DELAY_PRESETS[choice]
+                t.sync_origin = SyncOrigin.MANUAL
+                t.copied_from = None
+            elif field == "default":
+                t.is_default = bool(choice)
+            else:
+                t.is_forced = bool(choice)
             self._refresh_row(i)
             self._update_status()
 
@@ -369,11 +403,21 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     def action_run_mux(self) -> None:
         if not self._tracks:
             self.app.bell()
-            return
-        if any(not t.language for t in self._tracks):
-            self.app.bell()
             self.query_one("#sync-hint", Static).update(
-                "⚠ Chaque piste doit avoir une langue — sinon elle apparaît en « und »."
+                "Aucune piste à greffer — revenez aux pistes et ajoutez-en une avec F9."
+            )
+            return
+        # Piste sans langue : on amène le curseur dessus au lieu de bloquer
+        missing = next((i for i, t in enumerate(self._tracks) if not t.language), None)
+        if missing is not None:
+            self.app.bell()
+            self._field_idx = _FIELDS.index("lang")
+            self.query_one(DataTable).move_cursor(row=missing)
+            self._refresh_all()
+            self._update_status()
+            self.query_one("#sync-hint", Static).update(
+                f"⚠ Mux impossible : « {self._tracks[missing].source_path.name} » "
+                f"n'a pas de langue. Choisissez-la avec +/- ou ↵."
             )
             return
         from .mux_run import MuxScreen

@@ -92,6 +92,40 @@ class ExternalTrack:
         return out
 
 
+# ─── Langue déduite du nom de fichier ─────────────────────────────────────────
+
+# Un .srt nu ne porte aucune métadonnée : mkvmerge le rapporte sans langue.
+# Le nom du fichier est en pratique la seule source disponible.
+_LANG_TOKENS: dict[str, str] = {
+    "fr": "fre", "fre": "fre", "fra": "fre", "french": "fre",
+    "vf": "fre", "vff": "fre", "vfq": "fre", "truefrench": "fre",
+    "vostfr": "fre", "francais": "fre",
+    "en": "eng", "eng": "eng", "english": "eng", "vo": "eng",
+    "de": "ger", "ger": "ger", "deu": "ger", "german": "ger",
+    "es": "spa", "spa": "spa", "esp": "spa", "spanish": "spa",
+    "it": "ita", "ita": "ita", "italian": "ita",
+    "ja": "jpn", "jp": "jpn", "jpn": "jpn", "japanese": "jpn",
+    "pt": "por", "por": "por", "portuguese": "por",
+    "ru": "rus", "rus": "rus", "russian": "rus",
+}
+
+_TOKEN_SPLIT = re.compile(r"[.\-_ \[\]()]+")
+
+
+def guess_language(path: Path) -> str:
+    """
+    Déduit une langue ISO 639-2 du nom de fichier ("film.fr.srt" → "fre").
+
+    Les marqueurs de langue sont en fin de nom : on parcourt les fragments
+    de droite à gauche et on retient le premier reconnu. "" si aucun.
+    """
+    for token in reversed(_TOKEN_SPLIT.split(path.stem.lower())):
+        lang = _LANG_TOKENS.get(token)
+        if lang:
+            return lang
+    return ""
+
+
 # ─── Identification d'un fichier donneur ──────────────────────────────────────
 
 _KIND_BY_TYPE = {

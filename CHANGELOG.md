@@ -1,5 +1,31 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0.5] — 2026-08-27
+
+- **`p` recale aussi une piste audio.** Ce qui manquait pour greffer une VF
+  issue d'un autre montage. `retime_audio()` rallonge la piste aux points de
+  bascule et la réencode ; le fichier produit devient la source, avec un
+  décalage nul, et l'aval ne change pas d'une ligne.
+- **L'opération est une insertion, pas une coupe.** Le décalage croissant
+  signifie que la *cible* porte du contenu que le donneur n'a pas — un donneur
+  peut être plus long au total tout en manquant de matière dans le corps du
+  film, ses minutes excédentaires étant dans le générique. Mesuré : retirer au
+  lieu d'ajouter faisait passer les sauts de +2 000 à +4 000 ms.
+- **Les insertions s'ancrent sur le silence.** La frontière rendue par la
+  corrélation est juste à une ou deux secondes près, assez pour tomber au
+  milieu d'une réplique. `find_silence()` prend la pause la plus proche dans
+  une fenêtre de 15 s et centre l'insertion dessus. Faute de silence,
+  l'insertion est posée quand même sur la frontière estimée et signalée :
+  contrairement à une coupe, allonger n'efface rien.
+- Le silence intercalé est un extrait du donneur passé à `volume=0` plutôt
+  qu'un `anullsrc`, ce qui lui donne d'office la fréquence et la disposition
+  de canaux que `concat` exige identiques sur tous ses segments.
+- Vérifié sur un épisode réel : la piste produite mesure **+0 ms, confiance
+  0,72, trois tiers concordants à 0 ms** — acceptée sans réserve, là où
+  l'originale sortait 6 plages discordantes.
+- Un saut négatif est ignoré et signalé : le corriger supposerait de supprimer
+  du contenu.
+
 ## [v0.8.0.4] — 2026-08-26
 
 - **`p` — recaler un sous-titre sur les plages de l'audio.** Les plages

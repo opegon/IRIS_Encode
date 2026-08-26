@@ -548,3 +548,82 @@ def test_shift_srt_reads_a_cp1252_source(tmp_path: Path):
     out = sync.shift_srt(src, _SEGS, tmp_path / "corrige.srt")
     assert "Déjà vu" in out.read_text(encoding="utf-8")
     assert sync.read_cues(out)[0][0] == 632.0
+
+
+# ─── Correction d'une piste audio ─────────────────────────────────────────────
+
+def _env_with_silence(n: int, trous: list[int], largeur: int = 300) -> np.ndarray:
+    """Enveloppe bruyante, creusée de silences aux positions données."""
+    env = np.full(n, 1.0, dtype=np.float32)
+    for t in trous:
+        env[t:t + largeur] = 0.0
+    return env
+
+
+def test_find_silence_snaps_to_the_gap():
+    env = _env_with_silence(20_000, [9_000])
+    # Frontière estimée 8 s trop tôt : on doit quand même tomber sur le trou
+    debut = sync.find_silence(env, center=8_200, need=200, search=1_500)
+    assert debut is not None
+    milieu = 9_000 + 300 // 2
+    assert abs(debut - (milieu - 100)) <= 5
+
+
+def test_find_silence_gives_up_when_there_is_none():
+    env = np.full(20_000, 1.0, dtype=np.float32)
+    assert sync.find_silence(env, center=10_000, need=200, search=1_500) is None
+
+
+def test_plan_inserts_converts_to_donor_time():
+    """La plage est en temps cible : le donneur s'en déduit moins le décalage."""
+    segs = [sync.Segment(0.0, 500.0, 0, 0.8),
+            sync.Segment(500.0, 1000.0, 2000, 0.8)]
+    # Silence place a 498 s cote donneur (500 s - 2 s de decalage a venir : 0)
+    env = _env_with_silence(150_000, [49_800], largeur=400)
+    inserts, approx = sync.plan_inserts(env, segs)
+    assert approx == []
+    assert len(inserts) == 1
+    position, duree = inserts[0]
+    assert duree == 2.0
+    assert abs(position - 499.0) < 1.5
+
+
+def test_plan_inserts_falls_back_without_silence():
+    """Sans silence, on pose quand même : allonger n'efface jamais de contenu."""
+    segs = [sync.Segment(0.0, 500.0, 0, 0.8),
+            sync.Segment(500.0, 1000.0, 2000, 0.8)]
+    env = np.full(150_000, 1.0, dtype=np.float32)
+    inserts, approx = sync.plan_inserts(env, segs)
+    assert len(inserts) == 1
+    assert approx and "aucun silence" in approx[0]
+
+
+def test_plan_inserts_refuses_a_negative_jump():
+    """Un saut négatif demanderait de retirer du contenu : on s'abstient."""
+    segs = [sync.Segment(0.0, 500.0, 2000, 0.8),
+            sync.Segment(500.0, 1000.0, 0, 0.8)]
+    env = np.full(150_000, 1.0, dtype=np.float32)
+    inserts, approx = sync.plan_inserts(env, segs)
+    assert inserts == []
+    assert approx and "négatif" in approx[0]
+
+
+def test_retime_command_alternates_content_and_silence():
+    cmd = sync.build_retime_command(Path("vf.mkv"), 1,
+                                    [(100.0, 2.0), (500.0, 2.0)],
+                                    Path("out.mka"))
+    fc = cmd[cmd.index("-filter_complex") + 1]
+    # 3 morceaux de contenu + 2 silences intercalés
+    assert fc.count("atrim") == 5
+    assert "concat=n=5:v=0:a=1[out]" in fc
+    assert "[k0][g0][k1][g1][k2]concat" in fc
+    # Le silence vient de la piste elle-même, pas d'un anullsrc : concat exige
+    # une fréquence et une disposition de canaux identiques partout.
+    assert "anullsrc" not in fc
+    assert fc.count("volume=0") == 2
+    assert "[0:a:1]" in fc
+
+
+def test_retime_command_needs_something_to_do():
+    with pytest.raises(ValueError):
+        sync.build_retime_command(Path("vf.mkv"), 0, [], Path("out.mka"))

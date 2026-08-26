@@ -422,6 +422,140 @@ def shift_srt(src: Path, segments: list[Segment], out: Path) -> Path:
     return out
 
 
+# ─── Correction d'une piste audio ─────────────────────────────────────────────
+
+# Une coupure est cherchée dans cette fenêtre autour de la frontière estimée.
+# Mesuré : la corrélation place la bascule à moins de 2 s du silence réel ;
+# 15 s laissent de la marge sans risquer d'attraper une autre pause.
+CUT_SEARCH_S    = 15.0
+# Un insert n'est pas toujours parfaitement muet — bruit de fond, fondu.
+CUT_MIN_RATIO   = 0.75
+# Centile d'énergie sous lequel on considère qu'il ne se passe rien
+_SILENCE_PCTL   = 20
+
+
+def find_silence(envelope: np.ndarray, center: int, need: int,
+                 search: int) -> Optional[int]:
+    """
+    Début du silence le plus proche de `center`, long d'au moins `need` bins.
+
+    Couper sur la frontière rendue par la corrélation serait imprudent : elle
+    est juste à une seconde ou deux près, et deux secondes de décalage font la
+    différence entre retirer un noir et amputer une réplique. Le silence, lui,
+    est une borne physique — on s'y accroche.
+    """
+    if envelope.size == 0 or need <= 0:
+        return None
+    seuil = float(np.percentile(envelope, _SILENCE_PCTL))
+    lo    = max(0, center - search)
+    hi    = min(envelope.size, center + search)
+    if hi - lo < need:
+        return None
+
+    bas     = envelope[lo:hi] < seuil
+    minimum = int(need * CUT_MIN_RATIO)
+    plages, debut = [], None
+    for k, muet in enumerate(bas):
+        if muet:
+            if debut is None:
+                debut = k
+        else:
+            if debut is not None and k - debut >= minimum:
+                plages.append((debut, k))
+            debut = None
+    if debut is not None and bas.size - debut >= minimum:
+        plages.append((debut, bas.size))
+    if not plages:
+        return None
+
+    # Le silence dont le milieu est le plus proche de la frontière estimée
+    a, b = min(plages, key=lambda p: abs((p[0] + p[1]) // 2 - (center - lo)))
+    # La coupe est centrée sur le silence : si celui-ci est un peu plus court
+    # que l'insert, l'erreur se répartit des deux côtés au lieu de tomber
+    # entièrement sur une réplique.
+    milieu = lo + (a + b) // 2
+    return max(0, milieu - need // 2)
+
+
+def plan_inserts(envelope: np.ndarray,
+                 segments: list[Segment]) -> tuple[list[tuple[float, float]], list[str]]:
+    """
+    Points où allonger le donneur pour le ramener au montage de la cible.
+
+    Retourne (insertions `(position, durée)` en secondes du donneur, frontières
+    posées sans ancrage). Un décalage qui **croît** signifie que la cible porte
+    du contenu que le donneur n'a pas : il faut donc pousser la suite plus
+    tard, c'est-à-dire intercaler du silence — jamais en retirer.
+
+    Les coordonnées des plages sont celles de la cible ; le donneur s'en déduit
+    par `donneur = cible − décalage`.
+    """
+    inserts: list[tuple[float, float]] = []
+    approx:  list[str] = []
+    for gauche, droite in zip(segments, segments[1:]):
+        saut = droite.delay_ms - gauche.delay_ms
+        if saut <= 0:
+            # Le donneur est plus long ici : il faudrait le recouper, ce qui
+            # supprimerait du contenu. On préfère s'abstenir.
+            approx.append(f"{mmss(gauche.end_s)} : saut négatif ({saut} ms), ignoré")
+            continue
+        centre = int((gauche.end_s - gauche.delay_ms / 1000.0) * 1000 / BIN_MS)
+        besoin = int(saut / BIN_MS)
+        debut  = find_silence(envelope, centre, besoin,
+                              int(CUT_SEARCH_S * 1000 / BIN_MS))
+        if debut is None:
+            # Sans silence où se loger, on pose quand même : allonger une
+            # pause au mauvais endroit s'entend, mais n'efface rien.
+            debut = centre
+            approx.append(f"{mmss(gauche.end_s)} : aucun silence trouvé, "
+                          f"insertion sur la frontière estimée")
+        inserts.append((debut * BIN_MS / 1000.0, saut / 1000.0))
+    return inserts, approx
+
+
+def build_retime_command(donor: Path, audio_index: int,
+                         inserts: list[tuple[float, float]], out: Path,
+                         bitrate_kbps: int = 192) -> list[str]:
+    """
+    Commande ffmpeg produisant la piste allongée aux points demandés.
+
+    `atrim` découpe à l'échantillon près, là où une copie de flux se calerait
+    sur la trame la plus proche : sur cinq jointures, ces arrondis
+    s'accumuleraient en une dérive audible. Le prix est une génération de
+    réencodage, négligeable sur une piste déjà compressée.
+
+    Le silence intercalé est un extrait du donneur lui-même passé à `volume=0`,
+    et non un `anullsrc` : il porte ainsi d'office la fréquence
+    d'échantillonnage et la disposition de canaux de la piste, que `concat`
+    exige identiques sur tous ses segments.
+    """
+    if not inserts:
+        raise ValueError("Aucune insertion à appliquer.")
+
+    src = f"[0:a:{audio_index}]"
+    filtres, etiquettes = [], []
+    precedent = 0.0
+    for k, (position, duree) in enumerate(inserts):
+        filtres.append(f"{src}atrim=start={precedent:.3f}:end={position:.3f},"
+                       f"asetpts=PTS-STARTPTS[k{k}]")
+        filtres.append(f"{src}atrim=start=0:end={duree:.3f},"
+                       f"asetpts=PTS-STARTPTS,volume=0[g{k}]")
+        etiquettes += [f"[k{k}]", f"[g{k}]"]
+        precedent = position
+    n = len(inserts)
+    filtres.append(f"{src}atrim=start={precedent:.3f},asetpts=PTS-STARTPTS[k{n}]")
+    etiquettes.append(f"[k{n}]")
+
+    filtres.append(f"{''.join(etiquettes)}concat=n={len(etiquettes)}:v=0:a=1[out]")
+
+    return [_ffmpeg_path, "-y", "-v", "error",
+            "-i", str(donor),
+            "-filter_complex", ";".join(filtres),
+            "-map", "[out]",
+            "-c:a", "aac", "-b:a", f"{bitrate_kbps}k",
+            str(out)]
+
+
 def _cue_mask(cues: list[tuple[float, float]], n_bins: int,
               ratio: tuple[int, int] = (1, 1)) -> np.ndarray:
     """Masque binaire des répliques, éventuellement rééchelonné."""
@@ -735,6 +869,44 @@ def measure_audio(target: Path, donor: Path, donor_track: int = 0,
         res.reason = (f"durées écartées de {drift:.0%} — vérifiez qu'il s'agit "
                       f"bien du même montage")
     return res
+
+
+def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
+                 out: Path, bitrate_kbps: int = 192,
+                 progress: Optional[Progress] = None
+                 ) -> tuple[Optional[Path], list[str]]:
+    """
+    Fabrique une piste audio recalée sur le montage de la cible.
+
+    Retourne (fichier produit, frontières non résolues). Le fichier est None
+    si aucune coupure n'a pu être placée : mieux vaut ne rien produire qu'une
+    piste amputée au mauvais endroit.
+
+    Une piste corrigée se greffe ensuite avec un décalage nul, comme n'importe
+    quel donneur — c'est ce qui permet de ne rien changer à l'aval.
+    """
+    envelope = _decode_envelope(
+        donor, audio_index,
+        (lambda f: progress(f * DECODE_SHARE)) if progress else None)
+    if envelope.size == 0:
+        return None, ["aucun audio exploitable dans le donneur"]
+
+    inserts, approx = plan_inserts(envelope, segments)
+    if not inserts:
+        return None, approx or ["aucune insertion exploitable"]
+
+    cmd = build_retime_command(donor, audio_index, inserts, out, bitrate_kbps)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, timeout=1800)
+    except (OSError, subprocess.SubprocessError) as e:
+        return None, [f"ffmpeg a échoué : {e}"]
+    if proc.returncode != 0 or not out.exists() or out.stat().st_size == 0:
+        detail = proc.stderr.decode("utf-8", "replace").strip().splitlines()
+        return None, [f"ffmpeg a échoué : {detail[-1] if detail else '?'}"]
+
+    if progress:
+        progress(1.0)
+    return out, approx
 
 
 def measure_subtitle(video: Path, subtitle: Path,

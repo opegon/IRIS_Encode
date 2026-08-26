@@ -578,17 +578,74 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                            "audio du donneur avec 'm'.")
             return
 
-        t = self._tracks[i]
-        if t.kind != TrackKind.SUBTITLE:
-            # Corriger l'audio demanderait de le recouper et de le réencoder :
-            # ce n'est pas un simple décalage de nombres.
-            self._set_hint("Seuls les sous-titres se corrigent ainsi. Une "
-                           "piste audio devrait être recoupée et réencodée, "
-                           "ce que l'outil ne fait pas encore.")
+        if self._measuring:
+            self._set_hint("Une opération est déjà en cours — laissez-la finir.")
             return
 
         _, segs = self._segments
-        self._build_corrected_subtitle(i, segs)
+        t = self._tracks[i]
+        if t.kind == TrackKind.SUBTITLE:
+            self._build_corrected_subtitle(i, segs)
+            return
+
+        # L'audio ne se corrige pas en décalant des nombres : il faut le
+        # rallonger aux points de bascule et le réencoder. C'est long, donc
+        # hors du thread UI.
+        self._measuring = True
+        self._set_hint(f"⏳ Recalage de « {t.source_path.name} » sur "
+                       f"{len(segs)} plages.\nDécodage puis réencodage de la "
+                       f"piste — comptez une poignée de minutes.")
+        self._set_origin_cell(i, Text("recalage…", style="yellow"))
+        self._show_bar(True)
+        self._retime(i, segs)
+
+    @work(thread=True, name="sync-retime")
+    def _retime(self, i: int, segs: list[Segment]) -> None:
+        """Fabrique la piste audio recalée hors du thread UI."""
+        import tempfile
+        from core.sync import retime_audio
+
+        t = self._tracks[i]
+
+        def report(fraction: float) -> None:
+            self.app.call_from_thread(self._set_progress, fraction)
+
+        try:
+            idx = ffmpeg_stream_index(t.source_path, t.source_tid, TrackKind.AUDIO)
+            out = (Path(tempfile.gettempdir())
+                   / f"{self._source.stem}_{t.language or 'und'}_[recale].mka")
+            fichier, notes = retime_audio(t.source_path, idx, segs, out,
+                                          progress=report)
+        except Exception as e:
+            fichier, notes = None, [str(e)]
+        self.app.call_from_thread(self._retime_done, i, fichier, notes)
+
+    def _retime_done(self, i: int, fichier: Path | None,
+                     notes: list[str]) -> None:
+        self._measuring = False
+        self._show_bar(False)
+        if not (0 <= i < len(self._tracks)):
+            return                                   # piste retirée entre-temps
+        if fichier is None:
+            self.app.bell()
+            self._set_origin_cell(i, Text("échec", style="bold dark_orange"))
+            self._set_hint("Recalage impossible.\n" + " · ".join(notes))
+            return
+
+        t = self._tracks[i]
+        t.source_path = fichier
+        t.source_tid  = 0            # la piste produite est seule dans son fichier
+        t.delay_ms    = 0
+        t.stretch     = None
+        t.sync_origin = SyncOrigin.MEASURED
+        t.copied_from = None
+        self._refresh_row(i)
+        self._update_status()
+        reserve = ("\n⚠ " + " · ".join(notes)) if notes else ""
+        self._set_hint(
+            f"Piste recalée — décalage nul désormais.\n"
+            f"{fichier.name}{reserve}\n"
+            f"'v' pour contrôler dans mpv, 'k' pour un extrait muxé.")
 
     def _build_corrected_subtitle(self, i: int, segs: list[Segment]) -> None:
         import tempfile

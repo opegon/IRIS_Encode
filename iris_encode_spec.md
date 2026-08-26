@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.0.4 — document de référence courant
+**Version** : 0.8.0.5 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 
@@ -643,8 +643,38 @@ portent le même montage. Vérifié sur un épisode réel — le sous-titre corr
 **+0 ms de décalage résiduel, trois tiers concordants à 100 ms**, donc accepté par le
 garde-fou du § 10.3 alors que sa corrélation brute (0.17) reste sous le seuil.
 
-**L'audio n'est pas corrigeable de cette façon** : il faudrait le recouper aux points
-de bascule et le réencoder. Non implémenté.
+### 10.6 Correction d'une piste audio — `retime_audio()`
+
+L'audio ne se corrige pas en décalant des nombres : il faut le rallonger aux points
+de bascule et le réencoder.
+
+**Sens de l'opération.** `temps_cible = temps_donneur + décalage`, et le décalage
+*croît* d'une plage à l'autre : la cible porte donc du contenu que le donneur n'a
+pas. Il faut **intercaler** du silence, jamais en retirer — un donneur peut être plus
+long au total tout en manquant de contenu dans le corps du film, ses minutes
+excédentaires étant dans le générique.
+
+**Placement des insertions.** La frontière rendue par la corrélation est juste à une
+ou deux secondes près — assez pour tomber au milieu d'une réplique. `find_silence()`
+s'accroche donc au silence le plus proche (`CUT_SEARCH_S`, 15 s de fenêtre) et centre
+l'insertion dessus : allonger une pause existante ne s'entend pas.
+
+Sans silence exploitable, l'insertion est **quand même posée** sur la frontière estimée
+au lieu d'abandonner : contrairement à une coupe, allonger n'efface rien — au pire on
+entend une pause un peu longue. La frontière concernée est signalée.
+
+**Fabrication.** `atrim` découpe à l'échantillon près, là où une copie de flux se
+calerait sur la trame la plus proche ; sur cinq jointures, ces arrondis dériveraient
+audiblement. Le silence intercalé est un extrait du donneur passé à `volume=0`, et non
+un `anullsrc` : il porte ainsi d'office la fréquence et la disposition de canaux que
+`concat` exige identiques sur tous ses segments. Le prix est une génération de
+réencodage AAC, négligeable sur une piste déjà compressée.
+
+Vérifié sur un épisode réel — la piste produite mesure **+0 ms, confiance 0.72, trois
+tiers concordants à 0 ms**, et passe donc sans réserve.
+
+Un saut négatif (donneur plus long à cet endroit) est **ignoré et signalé** : le corriger
+supposerait de supprimer du contenu.
 
 ---
 
@@ -941,7 +971,7 @@ Une piste externe = une ligne. Champs éditables par ligne : **décalage**, **é
 | `M` | **Mesure automatique** (§ 10) |
 | `A` | Applique le candidat mesuré |
 | `S` | **Plages détectées** (§ 10.4) — lecture seule |
-| `P` | **Applique les plages** à un sous-titre (§ 10.5) — produit un `.srt` recalé qui devient la source de la piste |
+| `P` | **Applique les plages** à la piste sous le curseur — `.srt` réécrit (§ 10.5) ou piste audio rallongée et réencodée (§ 10.6). Le fichier produit devient la source, avec un décalage nul |
 | `V` | **Visualiser dans mpv**, piste greffée et décalage appliqué |
 | `K` | **Extrait de contrôle** réellement muxé |
 | `C` | Copie le décalage d'une autre piste externe → `sync_origin = COPIED` |

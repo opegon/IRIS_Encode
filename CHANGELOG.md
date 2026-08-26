@@ -1,5 +1,56 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0] — 2026-08-26
+
+### Greffe de pistes externes
+
+Ajouter à un fichier une piste audio ou des sous-titres venus d'un autre
+fichier, sans réencoder la vidéo, chaque piste portant son propre décalage.
+
+- **`F9` — piste externe** depuis l'écran des pistes ou celui du recalage :
+  choix du fichier donneur, puis de ses pistes via `mkvmerge -J`. Plusieurs
+  donneurs s'enchaînent sans quitter l'écran.
+- **Écran de recalage** : décalage réglable au clavier (`+/-` par 100 ms,
+  `Shift+↑/↓` par seconde), facteur d'étirement PAL↔film, langue, nom,
+  drapeaux défaut et forcé. `c` reprend le décalage d'une autre piste — le cas
+  d'une VF et de ses sous-titres écrits sur le même timing.
+- **`m` — mesure automatique du décalage** par corrélation croisée. Pour une
+  piste audio, les deux enveloppes d'énergie ; pour un sous-titre, les
+  répliques contre un VAD appliqué à la parole du film. Le facteur d'étirement
+  est cherché sur une grille de ratios. Le résultat est recoupé sur trois
+  tiers du film : un vrai alignement tient sur chacun, du bruit se disperse.
+- **`v` — visualiser dans mpv** avec la piste greffée et le décalage appliqué,
+  positionné sur un passage dialogué.
+- **`k` — extrait de contrôle** réellement muxé, découpé par mkvmerge sur le
+  flux de sortie. Deux fenêtres quand un étirement est en jeu, la dérive
+  s'accumulant.
+- **`F3` — mux** par mkvmerge, ou **`F2` — encodage** : ffmpeg absorbe alors
+  les pistes dans la même passe, sans fichier intermédiaire.
+- Après un mux, le fichier produit devient le fichier de travail.
+
+### Outils
+
+- **mkvmerge et mpv** rejoignent les outils optionnels, installés depuis leur
+  archive portable. mpv n'étant publié qu'en `.7z`, l'extraction passe par le
+  tar/libarchive livré avec Windows plutôt que par une dépendance nouvelle.
+- **Vérification des mises à jour au démarrage**, au plus une fois par jour et
+  sans bloquer hors ligne. `check_on_startup`, le cache des versions et la
+  vérification SHA256 étaient déclarés mais inertes.
+
+### Estimation
+
+- Colonnes **Estim. (Δ%)** et **Temps estim.** au dry-run, appuyées sur une
+  moyenne mobile de vitesse d'encodage relevée à chaque passe.
+
+### Corrections
+
+- Le conteneur de sortie suit les pistes réellement conservées : écarter les
+  sous-titres image libère le MP4. `mov_text` n'est plus proposé en Matroska.
+- Les listes de dépendances de `main.py` et `launch.bat` couvrent
+  `requirements.txt` ; un test les compare.
+- Le preflight ne dépend plus d'un terminal interactif.
+- `.gitattributes` impose le CRLF aux scripts Windows.
+
 ## [Non publié]
 
 - **Dry-run : colonne « Durée »** entre Taille et Estim. (Δ%) — durée de chaque

@@ -360,14 +360,42 @@ def test_encode_absorbs_external_track(vf: ExternalTrack):
     assert f"language={vf.language}" in cmd
 
 
-def test_encode_applies_itsoffset(vf: ExternalTrack):
+def test_encode_skips_the_donor_start_on_a_negative_delay(vf: ExternalTrack):
+    """
+    Un décalage négatif passe par -ss, jamais par un -itsoffset négatif.
+
+    Mesuré : `-itsoffset -2.450` rend négatifs les horodatages du donneur,
+    ffmpeg décale alors tout le fichier vers l'avant et la vidéo sort à
+    start_time = 2.45 s. Les décodeurs matériels de téléviseur refusent de
+    lire un tel fichier, là où mpv et VLC le normalisent en silence.
+    """
     from core.encoder import build_command
     vf.stretch  = None
     vf.delay_ms = -2450
     cmd = build_command(_encode_decision([vf]), _plat())
-    assert cmd[cmd.index("-itsoffset") + 1] == "-2.450"
-    # -itsoffset doit précéder le -i qu'il décale
+    assert cmd[cmd.index("-ss") + 1] == "2.450"
+    # L'option doit précéder le -i qu'elle concerne
+    assert cmd.index("-ss") < cmd.index(str(vf.source_path))
+    assert "-itsoffset" not in cmd
+
+
+def test_encode_keeps_itsoffset_on_a_positive_delay(vf: ExternalTrack):
+    """Un décalage positif ne crée aucun horodatage négatif : rien à contourner."""
+    from core.encoder import build_command
+    vf.stretch  = None
+    vf.delay_ms = 1800
+    cmd = build_command(_encode_decision([vf]), _plat())
+    assert cmd[cmd.index("-itsoffset") + 1] == "1.800"
     assert cmd.index("-itsoffset") < cmd.index(str(vf.source_path))
+    assert "-ss" not in cmd
+
+
+def test_encode_leaves_a_zero_delay_alone(vf: ExternalTrack):
+    from core.encoder import build_command
+    vf.stretch  = None
+    vf.delay_ms = 0
+    cmd = build_command(_encode_decision([vf]), _plat())
+    assert "-ss" not in cmd and "-itsoffset" not in cmd
 
 
 def test_encode_refuses_stretch(vf: ExternalTrack):

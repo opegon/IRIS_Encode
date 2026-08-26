@@ -201,8 +201,18 @@ def build_command(
             f"Muxez-la d'abord avec F9, puis encodez le résultat."
         )
     for ext in ext_tracks:
-        if ext.delay_ms:
+        if ext.delay_ms > 0:
             cmd += ["-itsoffset", f"{ext.delay_ms / 1000:.3f}"]
+        elif ext.delay_ms < 0:
+            # Un -itsoffset négatif rend négatifs les horodatages du donneur.
+            # ffmpeg refuse de les écrire tels quels et décale TOUT le fichier
+            # vers l'avant : la vidéo ne commence alors plus à zéro (mesuré :
+            # start_time = 2.5 s pour un décalage de -2500 ms). Les lecteurs
+            # de bureau normalisent, les décodeurs matériels de téléviseur pas
+            # toujours — d'où des fichiers illisibles sur TV.
+            # Sauter le début du donneur donne le même résultat sans jamais
+            # produire d'horodatage négatif.
+            cmd += ["-ss", f"{-ext.delay_ms / 1000:.3f}"]
         cmd += ["-i", str(ext.source_path)]
 
     # ── Filtre vidéo ──────────────────────────────────────────────────────────

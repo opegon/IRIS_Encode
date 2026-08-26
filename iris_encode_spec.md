@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.0.5 — document de référence courant
+**Version** : 0.8.0.6 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 
@@ -692,6 +692,29 @@ Détection GPU NVIDIA via `nvidia-smi`. Sans NVIDIA sur Windows, fallback CPU.
 ---
 
 ## 12. Encodeur — `core/encoder.py`
+
+### 12.0 Pistes externes absorbées en une passe
+
+ffmpeg prend chaque piste greffée comme entrée supplémentaire et sort le fichier
+final directement : **muxer au préalable est inutile** quand le fichier est de toute
+façon réencodé. Le mux (`F3`) n'est pas une étape antérieure à l'encodage, c'est
+l'alternative pour quand on ne veut pas toucher à la vidéo.
+
+**Le décalage négatif ne passe pas par `-itsoffset`.** Un `-itsoffset` négatif rend
+négatifs les horodatages du donneur ; ffmpeg refuse de les écrire et décale *tout le
+fichier* vers l'avant. Mesuré pour −2 500 ms : la vidéo sort avec
+`start_time = 2.5 s` et le conteneur gagne 2,5 s. Les lecteurs de bureau normalisent,
+les décodeurs matériels de téléviseur pas toujours — d'où des fichiers qui plantent à
+la lecture sur TV alors qu'ils sont parfaits sur PC.
+
+Un décalage négatif est donc traduit en `-ss` sur l'entrée du donneur : on saute son
+début au lieu de le repousser. Résultat identique, tous les flux à `start_time = 0`,
+durée du conteneur correcte. Un décalage **positif** garde `-itsoffset` : il ne crée
+aucun horodatage négatif, et seule la piste greffée démarre plus tard — ce que
+mkvmerge produit également.
+
+Seul l'**étirement** reste hors de portée d'une passe unique et fait lever une erreur
+renvoyant vers le mux.
 
 ### 12.1 Modes d'encodage vidéo
 

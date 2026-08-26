@@ -365,6 +365,23 @@ async def scenario_external_tracks() -> None:
             assert type(app.screen).__name__ == "SyncScreen", type(app.screen).__name__
             print("[11b] SyncScreen : F1 refuse un etirement, puis lance le dry-run")
 
+            # Un decalage negatif ne doit jamais sortir en -itsoffset : ffmpeg
+            # decalerait tout le fichier vers l'avant et la video ne
+            # commencerait plus a zero, ce que des TV refusent de lire.
+            from core.encoder import build_command as _build_cmd
+            from core.decision import force_skip_to_encode as _forcer
+            # Le clip de test est SKIP : on force l'encodage pour que la
+            # commande existe. Les pistes greffees, elles, sont inchangees.
+            _cmd = _build_cmd(_forcer(sync._decision), app.platform)
+            assert "-ss" in _cmd, "decalage negatif non converti en -ss"
+            _neg = [_cmd[k + 1] for k, a in enumerate(_cmd)
+                    if a == "-itsoffset" and _cmd[k + 1].startswith("-")]
+            assert not _neg, f"-itsoffset negatif encore present : {_neg}"
+            # Le decalage positif garde -itsoffset : il ne produit aucun
+            # horodatage negatif, et la video reste calee sur zero.
+            assert "-itsoffset" in _cmd, "decalage positif perdu"
+            print("[11d] Decalage negatif : -ss en entree, positif : -itsoffset")
+
             # 'k' : extrait de controle reellement muxe. mpv est neutralise
             # pour que le test ne fasse pas surgir de fenetre.
             from core import preview as preview_mod

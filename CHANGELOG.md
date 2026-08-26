@@ -1,5 +1,21 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0.6] — 2026-08-27
+
+- **Fichiers illisibles sur téléviseur après un encodage `F2` avec piste
+  greffée en décalage négatif.** Un `-itsoffset` négatif rend négatifs les
+  horodatages du donneur ; ffmpeg refuse de les écrire et décale *tout le
+  fichier* vers l'avant. Mesuré pour −2 500 ms : la vidéo sortait avec
+  `start_time = 2.5 s` et le conteneur gagnait 2,5 s. mpv et VLC normalisent
+  sans broncher, un décodeur matériel de TV non — le fichier plantait à la
+  lecture tout en paraissant parfait sur PC.
+- Le décalage négatif est désormais traduit en `-ss` sur l'entrée du donneur :
+  on saute son début au lieu de le repousser. Résultat identique, tous les
+  flux à `start_time = 0`, durée du conteneur juste. Le décalage positif garde
+  `-itsoffset`, qui ne produit aucun horodatage négatif.
+- Le smoke test vérifie désormais qu'aucun `-itsoffset` négatif ne subsiste
+  dans la commande d'encodage.
+
 ## [v0.8.0.5] — 2026-08-27
 
 - **`p` recale aussi une piste audio.** Ce qui manquait pour greffer une VF

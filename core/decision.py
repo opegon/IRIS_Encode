@@ -100,6 +100,21 @@ ACTION_CYCLE: list["VideoAction"] = [
 BITRATE_OPTS_KBPS:     list[int] = [500, 800, 1000, 1500, 2000, 2200, 2500, 3000, 3500, 5000, 8000, 12000]
 AV1_BITRATE_OPTS_KBPS: list[int] = [300, 500, 800, 1000, 1500, 2000, 2500, 3000, 4000, 6000]
 
+# Codecs que le MP4 ne porte pas (ou pas utilement). Les noms varient selon
+# la source — ffprobe dit "ass", mkvmerge "AdvancedSubStationAlpha" — d'où la
+# comparaison par fragment plutôt que par égalité.
+_MKV_ONLY_CODECS: tuple[str, ...] = (
+    "ass", "ssa", "substation",              # sous-titres stylés
+    "pgs", "vobsub", "dvdsub", "dvd_sub",    # sous-titres image
+    "truehd", "mlp", "dts-hd", "dtshd",      # audio sans perte
+)
+
+
+def _needs_mkv_codec(codec: str) -> bool:
+    low = (codec or "").lower()
+    return any(frag in low for frag in _MKV_ONLY_CODECS)
+
+
 SUFFIX_BY_ACTION: dict["VideoAction", str] = {
     VideoAction.ENCODE_HEVC: "_[hevc]",
     VideoAction.ENCODE_H264: "_[H264]",
@@ -141,17 +156,39 @@ class FileDecision:
     subtitle_indices:       list[int] | None = None  # None = tout garder
     delete_source_override: bool | None      = None  # None = suivre profil
     external_tracks:   list["ExternalTrack"] = field(default_factory=list)
-    force_mkv:         bool                  = False
+
+    @property
+    def needs_mkv(self) -> bool:
+        """
+        Le contenu impose-t-il le Matroska ?
+
+        Le critère porte sur ce que le fichier va contenir, pas sur son
+        histoire : un MKV dont tout tient en MP4 peut ressortir en MP4. Seuls
+        les sous-titres image, les sous-titres stylés (ASS/SSA) et l'audio
+        sans perte obligent au MKV — un SubRip n'a aucun style à perdre en
+        devenant mov_text.
+        """
+        if self.info.has_image_subs:
+            return True
+
+        kept_subs = (
+            self.info.subtitle_tracks if self.subtitle_indices is None
+            else [st for st in self.info.subtitle_tracks
+                  if st.index in self.subtitle_indices]
+        )
+        if any(_needs_mkv_codec(st.codec) for st in kept_subs):
+            return True
+
+        # Une piste sans perte recopiée telle quelle ne tient pas en MP4
+        if any(ad.action == AudioAction.COPY and ad.track.is_lossless
+               for ad in self.audio):
+            return True
+
+        return any(_needs_mkv_codec(ext.codec) for ext in self.external_tracks)
 
     @property
     def output_container(self) -> str:
-        # Une piste externe impose le MKV : le MP4 ne porte ni ASS ni la
-        # plupart des pistes audio HD. force_mkv garde cette contrainte après
-        # un mux, une fois les pistes intégrées et external_tracks vidée —
-        # sinon l'encodage reconvertirait en MP4 ce qu'on vient de greffer.
-        if self.external_tracks or self.force_mkv:
-            return ".mkv"
-        return ".mkv" if self.info.has_image_subs else ".mp4"
+        return ".mkv" if self.needs_mkv else ".mp4"
 
     @property
     def output_path(self) -> Path:

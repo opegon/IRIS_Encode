@@ -257,7 +257,7 @@ def test_parse_error():
 
 # ─── Absorption des pistes externes par l'encodeur ────────────────────────────
 
-def _encode_decision(ext: list[ExternalTrack], *, subs=None, force_mkv=False):
+def _encode_decision(ext: list[ExternalTrack], *, subs=None):
     """Décision d'encodage HEVC minimale, avec pistes externes greffées."""
     from core.decision import DVAction, FileDecision, VideoAction, VideoDecision
 
@@ -275,8 +275,7 @@ def _encode_decision(ext: list[ExternalTrack], *, subs=None, force_mkv=False):
         dv_action=DVAction.NONE, output_suffix="_[hevc]",
     )
     return FileDecision(info=info, profile={}, video=video, audio=[],
-                        subtitle_indices=[], external_tracks=ext,
-                        force_mkv=force_mkv)
+                        subtitle_indices=[], external_tracks=ext)
 
 
 def _plat():
@@ -322,30 +321,83 @@ def test_encode_refuses_stretch(vf: ExternalTrack):
 def test_encode_never_uses_mov_text_in_mkv(subs: ExternalTrack):
     """mov_text n'existe pas en Matroska : ffmpeg refuserait de muxer."""
     from core.encoder import build_command
-    cmd = build_command(_encode_decision([subs]), _plat())
+    subs.codec = "AdvancedSubStationAlpha"      # impose le MKV
+    dec = _encode_decision([subs])
+    assert dec.output_container == ".mkv"
+    cmd = build_command(dec, _plat())
     assert "mov_text" not in cmd
     assert cmd[cmd.index("-c:s") + 1] == "copy"
     assert "+faststart" not in cmd, "faststart est un réglage MP4"
 
 
-def test_force_mkv_survives_empty_external_tracks():
-    """Après un mux, le fichier reste MKV même sans piste externe en attente."""
-    dec = _encode_decision([], force_mkv=True)
+def test_encode_uses_mov_text_in_mp4(subs: ExternalTrack):
+    """Un SubRip tient en MP4 : pas de raison de forcer le Matroska."""
+    from core.encoder import build_command
+    subs.codec = "SubRip/SRT"
+    dec = _encode_decision([subs])
+    assert dec.output_container == ".mp4"
+    cmd = build_command(dec, _plat())
+    assert cmd[cmd.index("-c:s") + 1] == "mov_text"
+    assert "+faststart" in cmd
+
+
+# ─── Choix du conteneur ───────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("codec,attendu", [
+    # Ce que le MP4 ne sait pas porter
+    ("AdvancedSubStationAlpha", True),
+    ("ass",                     True),
+    ("HDMV PGS",                True),
+    ("VobSub",                  True),
+    ("TrueHD Atmos",            True),
+    ("DTS-HD Master Audio",     True),
+    # Ce qu'il porte très bien
+    ("SubRip/SRT",              False),
+    ("subrip",                  False),
+    ("E-AC-3",                  False),
+    ("AAC",                     False),
+    ("",                        False),
+])
+def test_external_codec_decides_the_container(codec: str, attendu: bool):
+    ext = ExternalTrack(source_path=Path("/films/x.mka"), source_tid=0,
+                        kind=TrackKind.SUBTITLE, codec=codec, language="fre")
+    assert _encode_decision([ext]).needs_mkv is attendu
+
+
+def test_lossless_audio_kept_forces_mkv():
+    """Une piste sans perte recopiée telle quelle ne tient pas en MP4."""
+    from core.decision import AudioAction, AudioDecision
+
+    dec = _encode_decision([])
+    piste = mock.Mock()
+    piste.is_lossless = True
+    dec.audio = [AudioDecision(track=piste, action=AudioAction.COPY,
+                               reason="test", output_codec="copy",
+                               output_bitrate=0)]
+    assert dec.needs_mkv is True
+
+    # Transcodée, elle ne contraint plus rien
+    dec.audio[0].action = AudioAction.TRANSCODE
+    assert dec.needs_mkv is False
+
+
+def test_image_subs_force_mkv():
+    dec = _encode_decision([])
+    dec.info.has_image_subs = True
     assert dec.output_container == ".mkv"
-    assert dec.output_path.name == "film_[hevc].mkv"
-    # Sans le drapeau, la règle par défaut s'applique
-    assert _encode_decision([]).output_container == ".mp4"
 
 
 # ─── Intégration avec FileDecision ────────────────────────────────────────────
 
-def test_external_track_forces_mkv_and_suffix():
-    """Une piste externe impose le MKV, et SKIP sans suffixe passe en _[mux]."""
+def test_skip_with_external_track_gets_a_distinct_name():
+    """SKIP n'a pas de suffixe de codec : sans _[mux], la sortie écraserait
+    la source quand le conteneur ne change pas."""
     from core.decision import FileDecision, VideoAction, VideoDecision
 
     info = mock.Mock()
-    info.path = Path("/films/Film.mkv")
-    info.has_image_subs = False
+    info.path            = Path("/films/Film.mp4")
+    info.has_image_subs  = False
+    info.subtitle_tracks = []
 
     video = VideoDecision(
         action=VideoAction.SKIP, reason="déjà encodé", target_bitrate=0,
@@ -353,14 +405,12 @@ def test_external_track_forces_mkv_and_suffix():
         dv_action=mock.Mock(), output_suffix="",
     )
     dec = FileDecision(info=info, profile={}, video=video)
-
-    # Sans piste externe : SKIP → pas de sortie distincte, MP4 par défaut
-    assert dec.output_container == ".mp4"
-
     dec.external_tracks = [ExternalTrack(
-        source_path=Path("/films/Film.VF.mkv"), source_tid=1,
-        kind=TrackKind.AUDIO, language="fre",
+        source_path=Path("/films/Film.fr.srt"), source_tid=0,
+        kind=TrackKind.SUBTITLE, codec="SubRip/SRT", language="fre",
     )]
-    assert dec.output_container == ".mkv"
-    assert dec.output_path.name == "Film_[mux].mkv"
+
+    # Un SubRip ne force pas le MKV : même extension que la source
+    assert dec.output_container == ".mp4"
+    assert dec.output_path.name == "Film_[mux].mp4"
     assert dec.output_path != info.path

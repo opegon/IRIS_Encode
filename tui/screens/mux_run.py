@@ -166,9 +166,8 @@ class MuxScreen(Screen[bool]):
         self._decision.audio            = fresh.audio
         self._decision.subtitle_indices = None
         self._decision.external_tracks.clear()
-        # Les pistes greffées vivent dans un MKV : un encodage ultérieur ne
-        # doit pas le reconvertir en MP4.
-        self._decision.force_mkv = True
+        # Pas de contrainte de conteneur héritée : le fichier muxé vient
+        # d'être relu, output_container décidera d'après son contenu réel.
 
         # Annonce ce que F2 fera : l'action dépend du profil et du fichier
         # produit, autant l'afficher plutôt que de la faire découvrir.

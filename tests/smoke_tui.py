@@ -324,7 +324,9 @@ async def scenario_external_tracks() -> None:
             dec = app.screen._decision
             assert dec.info.path == out, dec.info.path
             assert not dec.external_tracks, "pistes externes non videes"
-            assert dec.force_mkv, "le MKV doit rester MKV a l'encodage"
+            # Le conteneur suit le contenu, pas l'historique : AC3 + SubRip
+            # tiennent en MP4, rien n'impose de rester en Matroska.
+            assert not dec.needs_mkv, "MKV impose sans raison"
 
             # F1 depuis l'ecran de mux : dry-run sur le fichier produit
             await pilot.press("f1")
@@ -341,7 +343,7 @@ async def scenario_external_tracks() -> None:
             assert type(app.screen).__name__ == "RunScreen", type(app.screen).__name__
             run_dec = app.screen._statuses[0].decision
             assert run_dec.info.path == out, run_dec.info.path
-            assert run_dec.output_path.suffix == ".mkv", run_dec.output_path.name
+            assert run_dec.output_path.suffix == ".mp4", run_dec.output_path.name
             assert run_dec.video.action != VideoAction.SKIP, "SKIP non force en encodage"
             print(f"[13] Depuis l'ecran de mux : F1 dry-run OK, F2 encode "
                   f"{run_dec.info.path.name} -> {run_dec.output_path.name}")

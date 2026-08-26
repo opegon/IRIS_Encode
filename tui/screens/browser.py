@@ -35,7 +35,7 @@ from ..common import (
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
 from ..widgets.file_tree import FileNavigator
-from ..widgets.footer import TwoLineFooter
+from ..widgets.footer import KeyFooter
 
 if TYPE_CHECKING:
     from ..app import IrisEncodeApp
@@ -97,7 +97,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("f2",        "open_run",           "Run",      show=True),
         Binding("f3",        "recursive_run",      "Récursif", show=True),
         Binding("f4",        "open_profile_picker","Profil",   show=True),
-        Binding("f5",        "open_config",        "Gérer profils", show=True),
+        Binding("f5",        "open_config",        "Gérer", show=True),
         Binding("f7",        "open_allocine",      "AlloCiné", show=True),
         Binding("f8",        "open_imdb",          "IMDB",     show=True),
     ]
@@ -115,9 +115,6 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     BrowserScreen {
         layout: vertical;
     }
-    TwoLineFooter {
-        dock: bottom;
-    }
     #spacer-1 {
         height: 1;
     }
@@ -133,7 +130,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         color: $text-muted;
         padding: 0 2;
     }
-    DataTable { height: 1fr; margin-bottom: 2; }
+    DataTable { height: 1fr; }
     """
 
     def __init__(self, path: Path, start_virtual: bool = False) -> None:
@@ -165,8 +162,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         yield Static("", id="profile-bar")
         yield Static("⏳ Analyse en cours…", id="scan-notice")
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
-        yield TwoLineFooter(
-            line1=[
+        yield KeyFooter(
+            actions=[
                 ("space",     "Sélect"),
                 ("a",         "Tout"),
                 ("n",         "Aucun"),
@@ -179,7 +176,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 ("pageup",    "Page ↑"),
                 ("pagedown",  "Page ↓"),
             ],
-            line2=footer_line2(
+            nav=footer_line2(
                 nav=False,
                 resize=True,
                 extra=(
@@ -187,7 +184,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                     ("f2", "Run"),
                     ("f3", "Récursif"),
                     ("f4", "Profil"),
-                    ("f5", "Gérer profils"),
+                    ("f5", "Gérer"),
                     ("f7", "AlloCiné"),
                     ("f8", "IMDB"),
                 ),

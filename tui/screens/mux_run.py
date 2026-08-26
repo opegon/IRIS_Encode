@@ -19,7 +19,7 @@ from core.decision import FileDecision, force_skip_to_encode
 from core.muxer import MuxProcess, build_mux_command, mux_output_path
 
 from ..common import footer_line2
-from ..widgets.footer import TwoLineFooter
+from ..widgets.footer import KeyFooter
 
 
 class MuxScreen(Screen[bool]):
@@ -75,13 +75,13 @@ class MuxScreen(Screen[bool]):
                 yield ProgressBar(total=100, show_eta=False, id="mux-bar")
             yield Static("", id="mux-state")
             yield Static("", id="mux-cmd")
-        yield TwoLineFooter(
-            line1=[
+        yield KeyFooter(
+            actions=[
                 ("f1",        "Dry-run"),
                 ("f2",        "Encoder"),
                 ("backspace", "Retour"),
             ],
-            line2=footer_line2(nav=False),
+            nav=footer_line2(nav=False),
         )
 
     def on_mount(self) -> None:

@@ -43,7 +43,7 @@ from ..common import (
     footer_line2,
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
-from ..widgets.footer import TwoLineFooter
+from ..widgets.footer import KeyFooter
 from .value_picker import ValuePickerScreen
 
 # ── Types de lignes ───────────────────────────────────────────────────────────
@@ -167,8 +167,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         yield DataTable(id="tracks-table", cursor_type="row",
                         zebra_stripes=False, show_header=True)
         yield Static(_HINT_TRACK, id="hint-bar")
-        yield TwoLineFooter(
-            line1=[
+        yield KeyFooter(
+            actions=[
                 ("space", "Sélect"),
                 ("enter", "Valider"),
                 ("f1",    "Dry-run"),
@@ -179,7 +179,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 ("f8",    "Suppr./garder source"),
                 ("f9",    "Piste externe"),
             ],
-            line2=footer_line2(back=True, nav=True, resize=True),
+            nav=footer_line2(back=True, nav=True, resize=True),
         )
 
     def on_mount(self) -> None:

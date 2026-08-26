@@ -1,5 +1,28 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0.9] — 2026-08-27
+
+### Footer utilisable sous 1920×1080
+
+- **Les raccourcis débordaient sans le dire.** Le footer tenait sur deux
+  lignes fixes et tronquait l'excédent (`overflow: ellipsis`). L'écran de
+  recalage alignait 245 colonnes de raccourcis : au-delà de ~147 colonnes —
+  soit dès un 1920×1080 — `F1 Dry-run`, `F2 Encoder`, `F3 Muxer` et
+  `Back Retour` disparaissaient purement et simplement. Rien ne signalait leur
+  existence.
+- `TwoLineFooter` devient **`KeyFooter`** : hauteur variable, les raccourcis
+  sont répartis sur autant de lignes qu'il en faut pour la largeur réelle.
+  Les deux groupes — actions de l'écran, puis navigation — gardent leur
+  identité en s'enroulant séparément. Un raccourci n'est jamais coupé ni omis.
+- **Libellés raccourcis** : « Visualiser dans mpv » → « mpv », « Extrait de
+  contrôle » → « Extrait », « Appliquer quand même » → « Forcer », « Liste de
+  choix » → « Liste »… L'écran de recalage passe de 245 à 166 colonnes, soit
+  deux lignes encore sur un écran large et trois sur un 1920×1080.
+- Le footer du browser n'est plus ancré en bas : sa marge de deux lignes était
+  calculée pour une hauteur fixe et aurait recouvert la table.
+- `tests/test_footer.py` vérifie qu'aucun raccourci ne disparaît, de 60 à 500
+  colonnes.
+
 ## [v0.8.0.8] — 2026-08-27
 
 - **Troisième ligne du bandeau de recalage invisible.** `#sync-hint` déclarait

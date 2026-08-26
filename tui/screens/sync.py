@@ -36,7 +36,7 @@ from core.sync import (
 
 from ..common import footer_line2
 from ..mixins import TableNavMixin
-from ..widgets.footer import TwoLineFooter
+from ..widgets.footer import KeyFooter
 from .segments import SegmentsScreen
 from .value_picker import ValuePickerScreen
 
@@ -100,18 +100,18 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("v",         "preview",      "Visualiser",    show=True),
         Binding("k",         "sample",       "Extrait",       show=True),
         Binding("a",         "apply_candidate",
-                "Appliquer quand même",  show=True),
+                "Forcer",  show=True),
         Binding("s",         "show_segments", "Plages",        show=True),
         Binding("p",         "apply_segments",
-                "Appliquer les plages",  show=True),
-        Binding("c",         "copy_delay",   "Copier décalage", show=True),
+                "Appliquer",  show=True),
+        Binding("c",         "copy_delay",   "Copier", show=True),
         Binding("d",         "remove_track", "Retirer",       show=True),
         # F1/F2 gardent partout le même sens : dry-run et encodage. Le mux,
         # propre à cet écran, prend F3.
         Binding("f1",        "dryrun",       "Dry-run",       show=True),
         Binding("f2",        "run",          "Encoder",       show=True),
         Binding("f3",        "run_mux",      "Muxer",         show=True),
-        Binding("f9",        "add_track",    "Ajouter piste", show=True),
+        Binding("f9",        "add_track",    "Ajouter", show=True),
         Binding("backspace", "go_back",      "Retour",        show=True),
         Binding("escape",    "go_back",      "Retour",        show=False, priority=True),
     ]
@@ -170,24 +170,24 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             yield Label("Mesure en cours", id="sync-bar-label")
             yield ProgressBar(total=100, show_eta=False, id="sync-bar")
         yield Static(_HINT, id="sync-hint")
-        yield TwoLineFooter(
-            line1=[
-                ("enter",     "Liste de choix"),
+        yield KeyFooter(
+            actions=[
+                ("enter",     "Liste"),
                 ("m",         "Mesurer"),
-                ("v",         "Visualiser dans mpv"),
-                ("k",         "Extrait de contrôle"),
-                ("a",         "Appliquer quand même"),
-                ("s",         "Plages détectées"),
-                ("p",         "Appliquer les plages"),
-                ("c",         "Copier décalage"),
+                ("v",         "mpv"),
+                ("k",         "Extrait"),
+                ("a",         "Forcer"),
+                ("s",         "Plages"),
+                ("p",         "Appliquer"),
+                ("c",         "Copier"),
                 ("d",         "Retirer"),
-                ("f9",        "Ajouter piste"),
+                ("f9",        "Ajouter"),
                 ("f1",        "Dry-run"),
                 ("f2",        "Encoder"),
                 ("f3",        "Muxer"),
                 ("backspace", "Retour"),
             ],
-            line2=footer_line2(nav=True),
+            nav=footer_line2(nav=True),
         )
 
     def on_mount(self) -> None:

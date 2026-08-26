@@ -32,7 +32,7 @@ from ..common import (
     get_measured_speed,
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
-from ..widgets.footer import TwoLineFooter
+from ..widgets.footer import KeyFooter
 from .value_picker import ValuePickerScreen
 
 if TYPE_CHECKING:
@@ -117,14 +117,14 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         yield Static("", id="status-bar", classes="status-bar")
         yield DataTable(id="dryrun-table", cursor_type="row", zebra_stripes=True)
         yield Static("", id="dryrun-summary")
-        yield TwoLineFooter(
-            line1=[
-                ("f2",        "Lancer l'encodage"),
+        yield KeyFooter(
+            actions=[
+                ("f2",        "Lancer"),
                 ("f6",        "Codec"),
                 ("f7",        "Débit"),
                 ("backspace", "Retour"),
             ],
-            line2=footer_line2(nav=True, resize=True),
+            nav=footer_line2(nav=True, resize=True),
         )
 
     def on_mount(self) -> None:

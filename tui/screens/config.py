@@ -19,7 +19,7 @@ from core import profiles as prof_mod
 from core.profiles import Profile
 from ..common import DV_VALUE_STYLES, footer_line2
 from ..mixins import TableNavMixin
-from ..widgets.footer import TwoLineFooter
+from ..widgets.footer import KeyFooter
 from ..widgets.profile_form import ProfileCancelled, ProfileForm, ProfileSaved
 
 if TYPE_CHECKING:
@@ -72,15 +72,15 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         with Static(id="config-actions"):
             yield Button("+ Nouveau profil",  id="btn-new",  variant="primary")
             yield Button("← Retour",          id="btn-back", variant="default")
-        yield TwoLineFooter(
-            line1=[
+        yield KeyFooter(
+            actions=[
                 ("enter",     "Activer profil"),
                 ("n",         "Nouveau"),
                 ("e",         "Éditer"),
                 ("d",         "Supprimer"),
                 ("backspace", "Retour"),
             ],
-            line2=footer_line2(nav=True),
+            nav=footer_line2(nav=True),
         )
 
     def on_mount(self) -> None:

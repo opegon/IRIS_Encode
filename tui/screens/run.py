@@ -23,7 +23,7 @@ from core.muxer import (
 from core.platform import PlatformProfile
 from ..common import footer_line2, record_measured_speed
 from ..mixins import TableNavMixin
-from ..widgets.footer import TwoLineFooter
+from ..widgets.footer import KeyFooter
 
 
 # ─── État fichier ─────────────────────────────────────────────────────────────
@@ -119,13 +119,13 @@ class RunScreen(TableNavMixin, Screen):
         with Static(id="cmd-zone"):
             yield Static("", id="cmd-lines")
             yield Static("", id="ffmpeg-line")
-        yield TwoLineFooter(
-            line1=[
+        yield KeyFooter(
+            actions=[
                 ("p",         "Pause / Reprendre"),
                 ("s",         "Passer le fichier"),
                 ("backspace", "Retour"),
             ],
-            line2=footer_line2(nav=True),
+            nav=footer_line2(nav=True),
         )
 
     def on_mount(self) -> None:

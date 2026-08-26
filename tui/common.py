@@ -3,7 +3,7 @@ tui/common.py — Formatage, styles et libellés partagés entre les écrans.
 
 Centralise ce qui était dupliqué entre browser/tracks/dryrun/config :
 formatage tailles/durées, couleurs Dolby Vision, options des pickers
-codec/débit, groupes de raccourcis standard pour le TwoLineFooter.
+codec/débit, groupes de raccourcis standard pour le KeyFooter.
 """
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.0.8 — document de référence courant
+**Version** : 0.8.0.9 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 
@@ -76,7 +76,7 @@ iris_encode/
 │   │   └── quit.py               ← confirmation quitter
 │   └── widgets/
 │       ├── file_tree.py          ← FileNavigator (navigation virtuelle + répertoires)
-│       ├── footer.py             ← TwoLineFooter (footer 2 lignes)
+│       ├── footer.py             ← KeyFooter (raccourcis, hauteur variable)
 │       └── profile_form.py       ← formulaire création/édition profil
 ├── logger/
 │   └── logger.py                 ← module inerte (API prête, non implémenté)

@@ -1,5 +1,16 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.0.1] — 2026-08-26
+
+- **`Ctrl+D` — supprimer le fichier sous le curseur** depuis le browser, avec
+  confirmation (`tui/screens/delete_confirm.py`, bâtie sur `ConfirmModal`, focus
+  initial sur *Annuler*). Pendant de `v` : juger une source amène parfois à
+  constater qu'elle ne vaut rien. Suppression définitive, sans corbeille ; la
+  ligne disparaît sans re-scanner le dossier. Un fichier encore ouvert dans mpv
+  fait échouer la suppression sous Windows — le message le dit.
+- **Documentation** : consolidation des trois specs concurrentes en un document
+  unique à nom fixe (`iris_encode_spec.md`) suivant la version.
+
 ## [v0.8.0] — 2026-08-26
 
 ### Greffe de pistes externes
@@ -39,8 +50,9 @@ fichier, sans réencoder la vidéo, chaque piste portant son propre décalage.
 
 ### Estimation
 
-- Colonnes **Estim. (Δ%)** et **Temps estim.** au dry-run, appuyées sur une
-  moyenne mobile de vitesse d'encodage relevée à chaque passe.
+- Colonne **Temps estim.** au dry-run, appuyée sur une moyenne mobile de vitesse
+  d'encodage relevée à chaque passe. (`Estim. (Δ%)` avait été ajoutée en v0.6.5,
+  `Durée` en v0.7.1.)
 
 ### Corrections
 
@@ -51,7 +63,7 @@ fichier, sans réencoder la vidéo, chaque piste portant son propre décalage.
 - Le preflight ne dépend plus d'un terminal interactif.
 - `.gitattributes` impose le CRLF aux scripts Windows.
 
-## [Non publié]
+## [v0.7.1] — 2026-08-06
 
 - **Dry-run : colonne « Durée »** entre Taille et Estim. (Δ%) — durée de chaque
   fichier au format h:mm:ss, redimensionnable comme les autres colonnes
@@ -62,6 +74,8 @@ fichier, sans réencoder la vidéo, chaque piste portant son propre décalage.
   suppriment la source. Remplace les chaînes paddées à la main ; le callback
   reçoit l'id du profil (plus robuste qu'un index). Utilisé par Browser et
   TracksScreen.
+- Correction du crash `NoMatches` sur `Backspace` pendant un encodage.
+- Gestion des événements clavier dans les modales de saisie.
 
 ---
 

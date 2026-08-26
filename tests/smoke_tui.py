@@ -166,6 +166,9 @@ _SRT = """1
 Bonjour.
 """
 
+# Decalage injecte dans le SRT du scenario de mesure (secondes)
+_MEASURE_OFFSET = 2.5
+
 
 def _make_donor_set(td: Path) -> bool:
     """Cible video+audio, donneur audio (VF) et sous-titre externe."""
@@ -344,10 +347,106 @@ async def scenario_external_tracks() -> None:
                   f"{run_dec.info.path.name} -> {run_dec.output_path.name}")
 
 
+def _make_measurable_set(td: Path) -> bool:
+    """Video a parole intermittente + SRT cale sur cette parole, mais decale."""
+    import wave
+    import numpy as np
+    from core import config as cfg_mod
+    from core.preflight import get_tool_path
+    ffmpeg = get_tool_path("ffmpeg", cfg_mod.get_bin_dir(cfg_mod.load()))
+    if not ffmpeg:
+        return False
+
+    sr, dur = 16_000, 240.0
+    rng = np.random.default_rng(7)
+    ivs, t = [], 3.0
+    while t < dur - 5:
+        d = rng.uniform(1.0, 3.5)
+        ivs.append((t, t + d))
+        t += d + rng.uniform(0.5, 4.0)
+
+    sig = rng.normal(0, 0.02, int(dur * sr)).astype(np.float32)
+    for a, b in ivs:
+        i, j = int(a * sr), int(b * sr)
+        x = np.arange(j - i) / sr
+        voice = (np.sin(2*np.pi*180*x)*0.5 + np.sin(2*np.pi*700*x)*0.3
+                 + np.sin(2*np.pi*2500*x)*0.2)
+        sig[i:j] += (voice * np.abs(np.sin(2*np.pi*4*x)) * 0.5).astype(np.float32)
+
+    wav = td / "voix.wav"
+    with wave.open(str(wav), "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr)
+        w.writeframes((np.clip(sig, -1, 1) * 32767).astype("<i2").tobytes())
+
+    subprocess.run(
+        [str(ffmpeg), "-y", "-loglevel", "error",
+         "-f", "lavfi", "-i", f"testsrc=duration={dur}:size=160x120:rate=5",
+         "-i", str(wav), "-c:v", "libx264", "-preset", "ultrafast",
+         "-c:a", "ac3", "-shortest", str(td / "film.mkv")],
+        check=True, capture_output=True,
+    )
+
+    def ts(x):
+        h, r = divmod(max(0.0, x), 3600); m, s = divmod(r, 60)
+        return f"{int(h):02d}:{int(m):02d}:{int(s):02d},{int((s % 1) * 1000):03d}"
+    lignes = []
+    for k, (a, b) in enumerate(ivs, 1):
+        lignes += [str(k),
+                   f"{ts(a + _MEASURE_OFFSET)} --> {ts(b + _MEASURE_OFFSET)}",
+                   f"Replique {k}", ""]
+    (td / "film.fr.srt").write_text("\n".join(lignes), encoding="utf-8")
+    return True
+
+
+async def scenario_measure() -> None:
+    """Mesure automatique du decalage d'un sous-titre (touche m)."""
+    with tempfile.TemporaryDirectory() as td_str:
+        td = Path(td_str)
+        if not _make_measurable_set(td):
+            print("[14] SKIP : ffmpeg introuvable")
+            return
+
+        app = IrisEncodeApp(start_path=td)
+        if not app.mkvmerge_available:
+            print("[14] SKIP : mkvmerge introuvable")
+            return
+
+        async with app.run_test(size=(160, 45)) as pilot:
+            await pilot.pause(0.5)
+            from tui.screens.browser import BrowserScreen
+            app.push_screen(BrowserScreen(td, start_virtual=False))
+            await pilot.pause(5.0)
+            await pilot.press("t")
+            await pilot.pause(0.8)
+            await _add_donor(pilot, app, "film.fr.srt")
+            assert type(app.screen).__name__ == "SyncScreen", type(app.screen).__name__
+
+            sync_scr = app.screen
+            piste = sync_scr._tracks[0]
+            assert piste.delay_ms == 0
+
+            # 'm' : la mesure tourne dans un thread, on lui laisse le temps
+            await pilot.press("m")
+            for _ in range(40):
+                await pilot.pause(0.5)
+                if not sync_scr._measuring:
+                    break
+            assert not sync_scr._measuring, "mesure jamais terminee"
+
+            from core.muxer import SyncOrigin
+            attendu = -int(round(_MEASURE_OFFSET * 1000))
+            assert piste.sync_origin == SyncOrigin.MEASURED, piste.sync_origin
+            ecart = abs(piste.delay_ms - attendu)
+            assert ecart <= 50, f"mesure {piste.delay_ms} ms, attendu {attendu} ms"
+            print(f"[14] Mesure auto : SRT decale de {_MEASURE_OFFSET * 1000:.0f} ms "
+                  f"-> correction {piste.delay_ms} ms (ecart {ecart} ms)")
+
+
 async def main() -> None:
     await scenario_navigation()
     await scenario_parallel_scan()
     await scenario_external_tracks()
+    await scenario_measure()
     print("SMOKE OK")
 
 

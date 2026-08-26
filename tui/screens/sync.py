@@ -17,7 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from rich.text import Text
-from textual import on
+from textual import on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.events import Key
@@ -25,7 +25,8 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Header, Static
 
 from core.decision import FileDecision
-from core.muxer import ExternalTrack, SyncOrigin, TrackKind
+from core.muxer import ExternalTrack, SyncOrigin, TrackKind, ffmpeg_stream_index
+from core.sync import SyncResult, measure_audio, measure_subtitle
 
 from ..common import footer_line2
 from ..mixins import TableNavMixin
@@ -68,8 +69,8 @@ _BOOLS = ["non", "oui"]
 _DELAY_STEP_MS = 100
 _DELAY_JUMP_MS = 1000
 
-_HINT = ("←/→  Champ     +/-  ±100 ms     Shift+↑/↓  ±1 s     "
-         "↵  Liste     c  Copier décalage     d  Retirer")
+_HINT = ("←/→  Champ     +/-  ±100 ms     Shift+↑/↓  ±1 s     ↵  Liste     "
+         "m  Mesurer     c  Copier décalage     d  Retirer")
 _HINT_NO_LANG = ("⚠ Langue manquante — +/- ou ↵ pour la choisir. "
                  "Sans elle, la piste sortirait en « und ».")
 
@@ -87,6 +88,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("shift+up",  "jump_up",      "+1 s",          show=False),
         Binding("shift+down","jump_down",    "-1 s",          show=False),
         Binding("enter",     "open_picker",  "Liste",         show=True, priority=True),
+        Binding("m",         "measure",      "Mesurer",       show=True),
         Binding("c",         "copy_delay",   "Copier décalage", show=True),
         Binding("d",         "remove_track", "Retirer",       show=True),
         Binding("f2",        "run_mux",      "Muxer",         show=True),
@@ -116,6 +118,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         # champ plutôt que de laisser chercher.
         self._field_idx = (_FIELDS.index("lang")
                            if any(not t.language for t in tracks) else 0)
+        self._measuring = False
 
     # ── Composition ───────────────────────────────────────────────────────────
 
@@ -127,6 +130,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         yield TwoLineFooter(
             line1=[
                 ("enter",     "Liste de choix"),
+                ("m",         "Mesurer"),
                 ("c",         "Copier décalage"),
                 ("d",         "Retirer"),
                 ("f2",        "Muxer"),
@@ -349,6 +353,52 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self.app.push_screen(
             ValuePickerScreen(_FIELD_LABELS[field], opts, cur), _apply
         )
+
+    # ── Mesure automatique ────────────────────────────────────────────────────
+
+    def action_measure(self) -> None:
+        i = self._current()
+        if i is None or self._measuring:
+            return
+        self._measuring = True
+        self._set_hint(f"Mesure de « {self._tracks[i].source_path.name} » — "
+                       f"analyse de l'audio, patientez…")
+        self._measure(i)
+
+    @work(thread=True, name="sync-measure")
+    def _measure(self, i: int) -> None:
+        """Corrélation hors du thread UI : le décodage audio prend du temps."""
+        t = self._tracks[i]
+        try:
+            if t.kind == TrackKind.SUBTITLE:
+                res = measure_subtitle(self._source, t.source_path)
+            else:
+                # Le tid mkvmerge n'est pas l'index ffmpeg : il faut traduire
+                idx = ffmpeg_stream_index(t.source_path, t.source_tid, TrackKind.AUDIO)
+                res = measure_audio(self._source, t.source_path, idx)
+        except Exception as e:                       # ffmpeg absent, fichier illisible…
+            res = SyncResult(0, None, 0.0, False, f"mesure impossible : {e}")
+        self.app.call_from_thread(self._apply_measure, i, res)
+
+    def _apply_measure(self, i: int, res: SyncResult) -> None:
+        self._measuring = False
+        if not (0 <= i < len(self._tracks)):
+            return                                   # piste retirée entre-temps
+        if not res.ok:
+            self.app.bell()
+            self._set_hint(f"✗ {res.reason} — réglez le décalage à la main.")
+            return
+        t = self._tracks[i]
+        t.delay_ms    = res.delay_ms
+        t.stretch     = res.stretch
+        t.sync_origin = SyncOrigin.MEASURED
+        t.copied_from = None
+        self._refresh_row(i)
+        self._update_status()
+        self._set_hint(f"{'✓' if res.sure else '⚠'} {res.label()}")
+
+    def _set_hint(self, text: str) -> None:
+        self.query_one("#sync-hint", Static).update(text)
 
     # ── Reprise de décalage ───────────────────────────────────────────────────
 

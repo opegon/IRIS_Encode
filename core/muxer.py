@@ -170,6 +170,21 @@ def identify(path: Path) -> list[IdentifiedTrack]:
     return tracks
 
 
+def ffmpeg_stream_index(path: Path, tid: int, kind: TrackKind) -> int:
+    """
+    Traduit un tid mkvmerge en index ffmpeg (`0:a:N`) pour le même fichier.
+
+    C'est le seul endroit où les deux numérotations se croisent : mkvmerge
+    numérote globalement, ffmpeg par type. Partout ailleurs, on ne manipule
+    que des tid.
+    """
+    same_kind = [t for t in identify(path) if t.kind == kind]
+    for i, t in enumerate(same_kind):
+        if t.tid == tid:
+            return i
+    return 0
+
+
 # ─── Construction de la commande ──────────────────────────────────────────────
 
 def _sync_arg(t: ExternalTrack) -> str:

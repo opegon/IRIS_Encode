@@ -72,6 +72,8 @@ class IrisEncodeApp(App):
         ffmpeg_p = get_tool_path("ffmpeg", bin_dir)
         if ffmpeg_p:
             scanner.set_ffmpeg_path(ffmpeg_p)
+            from core import sync as sync_mod
+            sync_mod.set_ffmpeg_path(ffmpeg_p)
         # Câble mkvmerge pour la greffe de pistes externes (optionnel)
         from core import muxer
         mkvmerge_p = get_tool_path("mkvmerge", bin_dir)

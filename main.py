@@ -24,7 +24,7 @@ def _check_python_version() -> None:
 def _ensure_deps() -> None:
     """Vérifie que les dépendances Python sont installées."""
     missing = []
-    for pkg in ("textual", "rich", "tomli_w", "requests"):
+    for pkg in ("textual", "rich", "tomli_w", "requests", "numpy"):
         try:
             __import__(pkg)
         except ImportError:

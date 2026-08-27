@@ -11,6 +11,8 @@ from pathlib import Path
 
 from core import config as cfg_mod
 from core.decision import (
+    DVAction,
+    style_dv,
     AV1_BITRATE_OPTS_KBPS,
     BITRATE_OPTS_KBPS,
     VideoAction,
@@ -41,11 +43,13 @@ def record_measured_speed(cfg: dict, action: VideoAction, speed: float) -> None:
 
 # ─── Styles partagés ──────────────────────────────────────────────────────────
 
-# Couleur d'affichage de la valeur dolby_vision d'un profil (browser, config)
+# Couleur de la valeur `dolby_vision` d'un profil (browser, config). Dérivée de
+# la table unique : un profil réglé sur « sdr » doit alerter au même titre
+# qu'une décision qui l'applique.
 DV_VALUE_STYLES: dict[str, str] = {
-    "hdr10": "yellow",
-    "dv":    "green",
-    "sdr":   "bold dark_orange",
+    "hdr10": style_dv(DVAction.HDR10),
+    "dv":    style_dv(DVAction.DV),
+    "sdr":   style_dv(DVAction.SDR),
 }
 
 

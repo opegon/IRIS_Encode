@@ -1,5 +1,57 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.13] — 2026-08-27
+
+### Une seule table de couleurs, exprimée en rôles
+
+La même décision portait deux teintes selon l'écran : `→ HEVC` était magenta au
+browser et `dark_orange` sur l'écran des pistes. Trois tables indépendantes
+coloraient les mêmes notions — celle de `core/decision.py`, celle de
+`tracks.py`, et `DV_VALUE_STYLES` dans `tui/common.py` — et le vert signifiait
+« gain de taille » ici, « décision de piste » là.
+
+Les couleurs se décident désormais **une fois**, en nommant leur rôle plutôt
+qu'en choisissant une teinte :
+
+| Rôle | Ce qu'il signale | Teinte |
+|---|---|---|
+| `INACTION` | rien ne sera fait | `dim` |
+| `SANS_PERTE` | traité sans réencodage, image intacte | `green` |
+| `ORDINAIRE` | le cas courant | **aucune** |
+| `MODIFIEE` | l'utilisateur a écarté la décision automatique | `bold yellow` |
+| `ALERTE` | coûteux, lent, ou destructeur | `bold dark_orange` |
+
+Deux arbitrages, qui étaient les points d'attention du rapport :
+
+- **Le cas ordinaire ne porte plus aucune couleur.** `→ HEVC` occupe presque
+  chaque ligne de l'écran le plus dense et portait le magenta, la teinte la plus
+  criarde. Ce qui se répète partout n'a pas à attirer l'œil.
+- **`dark_orange` n'appartient plus qu'aux alertes** — le tone mapping SDR, qui
+  détruit la plage dynamique, et l'AV1, qui coûte des heures. L'écran des pistes
+  l'employait pour un encodage HEVC ordinaire, ce qui vidait la réserve de son
+  sens.
+
+Le vert, du coup, ne dit plus qu'une chose. La colonne d'estimation de taille
+l'utilisait pour « plus petit que la source » : une réduction étant le résultat
+attendu, elle ne porte plus de couleur, et seule une sortie **plus grosse** —
+une anomalie — passe en alerte.
+
+### Une décision « → HDR10 » s'affichait « ? »
+
+`_ACTION_SHORT` n'avait pas reçu d'entrée pour `VideoAction.STRIP_DV`, introduit
+en v0.8.1.6 : l'écran des pistes affichait un point d'interrogation sans couleur
+sur tout fichier promis au retrait de Dolby Vision. Un test parcourt désormais
+tous les membres de l'énumération.
+
+**Vérification** — sur les huit films du dossier de travail, la décision porte
+la même couleur au browser, au dry-run, à l'écran d'encodage et à l'écran des
+pistes.
+
+Hors périmètre, à traiter avec le constat 10 : les marqueurs de curseur `◄►`
+restent en jaune, qui relève de la navigation et non de la décision.
+
+Correspond à l'entrée **IE-03** de `TODO.md`.
+
 ## [v0.8.1.12] — 2026-08-27
 
 ### Toute durée d'au moins une heure perdait son dernier chiffre

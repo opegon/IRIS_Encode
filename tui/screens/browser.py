@@ -21,6 +21,8 @@ from textual.widgets import DataTable, Header, Static
 from core import config as cfg_mod
 from core import preview
 from core.decision import (
+    Emphase,
+    STYLE_PAR_EMPHASE,
     AudioAction, FileDecision, VideoAction, decide, force_skip_to_encode,
 )
 from core.scanner import scan, scan_directory_recursive
@@ -365,7 +367,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         elif src_bytes > 0:
             delta_pct = (est_bytes - src_bytes) * 100 / src_bytes
             sign      = "+" if delta_pct > 0 else ""
-            color     = "dark_orange" if delta_pct > 0 else "green"
+            # Une sortie plus grosse que la source est une anomalie ; une
+            # sortie plus petite est le résultat attendu, elle n'a rien à
+            # signaler. Le vert reste réservé au « sans réencodage ».
+            color     = STYLE_PAR_EMPHASE[
+                Emphase.ALERTE if delta_pct > 0 else Emphase.ORDINAIRE]
             estim_txt = Text(
                 f"{fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)",
                 style=color, no_wrap=True,

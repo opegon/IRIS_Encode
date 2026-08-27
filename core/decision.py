@@ -27,6 +27,34 @@ class VideoAction(Enum):
     SKIP        = auto()
 
 
+class Emphase(Enum):
+    """Rôle d'une valeur affichée, indépendant de la teinte retenue.
+
+    Une même décision portait jusqu'ici deux couleurs selon l'écran, et le
+    magenta — la teinte la plus criarde — signalait l'état le plus banal, celui
+    qui occupe presque chaque ligne. Les couleurs se décident donc ici, une
+    fois, en nommant ce qu'elles veulent dire.
+    """
+    INACTION   = auto()   # rien ne sera fait
+    SANS_PERTE = auto()   # traité sans réencodage : l'image n'est pas touchée
+    ORDINAIRE  = auto()   # le cas courant — il n'a pas à crier
+    MODIFIEE   = auto()   # l'utilisateur a écarté la décision automatique
+    ALERTE     = auto()   # coûteux, lent, ou destructeur
+
+
+# Le cas ordinaire ne porte aucune couleur : sur un écran dense, ce qui se
+# répète à chaque ligne ne doit pas attirer l'œil. Et `dark_orange` reste
+# réservé aux alertes (convention du projet) — la réserve n'a de valeur que si
+# rien d'autre ne l'emploie.
+STYLE_PAR_EMPHASE: dict["Emphase", str] = {
+    Emphase.INACTION:   "dim",
+    Emphase.SANS_PERTE: "green",
+    Emphase.ORDINAIRE:  "",
+    Emphase.MODIFIEE:   "bold yellow",
+    Emphase.ALERTE:     "bold dark_orange",
+}
+
+
 class DVAction(Enum):
     NONE   = auto()   # pas de DV détecté
     HDR10  = auto()   # DV → HDR10 (enlève RPU)
@@ -56,17 +84,48 @@ class VideoDecision:
         if self.dv_action == DVAction.SDR:   dv = " → SDR ⚠"
         return f"→ {codec}{dv}"
 
+    def emphase(self) -> "Emphase":
+        return emphase_video(self.action, self.dv_action)
+
     def style(self) -> str:
-        """Nom de style Rich pour la colonne Décision."""
-        if self.action == VideoAction.SKIP:
-            return "dim"
-        if self.action == VideoAction.STRIP_DV:
-            return "green"
-        if self.action == VideoAction.ENCODE_H264:
-            return "cyan"
-        if self.dv_action == DVAction.SDR:
-            return "yellow"
-        return "magenta"
+        """Style Rich de la décision — voir `Emphase`."""
+        return STYLE_PAR_EMPHASE[self.emphase()]
+
+
+def emphase_video(action: "VideoAction",
+                  dv_action: "DVAction" = None) -> "Emphase":
+    """Rôle d'une action vidéo, avec ou sans décision complète.
+
+    L'écran des pistes classe une action seule pendant que l'utilisateur choisit
+    un codec ; le browser classe une décision aboutie. Les deux passent par ici.
+    """
+    if action == VideoAction.SKIP:
+        return Emphase.INACTION
+    if action == VideoAction.STRIP_DV:
+        return Emphase.SANS_PERTE
+    # Le tone mapping détruit la plage dynamique, l'AV1 coûte des heures :
+    # ce sont les deux seuls choix vidéo qui méritent d'alerter.
+    if dv_action == DVAction.SDR or action == VideoAction.ENCODE_AV1:
+        return Emphase.ALERTE
+    return Emphase.ORDINAIRE
+
+
+def emphase_dv(dv_action: "DVAction") -> "Emphase":
+    """Rôle d'un traitement Dolby Vision, sur un écran comme dans un profil."""
+    if dv_action == DVAction.SDR:
+        return Emphase.ALERTE
+    if dv_action == DVAction.DV:
+        # Le flux vidéo est recopié tel quel : rien n'est recalculé.
+        return Emphase.SANS_PERTE
+    return Emphase.ORDINAIRE
+
+
+def style_video(action: "VideoAction", dv_action: "DVAction" = None) -> str:
+    return STYLE_PAR_EMPHASE[emphase_video(action, dv_action)]
+
+
+def style_dv(dv_action: "DVAction") -> str:
+    return STYLE_PAR_EMPHASE[emphase_dv(dv_action)]
 
 
 # ─── Décision audio ───────────────────────────────────────────────────────────

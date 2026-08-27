@@ -32,6 +32,10 @@ import core.config as cfg_mod
 from core import dovi
 from core.muxer import TrackKind
 from core.decision import (
+    Emphase,
+    STYLE_PAR_EMPHASE,
+    style_dv,
+    style_video,
     ACTION_CYCLE as _ACTION_CYCLE,
     cycle_index,
     same_intent,
@@ -60,17 +64,20 @@ _EDIT_FIELDS = ["action", "bitrate", "dv", "orig"]
 
 _DV_CYCLE     = [DVAction.HDR10, DVAction.DV, DVAction.SDR]
 
-_ACTION_SHORT = {
-    VideoAction.ENCODE_HEVC: ("HEVC",   "dark_orange"),
-    VideoAction.ENCODE_H264: ("H264",   "cyan"),
-    VideoAction.ENCODE_AV1:  ("AV1 ⚠", "bold dark_orange"),
-    VideoAction.SKIP:        ("SKIP",   "dim"),
+# Libellés courts seulement : les couleurs viennent de la table unique de
+# core.decision, sans quoi la même décision porte deux teintes selon l'écran.
+_ACTION_SHORT: dict[VideoAction, str] = {
+    VideoAction.ENCODE_HEVC: "HEVC",
+    VideoAction.ENCODE_H264: "H264",
+    VideoAction.ENCODE_AV1:  "AV1 ⚠",
+    VideoAction.STRIP_DV:    "HDR10",   # retrait du RPU, sans réencodage
+    VideoAction.SKIP:        "SKIP",
 }
-_DV_SHORT = {
-    DVAction.NONE:   ("—",     ""),
-    DVAction.HDR10:  ("HDR10", ""),
-    DVAction.DV:     ("DV",    "green"),
-    DVAction.SDR:    ("SDR ⚠", "yellow"),
+_DV_SHORT: dict[DVAction, str] = {
+    DVAction.NONE:   "—",
+    DVAction.HDR10:  "HDR10",
+    DVAction.DV:     "DV",
+    DVAction.SDR:    "SDR ⚠",
 }
 
 # Hints contextuels affichés dans la barre du bas selon la ligne courante
@@ -331,9 +338,11 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         ovr     = self._has_override()
 
         # Colonne "check" : icône action + indicateur override
-        act_short, act_col = _ACTION_SHORT.get(action, ("?", ""))
+        act_short = _ACTION_SHORT.get(action, "?")
+        act_col   = style_video(action, dv)
         check_txt = Text(no_wrap=True)
-        check_txt.append("✎ " if ovr else "  ", style="bold yellow" if ovr else "")
+        check_txt.append("✎ " if ovr else "  ",
+                         style=STYLE_PAR_EMPHASE[Emphase.MODIFIEE] if ovr else "")
         check_txt.append(act_short, style=act_col)
 
         # Colonne "src" : infos source. Affiche le sous-profil DV si connu (8.1, 7.06…).
@@ -368,7 +377,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         if info.dv_profile is None:
             dec_txt.append_text(_f("dv", "DV - N/A", "dim"))
         else:
-            dv_lbl, dv_sty = _DV_SHORT.get(dv, ("—", ""))
+            dv_lbl = _DV_SHORT.get(dv, "—")
+            dv_sty = style_dv(dv)
             dec_txt.append_text(_f("dv", f"DV → {dv_lbl}", dv_sty))
             # Avertissement si HDR10 demandé mais dovi_tool absent → qualité dégradée
             if dv == DVAction.HDR10 and not self._dovi_available():
@@ -639,7 +649,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
         elif field == "dv":
             if self._eff_dv() == DVAction.NONE: return
-            opts    = [_DV_SHORT[d][0] for d in _DV_CYCLE]
+            opts    = [_DV_SHORT[d] for d in _DV_CYCLE]
             current = _DV_CYCLE.index(self._eff_dv())
             def apply_dv(idx, s=self):
                 if idx is None: return

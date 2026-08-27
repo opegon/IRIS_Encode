@@ -390,6 +390,18 @@ class FileDecision:
 
 # ─── Logique vidéo ────────────────────────────────────────────────────────────
 
+# Codecs vidéo qu'une chaîne de lecture grand public prend en charge sans
+# transcodage — téléviseurs, clients mobiles, décodeurs matériels. Tout le
+# reste (VP9, AV1, VC-1, MPEG-2, DivX…) est réencodé, **quelle que soit sa
+# résolution** : un fichier illisible chez le destinataire ne devient pas
+# lisible parce que son débit est raisonnable.
+#
+# L'AV1 y figure comme *source* à convertir et non comme cible : les décodeurs
+# matériels ne le prennent que sur les modèles récents, et le tour de la
+# question se pose au cas par cas.
+CODECS_LISIBLES: frozenset[str] = frozenset({"h264", "hevc"})
+
+
 # Le retrait du RPU demande dovi_tool *et* mkvmerge. Sans eux, proposer
 # « → HDR10 » serait proposer une action qui échouera au lancement : la
 # décision retombe sur SKIP. L'application le renseigne au démarrage.
@@ -497,16 +509,16 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
             output_suffix=suffix,
         )
 
-    # CAS 3 — Codec non-standard sur source < 1080p
-    if info.height < 1080 and info.codec not in {"h264", "hevc"}:
+    # CAS 3 — Codec que la chaîne de lecture ne prend pas
+    if info.codec.lower() not in CODECS_LISIBLES:
         return VideoDecision(
-            action=VideoAction.ENCODE_H264,
-            reason=f"Codec non-standard ({info.codec}), résolution < 1080p",
+            action=action,
+            reason=f"Codec {info.codec} non lu par la chaîne",
             target_bitrate=info.bitrate,
-            target_width=info.width,
-            target_height=info.height,
+            target_width=limit_w,
+            target_height=limit_h,
             dv_action=dv_action,
-            output_suffix="_[H264]",
+            output_suffix=suffix,
         )
 
     # Rien à réencoder, mais un RPU Dolby Vision à retirer : le profil demande

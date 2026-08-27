@@ -1,5 +1,37 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.21] — 2026-08-28
+
+### Les sources WebM, VP9, AV1 et Opus traversent la chaîne
+
+`.webm` était déjà une extension reconnue, et l'Opus déjà transcodé. Mais la
+règle du codec non standard **ne se déclenchait qu'en dessous de 1080p** : un
+VP9 ou un AV1 en 1080p ou en 4K, dont le débit et la résolution tenaient dans
+les seuils du profil, ressortait en `← SKIP`. Il restait donc illisible chez le
+destinataire — un fichier ne devient pas lisible parce que son débit est
+raisonnable.
+
+Le critère porte désormais sur le codec seul. `CODECS_LISIBLES` — `h264` et
+`hevc` — nomme ce qu'une chaîne grand public prend sans transcodage ; tout le
+reste est réencodé, à toute résolution : VP9, AV1, VC-1, MPEG-2, DivX, et un
+codec que ffprobe ne reconnaît pas.
+
+La cible suit le bucket de résolution, comme les autres cas : H264 sous 1080p
+où il compresse mieux, HEVC au-dessus.
+
+Vérifié de bout en bout sur des fichiers réels :
+
+| Source | Sortie |
+|---|---|
+| WebM VP9 1080p + Opus 2.0 | **HEVC Main + AAC LC 192k**, MP4 |
+| WebM AV1 720p + Opus 5.1 | **H264 High + AC3 5.1 448k**, MP4 |
+
+Les deux se lisent en direct sur un téléviseur récent comme sur un client
+mobile, sans que le serveur ait à transcoder.
+
+Le débit et la résolution gardent la priorité : un VP9 trop gros reste traité
+par le cas du débit, et le motif affiché dit lequel a tranché.
+
 ## [v0.8.1.20] — 2026-08-28
 
 ### Le conteneur de sortie se règle par profil

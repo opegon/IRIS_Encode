@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.20 — document de référence courant
+**Version** : 0.8.1.21 — document de référence courant
 **Date** : 2026-08-27
 **Statut** : stable
 
@@ -384,9 +384,20 @@ params = [
 |---|---|---|
 | **CAS 1** | bitrate source ≥ seuil cible | Réencodage HEVC (ou H264 si cible < 1080p) au bitrate cible |
 | **CAS 2** | bitrate OK mais résolution trop grande | Redimensionnement HEVC, bitrate original |
-| **CAS 3** | bitrate OK, résolution OK, codec non-standard | Réencodage H264, bitrate et taille conservés |
+| **CAS 3** | bitrate OK, résolution OK, **codec hors `CODECS_LISIBLES`** | Réencodage, bitrate conservé — H264 sous 1080p, HEVC au-dessus |
 | **STRIP_DV** | aucun des cas ci-dessus, mais RPU retirable (DV 8.1 ou 7) et profil en `hdr10` | Retrait du RPU par remux, sans réencodage (§ 7.3) |
 | **SKIP** | bitrate OK, résolution OK, codec H264 ou HEVC | Aucun traitement |
+
+**Le CAS 3 ne regarde plus la résolution.** `CODECS_LISIBLES` — `h264` et
+`hevc` — énumère ce qu'une chaîne de lecture grand public prend sans
+transcodage. Tout le reste (VP9, AV1, VC-1, MPEG-2, DivX, codec inconnu) est
+réencodé **quelle que soit sa résolution** : un fichier illisible chez le
+destinataire ne devient pas lisible parce que son débit est raisonnable. La
+règle ne se déclenchait auparavant qu'en dessous de 1080p, et un WebM VP9 en
+1080p ou en 4K ressortait donc en `← SKIP`.
+
+L'AV1 y figure comme **source à convertir**, jamais comme cible implicite : son
+décodage matériel n'existe que sur les modèles récents.
 
 **Le débit comparé est celui de la vidéo seule.** Un profil fixe un débit
 vidéo cible, et c'est un débit vidéo que reçoit l'encodeur (`-b:v`) : les
@@ -1564,6 +1575,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.21 | 2026-08-28 | **Sources WebM / VP9 / AV1 / Opus** : le CAS 3 ne regarde plus la résolution — un VP9 ou AV1 en 1080p ou 4K restait en `← SKIP`, donc illisible chez le destinataire · `CODECS_LISIBLES` nomme le critère |
 | 0.8.1.20 | 2026-08-28 | **Clé `container`** (`auto` / `mp4` / `mkv`, § 8.6) : le profil exprime une politique, jamais au prix d'une piste perdue en silence · le retrait de Dolby Vision sait sortir en MP4, remuxé par ffmpeg · deux images perdues au remux MP4 (DTS négatifs) |
 | 0.8.1.19 | 2026-08-28 | **Le mode HDR10 quality n'injectait rien** : `rpu_info()` analysait du texte quand `dovi_tool` rend du JSON · métadonnées lues dans les SEI par ffprobe, pour toute source HDR, trois fois moins cher au scan · **ffprobe et ffmpeg appelés par leur nom nu** échouaient sur une installation où les binaires ne sont que dans `./bin/` |
 | 0.8.1.18 | 2026-08-28 | **Densité** : la notice de survol ne répète plus le dossier de la barre d'état (IE-08) · le footer enchaîne ses trois bandes et ne passe à la ligne qu'au débordement, une à deux lignes rendues au contenu selon l'écran (IE-09) |

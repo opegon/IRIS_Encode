@@ -1,19 +1,27 @@
 """
-tui/widgets/footer.py — Footer de raccourcis, réparti sur autant de lignes
-qu'il en faut.
+tui/widgets/footer.py — Footer de raccourcis, organisé en trois bandes.
 
 Le Footer Textual natif tient sur une ligne et tronque le reste. Ici les
-raccourcis sont répartis selon la largeur réellement disponible : sur un écran
-large tout tient en deux lignes, sur un 1920×1080 le même contenu en occupe
-trois ou quatre, mais **rien ne disparaît**.
+raccourcis sont rangés par rôle, du plus contextuel au plus stable :
 
-C'est le point important : une troncature silencieuse fait croire qu'une touche
-n'existe pas. Mieux vaut une ligne de plus qu'une action introuvable.
+    propres à l'écran      ce qui change d'un écran à l'autre
+    globaux                navigation et retour, identiques partout
+    touches de fonction    F1 à F10, toujours la dernière ligne
 
-Deux groupes conservent leur identité en s'enroulant séparément : les actions
-propres à l'écran d'abord, la navigation ensuite.
+Une place fixe par rôle vaut mieux qu'un ordre de déclaration : l'œil apprend
+où regarder, et les touches de fonction — les plus engageantes, celles qui
+lancent un encodage — sont toujours au même endroit.
+
+Chaque bande s'enroule sur autant de lignes que la largeur l'impose : **rien
+n'est jamais tronqué**. Une troncature silencieuse fait croire qu'une touche
+n'existe pas ; mieux vaut une ligne de plus qu'une action introuvable.
+
+Le footer reste dans le flux vertical, jamais ancré : ancré, il recouvrirait
+les dernières lignes de la table au lieu de lui laisser la place.
 """
 from __future__ import annotations
+
+import re
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -77,6 +85,29 @@ def pack(pairs: list[tuple[str, str]], width: int) -> list[list[tuple[str, str]]
     return lignes
 
 
+_FKEY = re.compile(r"^f(\d{1,2})$")
+
+
+def split_bands(actions: list[tuple[str, str]],
+                nav: list[tuple[str, str]],
+                ) -> list[list[tuple[str, str]]]:
+    """
+    Range les raccourcis en trois bandes, de haut en bas.
+
+    Les touches de fonction sont extraites des deux groupes et triées par
+    numéro plutôt que par ordre de déclaration : F1 avant F2 avant F10, quel
+    que soit l'écran.
+    """
+    fonctions: list[tuple[str, str]] = []
+    propres:   list[tuple[str, str]] = []
+    globaux:   list[tuple[str, str]] = []
+    for groupe, cible in ((actions, propres), (nav, globaux)):
+        for key, desc in groupe:
+            (fonctions if _FKEY.match(key.lower()) else cible).append((key, desc))
+    fonctions.sort(key=lambda p: int(_FKEY.match(p[0].lower()).group(1)))
+    return [propres, globaux, fonctions]
+
+
 def _render_line(pairs: list[tuple[str, str]]) -> Text:
     """Une ligne Rich avec les paires (touche, description) stylées."""
     t = Text(overflow="ellipsis", no_wrap=True)
@@ -92,12 +123,17 @@ class KeyFooter(Widget):
     """Footer de raccourcis, hauteur variable selon la largeur disponible."""
 
     DEFAULT_CSS = """
+    /* Hauteur posee explicitement par _redraw() : une hauteur `auto` depend de
+       la largeur, qui depend de la mise en page, qui depend du `1fr` du
+       contenu au-dessus. La boucle laissait la table a trois lignes et le
+       footer flottant au milieu de l'ecran. La valeur ci-dessous n'est qu'un
+       point de depart avant le premier calcul. */
     KeyFooter {
-        height: auto;
+        height: 2;
         layout: vertical;
     }
     KeyFooter #footer-body {
-        height: auto;
+        height: 100%;
         background: $primary-darken-2;
         color: $text;
         padding: 0 1;
@@ -128,13 +164,18 @@ class KeyFooter(Widget):
     def _redraw(self) -> None:
         largeur = max(0, self.size.width - _PADDING)
         lignes: list[Text] = []
-        for groupe in (self._actions, self._nav):
-            lignes.extend(_render_line(l) for l in pack(groupe, largeur))
+        for bande in split_bands(self._actions, self._nav):
+            lignes.extend(_render_line(l) for l in pack(bande, largeur))
         bloc = Text("\n").join(lignes) if lignes else Text("")
         try:
             self.query_one("#footer-body", Static).update(bloc)
         except Exception:
-            pass                      # pas encore monté : on_mount s'en chargera
+            return                    # pas encore monté : on_mount suivra
+        # La hauteur suit le nombre de lignes réellement produites ;
+        # le contenu au-dessus récupère tout le reste.
+        hauteur = max(1, len(lignes))
+        if self.styles.height is None or self.styles.height.value != hauteur:
+            self.styles.height = hauteur
 
     def update_line(self, line: int, pairs: list[tuple[str, str]]) -> None:
         """Remplace un groupe (1 = actions, 2 = navigation) et redessine."""

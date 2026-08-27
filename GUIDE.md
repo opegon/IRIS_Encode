@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.1.1
+**Version** : 0.8.1.2
 **Date** : 2026-08-27
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -238,8 +238,11 @@ chaque démarrage ; répondez `o`, ou placez les binaires dans `bin/`.
 - `⌫` ou `Esc` reviennent en arrière, partout.
 - `F10` quitte, toujours en dernier dans le pied de page.
 - `Début` `Fin` `Page ↑` `Page ↓` naviguent dans les tables.
-- Les raccourcis affichés en bas d'écran sont répartis sur autant de lignes
-  qu'il en faut : aucun n'est masqué, même sur un écran étroit.
+- Le pied de page range les raccourcis par rôle, du haut vers le bas :
+  **propres à l'écran**, puis **globaux** (navigation, retour), puis les
+  **touches de fonction** `F1` à `F10`, toujours en dernière ligne. Chaque
+  bande s'enroule sur autant de lignes que la largeur l'impose ; aucun
+  raccourci n'est masqué, même sur un écran étroit.
 - Les largeurs de colonnes sont mémorisées dans `config.toml`.
 - Les erreurs de scan sont journalisées dans
   `~/.iris_encode/iris_encode.log`.

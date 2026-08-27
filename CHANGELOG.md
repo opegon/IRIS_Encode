@@ -1,5 +1,25 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.2] — 2026-08-27
+
+- **Le footer ne se calait plus en bas de la fenêtre.** En passant le footer à
+  hauteur variable en v0.8.1.0, son ancrage avait été retiré du browser au
+  profit du `1fr` de la table — mais ce `1fr` ne s'appliquait pas : le
+  sélecteur de type `DataTable` perd contre le style par défaut du widget, là
+  où les autres écrans utilisent un sélecteur d'id. L'ancrage masquait le
+  défaut depuis toujours. Corrigé sur le browser et le dry-run.
+- La hauteur du footer est désormais posée explicitement plutôt que calculée
+  en `auto` : une hauteur `auto` dépend de la largeur, qui dépend de la mise
+  en page, qui dépend du `1fr` du contenu — la boucle laissait la table à
+  trois lignes.
+- Le footer reste dans le flux vertical, jamais ancré : ancré, il recouvrirait
+  les dernières lignes de la table au lieu de lui laisser la place.
+- **Les raccourcis sont rangés par rôle**, du haut vers le bas : propres à
+  l'écran, globaux, puis touches de fonction `F1` à `F10` toujours en dernière
+  ligne et triées par numéro. Une place fixe par rôle vaut mieux qu'un ordre
+  de déclaration : l'œil apprend où regarder, et les touches qui lancent un
+  encodage sont toujours au même endroit.
+
 ## [v0.8.1.1] — 2026-08-27
 
 - **`GUIDE.md`** — guide d'utilisation : le parcours en trois temps, les

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from tui.widgets.footer import _SEP, _entry_width, pack
+from tui.widgets.footer import _SEP, _entry_width, pack, split_bands
 
 _ACTIONS = [
     ("enter", "Liste"), ("m", "Mesurer"), ("v", "mpv"), ("k", "Extrait"),
@@ -56,3 +56,42 @@ def test_empty_and_degenerate_widths():
     # Largeur inconnue (avant le premier layout) : tout sur une ligne plutôt
     # que de perdre des raccourcis.
     assert pack(_ACTIONS, 0) == [_ACTIONS]
+
+
+# ─── Trois bandes ─────────────────────────────────────────────────────────────
+
+_NAV = [("home", "Début"), ("end", "Fin"), ("pageup", "Page ↑"), ("f10", "Quitter")]
+
+
+def test_function_keys_land_on_the_last_band():
+    """Les touches de fonction ont une place fixe : la dernière ligne."""
+    propres, globaux, fonctions = split_bands(_ACTIONS, _NAV)
+    # _ACTIONS mêle raccourcis d'écran et touches de fonction
+    assert [k for k, _ in fonctions] == ["f1", "f2", "f3", "f9", "f10"]
+    assert not [k for k, _ in propres if k.startswith("f") and k[1:].isdigit()]
+    assert not [k for k, _ in globaux if k.startswith("f") and k[1:].isdigit()]
+
+
+def test_function_keys_are_sorted_by_number():
+    """F9 avant F10, quel que soit l'ordre de déclaration dans l'écran."""
+    _, _, fonctions = split_bands(
+        [("f10", "Quitter"), ("f2", "Run"), ("f9", "Ajouter"), ("f1", "Dry-run")], [])
+    assert [k for k, _ in fonctions] == ["f1", "f2", "f9", "f10"]
+
+
+def test_bands_keep_every_shortcut():
+    actions = [("m", "Mesurer"), ("f2", "Encoder"), ("d", "Retirer")]
+    tout = [p for b in split_bands(actions, _NAV) for p in b]
+    assert sorted(tout) == sorted(actions + _NAV)
+
+
+def test_screen_and_global_stay_separate():
+    propres, globaux, _ = split_bands([("m", "Mesurer")], [("home", "Début")])
+    assert propres == [("m", "Mesurer")]
+    assert globaux == [("home", "Début")]
+
+
+def test_a_band_without_function_keys_is_empty_not_missing():
+    bandes = split_bands([("m", "Mesurer")], [])
+    assert len(bandes) == 3
+    assert bandes[2] == []

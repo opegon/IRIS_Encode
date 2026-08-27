@@ -130,7 +130,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         color: $text-muted;
         padding: 0 2;
     }
-    DataTable { height: 1fr; }
+    #file-table { height: 1fr; }
     """
 
     def __init__(self, path: Path, start_virtual: bool = False) -> None:

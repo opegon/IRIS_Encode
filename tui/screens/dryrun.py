@@ -99,7 +99,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         padding: 0 2;
         color: $text-muted;
     }
-    DataTable { height: 1fr; }
+    #dryrun-table { height: 1fr; }
     """
 
     def __init__(self, decisions: list[FileDecision]) -> None:

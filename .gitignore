@@ -51,3 +51,7 @@ Thumbs.db
 
 # Configuration locale de l'outillage
 .claude/
+
+# Revue d'interface : le generateur de captures et sa sortie.
+tests/shots_tui.py
+_shots/

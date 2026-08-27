@@ -1,5 +1,55 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.20] — 2026-08-28
+
+### Le conteneur de sortie se règle par profil
+
+Il se déduisait du seul contenu. Or le choix ne s'en déduit pas : certains
+lecteurs digèrent mal le Matroska, et c'est une politique, pas une propriété du
+fichier. Nouvelle clé **`container`**, réglable dans l'écran des profils :
+
+| Valeur | Effet |
+|---|---|
+| `auto` | Le contenu décide — comportement inchangé |
+| `mkv` | Toujours du Matroska, rien n'est écarté |
+| `mp4` | Les sous-titres image sont écartés, et la décision les compte |
+
+**Deux garde-fous, parce qu'une politique ne vaut pas une perte silencieuse :**
+
+- Si les sous-titres image sont les **seuls** du fichier, c'est le conteneur
+  qui cède. Mieux vaut un MKV qu'une sortie sans sous-titres.
+- Une piste audio sans perte **conservée** ramène toujours au MKV. On écarte un
+  sous-titre doublé par un SubRip ; on n'échange pas contre un format une piste
+  que l'utilisateur a demandé de garder.
+
+Et l'exclusion **se voit avant le lancement** : le dry-run affiche `MP4 −3 st`
+dans la colonne Conteneur, en style « modifié ». L'encodeur mappe la liste
+finale au lieu de `0:s?`, sans quoi l'exclusion aurait été purement décorative.
+
+Relevé sur le dossier de travail en mode `mp4` :
+
+| Fichier | Sortie | Écartés |
+|---|---|---|
+| Watchmen | MP4 | 3 PGS, doublés par 3 SubRip de mêmes langues |
+| Starship Troopers | MP4 | 3 PGS, doublés |
+| The Zookeeper's Wife | MP4 | 1 VobSub anglais ; le SubRip néerlandais reste |
+| **Colossus** | **MKV** | aucun — son unique sous-titre est une piste image |
+
+### Le retrait de Dolby Vision sait sortir en MP4
+
+Il passait par mkvmerge, qui ne sait écrire que du Matroska : la décision
+imposait donc le MKV, ce qui contredisait une politique `mp4`. Quand le
+conteneur demandé est le MP4, le remux passe désormais par ffmpeg.
+
+**Deux images étaient perdues.** Un flux HEVC brut n'a pas d'horodatage — d'où
+la cadence donnée avant l'entrée — et ses premières images portent des DTS
+négatifs que le muxeur MP4 refuse : il les jetait. Mesuré sur un extrait de
+2 270 images, la sortie n'en avait que 2 268, et la première manquait.
+`-avoid_negative_ts make_zero` décale la base au lieu de rogner.
+
+Vérifié après correction : **2 270 images des deux côtés, et les empreintes de
+200 images décodées sont identiques**.
+
 ## [v0.8.1.19] — 2026-08-28
 
 ### Le mode « HDR10 quality » n'a jamais injecté ses métadonnées

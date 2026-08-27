@@ -103,6 +103,38 @@ def build_extract_hevc_command(input_path: Path, output_hevc: Path,
     return cmd
 
 
+def build_strip_remux_mp4(video: Path, source: Path, output: Path,
+                          fps: str, sous_titres: list[int],
+                          ffmpeg_path: str = "ffmpeg") -> list[str]:
+    """Remux du flux dépouillé et des pistes de la source, vers du MP4.
+
+    mkvmerge ne sait écrire que du Matroska : quand le profil demande du MP4,
+    c'est ffmpeg qui recompose. Un flux HEVC brut ne porte aucun horodatage,
+    d'où la cadence donnée avant l'entrée.
+
+    Les sous-titres SubRip deviennent du `mov_text` ; les sous-titres image
+    n'entrent pas dans un MP4 et sont exclus en amont par la décision — s'ils
+    étaient les seuls, c'est le conteneur qui aurait cédé.
+    """
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error"]
+    if fps:
+        cmd += ["-r", fps]
+    cmd += ["-i", str(video), "-i", str(source),
+            "-map", "0:v:0", "-map", "1:a?"]
+    for index in sous_titres:
+        cmd += ["-map", f"1:s:{index}"]
+    cmd += ["-c", "copy"]
+    if sous_titres:
+        cmd += ["-c:s", "mov_text"]
+    # Un flux HEVC brut réordonné donne des DTS négatifs sur ses premières
+    # images ; le muxeur MP4, qui les refuse, les jetait. Mesuré : deux images
+    # perdues sur un extrait de 2270. `make_zero` décale la base au lieu de
+    # rogner.
+    cmd += ["-avoid_negative_ts", "make_zero",
+            "-movflags", "+faststart", str(output)]
+    return cmd
+
+
 def extract_rpu(hevc_path: Path, rpu_path: Path, dovi_path: Path) -> bool:
     """Extrait le RPU DV depuis un flux HEVC Annex-B."""
     cmd = [str(dovi_path), "extract-rpu", str(hevc_path), "-o", str(rpu_path)]

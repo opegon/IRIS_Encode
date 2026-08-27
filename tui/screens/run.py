@@ -440,27 +440,52 @@ class RunScreen(TableNavMixin, Screen):
                         "dovi_tool n'a pas pu retirer le RPU du flux.")
                 return
 
-            # 3/3 — remux avec les pistes de la source
-            cmd = build_strip_command(nodv, source, sortie,
-                                      fps=dec.info.frame_rate,
-                                      tracks=dec.external_tracks)
-            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
-            self.app.call_from_thread(
-                self._update_ffmpeg_line,
-                "▶ 3/3 Remux des pistes par mkvmerge…")
+            # 3/3 — remux avec les pistes de la source. mkvmerge ne sait
+            # écrire que du Matroska : quand le profil demande du MP4, c'est
+            # ffmpeg qui recompose.
+            if dec.output_container == ".mp4":
+                cmd = dovi.build_strip_remux_mp4(
+                    nodv, source, sortie,
+                    fps=dec.info.frame_rate,
+                    sous_titres=[st.index for st in dec.subtitles_finales],
+                    ffmpeg_path=getattr(self.app, "ffmpeg_path", "ffmpeg"))
+                self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+                self.app.call_from_thread(
+                    self._update_ffmpeg_line,
+                    "▶ 3/3 Remux des pistes par ffmpeg…")
+                proc = EncoderProcess(cmd, dec.info.duration)
+                self._process = proc
+                proc.start()
+                for ligne, progress in proc.iter_progress():
+                    s.last_line = ligne
+                    if progress:
+                        s.percent = progress.percent
+                        self.app.call_from_thread(self._update_row, index)
+                code = proc.wait()
+                self._process = None
+                erreurs: list[str] = []
+            else:
+                cmd = build_strip_command(nodv, source, sortie,
+                                          fps=dec.info.frame_rate,
+                                          tracks=dec.external_tracks)
+                self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+                self.app.call_from_thread(
+                    self._update_ffmpeg_line,
+                    "▶ 3/3 Remux des pistes par mkvmerge…")
 
-            mux = MuxProcess(cmd)
-            mux.start()
-            for ligne, pourcent in mux.iter_progress():
-                if pourcent is not None:
-                    s.percent = pourcent / 100.0
-                    self.app.call_from_thread(self._update_row, index)
-                elif ligne:
-                    self.app.call_from_thread(self._update_ffmpeg_line, ligne)
-            code = mux.wait()
+                mux = MuxProcess(cmd)
+                mux.start()
+                for ligne, pourcent in mux.iter_progress():
+                    if pourcent is not None:
+                        s.percent = pourcent / 100.0
+                        self.app.call_from_thread(self._update_row, index)
+                    elif ligne:
+                        self.app.call_from_thread(self._update_ffmpeg_line, ligne)
+                code = mux.wait()
+                erreurs = mux.errors
 
             if code != 0 or not sortie.exists():
-                detail = mux.errors[-1] if mux.errors else f"code {code}"
+                detail = erreurs[-1] if erreurs else f"code {code}"
                 echouer(f"remux : {detail}", f"Remux échoué — {detail}")
                 return
 

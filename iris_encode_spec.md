@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.19 — document de référence courant
+**Version** : 0.8.1.20 — document de référence courant
 **Date** : 2026-08-27
 **Statut** : stable
 
@@ -266,6 +266,7 @@ Le champ `dolby_vision` accepte : `"hdr10"` (DV → HDR10), `"dv"` (DV → DV co
 | `audio_surround_7_1_kbps` | int | débit AC3 7.1 |
 | `audio_copy_compatible` | bool | copier AAC / AC3 / EAC3 sans transcoder |
 | `audio_hd_codec` | str | `none` / `ac3` / `eac3` — transcoder TrueHD et DTS au débit de la source (§ 8.5) |
+| `container` | str | `auto` / `mp4` / `mkv` — conteneur de sortie (§ 8.6) |
 
 ### 6.2 Vue d'ensemble des builtins
 
@@ -540,11 +541,39 @@ met la famille dans `profile` : « DTS », « DTS-ES », « DTS-HD HR »,
 « DTS-HD MA ». `AudioTrack.profile` est donc lu au scan — sans lui, un DTS-HD MA
 passait pour un DTS ordinaire et échappait à `preserve_hd_audio`.
 
-### 8.6 Sous-titres
+### 8.6 Sous-titres et conteneur de sortie
 
 - PGS / DVD (image) → conteneur MKV, `-c:s copy`
-- SRT / ASS (texte) → conteneur MP4, `-c:s mov_text`
+- SRT (texte) → MP4 possible, `-c:s mov_text`
+- ASS / SSA → MKV : le style ne survit pas à `mov_text`
 - Sélection par piste depuis `TracksScreen` (par défaut : toutes conservées)
+
+**La clé `container`** exprime une politique de profil, parce que le choix ne
+se déduit pas du seul contenu : certains lecteurs digèrent mal le Matroska.
+
+| Valeur | Effet |
+|---|---|
+| `auto` | Le contenu décide. MP4 quand tout y tient. |
+| `mkv` | Toujours du Matroska, rien n'est écarté. |
+| `mp4` | Les sous-titres image sont **écartés**, et `sous_titres_ecartes` les liste pour que la décision les affiche. |
+
+**Deux garde-fous, parce qu'une politique ne vaut pas une perte silencieuse :**
+
+1. Si les sous-titres image sont les **seuls** du fichier, c'est le conteneur
+   qui cède — mieux vaut un MKV qu'une sortie sans sous-titres.
+2. Une piste audio sans perte **conservée** ramène toujours au MKV. On écarte
+   un sous-titre doublé par un SubRip ; on n'échange pas contre un format une
+   piste que l'utilisateur a demandé de garder.
+
+`subtitles_finales` donne ce qui atterrit réellement : l'encodeur mappe cette
+liste au lieu de `0:s?`, et le dry-run affiche `MP4 −3 st` en style « modifié ».
+
+**Retrait de Dolby Vision en MP4.** mkvmerge ne sait écrire que du Matroska :
+quand la décision demande du MP4, le remux passe par
+`dovi.build_strip_remux_mp4()`. Un flux HEVC brut n'a pas d'horodatage, d'où la
+cadence donnée avant l'entrée ; et ses premières images portent des DTS
+négatifs que le muxeur MP4 **jetait** — deux images perdues sur 2270, mesurées.
+`-avoid_negative_ts make_zero` décale la base au lieu de rogner.
 
 **Conteneur de sortie** — `output_container` suit les pistes réellement conservées :
 écarter les sous-titres image libère le MP4 ; `mov_text` n'est jamais proposé en
@@ -1535,6 +1564,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.20 | 2026-08-28 | **Clé `container`** (`auto` / `mp4` / `mkv`, § 8.6) : le profil exprime une politique, jamais au prix d'une piste perdue en silence · le retrait de Dolby Vision sait sortir en MP4, remuxé par ffmpeg · deux images perdues au remux MP4 (DTS négatifs) |
 | 0.8.1.19 | 2026-08-28 | **Le mode HDR10 quality n'injectait rien** : `rpu_info()` analysait du texte quand `dovi_tool` rend du JSON · métadonnées lues dans les SEI par ffprobe, pour toute source HDR, trois fois moins cher au scan · **ffprobe et ffmpeg appelés par leur nom nu** échouaient sur une installation où les binaires ne sont que dans `./bin/` |
 | 0.8.1.18 | 2026-08-28 | **Densité** : la notice de survol ne répète plus le dossier de la barre d'état (IE-08) · le footer enchaîne ses trois bandes et ne passe à la ligne qu'au débordement, une à deux lignes rendues au contenu selon l'écran (IE-09) |
 | 0.8.1.17 | 2026-08-28 | **L'écran des volumes promettait dix colonnes vides** : colonnes propres (Volume, Espace libre, Total, Occupé), barre d'état, bandeau de profil et footer adaptés au mode (IE-07) · `fmt_bytes` connaît le téraoctet |

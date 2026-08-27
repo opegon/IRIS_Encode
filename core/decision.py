@@ -280,39 +280,81 @@ class FileDecision:
 
     @property
     def kept_subtitles(self) -> list:
-        """Pistes de sous-titres réellement conservées (None = toutes)."""
+        """Pistes de sous-titres retenues par la sélection (None = toutes).
+
+        Le conteneur peut en écarter d'autres ensuite — voir
+        `sous_titres_ecartes` et `subtitles_finales`.
+        """
         if self.subtitle_indices is None:
             return list(self.info.subtitle_tracks)
         return [st for st in self.info.subtitle_tracks
                 if st.index in self.subtitle_indices]
 
     @property
-    def needs_mkv(self) -> bool:
+    def subtitles_finales(self) -> list:
+        """Ce qui atterrira vraiment dans le fichier de sortie."""
+        ecartes = self.sous_titres_ecartes
+        return [st for st in self.kept_subtitles if st not in ecartes]
+
+    def _mkv_impose_par_l_audio(self) -> bool:
+        """Une piste sans perte recopiée telle quelle ne tient pas en MP4.
+
+        On ne la sacrifie jamais : c'est une piste que l'utilisateur a demandé
+        de conserver, et la perdre serait une perte de contenu, pas de
+        confort.
         """
-        Le contenu impose-t-il le Matroska ?
-
-        Le critère porte sur ce que le fichier de sortie va contenir : pas son
-        histoire, et pas non plus les pistes écartées. Un MKV dont tout tient
-        en MP4 peut ressortir en MP4, et désélectionner la seule piste de
-        sous-titres image doit libérer le conteneur. Seuls les sous-titres
-        image, les sous-titres stylés (ASS/SSA) et l'audio sans perte
-        obligent au MKV — un SubRip n'a aucun style à perdre en mov_text.
-        """
-        # Le retrait du RPU passe par mkvmerge : la sortie est un Matroska,
-        # seul conteneur qui garde les SubRip et les titres de pistes intacts.
-        if self.video.action == VideoAction.STRIP_DV:
-            return True
-
-        if any(st.is_image_based or _needs_mkv_codec(st.codec)
-               for st in self.kept_subtitles):
-            return True
-
-        # Une piste sans perte recopiée telle quelle ne tient pas en MP4
         if any(ad.action == AudioAction.COPY and ad.track.is_lossless
                for ad in self.audio):
             return True
-
         return any(_needs_mkv_codec(ext.codec) for ext in self.external_tracks)
+
+    @property
+    def sous_titres_ecartes(self) -> list:
+        """Sous-titres que le conteneur MP4 oblige à laisser de côté.
+
+        Vide hors du mode `container = "mp4"`, et vide aussi lorsque ces
+        sous-titres sont les **seuls** du fichier : on préfère alors garder le
+        MKV plutôt que produire une sortie muette. Écarter une piste doublée
+        par un SubRip ne coûte rien ; écarter la dernière coûte le sous-titre.
+        """
+        if self.profile.get("container", "auto") != "mp4":
+            return []
+        # Si l'audio impose déjà le Matroska, la sortie y reste : rien à
+        # écarter, et pas de circularité avec `needs_mkv`.
+        if self._mkv_impose_par_l_audio():
+            return []
+        images = [st for st in self.kept_subtitles
+                  if st.is_image_based or _needs_mkv_codec(st.codec)]
+        if not images or len(images) == len(self.kept_subtitles):
+            return []
+        return images
+
+    @property
+    def needs_mkv(self) -> bool:
+        """
+        Le conteneur de sortie doit-il être du Matroska ?
+
+        Le critère porte sur ce que le fichier de sortie va contenir : pas son
+        histoire, et pas non plus les pistes écartées. Seuls les sous-titres
+        image, les sous-titres stylés (ASS/SSA) et l'audio sans perte
+        obligent au MKV — un SubRip n'a aucun style à perdre en mov_text.
+
+        Le profil peut forcer la main dans un sens comme dans l'autre, mais
+        jamais au prix d'une piste perdue en silence : en `container = "mp4"`,
+        un contenu qui ne rentre pas fait revenir au MKV plutôt que
+        disparaître.
+        """
+        voulu = self.profile.get("container", "auto")
+        if voulu == "mkv":
+            return True
+
+        # Le retrait du RPU passe par mkvmerge en MKV, par ffmpeg en MP4 :
+        # les deux sont possibles, le conteneur ne le contraint pas.
+        if self._mkv_impose_par_l_audio():
+            return True
+
+        return any(st.is_image_based or _needs_mkv_codec(st.codec)
+                   for st in self.subtitles_finales)
 
     @property
     def output_container(self) -> str:

@@ -94,7 +94,7 @@ def test_debit_sous_le_seuil_donne_un_retrait_de_dv(tmp_path):
     assert dec.video.action == VideoAction.STRIP_DV
     assert dec.video.dv_action == DVAction.HDR10
     assert dec.video.target_bitrate == 0
-    assert dec.output_path.name == "film_[hdr10].mkv"
+    assert dec.output_path.stem == "film_[hdr10]"
 
 
 def test_le_profil_garde_la_main_sur_le_reencodage(tmp_path):
@@ -121,11 +121,16 @@ def test_un_84_ne_devient_pas_un_retrait(tmp_path):
     assert dec.video.action == VideoAction.SKIP
 
 
-def test_sortie_toujours_en_mkv(tmp_path):
-    """mkvmerge remuxe : SubRip et titres de pistes survivent, le MP4 non."""
-    dec = decide(_info(tmp_path), _profile())
-    assert dec.needs_mkv is True
-    assert dec.output_container == ".mkv"
+@pytest.mark.parametrize("conteneur, attendu", [
+    ("auto", ".mp4"),   # rien dans ce fichier n'impose le Matroska
+    ("mkv",  ".mkv"),
+    ("mp4",  ".mp4"),
+])
+def test_le_conteneur_du_retrait_suit_le_profil(tmp_path, conteneur, attendu):
+    """Le retrait n'impose plus le Matroska : mkvmerge le produit, ffmpeg
+    produit le MP4, et c'est le contenu — ou le profil — qui tranche."""
+    dec = decide(_info(tmp_path), _profile(container=conteneur))
+    assert dec.output_container == attendu
 
 
 def test_resume_audio_montre_toutes_les_pistes(tmp_path):

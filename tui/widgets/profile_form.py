@@ -49,6 +49,12 @@ _BR_71         = [("448k", 448), ("640k", 640), ("768k", 768)]
 # indépendants (preserve_hd_audio et audio_hd_codec) pouvaient se contredire
 # en silence — l'un l'emportait sans que rien ne l'indique à l'écran.
 # Les valeurs sont des couples (preserve_hd_audio, audio_hd_codec).
+_CONTENEUR = [
+    ("auto — le contenu décide", "auto"),
+    ("mp4 — compatibilité",      "mp4"),
+    ("mkv — tout conserver",     "mkv"),
+]
+
 _HD_AUDIO = [
     ("copier telles quelles",              "copy"),
     ("→ E-AC3 au débit de la source",      "eac3"),
@@ -248,6 +254,21 @@ class ProfileForm(Widget):
             with Widget(classes="form-cell"):
                 pass
 
+        yield Static("", id="cons-hdaudio-suite", classes="consequence")
+
+        # ── Conteneur ─────────────────────────────────────────────────────────
+        yield Static("── CONTENEUR DE SORTIE", classes="section-hdr")
+
+        with Widget(classes="form-row"):
+            with Widget(classes="form-cell"):
+                yield Label("conteneur",   classes="form-lbl")
+                yield Select(_opts(_CONTENEUR), id="field-conteneur",
+                             classes="form-ctrl")
+            with Widget(classes="form-cell"):
+                pass
+
+        yield Static("", id="cons-conteneur", classes="consequence")
+
         yield Static("", id="cons-hdaudio", classes="consequence")
 
         # ── Autres pistes ─────────────────────────────────────────────────────
@@ -299,6 +320,18 @@ class ProfileForm(Widget):
         "fast":   "le plus rapide, qualité moindre à débit égal.",
         "medium": "compromis par défaut.",
         "slow":   "meilleure qualité à débit égal, environ 30 % plus lent.",
+    }
+
+    _CONTENEUR_TXT = {
+        "auto": ("Le contenu décide : MP4 quand tout y tient, MKV dès qu'un "
+                 "sous-titre image, un sous-titre stylé ou une piste sans "
+                 "perte s'y trouve."),
+        "mp4":  ("Les sous-titres image (PGS, VobSub) sont écartés — le MP4 ne "
+                 "les porte pas — et la décision les affiche. S'ils sont les "
+                 "seuls du fichier, c'est le conteneur qui cède : mieux vaut "
+                 "un MKV qu'une sortie sans sous-titres."),
+        "mkv":  ("Tout est conservé, y compris les sous-titres image et les "
+                 "pistes sans perte. Certains lecteurs digèrent mal le MKV."),
     }
 
     _HD_AUDIO_TXT = {
@@ -376,6 +409,10 @@ class ProfileForm(Widget):
         self._pose("#cons-hdaudio",
                    self._HD_AUDIO_TXT.get(self._txt("#field-hdaudio", "forfait"), ""))
 
+        self._pose("#cons-hdaudio-suite", "")
+        self._pose("#cons-conteneur",
+                   self._CONTENEUR_TXT.get(self._txt("#field-conteneur", "auto"), ""))
+
         self._pose("#cons-pistes",
                    "Les pistes AAC, AC3 et E-AC3 sont recopiées sans être "
                    "retouchées ; les forfaits ne concernent que les autres."
@@ -436,6 +473,7 @@ class ProfileForm(Widget):
         _set_sel("#field-stereo", data.get("audio_stereo_kbps",        192))
         _set_sel("#field-51",     data.get("audio_surround_kbps",      448))
         _set_sel("#field-71",     data.get("audio_surround_7_1_kbps",  640))
+        _set_sel("#field-conteneur", data.get("container", "auto"))
         _set_sel("#field-hdaudio", _hd_audio_depuis_cles(
             bool(data.get("preserve_hd_audio", False)),
             str(data.get("audio_hd_codec", "none"))))
@@ -486,6 +524,7 @@ class ProfileForm(Widget):
             "audio_surround_kbps":     _g_sel("#field-51",      448),
             "audio_surround_7_1_kbps": _g_sel("#field-71",      640),
             **_hd_audio_cles(_g_sel("#field-hdaudio", "forfait")),
+            "container":               _g_sel("#field-conteneur", "auto"),
             "audio_copy_compatible":   _g_chk("#field-copy-compat"),
         }
 
@@ -515,6 +554,7 @@ class ProfileForm(Widget):
         "#field-51":     _BR_SURROUND,
         "#field-71":     _BR_71,
         "#field-hdaudio": _HD_AUDIO,
+        "#field-conteneur": _CONTENEUR,
     }
 
     def _cycle_focused_select(self, delta: int) -> bool:

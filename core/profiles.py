@@ -35,6 +35,9 @@ _BASE_AUDIO = {
     # "none" | "ac3" | "eac3" — transcode les pistes TrueHD et DTS au débit
     # présent dans la piste, plafonné à ce que l'encodeur sait produire.
     "audio_hd_codec":          "none",
+    # "auto" | "mp4" | "mkv" — conteneur de sortie. "auto" laisse le contenu
+    # décider ; "mp4" écarte les sous-titres image, sauf s'ils sont les seuls.
+    "container":               "auto",
 }
 
 _BUILTINS: dict[str, dict[str, Any]] = {

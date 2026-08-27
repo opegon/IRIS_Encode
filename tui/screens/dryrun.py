@@ -187,6 +187,11 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             ]
 
             container = dec.output_container.upper().lstrip(".")
+            # Une piste écartée par le conteneur doit se voir avant le
+            # lancement, pas se découvrir dans le fichier produit.
+            ecartes = len(dec.sous_titres_ecartes)
+            if ecartes:
+                container += f"  −{ecartes} st"
 
             # Estimation taille de sortie — un seul stat() par fichier,
             # réutilisé pour la ligne ET les totaux du summary
@@ -242,7 +247,8 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 estim_txt,
                 temps_txt,
                 Text(vid.label(), style=vid.style()),
-                Text(container, no_wrap=True),
+                Text(container, no_wrap=True,
+                     style=STYLE_PAR_EMPHASE[Emphase.MODIFIEE] if ecartes else ""),
                 Text(dv_str, no_wrap=True),
                 Text(bitrate_str, no_wrap=True),
                 Text(res_str, no_wrap=True),

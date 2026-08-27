@@ -323,14 +323,19 @@ def build_command(
     for ad in included_audio:
         cmd += ["-map", f"0:a:{ad.track.index}"]
 
+    # Un profil en `container = "mp4"` écarte les sous-titres image, que le
+    # MP4 ne porte pas — jamais en silence : la décision les liste, et si ce
+    # sont les seuls du fichier, c'est le conteneur qui cède, pas eux.
+    ecartes = {st.index for st in decision.sous_titres_ecartes}
     sub_indices = decision.subtitle_indices
-    if sub_indices is None:
+    if sub_indices is None and not ecartes:
         cmd += ["-map", "0:s?"]
         n_src_subs = len(info.subtitle_tracks)
     else:
-        for si in sub_indices:
+        gardes = [st.index for st in decision.subtitles_finales]
+        for si in gardes:
             cmd += ["-map", f"0:s:{si}"]
-        n_src_subs = len(sub_indices)
+        n_src_subs = len(gardes)
 
     # Pistes externes : chacune est l'unique flux utile de son entrée
     from .muxer import TrackKind

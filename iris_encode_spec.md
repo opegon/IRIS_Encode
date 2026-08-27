@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.11 — document de référence courant
+**Version** : 0.8.1.12 — document de référence courant
 **Date** : 2026-08-27
 **Statut** : stable
 
@@ -929,6 +929,16 @@ Framework : **Textual**.
 
 Conventions transverses :
 
+- **Une colonne ne descend pas sous ce que son contenu exige.**
+  `core.config.COLUMN_MIN_WIDTHS` porte les planchers imposés par le contenu —
+  `duree` et `temps_estim` à 7, parce que `fmt_duration` rend sept caractères
+  dès qu'il y a des heures. Ils s'appliquent **à la lecture** autant qu'au
+  redimensionnement : une largeur trop courte a pu être persistée avant que le
+  plancher existe, et corriger le seul défaut ne répare pas ces
+  configurations. Les écrans reprennent cette table dans leur `RESIZE_MIN`
+  plutôt que d'en tenir une seconde. Toute cellule numérique porte en outre
+  `overflow="ellipsis"` : une coupe résiduelle se voit (`3:17:…`) au lieu de
+  produire une valeur plausible et fausse (`3:17:2`).
 - **Un afficheur qui montre un nom se construit en `markup=False`.** `Static`
   interprète par défaut ce qui ressemble à une balise entre crochets, et la
   convention de nommage du projet — `_[mux]`, `_[hevc]`, `_[av1]`, `_[hdr10]`,
@@ -1460,5 +1470,6 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.12 | 2026-08-27 | **Toute durée d'au moins une heure perdait son dernier chiffre** : défaut à 6 pour un contenu de 7 · planchers de colonne remontés dans `core.config`, appliqués aussi à la lecture des largeurs déjà persistées · ellipse sur les cellules numériques (IE-02) |
 | 0.8.1.11 | 2026-08-27 | **Le markup Rich mangeait les noms** portant `_[mux]`, `_[hevc]`, `_[av1]`, `_[hdr10]`, et les identifiants de profil : 14 afficheurs passent en `markup=False` (IE-01) |
 | 0.8.1.10 | 2026-08-27 | Écran des profils réorganisé en six sections, chacune énonçant la conséquence des valeurs choisies (§ 14.8) · `preserve_hd_audio` et `audio_hd_codec` fusionnés en un choix unique : réglés séparément, ils pouvaient se contredire sans que rien ne dise lequel l'emportait |

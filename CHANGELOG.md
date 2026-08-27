@@ -1,5 +1,34 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.12] — 2026-08-27
+
+### Toute durée d'au moins une heure perdait son dernier chiffre
+
+`fmt_duration` rend sept caractères dès qu'il y a des heures — `3:17:24`. La
+colonne en réservait six. Le résultat, `3:17:2`, s'affichait **sans ellipse** :
+non pas une valeur visiblement coupée, mais une durée valide et fausse. Tous les
+films étaient concernés.
+
+Trois protections, parce que la première seule ne suffisait pas :
+
+- **Le défaut de la colonne passe de 6 à 7.** Mesuré sur le dossier de travail,
+  c'était la seule colonne dont le contenu réel dépassait sa largeur — mais
+  `debit` et `estim` y tiennent tout juste, à un caractère près.
+- **Les planchers remontent dans `core.config.COLUMN_MIN_WIDTHS`**, et
+  s'appliquent **à la lecture** autant qu'au redimensionnement. C'est ce qui
+  répare les installations existantes : un `config.toml` portant déjà
+  `duree = 6`, écrit avant que le plancher existe, l'emportait sur le défaut
+  corrigé. Les écrans reprennent cette table plutôt que d'en tenir une seconde.
+- **Les cellules numériques portent une ellipse.** Rendu vérifié dans une vraie
+  `DataTable` : `3:17:…` avec, `3:17:2` sans. Une coupe qui se voit fait perdre
+  une information ; une coupe invisible en invente une.
+
+**Vérification** — sur `resources_files/`, les neuf durées s'affichent entières,
+dont le `3:35:23` du plus long film. Et la lecture du `config.toml` réel, qui
+portait `duree = 6` au dry-run, rend désormais 7.
+
+Correspond à l'entrée **IE-02** de `TODO.md`.
+
 ## [v0.8.1.11] — 2026-08-27
 
 ### Le markup Rich mangeait les noms de fichiers et de profils

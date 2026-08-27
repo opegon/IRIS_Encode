@@ -116,7 +116,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                      "duree": "Durée", "debit": "Débit", "codec": "Codec",
                      "dolby_vision": "Dolby V.", "decision": "Décision", "estim": "Estim. (Δ%)",
                      "temps_estim": "ETA", "audio": "Audio"}
-    RESIZE_MIN    = {"fichier": 30, "audio": 10}
+    # Les planchers imposés par le contenu viennent de core.config, seule
+    # source de vérité : ils valent aussi à la lecture d'une largeur persistée.
+    RESIZE_MIN    = {"fichier": 30, "audio": 10, **cfg_mod.COLUMN_MIN_WIDTHS}
 
     DEFAULT_CSS = """
     BrowserScreen {
@@ -344,7 +346,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         name_txt  = Text(f"{_FILE_ICON} {info.path.name}", overflow="ellipsis", no_wrap=True)
         size_txt  = Text(fmt_size(info.path), style="dim", no_wrap=True)
         res_txt   = Text(f"{info.width}x{info.height}")
-        dur_txt   = Text(fmt_duration(info.duration), style="dim")
+        dur_txt   = Text(fmt_duration(info.duration), style="dim",
+                         no_wrap=True, overflow="ellipsis")
         kbps_txt  = Text(f"{info.kbps}k")
         codec_txt = Text(info.codec)
         dv_txt    = Text(info.dv_label)
@@ -378,7 +381,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             info.duration, info.kbps * 1000, vid.target_bitrate,
             vid.action, preset, measured_speed
         )
-        temps_txt = Text(fmt_duration(est_duration), style="dim" if vid.action == VideoAction.SKIP else "")
+        temps_txt = Text(fmt_duration(est_duration), no_wrap=True,
+                         overflow="ellipsis",
+                         style="dim" if vid.action == VideoAction.SKIP else "")
 
         audio_txt = Text(dec.audio_summary, overflow="ellipsis", no_wrap=True)
 

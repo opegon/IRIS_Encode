@@ -97,7 +97,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         "res":         "Résolution",
         "audio":       "Audio",
     }
-    RESIZE_MIN    = {"fichier": 20, "audio": 10}
+    RESIZE_MIN    = {"fichier": 20, "audio": 10, **cfg_mod.COLUMN_MIN_WIDTHS}
 
     DEFAULT_CSS = """
     DryrunScreen { layout: vertical; }
@@ -222,14 +222,17 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 info.duration, info.kbps * 1000, vid.target_bitrate,
                 vid.action, preset, measured_speed
             )
-            temps_txt = Text(fmt_duration(est_enc_duration), style="dim" if vid.action == VideoAction.SKIP else "")
+            temps_txt = Text(fmt_duration(est_enc_duration), no_wrap=True,
+                             overflow="ellipsis",
+                             style="dim" if vid.action == VideoAction.SKIP else "")
 
             check_str = Text("[x]", no_wrap=True) if idx in self._selected else Text("[ ]", no_wrap=True)
             table.add_row(
                 check_str,
                 Text(info.path.name, overflow="ellipsis", no_wrap=True),
                 Text(fmt_bytes(src_bytes) if src_bytes else "—", style="dim", no_wrap=True),
-                Text(fmt_duration(info.duration), style="dim", no_wrap=True),
+                Text(fmt_duration(info.duration), style="dim", no_wrap=True,
+                     overflow="ellipsis"),
                 estim_txt,
                 temps_txt,
                 Text(vid.label(), style=vid.style()),

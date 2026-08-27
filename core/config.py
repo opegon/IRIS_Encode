@@ -46,7 +46,7 @@ _DEFAULTS: dict[str, Any] = {
                 "fichier":      50,
                 "taille":        8,
                 "resolution":   10,
-                "duree":         6,
+                "duree":         7,   # « 3:17:24 » — sept caractères dès une heure
                 "debit":         6,
                 "codec":         6,
                 "dolby_vision":  8,
@@ -104,8 +104,25 @@ def get_bin_dir(cfg: dict[str, Any]) -> Path:
     return p if p.is_absolute() else APP_DIR / p
 
 
+# Largeurs minimales imposées par le contenu, non par le goût. `fmt_duration`
+# rend sept caractères dès qu'il y a des heures : en dessous, « 3:17:24 »
+# s'affiche « 3:17:2 » — une durée valide et fausse. Ces planchers valent à la
+# lecture comme au redimensionnement, parce qu'une largeur trop courte a pu
+# être persistée avant qu'ils existent.
+COLUMN_MIN_WIDTHS: dict[str, int] = {
+    "duree":       7,
+    "temps_estim": 7,
+}
+
+
+def _plancher(widths: dict[str, int]) -> dict[str, int]:
+    """Relève les colonnes tombées sous ce que leur contenu exige."""
+    return {k: max(v, COLUMN_MIN_WIDTHS[k]) if k in COLUMN_MIN_WIDTHS else v
+            for k, v in widths.items()}
+
+
 def get_column_widths(cfg: dict[str, Any]) -> dict[str, int]:
-    return dict(
+    return _plancher(
         _DEFAULTS["tui"]["browser"]["columns"]
         | cfg.get("tui", {}).get("browser", {}).get("columns", {})
     )
@@ -164,7 +181,7 @@ _DRYRUN_COL_DEFAULTS: dict[str, int] = {
 
 
 def get_dryrun_column_widths(cfg: dict[str, Any]) -> dict[str, int]:
-    return dict(
+    return _plancher(
         _DRYRUN_COL_DEFAULTS
         | cfg.get("tui", {}).get("dryrun", {}).get("columns", {})
     )

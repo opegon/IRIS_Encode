@@ -1,5 +1,50 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.15] — 2026-08-28
+
+### Le footer suivait l'écran, pas le focus
+
+Pendant l'édition d'un profil, le footer annonçait encore les touches de
+l'écran Config — `N Nouveau`, `E Éditer`, `D Supprimer`, `↵ Activer profil` —
+alors que le formulaire tenait le focus et que **taper « n » écrivait un « n »
+dans le champ courant**. Les vraies touches n'étaient annoncées que par un
+bandeau propre au formulaire.
+
+Le comportement était juste : `check_action` neutralisait déjà ces touches.
+C'est l'affichage seul qui mentait — et un footer faux vaut moins qu'un footer
+vide, puisqu'il invite à des gestes sans effet.
+
+- Le formulaire publie ses raccourcis dans `ProfileForm.RACCOURCIS` ; l'écran
+  bascule le footer dessus à l'ouverture et restaure les siens à la fermeture.
+- **`F10 Quitter` reste dans les deux états**, comme la convention du projet
+  l'exige — la première version le faisait disparaître avec la ligne de
+  navigation, ce que le rendu à l'écran a montré.
+- **Le formulaire perd son bandeau propre.** Il disait vrai pendant que le
+  footer mentait ; maintenant que le footer dit vrai, deux bandeaux répétant la
+  même chose, c'en est un de trop.
+- La liste des raccourcis de l'écran n'est plus écrite deux fois — elle l'était
+  dans les `BINDINGS` et dans la construction du footer.
+
+Rendu vérifié à l'écran, dans les trois états :
+
+```
+liste       ↵ Activer profil   N Nouveau   E Éditer   D Supprimer   ⌫ Retour
+formulaire  Tab Champ suivant   ⇧Tab Champ précédent   ↵ Ouvrir une liste …
+retour      ↵ Activer profil   N Nouveau   E Éditer   D Supprimer   ⌫ Retour
+```
+
+### Les tests ne se contaminent plus entre eux
+
+Écrire ce test a révélé un piège : construire l'application pose les chemins
+d'outils en **variables de module**, qui survivaient au test et faussaient les
+suivants. `test_muxer` attendait `"mkvmerge"` et recevait le chemin absolu du
+binaire — selon l'ordre d'exécution, ce qui est la pire forme d'échec.
+
+`tests/conftest.py` sauvegarde et restaure ces variables autour de chaque test.
+Un test peut désormais construire l'application sans y penser.
+
+Correspond à l'entrée **IE-05** de `TODO.md`.
+
 ## [v0.8.1.14] — 2026-08-27
 
 ### Un seul rendu pour les noms de touches

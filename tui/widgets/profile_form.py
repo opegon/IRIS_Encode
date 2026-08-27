@@ -162,6 +162,18 @@ class ProfileForm(Widget):
     }
     """
 
+    # Raccourcis réellement actifs quand le formulaire tient le focus. Le
+    # footer de l'écran hôte les affiche à sa place tant qu'il est monté :
+    # sinon il annonce les touches de l'écran, qui ne répondent plus.
+    RACCOURCIS: list[tuple[str, str]] = [
+        ("tab",       "Champ suivant"),
+        ("shift+tab", "Champ précédent"),
+        ("enter",     "Ouvrir une liste"),
+        ("+/-",       "Valeur suiv./préc."),
+        ("ctrl+s",    "Enregistrer"),
+        ("escape",    "Annuler"),
+    ]
+
     def __init__(self, *, name=None, id=None, classes=None, disabled=False):
         super().__init__(name=name, id=id, classes=classes, disabled=disabled)
         self._profile_id = ""
@@ -276,15 +288,9 @@ class ProfileForm(Widget):
         yield Static("", id="cons-source", classes="consequence")
 
         # ── Pied ──────────────────────────────────────────────────────────────
-        yield Static(
-            "  " + raccourcis([("tab", "Champ suivant"),
-                               ("shift+tab", "Champ précédent"),
-                               ("enter", "Ouvrir une liste"),
-                               ("+/-", "Valeur suiv./préc."),
-                               ("ctrl+s", "Enregistrer"),
-                               ("escape", "Annuler")]),
-            classes="form-hint",
-        )
+        # Pas de pied propre : le footer de l'écran hôte porte ces mêmes
+        # raccourcis tant que le formulaire est monté. Deux bandeaux qui
+        # disent la même chose, c'est un de trop.
         yield Static("", id="form-error", classes="form-error")
 
     # ── Conséquences ──────────────────────────────────────────────────────────

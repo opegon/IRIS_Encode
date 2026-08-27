@@ -73,13 +73,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             yield Button("+ Nouveau profil",  id="btn-new",  variant="primary")
             yield Button("← Retour",          id="btn-back", variant="default")
         yield KeyFooter(
-            actions=[
-                ("enter",     "Activer profil"),
-                ("n",         "Nouveau"),
-                ("e",         "Éditer"),
-                ("d",         "Supprimer"),
-                ("backspace", "Retour"),
-            ],
+            actions=self._RACCOURCIS_ECRAN,
             nav=footer_line2(nav=True),
         )
 
@@ -211,8 +205,38 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             _on_answer,
         )
 
+    # Raccourcis de l'écran lui-même, restaurés à la fermeture du formulaire.
+    _RACCOURCIS_ECRAN: list[tuple[str, str]] = [
+        ("enter",     "Activer profil"),
+        ("n",         "Nouveau"),
+        ("e",         "Éditer"),
+        ("d",         "Supprimer"),
+        ("backspace", "Retour"),
+    ]
+
+    def _footer_suit(self, en_formulaire: bool) -> None:
+        """Le footer annonce les touches qui répondent, pas celles de l'écran.
+
+        Le formulaire est monté *dans* cet écran et lui prend le focus : sans
+        ça, le footer proposait « N Nouveau » alors que taper « n » écrivait
+        simplement un « n » dans le champ courant.
+        """
+        try:
+            pied = self.query_one(KeyFooter)
+        except Exception:
+            return
+        if en_formulaire:
+            pied.update_line(1, ProfileForm.RACCOURCIS)
+            # La navigation de table n'a plus cours, mais F10 reste : la
+            # convention du projet le veut en dernier sur tous les écrans.
+            pied.update_line(2, footer_line2(nav=False))
+        else:
+            pied.update_line(1, self._RACCOURCIS_ECRAN)
+            pied.update_line(2, footer_line2(nav=True))
+
     def _open_form(self, profile_id: str, is_new: bool) -> None:
         self._form_mode = True
+        self._footer_suit(True)
         self.query_one(DataTable).display         = False
         self.query_one(ProfileForm).remove_class("hidden")
         self.query_one("#config-actions").display = False
@@ -234,6 +258,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
     def _close_form(self) -> None:
         self._form_mode = False
+        self._footer_suit(False)
         self.query_one(DataTable).display         = True
         self.query_one(ProfileForm).add_class("hidden")
         self.query_one("#config-actions").display = True

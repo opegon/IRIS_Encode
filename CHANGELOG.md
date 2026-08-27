@@ -1,5 +1,20 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.5] — 2026-08-27
+
+- **Crash au lancement sur toute installation neuve** (v0.8.1.4 uniquement).
+  `_deep_merge` ne copiait que le premier niveau : les sous-dictionnaires
+  absents du fichier utilisateur étaient assignés *par référence*. Sans
+  `config.toml` — donc sur toute machine qui vient de télécharger l'archive —
+  `cfg["tui"]["browser"]` **était** `_DEFAULTS["tui"]["browser"]`, et la
+  réinitialisation des colonnes introduite en v0.8.1.4 vidait les valeurs par
+  défaut du module. Tout accès ultérieur levait `KeyError: 'columns'`.
+- La fusion recurse désormais sur toute valeur de type dict, y compris absente
+  du fichier utilisateur : aucune branche n'est plus partagée. Le piège
+  préexistait et attendait la première écriture en configuration.
+- `tests/test_config.py` verrouille l'isolation : une écriture dans la
+  configuration ne doit jamais atteindre les défauts du module.
+
 ## [v0.8.1.4] — 2026-08-27
 
 - **Largeurs de colonnes de l'accueil revues** : les colonnes numériques n'ont

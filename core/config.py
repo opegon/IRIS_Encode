@@ -61,10 +61,20 @@ _DEFAULTS: dict[str, Any] = {
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
+    """
+    Fusionne `override` dans `base`, sans jamais partager de sous-dictionnaire.
+
+    La récursion porte sur **toute** valeur de type dict, y compris absente de
+    `base` : sans ça, `_deep_merge({}, _DEFAULTS)` — le cas d'une machine sans
+    config.toml — rendait un cfg dont les branches *sont* celles de _DEFAULTS.
+    La moindre écriture dans la configuration corrompait alors les valeurs par
+    défaut du module pour tout le reste du processus.
+    """
     result = dict(base)
     for k, v in override.items():
-        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
-            result[k] = _deep_merge(result[k], v)
+        if isinstance(v, dict):
+            existant = result.get(k)
+            result[k] = _deep_merge(existant if isinstance(existant, dict) else {}, v)
         else:
             result[k] = v
     return result

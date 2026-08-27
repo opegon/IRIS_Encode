@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.3 — document de référence courant
+**Version** : 0.8.1.4 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 
@@ -201,18 +201,21 @@ near_1080p_min_height = 850
 hevc = 7.49
 h264 = 21.43
 
+# L'écran d'accueil ignore cette section au lancement : il repart toujours des
+# largeurs par défaut du code, pour retrouver la même disposition d'une session
+# à l'autre. Le redimensionnement reste actif pendant la session.
 [tui.browser.columns]
-fichier = 62
-taille = 30
+fichier = 50
+taille = 8
 resolution = 10
 duree = 6
 debit = 6
 codec = 6
 dolby_vision = 8
 decision = 8
-estim = 16
-temps_estim = 14
-audio = 34
+estim = 14
+temps_estim = 9
+audio = 20
 
 [tui.dryrun.columns]
 fichier = 48

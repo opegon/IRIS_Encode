@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.1.3
+**Version** : 0.8.1.4
 **Date** : 2026-08-27
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -244,6 +244,9 @@ chaque démarrage ; répondez `o`, ou placez les binaires dans `bin/`.
   **touches de fonction** `F1` à `F10`, toujours en dernière ligne. Chaque
   bande s'enroule sur autant de lignes que la largeur l'impose ; aucun
   raccourci n'est masqué, même sur un écran étroit.
-- Les largeurs de colonnes sont mémorisées dans `config.toml`.
+- Les largeurs de colonnes sont mémorisées dans `config.toml`, **sauf sur
+  l'écran d'accueil** : celui-ci repart des valeurs par défaut à chaque
+  lancement, pour offrir la même disposition d'une session à l'autre. Le
+  redimensionnement y reste actif pendant la session.
 - Les erreurs de scan sont journalisées dans
   `~/.iris_encode/iris_encode.log`.

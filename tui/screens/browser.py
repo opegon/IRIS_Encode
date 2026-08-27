@@ -192,6 +192,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         )
 
     def on_mount(self) -> None:
+        # L'accueil repart des largeurs par défaut : on veut retrouver la même
+        # disposition à chaque lancement, pas celle héritée d'un réglage de la
+        # veille. Le redimensionnement reste actif pendant la session.
+        cfg_mod.reset_browser_columns(self._app.cfg)
         self._resize_col_idx = 0  # Initialise le focus sur "fichier" (première colonne redimensionnable)
         self._build_columns()
         self._update_profile_bar()

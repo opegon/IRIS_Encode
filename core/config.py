@@ -39,17 +39,20 @@ _DEFAULTS: dict[str, Any] = {
     },
     "tui": {
         "browser": {
+            # Largeurs réglées à l'usage : les colonnes numériques n'ont besoin
+            # que de leur contenu, et la place gagnée va au nom de fichier et
+            # aux pistes audio — les deux seules qui débordent vraiment.
             "columns": {
                 "fichier":      50,
                 "taille":        8,
-                "resolution":   12,
-                "duree":        12,
-                "debit":        10,
-                "codec":         8,
-                "dolby_vision": 12,
-                "decision":     12,
-                "estim":        16,
-                "temps_estim":  9,
+                "resolution":   10,
+                "duree":         6,
+                "debit":         6,
+                "codec":         6,
+                "dolby_vision":  8,
+                "decision":      8,
+                "estim":        14,
+                "temps_estim":   9,
                 "audio":        20,
             }
         }
@@ -96,6 +99,21 @@ def get_column_widths(cfg: dict[str, Any]) -> dict[str, int]:
         _DEFAULTS["tui"]["browser"]["columns"]
         | cfg.get("tui", {}).get("browser", {}).get("columns", {})
     )
+
+
+def reset_browser_columns(cfg: dict[str, Any]) -> None:
+    """
+    Oublie les largeurs mémorisées du browser, en mémoire seulement.
+
+    L'écran d'accueil repart des valeurs par défaut à chaque lancement : une
+    disposition stable, qu'on retrouve identique d'une session à l'autre, vaut
+    mieux qu'un réglage qui dérive au fil des redimensionnements ponctuels.
+    Le redimensionnement reste disponible pendant la session.
+
+    Le fichier n'est pas réécrit ici : rien ne justifie une écriture disque à
+    chaque démarrage.
+    """
+    cfg.get("tui", {}).get("browser", {}).pop("columns", None)
 
 
 def set_column_width(cfg: dict[str, Any], col: str, width: int) -> None:

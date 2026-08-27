@@ -1,5 +1,19 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.4] — 2026-08-27
+
+- **Largeurs de colonnes de l'accueil revues** : les colonnes numériques n'ont
+  besoin que de leur contenu, et la place gagnée revient au nom de fichier et
+  aux pistes audio — les deux seules qui débordent vraiment. Résolution 12→10,
+  durée 12→6, débit 10→6, codec 8→6, Dolby Vision 12→8, décision 12→8,
+  Estim. 16→14.
+- **L'écran d'accueil repart des largeurs par défaut à chaque lancement.** La
+  section `[tui.browser.columns]` de `config.toml` n'est plus lue au
+  démarrage : une disposition stable, identique d'une session à l'autre, vaut
+  mieux qu'un réglage qui dérive au fil des redimensionnements ponctuels. Le
+  redimensionnement reste actif pendant la session, et les autres écrans
+  gardent leurs largeurs mémorisées.
+
 ## [v0.8.1.3] — 2026-08-27
 
 - La colonne **« Temps estim. »** devient **« ETA »** au browser et au dry-run,

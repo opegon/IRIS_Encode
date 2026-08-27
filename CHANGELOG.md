@@ -1,5 +1,24 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.9] — 2026-08-27
+
+### Le README dit enfin à quel problème l'outil répond
+
+Il s'ouvrait sur ses prérequis, c'est-à-dire sur le « comment » d'un « pourquoi »
+que rien n'exposait. Une section d'introduction décrit désormais la chaîne de
+diffusion — serveur Jellyfin, téléviseur webOS, barre en eARC, clients iOS,
+sous-titres image — et **ce que chaque maillon impose**.
+
+L'intersection de ces contraintes est étroite : HEVC en HDR10, audio E-AC3,
+sous-titres texte. C'est de là que découlent les partis pris de l'outil, et la
+section les énonce comme des conséquences plutôt que comme des préférences : ne
+pas réencoder par défaut, retirer le Dolby Vision plutôt que le convertir,
+transcoder l'audio au débit de la source, laisser le conteneur suivre le
+contenu, et régler tout cela par profil parce qu'un salon et un téléphone ne
+demandent pas le même fichier.
+
+Aucun changement de code.
+
 ## [v0.8.1.8] — 2026-08-27
 
 ### Le débit comparé au seuil est celui de la vidéo, pas celui du fichier

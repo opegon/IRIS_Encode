@@ -1,9 +1,55 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.1.8 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.1.9 — Windows (support macOS/Linux prévu)
 
-> Ce document couvre l'**installation**. Pour l'utilisation au quotidien — procédures
-> par écran et cas rencontrés — voir `GUIDE.md`.
+> Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
+> au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`.
+
+---
+
+## Pourquoi cet outil
+
+Une bibliothèque de films doit aujourd'hui atteindre plusieurs écrans, et chacun
+n'accepte qu'un sous-ensemble différent des formats qu'un fichier peut contenir.
+La réponse évidente — tout réencoder vers le plus petit dénominateur commun —
+coûte des heures de calcul par film et dégrade une image qui, le plus souvent,
+n'avait aucun besoin d'être retouchée. IRIS ENCODE part de l'hypothèse inverse :
+**décider ce qu'il faut toucher, et ne toucher que cela.**
+
+### La chaîne de diffusion et ses contraintes
+
+| Maillon | Ce qu'il impose |
+|---|---|
+| **Serveur Jellyfin** | Tout format non reconnu par le client déclenche un transcodage à chaque lecture. Le vrai coût d'un mauvais format se paie à l'usage, pas une fois. |
+| **Téléviseur LG OLED (webOS)** | Aucun format audio sans perte — ni TrueHD, ni DTS-HD MA. Le conteneur MKV est capricieux, le Dolby Vision profil 8 déclenche un remux HLS avec coupures audio, le DTS gèle au saut sur les modèles 2023. |
+| **Barre de son en eARC** | Elle décode tout, mais dès que le téléviseur mixe ses propres haut-parleurs avec elle, c'est lui qui décode : aucun train binaire sans perte ne l'atteint. |
+| **Clients iOS (Swiftfin)** | Permissifs via VLCKit, qui lit le MKV et le DTS. Le lecteur natif d'Apple est plus strict et ne sait pas changer de piste audio — donc inutilisable sur un fichier multilingue. |
+| **Sous-titres image (PGS, VobSub)** | Aucun client ne peut les recevoir tels quels : le serveur les incruste, ce qui force un transcodage vidéo complet. |
+
+L'intersection de ces contraintes est étroite : **HEVC en HDR10, audio E-AC3,
+sous-titres texte**. C'est le seul jeu de formats que toute la chaîne accepte
+sans qu'aucune machine n'ait à retoucher quoi que ce soit.
+
+### Les choix qui en découlent
+
+- **Ne pas réencoder par défaut.** Un fichier dont le débit vidéo, la résolution
+  et le codec sont déjà dans les clous est laissé intact. Le débit comparé au
+  seuil est celui de la vidéo seule — celui du conteneur, audio compris,
+  enverrait au réencodage des fichiers dont l'image tient largement en dessous.
+- **Retirer le Dolby Vision plutôt que de le convertir.** Sur un profil 8.1, la
+  couche de base *est* du HDR10 : retirer les métadonnées suffit. Quelques
+  minutes, une image identique au bit près, contre des heures de réencodage pour
+  un résultat dégradé.
+- **Transcoder l'audio au débit de la source**, plutôt qu'à un forfait qui jette
+  bien plus que nécessaire sur une piste HD.
+- **Laisser le conteneur suivre le contenu.** MP4 quand tout y tient, MKV quand
+  quelque chose serait perdu.
+- **Un profil par destination.** Les seuils, les langues conservées et le
+  traitement du Dolby Vision se règlent par profil, parce qu'un salon et un
+  téléphone ne demandent pas le même fichier.
+
+Le reste de l'outil découle de là : une interface qui **montre sa décision avant
+de l'appliquer**, fichier par fichier, et qui permet de la contredire.
 
 ---
 

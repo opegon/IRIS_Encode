@@ -92,7 +92,9 @@ class ConfirmModal(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="confirm-panel"):
-            yield Static(self._title, id="confirm-title")
+            # markup desactive : aucun appelant n'y met de balise, et le titre
+            # porte des identifiants entre crochets que Rich mangerait.
+            yield Static(self._title, id="confirm-title", markup=False)
             yield Static(self._body,  id="confirm-body")
             with Horizontal(id="confirm-buttons"):
                 yield Button(

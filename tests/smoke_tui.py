@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from textual.widgets import DataTable
+from textual.widgets import DataTable, Static
 
 from core.decision import VideoAction
 from main import force_utf8_output
@@ -275,6 +275,13 @@ async def scenario_external_tracks() -> None:
             await pilot.pause(0.8)
             assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
 
+            # Le nom du profil actif etait invisible : ecrit « [serie_basic] »,
+            # Rich le prenait pour une balise et le supprimait.
+            barre = str(app.screen.query_one("#status-bar", Static).render())
+            actif = app.active_profile_id
+            assert actif in barre, f"profil absent de la barre -> {barre!r}"
+            print(f"[9d] TracksScreen : le profil [{actif}] apparait dans la barre")
+
             # Regression : STRIP_DV n'appartient pas a ACTION_CYCLE. F6 y
             # cherchait l'index de l'action courante et levait un ValueError.
             from dataclasses import replace as dc_replace
@@ -448,6 +455,13 @@ async def scenario_external_tracks() -> None:
             assert langs.count("fre") == 2, [t.display() for t in produced]
             print(f"[12] Mux : {out.name} produit, "
                   f"{len(produced)} pistes dont 2 en 'fre'")
+
+            # Le markup Rich mangeait « _[mux] » : l'ecran annoncait film_.mkv.
+            # On lit ce qui est reellement rendu, pas ce qu'on a demande.
+            for wid in ("#mux-out", "#mux-state"):
+                rendu = str(app.screen.query_one(wid, Static).render())
+                assert "_[mux]" in rendu, f"{wid} : suffixe mange -> {rendu!r}"
+            print("[12b] Ecran de mux : le suffixe _[mux] survit a l'affichage")
 
             # Apres le mux, c'est le fichier MUXE qui devient le fichier de
             # travail : sans ca, un encodage viserait l'original et la greffe

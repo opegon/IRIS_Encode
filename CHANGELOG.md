@@ -1,5 +1,45 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.11] — 2026-08-27
+
+### Le markup Rich mangeait les noms de fichiers et de profils
+
+`Static.update()` interprète par défaut ce qui ressemble à une balise entre
+crochets. Or **la convention de nommage du projet est faite de cette syntaxe**.
+Mesuré sur le rendu réel :
+
+| Écrit | Affiché |
+|---|---|
+| `film_[mux].mkv` | `film_.mkv` |
+| `film_[hevc].mkv` | `film_.mkv` |
+| `film_[av1].mkv` · `film_[hdr10].mkv` | `film_.mkv` |
+| `Profil : [serie_basic]` | `Profil :` |
+| `film_[H264].mkv` | `film_[H264].mkv` — intact |
+
+L'irrégularité aggravait le piège : `_[H264]` survivait, les autres non, Rich ne
+consommant que ce qui ressemble à un nom de style valide. Deux conséquences
+visibles à l'écran : **le nom du profil actif était invisible** sur l'écran des
+pistes, quel que soit le profil ; et **l'écran de mux annonçait `film_.mkv`**
+alors que le fichier produit s'appelait `film_[mux].mkv`.
+
+- **Quatorze afficheurs passent en `markup=False`** — barres d'état des cinq
+  écrans, sortie et état du mux, lignes de commande ffmpeg et de progression,
+  notice de scan, chemin du donneur, bandeau de recalage, en-tête de
+  configuration, titre des modales. Aucun n'utilisait de balise volontaire.
+- **Les modales de confirmation gardent leur markup** : elles s'en servent
+  réellement, et échappaient déjà les noms interpolés.
+- L'audit a porté sur les 32 appels d'affichage des huit écrans concernés ;
+  les sites recensés sont ceux qui interpolent un nom, un chemin ou un
+  identifiant, pas l'ensemble.
+
+**Vérifications** — le smoke TUI lit désormais ce qui est *rendu*, pas ce qui a
+été demandé : le suffixe `_[mux]` doit survivre sur l'écran de mux, et le nom du
+profil apparaître dans la barre d'état des pistes. Les deux contrôles ont été
+falsifiés — correctif retiré, ils échouent en affichant `Profil :   ·` ; remis,
+ils passent. `tests/test_markup.py` verrouille les douze autres afficheurs.
+
+Correspond à l'entrée **IE-01** de `TODO.md`.
+
 ## [v0.8.1.10] — 2026-08-27
 
 ### L'écran des profils dit ce que chaque réglage entraîne

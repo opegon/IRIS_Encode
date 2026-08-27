@@ -66,7 +66,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield Static("", id="config-header-bar", classes="status-bar")
+        yield Static("", id="config-header-bar", classes="status-bar", markup=False)
         yield DataTable(id="profile-table", cursor_type="row", zebra_stripes=True)
         yield ProfileForm(id="form-container", classes="hidden")
         with Static(id="config-actions"):

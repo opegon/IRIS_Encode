@@ -104,7 +104,7 @@ class DonorFileScreen(ModalScreen["Path | None"]):
     def compose(self) -> ComposeResult:
         with Static(id="donor-box"):
             yield Label("Fichier donneur", id="donor-title")
-            yield Static("", id="donor-path")
+            yield Static("", id="donor-path", markup=False)
             yield DataTable(id="donor-table", cursor_type="row",
                             show_header=False, zebra_stripes=True)
             yield Static("↵  Ouvrir / Choisir     Esc  Annuler", id="donor-hint")

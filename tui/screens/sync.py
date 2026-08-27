@@ -164,12 +164,12 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield Static("", id="status-bar", classes="status-bar")
+        yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield DataTable(id="sync-table", cursor_type="row", zebra_stripes=False)
         with Static(id="sync-bar-row"):
             yield Label("Mesure en cours", id="sync-bar-label")
             yield ProgressBar(total=100, show_eta=False, id="sync-bar")
-        yield Static(_HINT, id="sync-hint")
+        yield Static(_HINT, id="sync-hint", markup=False)
         yield KeyFooter(
             actions=[
                 ("enter",     "Liste"),

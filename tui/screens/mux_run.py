@@ -67,13 +67,13 @@ class MuxScreen(Screen[bool]):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield Static("", id="status-bar", classes="status-bar")
+        yield Static("", id="status-bar", classes="status-bar", markup=False)
         with Static(id="mux-body"):
-            yield Static("", id="mux-out")
+            yield Static("", id="mux-out", markup=False)
             with Static(id="mux-bar-row"):
                 yield Label("Mux", id="mux-label")
                 yield ProgressBar(total=100, show_eta=False, id="mux-bar")
-            yield Static("", id="mux-state")
+            yield Static("", id="mux-state", markup=False)
             yield Static("", id="mux-cmd")
         yield KeyFooter(
             actions=[

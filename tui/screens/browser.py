@@ -164,10 +164,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield Static("", id="status-bar", classes="status-bar")
+        yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield Static("", id="spacer-1")
         yield Static("", id="profile-bar")
-        yield Static("⏳ Analyse en cours…", id="scan-notice")
+        yield Static("⏳ Analyse en cours…", id="scan-notice", markup=False)
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
         yield KeyFooter(
             actions=[

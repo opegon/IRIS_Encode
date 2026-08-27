@@ -118,8 +118,8 @@ class RunScreen(TableNavMixin, Screen):
             yield Label("Global", id="global-label")
             yield ProgressBar(total=100, show_eta=False, id="global-bar")
         with Static(id="cmd-zone"):
-            yield Static("", id="cmd-lines")
-            yield Static("", id="ffmpeg-line")
+            yield Static("", id="cmd-lines", markup=False)
+            yield Static("", id="ffmpeg-line", markup=False)
         yield KeyFooter(
             actions=[
                 ("p",         "Pause / Reprendre"),

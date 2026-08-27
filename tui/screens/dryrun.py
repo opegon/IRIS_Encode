@@ -122,7 +122,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield Static("", id="status-bar", classes="status-bar")
+        yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield DataTable(id="dryrun-table", cursor_type="row", zebra_stripes=True)
         yield Static("", id="dryrun-summary")
         yield KeyFooter(

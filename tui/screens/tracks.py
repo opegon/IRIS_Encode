@@ -165,7 +165,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield Static("", id="status-bar", classes="status-bar")
+        yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield DataTable(id="tracks-table", cursor_type="row",
                         zebra_stripes=False, show_header=True)
         yield Static(_HINT_TRACK, id="hint-bar")

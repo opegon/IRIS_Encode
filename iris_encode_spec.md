@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.0 — document de référence courant
+**Version** : 0.8.1.1 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 
@@ -30,6 +30,7 @@ Deux familles d'opérations coexistent :
 
 ```
 iris_encode/
+├── GUIDE.md                      ← guide d'utilisation (procédures, cas)
 ├── launch.bat                    ← vérification Python, point d'entrée Windows
 ├── main.py                       ← point d'entrée Python (autonome)
 ├── version.py                    ← source unique de la version

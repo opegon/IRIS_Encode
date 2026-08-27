@@ -1,5 +1,15 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.1] — 2026-08-27
+
+- **`GUIDE.md`** — guide d'utilisation : le parcours en trois temps, les
+  raccourcis de chaque écran, une recette pour greffer une VF, et une section
+  par cas rencontré (mesure refusée, montage différent, sous-titre image,
+  étirement PAL, fichier illisible sur téléviseur…). Les raccourcis sont
+  relevés depuis les `BINDINGS` du code, pas rédigés de mémoire.
+- Le README précise qu'il couvre l'installation et renvoie au guide pour
+  l'utilisation.
+
 ## [v0.8.1.0] — 2026-08-27
 
 ### Greffe d'une piste venue d'un autre montage

@@ -1,6 +1,9 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.1.0 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.1.1 — Windows (support macOS/Linux prévu)
+
+> Ce document couvre l'**installation**. Pour l'utilisation au quotidien — procédures
+> par écran et cas rencontrés — voir `GUIDE.md`.
 
 ---
 

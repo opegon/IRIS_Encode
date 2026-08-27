@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
+import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -57,6 +58,31 @@ _FILE_ICON = "🎬"
 
 
 # ─── Estimation de taille ─────────────────────────────────────────────────────
+
+def _cellules_volume(volume: Path) -> tuple[Text, Text, Text]:
+    """Espace libre, total et taux d'occupation d'un volume.
+
+    Un lecteur vide ou un partage réseau injoignable fait lever `disk_usage` :
+    on rend alors des tirets plutôt que de faire disparaître la ligne — le
+    volume existe, c'est sa mesure qui manque.
+    """
+    try:
+        usage = shutil.disk_usage(volume)
+    except OSError:
+        tiret = Text("—", style="dim", no_wrap=True)
+        return tiret, Text("—", style="dim", no_wrap=True), Text("—", style="dim", no_wrap=True)
+
+    part = (usage.used / usage.total * 100) if usage.total else 0
+    # Un volume presque plein mérite d'être signalé : c'est là qu'un encodage
+    # échouera faute de place.
+    style_occupe = STYLE_PAR_EMPHASE[
+        Emphase.ALERTE if part >= 90 else Emphase.ORDINAIRE]
+    return (
+        Text(fmt_bytes(usage.free), no_wrap=True),
+        Text(fmt_bytes(usage.total), style="dim", no_wrap=True),
+        Text(f"{part:.0f} %", style=style_occupe, no_wrap=True),
+    )
+
 
 def _estimate_output_bytes(dec: FileDecision) -> int:
     """Taille estimée de sortie (vidéo + audio conservé).
@@ -148,6 +174,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def __init__(self, path: Path, start_virtual: bool = False) -> None:
         super().__init__()
         self._nav        = FileNavigator(path, start_virtual=start_virtual)
+        # Jeu de colonnes actuellement en place — volumes ou fichiers.
+        self._colonnes_volumes = start_virtual
         self._decisions:  dict[Path, FileDecision] = {}
         self._selected:   set[Path] = set()
         self._rows:       list[tuple[str, Path | None]] = []
@@ -175,19 +203,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         yield Static("⏳ Analyse en cours…", id="scan-notice", markup=False)
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
         yield KeyFooter(
-            actions=[
-                ("space",     "Sélect"),
-                ("a",         "Tout"),
-                ("n",         "Aucun"),
-                ("enter",     "Ouvrir"),
-                ("v",         "Visualiser"),
-                ("ctrl+d",    "Supprimer"),
-                ("backspace", "Remonter"),
-                ("home",      "Début"),
-                ("end",       "Fin"),
-                ("pageup",    "Page ↑"),
-                ("pagedown",  "Page ↓"),
-            ],
+            actions=self._RACCOURCIS_FICHIERS,
             nav=footer_line2(
                 nav=False,
                 resize=True,
@@ -210,15 +226,31 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         cfg_mod.reset_browser_columns(self._app.cfg)
         self._resize_col_idx = 0  # Initialise le focus sur "fichier" (première colonne redimensionnable)
         self._build_columns()
+        self._footer_suit_le_mode()
         self._update_profile_bar()
         self._refresh_view()
         self.query_one(DataTable).focus()
 
     # ─── Table ────────────────────────────────────────────────────────────────
 
+    # Colonnes de l'écran d'accueil : un volume n'a ni durée, ni codec, ni
+    # décision d'encodage. Promettre dix colonnes qu'aucune ligne ne peut
+    # remplir revient à faire lire un tableau vide.
+    _COLS_VOLUMES: list[tuple[str, str, int]] = [
+        ("volume", "Volume",       34),
+        ("libre",  "Espace libre", 14),
+        ("total",  "Total",        12),
+        ("occupe", "Occupé",       10),
+    ]
+
     def _build_columns(self) -> None:
         table  = self.query_one(DataTable)
         widths = cfg_mod.get_column_widths(self._app.cfg)
+
+        if self._nav.is_virtual:
+            for cle, libelle, largeur in self._COLS_VOLUMES:
+                table.add_column(libelle, width=largeur, key=cle)
+            return
 
         table.add_column("",                                width=3,    key="check")
         # Colonne fichier : 50% de la largeur de l'écran (ou largeur sauvegardée)
@@ -233,13 +265,65 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         for col in self.RESIZE_COLS[1:]:  # Skip fichier, déjà ajoutée
             table.add_column(self.resize_header(col), width=widths[col], key=col)
 
+    # Ce qu'on peut faire d'un volume : l'ouvrir. Sélectionner, encoder,
+    # interroger AlloCiné ou redimensionner des colonnes n'a pas de sens tant
+    # qu'aucun fichier n'est en vue.
+    _RACCOURCIS_VOLUMES: list[tuple[str, str]] = [("enter", "Ouvrir le volume")]
+
+    _RACCOURCIS_FICHIERS: list[tuple[str, str]] = [
+        ("space",     "Sélect"),
+        ("a",         "Tout"),
+        ("n",         "Aucun"),
+        ("enter",     "Ouvrir"),
+        ("v",         "Visualiser"),
+        ("ctrl+d",    "Supprimer"),
+        ("backspace", "Remonter"),
+        ("home",      "Début"),
+        ("end",       "Fin"),
+        ("pageup",    "Page ↑"),
+        ("pagedown",  "Page ↓"),
+    ]
+
+    def _footer_suit_le_mode(self) -> None:
+        """Le footer n'annonce que ce que le mode courant sait faire."""
+        try:
+            pied = self.query_one(KeyFooter)
+        except Exception:
+            return
+        if self._nav.is_virtual:
+            pied.update_line(1, self._RACCOURCIS_VOLUMES)
+            pied.update_line(2, footer_line2(nav=False))
+        else:
+            pied.update_line(1, self._RACCOURCIS_FICHIERS)
+            pied.update_line(2, footer_line2(
+                nav=False, resize=True,
+                extra=(("f1", "Dry-run"), ("f2", "Run"), ("f3", "Récursif"),
+                       ("f4", "Profil"), ("f5", "Gérer"),
+                       ("f7", "AlloCiné"), ("f8", "IMDB"))))
+
     def _refresh_view(self) -> None:
         """Reconstruit la vue complète (dirs + fichiers)."""
         self._scan_epoch += 1   # invalide tout worker en cours
+        # Entrer dans un volume ou en ressortir change le jeu de colonnes.
+        if self._nav.is_virtual != self._colonnes_volumes:
+            self._colonnes_volumes = self._nav.is_virtual
+            table = self.query_one(DataTable)
+            table.clear(columns=True)
+            self._build_columns()
+            self._footer_suit_le_mode()
+        self._update_profile_bar()
         self._update_status()
         self._load_directory()
 
     def _update_status(self) -> None:
+        if self._nav.is_virtual:
+            # Aucun volume n'est sélectionnable, et les colonnes ne se
+            # redimensionnent pas : annoncer l'un ou l'autre serait faux.
+            n = sum(1 for t, _ in self._rows if t == _ROW_TYPE_DIR)
+            self.query_one("#status-bar", Static).update(
+                f" Choisir un volume    {n} volume(s)"
+            )
+            return
         sel_count   = len(self._selected)
         total_files = sum(1 for t, _ in self._rows if t == _ROW_TYPE_FILE)
         self.query_one("#status-bar", Static).update(
@@ -249,6 +333,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         )
 
     def _update_profile_bar(self) -> None:
+        if self._nav.is_virtual:
+            # Le profil décide de ce qu'on fera des fichiers ; il n'a rien à
+            # dire tant qu'aucun n'est en vue.
+            self.query_one("#profile-bar", Static).update("")
+            return
         pid  = self._app.active_profile_id
         prof = self._app.profiles.get(pid)
         if prof is None:
@@ -303,18 +392,23 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         table.clear()
         self._rows = []
 
-        # ── Sous-répertoires ──────────────────────────────────────────────────
+        # ── Volumes, ou sous-répertoires ──────────────────────────────────────
         is_virtual = self._nav.is_virtual
         for d in subdirs:
             row_key = str(d)
-            icon    = _DISK_ICON if is_virtual else _DIR_ICON
-            label   = str(d) if is_virtual else d.name
-            table.add_row(
-                "",
-                Text(f"{icon} {label}", style="bold cyan" if is_virtual else "bold blue"),
-                "", "", "", "", "", "", "", "",
-                key=row_key,
-            )
+            if is_virtual:
+                table.add_row(
+                    Text(f"{_DISK_ICON} {d}", style="bold cyan"),
+                    *_cellules_volume(d),
+                    key=row_key,
+                )
+            else:
+                table.add_row(
+                    "",
+                    Text(f"{_DIR_ICON} {d.name}", style="bold blue"),
+                    "", "", "", "", "", "", "", "",
+                    key=row_key,
+                )
             self._rows.append((_ROW_TYPE_DIR, d))
 
         # ── Fichiers ──────────────────────────────────────────────────────────

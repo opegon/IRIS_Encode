@@ -1,5 +1,47 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.17] — 2026-08-28
+
+### L'écran d'accueil promettait dix colonnes vides
+
+Premier écran de l'application, il listait les volumes sous l'en-tête complet du
+tableau de fichiers — Taille, Résolution, Durée, Débit, Codec, Dolby V.,
+Décision, Estim., ETA, Audio — **dont aucune ne peut avoir de valeur pour un
+volume**. S'y ajoutaient « 0/0 sélectionné(s) » alors que rien n'y est
+sélectionnable, le bandeau détaillé du profil d'encodage alors qu'aucun fichier
+n'est en vue, et un pied proposant `F1 Dry-run`, `F2 Run`, `F7 AlloCiné`.
+
+L'écran des volumes porte désormais **ses propres colonnes** :
+
+| Volume | Espace libre | Total | Occupé |
+|---|---|---|---|
+| 💾 `C:\` | 407.3 Go | 510.5 Go | 20 % |
+| 💾 `D:\` | 305.0 Go | 2.0 To | 85 % |
+
+- La barre d'état compte des volumes au lieu d'annoncer une sélection
+  impossible, et ne parle plus de redimensionner des colonnes qui ne le sont
+  pas.
+- Le bandeau de profil attend qu'un fichier soit en vue : le profil décide de
+  ce qu'on fera des fichiers, il n'a rien à dire avant.
+- Le footer ne propose que **`↵ Ouvrir le volume`**. Sélectionner, encoder ou
+  interroger AlloCiné n'a pas de sens ici — c'est le même défaut que le footer
+  de l'écran Config corrigé en v0.8.1.15, au même endroit du raisonnement.
+- **Un taux d'occupation d'au moins 90 % passe en alerte** : c'est là qu'un
+  encodage échouera faute de place.
+- Un volume injoignable — lecteur vide, partage réseau coupé — rend des tirets
+  plutôt que de faire disparaître sa ligne : le volume existe, c'est sa mesure
+  qui manque.
+
+Le jeu de colonnes et les raccourcis basculent au changement de mode, dans les
+deux sens.
+
+### `fmt_bytes` connaît le téraoctet
+
+Un partage réseau s'affichait `35726.4 Go`, ce qui ne se lit pas. Il rend
+maintenant `34.9 To`.
+
+Correspond à l'entrée **IE-07** de `TODO.md`.
+
 ## [v0.8.1.16] — 2026-08-28
 
 ### Une modale laisse voir l'écran sur lequel elle porte

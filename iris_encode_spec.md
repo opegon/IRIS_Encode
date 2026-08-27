@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.16 — document de référence courant
+**Version** : 0.8.1.17 — document de référence courant
 **Date** : 2026-08-27
 **Statut** : stable
 
@@ -929,6 +929,13 @@ Framework : **Textual**.
 
 Conventions transverses :
 
+- **Un écran ne promet que ce qu'il peut tenir.** Le browser en mode volumes
+  (`start_virtual=True`) porte ses propres colonnes — Volume, Espace libre,
+  Total, Occupé — et non les dix du tableau de fichiers, dont aucune ne peut
+  avoir de valeur pour un volume. La barre d'état y compte des volumes plutôt
+  qu'une sélection impossible, le bandeau de profil attend qu'un fichier soit
+  en vue, et le footer ne propose que l'ouverture. Le jeu de colonnes et les
+  raccourcis basculent dans `_refresh_view()` au changement de mode.
 - **Une modale laisse voir l'écran sur lequel elle porte.** La règle globale
   `Screen { background: $surface; }` s'appliquait aussi aux modales, qui
   héritent de `Screen`, et écrasait la translucidité que Textual leur donne :
@@ -1501,6 +1508,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.17 | 2026-08-28 | **L'écran des volumes promettait dix colonnes vides** : colonnes propres (Volume, Espace libre, Total, Occupé), barre d'état, bandeau de profil et footer adaptés au mode (IE-07) · `fmt_bytes` connaît le téraoctet |
 | 0.8.1.16 | 2026-08-28 | **Les modales laissent voir l'écran** — la règle globale `Screen { background }` écrasait leur translucidité — et **un seul cadre**, le trait fin, à la place des deux familles graphiques (IE-06) |
 | 0.8.1.15 | 2026-08-28 | **Le footer suivait l'écran, pas le focus** : il annonçait « N Nouveau » pendant l'édition d'un profil, où taper « n » écrivait un « n » · les raccourcis basculent avec le formulaire, `F10` reste (IE-05) · isolation des variables de module entre tests (`tests/conftest.py`) |
 | 0.8.1.14 | 2026-08-27 | **Un seul rendu pour les noms de touches** : trois notations coexistaient, douze bandeaux les réécrivaient à la main · `TOUCHES` + `touche()`/`raccourcis()` dans `tui.common`, glyphes d'une colonne (IE-04) |

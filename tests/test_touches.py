@@ -64,9 +64,12 @@ def test_le_footer_lit_la_meme_table():
 # ─── Plus aucune notation écrite à la main ────────────────────────────────────
 
 # Les anciennes graphies, telles qu'elles apparaissaient dans les bandeaux.
+# « Espace » est aussi un mot francais : il ne compte comme notation de touche
+# que suivi du double blanc qui separait la touche de son libelle, sans quoi la
+# colonne « Espace libre » de l'ecran des volumes serait signalee a tort.
 _ANCIENNES = re.compile(
     r'"[^"]*(?:'
-    r'\bEspace\s|\bEnter\s|\bBack\s|\bSh\+Tab\b|\bSpace\s'
+    r'\bEspace\s{2}|\bEnter\s|\bBack\s|\bSh\+Tab\b|\bSpace\s'
     r')[^"]*"'
 )
 

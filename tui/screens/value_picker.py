@@ -27,7 +27,7 @@ class ValuePickerScreen(ModalScreen[int | None]):
     }
     #picker-box {
         background: $surface;
-        border: thick $accent;
+        border: solid $accent;
         height: auto;
         max-height: 24;
         padding: 1 2;

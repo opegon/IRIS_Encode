@@ -34,7 +34,7 @@ class ProfilePickerScreen(ModalScreen[str | None]):
     }
     #profile-picker-box {
         background: $surface;
-        border: thick $accent;
+        border: solid $accent;
         height: auto;
         max-height: 26;
         padding: 1 2;

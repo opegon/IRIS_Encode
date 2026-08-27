@@ -38,6 +38,12 @@ class IrisEncodeApp(App):
     # des barres de statut dans chaque DEFAULT_CSS d'écran).
     CSS = """
     Screen { background: $surface; }
+    /* Sans cette ligne, la règle ci-dessus s'applique aussi aux modales — elles
+       héritent de Screen — et écrase la translucidité que Textual leur donne
+       par défaut. L'écran d'origine disparaissait alors entièrement : il ne
+       restait qu'une boîte au milieu du vide, au moment précis où l'on veut
+       voir sur quoi le choix porte. */
+    ModalScreen { background: $background 40%; }
     Header { background: $primary; }
     Footer { background: $primary-darken-2; }
     .status-bar {

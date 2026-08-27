@@ -1,5 +1,42 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.16] — 2026-08-28
+
+### Une modale laisse voir l'écran sur lequel elle porte
+
+Les modales effaçaient tout — titre, barre d'état, liste des fichiers, footer.
+Il ne restait qu'une boîte au milieu du vide, au moment précis où l'on voudrait
+voir sur quoi le choix va s'appliquer.
+
+**La cause n'était pas Textual**, qui rend ses modales translucides par défaut,
+mais une règle de confort de l'application : `Screen { background: $surface; }`.
+`ModalScreen` héritant de `Screen`, la règle s'appliquait à elle aussi et
+écrasait la transparence. Une ligne posée après elle rétablit le filigrane :
+
+```css
+ModalScreen { background: $background 40%; }
+```
+
+La boîte, elle, garde son fond opaque : **son texte ne perd rien en
+lisibilité**, seul son pourtour laisse voir l'écran d'origine. Mesuré sur le
+rendu : 137 fragments de texte visibles contre 9 auparavant.
+
+### Un seul cadre
+
+Deux familles graphiques coexistaient sans rapport avec le rôle : demi-blocs
+`█ ▀ ▄` pour les listes de choix — profil, valeur, donneur, plages — et traits
+`┌ ─ │` pour les confirmations et la fiche AlloCiné. Les cinq cadres en
+demi-blocs passent au trait fin.
+
+Les couleurs, elles, restent : elles portent le rôle et non la famille — le
+`$warning` de l'écran des plages continue d'alerter.
+
+Rendu vérifié sur quatre modales — confirmation, quitter, liste de valeurs,
+choix de profil : parent visible, trait fin, plus aucun demi-bloc.
+
+Correspond à l'entrée **IE-06** de `TODO.md`, dont les deux arbitrages ont été
+tranchés par le propriétaire du projet.
+
 ## [v0.8.1.15] — 2026-08-28
 
 ### Le footer suivait l'écran, pas le focus

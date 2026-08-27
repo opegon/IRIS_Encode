@@ -31,7 +31,7 @@ class SegmentsScreen(ModalScreen[None]):
     }
     #segments-box {
         background: $surface;
-        border: thick $warning;
+        border: solid $warning;
         height: auto;
         max-height: 26;
         padding: 1 2;

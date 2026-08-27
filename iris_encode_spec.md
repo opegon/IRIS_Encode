@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.15 — document de référence courant
+**Version** : 0.8.1.16 — document de référence courant
 **Date** : 2026-08-27
 **Statut** : stable
 
@@ -929,6 +929,15 @@ Framework : **Textual**.
 
 Conventions transverses :
 
+- **Une modale laisse voir l'écran sur lequel elle porte.** La règle globale
+  `Screen { background: $surface; }` s'appliquait aussi aux modales, qui
+  héritent de `Screen`, et écrasait la translucidité que Textual leur donne :
+  il ne restait qu'une boîte au milieu du vide. `ModalScreen { background:
+  $background 40%; }`, posée **après** elle, rétablit le filigrane. La boîte
+  garde son fond opaque : son texte ne perd rien en lisibilité.
+- **Un seul cadre pour toutes les modales** : le trait fin (`border: solid`).
+  Les demi-blocs `█ ▀ ▄` distinguaient les listes de choix des confirmations,
+  une frontière graphique qui ne correspondait à aucune différence de rôle.
 - **Le footer annonce les touches qui répondent.** Un écran qui héberge un
   widget prenant le focus — `ConfigScreen` et son `ProfileForm` — bascule le
   contenu du footer par `KeyFooter.update_line()` tant que ce widget est monté.
@@ -1492,6 +1501,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.16 | 2026-08-28 | **Les modales laissent voir l'écran** — la règle globale `Screen { background }` écrasait leur translucidité — et **un seul cadre**, le trait fin, à la place des deux familles graphiques (IE-06) |
 | 0.8.1.15 | 2026-08-28 | **Le footer suivait l'écran, pas le focus** : il annonçait « N Nouveau » pendant l'édition d'un profil, où taper « n » écrivait un « n » · les raccourcis basculent avec le formulaire, `F10` reste (IE-05) · isolation des variables de module entre tests (`tests/conftest.py`) |
 | 0.8.1.14 | 2026-08-27 | **Un seul rendu pour les noms de touches** : trois notations coexistaient, douze bandeaux les réécrivaient à la main · `TOUCHES` + `touche()`/`raccourcis()` dans `tui.common`, glyphes d'une colonne (IE-04) |
 | 0.8.1.13 | 2026-08-27 | **Une seule table de couleurs**, exprimée en rôles (`Emphase`) : la même décision portait deux teintes selon l'écran, le magenta signalait le cas le plus banal et `dark_orange` servait de couleur ordinaire · une décision `STRIP_DV` s'affichait « ? » sur l'écran des pistes (IE-03) |

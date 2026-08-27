@@ -80,7 +80,7 @@ class DonorFileScreen(ModalScreen["Path | None"]):
     DonorFileScreen { align: center middle; }
     #donor-box {
         background: $surface;
-        border: thick $accent;
+        border: solid $accent;
         width: 90;
         height: 26;
         padding: 1 2;
@@ -174,7 +174,7 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
     DonorTrackScreen { align: center middle; }
     #dt-box {
         background: $surface;
-        border: thick $accent;
+        border: solid $accent;
         width: 84;
         height: auto;
         max-height: 24;

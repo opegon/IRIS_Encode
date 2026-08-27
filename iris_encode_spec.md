@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.2 — document de référence courant
+**Version** : 0.8.1.3 — document de référence courant
 **Date** : 2026-08-26
 **Statut** : stable
 
@@ -197,7 +197,7 @@ near_1080p_min_width  = 1600    # seuils de rattachement au bucket 1080p
 near_1080p_min_height = 850
 
 [stats.encode_speed]
-# Moyenne mobile de vitesse relevée à chaque passe — alimente « Temps estim. »
+# Moyenne mobile de vitesse relevée à chaque passe — alimente la colonne « ETA »
 hevc = 7.49
 h264 = 21.43
 
@@ -756,7 +756,7 @@ frame= N fps= N q=N.N size= NkB time=HH:MM:SS.ss bitrate=N.Nkbits/s speed=Nx
 
 Retourne un `ProgressInfo` (frame, fps, elapsed, bitrate, speed, percent).
 `percent = -1.0` si la durée est inconnue. La vitesse relevée alimente la moyenne
-mobile de `[stats.encode_speed]`, qui nourrit la colonne « Temps estim. ».
+mobile de `[stats.encode_speed]`, qui nourrit la colonne « ETA ».
 
 ### 12.4 Garde-fous
 
@@ -837,7 +837,7 @@ Conventions transverses :
 │ [F4] 🎬 SERIE_BASIC 🎬  • 1080p 2200k  ·  4K→1080p     │
 │      HD audio non                                       │
 │ ⏳ Analyse en cours… 2 / 4                              │
-├─ ──┬─ Fichier ──────┬─ Taille ─┬─ Résol. ──┬─ Durée ─┬─ Débit ─┬─ Codec ─┬─ Dolby V. ─┬─ Décision ─┬─ Estim. (Δ%) ─┬─ Temps estim. ─┬─ Audio ─────┤
+├─ ──┬─ Fichier ──────┬─ Taille ─┬─ Résol. ──┬─ Durée ─┬─ Débit ─┬─ Codec ─┬─ Dolby V. ─┬─ Décision ─┬─ Estim. (Δ%) ─┬─ ETA ─┬─ Audio ─────┤
 │    │ 📁 Films/      │          │           │         │         │         │            │            │               │                │             │
 │[x] │ 🎬 film1.mkv   │   8,4 Go │ 3840x2160 │ 2:05:12 │ 25000k  │  hevc   │  DV:P8.1   │  → HEVC    │ 2,1 Go (−75%) │     0:38:12    │ TrueHD 7.1  │
 │[ ] │ 🎬 film2.mp4   │   1,1 Go │  720x480  │ 1:32:00 │   900k  │  h264   │  —         │  ← SKIP    │       —       │        —       │ AAC 2.0     │
@@ -887,7 +887,7 @@ volumes disponibles (icône 💾), pas un chemin fixe.
 | Dolby V. | `dolby_vision` | `DV:P8.1` ou `—` |
 | Décision | `decision` | `→ HEVC` (coloré) |
 | Estim. (Δ%) | `estim` | taille de sortie estimée + delta |
-| Temps estim. | `temps_estim` | durée d'encodage estimée |
+| ETA | `temps_estim` | durée d'encodage estimée |
 | Audio | `audio` | résumé des pistes conservées |
 
 Code couleur décision : HEVC → magenta · H264 → cyan · SDR → jaune · SKIP → gris dim.

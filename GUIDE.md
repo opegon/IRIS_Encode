@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.1.2
+**Version** : 0.8.1.3
 **Date** : 2026-08-27
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -122,7 +122,8 @@ celui de la piste audio. Le recopier est plus fiable qu'une mesure indépendante
 | `F6` / `F7` | Changer codec / débit **de cette ligne seulement** |
 | `F2` ou `↵` | Lancer l'encodage |
 
-Les colonnes **Estim. (Δ%)** et **Temps estim.** reposent sur une moyenne
+Les colonnes **Estim. (Δ%)** et **ETA** — la durée d'encodage prévue —
+reposent sur une moyenne
 mobile de vitesse relevée à chaque encodage : elles s'affinent à l'usage et
 sont approximatives aux premières passes.
 

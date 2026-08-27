@@ -81,7 +81,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         "taille":      "Taille",
         "duree":       "Durée",
         "estim":       "Estim. (Δ%)",
-        "temps_estim": "Temps estim.",
+        "temps_estim": "ETA",
         "action":      "Action",
         "conteneur":   "Conteneur",
         "dv":          "DV",

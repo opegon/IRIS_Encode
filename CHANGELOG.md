@@ -1,5 +1,13 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.3] — 2026-08-27
+
+- La colonne **« Temps estim. »** devient **« ETA »** au browser et au dry-run,
+  et sa largeur par défaut passe de 14 à 9 colonnes. Douze caractères d'en-tête
+  pour une valeur qui en fait cinq, c'était de la place prise aux noms de
+  fichiers. La clé `temps_estim` est inchangée : les largeurs déjà mémorisées
+  dans `config.toml` restent valides.
+
 ## [v0.8.1.2] — 2026-08-27
 
 - **Le footer ne se calait plus en bas de la fenêtre.** En passant le footer à

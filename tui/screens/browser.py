@@ -108,7 +108,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     RESIZE_LABELS = {"fichier": "Fichier", "taille": "Taille", "resolution": "Résol.",
                      "duree": "Durée", "debit": "Débit", "codec": "Codec",
                      "dolby_vision": "Dolby V.", "decision": "Décision", "estim": "Estim. (Δ%)",
-                     "temps_estim": "Temps estim.", "audio": "Audio"}
+                     "temps_estim": "ETA", "audio": "Audio"}
     RESIZE_MIN    = {"fichier": 30, "audio": 10}
 
     DEFAULT_CSS = """

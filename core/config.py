@@ -49,7 +49,7 @@ _DEFAULTS: dict[str, Any] = {
                 "dolby_vision": 12,
                 "decision":     12,
                 "estim":        16,
-                "temps_estim":  14,
+                "temps_estim":  9,
                 "audio":        20,
             }
         }
@@ -125,7 +125,7 @@ _DRYRUN_COL_DEFAULTS: dict[str, int] = {
     "taille":       8,
     "duree":       10,
     "estim":       12,
-    "temps_estim": 14,
+    "temps_estim": 9,
     "action":      16,
     "conteneur":    7,
     "dv":          10,

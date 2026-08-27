@@ -152,6 +152,59 @@ def parse_progress(line: str, total_duration: float) -> Optional[ProgressInfo]:
     )
 
 
+# ─── Diagnostic d'un échec ────────────────────────────────────────────────────
+#
+# ffmpeg annonce la cause puis constate l'échec : « No capable devices found »,
+# puis « Error opening output files: Invalid argument ». L'écran ne gardait que
+# la dernière ligne, c'est-à-dire la seule qui n'apprend rien. Chaque entrée
+# ci-dessous a été reproduite avant d'être ajoutée.
+#
+# (signature dans la sortie ffmpeg, message rendu à l'utilisateur)
+_CAUSES: tuple[tuple[str, str], ...] = (
+    ("no capable devices found",
+     "Cette carte graphique ne sait pas encoder ce format. L'AV1 par NVENC "
+     "demande une RTX 40 ou plus récente ; le HEVC et le H264 restent "
+     "disponibles."),
+    ("could not open encoder",
+     "L'encodeur n'a pas pu s'ouvrir sur cette machine. Si c'est de l'AV1 : "
+     "NVENC ne l'encode qu'à partir des RTX 40."),
+    ("cannot load nvcuda",
+     "Le pilote NVIDIA est introuvable. Sans lui, aucun encodage accéléré "
+     "n'est possible."),
+    ("invalid bit rate",
+     "Le débit demandé sort de ce que l'encodeur accepte. Choisissez une "
+     "valeur dans la plage qu'il annonce."),
+    ("is not supported by the",
+     "L'encodeur choisi ne prend pas cette disposition de canaux ou ce format "
+     "de pixels."),
+    ("no space left on device",
+     "Le disque de destination est plein."),
+    ("permission denied",
+     "Écriture refusée à cet emplacement."),
+)
+
+
+def encodeur_de(cmd: list[str]) -> Optional[str]:
+    """Encodeur vidéo d'une commande construite, ou None."""
+    try:
+        return cmd[cmd.index("-c:v") + 1]
+    except (ValueError, IndexError):
+        return None
+
+
+def diagnostiquer(lignes: list[str]) -> Optional[str]:
+    """Cause lisible d'un échec, cherchée dans toute la sortie de ffmpeg.
+
+    Retourne None si rien de connu n'y figure : l'appelant retombe alors sur
+    la dernière ligne, faute de mieux.
+    """
+    texte = "\n".join(lignes).lower()
+    for signature, message in _CAUSES:
+        if signature in texte:
+            return message
+    return None
+
+
 # ─── Construction commande ────────────────────────────────────────────────────
 
 def build_command(
@@ -297,7 +350,8 @@ def build_command(
         if hdr10_out and vid.action in (VideoAction.ENCODE_HEVC,
                                         VideoAction.ENCODE_AV1):
             pix_fmt  = "yuv420p10le"
-            prof_str = "main10" if not is_av1 else "main"
+            if not is_av1:
+                prof_str = "main10"
 
         bufsize_k = max(vid.target_bitrate * 2 // 1000, 1)
         preset    = profile.get("preset_encoder", "medium")
@@ -311,10 +365,13 @@ def build_command(
         ]
         if not is_av1:
             cmd += ["-rc", "cbr"]
-        cmd += [
-            "-preset",   preset,
-            "-profile:v", prof_str,
-        ]
+        cmd += ["-preset", preset]
+        # `av1_nvenc` n'expose aucune option `profile` : lui en passer une fait
+        # échouer la commande avant même que la carte soit interrogée —
+        # « Unable to parse "profile" option value ». L'AV1 était donc cassé
+        # sur toute machine, capable ou non.
+        if not is_av1:
+            cmd += ["-profile:v", prof_str]
 
     # ── Mapping ───────────────────────────────────────────────────────────────
     cmd += ["-map", "0:v:0"]

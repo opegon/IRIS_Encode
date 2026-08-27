@@ -33,7 +33,16 @@ class PlatformProfile:
     hwaccel:      str | None   # None → pas d'accélération
     encoder_hevc: str
     encoder_h264: str
-    encoder_av1:  str   # av1_nvenc (RTX30+) ou libaom-av1 (CPU, très lent)
+    encoder_av1:  str   # av1_nvenc (Ada/RTX40+) ou libaom-av1 (CPU, très lent)
+    # Encodeurs réellement utilisables sur cette machine, mesurés au lancement.
+    # None tant que le sondage n'a pas eu lieu : on ne préjuge alors de rien.
+    encodeurs_ok: frozenset[str] | None = None
+
+    def peut_encoder(self, encodeur: str) -> bool | None:
+        """True / False si le sondage a eu lieu, None sinon."""
+        if self.encodeurs_ok is None:
+            return None
+        return encodeur in self.encodeurs_ok
 
     def __str__(self) -> str:
         gpu_str = self.gpu.name
@@ -42,6 +51,35 @@ class PlatformProfile:
             f"hwaccel={self.hwaccel or 'none'} "
             f"HEVC={self.encoder_hevc} H264={self.encoder_h264}"
         )
+
+
+def sonder_encodeurs(encodeurs: list[str], ffmpeg_path: str = "ffmpeg",
+                     ) -> frozenset[str]:
+    """Ceux de `encodeurs` que cette machine sait réellement ouvrir.
+
+    La détection par le modèle de carte ne suffit pas : NVENC n'encode l'AV1
+    qu'à partir d'Ada, et une carte antérieure répond « No capable devices
+    found » — après avoir laissé croire que l'encodeur existait. On demande
+    donc à ffmpeg d'ouvrir chacun sur une image, ce qui coûte environ 0,3 s ;
+    les sondages tournent en parallèle pour que le lancement n'en pâtisse pas.
+    """
+    import concurrent.futures
+    import subprocess
+
+    def essai(nom: str) -> tuple[str, bool]:
+        try:
+            r = subprocess.run(
+                [ffmpeg_path, "-v", "error",
+                 "-f", "lavfi", "-i", "nullsrc=s=256x144:d=0.05:r=25",
+                 "-c:v", nom, "-frames:v", "1", "-f", "null", "-"],
+                capture_output=True, timeout=20)
+            return nom, r.returncode == 0
+        except Exception:
+            return nom, False
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        resultats = list(pool.map(essai, encodeurs))
+    return frozenset(nom for nom, ok in resultats if ok)
 
 
 def _detect_os() -> OS:

@@ -196,9 +196,29 @@ def estimate_encoding_duration(
 CODEC_PICKER_OPTS: list[str] = [
     "HEVC",
     "H264",
-    "AV1  (⚠ très gourmand CPU/GPU RTX30+)",
+    "AV1  (⚠ très gourmand)",
     "SKIP",
 ]
+
+
+def codec_picker_opts(plat=None) -> list[str]:
+    """Options du picker, annotées de ce que la machine sait faire.
+
+    Le choix n'est jamais retiré : une carte peut être remplacée, un pilote mis
+    à jour, et masquer l'option laisserait croire qu'elle n'existe pas. On dit
+    ce qui va se passer, et la décision reste à l'utilisateur.
+    """
+    opts = list(CODEC_PICKER_OPTS)
+    if plat is None:
+        return opts
+    for i, (action, encodeur) in enumerate((
+        (0, getattr(plat, "encoder_hevc", None)),
+        (1, getattr(plat, "encoder_h264", None)),
+        (2, getattr(plat, "encoder_av1", None)),
+    )):
+        if encodeur and plat.peut_encoder(encodeur) is False:
+            opts[action] += "  ✗ indisponible ici"
+    return opts
 
 
 def bitrate_picker_config(

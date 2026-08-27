@@ -16,7 +16,9 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 
 from core.decision import FileDecision, VideoAction
-from core.encoder import EncoderProcess, build_command
+from core.encoder import (
+    EncoderProcess, build_command, diagnostiquer, encodeur_de,
+)
 from core.muxer import (
     MuxProcess, build_mux_command, build_strip_command, needs_premux,
     premux_output_path,
@@ -287,6 +289,21 @@ class RunScreen(TableNavMixin, Screen):
             " ".join(cmd),
         )
 
+        # Le sondage du démarrage a déjà répondu : inutile de lancer ffmpeg
+        # pour apprendre ce qu'on sait, ni de laisser l'utilisateur lire
+        # « Error opening output files » à la place de la cause.
+        choisi = encodeur_de(cmd)
+        if choisi and self._platform.peut_encoder(choisi) is False:
+            s.state     = FileState.ERROR
+            s.error_msg = f"{choisi} indisponible ici"[:60]
+            s.last_line = (
+                f"Cette machine ne sait pas encoder avec « {choisi} » — sondé "
+                f"au lancement. L'AV1 par NVENC demande une RTX 40 ou plus "
+                f"récente ; le HEVC et le H264 restent disponibles.")
+            self.app.call_from_thread(self._update_row, next_idx)
+            self._encode_next()
+            return
+
         proc = EncoderProcess(cmd, dec.info.duration)
         self._process = proc
         proc.start()
@@ -300,8 +317,13 @@ class RunScreen(TableNavMixin, Screen):
         self.app.call_from_thread(self._update_row, next_idx)
 
         # Affiche toutes les lignes (avec ou sans progression)
+        journal: list[str] = []
         for line, progress in proc.iter_progress():
             s.last_line = line
+            # Les dernières lignes suffisent : la cause précède toujours le
+            # constat d'échec de quelques lignes.
+            journal.append(line)
+            del journal[:-40]
             if progress:
                 s.percent = progress.percent
                 s._last_progress = progress  # Stocke pour affichage ETA
@@ -353,7 +375,11 @@ class RunScreen(TableNavMixin, Screen):
         if s.state != FileState.SKIPPED:
             s.state = FileState.SUCCESS if success else FileState.ERROR
             if not success:
-                s.error_msg = s.last_line[:60]
+                cause = diagnostiquer(journal)
+                s.error_msg = (cause or s.last_line)[:60]
+                if cause:
+                    # Le détail complet reste sous les yeux, sous la cause.
+                    s.last_line = f"{cause}  —  ffmpeg : {s.last_line}"
 
         self.app.call_from_thread(self._update_row, next_idx)
         self.app.call_from_thread(self._update_header)

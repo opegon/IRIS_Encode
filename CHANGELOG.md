@@ -1,5 +1,54 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.22] — 2026-08-28
+
+### L'AV1 était cassé sur toute machine
+
+Découvert en cherchant pourquoi il échouait sur une RTX A4500 : la commande
+passait `-profile:v main` à `av1_nvenc`, **qui n'a pas d'option `profile`**.
+ffmpeg refusait donc la commande avant même d'interroger la carte —
+« Unable to parse "profile" option value "main" ». Le défaut ne dépendait pas
+du matériel : l'AV1 n'aurait pas davantage fonctionné sur une RTX 40.
+
+### Les capacités d'encodage sont mesurées, plus supposées
+
+`detect()` déduisait les encodeurs du modèle de carte. Or NVENC n'encode l'AV1
+qu'à partir d'Ada (RTX 40), et une carte antérieure ne le dit qu'au moment
+d'échouer. Les trois encodeurs sont désormais **sondés au lancement** — ouverts
+sur une image, en parallèle, ~0,7 s — et le résultat suit l'application.
+
+Relevé sur la machine de développement : `hevc_nvenc` ✓, `h264_nvenc` ✓,
+`av1_nvenc` ✗ (« No capable devices found »).
+
+**Le choix AV1 n'est pas retiré du picker.** Une carte se remplace, un pilote se
+met à jour, et masquer l'option laisserait croire qu'elle n'existe pas. Elle
+s'affiche « ✗ indisponible ici », et le lancement **refuse avant d'appeler
+ffmpeg**, en nommant la cause :
+
+```
+✗ ERREUR : av1_nvenc indisponible ici
+Cette machine ne sait pas encoder avec « av1_nvenc » — sondé au lancement.
+L'AV1 par NVENC demande une RTX 40 ou plus récente ; le HEVC et le H264
+restent disponibles.
+```
+
+`peut_encoder()` rend `None` tant que rien n'a été sondé : ne rien savoir
+n'autorise pas à refuser.
+
+### Un échec d'encodage nomme sa cause
+
+ffmpeg annonce la cause puis constate l'échec. L'écran ne gardait que la
+**dernière** ligne — « Error opening output files: Invalid argument » —
+c'est-à-dire la seule qui n'apprend rien.
+
+`diagnostiquer()` cherche des signatures connues dans les quarante dernières
+lignes : encodeur indisponible, pilote absent, débit hors plage, disposition de
+canaux refusée, disque plein, écriture refusée. Chacune a été reproduite avant
+d'être ajoutée. Sans cause reconnue, la ligne brute reste affichée : mieux vaut
+un message opaque qu'un message inventé.
+
+Correspond à l'entrée **IE-13** de `TODO.md`.
+
 ## [v0.8.1.21] — 2026-08-28
 
 ### Les sources WebM, VP9, AV1 et Opus traversent la chaîne

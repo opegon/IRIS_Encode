@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.21 — document de référence courant
+**Version** : 0.8.1.22 — document de référence courant
 **Date** : 2026-08-27
 **Statut** : stable
 
@@ -980,6 +980,21 @@ Framework : **Textual**.
 
 Conventions transverses :
 
+- **Les capacités d'encodage sont mesurées, jamais supposées.** `detect()`
+  déduit les encodeurs du modèle de carte, ce qui ment : NVENC n'encode l'AV1
+  qu'à partir d'Ada, et une carte antérieure ne le dit qu'au moment d'échouer.
+  `sonder_encodeurs()` ouvre chacun sur une image au lancement — trois
+  sondages en parallèle, ~0,7 s — et remplit `PlatformProfile.encodeurs_ok`.
+  `peut_encoder()` rend `None` tant que rien n'a été sondé : **ne rien savoir
+  n'autorise pas à refuser**.
+  Le choix n'est jamais retiré du picker — une carte se remplace, un pilote se
+  met à jour — mais il est annoté « ✗ indisponible ici », et le lancement
+  refuse en nommant la cause plutôt que de laisser ffmpeg échouer.
+- **Un échec d'encodage nomme sa cause.** ffmpeg annonce la cause puis constate
+  l'échec ; l'écran ne gardait que la dernière ligne, la seule qui n'apprend
+  rien. `encoder.diagnostiquer()` cherche des signatures connues dans les
+  quarante dernières lignes — chacune reproduite avant d'être ajoutée — et
+  retombe sur la ligne brute plutôt que d'inventer un message.
 - **Les binaires viennent de la configuration, jamais du `PATH`.** Le preflight
   installe ffmpeg, ffprobe, dovi_tool, mkvmerge et mpv dans `./bin/` **sans
   toucher au `PATH`**. Les appeler par leur nom nu échoue donc sur une
@@ -1575,6 +1590,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.22 | 2026-08-28 | **L'AV1 était cassé sur toute machine** : `-profile:v` passé à `av1_nvenc`, qui n'a pas cette option · capacités d'encodage sondées au lancement, option conservée mais annotée, refus qui nomme la cause · diagnostic des échecs ffmpeg |
 | 0.8.1.21 | 2026-08-28 | **Sources WebM / VP9 / AV1 / Opus** : le CAS 3 ne regarde plus la résolution — un VP9 ou AV1 en 1080p ou 4K restait en `← SKIP`, donc illisible chez le destinataire · `CODECS_LISIBLES` nomme le critère |
 | 0.8.1.20 | 2026-08-28 | **Clé `container`** (`auto` / `mp4` / `mkv`, § 8.6) : le profil exprime une politique, jamais au prix d'une piste perdue en silence · le retrait de Dolby Vision sait sortir en MP4, remuxé par ffmpeg · deux images perdues au remux MP4 (DTS négatifs) |
 | 0.8.1.19 | 2026-08-28 | **Le mode HDR10 quality n'injectait rien** : `rpu_info()` analysait du texte quand `dovi_tool` rend du JSON · métadonnées lues dans les SEI par ffprobe, pour toute source HDR, trois fois moins cher au scan · **ffprobe et ffmpeg appelés par leur nom nu** échouaient sur une installation où les binaires ne sont que dans `./bin/` |

@@ -26,7 +26,7 @@ from core.decision import (
     AudioAction, DVAction, FileDecision, VideoAction,
 )
 from ..common import (
-    CODEC_PICKER_OPTS,
+    codec_picker_opts,
     bitrate_picker_config,
     estimate_encoding_duration,
     fmt_bytes,
@@ -379,7 +379,10 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                     closest = min(AV1_BITRATE_OPTS_KBPS, key=lambda v: abs(v - cur_k))
                     self._apply_bitrate(d, closest * 1000)
             self._resize_rebuild()
-        self.app.push_screen(ValuePickerScreen("Codec", CODEC_PICKER_OPTS, current), _on_pick)
+        self.app.push_screen(
+            ValuePickerScreen("Codec", codec_picker_opts(self._app.platform),
+                              current),
+            _on_pick)
 
     def action_open_bitrate(self) -> None:
         dec = self._current_decision()

@@ -45,7 +45,7 @@ from core.decision import (
 )
 from ..common import (
     raccourcis,
-    CODEC_PICKER_OPTS,
+    codec_picker_opts,
     bitrate_picker_config,
     footer_line2,
 )
@@ -638,7 +638,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 if nxt == VideoAction.ENCODE_AV1 and s._ov_bitrate is None:
                     s._ov_bitrate = 1500 * 1000
                 s._update_video_row(); s._update_status()
-            cfg = ("Codec", CODEC_PICKER_OPTS, current, apply_action)
+            cfg = ("Codec", codec_picker_opts(getattr(self.app, "platform", None)),
+                   current, apply_action)
 
         elif field == "bitrate":
             title_b, opts, current, blist = bitrate_picker_config(

@@ -2,4 +2,4 @@
 
 Source de vérité pour main.py (bannière console) et tui/app.py (sous-titre).
 """
-__version__ = "0.8.1.21"
+__version__ = "0.8.1.22"

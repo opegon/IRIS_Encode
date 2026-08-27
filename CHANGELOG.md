@@ -1,157 +1,74 @@
 # CHANGELOG — IRIS ENCODE
 
-## [v0.8.0.10] — 2026-08-27
+## [v0.8.1.0] — 2026-08-27
 
-- **Le recalage d'une piste audio ne donnait aucun signe d'activité.** La
-  barre atteignait 85 % à la fin du décodage puis restait figée pendant tout
-  le réencodage — soit 65 des 82 secondes de l'opération sur un épisode réel.
-  Le résultat finissait par arriver, mais rien ne le laissait présager.
-  ffmpeg rapporte désormais sa progression (`-progress pipe:1`), suivie sur
-  `out_time_ms`.
-- **La barre annonçait « Mesure en cours » pendant un recalage.** Un libellé
-  qui parle d'une opération qui n'a pas lieu laisse croire à un blocage. Il
-  suit désormais le travail réellement en cours.
+### Greffe d'une piste venue d'un autre montage
 
-## [v0.8.0.9] — 2026-08-27
+Ajouter une VF et ses sous-titres échouait dès que le donneur n'était pas le
+même montage que la cible — le cas courant d'un rip broadcast face à un rip
+streaming, dont les coupures publicitaires décalent tout ce qui suit.
 
-### Footer utilisable sous 1920×1080
+- **Détection des plages** (`s`). Quand le recoupement par tiers constate que
+  le décalage ne tient pas sur tout le film, la mesure cherche désormais s'il
+  tient *par morceaux* : fenêtres de 2 min, fusion des voisines concordantes,
+  affinage de chaque frontière à la seconde, puis remesure sur l'étendue
+  définitive. Deux garde-fous écartent un découpage qui ne serait que du bruit
+  de corrélation. Le refus nomme ce qu'il a vu au lieu d'une hypothèse
+  générique.
+- **Recalage des sous-titres** (`p`). Exact : il n'y a que des horodatages à
+  décaler. `shift_srt()` réécrit chaque réplique avec le décalage de sa plage
+  et produit un `.srt` recalé qui devient la source de la piste.
+- **Recalage de l'audio** (`p`). L'opération est une **insertion**, pas une
+  coupe : le décalage croissant signifie que la cible porte du contenu que le
+  donneur n'a pas — celui-ci peut être plus long au total, ses minutes
+  excédentaires étant dans le générique. Les insertions s'ancrent sur le
+  silence le plus proche, la frontière de corrélation étant juste à une ou
+  deux secondes près. Faute de silence, l'insertion est posée quand même et
+  signalée : contrairement à une coupe, allonger n'efface rien.
+- Les plages viennent toujours de l'audio du donneur : le signal d'un
+  sous-titre est trop creux pour les retrouver seul, et les pistes d'un même
+  donneur portent le même montage.
+- **Sous-titres embarqués mesurables.** Une piste `mov_text` ou SRT logée dans
+  un conteneur n'avait aucune réplique lisible et la mesure refusait pour
+  « format inconnu ». Elle est désormais extraite vers un `.srt` temporaire.
+  Un sous-titre image (PGS, VobSub) est refusé pour ce motif propre.
 
-- **Les raccourcis débordaient sans le dire.** Le footer tenait sur deux
-  lignes fixes et tronquait l'excédent (`overflow: ellipsis`). L'écran de
-  recalage alignait 245 colonnes de raccourcis : au-delà de ~147 colonnes —
-  soit dès un 1920×1080 — `F1 Dry-run`, `F2 Encoder`, `F3 Muxer` et
-  `Back Retour` disparaissaient purement et simplement. Rien ne signalait leur
-  existence.
-- `TwoLineFooter` devient **`KeyFooter`** : hauteur variable, les raccourcis
-  sont répartis sur autant de lignes qu'il en faut pour la largeur réelle.
-  Les deux groupes — actions de l'écran, puis navigation — gardent leur
-  identité en s'enroulant séparément. Un raccourci n'est jamais coupé ni omis.
-- **Libellés raccourcis** : « Visualiser dans mpv » → « mpv », « Extrait de
-  contrôle » → « Extrait », « Appliquer quand même » → « Forcer », « Liste de
-  choix » → « Liste »… L'écran de recalage passe de 245 à 166 colonnes, soit
-  deux lignes encore sur un écran large et trois sur un 1920×1080.
-- Le footer du browser n'est plus ancré en bas : sa marge de deux lignes était
-  calculée pour une hauteur fixe et aurait recouvert la table.
-- `tests/test_footer.py` vérifie qu'aucun raccourci ne disparaît, de 60 à 500
-  colonnes.
+Vérifié sur un épisode réel : 6 plages, cinq paliers de +2 000 ms, et les
+pistes produites mesurent **+0 ms de décalage résiduel** — l'audio avec une
+confiance de 0,72 et trois tiers concordants à 0 ms.
 
-## [v0.8.0.8] — 2026-08-27
-
-- **Troisième ligne du bandeau de recalage invisible.** `#sync-hint` déclarait
-  `height: 3` avec une bordure haute ; or la hauteur couvre la boîte entière,
-  bordure comprise — il ne restait que deux lignes de texte. La ligne perdue
-  était systématiquement la dernière, c'est-à-dire celle qui renvoie vers `a`
-  ou `s` : l'indication dont l'utilisateur a précisément besoin après un
-  refus de mesure. Défaut présent depuis la v0.8.0, où le commentaire du CSS
-  annonçait pourtant trois lignes.
-- Le smoke test mesure désormais la hauteur utile du bandeau.
-
-## [v0.8.0.7] — 2026-08-27
-
-- **Une piste étirée n'interdit plus l'encodage.** `F2` refusait et renvoyait
-  l'utilisateur muxer lui-même avec `F3` avant de revenir encoder le résultat
-  — un travail que l'outil sait faire. mkvmerge greffe désormais les pistes
-  vers un intermédiaire temporaire juste avant l'encodage, puis ffmpeg encode
-  celui-ci. Deux écrans enchaînés à la main deviennent une seule commande.
-- Le surcoût, une écriture complète du film, n'est payé que dans ce cas :
-  ffmpeg continue d'absorber en une passe tout ce qu'il sait absorber.
-- L'intermédiaire vit hors du dossier du film et disparaît à la fin de la
-  passe, réussie ou non. `FileDecision.encode_source` le porte ; `info.path`
-  reste la source, dont dépendent le nom et le dossier de sortie.
-- Sans mkvmerge, l'opération est refusée en amont, sur l'écran de recalage,
-  plutôt que d'échouer au milieu d'un encodage.
-
-## [v0.8.0.6] — 2026-08-27
+### Corrections
 
 - **Fichiers illisibles sur téléviseur après un encodage `F2` avec piste
   greffée en décalage négatif.** Un `-itsoffset` négatif rend négatifs les
   horodatages du donneur ; ffmpeg refuse de les écrire et décale *tout le
   fichier* vers l'avant. Mesuré pour −2 500 ms : la vidéo sortait avec
-  `start_time = 2.5 s` et le conteneur gagnait 2,5 s. mpv et VLC normalisent
-  sans broncher, un décodeur matériel de TV non — le fichier plantait à la
-  lecture tout en paraissant parfait sur PC.
-- Le décalage négatif est désormais traduit en `-ss` sur l'entrée du donneur :
-  on saute son début au lieu de le repousser. Résultat identique, tous les
-  flux à `start_time = 0`, durée du conteneur juste. Le décalage positif garde
-  `-itsoffset`, qui ne produit aucun horodatage négatif.
-- Le smoke test vérifie désormais qu'aucun `-itsoffset` négatif ne subsiste
-  dans la commande d'encodage.
+  `start_time = 2.5 s`. mpv et VLC normalisent sans broncher, un décodeur
+  matériel de TV non. Le décalage négatif passe désormais par `-ss` sur
+  l'entrée du donneur.
+- **Une piste étirée n'interdit plus l'encodage.** `F2` refusait et renvoyait
+  l'utilisateur muxer lui-même avant de revenir encoder — un travail que
+  l'outil sait faire. mkvmerge greffe vers un intermédiaire temporaire juste
+  avant l'encodage. Le surcoût n'est payé que dans ce cas ; sans mkvmerge, le
+  refus a lieu en amont plutôt qu'au milieu d'un encodage.
+- `tests/smoke_tui.py` mourait sur le même `UnicodeEncodeError` que `main.py`
+  corrigeait en v0.8.0.2, ce point d'entrée ne passant pas par `main()`.
 
-## [v0.8.0.5] — 2026-08-27
+### Interface
 
-- **`p` recale aussi une piste audio.** Ce qui manquait pour greffer une VF
-  issue d'un autre montage. `retime_audio()` rallonge la piste aux points de
-  bascule et la réencode ; le fichier produit devient la source, avec un
-  décalage nul, et l'aval ne change pas d'une ligne.
-- **L'opération est une insertion, pas une coupe.** Le décalage croissant
-  signifie que la *cible* porte du contenu que le donneur n'a pas — un donneur
-  peut être plus long au total tout en manquant de matière dans le corps du
-  film, ses minutes excédentaires étant dans le générique. Mesuré : retirer au
-  lieu d'ajouter faisait passer les sauts de +2 000 à +4 000 ms.
-- **Les insertions s'ancrent sur le silence.** La frontière rendue par la
-  corrélation est juste à une ou deux secondes près, assez pour tomber au
-  milieu d'une réplique. `find_silence()` prend la pause la plus proche dans
-  une fenêtre de 15 s et centre l'insertion dessus. Faute de silence,
-  l'insertion est posée quand même sur la frontière estimée et signalée :
-  contrairement à une coupe, allonger n'efface rien.
-- Le silence intercalé est un extrait du donneur passé à `volume=0` plutôt
-  qu'un `anullsrc`, ce qui lui donne d'office la fréquence et la disposition
-  de canaux que `concat` exige identiques sur tous ses segments.
-- Vérifié sur un épisode réel : la piste produite mesure **+0 ms, confiance
-  0,72, trois tiers concordants à 0 ms** — acceptée sans réserve, là où
-  l'originale sortait 6 plages discordantes.
-- Un saut négatif est ignoré et signalé : le corriger supposerait de supprimer
-  du contenu.
-
-## [v0.8.0.4] — 2026-08-26
-
-- **`p` — recaler un sous-titre sur les plages de l'audio.** Les plages
-  détectées en v0.8.0.3 se constataient sans pouvoir s'appliquer. Un sous-titre
-  se corrige pourtant exactement : il n'y a que des horodatages à décaler.
-  `shift_srt()` réécrit chaque réplique avec le décalage de sa plage et produit
-  un `.srt` recalé, qui devient la source de la piste avec un décalage nul —
-  mpv (`v`), l'extrait de contrôle (`k`) et le mux (`F3`) le traitent ensuite
-  comme n'importe quel fichier, sans rien changer à l'aval.
-- Les plages viennent de l'audio du donneur, jamais du sous-titre : son signal
-  est trop creux pour les retrouver seul, et les pistes d'un même donneur
-  portent le même montage. Vérifié sur un épisode réel — le sous-titre corrigé
-  sort à **+0 ms de décalage résiduel, trois tiers concordants à 100 ms**, et
-  passe donc le garde-fou alors que sa corrélation brute reste sous le seuil.
-- Une piste audio refuse `p` avec un message explicite : la corriger
-  demanderait de la recouper aux points de bascule et de la réencoder, ce que
-  l'outil ne fait pas.
-
-## [v0.8.0.3] — 2026-08-26
-
-### Recalage — détection des montages différents
-
-- **Sous-titres embarqués mesurables.** `read_cues()` ne sait lire qu'un fichier
-  texte : une piste `mov_text` ou SRT logée dans un mkv/mp4 n'avait aucune
-  réplique lisible, et la mesure refusait pour « format inconnu ». La piste est
-  désormais extraite du conteneur vers un `.srt` temporaire avant d'être
-  corrélée. Un sous-titre image (PGS, VobSub) est refusé pour ce motif propre,
-  au lieu d'être confondu avec un fichier illisible.
-- **Découpage en plages** (`s` sur l'écran de recalage). Quand le recoupement
-  constate que le décalage ne tient pas sur tout le film, la mesure cherche
-  désormais s'il tient *par morceaux* : fenêtres de 2 min, fusion des voisines
-  concordantes, puis affinage de chaque frontière au pas de la seconde. C'est la
-  signature de deux montages du même contenu — les noirs de coupure publicitaire
-  d'un rip broadcast face à un rip streaming décalent tout ce qui suit.
-  Relevé sur un épisode réel : 6 plages, cinq paliers de +2 000 ms, confiances
-  0,64 à 0,87.
-- Le refus nomme maintenant ce qu'il a vu — « montage différent — 6 plages,
-  chacune alignée mais à un décalage propre » — au lieu de l'hypothèse générique.
-- Les plages sont **montrées, jamais appliquées** : `--sync` de mkvmerge et
-  `-itsoffset` de ffmpeg n'expriment qu'une transformation linéaire, et poser un
-  palier sur toute la piste serait faux partout ailleurs. Deux garde-fous
-  écartent un découpage qui ne serait que du bruit de corrélation.
-
-### Corrections
-
-- `tests/smoke_tui.py` mourait sur un `UnicodeEncodeError` dès que sa sortie
-  était redirigée — même cause que le correctif v0.8.0.2, ce point d'entrée ne
-  passant pas par `main()`. Le forçage UTF-8 devient réutilisable
-  (`main.force_utf8_output`) plutôt que dupliqué.
+- **Footer réparti sur plusieurs lignes.** Il tenait sur deux lignes fixes et
+  tronquait l'excédent en silence : au-delà de ~147 colonnes, soit dès un
+  1920×1080, `F1`, `F2`, `F3` et `Back` disparaissaient sans que rien ne
+  signale leur existence. `KeyFooter` répartit les raccourcis sur autant de
+  lignes qu'il en faut ; aucun n'est jamais coupé ni omis. Libellés raccourcis
+  en complément — l'écran de recalage passe de 245 à 166 colonnes.
+- **Troisième ligne du bandeau de recalage invisible.** `height: 3` avec une
+  bordure haute ne laissait que deux lignes de texte, la perdue étant toujours
+  celle qui renvoie vers `a` ou `s`. Défaut présent depuis la v0.8.0.
+- **Le recalage audio ne donnait aucun signe d'activité** : la barre atteignait
+  85 % puis restait figée pendant tout le réencodage — 65 des 82 secondes de
+  l'opération. ffmpeg rapporte désormais sa progression. Le libellé annonçait
+  par ailleurs « Mesure en cours » pendant un recalage.
 
 ## [v0.8.0.2] — 2026-08-26
 

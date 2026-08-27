@@ -1,5 +1,76 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.10] — 2026-08-27
+
+### L'écran des profils dit ce que chaque réglage entraîne
+
+Un profil se réglait à l'aveugle : les champs portaient le nom de la clé TOML,
+et rien ne disait ce qu'un choix impliquait. Le formulaire est réorganisé en
+**six sections**, chacune suivie d'une ligne qui énonce la conséquence des
+valeurs choisies — recalculée à chaque changement, pas un texte d'aide figé.
+
+| Section | Ce que la conséquence annonce |
+|---|---|
+| **Quand réencoder** | les seuils en clair, et le sort réservé à une source 4K |
+| **Comment encoder** | que le preset ne concerne que les fichiers réellement réencodés |
+| **Dolby Vision** | retrait par remux, conservation, ou tone mapping — et l'ordre de grandeur du mode `quality` |
+| **Audio sans perte** | ce que devient une piste TrueHD, et le conteneur que le choix impose |
+| **Autres pistes audio** | si les pistes déjà compatibles sont recopiées ou retranscodées |
+| **Fichier source** | l'irréversibilité de la suppression, en style d'alerte |
+
+### Deux réglages audio qui se contredisaient en silence
+
+`preserve_hd_audio` et `audio_hd_codec` étaient indépendants. Un profil pouvait
+donc porter « copier sans perte » **et** « transcoder en E-AC3 », l'un
+l'emportant sans que rien ne l'indique — c'est précisément ce qui a produit un
+fichier gardant son TrueHD alors que l'E-AC3 était attendu.
+
+L'écran n'expose plus qu'un **choix à quatre branches** : copier telles quelles,
+transcoder en E-AC3 au débit de la source, en AC3, ou au forfait. Les deux clés
+restent dans `profiles.toml` — le moteur est inchangé et les profils existants
+restent lisibles — mais l'écran les écrit toujours cohérentes.
+
+Un profil hérité portant une combinaison contradictoire s'affiche sur la branche
+**qui décrit ce qui se passe réellement**, la copie, et non sur l'intention
+qu'exprimait le codec.
+
+### Documentation
+
+- Spec § 14.8 réécrite : les six sections et la table de correspondance du choix
+  audio vers le couple de clés.
+- **L'historique des versions de la spec était en désordre.** Mes quatre
+  dernières entrées s'étaient insérées en ordre décroissant, chacune s'ancrant
+  sur la précédente, alors que le tableau se lit du plus ancien au plus récent.
+  Remis en ordre.
+
+## [v0.8.1.10] — 2026-08-27
+
+### L'interface peut enfin être regardée sans être lancée
+
+Travailler l'UI supposait jusqu'ici de lancer l'application et de naviguer
+jusqu'à l'écran en question — ce qui rend toute comparaison impossible : on ne
+voit jamais deux écrans côte à côte, et on juge de mémoire.
+
+`tests/shots_tui.py` pilote la TUI en headless, presse les mêmes touches qu'un
+utilisateur et exporte chaque écran en SVG dans `_shots/`. **Vingt prises,
+couvrant les dix-sept classes d'écran** de `tui/screens/`, à grille fixe
+(160 × 45) pour qu'elles soient comparables entre elles.
+
+Le point qui compte : ce sont des rendus, pas des maquettes. Le contexte
+principal tourne sur `resources_files/`, c'est-à-dire sur de vrais films — noms
+de fichiers à rallonge, 4K, HDR, Dolby Vision, pistes multiples. Ce qui déborde
+sur ces captures déborde réellement chez l'utilisateur. Les écrans qui écrivent
+(suppression, mux, encodage) sont joués à part, dans un dossier temporaire :
+aucune touche destructrice n'est pressée sur le matériel réel.
+
+Deux écrans n'étaient pas atteignables sans matériel taillé pour eux, et le
+harnais le fabrique : `RecursiveConfirmModal` exige un dossier sous le curseur,
+`SegmentsScreen` n'existe qu'après une mesure ayant constaté deux montages
+différents — un SRT à décalage volontairement rompu en son milieu la provoque.
+
+Le matériel mesurable est repris de `smoke_tui.py` plutôt que redéfini.
+Aucun changement dans l'application elle-même.
+
 ## [v0.8.1.9] — 2026-08-27
 
 ### Le README dit enfin à quel problème l'outil répond

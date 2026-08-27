@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.9 — document de référence courant
+**Version** : 0.8.1.10 — document de référence courant
 **Date** : 2026-08-27
 **Statut** : stable
 
@@ -83,6 +83,7 @@ iris_encode/
 │   └── logger.py                 ← module inerte (API prête, non implémenté)
 ├── tests/
 │   ├── smoke_tui.py              ← parcours TUI headless de bout en bout
+│   ├── shots_tui.py              ← inventaire visuel des écrans (export SVG)
 │   ├── test_deps.py              ← cohérence des listes de dépendances
 │   ├── test_dovi.py
 │   ├── test_muxer.py
@@ -1205,7 +1206,37 @@ Débit cible · Résolution · Audio
 Profils **builtin** (9) : éditables, non supprimables (message explicite si tentative).
 Profils **user** : éditables et supprimables (`D` / `Suppr`, avec confirmation).
 
-Le formulaire `ProfileForm` expose tous les champs, `hdr10_quality` compris.
+Le formulaire `ProfileForm` est organisé en **six sections**, chacune suivie
+d'une ligne qui énonce **la conséquence des valeurs choisies** — recalculée à
+chaque changement, pas un texte d'aide figé :
+
+| Section | Champs | Ce que la conséquence annonce |
+|---|---|---|
+| Quand réencoder | seuils 720p / 1080p / 4K, `keep_4k` | les seuils en clair, et le sort d'une source 4K |
+| Comment encoder | `preset_encoder` | qu'il ne concerne que les fichiers réencodés |
+| Dolby Vision | `dolby_vision`, `hdr10_quality` | retrait par remux, conservation, ou tone mapping ; l'ordre de grandeur du mode `quality` |
+| Audio sans perte | choix unique (voir ci-dessous) | ce que devient une piste TrueHD, et le conteneur imposé |
+| Autres pistes audio | langues, forfaits, `audio_copy_compatible` | si les pistes déjà compatibles sont recopiées |
+| Fichier source | `delete_source` | l'irréversibilité, en style d'alerte |
+
+**Le couple audio sans perte ne peut plus se contredire.** `preserve_hd_audio`
+et `audio_hd_codec` étaient deux réglages indépendants dont l'un l'emportait en
+silence : un profil pouvait porter « copier sans perte » *et* « transcoder en
+E-AC3 », sans que rien n'indique lequel gagnait. L'écran n'expose plus qu'un
+choix à quatre branches, traduit en couple à l'écriture :
+
+| Branche affichée | `preserve_hd_audio` | `audio_hd_codec` |
+|---|---|---|
+| copier telles quelles | `true` | `none` |
+| → E-AC3 au débit de la source | `false` | `eac3` |
+| → AC3 au débit de la source | `false` | `ac3` |
+| → forfait 5.1 / 7.1 | `false` | `none` |
+
+Les deux clés restent dans `profiles.toml` : le moteur est inchangé, et un
+profil écrit avant cet écran reste lisible. Un couple contradictoire hérité
+s'affiche sur la branche **qui décrit ce qui se passe réellement** — la copie,
+puisqu'elle l'emporte dans `decide_audio` — et non sur l'intention qu'exprimait
+le codec.
 
 ### 14.9 Sélection de profil — `ProfilePickerScreen`
 
@@ -1361,6 +1392,7 @@ avec libx265 est déjà GPL — mais autant le décider sciemment.
 | Fichier | Portée |
 |---|---|
 | `tests/smoke_tui.py` | Parcours TUI headless de bout en bout (14 scénarios) — **à lancer après toute modification d'écran** |
+| `tests/shots_tui.py` | Inventaire visuel : exporte chaque écran en SVG (rendu réel, pas maquette) |
 | `tests/test_deps.py` | Cohérence des listes de dépendances |
 | `tests/test_dovi.py` | Wrapper dovi_tool |
 | `tests/test_muxer.py` | Génération des commandes mkvmerge, parsing `--gui-mode` |
@@ -1370,6 +1402,7 @@ avec libx265 est déjà GPL — mais autant le décider sciemment.
 
 ```bash
 python tests/smoke_tui.py     # headless, encode réellement de petits clips
+python tests/shots_tui.py     # inventaire visuel -> _shots/*.svg
 python -m pytest tests/
 ```
 
@@ -1413,7 +1446,8 @@ python -m pytest tests/
 | 0.8.1.3 | 2026-08-27 | Colonne « Temps estim. » renommée « ETA », largeur 14 → 9 |
 | 0.8.1.4 | 2026-08-27 | Largeurs de colonnes du browser revues au profit du nom de fichier et des pistes audio · l'accueil repart des largeurs par défaut à chaque lancement |
 | 0.8.1.5 | 2026-08-27 | **Crash au lancement sur toute installation neuve** : `_deep_merge` assignait les sous-dictionnaires par référence, la réinitialisation des colonnes vidait `_DEFAULTS` |
-| 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
-| 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
-| 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.6 | 2026-08-27 | **Retrait du Dolby Vision sans réencodage** (`VideoAction.STRIP_DV`, § 7.3) : une source 8.1 ou 7 que le profil n'a aucune raison de réencoder sort en `_[hdr10].mkv` par `dovi_tool remove` + mkvmerge — image bit à bit identique, HDR10+ conservé, 2 min 16 s pour un film 4K de 5,7 Go · détection du sous-profil par `dv_bl_signal_compatibility_id` · **sortie HDR10 en 10 bits** : le mode standard encodait en `yuv420p` quelle que soit la source |
+| 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
+| 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
+| 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.10 | 2026-08-27 | Écran des profils réorganisé en six sections, chacune énonçant la conséquence des valeurs choisies (§ 14.8) · `preserve_hd_audio` et `audio_hd_codec` fusionnés en un choix unique : réglés séparément, ils pouvaient se contredire sans que rien ne dise lequel l'emportait |

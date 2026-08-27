@@ -1,5 +1,62 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.19] — 2026-08-28
+
+### Le mode « HDR10 quality » n'a jamais injecté ses métadonnées
+
+Ce mode existe pour produire un HDR10 aux métadonnées statiques correctes —
+master display et MaxCLL — que certains téléviseurs exigent pour appliquer leur
+tone mapping. Il ne les a **jamais** écrites.
+
+`dovi.rpu_info()` analysait la sortie de `dovi_tool info` avec des expressions
+régulières attendant du texte — `Dolby Vision Profile: 8.1`, `MaxCLL: 1000` —
+alors que l'outil livré rend du **JSON**. `master_display` et `max_cll` valaient
+donc toujours `None`, et les `-x265-params` sortaient sans elles.
+
+**Trois tests passaient pourtant**, parce qu'ils fabriquaient eux-mêmes le
+format attendu. C'est exactement ainsi qu'un défaut survit à une suite verte :
+un test qui invente son entrée ne prouve rien sur ce que produit l'outil réel.
+
+Les métadonnées sont désormais lues **dans les SEI du flux, par ffprobe** :
+
+```
+master-display=G(8500,39850)B(6550,2300)R(35400,14600)WP(15635,16450)L(10000000,50)
+max-cll=988,382
+```
+
+Trois conséquences, toutes des améliorations :
+
+- **Cela vaut pour toute source HDR**, avec ou sans Dolby Vision. L'ancienne
+  voie ne s'activait que sur un fichier DV.
+- **`dovi_tool` n'est plus requis** pour ce mode.
+- **Le scan est trois fois moins cher** sur un fichier DV : l'ancienne voie
+  extrayait 30 s de flux HEVC, en tirait le RPU puis l'interrogeait — 1,86 s
+  par fichier, contre 0,62 s pour une lecture d'image.
+
+Un `max_content`/`max_average` à `0,0` signifie « non mesuré » : rien n'est
+injecté plutôt que d'affirmer un pic lumineux nul. `probe_file()` et
+`rpu_info()`, sans appelant, sont retirés.
+
+⚠ **Le coût du mode reste ce qu'il est** : `libx265` mesuré à 0,78 image/s en
+4K, soit de l'ordre de 70 heures pour un long métrage. Il est réparé, pas rendu
+praticable en 4K — l'écran des profils l'annonce.
+
+### Ni ffprobe ni ffmpeg n'étaient trouvés sur une installation neuve
+
+Découvert en réparant ce qui précède. Le preflight installe les binaires dans
+`./bin/` **sans toucher au `PATH`**, or `scanner._ffprobe_json` et
+`encoder.build_command` les appelaient par leur nom nu.
+
+Vérifié en retirant ffprobe du `PATH` : `scan()` lève `FileNotFoundError`, et
+le browser écarte alors **tous les fichiers comme illisibles**. L'encodage
+aurait échoué de la même façon.
+
+`scanner.set_ffprobe_path()` et `encoder.set_ffmpeg_path()` sont posés au
+démarrage, comme `muxer.set_mkvmerge_path()` et `sync.set_ffmpeg_path()` le
+faisaient déjà. Le défaut ne se voyait pas ici parce que cette machine a
+ffmpeg dans son `PATH` — c'est précisément ce que le test en dossier vierge ne
+pouvait pas attraper.
+
 ## [v0.8.1.18] — 2026-08-28
 
 ### Le chemin du dossier était écrit deux fois

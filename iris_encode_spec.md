@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.18 — document de référence courant
+**Version** : 0.8.1.19 — document de référence courant
 **Date** : 2026-08-27
 **Statut** : stable
 
@@ -439,10 +439,21 @@ il supprime le RPU de lui-même, et stripper d'abord réécrirait le film pour
 rien. Une source 8.1 ou 7 qui n'a rien à réencoder sort donc en
 `<nom>_[hdr10].mkv`, toutes pistes conservées.
 
-**Mode HDR10 quality (`hdr10_quality = "quality"`)** — activé par `cinema_4k_quality`.
-Utilise `libx265` CPU + `-x265-params` avec `master_display` et `max_cll` extraits par
-`dovi_tool`. Sortie HEVC HDR10 à métadonnées statiques correctes, compatible LG/Sony/
-Samsung. Exige `dovi_tool` ; sans lui, un ⚠ s'affiche dans `TracksScreen`.
+**Mode HDR10 quality (`hdr10_quality = "quality"`)** — activé par
+`cinema_4k_quality`. Utilise `libx265` CPU + `-x265-params` avec `master-display`
+et `max-cll`, pour une sortie HDR10 aux métadonnées statiques correctes.
+
+Ces valeurs sont lues **dans les SEI du flux, par ffprobe**
+(`scanner._hdr10_metadata`), et non extraites du RPU Dolby Vision : c'est là
+qu'un lecteur les cherche, et cela vaut pour toute source HDR, avec ou sans
+Dolby Vision. `dovi_tool` n'est plus requis pour ce mode.
+
+Un `max_content`/`max_average` à `0,0` signifie « non mesuré » : rien n'est
+injecté plutôt que d'affirmer un pic lumineux nul. Une lecture qui échoue fait
+retomber le mode sur un encodage sans métadonnées fines, jamais sur une erreur.
+
+⚠ **Coût réel** : `libx265` mesuré à 0,78 image/s sur du 4K, soit de l'ordre de
+70 heures pour un long métrage. Le mode reste réservé au 1080p en pratique.
 
 **Pipeline tone mapping P5 (SDR) :**
 
@@ -929,6 +940,12 @@ Framework : **Textual**.
 
 Conventions transverses :
 
+- **Les binaires viennent de la configuration, jamais du `PATH`.** Le preflight
+  installe ffmpeg, ffprobe, dovi_tool, mkvmerge et mpv dans `./bin/` **sans
+  toucher au `PATH`**. Les appeler par leur nom nu échoue donc sur une
+  installation neuve : `scanner.set_ffprobe_path()` et
+  `encoder.set_ffmpeg_path()` sont posés au démarrage par `tui/app.py`, comme
+  `muxer.set_mkvmerge_path()` et `sync.set_ffmpeg_path()` le faisaient déjà.
 - **Deux zones ne disent pas la même chose.** La barre d'état porte le dossier
   courant ; la notice de survol ne montre donc que ce qu'elle n'a pas déjà dit —
   le nom du fichier, ou son chemin relatif quand un scan récursif le remonte
@@ -1518,6 +1535,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.19 | 2026-08-28 | **Le mode HDR10 quality n'injectait rien** : `rpu_info()` analysait du texte quand `dovi_tool` rend du JSON · métadonnées lues dans les SEI par ffprobe, pour toute source HDR, trois fois moins cher au scan · **ffprobe et ffmpeg appelés par leur nom nu** échouaient sur une installation où les binaires ne sont que dans `./bin/` |
 | 0.8.1.18 | 2026-08-28 | **Densité** : la notice de survol ne répète plus le dossier de la barre d'état (IE-08) · le footer enchaîne ses trois bandes et ne passe à la ligne qu'au débordement, une à deux lignes rendues au contenu selon l'écran (IE-09) |
 | 0.8.1.17 | 2026-08-28 | **L'écran des volumes promettait dix colonnes vides** : colonnes propres (Volume, Espace libre, Total, Occupé), barre d'état, bandeau de profil et footer adaptés au mode (IE-07) · `fmt_bytes` connaît le téraoctet |
 | 0.8.1.16 | 2026-08-28 | **Les modales laissent voir l'écran** — la règle globale `Screen { background }` écrasait leur translucidité — et **un seul cadre**, le trait fin, à la place des deux familles graphiques (IE-06) |

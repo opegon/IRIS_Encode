@@ -44,7 +44,10 @@ _COPY_COMPAT_CODECS = frozenset({"aac", "ac3", "eac3"})
 
 # ── Chemin dovi_tool (singleton, settable par l'app au démarrage) ────────────
 _dovi_path: Optional[Path] = None
-_ffmpeg_path: str = "ffmpeg"
+# Chemin de ffprobe. Le preflight installe les binaires dans ./bin/ sans
+# toucher au PATH : les appeler par leur nom nu fait echouer tout scan sur une
+# installation neuve, et chaque fichier est alors ecarte comme illisible.
+_ffprobe_path: str = "ffprobe"
 
 
 def set_dovi_path(path: Optional[Path]) -> None:
@@ -53,10 +56,10 @@ def set_dovi_path(path: Optional[Path]) -> None:
     _dovi_path = path
 
 
-def set_ffmpeg_path(path: str) -> None:
+def set_ffprobe_path(path: str) -> None:
     """Précise l'exécutable ffmpeg à utiliser pour le probing (défaut: 'ffmpeg' du PATH)."""
-    global _ffmpeg_path
-    _ffmpeg_path = path
+    global _ffprobe_path
+    _ffprobe_path = path
 
 
 # ─── Modèles ──────────────────────────────────────────────────────────────────
@@ -187,7 +190,7 @@ class VideoInfo:
 # ─── Helpers ffprobe ──────────────────────────────────────────────────────────
 
 def _ffprobe_json(args: list[str]) -> dict:
-    cmd = ["ffprobe", "-v", "error", "-print_format", "json"] + args
+    cmd = [_ffprobe_path, "-v", "error", "-print_format", "json"] + args
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     if r.returncode != 0:
         raise RuntimeError(f"ffprobe: {r.stderr.strip()}")
@@ -283,6 +286,80 @@ def _duration_tag(raw: str) -> float:
         return 0.0
 
 
+def _fraction(valeur: str, unite: int) -> Optional[int]:
+    """« 35400/50000 » → la valeur exprimee dans l'unite voulue.
+
+    ffprobe rend des fractions ; x265 attend des entiers dans une unite fixe :
+    1/50000 pour les coordonnees de chromaticite, 1/10000 cd/m2 pour les
+    luminances. On reechelonne plutot que de supposer le denominateur.
+    """
+    try:
+        num, _, den = str(valeur).partition("/")
+        return round(int(num) / int(den or 1) * unite)
+    except (ValueError, ZeroDivisionError):
+        return None
+
+
+def _hdr10_metadata(path: Path) -> tuple[Optional[str], Optional[tuple[int, int]]]:
+    """Master display et MaxCLL/MaxFALL d'une source HDR, lus par ffprobe.
+
+    Ces valeurs decrivent le HDR10 du flux : elles vivent dans ses SEI, la ou
+    un lecteur les cherche. Les extraire du RPU Dolby Vision reviendrait a
+    demander a une autre couche ce que celle-ci dit deja — et n'en dirait rien
+    pour une source HDR sans Dolby Vision.
+
+    Rend (None, None) en cas d'echec : le mode quality retombe alors sur un
+    encodage sans metadonnees fines plutot que d'echouer.
+    """
+    try:
+        data = _ffprobe_json([
+            "-select_streams", "v:0",
+            "-read_intervals", "%+#1",
+            "-show_frames",
+            str(path),
+        ])
+    except Exception as e:
+        _log.debug("hdr10 probe failed for %s: %s", path, e)
+        return None, None
+
+    frames = data.get("frames") or [{}]
+    master, cll = None, None
+    for sd in frames[0].get("side_data_list", []):
+        type_sd = sd.get("side_data_type", "")
+
+        if "Mastering display" in type_sd:
+            coords = {}
+            for nom, unite in (("green_x", 50000), ("green_y", 50000),
+                               ("blue_x", 50000),  ("blue_y", 50000),
+                               ("red_x", 50000),   ("red_y", 50000),
+                               ("white_point_x", 50000), ("white_point_y", 50000),
+                               ("max_luminance", 10000), ("min_luminance", 10000)):
+                if nom not in sd:
+                    break
+                v = _fraction(sd[nom], unite)
+                if v is None:
+                    break
+                coords[nom] = v
+            else:
+                master = (
+                    f"G({coords['green_x']},{coords['green_y']})"
+                    f"B({coords['blue_x']},{coords['blue_y']})"
+                    f"R({coords['red_x']},{coords['red_y']})"
+                    f"WP({coords['white_point_x']},{coords['white_point_y']})"
+                    f"L({coords['max_luminance']},{coords['min_luminance']})"
+                )
+
+        elif "light level" in type_sd.lower():
+            contenu = _safe_int(sd.get("max_content"))
+            moyen   = _safe_int(sd.get("max_average"))
+            # 0,0 signifie « non mesure » : ne rien injecter vaut mieux que
+            # d'affirmer que le pic lumineux est nul.
+            if contenu or moyen:
+                cll = (contenu, moyen)
+
+    return master, cll
+
+
 def _detect_dv(path: Path) -> tuple[Optional[int], Optional[int]]:
     """
     Détecte le Dolby Vision via les side_data ffprobe.
@@ -370,19 +447,20 @@ def scan(path: Path) -> VideoInfo:
     # ── Dolby Vision ──────────────────────────────────────────────────────────
     dv_profile, dv_bl_compat = _detect_dv(path)
 
-    # Enrichissement DV via dovi_tool (sous-profil + master display + MaxCLL)
-    dv_subprofile        = None
-    hdr10_master_display = None
-    hdr10_max_cll        = None
-    if dv_profile is not None and _dovi_path is not None:
-        try:
-            from . import dovi
-            extra = dovi.probe_file(path, _dovi_path, _ffmpeg_path)
-            dv_subprofile        = extra.get("dv_subprofile")
-            hdr10_master_display = extra.get("master_display")
-            hdr10_max_cll        = extra.get("max_cll")
-        except Exception as e:
-            _log.debug("dovi probe failed for %s: %s", path, e)
+    # Sous-profil DV : deduit de la compatibilite annoncee par le flux, sans
+    # extraire ni analyser le RPU.
+    dv_subprofile = None
+    if dv_profile == 8 and dv_bl_compat in (1, 2, 4):
+        dv_subprofile = f"8.{dv_bl_compat}"
+    elif dv_profile is not None:
+        dv_subprofile = str(dv_profile)
+
+    # Master display et MaxCLL : lus dans les SEI du flux, pour toute source
+    # HDR — avec ou sans Dolby Vision. Une source SDR n'en a pas, on ne paie
+    # donc pas l'appel.
+    hdr10_master_display, hdr10_max_cll = (None, None)
+    if vid.get("color_transfer", "") in ("smpte2084", "arib-std-b67"):
+        hdr10_master_display, hdr10_max_cll = _hdr10_metadata(path)
 
     return VideoInfo(
         path=path,

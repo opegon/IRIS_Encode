@@ -58,46 +58,6 @@ def is_available(bin_dir: Optional[Path] = None) -> bool:
 
 # ─── Probing d'un fichier source ──────────────────────────────────────────────
 
-def probe_file(input_path: Path, dovi_path: Path,
-               ffmpeg_path: str = "ffmpeg") -> dict:
-    """
-    Récupère sous-profil DV + master display + MaxCLL/FALL d'un fichier source.
-
-    Retourne un dict :
-      {
-        "dv_subprofile":   "5" | "7.06" | "8.1" | "8.4" | None,
-        "master_display":  "G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1)" | None,
-        "max_cll":         (1000, 400) | None,
-      }
-
-    Retourne dict vide en cas d'échec — ne lève pas.
-    Coût : 1-3 appels subprocess, ~50-150ms.
-    """
-    import tempfile
-    result: dict = {}
-    try:
-        with tempfile.TemporaryDirectory(prefix="iris_dovi_probe_") as tmpdir:
-            tmp_p = Path(tmpdir)
-            hevc  = tmp_p / "probe.hevc"
-            rpu   = tmp_p / "probe.rpu"
-
-            # 1) extract HEVC raw (très rapide en stream copy)
-            if not extract_hevc_stream(input_path, hevc, ffmpeg_path,
-                                       duration_limit=30):
-                return result
-            # 2) extract RPU
-            if not extract_rpu(hevc, rpu, dovi_path):
-                return result
-            # 3) interroger le RPU
-            info = rpu_info(rpu, dovi_path)
-            result.update(info)
-    except Exception as e:
-        _log.debug("probe_file failed for %s: %s", input_path, e)
-    return result
-
-
-# ─── Étapes du pipeline ───────────────────────────────────────────────────────
-
 def extract_hevc_stream(input_path: Path, output_hevc: Path,
                         ffmpeg_path: str = "ffmpeg",
                         duration_limit: Optional[int] = None,
@@ -184,46 +144,6 @@ def convert_p7_to_p8(rpu_in: Path, rpu_out: Path, dovi_path: Path) -> bool:
         _log.warning("convert_p7_to_p8 failed: %s", e)
         return False
 
-
-def rpu_info(rpu_path: Path, dovi_path: Path) -> dict:
-    """
-    Interroge un RPU pour récupérer profil + master display + MaxCLL/FALL.
-
-    Retourne :
-      { "dv_subprofile": str|None, "master_display": str|None,
-        "max_cll": (cll, fall)|None }
-    """
-    cmd = [str(dovi_path), "info", "-i", str(rpu_path), "-f", "1"]
-    try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-        out = (r.stdout or "") + "\n" + (r.stderr or "")
-    except Exception as e:
-        _log.warning("rpu_info failed: %s", e)
-        return {}
-
-    info: dict = {}
-    # Sous-profil — exemples sortie dovi_tool :
-    #   "Dolby Vision Profile: 8.1"  ou  "DV profile: 5"
-    m = re.search(r"profile[:\s]+([0-9]+(?:\.[0-9]+)?)", out, re.IGNORECASE)
-    if m:
-        info["dv_subprofile"] = m.group(1)
-
-    # Master display — format x265 : "G(x,y)B(x,y)R(x,y)WP(x,y)L(max,min)"
-    m = re.search(r"(G\(\d+,\d+\)B\(\d+,\d+\)R\(\d+,\d+\)"
-                  r"WP\(\d+,\d+\)L\(\d+,\d+\))", out)
-    if m:
-        info["master_display"] = m.group(1)
-
-    # MaxCLL / MaxFALL — "MaxCLL: 1000  MaxFALL: 400"
-    m_cll  = re.search(r"max[\s_-]*cll[:\s]+(\d+)",  out, re.IGNORECASE)
-    m_fall = re.search(r"max[\s_-]*fall[:\s]+(\d+)", out, re.IGNORECASE)
-    if m_cll and m_fall:
-        info["max_cll"] = (int(m_cll.group(1)), int(m_fall.group(1)))
-
-    return info
-
-
-# ─── Construction des paramètres x265 ─────────────────────────────────────────
 
 def make_x265_hdr_params(
     master_display: Optional[str] = None,

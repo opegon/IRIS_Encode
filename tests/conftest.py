@@ -19,7 +19,8 @@ import pytest
 _GLOBALES = [
     ("core.muxer",    "_mkvmerge_path"),
     ("core.scanner",  "_dovi_path"),
-    ("core.scanner",  "_ffmpeg_path"),
+    ("core.scanner",  "_ffprobe_path"),
+    ("core.encoder",  "_ffmpeg_path"),
     ("core.sync",     "_ffmpeg_path"),
     ("core.preview",  "_mpv_path"),
     ("core.decision", "_STRIP_DV_AVAILABLE"),

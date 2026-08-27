@@ -17,6 +17,18 @@ from typing import Callable, Iterator, Optional
 from .decision import AudioAction, DVAction, FileDecision, VideoAction
 from .platform import PlatformProfile
 
+# Chemin de ffmpeg, posé au démarrage. Même raison que pour ffprobe : le
+# preflight installe les binaires dans ./bin/ sans toucher au PATH, et les
+# appeler par leur nom nu ferait échouer tout encodage sur une installation
+# neuve.
+_ffmpeg_path: str = "ffmpeg"
+
+
+def set_ffmpeg_path(path: str) -> None:
+    """Précise l'exécutable ffmpeg (défaut : celui du PATH)."""
+    global _ffmpeg_path
+    _ffmpeg_path = path
+
 
 # ─── Suspend / Resume multiplateforme ────────────────────────────────────────
 
@@ -167,7 +179,7 @@ def build_command(
             f"la corruption du fichier source."
         )
 
-    cmd: list[str] = ["ffmpeg"]
+    cmd: list[str] = [_ffmpeg_path]
 
     # hwaccel — absent pour :
     #   - SDR tone map (CPU obligatoire pour zscale)

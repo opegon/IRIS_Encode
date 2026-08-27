@@ -45,37 +45,20 @@ def test_is_available(tmp_path: Path, fake_dovi: Path):
         assert dovi.is_available(tmp_path / "nowhere") is False
 
 
-# ─── Parsing dovi_tool info ───────────────────────────────────────────────────
-
-def test_rpu_info_parses_p8_1():
-    fake_output = (
-        "Dolby Vision Profile: 8.1\n"
-        "MaxCLL: 1000  MaxFALL: 400\n"
-        "G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1)\n"
-    )
-    mock_result = mock.Mock(stdout=fake_output, stderr="", returncode=0)
-    with mock.patch("subprocess.run", return_value=mock_result):
-        info = dovi.rpu_info(Path("fake.rpu"), Path("fake_dovi"))
-    assert info["dv_subprofile"] == "8.1"
-    assert info["max_cll"] == (1000, 400)
-    assert "G(13250,34500)" in info["master_display"]
-
-
-def test_rpu_info_parses_profile_5():
-    fake_output = "DV profile: 5\n"
-    mock_result = mock.Mock(stdout=fake_output, stderr="", returncode=0)
-    with mock.patch("subprocess.run", return_value=mock_result):
-        info = dovi.rpu_info(Path("fake.rpu"), Path("fake_dovi"))
-    assert info["dv_subprofile"] == "5"
-    assert "master_display" not in info
-    assert "max_cll" not in info
-
-
-def test_rpu_info_handles_exception():
-    with mock.patch("subprocess.run", side_effect=OSError("no exe")):
-        info = dovi.rpu_info(Path("fake.rpu"), Path("fake_dovi"))
-    assert info == {}
-
+# ─── Note : les métadonnées HDR10 ne viennent plus d'ici ──────────────────────
+#
+# `rpu_info()` analysait la sortie de `dovi_tool info` avec des expressions
+# régulières attendant du texte — « Dolby Vision Profile: 8.1 », « MaxCLL: 1000 ».
+# L'outil rend du JSON, et les rendait donc toujours vides : le mode
+# « HDR10 quality » n'a jamais injecté ni master-display ni max-cll.
+#
+# Trois tests passaient pourtant, parce qu'ils fournissaient eux-mêmes le format
+# attendu. C'est ce qui a permis au défaut de survivre : un test qui invente son
+# entrée ne prouve rien sur ce que produit l'outil réel.
+#
+# Ces métadonnées sont désormais lues dans les SEI du flux par ffprobe
+# (`scanner._hdr10_metadata`), ce qui vaut aussi pour une source HDR sans Dolby
+# Vision. Voir tests/test_hdr10.py.
 
 # ─── Construction des paramètres x265 ─────────────────────────────────────────
 

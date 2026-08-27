@@ -75,9 +75,16 @@ class IrisEncodeApp(App):
             scanner.set_dovi_path(dovi_path)
         # Précise le chemin ffmpeg utilisé pour le probing DV
         from core.preflight import get_tool_path
+        # ffprobe est appelé à chaque scan : sans ce câblage, une installation
+        # où le preflight a posé les binaires dans ./bin/ écarte tous les
+        # fichiers comme illisibles.
+        ffprobe_p = get_tool_path("ffprobe", bin_dir)
+        if ffprobe_p:
+            scanner.set_ffprobe_path(ffprobe_p)
         ffmpeg_p = get_tool_path("ffmpeg", bin_dir)
         if ffmpeg_p:
-            scanner.set_ffmpeg_path(ffmpeg_p)
+            from core import encoder as encoder_mod
+            encoder_mod.set_ffmpeg_path(ffmpeg_p)
             from core import sync as sync_mod
             sync_mod.set_ffmpeg_path(ffmpeg_p)
         # Câble mkvmerge pour la greffe de pistes externes (optionnel)

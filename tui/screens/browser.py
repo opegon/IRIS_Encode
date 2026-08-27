@@ -885,10 +885,25 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     # ─── Survol : chemin complet dans la zone notice ──────────────────────────
 
+    def _libelle_survol(self, chemin: Path) -> str:
+        """Ce que la barre d'état ne dit pas déjà.
+
+        Elle affiche le dossier courant ; répéter ce préfixe quatre lignes plus
+        bas coûtait une quarantaine de colonnes, et sur un chemin réseau il ne
+        restait plus la place d'afficher le nom du fichier. Un scan récursif
+        remonte en revanche des fichiers de sous-dossiers : là, le chemin
+        relatif dit quelque chose que la barre d'état ignore.
+        """
+        try:
+            relatif = chemin.relative_to(self._nav.current)
+        except ValueError:
+            return str(chemin)      # hors de l'arborescence courante
+        return str(relatif)
+
     @on(DataTable.RowHighlighted)
     def _on_row_highlight(self, event: DataTable.RowHighlighted) -> None:
-        """Met à jour la barre de statut avec le nom complet du fichier au survol."""
+        """Affiche le fichier survolé, sans répéter le dossier courant."""
         row_type, path = self._current_row_info()
         if path:
             notice = self.query_one("#scan-notice", Static)
-            notice.update(str(path))
+            notice.update(self._libelle_survol(path))

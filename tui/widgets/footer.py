@@ -141,9 +141,15 @@ class KeyFooter(Widget):
 
     def _redraw(self) -> None:
         largeur = max(0, self.size.width - _PADDING)
-        lignes: list[Text] = []
-        for bande in split_bands(self._actions, self._nav):
-            lignes.extend(_render_line(l) for l in pack(bande, largeur))
+        # Les bandes fixent l'ordre — propres à l'écran, globaux, touches de
+        # fonction — mais plus le découpage en lignes : chacune démarrait la
+        # sienne, et « ⌫ Retour » ou « F10 Quitter » occupait une ligne entière
+        # pour un seul raccourci. On enchaîne, et on ne passe à la ligne qu'au
+        # débordement. Les touches de fonction restent en fin de séquence,
+        # simplement plus toujours en tête de ligne.
+        raccourcis = [p for bande in split_bands(self._actions, self._nav)
+                      for p in bande]
+        lignes: list[Text] = [_render_line(l) for l in pack(raccourcis, largeur)]
         bloc = Text("\n").join(lignes) if lignes else Text("")
         try:
             self.query_one("#footer-body", Static).update(bloc)

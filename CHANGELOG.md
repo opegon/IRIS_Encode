@@ -1,5 +1,56 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.18] — 2026-08-28
+
+### Le chemin du dossier était écrit deux fois
+
+La barre d'état donne le dossier courant ; quatre lignes plus bas, la notice
+donnait le chemin **complet** du fichier survolé, qui recommence par ce même
+dossier. Une quarantaine de colonnes payées deux fois — et sur un partage
+réseau, il ne restait plus la place d'afficher le nom du fichier.
+
+La notice ne montre désormais que ce que la barre d'état n'a pas déjà dit :
+
+| Dossier courant | Fichier survolé | Notice |
+|---|---|---|
+| `D:\films` | `D:\films\Watchmen.mkv` | `Watchmen.mkv` |
+| `D:\films` | `D:\films\2009\Watchmen.mkv` | `2009\Watchmen.mkv` |
+| `D:\films` | `C:\ailleurs\Autre.mkv` | chemin complet |
+| `D:
+ilms` | `D:
+ilms9\Watchmen.mkv` | `2009\Watchmen.mkv` |
+| `D:
+ilms` | `C:illeurs\Autre.mkv` | chemin complet |
+
+Le deuxième cas compte : un scan récursif remonte des fichiers de sous-dossiers,
+et là le chemin relatif dit quelque chose que la barre d'état ignore.
+
+### Le footer passait à la ligne avant d'être plein
+
+Les raccourcis étaient répartis en trois bandes — propres à l'écran, globaux,
+touches de fonction — et **chaque bande était enroulée séparément**. Chacune
+démarrait donc sa ligne, même pour une seule entrée : `⌫ Retour` au dry-run et
+au mux, `F10 Quitter` à l'encodage et à la configuration.
+
+Les bandes fixent toujours l'ordre, mais plus le découpage : elles sont
+enchaînées puis enroulées ensemble, et la ligne ne se coupe qu'au débordement.
+
+| Écran | Avant | Après |
+|---|---|---|
+| Encodage | 2 lignes | **1** |
+| Configuration (150 col.) | 3 lignes | **1** |
+| Dry-run | 3 à 4 lignes | **2** |
+| Browser | 3 à 4 lignes | **3** |
+
+**Contrepartie assumée** : la v0.8.1.2 avait rangé les raccourcis par rôle pour
+qu'« une place fixe par rôle vaille mieux qu'un ordre de déclaration ». Les
+touches de fonction restent en fin de séquence, mais ne démarrent plus
+forcément leur propre ligne. C'est de la place rendue au contenu au prix d'un
+repère un peu moins strict — arbitrage de la revue, inscrit ici pour qu'il ne
+se perde pas.
+
+Correspond aux entrées **IE-08** et **IE-09** de `TODO.md`.
+
 ## [v0.8.1.17] — 2026-08-28
 
 ### L'écran d'accueil promettait dix colonnes vides

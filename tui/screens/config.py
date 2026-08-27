@@ -17,7 +17,7 @@ from textual.widgets import Button, DataTable, Header, Static
 
 from core import profiles as prof_mod
 from core.profiles import Profile
-from ..common import DV_VALUE_STYLES, footer_line2
+from ..common import DV_VALUE_STYLES, footer_line2, raccourcis
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 from ..widgets.profile_form import ProfileCancelled, ProfileForm, ProfileSaved
@@ -219,7 +219,8 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         # Header contextuel
         lbl = "Nouveau profil" if is_new else f"Edition [{profile_id}]"
         self.query_one("#config-header-bar", Static).update(
-            f" {lbl}   —   Ctrl+S Enregistrer   Esc Annuler"
+            f" {lbl}   —   " + raccourcis([("ctrl+s", "Enregistrer"),
+                                          ("escape", "Annuler")])
         )
 
         form     = self.query_one(ProfileForm)

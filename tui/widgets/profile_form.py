@@ -15,6 +15,8 @@ from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Checkbox, Input, Label, Select, Static
 
+from ..common import raccourcis
+
 
 # ─── Messages ─────────────────────────────────────────────────────────────────
 
@@ -275,9 +277,12 @@ class ProfileForm(Widget):
 
         # ── Pied ──────────────────────────────────────────────────────────────
         yield Static(
-            "  Tab / Shift+Tab : champ suiv./préc.    "
-            "Enter : ouvrir une liste    +/- : valeur suiv./préc.    "
-            "Ctrl+S : enregistrer    Esc : annuler",
+            "  " + raccourcis([("tab", "Champ suivant"),
+                               ("shift+tab", "Champ précédent"),
+                               ("enter", "Ouvrir une liste"),
+                               ("+/-", "Valeur suiv./préc."),
+                               ("ctrl+s", "Enregistrer"),
+                               ("escape", "Annuler")]),
             classes="form-hint",
         )
         yield Static("", id="form-error", classes="form-error")

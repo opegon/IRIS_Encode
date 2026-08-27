@@ -44,6 +44,7 @@ from core.decision import (
     VideoAction, VideoOverride, decide_audio, decide_video,
 )
 from ..common import (
+    raccourcis,
     CODEC_PICKER_OPTS,
     bitrate_picker_config,
     footer_line2,
@@ -81,8 +82,11 @@ _DV_SHORT: dict[DVAction, str] = {
 }
 
 # Hints contextuels affichés dans la barre du bas selon la ligne courante
-_HINT_VIDEO = "←/→  Champ     +/-  Valeur     ↵  Liste de choix     ↵ sur une piste : Valider"
-_HINT_TRACK = "Espace  Sélectionner / désélectionner     ↵  Valider la sélection"
+_HINT_VIDEO = raccourcis([("←/→", "Champ"), ("+/-", "Valeur"),
+                          ("enter", "Liste de choix"),
+                          ("enter", "sur une piste : Valider")])
+_HINT_TRACK = raccourcis([("space", "Sélectionner / désélectionner"),
+                          ("enter", "Valider la sélection")])
 
 
 class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | None"]):

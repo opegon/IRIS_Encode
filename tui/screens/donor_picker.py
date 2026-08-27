@@ -18,6 +18,8 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
+from ..common import raccourcis
+
 from core.muxer import (
     ExternalTrack, IdentifiedTrack, TrackKind, guess_language, identify,
 )
@@ -107,7 +109,8 @@ class DonorFileScreen(ModalScreen["Path | None"]):
             yield Static("", id="donor-path", markup=False)
             yield DataTable(id="donor-table", cursor_type="row",
                             show_header=False, zebra_stripes=True)
-            yield Static("↵  Ouvrir / Choisir     Esc  Annuler", id="donor-hint")
+            yield Static(raccourcis([("enter", "Ouvrir / Choisir"),
+                                     ("escape", "Annuler")]), id="donor-hint")
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
@@ -200,7 +203,9 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
             yield Label("Pistes du donneur", id="dt-title")
             yield Static(self._donor.name, id="dt-file")
             yield DataTable(id="dt-table", cursor_type="row", zebra_stripes=True)
-            yield Static("Espace  Sélectionner     ↵  Valider     Esc  Annuler", id="dt-hint")
+            yield Static(raccourcis([("space", "Sélectionner"),
+                                     ("enter", "Valider"),
+                                     ("escape", "Annuler")]), id="dt-hint")
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)

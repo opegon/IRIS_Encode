@@ -41,6 +41,57 @@ def record_measured_speed(cfg: dict, action: VideoAction, speed: float) -> None:
     cfg_mod.save(cfg)
 
 
+# ─── Noms de touches ──────────────────────────────────────────────────────────
+#
+# Trois notations coexistaient pour la même information : le footer disait
+# « Space Sélect », les modales « Espace  Sélectionner », le formulaire de
+# profil « Tab / Shift+Tab : champ suiv./préc. ». Le choix du glyphe importe
+# moins que son unicité — mais un glyphe tient en une colonne, ce qui compte
+# sur un footer de trois lignes.
+
+TOUCHES: dict[str, str] = {
+    "enter":     "↵",
+    "backspace": "⌫",
+    "space":     "␣",
+    "escape":    "Esc",
+    "tab":       "Tab",
+    "shift+tab": "⇧Tab",
+    "delete":    "Suppr",
+    "pageup":    "PgUp",
+    "pagedown":  "PgDn",
+    "home":      "Home",
+    "end":       "End",
+    "left":      "←",
+    "right":     "→",
+    "up":        "↑",
+    "down":      "↓",
+    "ctrl+s":    "Ctrl+S",
+    "ctrl+c":    "Ctrl+C",
+    "ctrl+d":    "Ctrl+D",
+}
+
+# Espacement, lui aussi commun : deux blancs entre la touche et son libellé,
+# cinq entre deux raccourcis. Le footer resserre à trois pour tenir en largeur.
+SEP_TOUCHE: str = "  "
+SEP_ENTREE: str = "     "
+
+
+def touche(nom: str) -> str:
+    """Nom de touche Textual → notation affichée. Inconnue : en majuscules."""
+    return TOUCHES.get(nom.lower(), nom.upper())
+
+
+def raccourci(nom: str, libelle: str) -> str:
+    """Un raccourci rendu. `nom` peut être une touche Textual (« enter ») ou
+    une notation déjà composée (« +/- », « Shift+↑/↓ »)."""
+    return f"{touche(nom)}{SEP_TOUCHE}{libelle}"
+
+
+def raccourcis(paires: list[tuple[str, str]]) -> str:
+    """Une ligne d'aide complète, pour les pieds de modale et les bandeaux."""
+    return SEP_ENTREE.join(raccourci(n, l) for n, l in paires)
+
+
 # ─── Styles partagés ──────────────────────────────────────────────────────────
 
 # Couleur de la valeur `dolby_vision` d'un profil (browser, config). Dérivée de

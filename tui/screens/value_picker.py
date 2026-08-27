@@ -11,6 +11,8 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
+from ..common import raccourcis
+
 
 class ValuePickerScreen(ModalScreen[int | None]):
     """
@@ -70,7 +72,8 @@ class ValuePickerScreen(ModalScreen[int | None]):
             yield Label(self._title, id="picker-title")
             yield DataTable(id="picker-table", cursor_type="row",
                             show_header=False, zebra_stripes=True)
-            yield Static("↵  Choisir     Esc  Annuler", id="picker-hint")
+            yield Static(raccourcis([("enter", "Choisir"), ("escape", "Annuler")]),
+                         id="picker-hint")
 
     def on_mount(self) -> None:
         self.query_one("#picker-box").styles.width = self._width

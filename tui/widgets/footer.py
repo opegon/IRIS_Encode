@@ -28,36 +28,14 @@ from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import Static
 
-# Raccourcis clés → affichage lisible (les touches absentes passent en .upper())
-_KEY_LABELS: dict[str, str] = {
-    "ctrl+s":    "Ctrl+S",
-    "ctrl+c":    "Ctrl+C",
-    "ctrl+d":    "Ctrl+D",
-    "shift+tab": "Sh+Tab",
-    "tab":       "Tab",
-    "backspace": "Back",
-    "space":     "Space",
-    "enter":     "Enter",
-    "escape":    "Esc",
-    "delete":    "Suppr",
-    "pageup":    "PgUp",
-    "pagedown":  "PgDn",
-    "home":      "Home",
-    "end":       "End",
-    "left":      "←",
-    "right":     "→",
-}
+from ..common import SEP_TOUCHE, touche as _fmt_key
 
-_SEP = "   "        # entre deux raccourcis d'une même ligne
+_SEP = "   "        # entre deux raccourcis d'une même ligne — resserré ici
 _PADDING = 2        # padding horizontal du bloc, à défalquer de la largeur
 
 
-def _fmt_key(key: str) -> str:
-    return _KEY_LABELS.get(key, key.upper())
-
-
 def _entry_width(key: str, desc: str) -> int:
-    return len(_fmt_key(key)) + 1 + len(desc)
+    return len(_fmt_key(key)) + len(SEP_TOUCHE) + len(desc)
 
 
 def pack(pairs: list[tuple[str, str]], width: int) -> list[list[tuple[str, str]]]:
@@ -115,7 +93,7 @@ def _render_line(pairs: list[tuple[str, str]]) -> Text:
         if i:
             t.append(_SEP, style="")
         t.append(_fmt_key(key), style="bold yellow")
-        t.append(f" {desc}", style="")
+        t.append(f"{SEP_TOUCHE}{desc}", style="")
     return t
 
 

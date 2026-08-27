@@ -11,6 +11,8 @@ from textual.containers import ScrollableContainer, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import LoadingIndicator, Static
 
+from ..common import raccourcis
+
 from core.meta import MovieMeta, fetch_allocine, fetch_imdb, parse_title
 
 
@@ -90,7 +92,7 @@ class MetaPopup(ModalScreen):
             yield Static("", id="meta-header")
             with ScrollableContainer(id="meta-body"):
                 yield LoadingIndicator(id="meta-loading")
-            yield Static("Esc  Fermer", id="meta-hint")
+            yield Static(raccourcis([("escape", "Fermer")]), id="meta-hint")
 
     def on_mount(self) -> None:
         title, year = parse_title(self._path)

@@ -17,7 +17,7 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
-from ..common import DV_VALUE_STYLES
+from ..common import DV_VALUE_STYLES, raccourcis
 
 if TYPE_CHECKING:
     from core.profiles import Profile
@@ -103,7 +103,8 @@ class ProfilePickerScreen(ModalScreen[str | None]):
             yield Label(self._title, id="profile-picker-title")
             yield DataTable(id="profile-picker-table", cursor_type="row",
                             show_header=True, zebra_stripes=True)
-            yield Static("↵  Choisir     Esc  Annuler", id="profile-picker-hint")
+            yield Static(raccourcis([("enter", "Choisir"), ("escape", "Annuler")]),
+                         id="profile-picker-hint")
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)

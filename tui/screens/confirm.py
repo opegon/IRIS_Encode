@@ -16,6 +16,8 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
+from ..common import raccourcis
+
 
 class ConfirmModal(ModalScreen[bool]):
     """Retourne True (confirmer) ou False (annuler).
@@ -103,7 +105,8 @@ class ConfirmModal(ModalScreen[bool]):
                     variant="warning" if self._danger else "primary",
                 )
                 yield Button(f"✗  {self._cancel_label}", id="btn-cancel", variant="default")
-            yield Static("←/→  Choisir     ↵  Valider     Esc  Annuler", id="confirm-hint")
+            yield Static(raccourcis([("←/→", "Choisir"), ("enter", "Valider"),
+                                     ("escape", "Annuler")]), id="confirm-hint")
 
     def on_mount(self) -> None:
         target = "#btn-confirm" if self._focus_confirm else "#btn-cancel"

@@ -34,7 +34,7 @@ from core.sync import (
     Segment, SyncResult, measure_audio, measure_subtitle, read_cues,
 )
 
-from ..common import footer_line2
+from ..common import footer_line2, raccourcis, touche
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 from .segments import SegmentsScreen
@@ -76,11 +76,13 @@ _BOOLS = ["non", "oui"]
 _DELAY_STEP_MS = 100
 _DELAY_JUMP_MS = 1000
 
-_HINT = ("←/→  Champ     +/-  ±100 ms     Shift+↑/↓  ±1 s     ↵  Liste\n"
-         "m  Mesurer     v  Visualiser     k  Extrait de contrôle     "
-         "c  Copier     F9  Ajouter     d  Retirer")
-_HINT_NO_LANG = ("⚠ Langue manquante — +/- ou ↵ pour la choisir. "
-                 "Sans elle, la piste sortirait en « und ».")
+_HINT = (raccourcis([("←/→", "Champ"), ("+/-", "±100 ms"),
+                     ("Shift+↑/↓", "±1 s"), ("enter", "Liste")]) + "\n"
+         + raccourcis([("m", "Mesurer"), ("v", "Visualiser"),
+                       ("k", "Extrait de contrôle"), ("c", "Copier"),
+                       ("F9", "Ajouter"), ("d", "Retirer")]))
+_HINT_NO_LANG = (f"⚠ Langue manquante — +/- ou {touche('enter')} pour la "
+                 f"choisir. Sans elle, la piste sortirait en « und ».")
 
 
 class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):

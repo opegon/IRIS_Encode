@@ -27,6 +27,7 @@ from core.decision import (
 )
 from core.scanner import scan, scan_directory_recursive
 from ..common import (
+    touche,
     DV_VALUE_STYLES,
     estimate_encoding_duration,
     fmt_bytes,
@@ -331,7 +332,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if not subdirs and not decisions:
             table.add_row(
                 "",
-                Text("⚠  Aucun fichier vidéo dans ce dossier  —  ⌫ pour remonter",
+                Text(f"⚠  Aucun fichier vidéo dans ce dossier  —  "
+                     f"{touche('backspace')} pour remonter",
                      style="dim italic"),
                 "", "", "", "", "", "", "", "",
                 key="__empty__",

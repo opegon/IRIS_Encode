@@ -1,5 +1,46 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.14] — 2026-08-27
+
+### Un seul rendu pour les noms de touches
+
+Trois notations coexistaient pour la même information :
+
+| Endroit | Ce qui s'affichait |
+|---|---|
+| Footer permanent | `Space Sélect` · `Enter Ouvrir` · `Back Retour` |
+| Modales et bandeaux | `Espace  Sélectionner` · `↵  Valider` · `Esc  Annuler` |
+| Formulaire de profil | `Tab / Shift+Tab : champ suiv./préc.` |
+
+Le nom anglais côtoyait le mot français, le glyphe côtoyait le mot, et
+l'espacement changeait d'un écran à l'autre. **Douze bandeaux réécrivaient les
+touches à la main.**
+
+- `tui.common` porte désormais la table `TOUCHES` et les fonctions `touche()`,
+  `raccourci()` et `raccourcis()` ; `SEP_TOUCHE` et `SEP_ENTREE` fixent
+  l'espacement. Le footer lit la même table — son `_fmt_key` n'en est plus
+  qu'un alias.
+- **Les glyphes sont préférés là où ils existent** : `↵`, `⌫`, `␣`, `←`, `→`,
+  `↑`, `↓`. Ils tiennent en une colonne, ce qui compte sur un footer de trois
+  lignes — `Space` occupait cinq colonnes pour la même information.
+- Une notation composée — `+/-`, `Shift+↑/↓` — traverse intacte : elle ne
+  correspond à aucun nom de touche et n'avait pas à être défigurée.
+
+Rendu vérifié à l'écran :
+
+```
+␣  Sélect   A  Tout   N  Aucun   ↵  Ouvrir   V  Visualiser   ⌫  Remonter
+```
+
+Un test interdit qu'une quatrième notation réapparaisse : il parcourt les
+écrans à la recherche des anciennes graphies et échoue si l'une revient.
+
+Le `␣` est le seul glyphe que le projet n'employait pas encore. S'il rend mal
+dans un terminal, il se change en une ligne — c'est tout l'intérêt d'une source
+unique.
+
+Correspond à l'entrée **IE-04** de `TODO.md`.
+
 ## [v0.8.1.13] — 2026-08-27
 
 ### Une seule table de couleurs, exprimée en rôles

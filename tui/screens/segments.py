@@ -15,6 +15,8 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
+from ..common import raccourcis
+
 from core.sync import Segment, mmss
 
 _COLUMNS = ["Plage", "Durée", "Décalage", "Écart", "Confiance"]
@@ -97,7 +99,7 @@ class SegmentsScreen(ModalScreen[None]):
             yield DataTable(id="segments-table", cursor_type="row",
                             show_header=True, zebra_stripes=True)
             yield Static("", id="segments-note")
-            yield Static("Esc  Fermer", id="segments-hint")
+            yield Static(raccourcis([("escape", "Fermer")]), id="segments-hint")
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)

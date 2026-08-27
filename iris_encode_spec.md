@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.13 — document de référence courant
+**Version** : 0.8.1.14 — document de référence courant
 **Date** : 2026-08-27
 **Statut** : stable
 
@@ -929,6 +929,14 @@ Framework : **Textual**.
 
 Conventions transverses :
 
+- **Les noms de touches se rendent par `tui.common.touche()`.** Trois
+  notations coexistaient — `Space Sélect` au footer, `Espace  Sélectionner`
+  dans les modales, `Tab / Shift+Tab : champ suiv./préc.` au formulaire de
+  profil. La table `TOUCHES` et les fonctions `touche()`, `raccourci()`,
+  `raccourcis()` sont la seule source ; `SEP_TOUCHE` et `SEP_ENTREE` fixent
+  l'espacement. Les glyphes (`↵`, `⌫`, `␣`, `←`) sont préférés là où ils
+  existent : ils tiennent en une colonne, ce qui compte sur un footer de trois
+  lignes. Une notation composée (`+/-`, `Shift+↑/↓`) traverse intacte.
 - **Les couleurs porteuses de sens se décident dans `core.decision`, en rôles.**
   `Emphase` nomme ce qu'une couleur veut dire — `INACTION`, `SANS_PERTE`,
   `ORDINAIRE`, `MODIFIEE`, `ALERTE` — et `STYLE_PAR_EMPHASE` seule choisit les
@@ -1478,6 +1486,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.14 | 2026-08-27 | **Un seul rendu pour les noms de touches** : trois notations coexistaient, douze bandeaux les réécrivaient à la main · `TOUCHES` + `touche()`/`raccourcis()` dans `tui.common`, glyphes d'une colonne (IE-04) |
 | 0.8.1.13 | 2026-08-27 | **Une seule table de couleurs**, exprimée en rôles (`Emphase`) : la même décision portait deux teintes selon l'écran, le magenta signalait le cas le plus banal et `dark_orange` servait de couleur ordinaire · une décision `STRIP_DV` s'affichait « ? » sur l'écran des pistes (IE-03) |
 | 0.8.1.12 | 2026-08-27 | **Toute durée d'au moins une heure perdait son dernier chiffre** : défaut à 6 pour un contenu de 7 · planchers de colonne remontés dans `core.config`, appliqués aussi à la lecture des largeurs déjà persistées · ellipse sur les cellules numériques (IE-02) |
 | 0.8.1.11 | 2026-08-27 | **Le markup Rich mangeait les noms** portant `_[mux]`, `_[hevc]`, `_[av1]`, `_[hdr10]`, et les identifiants de profil : 14 afficheurs passent en `markup=False` (IE-01) |

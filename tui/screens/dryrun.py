@@ -18,6 +18,7 @@ from textual.widgets import DataTable, Header, Static
 from core import config as cfg_mod
 from core.decision import (
     ACTION_CYCLE,
+    cycle_index,
     AV1_BITRATE_OPTS_KBPS,
     SUFFIX_BY_ACTION,
     AudioAction, DVAction, FileDecision, VideoAction,
@@ -44,6 +45,13 @@ def _estimate_output_bytes(dec: FileDecision) -> int:
     Retourne 0 si action=SKIP ou durée inconnue."""
     if dec.video.action == VideoAction.SKIP:
         return 0
+    # Un remux ne recalcule aucune image : la sortie pèse ce que pèse la
+    # source, au RPU près — quelques mégaoctets sur un film.
+    if dec.video.action == VideoAction.STRIP_DV:
+        try:
+            return dec.info.path.stat().st_size
+        except OSError:
+            return 0
     duration = dec.info.duration
     if duration <= 0:
         return 0
@@ -164,7 +172,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 DVAction.SDR:   "→ SDR ⚠",
             }.get(vid.dv_action, "?")
 
-            if vid.action == VideoAction.SKIP:
+            if vid.action in (VideoAction.SKIP, VideoAction.STRIP_DV):
                 bitrate_str = "—"
                 res_str     = f"{info.width}x{info.height}"
             else:
@@ -241,6 +249,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         h264   = counts[VideoAction.ENCODE_H264]
         av1    = counts[VideoAction.ENCODE_AV1]
         skip   = counts[VideoAction.SKIP]
+        strip  = counts[VideoAction.STRIP_DV]
 
         total_src, total_est = self._totals
         gain_str = ""
@@ -252,13 +261,15 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 f"Estimé : {fmt_bytes(total_est)} ({sign}{delta_pct:.0f}%)"
             )
 
-        av1_str = f"  ·  AV1 {av1}" if av1 else ""
+        av1_str   = f"  ·  AV1 {av1}" if av1 else ""
+        strip_str = f"  ·  DV→HDR10 {strip}" if strip else ""
         self.query_one("#status-bar", Static).update(
             f" Dry-run — {total} fichier(s) sélectionné(s)"
             f"  ·  Col : {self.resize_col_label} [</>]"
         )
         self.query_one("#dryrun-summary", Static).update(
-            f" À encoder : HEVC {hevc}  ·  H264 {h264}{av1_str}  ·  SKIP {skip}{gain_str}"
+            f" À encoder : HEVC {hevc}  ·  H264 {h264}{av1_str}"
+            f"{strip_str}  ·  SKIP {skip}{gain_str}"
         )
 
     # ── Resize colonnes (ColumnResizeMixin) ───────────────────────────────────
@@ -307,10 +318,11 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         old_action = dec.video.action
         if new_action == old_action:
             return
-        was_skip   = (old_action == VideoAction.SKIP)
+        # SKIP et retrait de DV ont tous deux un débit cible nul : repartir du
+        # débit source quand l'un ou l'autre bascule en encodage.
+        was_skip   = old_action in (VideoAction.SKIP, VideoAction.STRIP_DV)
         new_bitrate = dec.video.target_bitrate
         if was_skip and new_action != VideoAction.SKIP:
-            # SKIP → encodage : repart du débit source comme valeur par défaut
             new_bitrate = dec.info.bitrate
         # H264 ne peut pas porter de RPU DV → DV→HDR10 forcé
         new_dv = dec.video.dv_action
@@ -339,7 +351,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         dec = self._current_decision()
         if dec is None:
             return
-        current = ACTION_CYCLE.index(dec.video.action) if dec.video.action in ACTION_CYCLE else 0
+        current = cycle_index(dec.video.action)
         def _on_pick(idx: int | None, d=dec) -> None:
             if idx is None:
                 return

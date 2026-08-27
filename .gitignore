@@ -48,3 +48,6 @@ bin/
 *.temp
 .DS_Store
 Thumbs.db
+
+# Configuration locale de l'outillage
+.claude/

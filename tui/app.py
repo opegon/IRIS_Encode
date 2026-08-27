@@ -80,6 +80,12 @@ class IrisEncodeApp(App):
         self.mkvmerge_available = mkvmerge_p is not None
         if mkvmerge_p:
             muxer.set_mkvmerge_path(mkvmerge_p)
+        # Retrait du RPU Dolby Vision sans réencodage : il faut les deux outils.
+        from core import decision as decision_mod
+        self.dovi_path   = dovi_path
+        self.ffmpeg_path = ffmpeg_p or "ffmpeg"
+        decision_mod.set_strip_dv_available(
+            dovi_path is not None and mkvmerge_p is not None)
         # Câble mpv pour le contrôle du recalage à l'œil (optionnel)
         from core import preview as preview_mod
         preview_mod.set_mpv_path(get_tool_path("mpv", bin_dir))

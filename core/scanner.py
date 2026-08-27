@@ -22,6 +22,23 @@ SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
 })
 
 _LOSSLESS_CODECS = frozenset({"truehd", "dts-hd ma", "dtshd", "mlp"})
+# ffprobe nomme toutes les variantes DTS « dts » et met la famille dans
+# `profile` : « DTS », « DTS-ES », « DTS-HD HR », « DTS-HD MA ». Sans lire le
+# profil, un DTS-HD MA passe pour un DTS ordinaire.
+_LOSSLESS_PROFILES = frozenset({"dts-hd ma", "dts-hd ma + dts:x"})
+# Familles qu'aucun lecteur de fichier grand public ne prend en charge : c'est
+# sur elles que porte le transcodage au débit de la source.
+_HD_AUDIO_CODECS = frozenset({"truehd", "mlp", "dts", "dts-hd ma", "dtshd"})
+
+
+def channel_layout_label(channels: int) -> str:
+    """Nombre de canaux → « 5.1 », « 7.1 »… Utilisé aussi par la décision,
+    qui doit nommer la disposition de sortie après un repli."""
+    if channels == 1:  return "1.0"
+    if channels == 2:  return "2.0"
+    if channels == 6:  return "5.1"
+    if channels == 8:  return "7.1"
+    return f"{channels}ch"
 _IMAGE_SUB_CODECS = frozenset({"hdmv_pgs_subtitle", "dvd_subtitle", "dvdsub", "pgssub"})
 _COPY_COMPAT_CODECS = frozenset({"aac", "ac3", "eac3"})
 
@@ -52,18 +69,23 @@ class AudioTrack:
     language: str   # ISO 639-2 ou ""
     title:    str
     bitrate:  int   # bps, 0 si inconnu
+    profile:  str = ""   # « DTS-HD MA », « Dolby Digital Plus + Atmos »…
 
     @property
     def channel_layout(self) -> str:
-        if self.channels == 1:  return "1.0"
-        if self.channels == 2:  return "2.0"
-        if self.channels == 6:  return "5.1"
-        if self.channels == 8:  return "7.1"
-        return f"{self.channels}ch"
+        return channel_layout_label(self.channels)
 
     @property
     def is_lossless(self) -> bool:
-        return self.codec.lower() in _LOSSLESS_CODECS
+        if self.codec.lower() in _LOSSLESS_CODECS:
+            return True
+        return self.profile.lower() in _LOSSLESS_PROFILES
+
+    @property
+    def is_hd_audio(self) -> bool:
+        """TrueHD ou DTS, toutes variantes — les formats que le transcodage
+        au débit de la source vise (voir `audio_hd_codec` dans un profil)."""
+        return self.codec.lower() in _HD_AUDIO_CODECS
 
     @property
     def is_copy_compat(self) -> bool:
@@ -97,6 +119,12 @@ class VideoInfo:
     dv_profile:      Optional[int]
     audio_tracks:    list[AudioTrack]    = field(default_factory=list)
     subtitle_tracks: list[SubtitleTrack] = field(default_factory=list)
+    # Compatibilité de la couche de base d'un profil 8 : 1 = HDR10, 2 = SDR,
+    # 4 = HLG. C'est elle qui distingue un 8.1 d'un 8.4, et elle seule dit si
+    # retirer le RPU laisse une image juste.
+    dv_bl_compat:    Optional[int]       = None
+    color_transfer:  str                 = ""
+    frame_rate:      str                 = ""    # "24/1", "24000/1001"…
     # ── Métadonnées Dolby Vision enrichies (dovi_tool, optionnel) ────────────
     dv_subprofile:   Optional[str]              = None   # "5", "7.06", "8.1"…
     hdr10_master_display: Optional[str]         = None   # G(...)B(...)R(...)WP(...)L(...)
@@ -129,9 +157,30 @@ class VideoInfo:
         return f"{self.width}x{self.height}"
 
     @property
+    def is_hdr(self) -> bool:
+        """Vrai si la courbe de transfert est PQ ou HLG."""
+        return self.color_transfer in ("smpte2084", "arib-std-b67")
+
+    @property
+    def can_strip_dv(self) -> bool:
+        """Vrai si retirer le RPU laisse un HDR10 valide, sans réencodage.
+
+        Profil 8.1 : la couche de base *est* du HDR10, le RPU n'est qu'un jeu
+        de NAL en plus. Profil 7 : couche de base HDR10 également, et
+        dovi_tool retire en même temps la couche d'amélioration.
+        Profil 5 (couche de base IPT-PQ) et 8.4 (couche de base HLG) sont
+        exclus : leur retirer le RPU ne donne pas du HDR10.
+        """
+        if self.dv_profile == 7:
+            return True
+        return self.dv_profile == 8 and self.dv_bl_compat == 1
+
+    @property
     def dv_label(self) -> str:
         if self.dv_profile is None:
             return "—"
+        if self.dv_profile == 8 and self.dv_bl_compat in (1, 2, 4):
+            return f"DV:P8.{self.dv_bl_compat}"
         return f"DV:P{self.dv_profile}"
 
 
@@ -161,25 +210,103 @@ def _safe_float(val: Any, default: float = 0.0) -> float:
 
 # ─── Détection Dolby Vision ───────────────────────────────────────────────────
 
-def _detect_dv_profile(path: Path) -> Optional[int]:
+def _video_bitrate(vid: dict, streams: list, fmt: dict) -> int:
+    """Débit du flux vidéo seul, en bps. 0 si vraiment introuvable.
+
+    Un flux vidéo de Matroska n'annonce presque jamais de `bit_rate` : ffprobe
+    rend `N/A` et la seule valeur restante est celle du conteneur — vidéo,
+    audio et sous-titres confondus. La comparer à un débit vidéo cible fausse
+    la décision dans le sens du réencodage, d'autant plus que les pistes sont
+    grosses : sur un film porteur d'un TrueHD, l'écart dépasse 40 %.
+
+    Trois sources, dans l'ordre : le `bit_rate` du flux, le tag `BPS` que pose
+    mkvmerge, puis le débit du conteneur **moins celui des autres pistes**.
     """
-    Détecte le profil Dolby Vision via les side_data ffprobe.
-    Retourne l'entier du profil (5, 7, 8…) ou None.
+    direct = _safe_int(vid.get("bit_rate"))
+    if direct > 0:
+        return direct
+
+    tags = {k.lower(): v for k, v in vid.get("tags", {}).items()}
+    bps  = _safe_int(tags.get("bps"))
+    if bps > 0:
+        return bps
+
+    total = _safe_int(fmt.get("bit_rate"))
+    if total <= 0:
+        return 0
+
+    # Soustraction : chaque piste non vidéo retire sa part. Une piste dont le
+    # débit reste inconnu ne retire rien — le résultat penche alors du côté
+    # prudent, celui du réencodage.
+    autres = 0
+    for s in streams:
+        if s is vid or s.get("codec_type") == "video":
+            continue
+        autres += _audio_bitrate(s, s.get("tags", {}))
+    reste = total - autres
+    return reste if reste > 0 else total
+
+
+def _audio_bitrate(stream: dict, tags: dict) -> int:
+    """Débit réel d'une piste audio, en bps, 0 si vraiment introuvable.
+
+    Un flux TrueHD ou DTS-HD MA n'annonce pas de `bit_rate` : ffprobe rend
+    `N/A`. mkvmerge, lui, écrit des tags de statistiques à chaque piste — le
+    débit y est exact, mesuré sur le fichier entier. Sans eux, il reste le
+    quotient octets/durée, qui vaut mieux qu'un zéro.
+    """
+    direct = _safe_int(stream.get("bit_rate"))
+    if direct > 0:
+        return direct
+
+    # Les tags Matroska sont sensibles à la casse selon le mux : BPS, bps…
+    lower = {k.lower(): v for k, v in tags.items()}
+    bps   = _safe_int(lower.get("bps"))
+    if bps > 0:
+        return bps
+
+    octets = _safe_int(lower.get("number_of_bytes"))
+    duree  = _duration_tag(str(lower.get("duration", "")))
+    if octets > 0 and duree > 0:
+        return int(octets * 8 / duree)
+    return 0
+
+
+def _duration_tag(raw: str) -> float:
+    """« 03:35:23.203000000 » → secondes. 0.0 si illisible."""
+    parts = raw.split(":")
+    if len(parts) != 3:
+        return 0.0
+    try:
+        return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+    except ValueError:
+        return 0.0
+
+
+def _detect_dv(path: Path) -> tuple[Optional[int], Optional[int]]:
+    """
+    Détecte le Dolby Vision via les side_data ffprobe.
+
+    Retourne (profil, compatibilité de la couche de base) — (5, None),
+    (8, 1) pour un 8.1, (8, 4) pour un 8.4… (None, None) si pas de DV.
     """
     try:
         data = _ffprobe_json([
             "-select_streams", "v:0",
             "-show_entries",
-            "stream_side_data=dv_profile:stream_tags=:stream=color_transfer",
+            "stream_side_data=dv_profile,dv_bl_signal_compatibility_id"
+            ":stream_tags=:stream=color_transfer",
             str(path),
         ])
         for stream in data.get("streams", []):
             for sd in stream.get("side_data_list", []):
                 if "dv_profile" in sd:
-                    return int(sd["dv_profile"])
+                    compat = sd.get("dv_bl_signal_compatibility_id")
+                    return (int(sd["dv_profile"]),
+                            int(compat) if compat is not None else None)
     except Exception as e:
         _log.debug("dv_profile probe failed for %s: %s", path, e)
-    return None
+    return (None, None)
 
 
 # ─── Scan principal ───────────────────────────────────────────────────────────
@@ -197,10 +324,9 @@ def scan(path: Path) -> VideoInfo:
     height = _safe_int(vid.get("height"))
     codec  = vid.get("codec_name", "unknown")
 
-    # Bitrate : stream en priorité, format en fallback
-    bitrate = _safe_int(vid.get("bit_rate"))
-    if bitrate == 0:
-        bitrate = _safe_int(fmt.get("bit_rate"))
+    # Débit **vidéo**, jamais celui du conteneur : c'est à un débit vidéo
+    # cible qu'il sera comparé, et c'est un débit vidéo que l'encodeur reçoit.
+    bitrate = _video_bitrate(vid, streams, fmt)
     if bitrate == 0:
         bitrate = 9_999_999   # inconnu → on suppose élevé (force re-encode)
 
@@ -227,7 +353,8 @@ def scan(path: Path) -> VideoInfo:
             channels=_safe_int(s.get("channels"), 2),
             language=tags.get("language", ""),
             title=tags.get("title", ""),
-            bitrate=_safe_int(s.get("bit_rate")),
+            bitrate=_audio_bitrate(s, tags),
+            profile=s.get("profile", "") if isinstance(s.get("profile"), str) else "",
         ))
 
     # ── Flux sous-titres ──────────────────────────────────────────────────────
@@ -241,7 +368,7 @@ def scan(path: Path) -> VideoInfo:
         ))
 
     # ── Dolby Vision ──────────────────────────────────────────────────────────
-    dv_profile = _detect_dv_profile(path)
+    dv_profile, dv_bl_compat = _detect_dv(path)
 
     # Enrichissement DV via dovi_tool (sous-profil + master display + MaxCLL)
     dv_subprofile        = None
@@ -271,6 +398,9 @@ def scan(path: Path) -> VideoInfo:
         dv_subprofile=dv_subprofile,
         hdr10_master_display=hdr10_master_display,
         hdr10_max_cll=hdr10_max_cll,
+        dv_bl_compat=dv_bl_compat,
+        color_transfer=vid.get("color_transfer", ""),
+        frame_rate=vid.get("r_frame_rate", ""),
     )
 
 

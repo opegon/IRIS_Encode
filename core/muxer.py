@@ -240,6 +240,17 @@ def build_mux_command(
             )
 
     cmd = [_mkvmerge_path, "--gui-mode", "-o", str(output), str(source)]
+    cmd += _donor_args(tracks)
+    return cmd
+
+
+def _donor_args(tracks: list[ExternalTrack]) -> list[str]:
+    """Arguments mkvmerge des fichiers donneurs, groupés par fichier.
+
+    Les pistes venant d'un même donneur sont regroupées : mkvmerge lit chaque
+    fichier une seule fois, avec les options de chacune de ses pistes.
+    """
+    args: list[str] = []
 
     # Regroupement par fichier donneur, dans l'ordre de première apparition
     groups: dict[Path, list[ExternalTrack]] = {}
@@ -252,15 +263,47 @@ def build_mux_command(
 
         # Ne prendre du donneur QUE les pistes demandées : sans ça mkvmerge
         # embarque tout le fichier (vidéo et chapitres compris).
-        cmd += ["--no-video", "--no-chapters", "--no-global-tags"]
-        cmd += ["--audio-tracks", ",".join(audio_tids)] if audio_tids else ["--no-audio"]
-        cmd += ["--subtitle-tracks", ",".join(sub_tids)] if sub_tids else ["--no-subtitles"]
+        args += ["--no-video", "--no-chapters", "--no-global-tags"]
+        args += ["--audio-tracks", ",".join(audio_tids)] if audio_tids else ["--no-audio"]
+        args += ["--subtitle-tracks", ",".join(sub_tids)] if sub_tids else ["--no-subtitles"]
 
         for t in donor_tracks:
-            cmd += _track_options(t)
+            args += _track_options(t)
 
-        cmd.append(str(donor))
+        args.append(str(donor))
 
+    return args
+
+
+def build_strip_command(
+    video:   Path,
+    source:  Path,
+    output:  Path,
+    fps:     str = "",
+    tracks:  list[ExternalTrack] | None = None,
+) -> list[str]:
+    """
+    Remuxe le flux HEVC `video` (RPU retiré) avec les pistes de `source`.
+
+    Un flux HEVC brut ne porte aucun horodatage : sans `fps`, mkvmerge se
+    rabat sur ce qu'annonce le VUI du flux, qui peut manquer. On lui donne la
+    cadence lue sur la source — sinon la vidéo dérive de l'audio.
+    """
+    if output.resolve() == source.resolve():
+        raise ValueError(
+            f"Chemin de sortie identique à la source ({source}). "
+            f"Remux refusé pour éviter la corruption du fichier source."
+        )
+
+    cmd = [_mkvmerge_path, "--gui-mode", "-o", str(output)]
+    if fps:
+        # ffprobe donne "24/1" ou "24000/1001" ; mkvmerge accepte la fraction,
+        # mais "24/1p" se lit plus mal que "24p" dans le journal.
+        num, _, den = fps.partition("/")
+        cmd += ["--default-duration",
+                f"0:{num}p" if den in ("", "1") else f"0:{fps}p"]
+    cmd += [str(video), "--no-video", str(source)]
+    cmd += _donor_args(tracks or [])
     return cmd
 
 

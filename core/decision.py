@@ -6,6 +6,7 @@ de sélection + transcodage des pistes audio.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
@@ -13,7 +14,7 @@ from typing import Optional
 
 from .muxer import MUX_SUFFIX, ExternalTrack
 from .profiles import Profile
-from .scanner import AudioTrack, VideoInfo
+from .scanner import AudioTrack, VideoInfo, channel_layout_label
 
 
 # ─── Décision vidéo ───────────────────────────────────────────────────────────
@@ -22,6 +23,7 @@ class VideoAction(Enum):
     ENCODE_HEVC = auto()   # CAS 1 ou CAS 2
     ENCODE_H264 = auto()   # CAS 3
     ENCODE_AV1  = auto()   # Manuel uniquement (très gourmand CPU)
+    STRIP_DV    = auto()   # Retrait du RPU seul — remux, aucun réencodage
     SKIP        = auto()
 
 
@@ -45,6 +47,8 @@ class VideoDecision:
     def label(self) -> str:
         if self.action == VideoAction.SKIP:
             return "← SKIP"
+        if self.action == VideoAction.STRIP_DV:
+            return "→ HDR10"
         codec = "HEVC" if self.action == VideoAction.ENCODE_HEVC else "H264"
         dv = ""
         if self.dv_action == DVAction.HDR10: dv = " → HDR10"
@@ -56,6 +60,8 @@ class VideoDecision:
         """Nom de style Rich pour la colonne Décision."""
         if self.action == VideoAction.SKIP:
             return "dim"
+        if self.action == VideoAction.STRIP_DV:
+            return "green"
         if self.action == VideoAction.ENCODE_H264:
             return "cyan"
         if self.dv_action == DVAction.SDR:
@@ -76,16 +82,38 @@ class AudioDecision:
     track:          AudioTrack
     action:         AudioAction
     reason:         str
-    output_codec:   str   # "aac" | "ac3" | "copy" | ""
+    output_codec:   str   # "aac" | "ac3" | "eac3" | "copy" | ""
     output_bitrate: int   # bps, 0 si copy/exclude
     locked:         bool = False   # True = piste 0 (verrouillée par défaut)
+    # Nombre de canaux en sortie quand il diffère de la source. 0 = inchangé.
+    # Les encodeurs ac3 et eac3 s'arrêtent au 5.1 ; ffmpeg replie une source
+    # 7.1 de lui-même. On le pose quand même explicitement : l'écran
+    # d'encodage affiche la commande, et un downmix silencieux n'y serait
+    # visible nulle part.
+    output_channels: int = 0
 
     def display(self) -> str:
         if self.action == AudioAction.EXCLUDE:
             return ""
         if self.action == AudioAction.COPY:
             return f"→ copy"
-        return f"→ {self.output_codec} {self.output_bitrate // 1000}k"
+        canaux = ""
+        if self.output_channels and self.output_channels != self.track.channels:
+            canaux = f" {channel_layout_label(self.output_channels)}"
+        return f"→ {self.output_codec}{canaux} {self.output_bitrate // 1000}k"
+
+    @property
+    def output_title(self) -> Optional[str]:
+        """Titre corrigé quand le transcodage rend l'ancien faux, sinon None.
+
+        Un « ENG VO : TrueHD 5.1 » devenu E-AC3 continuerait d'annoncer un
+        codec absent du fichier — c'est ce que lisent les lecteurs, et la
+        seule chose que voit l'utilisateur au moment de choisir sa piste.
+        """
+        if self.action != AudioAction.TRANSCODE:
+            return None
+        return retitle(self.track.title, self.output_codec,
+                       self.track.channels, self.output_channels)
 
 
 # ─── Constantes partagées TUI (cycle codec / options bitrate / suffixes) ─────
@@ -96,6 +124,34 @@ ACTION_CYCLE: list["VideoAction"] = [
     VideoAction.ENCODE_AV1,
     VideoAction.SKIP,
 ]
+
+
+def cycle_index(action: "VideoAction") -> int:
+    """Position d'une action dans ACTION_CYCLE, pour un picker ou un cycle.
+
+    Toute action n'y figure pas : STRIP_DV n'est pas un choix de codec, c'est
+    ce que la décision propose d'elle-même quand le RPU peut partir sans
+    réencodage. Il se range avec SKIP, les deux voulant dire « ne pas
+    réencoder ». Sans ce repli, `.index()` levait un ValueError et l'écran
+    Pistes plantait sur la touche codec.
+    """
+    if action in ACTION_CYCLE:
+        return ACTION_CYCLE.index(action)
+    return ACTION_CYCLE.index(VideoAction.SKIP)
+
+
+def same_intent(choisie: "VideoAction", decidee: "VideoAction") -> bool:
+    """Le choix du picker revient-il à ce que la décision proposait déjà ?
+
+    Choisir « SKIP » sur un fichier dont la décision est STRIP_DV, c'est
+    demander de ne pas réencoder — ce que le retrait du RPU fait déjà, en
+    mieux. On lève alors la surcharge au lieu d'imposer un SKIP sec, qui
+    laisserait le Dolby Vision en place sans que rien ne l'explique.
+    """
+    if choisie == decidee:
+        return True
+    return choisie == VideoAction.SKIP and decidee == VideoAction.STRIP_DV
+
 
 BITRATE_OPTS_KBPS:     list[int] = [500, 800, 1000, 1500, 2000, 2200, 2500, 3000, 3500, 5000, 8000, 12000]
 AV1_BITRATE_OPTS_KBPS: list[int] = [300, 500, 800, 1000, 1500, 2000, 2500, 3000, 4000, 6000]
@@ -119,6 +175,7 @@ SUFFIX_BY_ACTION: dict["VideoAction", str] = {
     VideoAction.ENCODE_HEVC: "_[hevc]",
     VideoAction.ENCODE_H264: "_[H264]",
     VideoAction.ENCODE_AV1:  "_[av1]",
+    VideoAction.STRIP_DV:    "_[hdr10]",
     VideoAction.SKIP:        "",
 }
 
@@ -182,6 +239,11 @@ class FileDecision:
         image, les sous-titres stylés (ASS/SSA) et l'audio sans perte
         obligent au MKV — un SubRip n'a aucun style à perdre en mov_text.
         """
+        # Le retrait du RPU passe par mkvmerge : la sortie est un Matroska,
+        # seul conteneur qui garde les SubRip et les titres de pistes intacts.
+        if self.video.action == VideoAction.STRIP_DV:
+            return True
+
         if any(st.is_image_based or _needs_mkv_codec(st.codec)
                for st in self.kept_subtitles):
             return True
@@ -211,6 +273,12 @@ class FileDecision:
     @property
     def audio_summary(self) -> str:
         """Résumé des pistes conservées pour la colonne Audio du browser."""
+        # Un remux recopie le fichier tel quel : toutes les pistes passent,
+        # aucune n'est transcodée. Afficher la sélection du profil mentirait.
+        if self.video.action == VideoAction.STRIP_DV:
+            kept_all = [t.display() for t in self.info.audio_tracks]
+            return "  ".join(kept_all) if kept_all else "—"
+
         kept = [
             ad.track.display()
             for ad in self.audio
@@ -220,6 +288,18 @@ class FileDecision:
 
 
 # ─── Logique vidéo ────────────────────────────────────────────────────────────
+
+# Le retrait du RPU demande dovi_tool *et* mkvmerge. Sans eux, proposer
+# « → HDR10 » serait proposer une action qui échouera au lancement : la
+# décision retombe sur SKIP. L'application le renseigne au démarrage.
+_STRIP_DV_AVAILABLE = False
+
+
+def set_strip_dv_available(ok: bool) -> None:
+    """Déclare si dovi_tool et mkvmerge sont tous deux disponibles."""
+    global _STRIP_DV_AVAILABLE
+    _STRIP_DV_AVAILABLE = ok
+
 
 _NEAR_1080P_CACHE: tuple[int, int] | None = None
 
@@ -328,6 +408,21 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
             output_suffix="_[H264]",
         )
 
+    # Rien à réencoder, mais un RPU Dolby Vision à retirer : le profil demande
+    # du HDR10 et la couche de base en est déjà. Un remux suffit — l'image
+    # ressort bit à bit identique, et le HDR10+ éventuel survit, ce qu'aucun
+    # réencodage ne permet.
+    if _STRIP_DV_AVAILABLE and dv_action == DVAction.HDR10 and info.can_strip_dv:
+        return VideoDecision(
+            action=VideoAction.STRIP_DV,
+            reason=f"{info.dv_label} → HDR10 sans réencodage",
+            target_bitrate=0,
+            target_width=info.width,
+            target_height=info.height,
+            dv_action=dv_action,
+            output_suffix=SUFFIX_BY_ACTION[VideoAction.STRIP_DV],
+        )
+
     # SKIP
     return VideoDecision(
         action=VideoAction.SKIP,
@@ -342,16 +437,126 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
 
 # ─── Logique audio ────────────────────────────────────────────────────────────
 
-def _transcode_spec(track: AudioTrack, profile: Profile) -> tuple[str, int]:
-    """Retourne (codec_sortie, bitrate_bps) pour une piste à transcoder."""
+# ─── Réécriture du titre d'une piste transcodée ───────────────────────────────
+
+# Jetons de codec rencontrés dans les titres de pistes, du plus long au plus
+# court : « DTS-HD MA » doit l'emporter sur « DTS », et « DDP » sur « DD ».
+_CODEC_TOKENS: tuple[str, ...] = (
+    "dts-hd ma", "dts-hd hr", "dts-hd", "dtshd", "dts:x", "dts-es", "dts",
+    "truehd", "true-hd", "mlp",
+    "e-ac3", "eac3", "ddp", "dd+", "ac3", "dd",
+    "aac", "flac", "lpcm", "pcm", "opus", "vorbis", "mp3",
+)
+
+# Étiquette lisible du codec de sortie, telle qu'elle s'écrit dans un titre.
+_CODEC_LABELS: dict[str, str] = {"ac3": "AC3", "eac3": "E-AC3", "aac": "AAC"}
+
+_LAYOUT_RE = re.compile(r"\b[1-7]\.[01]\b")
+_ATMOS_RE  = re.compile(r"\s*\batmos\b", re.IGNORECASE)
+
+
+def _codec_token_re(token: str) -> re.Pattern:
+    """Motif d'un jeton de codec, insensible à la casse et borné par des
+    non-alphanumériques — sans quoi « DD » se retrouverait dans « ADD »."""
+    return re.compile(rf"(?<![0-9A-Za-z]){re.escape(token)}(?![0-9A-Za-z])",
+                      re.IGNORECASE)
+
+
+def retitle(title: str, out_codec: str,
+            src_channels: int, out_channels: int) -> Optional[str]:
+    """Titre corrigé d'une piste transcodée, ou None s'il n'y a rien à corriger.
+
+    Un titre comme « ENG VO : TrueHD 5.1 » survit tel quel au transcodage et
+    annonce alors un codec que le fichier ne contient plus. On ne réécrit que
+    ce qui devient faux : le jeton de codec, la disposition si elle change, et
+    la mention Atmos — les objets sonores ne survivent pas à une conversion
+    vers AC3 ou E-AC3. Un titre qui ne dit rien du format (« English ») est
+    laissé intact : il n'a jamais menti.
+    """
+    if not title:
+        return None
+
+    label   = _CODEC_LABELS.get(out_codec, out_codec.upper())
+    nouveau = title
+    touche  = False
+
+    for token in _CODEC_TOKENS:
+        motif = _codec_token_re(token)
+        if motif.search(nouveau):
+            nouveau = motif.sub(label, nouveau, count=1)
+            touche  = True
+            break
+
+    if touche and _ATMOS_RE.search(nouveau):
+        nouveau = _ATMOS_RE.sub("", nouveau)
+
+    if out_channels and out_channels != src_channels:
+        remplace = channel_layout_label(out_channels)
+        if _LAYOUT_RE.search(nouveau):
+            nouveau = _LAYOUT_RE.sub(remplace, nouveau, count=1)
+            touche  = True
+
+    if not touche:
+        return None
+
+    # Un jeton retiré laisse des espaces doubles et parfois un séparateur nu.
+    nouveau = re.sub(r"\s{2,}", " ", nouveau).strip()
+    nouveau = re.sub(r"[\s:\-–]+$", "", nouveau).strip()
+    return nouveau or None
+
+
+# Plafonds réels des encodeurs ffmpeg, mesurés et non déduits de la norme :
+# l'AC3 ramène silencieusement toute demande supérieure à 640 kbps, l'E-AC3
+# honore jusqu'à 6144 kbps puis refuse la commande.
+CODEC_MAX_BPS: dict[str, int] = {"ac3": 640_000, "eac3": 6_144_000}
+
+# Les deux encodeurs s'arrêtent au 5.1 : « Specified channel layout 7.1 is not
+# supported by the ac3 encoder ». ffmpeg négocie le repli tout seul — vérifié,
+# la sortie est identique à l'octet près avec ou sans `-ac` — mais la décision
+# doit connaître le nombre de canaux réel pour ne pas annoncer du 7.1.
+MAX_TRANSCODE_CHANNELS = 6
+
+
+def _hd_transcode_spec(track: AudioTrack, profile: Profile) -> tuple[str, int, int] | None:
+    """Transcodage d'une piste HD au débit de la source, si le profil le demande.
+
+    `audio_hd_codec` vaut `"ac3"` ou `"eac3"` : les pistes TrueHD et DTS sont
+    alors converties **au débit présent dans la piste**, plafonné à ce que
+    l'encodeur sait produire. Retourne None si l'option est absente, si la
+    piste n'est pas concernée, ou si son débit reste inconnu — mieux vaut
+    retomber sur le forfait du profil que d'inventer une valeur.
+    """
+    codec = str(profile.get("audio_hd_codec", "none") or "none").lower()
+    if codec not in CODEC_MAX_BPS:
+        return None
+    if not track.is_hd_audio or track.bitrate <= 0:
+        return None
+    debit  = min(track.bitrate, CODEC_MAX_BPS[codec])
+    canaux = min(track.channels, MAX_TRANSCODE_CHANNELS)
+    # 0 = inchangé : ne poser -ac que lorsqu'il y a vraiment un downmix.
+    return codec, debit, (canaux if canaux != track.channels else 0)
+
+
+def _transcode_spec(track: AudioTrack, profile: Profile) -> tuple[str, int, int]:
+    """Retourne (codec_sortie, bitrate_bps, canaux_sortie) pour un transcodage.
+
+    canaux_sortie vaut 0 quand la piste garde ses canaux.
+    """
+    hd = _hd_transcode_spec(track, profile)
+    if hd is not None:
+        return hd
+
     ch = track.channels
     if ch == 1:
-        return "aac", 64_000
+        return "aac", 64_000, 0
     if ch == 2:
-        return "aac", profile.get("audio_stereo_kbps", 192) * 1000
+        return "aac", profile.get("audio_stereo_kbps", 192) * 1000, 0
     if ch <= 6:
-        return "ac3", profile.get("audio_surround_kbps", 448) * 1000
-    return "ac3", profile.get("audio_surround_7_1_kbps", 640) * 1000
+        return "ac3", profile.get("audio_surround_kbps", 448) * 1000, 0
+    # Au-delà du 5.1, l'encodeur AC3 ne connaît pas la disposition : la sortie
+    # sera du 5.1, autant que la décision le dise.
+    return ("ac3", profile.get("audio_surround_7_1_kbps", 640) * 1000,
+            MAX_TRANSCODE_CHANNELS)
 
 
 def decide_audio(
@@ -401,11 +606,12 @@ def decide_audio(
                     output_codec="copy", output_bitrate=0, locked=(i == 0),
                 ))
                 continue
-            out_codec, out_br = _transcode_spec(track, profile)
+            out_codec, out_br, out_ch = _transcode_spec(track, profile)
             decisions.append(AudioDecision(
                 track=track, action=AudioAction.TRANSCODE,
                 reason=f"{reason} · lossless → {out_codec}",
                 output_codec=out_codec, output_bitrate=out_br, locked=(i == 0),
+                output_channels=out_ch,
             ))
             continue
 
@@ -417,11 +623,12 @@ def decide_audio(
             ))
             continue
 
-        out_codec, out_br = _transcode_spec(track, profile)
+        out_codec, out_br, out_ch = _transcode_spec(track, profile)
         decisions.append(AudioDecision(
             track=track, action=AudioAction.TRANSCODE,
             reason=f"{reason} · → {out_codec}",
             output_codec=out_codec, output_bitrate=out_br, locked=(i == 0),
+            output_channels=out_ch,
         ))
 
     return decisions
@@ -436,7 +643,7 @@ def force_skip_to_encode(dec: FileDecision) -> FileDecision:
     - H264 ne peut pas porter de RPU DV → DV→HDR10 forcé si source DV
     """
     from dataclasses import replace as dc_replace
-    if dec.video.action != VideoAction.SKIP:
+    if dec.video.action not in (VideoAction.SKIP, VideoAction.STRIP_DV):
         return dec
     sub_1080   = dec.info.height < 1080
     forced_act = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
@@ -451,7 +658,9 @@ def force_skip_to_encode(dec: FileDecision) -> FileDecision:
         target_bitrate= dec.info.bitrate,
         output_suffix = "_[H264]" if sub_1080 else "_[hevc]",
         dv_action     = forced_dv,
-        reason        = "Forcé manuellement (était SKIP)",
+        reason        = ("Forcé manuellement (était SKIP)"
+                         if dec.video.action == VideoAction.SKIP
+                         else "Forcé manuellement (était retrait DV)"),
     ))
 
 

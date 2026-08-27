@@ -60,6 +60,13 @@ def _estimate_output_bytes(dec: FileDecision) -> int:
     Retourne 0 si action=SKIP ou durée inconnue."""
     if dec.video.action == VideoAction.SKIP:
         return 0
+    # Un remux ne recalcule aucune image : la sortie pèse ce que pèse la
+    # source, au RPU près — quelques mégaoctets sur un film.
+    if dec.video.action == VideoAction.STRIP_DV:
+        try:
+            return dec.info.path.stat().st_size
+        except OSError:
+            return 0
     duration = dec.info.duration
     if duration <= 0:
         return 0
@@ -646,7 +653,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 from dataclasses import replace as dc_replace
                 from core.decision import SUFFIX_BY_ACTION as _SUFFIX_BY_ACTION
                 ov = result.video_override
-                was_skip = (dec.video.action == VideoAction.SKIP)
+                # SKIP et retrait de DV ont tous deux un débit cible nul.
+                was_skip = dec.video.action in (VideoAction.SKIP,
+                                                VideoAction.STRIP_DV)
                 if ov.action        is not None:
                     # Recalculer le suffixe selon la nouvelle action
                     dec.video = dc_replace(

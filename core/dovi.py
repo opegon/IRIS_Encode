@@ -10,7 +10,12 @@ Fonctions principales :
   - rpu_info()             : interroge un RPU pour metadata HDR10
   - make_x265_hdr_params() : forge la chaîne -x265-params pour HDR10
 
-Pipeline complet DV→HDR10 (orchestré par encoder.py) :
+Retrait pur du DV (orchestré par tui/screens/run.py), sans réencodage :
+  1. ffmpeg     : extract HEVC brut          (input.mkv  → temp.hevc)
+  2. dovi_tool  : remove                     (temp.hevc  → temp.nodv.hevc)
+  3. mkvmerge   : remux avec les pistes      (→ sortie_[hdr10].mkv)
+
+Pipeline DV→HDR10 par réencodage (orchestré par encoder.py) :
   1. ffmpeg     : extract HEVC brut          (input.mkv → temp.hevc)
   2. dovi_tool  : extract RPU                (temp.hevc  → temp.rpu)
   3. dovi_tool  : convert P7→P8 si requis    (temp.rpu   → temp.p8.rpu)
@@ -95,12 +100,37 @@ def probe_file(input_path: Path, dovi_path: Path,
 
 def extract_hevc_stream(input_path: Path, output_hevc: Path,
                         ffmpeg_path: str = "ffmpeg",
-                        duration_limit: Optional[int] = None) -> bool:
+                        duration_limit: Optional[int] = None,
+                        timeout: Optional[int] = 120) -> bool:
     """
     Extrait le flux HEVC brut (.hevc Annex-B) via ffmpeg.
     duration_limit (secondes) : tronque la copie — utile pour probing.
+    timeout : None pour un fichier entier — 120 s suffisent aux 30 s du
+    probing, pas à recopier 30 Go.
     """
-    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(input_path)]
+    cmd = build_extract_hevc_command(input_path, output_hevc, ffmpeg_path,
+                                     duration_limit)
+    try:
+        r = subprocess.run(cmd, capture_output=True, timeout=timeout)
+        return r.returncode == 0 and output_hevc.exists()
+    except Exception as e:
+        _log.warning("extract_hevc_stream failed: %s", e)
+        return False
+
+
+def build_extract_hevc_command(input_path: Path, output_hevc: Path,
+                               ffmpeg_path: str = "ffmpeg",
+                               duration_limit: Optional[int] = None,
+                               quiet: bool = True) -> list[str]:
+    """Commande ffmpeg d'extraction du flux HEVC brut (copie, pas d'encodage).
+
+    quiet=False laisse ffmpeg écrire ses lignes de progression : l'écran
+    d'encodage les affiche, une recopie de 30 Go n'étant pas instantanée.
+    """
+    cmd = [ffmpeg_path, "-y"]
+    if quiet:
+        cmd += ["-loglevel", "error"]
+    cmd += ["-i", str(input_path)]
     if duration_limit is not None:
         cmd += ["-t", str(duration_limit)]
     cmd += [
@@ -110,12 +140,7 @@ def extract_hevc_stream(input_path: Path, output_hevc: Path,
         "-f", "hevc",
         str(output_hevc),
     ]
-    try:
-        r = subprocess.run(cmd, capture_output=True, timeout=120)
-        return r.returncode == 0 and output_hevc.exists()
-    except Exception as e:
-        _log.warning("extract_hevc_stream failed: %s", e)
-        return False
+    return cmd
 
 
 def extract_rpu(hevc_path: Path, rpu_path: Path, dovi_path: Path) -> bool:
@@ -126,6 +151,25 @@ def extract_rpu(hevc_path: Path, rpu_path: Path, dovi_path: Path) -> bool:
         return r.returncode == 0 and rpu_path.exists()
     except Exception as e:
         _log.warning("extract_rpu failed: %s", e)
+        return False
+
+
+def remove_dv(hevc_in: Path, hevc_out: Path, dovi_path: Path) -> bool:
+    """
+    Retire le RPU — et la couche d'amélioration d'un profil 7 — d'un flux HEVC.
+
+    Ne touche à rien d'autre : les SEI HDR10 statiques (master display,
+    MaxCLL) et les SEI HDR10+ restent en place, et les tranches d'image ne
+    sont pas retouchées. La sortie décode bit à bit comme l'entrée.
+    N'a de sens que sur un flux dont la couche de base est déjà du HDR10
+    (profils 7 et 8.1) — voir VideoInfo.can_strip_dv.
+    """
+    cmd = [str(dovi_path), "remove", "-i", str(hevc_in), "-o", str(hevc_out)]
+    try:
+        r = subprocess.run(cmd, capture_output=True, timeout=1800)
+        return r.returncode == 0 and hevc_out.exists()
+    except Exception as e:
+        _log.warning("remove_dv failed: %s", e)
         return False
 
 

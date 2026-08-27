@@ -33,6 +33,8 @@ from core import dovi
 from core.muxer import TrackKind
 from core.decision import (
     ACTION_CYCLE as _ACTION_CYCLE,
+    cycle_index,
+    same_intent,
     BITRATE_OPTS_KBPS as _BITRATE_OPTS,
     AudioAction, DVAction, FileDecision, TracksSelection,
     VideoAction, VideoOverride, decide_audio, decide_video,
@@ -518,8 +520,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
         if field == "action":
             cur  = self._eff_action()
-            nxt  = _ACTION_CYCLE[(_ACTION_CYCLE.index(cur) + delta) % len(_ACTION_CYCLE)]
-            self._ov_action = nxt if nxt != self._decision.video.action else None
+            nxt  = _ACTION_CYCLE[(cycle_index(cur) + delta) % len(_ACTION_CYCLE)]
+            self._ov_action = None if same_intent(nxt, self._decision.video.action) else nxt
 
         elif field == "bitrate":
             cur_k = self._eff_bitrate() // 1000
@@ -613,11 +615,12 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         cfg: tuple[str, list[str], int, object] | None = None
 
         if field == "action":
-            current = _ACTION_CYCLE.index(self._eff_action())
+            current = cycle_index(self._eff_action())
             def apply_action(idx, s=self):
                 if idx is None: return
                 nxt = _ACTION_CYCLE[idx]
-                s._ov_action = nxt if nxt != s._decision.video.action else None
+                s._ov_action = (None if same_intent(nxt, s._decision.video.action)
+                                else nxt)
                 if nxt == VideoAction.ENCODE_AV1 and s._ov_bitrate is None:
                     s._ov_bitrate = 1500 * 1000
                 s._update_video_row(); s._update_status()

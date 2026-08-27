@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.5 — document de référence courant
-**Date** : 2026-08-26
+**Version** : 0.8.1.8 — document de référence courant
+**Date** : 2026-08-27
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -264,6 +264,7 @@ Le champ `dolby_vision` accepte : `"hdr10"` (DV → HDR10), `"dv"` (DV → DV co
 | `audio_surround_kbps` | int | débit AC3 5.1 |
 | `audio_surround_7_1_kbps` | int | débit AC3 7.1 |
 | `audio_copy_compatible` | bool | copier AAC / AC3 / EAC3 sans transcoder |
+| `audio_hd_codec` | str | `none` / `ac3` / `eac3` — transcoder TrueHD et DTS au débit de la source (§ 8.5) |
 
 ### 6.2 Vue d'ensemble des builtins
 
@@ -290,11 +291,13 @@ Le champ `dolby_vision` accepte : `"hdr10"` (DV → HDR10), `"dv"` (DV → DV co
 
 ## 7. Dolby Vision — `core/dovi.py`
 
-Module wrapper autour de `dovi_tool`, utilisé en deux phases :
+Module wrapper autour de `dovi_tool`, utilisé en trois phases :
 
 1. **Scan** (`probe_file`) : enrichit chaque `VideoInfo` avec sous-profil, master
    display, MaxCLL/FALL
 2. **Encodage** (`make_x265_hdr_params`) : fournit les `-x265-params` du mode HDR10 quality
+3. **Retrait du RPU** (`remove_dv`) : supprime le Dolby Vision sans réencoder, quand
+   la couche de base est déjà du HDR10 (§ 7.3)
 
 ### 7.1 API publique
 
@@ -305,6 +308,8 @@ Module wrapper autour de `dovi_tool`, utilisé en deux phases :
 | `probe_file(path, dovi_path, ffmpeg_path)` | Sous-profil DV + master display + MaxCLL |
 | `extract_hevc_stream(…)` | Extrait le flux HEVC brut Annex-B via ffmpeg |
 | `extract_rpu(…)` | Extrait le RPU depuis un `.hevc` brut |
+| `build_extract_hevc_command(…)` | Commande ffmpeg de l'extraction (progression côté TUI) |
+| `remove_dv(hevc_in, hevc_out, dovi_path)` | `dovi_tool remove` : retire RPU et couche d'amélioration |
 | `convert_p7_to_p8(…)` | Convertit RPU profil 7 → profil 8 (mode `-m 2`) |
 | `rpu_info(…)` | `{dv_subprofile, master_display, max_cll}` |
 | `make_x265_hdr_params(…)` | Liste de tokens `-x265-params` HDR10 |
@@ -320,7 +325,42 @@ Module wrapper autour de `dovi_tool`, utilisé en deux phases :
 
 Coût : ~50–150 ms par fichier. Ne lève pas en cas d'échec (retourne un dict vide).
 
-### 7.3 Paramètres x265 HDR10
+### 7.3 Retrait du Dolby Vision sans réencodage
+
+Un profil **8.1** annonce `dv_bl_signal_compatibility_id = 1` : sa couche de base
+*est* du HDR10, et le RPU n'est qu'un jeu de NAL supplémentaire. Un profil **7** a
+lui aussi une couche de base HDR10, doublée d'une couche d'amélioration. Dans ces
+deux cas, retirer le RPU suffit à obtenir un HDR10 valide — aucune image n'est
+recalculée, et le HDR10+ éventuel survit, ce qu'aucun réencodage ne permet.
+
+```
+1. ffmpeg    : extrait le flux HEVC brut     (source     → *.iris_bl.hevc)
+2. dovi_tool : remove                        (*.iris_bl  → *.iris_nodv.hevc)
+3. mkvmerge  : remux avec les pistes source  (→ <nom>_[hdr10].mkv)
+```
+
+Mesuré sur un film 4K de 5,7 Go (2 h 24) : **2 min 16 s** au total, sortie
+bit à bit identique à la source (`framemd5`). Le même fichier réencodé en
+`libx265` prendrait ~74 h et perdrait le HDR10+.
+
+Les intermédiaires sont écrits **à côté de la source**, pas dans le temp du
+système : ils pèsent le poids du film, et le disque système n'a pas 30 Go à
+prêter. Ils sont supprimés que l'opération aboutisse ou non.
+
+**Exclusions** — profil 5 (couche de base IPT-PQ, illisible sans RPU) et profil
+8.4 (couche de base HLG). Ces fichiers suivent le chemin de réencodage.
+
+**Pickers de codec.** `STRIP_DV` n'appartient pas à `ACTION_CYCLE` : ce n'est
+pas un codec proposable. `cycle_index()` lui rend la position de `SKIP`, et
+`same_intent()` fait que choisir `SKIP` sur un tel fichier lève la surcharge
+plutôt que d'imposer un SKIP sec. Toute action doit avoir une position dans le
+cycle — un `.index()` direct lève un `ValueError` et fait tomber l'écran.
+
+**Prérequis** — `dovi_tool` *et* `mkvmerge`. Sans les deux,
+`decision.set_strip_dv_available(False)` fait retomber la décision sur `SKIP` :
+proposer une action qui échouera au lancement vaut moins que ne rien proposer.
+
+### 7.4 Paramètres x265 HDR10
 
 ```python
 params = [
@@ -343,7 +383,17 @@ params = [
 | **CAS 1** | bitrate source ≥ seuil cible | Réencodage HEVC (ou H264 si cible < 1080p) au bitrate cible |
 | **CAS 2** | bitrate OK mais résolution trop grande | Redimensionnement HEVC, bitrate original |
 | **CAS 3** | bitrate OK, résolution OK, codec non-standard | Réencodage H264, bitrate et taille conservés |
+| **STRIP_DV** | aucun des cas ci-dessus, mais RPU retirable (DV 8.1 ou 7) et profil en `hdr10` | Retrait du RPU par remux, sans réencodage (§ 7.3) |
 | **SKIP** | bitrate OK, résolution OK, codec H264 ou HEVC | Aucun traitement |
+
+**Le débit comparé est celui de la vidéo seule.** Un profil fixe un débit
+vidéo cible, et c'est un débit vidéo que reçoit l'encodeur (`-b:v`) : les
+deux termes de la comparaison doivent porter sur la même chose. Le débit du
+conteneur inclut l'audio et les sous-titres, et l'utiliser fait basculer en
+réencodage des fichiers dont la vidéo tient largement sous le seuil —
+d'autant plus que les pistes sont grosses. Mesuré sur un film porteur d'un
+TrueHD : 9 611 kbps de conteneur pour **5 364 kbps de vidéo**, soit 44 %
+d'écart. Voir `_video_bitrate` (§ 15.1).
 
 Le seuil bitrate est calculé sur la **résolution cible** (après `keep_4k`), pas sur la
 résolution source. Les seuils de rattachement au bucket 1080p sont paramétrables via
@@ -368,6 +418,7 @@ est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans
 | `ENCODE_HEVC` | Réencodage HEVC (CAS 1 ou CAS 2 sur source ≥ 1080p) |
 | `ENCODE_H264` | Réencodage H264 (CAS 3, cible < 1080p, ou forçage manuel) |
 | `ENCODE_AV1` | AV1 — **manuel uniquement** (très gourmand CPU/GPU RTX30+) |
+| `STRIP_DV` | Retrait du RPU Dolby Vision par remux — aucune image recalculée |
 | `SKIP` | Aucun traitement |
 
 ### 8.4 Gestion Dolby Vision
@@ -378,6 +429,14 @@ est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans
 | `"dv"` | `DVAction.DV` | DV → DV (copy du flux vidéo, pas de réencodage) |
 | `"sdr"` | `DVAction.SDR` | DV → SDR (tone map P5, CPU, lent) |
 | Aucun DV | `DVAction.NONE` | Sans effet |
+
+**Le profil garde la main sur le réencodage.** Le retrait du RPU seul
+(`VideoAction.STRIP_DV`, § 7.3) n'est proposé que lorsque le profil ne demande
+*aucun* réencodage — débit sous le seuil, résolution dans les clous, codec
+standard. Dès qu'un des cas 1 à 3 s'applique, c'est l'encodage qui l'emporte :
+il supprime le RPU de lui-même, et stripper d'abord réécrirait le film pour
+rien. Une source 8.1 ou 7 qui n'a rien à réencoder sort donc en
+`<nom>_[hdr10].mkv`, toutes pistes conservées.
 
 **Mode HDR10 quality (`hdr10_quality = "quality"`)** — activé par `cinema_4k_quality`.
 Utilise `libx265` CPU + `-x265-params` avec `master_display` et `max_cll` extraits par
@@ -426,8 +485,48 @@ Pour chaque piste audio :
 | Mono (1.0) | AAC | 64k (fixe) |
 | Stéréo (2.0) | AAC | `audio_stereo_kbps` |
 | Surround 5.1 | AC3 | `audio_surround_kbps` |
-| Surround 7.1 | AC3 | `audio_surround_7_1_kbps` |
+| Surround 7.1 | AC3 | `audio_surround_7_1_kbps`, replié en 5.1 |
 | TrueHD / DTS-HD MA | copy ou règle surround | selon `preserve_hd_audio` |
+
+**Transcodage HD au débit de la source — `audio_hd_codec`**
+
+Le forfait par canaux convient à une piste déjà compressée ; il fait perdre
+inutilement sur une source HD. `audio_hd_codec = "ac3"` ou `"eac3"` transcode
+les pistes **TrueHD et DTS, toutes variantes**, au **débit présent dans la
+piste**, plafonné à ce que l'encodeur sait réellement produire :
+
+| Codec | Plafond mesuré | Comportement au-delà |
+|---|---|---|
+| `ac3` | **640 000 bps** | ramené en silence par l'encodeur |
+| `eac3` | **6 144 000 bps** | commande refusée par ffmpeg |
+
+Le débit de la source est lu dans cet ordre : `bit_rate` du flux, puis le tag
+Matroska `BPS`, puis `NUMBER_OF_BYTES ÷ DURATION`. Un flux TrueHD ou DTS-HD MA
+n'annonce **jamais** de `bit_rate` — sans les tags de statistiques posés par
+mkvmerge, la piste retombe sur le forfait du profil plutôt que sur une valeur
+inventée.
+
+`preserve_hd_audio` garde la priorité : copier sans perte prime sur
+transcoder au débit source.
+
+**Repli des canaux.** Les encodeurs `ac3` et `eac3` s'arrêtent au 5.1. ffmpeg
+replie une source 7.1 de lui-même — vérifié, sortie identique à l'octet près
+avec ou sans `-ac` — mais la commande le pose explicitement pour que ce qui
+s'affiche à l'écran d'encodage corresponde à ce qui sort, et la décision
+annonce « → eac3 5.1 » plutôt que de laisser croire à du 7.1 préservé.
+
+**Titre de la piste.** Un titre de piste survit au transcodage et annonce
+alors un codec absent du fichier. `AudioDecision.output_title` rend le titre
+corrigé, ou `None` quand il n'y a rien à corriger ; l'encodeur le pose en
+`-metadata:s:a:N title=…`. La règle : remplacer le jeton de codec, suivre la
+disposition si elle change, retirer la mention `Atmos` — perdue de toute façon
+— et **ne rien toucher à un titre muet sur le format** (« English »), qui n'a
+jamais menti. Une piste copiée n'est jamais retitrée.
+
+**Détection des variantes DTS.** ffprobe nomme `dts` toutes les déclinaisons et
+met la famille dans `profile` : « DTS », « DTS-ES », « DTS-HD HR »,
+« DTS-HD MA ». `AudioTrack.profile` est donc lu au scan — sans lui, un DTS-HD MA
+passait pour un DTS ordinaire et échappait à `preserve_hd_audio`.
 
 ### 8.6 Sous-titres
 
@@ -537,7 +636,7 @@ Chacun produit un résultat faux **sans erreur visible** — d'où leur coût.
 | 5 | **Une seule piste audio à la fois dans mpv.** `audio-delay` et `sub-delay` sont distincts : un audio + un sous-titre se calibrent ensemble, deux audio demandent deux passes. | L'écran le dit au lieu de laisser croire à un réglage simultané. |
 | 6 | **Métadonnées absentes des fichiers externes.** Un `.srt` n'a aucune langue → « und » dans tous les lecteurs. | Champs saisis dans l'écran, jamais déduits silencieusement ; `guess_language()` ne fait que pré-remplir. |
 | 7 | **mkvmerge réécrit le conteneur entier.** Pas d'ajout in-place en MKV : 30 Go = copie disque complète, une à trois minutes sur SSD. | Barre de progression réelle. Les deux fichiers coexistent le temps du mux — prévoir l'espace. |
-| 8 | **Dolby Vision et remux — non vérifié.** mkvmerge sait porter le RPU HEVC (`dvcC`/`dvvC`), mais le comportement face au pipeline `core/dovi.py` n'est pas testé. | À valider sur un fichier DV réel avant de s'y fier. |
+| 8 | **Dolby Vision et remux — vérifié pour le retrait (§ 7.3), pas pour la conservation.** Le chemin `STRIP_DV` est mesuré sur un fichier réel : sortie bit à bit identique, HDR10+ conservé. Porter un RPU *à travers* un remux mkvmerge (`dvcC`/`dvvC`) reste non testé. | Le profil 7 est éligible par construction mais n'a pas été essayé, faute de fichier. |
 
 ### 9.6 Fichier déjà en réencodage
 
@@ -739,10 +838,18 @@ l'opération est refusée en amont plutôt que d'échouer en cours d'encodage.
 
 | Mode | Condition | Encodeur | Notes |
 |---|---|---|---|
+| **Retrait DV** | `action == STRIP_DV` | aucun — dovi_tool + mkvmerge | `build_command` retourne `[]`, ffmpeg n'est pas appelé (§ 7.3) |
 | **DV copy** | `dv_action == DV` | `-c:v copy` | Pas de réencodage, pas de hwaccel |
 | **HDR10 quality** | `dv_action == HDR10` + `hdr10_quality == "quality"` | `libx265` CPU | Métadonnées via `-x265-params`, `pix_fmt yuv420p10le` |
 | **SDR tone map** | `dv_action == SDR` | nvenc / libx265 (CPU) | Filtre `zscale+tonemap`, pas de hwaccel |
 | **Standard** | Tous autres cas | nvenc / libx265 / libx264 / av1_nvenc | hwaccel si disponible |
+
+**Profondeur de bits.** Le mode standard sortait en `yuv420p` — 8 bits — quelle que
+soit la source. Sur une courbe PQ, cela étale 10 bits de dégradés sur 256 niveaux :
+banding garanti. La sortie passe en `yuv420p10le` + `-profile:v main10` dès que la
+sortie est HDR (source PQ/HLG, ou `dv_action == HDR10`) et que l'encodeur sait le
+porter — HEVC et AV1. H264 n'a pas de profil 10 bits chez NVENC : une source HDR
+ramenée en H264 reste en 8 bits, ce qui ne concerne que les cibles sous 1080p.
 
 ### 12.2 Pause / Reprise
 
@@ -1125,13 +1232,27 @@ l'opération est destructive.
 
 ### 15.1 `VideoInfo`
 
+`bitrate` porte le débit du **flux vidéo**, jamais celui du conteneur.
+`_video_bitrate()` le résout dans cet ordre :
+
+1. `bit_rate` du flux vidéo — presque toujours absent en Matroska ;
+2. le tag `BPS` posé par mkvmerge — exact, mesuré sur le fichier entier ;
+3. le débit du conteneur **moins** celui de chaque piste non vidéo, ces
+   dernières étant résolues de la même façon (`bit_rate`, `BPS`, puis
+   `NUMBER_OF_BYTES ÷ DURATION`).
+
+Une piste dont le débit reste introuvable ne retire rien : le résultat penche
+alors du côté prudent, celui du réencodage. Une soustraction qui donnerait un
+résultat nul ou négatif est écartée au profit du total. Un second flux vidéo
+— une pochette embarquée — n'est jamais soustrait.
+
 ```python
 @dataclass
 class VideoInfo:
     path:                 Path
     width:                int
     height:               int
-    bitrate:              int          # bps
+    bitrate:              int          # bps — VIDÉO seule, voir ci-dessous
     codec:                str
     duration:             float        # secondes
     frame_count:          int
@@ -1285,3 +1406,13 @@ python -m pytest tests/
 | 0.7.1 | 2026-08-06 | Colonne Durée au dry-run · sélecteur de profils en table · correction crash `NoMatches` sur backspace pendant encodage · gestion des événements clavier dans les modales de saisie |
 | 0.8.0 | 2026-08-26 | **Greffe de pistes externes** : `core/muxer.py` (mkvmerge), `core/sync.py` (mesure par corrélation), `core/preview.py` (mpv) · écrans DonorPicker, Sync, MuxRun · `F9` piste externe, `m` mesurer, `v` visualiser, `k` extrait, `c` copier décalage, `F3` muxer · **Outils** : mkvmerge et mpv en optionnels, vérification des mises à jour au démarrage (`core/updates.py`) · **Estimation** : colonnes Estim. (Δ%) et Temps estim. adossées à une moyenne mobile de vitesse · **Corrections** : conteneur de sortie suivant les pistes conservées, listes de dépendances vérifiées par test, preflight sans terminal interactif |
 | 0.8.0.1 | 2026-08-26 | **`Ctrl+D`** — suppression du fichier sous le curseur depuis le browser, avec confirmation (`DeleteConfirmModal`), sans re-scan du dossier · **Documentation** : consolidation des trois specs en un document unique suivant la version |
+| 0.8.0.2 | 2026-08-26 | `stdout`/`stderr` forcés en UTF-8 avant le premier `print` : le démarrage mourait sur un `UnicodeEncodeError` hors console Windows (pipe, fichier, Git Bash, tâche planifiée) |
+| 0.8.1.0 | 2026-08-27 | **Greffe d'une piste venue d'un autre montage** : détection des plages par fenêtres de 2 min (`s`), recalage exact des sous-titres et par insertion sur silence pour l'audio (`p`), sous-titres embarqués mesurables · mux préalable par mkvmerge quand une piste est étirée · décalage négatif traduit en `-ss` (fichiers illisibles sur TV) |
+| 0.8.1.1 | 2026-08-27 | `GUIDE.md` — guide d'utilisation par écran et par cas, raccourcis relevés depuis les `BINDINGS` |
+| 0.8.1.2 | 2026-08-27 | Footer réancré en bas (le `1fr` de la table ne s'appliquait pas : sélecteur de type contre style par défaut du widget), hauteur posée explicitement · raccourcis rangés par rôle, `F1`–`F10` en dernière ligne |
+| 0.8.1.3 | 2026-08-27 | Colonne « Temps estim. » renommée « ETA », largeur 14 → 9 |
+| 0.8.1.4 | 2026-08-27 | Largeurs de colonnes du browser revues au profit du nom de fichier et des pistes audio · l'accueil repart des largeurs par défaut à chaque lancement |
+| 0.8.1.5 | 2026-08-27 | **Crash au lancement sur toute installation neuve** : `_deep_merge` assignait les sous-dictionnaires par référence, la réinitialisation des colonnes vidait `_DEFAULTS` |
+| 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
+| 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
+| 0.8.1.6 | 2026-08-27 | **Retrait du Dolby Vision sans réencodage** (`VideoAction.STRIP_DV`, § 7.3) : une source 8.1 ou 7 que le profil n'a aucune raison de réencoder sort en `_[hdr10].mkv` par `dovi_tool remove` + mkvmerge — image bit à bit identique, HDR10+ conservé, 2 min 16 s pour un film 4K de 5,7 Go · détection du sous-profil par `dv_bl_signal_compatibility_id` · **sortie HDR10 en 10 bits** : le mode standard encodait en `yuv420p` quelle que soit la source |

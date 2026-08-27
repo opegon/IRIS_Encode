@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.1.5
+**Version** : 0.8.1.8
 **Date** : 2026-08-27
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -226,7 +226,69 @@ réencodez-le avec cette version.
 `Ctrl+D` sur un fichier encore ouvert dans mpv échoue : Windows le tient
 verrouillé. Fermez le lecteur et recommencez.
 
-### 4.9 Un outil optionnel manque
+### 4.9 « → HDR10 » sur un fichier qui n'a rien à réencoder
+
+La décision **`→ HDR10`**, en vert, n'est pas un encodage : c'est un retrait du
+Dolby Vision. Elle apparaît quand le fichier est en DV **profil 8.1** (ou 7),
+que le profil actif demande `dolby_vision = "hdr10"`, et qu'il n'y a par
+ailleurs rien à réencoder — débit sous le seuil, résolution dans les clous.
+
+En 8.1, la couche de base *est* déjà du HDR10 : il suffit d'en retirer les
+métadonnées Dolby Vision. L'image ressort **identique au bit près**, le HDR10+
+éventuel est conservé, et un film 4K de 5,7 Go y passe en un peu plus de deux
+minutes — contre plusieurs heures pour un réencodage, qui abîmerait l'image et
+perdrait le HDR10+. La sortie est un `<nom>_[hdr10].mkv` portant toutes les
+pistes de la source.
+
+Pour réencoder quand même, `F6` sur la ligne force le codec : la décision
+repart du débit source.
+
+Rien ne s'affiche si `dovi_tool` ou mkvmerge manque — le fichier reste en
+`← SKIP` plutôt que de promettre une opération impossible.
+
+### 4.10 La colonne « Débit » ne dit pas la même chose que mon explorateur
+
+La colonne affiche le **débit vidéo seul**, tandis qu'un explorateur de
+fichiers ou MediaInfo montre le débit du conteneur — audio et sous-titres
+compris. Sur un film porteur d'une piste TrueHD, l'écart dépasse 40 %.
+
+C'est voulu : le seuil que tu fixes dans un profil est un débit vidéo, et
+c'est un débit vidéo que reçoit l'encodeur. Comparer un total à un seuil vidéo
+enverrait au réencodage des fichiers dont l'image tient largement en dessous.
+
+Pour retrouver le débit total, additionne les pistes : l'écran Pistes (`↵`)
+donne le détail de chacune.
+
+### 4.11 Une piste TrueHD ou DTS sort trop dégradée
+
+Par défaut, une piste transcodée suit le forfait du profil : 448 kbps en AC3
+pour du 5.1. C'est correct pour une source déjà compressée, généreux pour rien
+sur un TrueHD à 3,5 Mbps.
+
+Le champ **« TrueHD/DTS → débit source »** de l'écran Profils (`F5`, puis
+éditer) change la règle pour ces pistes :
+
+- **`none`** — le forfait s'applique, comportement d'origine.
+- **`ac3`** — transcodage au débit de la source, plafonné à **640 kbps** :
+  c'est le maximum de l'AC3, l'encodeur ramène tout le reste sans le dire.
+- **`eac3`** — transcodage au débit de la source, plafonné à **6 144 kbps**.
+  Un TrueHD à 3 501 kbps ressort en E-AC3 à 3 501 kbps.
+
+L'E-AC3 est le bon choix pour un téléviseur récent : il est décodé nativement
+et transporté en eARC vers une barre de son. L'AC3 reste le repli universel.
+
+Une limite à connaître : les encodeurs AC3 et E-AC3 ne dépassent pas le 5.1,
+une source 7.1 est donc repliée — la décision l'affiche (« → eac3 5.1 »).
+
+Le titre de la piste est corrigé au passage : « ENG VO : TrueHD 5.1 » devient
+« ENG VO : E-AC3 5.1 », et la mention Atmos disparaît puisqu'elle ne survit pas
+à la conversion. Un titre qui ne parle pas du format (« English ») est laissé
+tel quel.
+
+Si tu veux au contraire garder la piste intacte, c'est `preserve_hd_audio`
+qu'il faut cocher : la copie sans perte l'emporte sur ce réglage.
+
+### 4.12 Un outil optionnel manque
 
 `dovi_tool`, `mkvmerge` et `mpv` sont optionnels : leur absence désactive une
 fonction sans bloquer le lancement. Le preflight propose de les installer à

@@ -43,6 +43,9 @@ _PRESET        = [("fast", "fast"), ("medium", "medium"), ("slow", "slow")]
 _BR_STEREO     = [("96k", 96), ("128k", 128), ("192k", 192), ("320k", 320)]
 _BR_SURROUND   = [("320k", 320), ("448k", 448), ("640k", 640)]
 _BR_71         = [("448k", 448), ("640k", 640), ("768k", 768)]
+_HD_CODEC      = [("none (forfait ci-dessus)", "none"),
+                  ("ac3 (max 640k)",           "ac3"),
+                  ("eac3 (max 6144k)",         "eac3")]
 
 
 def _opts(pairs):
@@ -184,7 +187,8 @@ class ProfileForm(Widget):
                 yield Label("7.1 kbps",    classes="form-lbl")
                 yield Select(_opts(_BR_71),      id="field-71",     classes="form-ctrl")
             with Widget(classes="form-cell"):
-                pass
+                yield Label("TrueHD/DTS → débit source", classes="form-lbl")
+                yield Select(_opts(_HD_CODEC),   id="field-hdcodec", classes="form-ctrl")
 
         with Widget(classes="check-row"):
             yield Checkbox("preserve_hd_audio (TrueHD/DTS-HD → copy)", id="field-hd")
@@ -239,6 +243,7 @@ class ProfileForm(Widget):
         _set_sel("#field-stereo", data.get("audio_stereo_kbps",        192))
         _set_sel("#field-51",     data.get("audio_surround_kbps",      448))
         _set_sel("#field-71",     data.get("audio_surround_7_1_kbps",  640))
+        _set_sel("#field-hdcodec", data.get("audio_hd_codec",        "none"))
         _set_chk("#field-hd",         data.get("preserve_hd_audio",   False))
         _set_chk("#field-copy-compat",data.get("audio_copy_compatible", True))
 
@@ -283,6 +288,7 @@ class ProfileForm(Widget):
             "audio_stereo_kbps":       _g_sel("#field-stereo",  192),
             "audio_surround_kbps":     _g_sel("#field-51",      448),
             "audio_surround_7_1_kbps": _g_sel("#field-71",      640),
+            "audio_hd_codec":          _g_sel("#field-hdcodec","none"),
             "preserve_hd_audio":       _g_chk("#field-hd"),
             "audio_copy_compatible":   _g_chk("#field-copy-compat"),
         }
@@ -312,6 +318,7 @@ class ProfileForm(Widget):
         "#field-stereo": _BR_STEREO,
         "#field-51":     _BR_SURROUND,
         "#field-71":     _BR_71,
+        "#field-hdcodec": _HD_CODEC,
     }
 
     def _cycle_focused_select(self, delta: int) -> bool:

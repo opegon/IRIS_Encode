@@ -275,6 +275,25 @@ async def scenario_external_tracks() -> None:
             await pilot.pause(0.8)
             assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
 
+            # Regression : STRIP_DV n'appartient pas a ACTION_CYCLE. F6 y
+            # cherchait l'index de l'action courante et levait un ValueError.
+            from dataclasses import replace as dc_replace
+
+            from core.decision import VideoAction as _VA
+            tracks = app.screen
+            avant  = tracks._decision
+            tracks._decision = dc_replace(
+                avant, video=dc_replace(avant.video, action=_VA.STRIP_DV))
+            await pilot.press("f6")
+            await pilot.pause(0.5)
+            assert type(app.screen).__name__ == "ValuePickerScreen", type(app.screen).__name__
+            await pilot.press("escape")
+            await pilot.pause(0.4)
+            await pilot.press("plus")          # cycle +/- sur la meme action
+            await pilot.pause(0.3)
+            tracks._decision = avant
+            print("[9c] TracksScreen : F6 et +/- sur une decision STRIP_DV")
+
             # F9 : le donneur ne doit jamais proposer la source elle-meme
             await pilot.press("f9")
             await pilot.pause(0.6)

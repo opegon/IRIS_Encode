@@ -18,7 +18,8 @@ from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 from core.decision import FileDecision, VideoAction
 from core.encoder import EncoderProcess, build_command
 from core.muxer import (
-    MuxProcess, build_mux_command, needs_premux, premux_output_path,
+    MuxProcess, build_mux_command, build_strip_command, needs_premux,
+    premux_output_path,
 )
 from core.platform import PlatformProfile
 from ..common import footer_line2, record_measured_speed
@@ -259,6 +260,12 @@ class RunScreen(TableNavMixin, Screen):
         s.state = FileState.RUNNING
         self.app.call_from_thread(self._update_row, next_idx)
 
+        # Retrait du Dolby Vision seul : aucun réencodage, donc aucun appel à
+        # build_command. Le fichier suivant est enchaîné par _strip_dv.
+        if dec.video.action == VideoAction.STRIP_DV:
+            self._strip_dv(next_idx, dec)
+            return
+
         # Une piste étirée ne peut pas être absorbée par ffmpeg : mkvmerge la
         # greffe d'abord, ffmpeg encode l'intermédiaire. Transparent pour
         # l'utilisateur, et payé seulement quand c'est nécessaire.
@@ -354,6 +361,137 @@ class RunScreen(TableNavMixin, Screen):
 
         # Enchaîne le suivant
         self._encode_next()
+
+    def _strip_dv(self, index: int, dec: FileDecision) -> None:
+        """Retire le RPU Dolby Vision sans réencoder, puis passe au suivant.
+
+        Trois étapes, aucune image recalculée : ffmpeg recopie le flux HEVC,
+        dovi_tool en retire les NAL du RPU, mkvmerge remuxe avec les pistes de
+        la source. La sortie décode bit à bit comme l'entrée, et le HDR10+
+        éventuel survit — ce qu'aucun réencodage ne permet.
+        """
+        from core import dovi
+
+        s      = self._statuses[index]
+        source = dec.info.path
+        sortie = dec.output_path
+
+        def echouer(resume: str, detail: str) -> None:
+            s.state, s.error_msg, s.last_line = FileState.ERROR, resume[:60], detail
+            self.app.call_from_thread(self._update_row, index)
+
+        dovi_path = getattr(self.app, "dovi_path", None)
+        if dovi_path is None or not getattr(self.app, "mkvmerge_available", False):
+            echouer("dovi_tool + mkvmerge requis",
+                    "Le retrait du Dolby Vision demande dovi_tool et mkvmerge. "
+                    "Relancez le preflight pour les installer.")
+            self._encode_next()
+            return
+
+        # Les intermédiaires pèsent le poids du film : les poser à côté de la
+        # source, sur le même volume, plutôt que dans le temp du système —
+        # 30 Go de flux brut n'ont pas leur place sur le disque du système.
+        brut = source.with_name(f"{source.stem}.iris_bl.hevc")
+        nodv = source.with_name(f"{source.stem}.iris_nodv.hevc")
+        s.percent = -1
+
+        try:
+            # 1/3 — extraction du flux HEVC (copie)
+            cmd = dovi.build_extract_hevc_command(
+                source, brut, getattr(self.app, "ffmpeg_path", "ffmpeg"),
+                quiet=False)
+            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+            self.app.call_from_thread(
+                self._update_ffmpeg_line,
+                "▶ 1/3 Extraction du flux HEVC — copie, sans réencodage…")
+            self.app.call_from_thread(self._update_row, index)
+
+            proc = EncoderProcess(cmd, dec.info.duration)
+            self._process = proc
+            proc.start()
+            for ligne, progress in proc.iter_progress():
+                s.last_line = ligne
+                if progress:
+                    s.percent = progress.percent
+                    self.app.call_from_thread(self._update_row, index)
+                    self.app.call_from_thread(self._update_header)
+            code = proc.wait()
+            self._process = None
+
+            if s.state == FileState.SKIPPED:
+                return
+            if code != 0 or not brut.exists():
+                echouer(f"extraction HEVC : code {code}",
+                        f"L'extraction du flux HEVC a échoué (code {code}).")
+                return
+
+            # 2/3 — retrait du RPU
+            self.app.call_from_thread(
+                self._update_cmd_lines,
+                f"{dovi_path} remove -i {brut.name} -o {nodv.name}")
+            self.app.call_from_thread(
+                self._update_ffmpeg_line,
+                "▶ 2/3 Retrait du RPU Dolby Vision par dovi_tool…")
+            s.percent = -1
+            self.app.call_from_thread(self._update_row, index)
+
+            if not dovi.remove_dv(brut, nodv, dovi_path):
+                echouer("dovi_tool remove a échoué",
+                        "dovi_tool n'a pas pu retirer le RPU du flux.")
+                return
+
+            # 3/3 — remux avec les pistes de la source
+            cmd = build_strip_command(nodv, source, sortie,
+                                      fps=dec.info.frame_rate,
+                                      tracks=dec.external_tracks)
+            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+            self.app.call_from_thread(
+                self._update_ffmpeg_line,
+                "▶ 3/3 Remux des pistes par mkvmerge…")
+
+            mux = MuxProcess(cmd)
+            mux.start()
+            for ligne, pourcent in mux.iter_progress():
+                if pourcent is not None:
+                    s.percent = pourcent / 100.0
+                    self.app.call_from_thread(self._update_row, index)
+                elif ligne:
+                    self.app.call_from_thread(self._update_ffmpeg_line, ligne)
+            code = mux.wait()
+
+            if code != 0 or not sortie.exists():
+                detail = mux.errors[-1] if mux.errors else f"code {code}"
+                echouer(f"remux : {detail}", f"Remux échoué — {detail}")
+                return
+
+            should_delete = (
+                dec.delete_source_override
+                if dec.delete_source_override is not None
+                else dec.profile.get("delete_source", False)
+            )
+            if should_delete:
+                try:
+                    source.unlink()
+                except OSError:
+                    pass
+
+            if s.state != FileState.SKIPPED:
+                s.state   = FileState.SUCCESS
+                s.percent = 1.0
+            self.app.call_from_thread(self._update_row, index)
+            self.app.call_from_thread(self._update_header)
+
+        finally:
+            self._process = None
+            # Les deux flux bruts pèsent chacun le poids du film : les laisser
+            # traîner remplirait le disque, que l'opération ait abouti ou non.
+            for tmp in (brut, nodv):
+                try:
+                    if tmp.exists():
+                        tmp.unlink()
+                except OSError:
+                    pass
+            self._encode_next()
 
     def _premux(self, index: int, dec: FileDecision) -> bool:
         """

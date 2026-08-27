@@ -1,5 +1,177 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.8] — 2026-08-27
+
+### Le débit comparé au seuil est celui de la vidéo, pas celui du fichier
+
+Un profil fixe un débit **vidéo** cible, et c'est un débit vidéo que reçoit
+l'encodeur (`-b:v`). Le scanner, lui, comparait le débit du **conteneur** :
+vidéo, audio et sous-titres confondus. Les deux termes ne portaient pas sur la
+même chose, et l'écart part directement en réencodages injustifiés — d'autant
+plus grands que les pistes audio sont grosses.
+
+Relevé sur le dossier de travail :
+
+| Fichier | Conteneur | Vidéo réelle | Écart |
+|---|---|---|---|
+| Watchmen (TrueHD + AC3) | 9 611k | **5 364k** | **−44 %** |
+| Kingdom of the Planet of the Apes | 5 658k | **4 248k** | −25 % |
+| Colossus (DTS-HD MA) | 12 241k | **10 209k** | −17 % |
+| The Zookeeper's Wife | 11 528k | **9 608k** | −17 % |
+| Starship Troopers | 8 148k | **6 784k** | −17 % |
+
+Conséquence concrète, avec le profil `cinema_4k_basic` inchangé (seuil 4K à
+8 000k) : **Watchmen et Starship Troopers ne partent plus en réencodage** —
+leur vidéo est sous le seuil. Ils basculent sur le retrait de Dolby Vision,
+soit quelques minutes et une image intacte au lieu d'heures de GPU et d'une
+image dégradée.
+
+- `_video_bitrate()` résout le débit dans l'ordre : `bit_rate` du flux vidéo
+  (presque toujours absent en Matroska), puis le tag `BPS` posé par mkvmerge,
+  puis le débit du conteneur **moins celui des autres pistes**.
+- **Une piste dont le débit reste introuvable ne retire rien** : le résultat
+  penche alors du côté prudent, celui du réencodage. Une soustraction qui
+  donnerait un résultat nul ou négatif est écartée au profit du total.
+- Un second flux vidéo — une pochette embarquée — n'est jamais soustrait.
+- La colonne « Débit » de l'accueil affiche désormais le débit vidéo. Elle ne
+  correspondra plus à ce qu'annonce un explorateur de fichiers, qui montre le
+  débit du conteneur ; c'est en revanche la valeur que le seuil compare.
+
+Le défaut existait depuis l'origine et se voyait d'autant moins que les
+fichiers testés portaient de l'audio léger.
+
+## [v0.8.1.7] — 2026-08-27
+
+### Transcoder les pistes HD au débit de la source — `audio_hd_codec`
+
+Le forfait par canaux (`audio_surround_kbps`, 448 kbps par défaut) convient à
+une piste déjà compressée. Appliqué à un TrueHD à 3,5 Mbps, il jette beaucoup
+plus que nécessaire — surtout quand la destination accepte mieux.
+
+- **Nouvelle clé de profil `audio_hd_codec`** : `none` (défaut, comportement
+  inchangé), `ac3` ou `eac3`. Les pistes **TrueHD et DTS, toutes variantes**,
+  sont alors transcodées **au débit présent dans la piste**.
+- **Plafonds mesurés, pas déduits de la norme.** L'encodeur AC3 de ffmpeg
+  ramène en silence toute demande au-dessus de **640 kbps** — demander 6144 en
+  produit 640 sans le moindre avertissement. L'E-AC3 honore jusqu'à
+  **6 144 kbps** puis refuse la commande. La décision annonce donc le débit
+  réellement obtenu, pas celui demandé.
+- **Le débit de la source est lu même quand le flux n'en déclare pas.** Un
+  TrueHD ou un DTS-HD MA rend `bit_rate=N/A` sous ffprobe : le débit est repris
+  du tag Matroska `BPS`, sinon calculé par `NUMBER_OF_BYTES ÷ DURATION`. Sans
+  aucune de ces sources, la piste retombe sur le forfait du profil — mieux vaut
+  ça qu'une valeur inventée.
+- **Réglable depuis l'écran Profils** (`F5` → éditer), à côté du débit 7.1.
+- `preserve_hd_audio` garde la priorité : copier sans perte prime sur
+  transcoder au débit source.
+
+Mesuré sur les fichiers du dossier de travail :
+
+| Source | `none` | `eac3` |
+|---|---|---|
+| Watchmen — TrueHD 5.1 @ 3 501 887 | ac3 448k | **eac3 3501k** |
+| Colossus — DTS-HD MA 2.0 @ 2 008 937 | aac 192k | **eac3 2008k** |
+| The Zookeeper's Wife — DTS 5.1 @ 1 536 000 | ac3 448k | **eac3 1536k** |
+| Pilgrimage — DTS 5.1 @ 768 000 | ac3 448k | **eac3 768k** |
+
+### DTS-HD MA reconnu comme sans perte
+
+ffprobe nomme `dts` toutes les déclinaisons et met la famille dans `profile` :
+« DTS », « DTS-ES », « DTS-HD HR », « DTS-HD MA ». `is_lossless` ne comparait
+que le nom du codec — un **DTS-HD MA passait donc pour un DTS ordinaire**, et
+échappait à `preserve_hd_audio` comme à la contrainte de conteneur MKV.
+`AudioTrack` porte désormais le champ `profile`, lu au scan.
+
+### Repli 7.1 → 5.1 rendu visible
+
+Les encodeurs `ac3` et `eac3` s'arrêtent au 5.1. ffmpeg replie une source 7.1
+de lui-même — vérifié, la sortie est identique à l'octet près avec ou sans
+`-ac` — mais rien ne le disait : la décision annonçait « → ac3 640k » sur une
+piste 7.1 sans mentionner la perte de deux canaux. La commande pose désormais
+`-ac:a:N` explicitement et la décision affiche « → ac3 5.1 640k ».
+
+### Titres de pistes corrigés au transcodage
+
+Le titre d'une piste survivait tel quel à sa conversion : un « ENG VO :
+TrueHD 5.1 » devenu E-AC3 continuait d'annoncer un codec absent du fichier —
+et c'est précisément ce que lisent les lecteurs, la seule chose que voit
+l'utilisateur au moment de choisir sa piste.
+
+- Le jeton de codec est remplacé (`TrueHD`, `DTS-HD MA`, `DDP`, `AC3`…), la
+  disposition suit quand elle change, et la mention **Atmos est retirée** :
+  les objets sonores ne survivent pas à une conversion vers AC3 ou E-AC3.
+- **Un titre qui ne dit rien du format est laissé intact.** « English »,
+  « Commentaire du réalisateur » n'ont jamais menti : les réécrire serait une
+  modification gratuite. Seul ce qui devient faux est corrigé.
+- Une piste **copiée** n'est jamais retitrée : rien n'a changé.
+
+| Titre source | Après transcodage en E-AC3 |
+|---|---|
+| `ENG VO : TrueHD 5.1` | `ENG VO : E-AC3 5.1` |
+| `VO DDP Atmos 5.1` | `VO E-AC3 5.1` |
+| `VFF DDP 7.1` (→ AC3 5.1) | `VFF AC3 5.1` |
+| `DTS-HD MA 7.1` | `E-AC3 5.1` |
+| `English` | inchangé |
+
+Vérifié sur un extrait réel de Watchmen : le fichier produit porte bien
+`ENG VO : E-AC3 5.1`, et la piste AC3 recopiée garde son titre d'origine.
+
+## [v0.8.1.6] — 2026-08-27
+
+### Retrait du Dolby Vision sans réencodage
+
+Un fichier Dolby Vision **profil 8.1** porte une couche de base qui *est* du
+HDR10 : le RPU n'est qu'un jeu de NAL en plus. Jusqu'ici, demander « DV → HDR10 »
+passait forcément par un réencodage — qui dégrade l'image, coûte des heures, et
+détruit le HDR10+ au passage. Mesuré sur *La Planète des singes* (4K, 2 h 24) :
+1 h 40 en NVENC, **74 h** en libx265.
+
+- **`VideoAction.STRIP_DV`.** Quand le profil demande du HDR10 et que le fichier
+  n'a par ailleurs aucune raison d'être réencodé — débit sous le seuil,
+  résolution dans les clous, codec standard — la décision devient un retrait de
+  RPU : ffmpeg recopie le flux HEVC, `dovi_tool remove` en retire le RPU,
+  mkvmerge remuxe avec les pistes de la source. Sortie `<nom>_[hdr10].mkv`.
+- **Le profil garde la main.** Dès qu'un des trois cas d'encodage s'applique,
+  c'est l'encodage qui l'emporte : il supprime le RPU de lui-même, et stripper
+  d'abord réécrirait le film pour rien.
+- **Mesuré sur le fichier réel**, pas seulement en test unitaire : 5,7 Go
+  traités en **2 min 16 s**, durée du conteneur inchangée à la milliseconde,
+  image **bit à bit identique** à la source (`framemd5` concordant à 30 min et à
+  1 h 10), **HDR10+ conservé**, master display et MaxCLL conservés, les deux
+  pistes audio et les six sous-titres avec leurs titres et leurs drapeaux.
+- **Sous-profil détecté pour de bon.** `dv_bl_signal_compatibility_id` distingue
+  le 8.1 (couche de base HDR10) du 8.4 (HLG) et du 8.2 (SDR). Le browser affiche
+  `DV:P8.1` au lieu de `DV:P8`. Seuls les profils **8.1 et 7** sont éligibles :
+  retirer le RPU d'un profil 5 laisse une image aux couleurs fausses.
+- **Rien n'est proposé qui ne puisse aboutir.** Sans `dovi_tool` *et* mkvmerge,
+  la décision retombe sur `SKIP` plutôt que d'afficher une action qui échouera au
+  lancement.
+- **Dans les pickers de codec, le retrait de DV se range avec `SKIP`.** Ce n'est
+  pas un choix de codec : `ACTION_CYCLE` ne le contient pas, et `cycle_index()`
+  lui donne la position de `SKIP` — les deux voulant dire « ne pas réencoder ».
+  Choisir `SKIP` sur un tel fichier lève la surcharge au lieu d'imposer un SKIP
+  sec, qui laisserait le Dolby Vision en place sans que rien ne l'explique.
+- Les intermédiaires sont écrits à côté de la source, pas dans le temp du
+  système : ils pèsent le poids du film. Ils sont supprimés dans tous les cas.
+
+### Sortie HDR10 en 10 bits
+
+Le mode d'encodage standard posait `-pix_fmt yuv420p` — 8 bits — quelle que soit
+la source. Sur une courbe PQ, cela étale 10 bits de dégradés sur 256 niveaux :
+banding garanti dans les ciels et les fondus. Toute source HDR réencodée depuis
+la v0.6 en sortait abîmée, y compris sans Dolby Vision.
+
+- Sortie en `yuv420p10le` + `-profile:v main10` dès que le résultat est HDR
+  (source PQ/HLG, ou `dv_action == HDR10`) et que l'encodeur sait le porter :
+  HEVC et AV1. H264 n'a pas de profil 10 bits chez NVENC — une source HDR
+  ramenée en H264 reste en 8 bits, ce qui ne concerne que les cibles < 1080p.
+
+### Documentation
+
+- `iris_encode_spec.md` : nouvelle section 7.3, tables de décision et d'encodage
+  mises à jour, et **historique des versions complété** — il s'était arrêté à la
+  0.8.0.1 alors que le CHANGELOG suivait.
+
 ## [v0.8.1.5] — 2026-08-27
 
 - **Crash au lancement sur toute installation neuve** (v0.8.1.4 uniquement).

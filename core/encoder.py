@@ -154,7 +154,9 @@ def build_command(
     info    = decision.info
     profile = decision.profile
 
-    if vid.action == VideoAction.SKIP:
+    # Ni l'un ni l'autre ne passe par ffmpeg : SKIP ne fait rien, et le retrait
+    # du RPU est un remux (dovi_tool + mkvmerge), pas un encodage.
+    if vid.action in (VideoAction.SKIP, VideoAction.STRIP_DV):
         return []
 
     # Garde-fou : ne JAMAIS écraser le fichier source
@@ -270,12 +272,27 @@ def build_command(
         else:
             encoder, prof_str = platform.encoder_h264, "high"
 
+        # Une sortie HDR10 en 8 bits, c'est du banding garanti dans les
+        # dégradés : la courbe PQ étale 10 bits de source sur 256 niveaux.
+        # HEVC et AV1 savent encoder en 10 bits, H264 non (pas de main10 chez
+        # NVENC) — une source HDR ramenée en H264 reste donc en 8 bits, et
+        # cela ne concerne que les cibles sous 1080p.
+        hdr10_out = (
+            vid.dv_action == DVAction.HDR10
+            or (info.is_hdr and vid.dv_action != DVAction.SDR)
+        )
+        pix_fmt = "yuv420p"
+        if hdr10_out and vid.action in (VideoAction.ENCODE_HEVC,
+                                        VideoAction.ENCODE_AV1):
+            pix_fmt  = "yuv420p10le"
+            prof_str = "main10" if not is_av1 else "main"
+
         bufsize_k = max(vid.target_bitrate * 2 // 1000, 1)
         preset    = profile.get("preset_encoder", "medium")
 
         cmd += [
             "-c:v",      encoder,
-            "-pix_fmt",  "yuv420p",
+            "-pix_fmt",  pix_fmt,
             "-b:v",      str(vid.target_bitrate),
             "-maxrate",  str(vid.target_bitrate),
             "-bufsize",  f"{bufsize_k}k",
@@ -318,8 +335,18 @@ def build_command(
                 f"-c:a:{out_i}", ad.output_codec,
                 f"-b:a:{out_i}", str(ad.output_bitrate),
             ]
+            # ffmpeg replierait le 7.1 de lui-même, l'encodeur ac3/eac3 ne
+            # connaissant que jusqu'au 5.1 ; l'écrire rend la commande
+            # affichée conforme à ce qui sort.
+            if ad.output_channels:
+                cmd += [f"-ac:a:{out_i}", str(ad.output_channels)]
             if ad.output_codec == "aac":
                 cmd += [f"-ar:{out_i}", "48000"]
+            # Le titre de piste survit au transcodage : sans réécriture, un
+            # « TrueHD 5.1 » resterait affiché sur une piste E-AC3.
+            titre = ad.output_title
+            if titre:
+                cmd += [f"-metadata:s:a:{out_i}", f"title={titre}"]
 
     # ── Pistes externes : copie, langue, nom, drapeaux ────────────────────────
     ext_audio = [t for t in ext_tracks if t.kind == TrackKind.AUDIO]

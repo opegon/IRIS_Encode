@@ -32,6 +32,9 @@ _BASE_AUDIO = {
     "audio_surround_kbps":     448,
     "audio_surround_7_1_kbps": 640,
     "audio_copy_compatible":   True,
+    # "none" | "ac3" | "eac3" — transcode les pistes TrueHD et DTS au débit
+    # présent dans la piste, plafonné à ce que l'encodeur sait produire.
+    "audio_hd_codec":          "none",
 }
 
 _BUILTINS: dict[str, dict[str, Any]] = {

@@ -60,6 +60,7 @@ TOUCHES: dict[str, str] = {
     "pageup":    "PgUp",
     "pagedown":  "PgDn",
     "home":      "Home",
+    "ctrl+home": "Ctrl+Home",
     "end":       "End",
     "left":      "←",
     "right":     "→",
@@ -280,15 +281,20 @@ FOOTER_RESIZE: list[tuple[str, str]] = [
 ]
 
 FOOTER_BACK: tuple[str, str] = ("backspace", "Retour")
+# `Home` appartient à la navigation dans les tables — voir FOOTER_NAV et
+# TableNavMixin. Le retour à l'accueil prend donc Ctrl+Home, qui dit la même
+# chose d'un cran au-dessus.
+FOOTER_ACCUEIL: tuple[str, str] = ("ctrl+home", "Accueil")
 FOOTER_QUIT: tuple[str, str] = ("f10",       "Quitter")
 
 
 def footer_line2(
     *,
-    back:   bool = False,
-    nav:    bool = True,
-    resize: bool = False,
-    extra:  tuple[tuple[str, str], ...] = (),
+    back:    bool = False,
+    nav:     bool = True,
+    resize:  bool = False,
+    accueil: bool = False,
+    extra:   tuple[tuple[str, str], ...] = (),
 ) -> list[tuple[str, str]]:
     """Construit la ligne 2 standard du footer, F10 toujours en dernier."""
     line: list[tuple[str, str]] = []
@@ -298,6 +304,31 @@ def footer_line2(
         line.extend(FOOTER_NAV)
     if resize:
         line.extend(FOOTER_RESIZE)
+    if accueil:
+        line.append(FOOTER_ACCUEIL)
     line.extend(extra)
     line.append(FOOTER_QUIT)
     return line
+
+
+def retour_accueil(app) -> None:
+    """Dépile les écrans jusqu'à l'accueil, le browser.
+
+    Traiter plusieurs fichiers d'affilée revenait à remonter les écrans un par
+    un ; le raccourci saute au choix du fichier suivant.
+
+    Les écrans dépilés ne rendent aucun résultat — leurs rappels ne sont pas
+    appelés. C'est sans conséquence pour ceux qui n'ont rien à rendre. Les deux
+    qui portent un travail non validé, les pistes et le recalage, demandent
+    confirmation avant d'arriver ici : perdre une mesure de trois minutes sur
+    une frappe de deux touches n'est pas acceptable.
+
+    Sans accueil dans la pile, on ne touche à rien : mieux vaut ne rien faire
+    que de vider la pile jusqu'à l'écran par défaut.
+    """
+    from .screens.browser import BrowserScreen
+
+    if not any(isinstance(e, BrowserScreen) for e in app.screen_stack):
+        return
+    while len(app.screen_stack) > 1 and not isinstance(app.screen, BrowserScreen):
+        app.pop_screen()

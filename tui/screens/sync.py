@@ -34,7 +34,7 @@ from core.sync import (
     Segment, SyncResult, measure_audio, measure_subtitle, read_cues,
 )
 
-from ..common import footer_line2, raccourcis, touche, tronquer_milieu
+from ..common import footer_line2, raccourcis, touche, tronquer_milieu, retour_accueil
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 from .segments import SegmentsScreen
@@ -120,6 +120,10 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("f9",        "add_track",    "Ajouter", show=True),
         Binding("backspace", "go_back",      "Retour",        show=True),
         Binding("escape",    "go_back",      "Retour",        show=False, priority=True),
+        # `priority` : un DataTable etouffe la touche avant les bindings —
+        # meme avertissement qu'en tete de tui/mixins.py.
+        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+                priority=True),
     ]
 
     DEFAULT_CSS = """
@@ -193,7 +197,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 ("f3",        "Muxer"),
                 ("backspace", "Retour"),
             ],
-            nav=footer_line2(nav=True),
+            nav=footer_line2(nav=True, accueil=True),
         )
 
     def on_mount(self) -> None:
@@ -1046,3 +1050,21 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
 
     def action_go_back(self) -> None:
         self.dismiss(self._tracks)
+
+    def action_accueil(self) -> None:
+        """Retour à l'accueil — mais pas au prix d'un travail non validé.
+
+        Cet écran porte des pistes greffées et leur recalage, que le dépilage
+        ne rend à personne. Une mesure prend des minutes ; un raccourci en
+        prend deux touches. La confirmation existe pour cet écart.
+        """
+        from .confirm import ConfirmModal
+
+        def _apres(ok) -> None:
+            if ok:
+                retour_accueil(self.app)
+
+        self.app.push_screen(ConfirmModal(
+            "Revenir à l'accueil ?",
+            "Les pistes greffées et leur recalage seront perdus.",
+            confirm_label="Revenir", cancel_label="Rester", danger=True), _apres)

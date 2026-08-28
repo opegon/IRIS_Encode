@@ -774,6 +774,70 @@ async def scenario_wizard() -> None:
             print("[15d] F12 : bascule vers le parcours libre, T ouvre les pistes")
 
 
+async def scenario_accueil() -> None:
+    """Ctrl+Home revient a l'accueil, et demande avant de jeter du travail.
+
+    `Home` appartient a la navigation dans les tables (TableNavMixin) : le
+    retour a l'accueil prend Ctrl+Home. Deux ecrans portent un travail que le
+    depilage ne rend a personne — les pistes et le recalage : ceux-la
+    confirment.
+    """
+    with tempfile.TemporaryDirectory() as td_str:
+        td = Path(td_str)
+        if not _make_test_videos(td, 2):
+            print("[17] SKIP : ffmpeg introuvable")
+            return
+
+        app = IrisEncodeApp(start_path=td)
+        async with app.run_test(size=(160, 45)) as pilot:
+            await pilot.pause(0.5)
+            from tui.screens.browser import BrowserScreen
+            app.push_screen(BrowserScreen(td, start_virtual=False))
+            await pilot.pause(3.0)
+            app.wizard_mode = False
+
+            # Depuis le dry-run : rien a rendre, retour direct.
+            await pilot.press("a")          # F1 n'agit que sur une selection
+            await pilot.pause(0.3)
+            await pilot.press("f1")
+            await pilot.pause(1.0)
+            assert type(app.screen).__name__ == "DryrunScreen", type(app.screen).__name__
+            await pilot.press("ctrl+home")
+            await pilot.pause(0.6)
+            assert type(app.screen).__name__ == "BrowserScreen", type(app.screen).__name__
+            print("[17] Ctrl+Home depuis le dry-run : retour direct a l'accueil")
+
+            # Depuis les pistes : confirmation, et « Rester » ne bouge pas.
+            await pilot.press("t")
+            await pilot.pause(0.8)
+            assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
+            await pilot.press("ctrl+home")
+            await pilot.pause(0.6)
+            assert type(app.screen).__name__ == "ConfirmModal", type(app.screen).__name__
+            await pilot.press("escape")
+            await pilot.pause(0.6)
+            assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
+            print("[17b] Depuis les pistes : confirmation demandee, refus respecte")
+
+            # Et cette fois on confirme.
+            await pilot.press("ctrl+home")
+            await pilot.pause(0.6)
+            assert type(app.screen).__name__ == "ConfirmModal"
+            await pilot.press("left")
+            await pilot.pause(0.2)
+            await pilot.press("enter")
+            await pilot.pause(0.8)
+            assert type(app.screen).__name__ == "BrowserScreen", type(app.screen).__name__
+            print("[17c] Confirmation acceptee : retour a l'accueil")
+
+            # Depuis l'accueil, la touche ne doit rien casser.
+            await pilot.press("ctrl+home")
+            await pilot.pause(0.4)
+            assert type(app.screen).__name__ == "BrowserScreen"
+            assert app.is_running
+            print("[17d] Ctrl+Home depuis l'accueil : sans effet")
+
+
 async def main() -> None:
     await scenario_navigation()
     await scenario_parallel_scan()
@@ -781,6 +845,7 @@ async def main() -> None:
     await scenario_measure()
     await scenario_wizard()
     await scenario_wizard_ambiguite()
+    await scenario_accueil()
     print("SMOKE OK")
 
 

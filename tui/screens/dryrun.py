@@ -26,6 +26,7 @@ from core.decision import (
     AudioAction, DVAction, FileDecision, VideoAction,
 )
 from ..common import (
+    retour_accueil,
     codec_picker_opts,
     bitrate_picker_config,
     estimate_encoding_duration,
@@ -81,6 +82,10 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("f7",        "open_bitrate","Débit",   show=True),
         Binding("backspace", "go_back",     "Retour",  show=True),
         Binding("escape",    "go_back",     "Retour",  show=False, priority=True),
+        # `priority` : un DataTable etouffe la touche avant les bindings —
+        # meme avertissement qu'en tete de tui/mixins.py.
+        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+                priority=True),
     ]
 
     # Colonnes redimensionnables (ColumnResizeMixin) — fichier en premier pour accès au focus
@@ -134,7 +139,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 ("f7",        "Débit"),
                 ("backspace", "Retour"),
             ],
-            nav=footer_line2(nav=True, resize=True),
+            nav=footer_line2(nav=True, resize=True, accueil=True),
         )
 
     def on_mount(self) -> None:
@@ -410,3 +415,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
         from .run import RunScreen
         self.app.push_screen(RunScreen(to_encode, self.app.platform))  # type: ignore[attr-defined]
+
+    def action_accueil(self) -> None:
+        """Retour au choix du fichier, sans repasser par les écrans intermédiaires."""
+        retour_accueil(self.app)

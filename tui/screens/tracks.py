@@ -44,6 +44,7 @@ from core.decision import (
     VideoAction, VideoOverride, decide_audio, decide_video,
 )
 from ..common import (
+    retour_accueil,
     raccourcis,
     codec_picker_opts,
     bitrate_picker_config,
@@ -107,6 +108,10 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         Binding("f9",        "add_external",  "Piste externe",        show=True),
         Binding("backspace", "dismiss_cancel","Retour",               show=True),
         Binding("escape",    "dismiss_cancel","Retour",               show=False, priority=True),
+        # `priority` : un DataTable etouffe la touche avant les bindings —
+        # meme avertissement qu'en tete de tui/mixins.py.
+        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+                priority=True),
     ]
 
     # Colonnes redimensionnables (ColumnResizeMixin)
@@ -192,7 +197,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 ("f8",    "Suppr./garder source"),
                 ("f9",    "Piste externe"),
             ],
-            nav=footer_line2(back=True, nav=True, resize=True),
+            nav=footer_line2(back=True, nav=True, resize=True, accueil=True),
         )
 
     def on_mount(self) -> None:
@@ -730,3 +735,21 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
     def _resize_rebuild(self) -> None:
         self._build_table(keep_cursor=True)
         self._update_status()
+
+    def action_accueil(self) -> None:
+        """Retour à l'accueil — mais pas au prix d'un travail non validé.
+
+        Cet écran porte des pistes greffées et leur recalage, que le dépilage
+        ne rend à personne. Une mesure prend des minutes ; un raccourci en
+        prend deux touches. La confirmation existe pour cet écart.
+        """
+        from .confirm import ConfirmModal
+
+        def _apres(ok) -> None:
+            if ok:
+                retour_accueil(self.app)
+
+        self.app.push_screen(ConfirmModal(
+            "Revenir à l'accueil ?",
+            "Les pistes sélectionnées et le codec choisi seront perdus.",
+            confirm_label="Revenir", cancel_label="Rester", danger=True), _apres)

@@ -358,6 +358,20 @@ chaque démarrage ; répondez `o`, ou placez les binaires dans `bin/`.
 
 ---
 
+## 4bis. Enchaîner plusieurs fichiers
+
+`Ctrl+Home` ramène à la liste des fichiers depuis n'importe quel écran :
+dry-run, encodage, mux, assistant, profils, pistes, recalage. Plus besoin de
+remonter les écrans un par un entre deux fichiers.
+
+`Home` seule garde son rôle : aller à la première ligne de la table.
+
+Depuis l'écran des **pistes** et celui du **recalage**, une confirmation est
+demandée — ces deux écrans portent un travail que le retour ne conserve pas :
+une sélection de pistes, une greffe, une mesure de décalage.
+
+---
+
 ## 5. Conventions communes à tous les écrans
 
 - `⌫` ou `Esc` reviennent en arrière, partout.

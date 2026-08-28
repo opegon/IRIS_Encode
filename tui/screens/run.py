@@ -26,7 +26,7 @@ from core.muxer import (
     premux_output_path,
 )
 from core.platform import PlatformProfile
-from ..common import footer_line2, record_measured_speed
+from ..common import footer_line2, record_measured_speed, retour_accueil
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 
@@ -61,6 +61,10 @@ class RunScreen(TableNavMixin, Screen):
         Binding("s",         "skip_current", "Passer le fichier",  show=True),
         Binding("backspace", "go_back",      "Retour",             show=True),
         Binding("escape",    "go_back",      "Retour",             show=False, priority=True),
+        # `priority` : un DataTable etouffe la touche avant les bindings —
+        # meme avertissement qu'en tete de tui/mixins.py.
+        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+                priority=True),
     ]
 
     DEFAULT_CSS = """
@@ -130,7 +134,7 @@ class RunScreen(TableNavMixin, Screen):
                 ("s",         "Passer le fichier"),
                 ("backspace", "Retour"),
             ],
-            nav=footer_line2(nav=True),
+            nav=footer_line2(nav=True, accueil=True),
         )
 
     def on_mount(self) -> None:
@@ -767,3 +771,7 @@ class RunScreen(TableNavMixin, Screen):
                 except Exception:
                     pass
         self.app.pop_screen()
+
+    def action_accueil(self) -> None:
+        """Retour au choix du fichier, sans repasser par les écrans intermédiaires."""
+        retour_accueil(self.app)

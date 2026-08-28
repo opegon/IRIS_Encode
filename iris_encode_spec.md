@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.9 — document de référence courant
+**Version** : 0.8.2.10 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1532,6 +1532,29 @@ Vraie table : Profil · 1080p · 4K · DV · Preset · HD audio · Source. Profi
 callback renvoie l'**id** du profil (plus robuste qu'un index). Utilisé par Browser (F4)
 et TracksScreen (F4).
 
+### 14.11 Retour à l'accueil — `Ctrl+Home`
+
+Traiter plusieurs fichiers d'affilée revenait à remonter les écrans un par un.
+`Ctrl+Home` dépile jusqu'au browser, depuis les sept écrans non modaux :
+dry-run, run, mux, assistant, config, pistes et recalage.
+
+**Pourquoi pas `Home`** — elle appartient à la navigation dans les tables
+(`TableNavMixin`, `FOOTER_NAV`), et le mixin l'intercepte en `on_key` avant que
+les bindings soient consultés. Lui donner un second sens aurait cassé le premier.
+
+**Tous les bindings sont `priority=True`** : un `DataTable` étouffe la touche
+avant le système de bindings. Sans cela, la touche ne fait rien sur les écrans
+qui affichent une table — c'est-à-dire presque tous.
+
+**Deux écrans confirment.** Le dépilage ne rend aucun résultat : les rappels des
+écrans traversés ne sont pas appelés. C'est sans conséquence pour ceux qui n'ont
+rien à rendre, mais les pistes et le recalage portent un travail non validé —
+une sélection, une greffe, une mesure de plusieurs minutes. Ceux-là passent par
+`ConfirmModal` avant de le perdre.
+
+Sans accueil dans la pile, `retour_accueil()` ne touche à rien : mieux vaut ne
+rien faire que de vider la pile jusqu'à l'écran par défaut.
+
 ### 14.10 Modales de confirmation
 
 | Modale | Déclencheur | Focus initial |
@@ -1738,6 +1761,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.2.10 | 2026-08-28 | **`Ctrl+Home` — retour à l'accueil** depuis les sept écrans non modaux, pour enchaîner les fichiers sans remonter la pile un écran à la fois. `Home` reste la navigation dans les tables · les deux écrans qui portent un travail non validé confirment avant de le perdre |
 | 0.8.2.9 | 2026-08-28 | **Le flux `bin_data` des sorties MP4 identifié** : c'est la piste de chapitres, seule forme sous laquelle le MP4 sait les porter. Pas une piste parasite, rien à corriger — noté pour ne pas le réenquêter (§ 8.6) |
 | 0.8.2.8 | 2026-08-28 | **Passe audio restreinte aux sources sans perte** — l'AC3 du même fichier sort indemne, la passe ne se paie donc plus sur la plupart des encodages · **`pistes_audio_vides`** : un code de retour nul ne vaut plus succès, la sortie est relue et une piste écourtée fait échouer le fichier au lieu de passer |
 | 0.8.2.7 | 2026-08-28 | **Le défaut d'IE-22 tient à la simultanéité, pas à la sortie** : séparer les fichiers de sortie ne sauve pas la piste, il suffit que le sous-titre soit *mappé* dans l'invocation. Seul un processus distinct protège — ce que fait la parade. Caractérisation corrigée dans la spec, le code et les tests |

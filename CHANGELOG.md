@@ -1,5 +1,31 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.10] — 2026-08-28
+
+### `Ctrl+Home` — revenir à l'accueil d'une touche
+
+Enchaîner plusieurs fichiers demandait de remonter les écrans un par un.
+`Ctrl+Home` dépile jusqu'au browser depuis les sept écrans non modaux :
+dry-run, run, mux, assistant, config, pistes et recalage.
+
+`Home` n'était pas disponible : elle appartient à la navigation dans les tables,
+et `TableNavMixin` l'intercepte avant même que les bindings soient consultés.
+Lui donner un second sens aurait cassé le premier.
+
+**Deux écrans demandent confirmation.** Le dépilage ne rend aucun résultat, donc
+les rappels des écrans traversés ne sont pas appelés. Sans conséquence pour ceux
+qui n'ont rien à rendre — mais les pistes et le recalage portent une sélection,
+une greffe, une mesure de plusieurs minutes. Perdre cela sur deux touches n'était
+pas acceptable : ils passent par la modale de confirmation.
+
+Les bindings sont tous `priority=True` : un `DataTable` étouffe la touche avant
+le système de bindings, et sans cela le raccourci ne faisait rien sur les écrans
+qui affichent une table — presque tous. C'est le smoke test qui l'a montré.
+
+Quatre cas verrouillés par le scénario 17 : retour direct depuis un écran sans
+état, confirmation demandée depuis les pistes, refus respecté, et la touche sans
+effet quand on est déjà à l'accueil.
+
 ## [v0.8.2.9] — 2026-08-28
 
 ### Le flux `bin_data` des sorties MP4 : c'est la piste de chapitres

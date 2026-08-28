@@ -17,7 +17,7 @@ from textual.widgets import Button, DataTable, Header, Static
 
 from core import profiles as prof_mod
 from core.profiles import Profile
-from ..common import DV_VALUE_STYLES, footer_line2, raccourcis
+from ..common import DV_VALUE_STYLES, footer_line2, raccourcis, retour_accueil
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 from ..widgets.profile_form import ProfileCancelled, ProfileForm, ProfileSaved
@@ -37,6 +37,10 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         Binding("delete",    "delete_focused", "Supprimer", show=False),
         Binding("backspace", "go_back",        "Retour",    show=True),
         Binding("escape",    "go_back",        "Retour",    show=False),
+        # `priority` : un DataTable etouffe la touche avant les bindings —
+        # meme avertissement qu'en tete de tui/mixins.py.
+        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+                priority=True),
     ]
 
     DEFAULT_CSS = """
@@ -74,7 +78,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             yield Button("← Retour",          id="btn-back", variant="default")
         yield KeyFooter(
             actions=self._RACCOURCIS_ECRAN,
-            nav=footer_line2(nav=True),
+            nav=footer_line2(nav=True, accueil=True),
         )
 
     def on_mount(self) -> None:
@@ -326,3 +330,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
     @on(Button.Pressed, "#btn-back")
     def _on_back(self) -> None:
         self.action_go_back()
+
+    def action_accueil(self) -> None:
+        """Retour au choix du fichier, sans repasser par les écrans intermédiaires."""
+        retour_accueil(self.app)

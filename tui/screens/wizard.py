@@ -35,7 +35,7 @@ from textual.widgets import DataTable, Header, Static
 from core.decision import (AudioAction, FileDecision, VideoAction, ambiguites,
                            decide_audio)
 
-from ..common import fmt_duration, footer_line2
+from ..common import fmt_duration, footer_line2, retour_accueil
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 
@@ -84,6 +84,10 @@ class WizardScreen(TableNavMixin, Screen):
         Binding("backspace", "retour",  "Retour",      show=True,  priority=True),
         Binding("escape",    "retour",  "Retour",      show=False, priority=True),
         Binding("f12",       "manuel",  "Mode manuel", show=True,  priority=True),
+        # `priority` : un DataTable etouffe la touche avant les bindings —
+        # meme avertissement qu'en tete de tui/mixins.py.
+        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+                priority=True),
     ]
 
     def __init__(self, decision: FileDecision) -> None:
@@ -142,7 +146,7 @@ class WizardScreen(TableNavMixin, Screen):
         yield Static("", id="wiz-corps", markup=False)
         yield DataTable(id="wiz-table", cursor_type="row", show_header=True)
         yield Static("", id="wiz-hint", markup=False)
-        yield KeyFooter(actions=[], nav=footer_line2(back=True, nav=True))
+        yield KeyFooter(actions=[], nav=footer_line2(back=True, nav=True, accueil=True))
 
     def on_mount(self) -> None:
         self._afficher()
@@ -401,3 +405,7 @@ class WizardScreen(TableNavMixin, Screen):
             from .run import RunScreen
             self.app.push_screen(
                 RunScreen([self._dec], self.app.platform))  # type: ignore[attr-defined]
+
+    def action_accueil(self) -> None:
+        """Retour au choix du fichier, sans repasser par les écrans intermédiaires."""
+        retour_accueil(self.app)

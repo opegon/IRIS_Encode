@@ -18,7 +18,7 @@ from textual.widgets import Header, Label, ProgressBar, Static
 from core.decision import FileDecision, force_skip_to_encode
 from core.muxer import MuxProcess, build_mux_command, mux_output_path
 
-from ..common import footer_line2
+from ..common import footer_line2, retour_accueil
 from ..widgets.footer import KeyFooter
 
 
@@ -30,6 +30,10 @@ class MuxScreen(Screen[bool]):
         Binding("f2",        "encode",  "Encoder", show=True),
         Binding("backspace", "go_back", "Retour",  show=True),
         Binding("escape",    "go_back", "Retour",  show=False, priority=True),
+        # `priority` : un DataTable etouffe la touche avant les bindings —
+        # meme avertissement qu'en tete de tui/mixins.py.
+        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+                priority=True),
     ]
 
     DEFAULT_CSS = """
@@ -81,7 +85,7 @@ class MuxScreen(Screen[bool]):
                 ("f2",        "Encoder"),
                 ("backspace", "Retour"),
             ],
-            nav=footer_line2(nav=False),
+            nav=footer_line2(nav=False, accueil=True),
         )
 
     def on_mount(self) -> None:
@@ -219,3 +223,7 @@ class MuxScreen(Screen[bool]):
             except OSError:
                 pass
         self.dismiss(self._ok)
+
+    def action_accueil(self) -> None:
+        """Retour au choix du fichier, sans repasser par les écrans intermédiaires."""
+        retour_accueil(self.app)

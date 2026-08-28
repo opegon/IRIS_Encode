@@ -32,7 +32,7 @@ from core.muxer import (
     sample_windows, timecode,
 )
 from core.sync import (
-    Segment, SyncResult, measure_audio, measure_subtitle, read_cues,
+    Segment, SyncResult, measure_external_track, read_cues,
 )
 
 from ..common import footer_line2, raccourcis, touche, tronquer_milieu, retour_accueil
@@ -477,21 +477,10 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self.app.call_from_thread(self._set_progress, fraction)
 
         try:
-            duree = self._decision.info.duration
-            if t.kind == TrackKind.SUBTITLE:
-                # Une piste embarquée doit être extraite du conteneur avant
-                # d'avoir des répliques à corréler — même traduction de tid
-                # que pour l'audio ci-dessous.
-                idx = ffmpeg_stream_index(t.source_path, t.source_tid,
-                                          TrackKind.SUBTITLE)
-                res = measure_subtitle(self._source, t.source_path,
-                                       progress=report, duration=duree,
-                                       donor_track=idx)
-            else:
-                # Le tid mkvmerge n'est pas l'index ffmpeg : il faut traduire
-                idx = ffmpeg_stream_index(t.source_path, t.source_tid, TrackKind.AUDIO)
-                res = measure_audio(self._source, t.source_path, idx,
-                                    progress=report, duration=duree)
+            # La traduction du tid en index ffmpeg vit dans
+            # `sync.measure_external_track` : elle ne doit exister qu'une fois.
+            res = measure_external_track(self._source, t, progress=report,
+                                         duration=self._decision.info.duration)
         except Exception as e:                       # ffmpeg absent, fichier illisible…
             res = SyncResult(0, None, 0.0, False, f"mesure impossible : {e}")
         self.app.call_from_thread(self._apply_measure, i, res)

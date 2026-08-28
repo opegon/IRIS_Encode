@@ -932,6 +932,28 @@ def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
     return out, approx
 
 
+def measure_external_track(target: Path, track, progress=None,
+                           duration: float = 0.0) -> "SyncResult":
+    """Mesure une piste externe, quel que soit son type.
+
+    **Traduit le tid mkvmerge en index ffmpeg**, ce qu'aucun appelant ne doit
+    plus avoir à penser : les deux numérotations se ressemblent assez pour
+    qu'on les confonde, et une piste mesurée sur le mauvais flux échoue sans
+    dire pourquoi. Voir l'avertissement en tête de `core/muxer.py`.
+
+    C'est le seul point d'entrée pour mesurer une `ExternalTrack` : l'écran de
+    recalage et l'assistant s'en servent tous deux.
+    """
+    from .muxer import TrackKind, ffmpeg_stream_index
+
+    idx = ffmpeg_stream_index(track.source_path, track.source_tid, track.kind)
+    if track.kind == TrackKind.SUBTITLE:
+        return measure_subtitle(target, track.source_path, progress=progress,
+                                duration=duration, donor_track=idx)
+    return measure_audio(target, track.source_path, idx, progress=progress,
+                         duration=duration)
+
+
 def measure_subtitle(video: Path, subtitle: Path,
                      progress: Optional[Progress] = None,
                      duration: float = 0.0,

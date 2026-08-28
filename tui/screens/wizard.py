@@ -34,13 +34,13 @@ from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import DataTable, Header, Static
+from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 
 from core.decision import (ACTION_CYCLE, SUFFIX_BY_ACTION, AudioAction,
                            DVAction, FileDecision, VideoAction, cycle_index,
                            decide_audio)
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
-from core.sync import measure_audio, measure_subtitle
+from core.sync import measure_external_track
 
 from ..common import (bitrate_picker_config, codec_picker_opts, fmt_duration,
                       footer_line2, retour_accueil, tronquer_milieu)
@@ -83,6 +83,15 @@ class WizardScreen(TableNavMixin, Screen):
         height: 1;
     }
     #wiz-corps { height: auto; padding: 1 2; }
+    #wiz-jauge-ligne {
+        height: 1;
+        layout: horizontal;
+        padding: 0 2;
+        display: none;
+    }
+    #wiz-jauge-ligne.active { display: block; }
+    #wiz-jauge-label { width: 34; color: $warning; }
+    #wiz-jauge { width: 1fr; }
     #wiz-table { height: 1fr; margin: 0 2; }
     #wiz-hint  { color: $text-muted; padding: 0 2; height: auto; }
     """
@@ -123,6 +132,9 @@ class WizardScreen(TableNavMixin, Screen):
         yield Static("", id="wiz-titre", markup=False)
         yield Static("", id="wiz-corps", markup=False)
         yield DataTable(id="wiz-table", cursor_type="row", show_header=True)
+        with Static(id="wiz-jauge-ligne"):
+            yield Label("Mesure du décalage", id="wiz-jauge-label")
+            yield ProgressBar(total=100, show_eta=False, id="wiz-jauge")
         yield Static("", id="wiz-hint", markup=False)
         # Même accent que la barre de l'accueil en mode assistant : on sait
         # d'un coup d'œil dans quel parcours on se trouve.
@@ -133,6 +145,22 @@ class WizardScreen(TableNavMixin, Screen):
         self._afficher()
 
     # ── Rendu ─────────────────────────────────────────────────────────────────
+
+    def _jauge(self, visible: bool, libelle: str = "Mesure du décalage") -> None:
+        """Une mesure dure des minutes : un écran figé passe pour un blocage."""
+        try:
+            self.query_one("#wiz-jauge-ligne").set_class(visible, "active")
+            if visible:
+                self.query_one("#wiz-jauge-label", Label).update(libelle)
+        except Exception:
+            pass
+
+    def _avancement(self, fraction: float, libelle: str) -> None:
+        try:
+            self.query_one("#wiz-jauge", ProgressBar).progress = fraction * 100
+            self.query_one("#wiz-jauge-label", Label).update(libelle)
+        except Exception:
+            pass
 
     def _afficher(self) -> None:
         titre = self.query_one("#wiz-titre", Static)
@@ -442,6 +470,7 @@ class WizardScreen(TableNavMixin, Screen):
             return
         self._mesure = True
         self._afficher()
+        self._jauge(True, "Mesure du décalage")
         self._travail_mesure(nouvelles)
 
     @work(thread=True, name="wizard-mesure")
@@ -454,18 +483,23 @@ class WizardScreen(TableNavMixin, Screen):
         # L'audio d'abord : c'est elle qui sert de référence aux sous-titres.
         ordre = sorted(indices,
                        key=lambda i: pistes[i].kind != TrackKind.AUDIO)
-        for i in ordre:
+        for rang, i in enumerate(ordre):
             t = pistes[i]
             if t.sync_origin != SyncOrigin.NONE:
                 continue                 # déjà reprise d'une piste mesurée
+            libelle = (f"Mesure {rang + 1}/{len(ordre)} — "
+                       f"{t.language or '?'}")
+
+            def rapport(f: float, _l=libelle, _r=rang) -> None:
+                # Chaque piste occupe sa part de la jauge : sinon elle
+                # repartirait de zéro à chaque piste, ce qui se lit comme un
+                # recommencement.
+                self.app.call_from_thread(
+                    self._avancement, (_r + f) / len(ordre), _l)
+
             try:
-                if t.kind == TrackKind.AUDIO:
-                    res = measure_audio(cible, t.source_path, t.source_tid,
-                                        duration=duree)
-                else:
-                    res = measure_subtitle(cible, t.source_path,
-                                           duration=duree,
-                                           donor_track=t.source_tid)
+                res = measure_external_track(cible, t, progress=rapport,
+                                             duration=duree)
             except Exception as e:                       # noqa: BLE001
                 notes.append(f"{t.source_path.name} : mesure impossible ({e})")
                 continue
@@ -483,6 +517,7 @@ class WizardScreen(TableNavMixin, Screen):
 
     def _mesure_finie(self, notes: list[str]) -> None:
         self._mesure = False
+        self._jauge(False)
         self._afficher()
         if notes:
             self.query_one("#wiz-hint", Static).update(

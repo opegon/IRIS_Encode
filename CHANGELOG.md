@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.14] — 2026-08-28
+
+### La mesure de l'assistant visait un flux qui n'existait pas
+
+Signalé à l'usage : mesurer une piste audio marchait en mode manuel, pas dans
+l'assistant. L'écran de recalage traduisait le **tid mkvmerge en index ffmpeg**,
+l'assistant passait le tid tel quel. Sur un donneur ordinaire, la première piste
+audio porte le tid 1 et l'index 0 : la mesure portait sur un flux absent.
+
+C'est le piège documenté en tête de `core/muxer.py`, et le second fichier où il
+se produit — après la commande de greffe (v0.8.2.2). La cause n'était pas
+l'inattention mais la duplication : la traduction vivait à deux endroits, et le
+troisième appelant l'a oubliée.
+
+`sync.measure_external_track()` devient le point d'entrée unique. Il reçoit une
+piste externe, traduit, et appelle la bonne mesure. L'écran de recalage et
+l'assistant s'en servent tous deux ; plus personne n'a à y penser.
+`tests/test_mesure_piste.py` verrouille la traduction dans les deux sens et ses
+cas limites.
+
+### Une jauge pendant la mesure
+
+L'assistant affichait « Mesure du décalage en cours… » et plus rien pendant
+plusieurs minutes, ce qui se lit comme un blocage. Une barre d'avancement suit
+désormais le décodage, chaque piste occupant sa part de la jauge — sinon elle
+repartirait de zéro à chaque piste, ce qui se lit comme un recommencement.
+
 ## [v0.8.2.13] — 2026-08-28
 
 ### L'assistant rappelle sur quel fichier il travaille

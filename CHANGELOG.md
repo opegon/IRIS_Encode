@@ -1,5 +1,18 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.13] — 2026-08-28
+
+### L'assistant rappelle sur quel fichier il travaille
+
+Seule la première étape nommait le fichier. Les quatre suivantes parlaient d'un
+codec, de pistes, d'un lancement — sans jamais redire de quoi. Le bandeau porte
+désormais le nom du fichier traité à chaque étape.
+
+Le nom seul, jamais le chemin : c'est lui qui identifie. Il est tronqué au
+milieu selon la largeur disponible, pour que sa fin survive — c'est là que
+vivent la résolution, le codec et le groupe qui distinguent deux versions d'un
+même film.
+
 ## [v0.8.2.12] — 2026-08-28
 
 ### Le mode se lit dans le footer, et dans sa couleur

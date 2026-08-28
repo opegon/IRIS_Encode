@@ -140,8 +140,13 @@ class WizardScreen(TableNavMixin, Screen):
         table = self.query_one(DataTable)
         hint  = self.query_one("#wiz-hint", Static)
 
-        titre.update(f" Assistant   ·   étape {self._i + 1} sur {len(_ORDRE)}"
-                     f"   ·   {_TITRES[self._etape]}")
+        # Le fichier traité est rappelé à chaque étape : sans lui, les quatre
+        # écrans suivants parlent d'un travail dont on a perdu le sujet. Le
+        # chemin n'apporte rien — c'est le nom qui identifie.
+        entete = (f" Assistant   ·   étape {self._i + 1} sur {len(_ORDRE)}"
+                  f"   ·   {_TITRES[self._etape]}   ·   ")
+        place  = max(24, (self.size.width or 120) - len(entete) - 2)
+        titre.update(entete + tronquer_milieu(self._dec.info.path.name, place))
         table.display = False
         table.clear(columns=True)
         self._lignes = []

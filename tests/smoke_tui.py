@@ -682,6 +682,20 @@ async def scenario_wizard() -> None:
             assert "Muxer" in aide and "Encoder" in aide, aide
             print("[15d] Etape 4 : mux et encodage tous deux offerts")
 
+            # Le fichier traite est rappele sur chaque etape, pas seulement
+            # la premiere : quatre ecrans plus loin, on sait encore sur quoi
+            # on travaille.
+            for etape in range(5):
+                wiz._i = etape
+                wiz._afficher()
+                await pilot.pause(0.2)
+                bandeau = str(wiz.query_one("#wiz-titre", Static).render())
+                assert "clip0" in bandeau, f"etape {etape + 1} -> {bandeau!r}"
+            wiz._i = 3
+            wiz._afficher()
+            await pilot.pause(0.2)
+            print("[15d2] Le fichier traite est rappele sur les cinq etapes")
+
             # M sans piste externe : refus explicite, on ne lance rien
             await pilot.press("m")
             await pilot.pause(0.5)

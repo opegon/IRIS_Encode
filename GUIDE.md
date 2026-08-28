@@ -132,9 +132,15 @@ se changent avec `+/-`.
 tous les lecteurs, et le mux est refusé. L'écran ouvre directement sur ce champ
 quand une piste en manque.
 
-**`C` plutôt qu'une seconde mesure.** Des sous-titres livrés avec une VF sont
-presque toujours écrits sur le timing de cette VF : leur bon décalage *est*
-celui de la piste audio. Le recopier est plus fiable qu'une mesure indépendante.
+**Le report est automatique.** Une mesure réussie sur une piste audio
+s'applique aussitôt aux sous-titres venus du **même fichier** : leur bon
+décalage *est* celui de l'audio, puisqu'ils ont été écrits sur son timing. Le
+bandeau annonce combien de pistes ont suivi, et leur colonne d'origine affiche
+« repris de #N ».
+
+Deux pistes ne suivent jamais : celles d'un **autre fichier**, et celles que
+vous avez déjà mesurées ou réglées à la main — une décision prise ne s'écrase
+pas. `C` sert pour ces cas-là.
 
 ### 2.5 Dry-run — la prévisualisation
 
@@ -180,14 +186,18 @@ pistes (`T`) les liste toutes.
 
    | Résultat de la mesure | Sur chaque sous-titre |
    |---|---|
-   | `✓` ou `⚠` (§ 4.1, § 4.2) | `C`, puis choisir la piste audio |
+   | `✓` ou `⚠` (§ 4.1, § 4.2) | **rien — le report est automatique** |
    | `✗ montage différent — N plages` (§ 4.5) | `P` — et `P` aussi sur l'audio |
-   | `✗ trop peu de repères` (§ 4.3) | `C` |
-   | `✗ sous-titre image` (§ 4.4) | `C`, ou décalage à la main |
+   | `✗ trop peu de repères` (§ 4.3) | rien, sauf autre donneur → `C` |
+   | `✗ sous-titre image` (§ 4.4) | rien, sauf autre donneur → `C` |
 
-   `M` sur un sous-titre bavard fonctionne aussi, mais `C` est plus fiable :
-   des sous-titres livrés avec une VF sont écrits sur le timing de cette VF,
-   donc leur bon décalage **est** le sien.
+   Une mesure réussie se **reporte d'elle-même** sur les sous-titres venus du
+   même fichier : leur colonne d'origine passe à « repris de #N ». C'est
+   voulu — des sous-titres livrés avec une VF sont écrits sur le timing de
+   cette VF, donc leur bon décalage **est** le sien.
+
+   Le report ne touche jamais une piste que vous avez déjà réglée, ni une
+   piste venue d'un autre fichier. Pour celles-là, `C` reste là.
 5. Renseigner la **langue** de chaque piste si elle manque.
 6. `V` ou `K` pour contrôler.
 7. `F3` pour muxer sans réencoder, ou `F2` pour réencoder aussi la vidéo.

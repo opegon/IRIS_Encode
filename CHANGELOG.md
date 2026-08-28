@@ -1,5 +1,28 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.3] — 2026-08-28
+
+### Le recalage mesuré se reporte seul sur les sous-titres
+
+La piste audio est la base du recalage : c'est sur elle que la mesure tourne.
+Il fallait ensuite recopier son décalage sur chaque sous-titre, avec `c`. Or le
+guide affirmait déjà que ce décalage **est** le bon pour eux — des sous-titres
+livrés avec une VF sont écrits sur le timing de cette VF. Une copie qui
+n'apporte aucune information n'est qu'une occasion de l'oublier, et une piste
+oubliée sort décalée sans que rien ne le signale.
+
+Une mesure réussie s'applique désormais d'elle-même aux sous-titres du même
+fichier donneur. Le bandeau annonce combien de pistes ont suivi ; leur colonne
+d'origine affiche « repris de #N », exactement comme après un `c` manuel.
+
+Trois garde-fous, parce qu'un report automatique doit rester un service et
+jamais une surprise : il ne quitte pas le **fichier donneur** de l'audio ; il
+n'écrase jamais une piste **déjà mesurée ou réglée à la main** ; et il ne part
+que d'une piste **audio**. `c` reste pour tout le reste — un sous-titre venu
+d'ailleurs, ou une référence choisie exprès.
+
+Un candidat forcé (`a`) se reporte comme une mesure : c'est aussi une décision.
+
 ## [v0.8.2.2] — 2026-08-28
 
 ### La piste greffée n'était pas celle qu'on avait choisie

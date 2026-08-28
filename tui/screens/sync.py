@@ -516,8 +516,58 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         t.sync_origin = SyncOrigin.MEASURED
         t.copied_from = None
         self._refresh_row(i)
-        self._set_hint(res.report())
+        self._set_hint(res.report() + self._note_propagation(self._propager(i)))
         self._update_status()
+
+    def _propager(self, i: int) -> int:
+        """Reporte le décalage d'une piste audio mesurée sur les sous-titres
+        **du même fichier donneur**. Retourne le nombre de pistes alignées.
+
+        Des sous-titres livrés avec une VF sont écrits sur le timing de cette
+        VF : leur bon décalage *est* celui de la piste audio. Le recopier à la
+        main n'apportait aucune information — seulement l'occasion de l'oublier,
+        et une piste décalée sans que rien ne le signale.
+
+        Trois garde-fous, parce qu'un report automatique doit rester un service
+        et jamais une surprise :
+
+        - **même donneur only** — un sous-titre venu d'un autre fichier n'a
+          aucune raison de partager ce timing ;
+        - **rien qui porte une décision** — une piste mesurée pour elle-même ou
+          ajustée à la main est laissée intacte ; seules les pistes jamais
+          touchées, et celles déjà reprises de cette audio, suivent ;
+        - **visible** — la colonne d'origine affiche « repris de #N », comme
+          après un 'c' manuel. Rien ne se fait sans trace à l'écran.
+        """
+        src = self._tracks[i]
+        if src.kind != TrackKind.AUDIO:
+            return 0
+        n = 0
+        for j, t in enumerate(self._tracks):
+            if j == i or t.kind == TrackKind.AUDIO:
+                continue
+            if t.source_path != src.source_path:
+                continue
+            if t.sync_origin not in (SyncOrigin.NONE, SyncOrigin.COPIED):
+                continue
+            if t.sync_origin == SyncOrigin.COPIED and t.copied_from != i:
+                continue
+            t.delay_ms    = src.delay_ms
+            t.stretch     = src.stretch
+            t.sync_origin = SyncOrigin.COPIED
+            t.copied_from = i
+            self._refresh_row(j)
+            n += 1
+        return n
+
+    @staticmethod
+    def _note_propagation(n: int) -> str:
+        if n == 0:
+            return ""
+        pistes = "sous-titre" if n == 1 else "sous-titres"
+        accord = "s" if n > 1 else ""
+        return (f"\n{n} {pistes} du même fichier recalé{accord} d'autant "
+                f"— 'c' pour en reprendre un autre.")
 
     def _set_hint(self, text: str) -> None:
         """Message persistant : il survit à la navigation entre champs."""
@@ -547,8 +597,12 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         t.copied_from = None
         self._candidate = None
         self._refresh_row(i)
+        # Un candidat forcé reste une décision de l'utilisateur : les
+        # sous-titres du même donneur la suivent comme ils suivraient une
+        # mesure.
         self._set_hint(f"Candidat appliqué : {delay:+d} ms — non confirmé par "
-                       f"la mesure, vérifiez dans un lecteur avant de muxer.")
+                       f"la mesure, vérifiez dans un lecteur avant de muxer."
+                       + self._note_propagation(self._propager(i)))
         self._update_status()
 
     def action_show_segments(self) -> None:

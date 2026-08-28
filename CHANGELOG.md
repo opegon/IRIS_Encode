@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.0] — 2026-08-28
+
+Version publiée. Elle rassemble treize incréments, dont trois qui changent ce
+que l'application sait faire — le détail de chacun reste dans les sections
+0.8.2.5 à 0.8.2.17 ci-dessous.
+
+**L'assistant devient un écran autonome.** Cinq étapes, `↵` pour avancer, un
+fichier à la fois. `W` bascule depuis l'accueil, et le mode se lit dans la barre
+de profil, dans le libellé de la touche et dans la couleur du footer. La mesure
+d'une piste greffée se lance et s'applique toute seule, jauge à l'appui.
+
+**Une piste audio transcodée pouvait disparaître sans un mot.** Deuxième
+exemplaire d'un défaut ouvert puis classé faute d'explication : quand une même
+invocation ffmpeg décode une piste sans perte et mappe un sous-titre au premier
+repère tardif, la piste n'est pas écrite — code de retour nul, fichier amputé.
+Une passe audio séparée le contourne, et la sortie est désormais relue : un
+succès se vérifie, il ne se déduit pas d'un code de retour.
+
+**Des plages de décalage détectées par accord plutôt que par force.** Certains
+sous-titres plafonnent sous le seuil de confiance même parfaitement alignés ;
+leur décalage est pourtant stable, et c'est cette régularité qui est lue.
+
+Le reste : `Ctrl+Home` pour revenir à l'accueil depuis tout écran, la confiance
+affichée en mots, la piste greffée qui est enfin celle qu'on a choisie, le nom
+des sous-titres lu et affiché en entier, et le plafond de transcodage E-AC3
+ramené au palier utile.
+
 ## [v0.8.2.17] — 2026-08-28
 
 ### Des plages détectées par accord entre fenêtres, non par force de corrélation

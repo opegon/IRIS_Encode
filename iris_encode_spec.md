@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.17 — document de référence courant
+**Version** : 0.8.3.0 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1781,6 +1781,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| **0.8.3.0** | 2026-08-28 | **Version publiée.** Rassemble l'assistant refondu en écran autonome (§ 14.0), la perte silencieuse d'une piste audio transcodée (§ 12.1), la détection de plages par accord entre fenêtres (§ 10), et treize incréments de 0.8.2.5 à 0.8.2.17 |
 | 0.8.2.17 | 2026-08-28 | **Détection de plages par accord entre fenêtres** : certains couples plafonnent sous le seuil de confiance même parfaitement alignés — leur décalage est pourtant stable, et c'est cette régularité qu'on lit · recherche bornée à ±30 s, cohérence globale des valeurs, jamais appliqué d'office |
 | 0.8.2.16 | 2026-08-28 | **La confiance s'affiche en mots** — aucune / faible / moyenne / excellente — et relativement au seuil, qui varie avec le nombre de repères : un même chiffre n'avait pas le même sens d'une mesure à l'autre |
 | 0.8.2.15 | 2026-08-28 | **Touches du footer illisibles en mode assistant** : le jaune se noyait dans l'accent orange · elles passent au blanc sur ce fond, et gardent le jaune sur le bleu du mode manuel |

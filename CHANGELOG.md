@@ -1,5 +1,45 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.6] — 2026-08-28
+
+### Une piste audio transcodée pouvait disparaître sans un mot
+
+Signalé sur une conversion refaite : la piste anglaise du fichier produit était
+vide. C'est le **second** exemplaire du défaut qui avait fait ouvrir IE-12 puis
+IE-16, et qui avait été classé « cause non identifiée, non reproductible ».
+
+Elle l'est désormais. Quand une même commande ffmpeg transcode une piste audio
+**et** recopie un flux de sous-titres dont le premier repère arrive tardivement,
+la piste transcodée n'est pas écrite. Deux trames sortent, puis plus rien — sans
+erreur, sans code de retour non nul, et le bilan de ffmpeg ne compte que l'audio
+recopiée. Sur un film dont les sous-titres « forced » n'ouvrent qu'à 6 min 20,
+mesuré sur soixante secondes :
+
+| Sous-titres mappés | Paquets audio produits |
+|---|---|
+| aucun | 1 875 — correct |
+| les denses seules (premier repère à 23 s) | 1 875 — correct |
+| la seule piste « forced » (premier repère à 380 s) | **2** |
+
+Le défaut ne dépend ni du codec — l'AC3 meurt comme l'E-AC3 — ni de la durée, et
+aucun réglage n'y change rien : ni `max_muxing_queue_size`, ni
+`max_interleave_delta`, ni `avoid_negative_ts`, ni `copyts`, ni l'ordre des
+`-map`. Les pistes simplement recopiées survivent, et la vidéo aussi.
+
+D'où la parade : produire les pistes finales dans une passe à part, puis les
+**recopier** dans la passe d'encodage. Elle n'est payée que lorsque les deux
+conditions sont réunies, et coûte un transcodage audio là où la passe vidéo se
+compte en heures. Vérifié sur le fichier du signalement : la piste anglaise
+passe de 2 à 1 876 paquets, avec sa langue, son titre et les six sous-titres.
+
+### Ce que cela clôt
+
+IE-12 et IE-16 avaient diagnostiqué un « mauvais entrelacement » et cherché la
+cause dans la durée du film et le nombre de pistes. Le fichier n'était pas mal
+entrelacé : **il n'avait pas de piste anglaise**, et les sondages ne trouvaient
+donc aucun paquet audio. Mars Express, réencodé avec huit sous-titres, sortait
+propre parce que tous ses sous-titres ouvrent tôt.
+
 ## [v0.8.2.5] — 2026-08-28
 
 ### Le mode « HDR10 quality » gardera son plafond serré — c'est mesuré

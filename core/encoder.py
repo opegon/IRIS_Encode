@@ -229,6 +229,31 @@ def build_audio_command(source: Path, output: Path, audio: list,
     return cmd
 
 
+def audio_prepass_needed(decision) -> bool:
+    """Vrai si l'audio doit être produite **avant** la passe d'encodage.
+
+    Défaut ffmpeg mesuré le 2026-08-28, reproductible : quand la même commande
+    transcode une piste audio **et** recopie un flux de sous-titres dont le
+    premier repère arrive tardivement, la piste transcodée n'est pas écrite.
+    Deux trames sortent, puis plus rien, sans un mot d'erreur — le bilan de
+    ffmpeg ne compte que l'audio recopiée.
+
+    Mesuré sur un film dont les sous-titres « forced » n'ouvrent qu'à 6 min 20 :
+    1 875 paquets attendus sur 60 s, **2** produits. Les pistes simplement
+    recopiées survivent, la vidéo aussi. Aucun réglage n'y change rien — ni
+    `max_muxing_queue_size`, ni `max_interleave_delta`, ni `avoid_negative_ts`,
+    ni `copyts`, ni l'ordre des `-map`. Ne mapper que les sous-titres denses
+    suffit à faire disparaître le symptôme, ce qui désigne la cause.
+
+    La parade : produire les pistes finales à part, puis les **recopier** dans
+    la passe d'encodage — une copie n'est jamais perdue. C'est ce que fait déjà
+    le retrait du Dolby Vision, pour une autre raison.
+
+    On ne la paie que lorsque les deux conditions sont réunies.
+    """
+    return bool(decision.subtitles_finales) and audio_pass_needed(decision.audio)
+
+
 def audio_pass_needed(audio: list) -> bool:
     """Vrai si la décision audio demande autre chose qu'une recopie à l'identique.
 
@@ -272,6 +297,7 @@ def audio_args(included_audio: list) -> list[str]:
 def build_command(
     decision: FileDecision,
     platform: PlatformProfile,
+    audio_source: Path | None = None,
 ) -> list[str]:
     """
     Retourne la liste d'arguments ffmpeg pour un FileDecision.
@@ -347,6 +373,11 @@ def build_command(
             # produire d'horodatage négatif.
             cmd += ["-ss", f"{-ext.delay_ms / 1000:.3f}"]
         cmd += ["-i", str(ext.source_path)]
+
+    # Les pistes audio produites à part (voir `audio_prepass_needed`). Posée
+    # en dernier : les index des donneurs ne bougent pas.
+    if audio_source is not None:
+        cmd += ["-i", str(audio_source)]
 
     # ── Filtre vidéo ──────────────────────────────────────────────────────────
     if not preserve_video:
@@ -446,8 +477,11 @@ def build_command(
     cmd += ["-map", "0:v:0"]
 
     included_audio = [ad for ad in decision.audio if ad.action != AudioAction.EXCLUDE]
-    for ad in included_audio:
-        cmd += ["-map", f"0:a:{ad.track.index}"]
+    audio_input = len(ext_tracks) + 1 if audio_source is not None else 0
+    for n, ad in enumerate(included_audio):
+        # L'entrée dédiée ne contient QUE les pistes retenues, dans l'ordre :
+        # on la parcourt par rang, pas par index de source.
+        cmd += ["-map", f"{audio_input}:a:{n if audio_source is not None else ad.track.index}"]
 
     # Un profil en `container = "mp4"` écarte les sous-titres image, que le
     # MP4 ne porte pas — jamais en silence : la décision les liste, et si ce
@@ -477,7 +511,13 @@ def build_command(
         cmd += ["-map", f"{n}:{stream}:{idx}"]
 
     # ── Encodage audio ────────────────────────────────────────────────────────
-    cmd += audio_args(included_audio)
+    if audio_source is not None:
+        # Tout a été fait dans la passe précédente — et une piste recopiée
+        # traverse ce que le transcodage ne traversait pas.
+        for n in range(len(included_audio)):
+            cmd += [f"-c:a:{n}", "copy"]
+    else:
+        cmd += audio_args(included_audio)
 
     # ── Pistes externes : copie, langue, nom, drapeaux ────────────────────────
     ext_audio = [t for t in ext_tracks if t.kind == TrackKind.AUDIO]

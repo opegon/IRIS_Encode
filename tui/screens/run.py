@@ -17,8 +17,8 @@ from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 
 from core.decision import AudioAction, FileDecision, VideoAction
 from core.encoder import (
-    EncoderProcess, audio_pass_needed, build_audio_command, build_command,
-    diagnostiquer, encodeur_de,
+    EncoderProcess, audio_pass_needed, audio_prepass_needed,
+    build_audio_command, build_command, diagnostiquer, encodeur_de,
 )
 from core.muxer import (
     MuxProcess, build_mux_command, build_strip_command, needs_premux,
@@ -276,8 +276,18 @@ class RunScreen(TableNavMixin, Screen):
             self._encode_next()
             return
 
+        # Transcoder une piste audio pendant qu'on recopie un sous-titre au
+        # premier repère tardif fait perdre la piste, sans un mot. On la
+        # produit donc à part, et la passe d'encodage la recopie.
+        audio_tmp: Path | None = None
+        if audio_prepass_needed(dec):
+            audio_tmp = self._audio_prepass(next_idx, dec)
+            if audio_tmp is None:
+                self._encode_next()
+                return
+
         try:
-            cmd = build_command(dec, self._platform)
+            cmd = build_command(dec, self._platform, audio_source=audio_tmp)
         except ValueError as e:
             s.state     = FileState.ERROR
             s.last_line = str(e)
@@ -362,6 +372,13 @@ class RunScreen(TableNavMixin, Screen):
             except Exception:
                 pass
 
+        # Les pistes audio produites à part ont été recopiées dans la sortie.
+        if audio_tmp is not None:
+            try:
+                audio_tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+
         # L'intermédiaire d'un mux préalable n'a plus de raison d'être, que
         # l'encodage ait réussi ou non : il pèse le poids du film et se
         # refabrique en quelques secondes.
@@ -388,6 +405,46 @@ class RunScreen(TableNavMixin, Screen):
 
         # Enchaîne le suivant
         self._encode_next()
+
+    def _audio_prepass(self, index: int, dec: FileDecision) -> Optional[Path]:
+        """Produit les pistes audio finales avant l'encodage. None si échec.
+
+        Voir `encoder.audio_prepass_needed` pour le défaut ffmpeg que cette
+        passe contourne. Elle ne coûte que le temps d'un transcodage audio,
+        là où la passe vidéo se compte en heures.
+        """
+        s   = self._statuses[index]
+        src = dec.encode_source or dec.info.path
+        out = src.with_name(f"{src.stem}.iris_audio.mka")
+        cmd = build_audio_command(src, out, dec.audio,
+                                  getattr(self.app, "ffmpeg_path", "ffmpeg"))
+        self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+        self.app.call_from_thread(
+            self._update_ffmpeg_line,
+            "▶ Pistes audio préparées à part — voir la note de version…")
+        s.percent = -1
+        self.app.call_from_thread(self._update_row, index)
+
+        proc = EncoderProcess(cmd, dec.info.duration)
+        self._process = proc
+        proc.start()
+        for ligne, progress in proc.iter_progress():
+            s.last_line = ligne
+            if progress:
+                s.percent = progress.percent
+                self.app.call_from_thread(self._update_row, index)
+        code = proc.wait()
+        self._process = None
+
+        if code != 0 or not out.exists():
+            s.state     = FileState.ERROR
+            s.error_msg = f"préparation audio : code {code}"[:60]
+            s.last_line = ("La préparation des pistes audio a échoué "
+                           f"(code {code}).")
+            self.app.call_from_thread(self._update_row, index)
+            out.unlink(missing_ok=True)
+            return None
+        return out
 
     def _strip_dv(self, index: int, dec: FileDecision) -> None:
         """Retire le RPU Dolby Vision sans réencoder, puis passe au suivant.

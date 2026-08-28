@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.23 — document de référence courant
-**Date** : 2026-08-27
+**Version** : 0.8.1.24 — document de référence courant
+**Date** : 2026-08-28
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -903,6 +903,21 @@ sortie est HDR (source PQ/HLG, ou `dv_action == HDR10`) et que l'encodeur sait l
 porter — HEVC et AV1. H264 n'a pas de profil 10 bits chez NVENC : une source HDR
 ramenée en H264 reste en 8 bits, ce qui ne concerne que les cibles sous 1080p.
 
+**Contrôle de débit.** Le débit du profil est une **cible moyenne**, jamais un
+plancher : NVENC ne dépense que ce que le contenu exige. Le mode standard passe
+donc `-b:v <cible> -maxrate <cible × 1,5> -bufsize <2 × maxrate> -rc vbr`. La
+marge de 50 % au-dessus de la cible existe pour que les scènes difficiles
+compensent les scènes faciles — avec un plafond égal à la cible, seules les
+pertes jouent et la moyenne ne peut que tomber en dessous. Mesuré sur 180 s de
+film en prises de vues réelles 2160p 10 bits, cible 6 035k : 92 % du débit
+demandé sous l'ancien réglage, 99 % sous le nouveau.
+
+Un fichier peut rester très en dessous de sa cible sans que ce soit un défaut :
+sur une animation au dessin plat, le même extrait rend 41 % (ancien) et 54 %
+(nouveau), et un encodage piloté par la qualité (`-cq 16`) dépense encore moins.
+La fidélité mesurée reste supérieure à celle d'un encodage 8 bits qui, lui,
+consomme 62 % de bits en plus (SSIM 0,9991 contre 0,9970).
+
 ### 12.2 Pause / Reprise
 
 - Windows : `NtSuspendProcess` / `NtResumeProcess` via ctypes
@@ -1590,6 +1605,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.24 | 2026-08-28 | **Le débit demandé redevient une cible** : `-rc cbr` avec `-maxrate` égal à `-b:v` en faisait un plafond que seules les pertes pouvaient déplacer · VBR avec 50 % de marge, tampon doublé — 92 % → 99 % du débit demandé sur un film en prises de vues réelles · le retrait sur contenu facile (animation, 10 bits) n'est pas un défaut : mesuré plus fidèle qu'un 8 bits consommant 62 % de bits en plus |
 | 0.8.1.23 | 2026-08-28 | **Sortie des outils lue en UTF-8** : `text=True` laissait Python décoder ffprobe en cp1252 ; un tag contenant « ❤️ » tuait le thread de lecture, `stdout` valait `None` et le fichier disparaissait de la liste sans message · six appels corrigés (`scanner`, `encoder`, `muxer` ×2, `preflight`, `sync`) |
 | 0.8.1.22 | 2026-08-28 | **L'AV1 était cassé sur toute machine** : `-profile:v` passé à `av1_nvenc`, qui n'a pas cette option · capacités d'encodage sondées au lancement, option conservée mais annotée, refus qui nomme la cause · diagnostic des échecs ffmpeg |
 | 0.8.1.21 | 2026-08-28 | **Sources WebM / VP9 / AV1 / Opus** : le CAS 3 ne regarde plus la résolution — un VP9 ou AV1 en 1080p ou 4K restait en `← SKIP`, donc illisible chez le destinataire · `CODECS_LISIBLES` nomme le critère |

@@ -1,5 +1,34 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.24] — 2026-08-28
+
+### Le débit demandé redevient une cible, et non un plafond
+
+Un film pouvait sortir à 57 % du débit que le profil promet et que l'écran
+affiche. La commande passait `-b:v <cible> -maxrate <cible> -rc cbr` : le débit
+demandé servait à la fois de cible et de plafond. Chaque scène facile tire alors
+la moyenne vers le bas, et aucune scène difficile ne peut la remonter — la
+moyenne ne peut, par construction, que tomber sous la cible.
+
+La commande passe désormais en VBR avec 50 % de marge au-dessus de la cible et
+un tampon qui couvre ce plafond. Mesuré sur un extrait de 180 s d'un film en
+prises de vues réelles 2160p 10 bits, cible 6 035k : **92 % du débit demandé
+avant, 99 % après**.
+
+### Ce qui n'était pas un défaut, et qui est maintenant écrit
+
+Le même retrait, mesuré sur une animation au dessin plat, ne se comble pas : le
+même extrait rend 41 % avant, 54 % après. Ce n'est pas l'encodeur qui échoue,
+c'est le contenu qui n'a pas besoin de ces bits — un encodage piloté par la
+qualité (`-cq 16`, quasi transparent) en dépense encore moins.
+
+La suspicion portait sur le 10 bits, qui creuse effectivement l'écart (41 %
+contre 72 % en 8 bits sur le même extrait). La mesure de fidélité renverse la
+conclusion : contre la source, le 10 bits à 2 911k obtient un SSIM de **0,9991**,
+le 8 bits à 4 727k un SSIM de **0,9970**. Le 8 bits consomme 62 % de bits en plus
+pour un résultat nettement moins fidèle. Le retrait de débit en 10 bits ne coûte
+donc pas de qualité, et la spécification le dit désormais (§ 12.1).
+
 ## [v0.8.1.23] — 2026-08-28
 
 ### Un fichier pouvait disparaître de la liste sans un mot

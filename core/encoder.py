@@ -353,18 +353,25 @@ def build_command(
             if not is_av1:
                 prof_str = "main10"
 
-        bufsize_k = max(vid.target_bitrate * 2 // 1000, 1)
+        # Un `-maxrate` égal à la cible fait du débit demandé un plafond que
+        # rien ne peut compenser : chaque scène facile tire la moyenne vers le
+        # bas, aucune scène difficile ne peut la remonter. Mesuré sur un film
+        # en prises de vues réelles, la cible n'était honorée qu'à 92 % ; avec
+        # 50 % de marge en VBR, 99 %. La marge ne gonfle pas les fichiers
+        # faciles : NVENC ne dépense que ce que le contenu exige.
+        maxrate   = vid.target_bitrate * 3 // 2
+        bufsize_k = max(maxrate * 2 // 1000, 1)
         preset    = profile.get("preset_encoder", "medium")
 
         cmd += [
             "-c:v",      encoder,
             "-pix_fmt",  pix_fmt,
             "-b:v",      str(vid.target_bitrate),
-            "-maxrate",  str(vid.target_bitrate),
+            "-maxrate",  str(maxrate),
             "-bufsize",  f"{bufsize_k}k",
         ]
         if not is_av1:
-            cmd += ["-rc", "cbr"]
+            cmd += ["-rc", "vbr"]
         cmd += ["-preset", preset]
         # `av1_nvenc` n'expose aucune option `profile` : lui en passer une fait
         # échouer la commande avant même que la carte soit interrogée —

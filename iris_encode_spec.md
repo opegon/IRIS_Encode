@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.26 — document de référence courant
+**Version** : 0.8.1.27 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1625,6 +1625,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.27 | 2026-08-28 | **Recette de greffe complétée** (`GUIDE.md` § 3) : elle s'arrêtait après la mesure de l'audio et ne disait pas quoi faire des sous-titres — la réponse existait, éclatée entre § 2.4, § 4.3 et § 4.5 · table des quatre suites possibles selon le résultat de la mesure · rappel de vérifier ce que la cible contient déjà |
 | 0.8.1.26 | 2026-08-28 | **Plafond de transcodage E-AC3 ramené à 1 024k** : suivre le débit de la source donnait un E-AC3 à 3 501k face à un TrueHD, soit 5,66 Go de piste sur un film de 3 h 35 — l'encodeur monte à 6 144k, mais aucun décodeur ne tire quoi que ce soit d'un DD+ 5.1 au-delà du palier haut usuel |
 | 0.8.1.25 | 2026-08-28 | **La décision audio s'applique au retrait du Dolby Vision** (§ 7.3) : le chemin ne portait que la vidéo, un TrueHD annoncé « → E-AC3 » sortait en TrueHD sous son ancien titre · transcodage en étape 3 puis `--no-audio` sur la source ; exclusion de piste et de sous-titre par options mkvmerge, sans passe · le MP4 transcode dans sa passe ffmpeg existante |
 | 0.8.1.24 | 2026-08-28 | **Le débit demandé redevient une cible** : `-rc cbr` avec `-maxrate` égal à `-b:v` en faisait un plafond que seules les pertes pouvaient déplacer · VBR avec 50 % de marge, tampon doublé — 92 % → 99 % du débit demandé sur un film en prises de vues réelles · le retrait sur contenu facile (animation, 10 bits) n'est pas un défaut : mesuré plus fidèle qu'un 8 bits consommant 62 % de bits en plus |

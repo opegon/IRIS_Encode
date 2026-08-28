@@ -1,5 +1,24 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.27] — 2026-08-28
+
+### La recette de greffe s'arrêtait avant les sous-titres
+
+`GUIDE.md` § 3 menait jusqu'à la mesure de la piste audio, puis renvoyait à
+« § 4 selon le résultat » — et § 4.1, le cas nominal, ne dit rien des
+sous-titres. La réponse existait bien, mais éclatée : § 2.4 conseille `C`,
+§ 4.3 et § 4.4 le rappellent pour les cas mesurables, § 4.5 décrit `P` pour un
+montage différent. Personne ne suit une recette en la recomposant à partir de
+trois sections.
+
+L'étape 4 porte désormais une table des quatre suites possibles selon ce que la
+mesure a rendu, et dit ce qui n'allait pas de soi : la mesure ne vaut que pour
+la ligne sur laquelle elle a tourné. § 4.1 le répète sur place.
+
+La recette s'ouvre aussi sur un rappel : regarder ce que la cible contient déjà.
+Un rip streaming embarque trente sous-titres, français compris — il n'y a alors
+qu'une piste audio à greffer.
+
 ## [v0.8.1.26] — 2026-08-28
 
 ### Le transcodage des pistes sans perte ne suit plus le débit de la source

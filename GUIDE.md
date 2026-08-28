@@ -145,10 +145,27 @@ après un encodage réussi — à vérifier avant de lancer un lot.
 
 ## 3. Recette : ajouter une VF et ses sous-titres
 
+**Avant tout, regardez ce que la cible contient déjà.** Un rip streaming
+embarque souvent trente sous-titres, français compris : il n'y a alors qu'une
+piste audio à greffer, et aucun recalage de sous-titre à faire. L'écran des
+pistes (`T`) les liste toutes.
+
 1. Browser : curseur sur le film, `T`.
 2. `F9`, choisir le fichier qui porte la VF, puis ses pistes.
-3. Sur l'écran de recalage, curseur sur la piste audio, `M`.
-4. Selon le résultat, voir § 4.
+3. Sur l'écran de recalage, curseur sur la piste **audio**, `M`.
+4. **Les sous-titres se recalent après l'audio, jamais avant** : c'est sa
+   mesure qui leur sert de référence. Selon ce qu'elle a rendu —
+
+   | Résultat de la mesure | Sur chaque sous-titre |
+   |---|---|
+   | `✓` ou `⚠` (§ 4.1, § 4.2) | `C`, puis choisir la piste audio |
+   | `✗ montage différent — N plages` (§ 4.5) | `P` — et `P` aussi sur l'audio |
+   | `✗ trop peu de repères` (§ 4.3) | `C` |
+   | `✗ sous-titre image` (§ 4.4) | `C`, ou décalage à la main |
+
+   `M` sur un sous-titre bavard fonctionne aussi, mais `C` est plus fiable :
+   des sous-titres livrés avec une VF sont écrits sur le timing de cette VF,
+   donc leur bon décalage **est** le sien.
 5. Renseigner la **langue** de chaque piste si elle manque.
 6. `V` ou `K` pour contrôler.
 7. `F3` pour muxer sans réencoder, ou `F2` pour réencoder aussi la vidéo.
@@ -161,6 +178,10 @@ après un encodage réussi — à vérifier avant de lancer un lot.
 
 Le cas nominal. Le décalage est posé. Un contrôle `V` reste une bonne habitude
 mais n'est pas indispensable.
+
+**Les sous-titres ne sont pas recalés pour autant** : la mesure ne vaut que
+pour la ligne sur laquelle elle a tourné. Curseur sur chaque sous-titre, `C`,
+puis choisir la piste audio (§ 3, étape 4).
 
 ### 4.2 « ⚠ … — à vérifier »
 

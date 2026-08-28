@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.7 — document de référence courant
+**Version** : 0.8.2.8 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -933,7 +933,17 @@ soixante secondes.
 | **appel ffmpeg distinct** | 1 875 |
 
 Aucune disposition des sorties ne sauve la piste : seul un processus séparé le
-fait. Facteurs éliminés par mesure — le codec de sortie (l'AC3 meurt comme
+fait. La passe n'est payée que si la source décodée est **sans
+perte** (TrueHD, MLP, DTS-HD MA) : transcoder l'AC3 du même fichier sort
+indemne. Cette restriction repose sur deux mesures, un codec de chaque famille
+— d'où le filet ci-dessous.
+
+**Le succès se vérifie.** ffmpeg rend ici un code nul et un fichier amputé :
+`encoder.pistes_audio_vides()` relit la sortie et compare la durée de chaque
+piste audio à celle attendue. En dessous du dixième, le fichier est déclaré en
+erreur au lieu d'être compté comme réussi. Le seuil est grossier à dessein — il
+sépare « 54 millisecondes au lieu de trois heures et demie » de tout ce qui est
+légitime, y compris une piste de commentaires écourtée. Facteurs éliminés par mesure — le codec de sortie (l'AC3 meurt comme
 l'E-AC3), la durée, l'encodage matériel, les drapeaux de piste, et six réglages
 de muxeur (`max_muxing_queue_size`, `max_interleave_delta`,
 `avoid_negative_ts`, `copyts`, `muxdelay`, l'ordre des `-map`). Transcoder
@@ -1719,6 +1729,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.2.8 | 2026-08-28 | **Passe audio restreinte aux sources sans perte** — l'AC3 du même fichier sort indemne, la passe ne se paie donc plus sur la plupart des encodages · **`pistes_audio_vides`** : un code de retour nul ne vaut plus succès, la sortie est relue et une piste écourtée fait échouer le fichier au lieu de passer |
 | 0.8.2.7 | 2026-08-28 | **Le défaut d'IE-22 tient à la simultanéité, pas à la sortie** : séparer les fichiers de sortie ne sauve pas la piste, il suffit que le sous-titre soit *mappé* dans l'invocation. Seul un processus distinct protège — ce que fait la parade. Caractérisation corrigée dans la spec, le code et les tests |
 | 0.8.2.6 | 2026-08-28 | **Une piste audio transcodée disparaissait en silence** quand la même commande recopiait un sous-titre au premier repère tardif — deux trames produites au lieu de 1 875. Cause d'IE-12 et IE-16, closes faute d'explication : le fichier « mal entrelacé » n'avait pas de piste anglaise. Passe audio préalable, payée seulement quand les deux conditions sont réunies |
 | 0.8.2.5 | 2026-08-28 | **IE-17 clos par la mesure** : le mode « HDR10 quality » (libx265) garde `-maxrate` égal à la cible, et c'est le bon réglage — 99,9 % du débit visé, contre 93,6 % avec la marge appliquée à NVENC. Les deux encodeurs veulent des réglages opposés · `tests/test_x265_debit.py` fait échouer une harmonisation |

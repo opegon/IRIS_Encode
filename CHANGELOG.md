@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.8] — 2026-08-28
+
+### La passe audio ne se paie plus que là où elle sert
+
+Elle se déclenchait sur « transcodage + sous-titres conservés », soit la
+plupart des encodages. La mesure exige davantage : la source décodée doit être
+**sans perte**. Transcoder l'AC3 du même fichier, au lieu de son TrueHD, sort
+indemne. Le déclencheur est donc restreint à TrueHD, MLP et DTS-HD MA.
+
+### Un code de retour nul ne vaut plus succès
+
+La restriction ci-dessus repose sur deux mesures — un codec sans perte qui
+échoue, un codec avec perte qui passe. C'est une inférence, pas une loi. Et le
+défaut qu'elle contourne est silencieux : ffmpeg rend un code nul et un fichier
+amputé d'une piste.
+
+La sortie est donc relue après chaque encodage. La durée de chaque piste audio
+est comparée à celle attendue ; en dessous du dixième, le fichier est déclaré en
+erreur au lieu d'être compté comme réussi, avec le nom des pistes en cause. Le
+seuil est grossier à dessein : il sépare « 54 millisecondes au lieu de trois
+heures et demie » de tout ce qui est légitime, une piste de commentaires
+écourtée comprise.
+
+Vérifié sur un fichier délibérément cassé : `ENG VO (eac3, 0.06 s)` signalée,
+le même encodage sans le sous-titre déclaré sain. Le filet ne peut pas devenir
+lui-même une cause d'échec — une sortie illisible le laisse muet.
+
 ## [v0.8.2.7] — 2026-08-28
 
 ### Le défaut d'audio tient à la simultanéité, pas à la sortie

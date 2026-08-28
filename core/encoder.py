@@ -229,6 +229,52 @@ def build_audio_command(source: Path, output: Path, audio: list,
     return cmd
 
 
+def pistes_audio_vides(sortie: Path, duree_attendue: float) -> list[str]:
+    """Pistes audio du fichier produit qui ne contiennent manifestement rien.
+
+    Le défaut décrit dans `audio_prepass_needed` ne lève aucune erreur et rend
+    un code de retour nul : sans cette vérification, un fichier amputé d'une
+    piste passe pour un succès. La parade couvre le cas connu ; ce filet couvre
+    ceux qu'on ne connaît pas encore.
+
+    Le seuil est volontairement grossier — un dixième de la durée attendue.
+    Il ne s'agit pas de mesurer une piste, mais de distinguer « 54 millisecondes
+    au lieu de trois heures et demie » de tout ce qui est légitime, y compris
+    une piste de commentaires écourtée.
+    """
+    from .scanner import _ffprobe_json
+
+    if duree_attendue <= 0:
+        return []
+    try:
+        data = _ffprobe_json(["-show_streams", "-select_streams", "a", str(sortie)])
+    except Exception:
+        return []                      # ne jamais faire échouer sur le filet
+
+    vides: list[str] = []
+    for flux in data.get("streams", []):
+        tags  = flux.get("tags", {}) or {}
+        duree = _duree_secondes(flux.get("duration") or tags.get("DURATION"))
+        if duree is not None and duree < duree_attendue / 10:
+            nom = tags.get("title") or tags.get("language") or f"a:{flux.get('index')}"
+            vides.append(f"{nom} ({flux.get('codec_name', '?')}, {duree:.2f} s)")
+    return vides
+
+
+def _duree_secondes(valeur) -> Optional[float]:
+    """Lit « 3600.5 » ou « 03:35:23.244000000 ». None si illisible."""
+    if not valeur:
+        return None
+    texte = str(valeur)
+    try:
+        if ":" in texte:
+            h, m, sec = texte.split(":")
+            return int(h) * 3600 + int(m) * 60 + float(sec)
+        return float(texte)
+    except (ValueError, TypeError):
+        return None
+
+
 def audio_prepass_needed(decision) -> bool:
     """Vrai si l'audio doit être produite **avant** la passe d'encodage.
 
@@ -258,9 +304,19 @@ def audio_prepass_needed(decision) -> bool:
     disposition des sorties n'y suffit. C'est ce que fait déjà le retrait du
     Dolby Vision, pour une autre raison.
 
-    On ne la paie que lorsque les deux conditions sont réunies.
+    **La source décodée doit être sans perte.** Transcoder l'AC3 du même fichier,
+    au lieu du TrueHD, sort indemne — c'est mesuré. La passe n'est donc payée
+    que sur les pistes TrueHD, MLP et DTS-HD MA, et non sur tout transcodage.
+
+    Cette restriction repose sur deux mesures : un codec sans perte qui échoue,
+    un codec avec perte qui passe. Elle n'est pas une loi. `pistes_audio_vides`
+    est le filet : si le cas se présente hors de ce périmètre, l'encodage
+    échoue bruyamment au lieu de rendre un fichier amputé.
     """
-    return bool(decision.subtitles_finales) and audio_pass_needed(decision.audio)
+    if not decision.subtitles_finales:
+        return False
+    return any(ad.action == AudioAction.TRANSCODE and ad.track.is_lossless
+               for ad in decision.audio)
 
 
 def audio_pass_needed(audio: list) -> bool:

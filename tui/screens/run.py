@@ -19,6 +19,7 @@ from core.decision import AudioAction, FileDecision, VideoAction
 from core.encoder import (
     EncoderProcess, audio_pass_needed, audio_prepass_needed,
     build_audio_command, build_command, diagnostiquer, encodeur_de,
+    pistes_audio_vides,
 )
 from core.muxer import (
     MuxProcess, build_mux_command, build_strip_command, needs_premux,
@@ -357,6 +358,21 @@ class RunScreen(TableNavMixin, Screen):
 
         rc = proc.wait()
         success = rc == 0
+
+        # ffmpeg peut rendre un code nul et un fichier amputé d'une piste
+        # audio — voir `encoder.audio_prepass_needed`. Le succès se vérifie,
+        # il ne se déduit pas du code de retour.
+        if success and dec.output_path.exists():
+            vides = pistes_audio_vides(dec.output_path, dec.info.duration)
+            if vides:
+                success = False
+                # Le bloc de conclusion retronque `last_line` dans `error_msg` :
+                # l'essentiel doit tenir dans les soixante premiers caractères.
+                s.last_line = (
+                    f"Piste audio vide dans la sortie : {' · '.join(vides)}. "
+                    "L'encodage s'est pourtant terminé sans erreur. Le fichier "
+                    "est inutilisable en l'état, et ce cas sort du périmètre "
+                    "connu — signalez-le.")
 
         if success and s._last_progress:
             record_measured_speed(self.app.cfg, dec.video.action, s._last_progress.speed)  # type: ignore[attr-defined]

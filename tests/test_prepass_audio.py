@@ -44,6 +44,7 @@ from core.encoder import audio_prepass_needed, build_command
 from core.muxer import ExternalTrack, TrackKind
 from core.platform import GPU, OS, PlatformProfile
 from core.profiles import Profile
+from core.encoder import pistes_audio_vides
 from core.scanner import AudioTrack, SubtitleTrack, VideoInfo
 
 
@@ -105,6 +106,30 @@ def test_sans_transcodage_aucune_passe(tmp_path):
     assert audio_prepass_needed(dec) is False
 
 
+def test_une_source_avec_perte_ne_l_impose_pas(tmp_path):
+    """Un DTS ordinaire est transcodé lui aussi, et sort indemne — mesuré sur
+    l'AC3 du fichier du signalement. La passe ne se paie pas pour lui."""
+    info = _info(tmp_path)
+    info.audio_tracks[1] = AudioTrack(index=1, codec="dts", channels=6,
+                                      language="eng", title="ENG VO",
+                                      bitrate=1_500_000, profile="DTS")
+    dec = decide(info, _profile())
+    assert any(a.action == AudioAction.TRANSCODE for a in dec.audio)
+    assert not info.audio_tracks[1].is_lossless
+    assert audio_prepass_needed(dec) is False
+
+
+def test_un_dts_hd_ma_l_impose(tmp_path):
+    """Sans perte comme le TrueHD : même périmètre, même précaution."""
+    info = _info(tmp_path)
+    info.audio_tracks[1] = AudioTrack(index=1, codec="dts", channels=6,
+                                      language="eng", title="ENG VO",
+                                      bitrate=4_000_000, profile="DTS-HD MA")
+    dec = decide(info, _profile())
+    assert info.audio_tracks[1].is_lossless
+    assert audio_prepass_needed(dec) is True
+
+
 def test_des_sous_titres_tous_ecartes_ne_l_imposent_pas(tmp_path):
     dec = decide(_info(tmp_path), _profile())
     dec.subtitle_indices = []
@@ -158,3 +183,50 @@ def test_sans_passe_la_commande_ne_change_pas(tmp_path):
     cmd = build_command(dec, _plat())
     assert "0:a:0" in _maps(cmd)
     assert cmd[cmd.index("-c:a:1") + 1] == "eac3"
+
+
+# ─── Le filet : un succès se vérifie, il ne se déduit pas ─────────────────────
+
+def test_une_piste_ecourtee_est_signalee(monkeypatch, tmp_path):
+    """54 millisecondes au lieu de trois heures : le cas du signalement."""
+    from core import scanner
+    monkeypatch.setattr(scanner, "_ffprobe_json", lambda _a: {"streams": [
+        {"index": 1, "codec_name": "ac3",
+         "tags": {"DURATION": "03:35:23.232000000", "title": "FR VFF"}},
+        {"index": 2, "codec_name": "eac3",
+         "tags": {"DURATION": "00:00:00.054000000", "title": "ENG VO"}},
+    ]})
+    vides = pistes_audio_vides(tmp_path / "out.mkv", 12923.0)
+    assert len(vides) == 1
+    assert "ENG VO" in vides[0] and "eac3" in vides[0]
+
+
+def test_une_piste_entiere_ne_l_est_pas(monkeypatch, tmp_path):
+    from core import scanner
+    monkeypatch.setattr(scanner, "_ffprobe_json", lambda _a: {"streams": [
+        {"index": 1, "codec_name": "eac3",
+         "tags": {"DURATION": "03:35:23.203000000"}},
+    ]})
+    assert pistes_audio_vides(tmp_path / "out.mkv", 12923.0) == []
+
+
+def test_une_piste_de_commentaires_ecourtee_ne_declenche_pas(monkeypatch, tmp_path):
+    """Le seuil est grossier à dessein : un dixième, pas un pourcentage fin."""
+    from core import scanner
+    monkeypatch.setattr(scanner, "_ffprobe_json", lambda _a: {"streams": [
+        {"index": 1, "codec_name": "ac3", "duration": "1500.0"},
+    ]})
+    assert pistes_audio_vides(tmp_path / "out.mkv", 12923.0) == []
+
+
+def test_un_fichier_illisible_ne_fait_pas_echouer(monkeypatch, tmp_path):
+    """Le filet ne doit jamais devenir lui-même une cause d'échec."""
+    from core import scanner
+    def _boum(_a):
+        raise RuntimeError("ffprobe: No such file")
+    monkeypatch.setattr(scanner, "_ffprobe_json", _boum)
+    assert pistes_audio_vides(tmp_path / "out.mkv", 12923.0) == []
+
+
+def test_sans_duree_attendue_on_ne_juge_pas(tmp_path):
+    assert pistes_audio_vides(tmp_path / "out.mkv", 0.0) == []

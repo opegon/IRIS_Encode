@@ -709,6 +709,155 @@ def _refine_boundary(ref: np.ndarray, sig: np.ndarray, approx: int,
     return best
 
 
+# Bornes de la voie « accord entre fenêtres ». Un décalage de montage est
+# petit — quelques secondes de coupure, pas des minutes. Chercher loin n'ajoute
+# que des candidats fantômes : mesuré sur un cas réel, une recherche à ±90 s
+# rendait douze réponses incohérentes là où ±12 s faisait apparaître l'escalier
+# du premier coup.
+_ACCORD_MAX_LAG_S   = 30.0
+_ACCORD_WINDOW_S    = 150.0
+_ACCORD_PAS_MS      = 100
+# Part des fenêtres qui doivent avoir un pic exploitable. En deçà, il n'y a pas
+# de structure à lire, seulement du bruit qui s'accorde par hasard.
+_ACCORD_MIN_RETENUES = 0.55
+# Part des fenêtres dont le décalage est partagé par au moins une autre, sur
+# **tout** le film. Mesuré : 70 % sur un cas vrai, 25 % sur deux signaux sans
+# rapport. C'est ce critère, et non l'accord entre voisines immédiates, qui
+# sépare une structure d'une coïncidence — une seule fenêtre bruitée suffisait
+# à casser une suite de voisines, alors qu'elle ne change rien à un décompte
+# global.
+_ACCORD_MIN_COHERENCE = 0.60
+
+
+def _lag_borne(x: np.ndarray, y: np.ndarray, max_lag_s: float,
+               pas_ms: int) -> tuple[Optional[int], float]:
+    """Meilleur décalage dans une fenêtre de recherche bornée, et sa saillance.
+
+    Retourne `None` quand le pic tombe **sur la borne** : c'est le signe qu'il
+    n'y a pas de pic du tout et que la corrélation s'échappe. Ces fenêtres-là
+    doivent être écartées, pas moyennées — c'est ce qui distingue un palier
+    d'un artefact.
+    """
+    a = x.astype(float) - x.mean()
+    b = y.astype(float) - y.mean()
+    if a.std() == 0 or b.std() == 0:
+        return None, 0.0
+    m   = int(max_lag_s * 1000 / BIN_MS)
+    pas = max(1, pas_ms // BIN_MS)
+    scores: list[tuple[float, int]] = []
+    for d in range(-m, m + 1, pas):
+        u, v = (a[d:], b[:len(b) - d]) if d > 0 else                ((a, b) if d == 0 else (a[:len(a) + d], b[-d:]))
+        k = min(len(u), len(v))
+        if k < 400:
+            continue
+        c = float(np.dot(u[:k], v[:k])
+                  / (np.linalg.norm(u[:k]) * np.linalg.norm(v[:k]) + 1e-9))
+        scores.append((c, d))
+    if not scores:
+        return None, 0.0
+    scores.sort(reverse=True)
+    meilleur, d = scores[0]
+    if abs(d) >= m - pas:
+        return None, 0.0                 # collé à la borne : pas de pic
+    saillance = meilleur - float(np.median([c for c, _ in scores]))
+    return int(round(d * BIN_MS)), saillance
+
+
+def _segments_par_accord(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
+    """Paliers déduits de l'**accord entre fenêtres voisines**, non de l'amplitude.
+
+    La voie ordinaire juge une corrélation sur sa force. Certains couples n'y
+    arrivent jamais : un sous-titre dont l'adaptation diffère de celle du
+    doublage ne décalque pas la parole, et plafonne — mesuré — à 0,117 pour un
+    seuil de 0,25, *même parfaitement aligné*. Aucun seuil d'amplitude ne le
+    sauvera.
+
+    Mais son décalage, lui, est stable : des fenêtres voisines tombent sur la
+    même valeur à quelques dizaines de millisecondes près, et cette régularité
+    ne s'obtient pas par hasard. C'est elle qu'on lit ici.
+
+    Rien n'est appliqué d'office : la fonction rend des plages, que
+    l'utilisateur consulte puis applique. Le garde-fou contre un décalage faux
+    reste entier.
+    """
+    n = min(ref.size, sig.size)
+    if n < 2 * _MIN_SEGMENT_BINS:
+        return []
+    fen = int(_ACCORD_WINDOW_S * 1000 / BIN_MS)
+    if n < 4 * fen:
+        return []                        # moins de quatre fenêtres : rien à croiser
+
+    mesures: list[tuple[int, int, Optional[int], float]] = []
+    for k in range(n // fen):
+        a, b = k * fen, min((k + 1) * fen, n)
+        lag, sal = _lag_borne(ref[a:b], sig[a:b],
+                              _ACCORD_MAX_LAG_S, _ACCORD_PAS_MS)
+        mesures.append((a, b, lag, sal))
+
+    trouves = [m[2] for m in mesures if m[2] is not None]
+    if len(trouves) < _ACCORD_MIN_RETENUES * len(mesures):
+        return []
+
+    # Un décalage n'est crédible que s'il revient. On compte, sur tout le film,
+    # combien de fenêtres partagent leur valeur avec au moins une autre : c'est
+    # la cohérence. Elle ne dépend pas de l'ordre des fenêtres, donc une
+    # fenêtre bruitée ne casse rien — là où une suite de voisines s'interrompt
+    # au premier accroc.
+    def _partage(lag: int) -> bool:
+        return sum(1 for autre in trouves
+                   if abs(autre - lag) <= CROSS_TOLERANCE_MS) >= 2
+
+    coherents = [lag for lag in trouves if _partage(lag)]
+    if len(coherents) < _ACCORD_MIN_COHERENCE * len(mesures):
+        return []
+
+    # Regroupement des fenêtres voisines. Une fenêtre sans pic, ou dont le
+    # décalage n'est partagé par aucune autre, n'interrompt pas un palier :
+    # elle le traverse sans rien dire.
+    runs: list[list] = []
+    for a, b, lag, sal in mesures:
+        if lag is None or not _partage(lag):
+            if runs:
+                runs[-1][1] = b          # le palier court toujours
+            continue
+        if runs and abs(lag - runs[-1][2]) <= CROSS_TOLERANCE_MS:
+            runs[-1][1] = b
+            runs[-1][3] = max(runs[-1][3], sal)
+            runs[-1][4] += 1
+        else:
+            runs.append([a, b, lag, sal, 1])
+
+    # Un palier d'une seule fenêtre ne prouve rien : c'est le point de départ
+    # de tout ce raisonnement, il ne peut pas en être la conclusion.
+    runs = [r for r in runs if r[4] >= 2]
+    if not runs:
+        return []
+
+    # Écarter les paliers isolés laisse des trous. Or `delay_at` lit la
+    # première plage qui couvre l'instant : un trou lui ferait rendre le
+    # décalage du palier *suivant* sur une zone qui appartient au précédent.
+    # On recoud donc bout à bout, et la dernière plage court jusqu'à la fin.
+    runs[0][0] = 0
+    for i in range(len(runs) - 1):
+        runs[i][1] = runs[i + 1][0]
+    runs[-1][1] = n
+
+    # Le décalage de la passe grossière a été mesuré sur une fenêtre étroite.
+    # Remesuré sur l'étendue définitive, il gagne en précision — mesuré sur un
+    # cas réel : +100 ms devient +300, +1000 devient +1500.
+    for run in runs:
+        a, b = run[0], run[1]
+        if b - a >= _MIN_SEGMENT_BINS:
+            lag, sal = _lag_borne(ref[a:b], sig[a:b],
+                                  _ACCORD_MAX_LAG_S, _ACCORD_PAS_MS)
+            if lag is not None:
+                run[2], run[3] = lag, sal
+
+    return [Segment(start_s=a * BIN_MS / 1000, end_s=b * BIN_MS / 1000,
+                    delay_ms=lag, confidence=sal)
+            for a, b, lag, sal, _ in runs]
+
+
 def _segment_lags(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
     """
     Découpe le film en plages de décalage constant.
@@ -784,6 +933,12 @@ def _segment_lags(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
     return [Segment(start_s=a * BIN_MS / 1000, end_s=b * BIN_MS / 1000,
                     delay_ms=int(round(lag * BIN_MS)), confidence=conf)
             for a, b, lag, conf in runs]
+
+
+def _segments(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
+    """Paliers, par la voie ordinaire puis par l'accord entre fenêtres."""
+    trouves = _segment_lags(ref, sig)
+    return trouves if trouves else _segments_par_accord(ref, sig)
 
 
 def _search(ref: np.ndarray, build,
@@ -888,7 +1043,7 @@ def measure_audio(target: Path, donor: Path, donor_track: int = 0,
     agreed, dispersion = _cross_validate(ref, scaled, lag)
     # Le découpage ne sert qu'à expliquer un refus : quand le décalage tient
     # sur tout le film, il n'y a rien à découper et le cas nominal ne paie rien.
-    segments = _segment_lags(ref, scaled) if agreed is False else []
+    segments = _segments(ref, scaled) if agreed is False else []
     res = _finish(lag, ratio, conf, salience, speech_ratio=speech,
                   n_events=_count_speech_blocks(mask),
                   agreed=agreed, dispersion_ms=dispersion, segments=segments)
@@ -1021,7 +1176,7 @@ def measure_subtitle(video: Path, subtitle: Path,
         ref, lambda r: _cue_mask(cues, n_bins, r), progress)
     scaled = _cue_mask(cues, n_bins, ratio)
     agreed, dispersion = _cross_validate(ref, scaled, lag)
-    segments = _segment_lags(ref, scaled) if agreed is False else []
+    segments = _segments(ref, scaled) if agreed is False else []
     return _finish(lag, ratio, conf, salience,
                    floor=confidence_floor(len(cues)),
                    n_events=len(cues), speech_ratio=float(ref.mean()),

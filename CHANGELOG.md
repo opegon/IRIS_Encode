@@ -1,5 +1,37 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.17] — 2026-08-28
+
+### Des plages détectées par accord entre fenêtres, non par force de corrélation
+
+Certains sous-titres ne peuvent pas être validés par l'amplitude d'une
+corrélation. Mesuré sur un cas réel : un `.srt` dont l'adaptation diffère de
+celle du doublage plafonne à **0,117** pour un seuil de 0,25 — *même
+parfaitement aligné*, vérifié à l'oreille en six points. Le texte n'obéit pas
+aux mêmes contraintes qu'un doublage lip-syncé, les répliques sont découpées et
+condensées autrement, et la structure des repères ne décalque plus celle de la
+parole. Aucun seuil d'amplitude ne rattrapera ça.
+
+Son décalage, lui, est stable. `_segments_par_accord()` lit cette régularité
+plutôt que la force du signal, et retrouve sur ce fichier **+300 / +1400 /
++5600 ms** là où la vérité établie à l'oreille est +300 / +1500 / +5600.
+
+Trois garde-fous, chacun mesuré :
+
+- **la recherche est bornée à ±30 s** — un décalage de montage se compte en
+  secondes ; à ±90 s, douze fenêtres rendaient douze réponses incohérentes ;
+- **une fenêtre dont le pic touche la borne est écartée**, pas moyennée : c'est
+  le signe qu'il n'y a pas de pic ;
+- **la cohérence se compte sur tout le film**, non entre voisines immédiates.
+  70 % des fenêtres partagent leur valeur sur un cas vrai, 25 % sur deux
+  signaux sans rapport. Le critère par adjacence, essayé d'abord, acceptait
+  deux fenêtres tombées d'accord par hasard et étendait ce palier fortuit sur
+  tout le film — c'est le test qui l'a montré.
+
+Rien n'est appliqué d'office : la fonction rend des plages, que l'utilisateur
+consulte avec `S` et applique avec `P`. Le garde-fou contre un décalage faux
+reste entier.
+
 ## [v0.8.2.16] — 2026-08-28
 
 ### La confiance d'une mesure s'affiche en mots

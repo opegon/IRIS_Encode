@@ -90,13 +90,38 @@ class WizardScreen(TableNavMixin, Screen):
         super().__init__()
         self._dec   = decision
         self._i     = 0
-        self._amb   = ambiguites(decision.info, decision.profile)
         self._amb_i = 0
-        # Cases cochées de l'ambiguïté courante, par index de piste.
-        self._coches: set[int] = set()
-        self._etapes = self._plan()
+        self._relever()
 
     # ── Le plan, recalculé quand la décision change ───────────────────────────
+
+    def _relever(self) -> None:
+        """Repart de la décision courante : ambiguïtés, base, choix par défaut.
+
+        La **base** est la sélection avant tout arbitrage de langue. Les choix
+        se réappliquent toujours depuis elle, jamais par retranchements
+        successifs : sinon revenir sur un choix et recocher une piste écartée
+        ne la ramènerait pas — elle aurait déjà quitté la liste, et on croirait
+        l'avoir reprise.
+
+        Les cases partent cochées sur ce que la décision garde déjà : valider
+        sans rien toucher ne retire donc rien.
+        """
+        d = self._dec
+        self._amb        = ambiguites(d.info, d.profile)
+        self._base_audio = [a.track.index for a in d.audio
+                            if a.action != AudioAction.EXCLUDE]
+        self._base_subs  = (list(d.subtitle_indices)
+                            if d.subtitle_indices is not None else None)
+        self._choix: dict[int, set[int]] = {
+            i: {t.index for t in a.tracks} for i, a in enumerate(self._amb)
+        }
+        self._etapes = self._plan()
+
+    @property
+    def _coches(self) -> set[int]:
+        """Cases de l'ambiguïté courante — conservées d'un aller-retour à l'autre."""
+        return self._choix.setdefault(self._amb_i, set())
 
     def _plan(self) -> list[Etape]:
         plan = [Etape.RESUME]
@@ -145,6 +170,9 @@ class WizardScreen(TableNavMixin, Screen):
             corps.update(self._texte_langues())
             self._remplir_table()
             table.display = True
+            # Masquer la table lui retire le focus : sans ce rappel, les
+            # flèches ne déplaçaient plus le curseur en revenant sur l'étape.
+            table.focus()
             hint.update("Espace coche ou décoche   ·   ↵ Valider ce choix   ·   "
                         "⌫ Retour")
         elif self._etape == Etape.DONNEUR:
@@ -277,7 +305,6 @@ class WizardScreen(TableNavMixin, Screen):
                 return
             self._appliquer_choix()
             self._amb_i += 1
-            self._coches = set()
             if self._amb_i < len(self._amb):
                 self._afficher()
                 return
@@ -292,33 +319,40 @@ class WizardScreen(TableNavMixin, Screen):
             self.action_suivant()
 
     def action_retour(self) -> None:
+        # Reculer d'une ambiguïté avant de reculer d'une étape.
+        if self._etape == Etape.LANGUES and self._amb_i > 0:
+            self._amb_i -= 1
+            self._afficher()
+            return
         if self._i == 0:
             self.dismiss(None)
             return
-        if self._etape == Etape.LANGUES and self._amb_i > 0:
-            self._amb_i -= 1
-            self._coches = set()
-            self._afficher()
-            return
         self._i -= 1
+        # Revenir *sur* l'étape des langues, c'est revenir sur sa dernière
+        # ambiguïté : en validant, le compteur avait dépassé la fin. Sans ce
+        # recadrage, l'affichage indexait hors des bornes.
+        if self._etape == Etape.LANGUES and self._amb:
+            self._amb_i = len(self._amb) - 1
         self._afficher()
 
     def _appliquer_choix(self) -> None:
-        """Écarte les pistes non cochées de l'ambiguïté courante."""
-        a        = self._amb[self._amb_i]
-        rejetees = {t.index for t in a.tracks} - self._coches
-        if a.kind == "audio":
-            gardes = [d.track.index for d in self._dec.audio
-                      if d.action != AudioAction.EXCLUDE
-                      and d.track.index not in rejetees]
-            self._dec.audio = decide_audio(self._dec.info, self._dec.profile,
-                                           gardes)
-        else:
-            actuels = self._dec.subtitle_indices
-            if actuels is None:
-                actuels = [s.index for s in self._dec.info.subtitle_tracks]
-            self._dec.subtitle_indices = [i for i in actuels
-                                          if i not in rejetees]
+        """Réapplique **tous** les choix depuis la base, jamais par retranchement.
+
+        Un choix révisé doit pouvoir rendre une piste, pas seulement en
+        retirer. Repartir de la base est la seule façon de le garantir.
+        """
+        rejet_audio: set[int] = set()
+        rejet_subs:  set[int] = set()
+        for i, a in enumerate(self._amb):
+            rejetees = {t.index for t in a.tracks} - self._choix.get(i, set())
+            (rejet_audio if a.kind == "audio" else rejet_subs).update(rejetees)
+
+        gardes = [i for i in self._base_audio if i not in rejet_audio]
+        self._dec.audio = decide_audio(self._dec.info, self._dec.profile,
+                                       gardes)
+        base = (self._base_subs if self._base_subs is not None
+                else [s.index for s in self._dec.info.subtitle_tracks])
+        self._dec.subtitle_indices = [i for i in base if i not in rejet_subs]
 
     def action_ajuster(self) -> None:
         """Rend la main à l'écran des pistes — il fait déjà tout ce qu'il faut."""
@@ -332,10 +366,11 @@ class WizardScreen(TableNavMixin, Screen):
             self._dec.audio = decide_audio(self._dec.info, self._dec.profile,
                                            result.audio)
             self._dec.subtitle_indices = result.subtitle_indices
-            self._amb    = ambiguites(self._dec.info, self._dec.profile)
-            self._amb_i  = 0
-            self._etapes = self._plan()
-            self._i      = 0
+            # La sélection manuelle devient la nouvelle base : les arbitrages
+            # de langue repartent de ce que l'utilisateur vient de poser.
+            self._amb_i = 0
+            self._relever()
+            self._i     = 0
             self._afficher()
 
         self.app.push_screen(TracksScreen(self._dec), _retour)

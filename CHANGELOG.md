@@ -1,5 +1,29 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.1] — 2026-08-28
+
+### Trois défauts de l'assistant, dont deux silencieux
+
+Signalés par un `IndexError` à l'usage. Le plantage était le moins grave des trois.
+
+**Revenir sur l'étape des langues plantait.** En validant la dernière ambiguïté,
+le compteur dépassait la fin ; `action_retour` ne le recadrait pas, parce qu'au
+moment du test l'étape courante était déjà la suivante.
+
+**Un choix révisé ne pouvait que retirer.** Les arbitrages se retranchaient de
+la sélection *courante* : une piste écartée avait déjà quitté la liste, et la
+recocher ne la ramenait pas — l'écran affichait pourtant sa case cochée. Les
+choix repartent désormais d'une base figée avant tout arbitrage.
+
+**Les flèches ne répondaient plus.** Masquer la table lui retire le focus :
+en revenant sur l'étape, le curseur restait bloqué sur la première ligne.
+
+Au passage, les cases partent cochées sur ce que la décision garde déjà :
+valider sans rien toucher ne retire plus rien.
+
+Scénario 16 du smoke TUI : il rejoue les trois, sur un clip fabriqué avec deux
+pistes « fre » — et c'est lui qui a trouvé le troisième.
+
 ## [v0.8.2.0] — 2026-08-28
 
 ### L'assistant

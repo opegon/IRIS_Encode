@@ -131,6 +131,10 @@ class SubtitleTrack:
     index:    int
     codec:    str
     language: str
+    # Le nom déclaré dans le conteneur. Il était lu puis jeté : six pistes
+    # « Français (France) », « (forced) », « (SDH) », « (Canada) »… ne se
+    # distinguent que par lui, et l'application ne savait pas le dire.
+    title:    str = ""
 
     @property
     def is_image_based(self) -> bool:
@@ -475,6 +479,7 @@ def scan(path: Path) -> VideoInfo:
             index=i,
             codec=s.get("codec_name", "unknown"),
             language=tags.get("language", ""),
+            title=tags.get("title", "") or "",
         ))
 
     # ── Dolby Vision ──────────────────────────────────────────────────────────

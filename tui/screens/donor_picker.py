@@ -175,7 +175,8 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
     #dt-box {
         background: $surface;
         border: solid $accent;
-        width: 84;
+        width: 104;
+        max-width: 96%;
         height: auto;
         max-height: 24;
         padding: 1 2;
@@ -209,10 +210,13 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
+        # Le nom est ce qui distingue six pistes « Français … » : il prend la
+        # place, le codec la rend — « SubRip » n'a jamais eu besoin de 22
+        # colonnes.
         table.add_column("",       width=5,  key="check")
-        table.add_column("Piste",  width=8,  key="tid")
-        table.add_column("Type",   width=12, key="kind")
-        table.add_column("Codec",  width=22, key="codec")
+        table.add_column("Piste",  width=6,  key="tid")
+        table.add_column("Type",   width=11, key="kind")
+        table.add_column("Codec",  width=14, key="codec")
         table.add_column("Langue", width=8,  key="lang")
         table.add_column("Nom",    width=None, key="name")
 
@@ -236,7 +240,7 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
             Text("audio" if t.kind == TrackKind.AUDIO else "sous-titre", style=style),
             Text(t.codec, no_wrap=True, overflow="ellipsis", style=style),
             Text(t.language or "?", style=style),
-            Text(t.track_name or "—", no_wrap=True, overflow="ellipsis", style=style),
+            Text(t.track_name or "—", no_wrap=True, style=style),
         )
 
     def _refresh_row(self, row: int) -> None:

@@ -297,7 +297,12 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                     Text(st.codec,          no_wrap=True, style=style),
                     Text(type_str,          no_wrap=True, style=style),
                     Text(st.language or "?",no_wrap=True, style=style),
-                    Text(reason, style=style),
+                    # Le nom déclaré prime sur la raison : « défaut » et
+                    # « sélectionné » se lisent déjà dans la case cochée,
+                    # tandis que « Français canadien » ne se lit nulle part
+                    # ailleurs.
+                    Text(st.title or reason, overflow="ellipsis",
+                         no_wrap=True, style=style),
                     Text(cont_str, style="green" if sel else "dim"),
                     key=f"s:{st.index}",
                 )

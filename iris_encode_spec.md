@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.3 — document de référence courant
+**Version** : 0.8.2.4 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1672,6 +1672,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.2.4 | 2026-08-28 | **`SubtitleTrack.title`** : le nom déclaré était lu par le scanner puis jeté — six pistes « Français (…) » ne se distinguent que par lui · colonnes élargies (sélecteur du donneur, `Nom` du recalage) et `tronquer_milieu`, qui coupe au milieu parce que le sens est à la fin |
 | 0.8.2.3 | 2026-08-28 | **Le recalage mesuré se reporte seul sur les sous-titres du même donneur** : il fallait le recopier piste par piste avec `c`, une copie sans information dont l'oubli sortait une piste décalée en silence · trois garde-fous — même fichier, jamais une piste déjà décidée, depuis une audio seulement |
 | 0.8.2.2 | 2026-08-28 | **La piste greffée n'était pas celle choisie** sur le chemin de réencodage : le donneur entrant en entier, `-map {n}:s:0` rendait toujours son premier flux — la piste « forced » d'un rip, 23 répliques par épisode. Langue et titre venaient de la bonne piste, d'où une piste nommée correctement et vide à l'écran. Le chemin mkvmerge n'était pas touché, il raisonne en tid |
 | 0.8.2.1 | 2026-08-28 | **Trois défauts de l'assistant** : revenir sur l'étape des langues levait un `IndexError` · un choix révisé ne pouvait que retirer une piste, jamais la rendre · la table perdait le focus, les flèches ne déplaçaient plus le curseur · les cases partent cochées sur ce que la décision garde déjà |

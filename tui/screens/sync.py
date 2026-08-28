@@ -34,7 +34,7 @@ from core.sync import (
     Segment, SyncResult, measure_audio, measure_subtitle, read_cues,
 )
 
-from ..common import footer_line2, raccourcis, touche
+from ..common import footer_line2, raccourcis, touche, tronquer_milieu
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 from .segments import SegmentsScreen
@@ -72,6 +72,10 @@ _NAMES = ["—", "VF", "VOSTFR", "VO", "Forcés", "Commentaires", "SDH"]
 _DELAY_PRESETS = [-5000, -3000, -2000, -1000, -500, -250, 0,
                   250, 500, 1000, 2000, 3000, 5000]
 _BOOLS = ["non", "oui"]
+
+# « Français (France) (forced) » fait 26 caractères : la colonne les tient.
+# En dessous, deux pistes d'un même rip s'affichaient à l'identique.
+_NAME_WIDTH = 26
 
 _DELAY_STEP_MS = 100
 _DELAY_JUMP_MS = 1000
@@ -215,7 +219,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         table.add_column("Décalage",  width=12, key="delay")
         table.add_column("Étirement", width=11, key="stretch")
         table.add_column("Langue",    width=8,  key="lang")
-        table.add_column("Nom",       width=14, key="name")
+        table.add_column("Nom",       width=_NAME_WIDTH, key="name")
         table.add_column("Défaut",    width=8,  key="default")
         table.add_column("Forcé",     width=7,  key="forced")
         table.add_column("Recalage",  width=None, key="origin")
@@ -242,7 +246,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             if not t.language:
                 style = f"{style} bold dark_orange".strip()
         elif field == "name":
-            txt = t.track_name or "—"
+            # Six pistes « Français (…) » ne se distinguent que par leur fin :
+            # une ellipse à droite les rendait toutes identiques.
+            txt = tronquer_milieu(t.track_name or "—", _NAME_WIDTH)
         elif field == "default":
             txt = "oui" if t.is_default else "non"
         else:

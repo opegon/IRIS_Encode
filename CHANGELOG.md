@@ -1,5 +1,34 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.4] — 2026-08-28
+
+### Savoir quelle piste de sous-titres est laquelle
+
+Deux défauts se cumulaient pour rendre six pistes indiscernables.
+
+**Le nom n'était pas lu.** `SubtitleTrack` portait l'index, le codec et la
+langue ; le scanner lisait les tags du flux et jetait le titre. Or « Français
+(France) », « Français (France) (forced) » et « Français (Canada) (SDH) » ont
+le même codec et la même langue : **seul le titre les sépare**. L'assistant
+affichait « — » sur chacune, et l'écran des pistes n'en disait rien.
+
+**Les colonnes tronquaient par la droite**, c'est-à-dire exactement là où se
+trouve ce qui distingue ces noms. La colonne `Nom` du recalage faisait quatorze
+caractères : les trois variantes d'une même région s'y écrivaient toutes
+« Français (Fran… ».
+
+Le titre est désormais lu et affiché — dans l'assistant, sur l'écran des pistes,
+dans le sélecteur du donneur et sur celui du recalage. Les colonnes qui le
+portent ont la largeur d'un nom entier, et `tronquer_milieu` coupe au milieu
+quand la place manque quand même : « França…(forced) » plutôt que
+« Français (Fran… ». La fin l'emporte, parce que c'est elle qui porte le sens.
+
+Le sélecteur du donneur passe de 84 à 104 colonnes ; son champ Codec, qui
+réservait 22 caractères pour écrire « SubRip », les rend au nom.
+
+C'est le défaut de fond derrière le signalement précédent : une piste « forced »
+de vingt-trois répliques greffée à la place de la piste complète de 949.
+
 ## [v0.8.2.3] — 2026-08-28
 
 ### Le recalage mesuré se reporte seul sur les sous-titres

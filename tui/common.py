@@ -106,6 +106,27 @@ DV_VALUE_STYLES: dict[str, str] = {
 
 # ─── Formatage ────────────────────────────────────────────────────────────────
 
+def tronquer_milieu(texte: str, largeur: int) -> str:
+    """Tronque en gardant le début **et** la fin, jamais par la droite seule.
+
+    Ce qui distingue deux pistes est presque toujours à la fin :
+    « Français (France) » et « Français (France) (forced) », « English » et
+    « English [SDH] ». Une ellipse à droite les rend identiques à l'écran —
+    et c'est ainsi qu'on greffe une piste de vingt-trois répliques en croyant
+    prendre la piste complète.
+
+    La fin l'emporte sur le début quand la place est impaire : c'est elle qui
+    porte le sens.
+    """
+    if len(texte) <= largeur:
+        return texte
+    if largeur <= 1:
+        return "…"[:max(largeur, 0)]
+    queue = -(-(largeur - 1) // 2)          # arrondi au-dessus
+    tete  = largeur - 1 - queue
+    return texte[:tete] + "…" + texte[len(texte) - queue:]
+
+
 def fmt_bytes(b: int) -> str:
     if b >= 1_099_511_627_776:
         return f"{b / 1_099_511_627_776:.1f} To"

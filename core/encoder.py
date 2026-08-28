@@ -232,22 +232,31 @@ def build_audio_command(source: Path, output: Path, audio: list,
 def audio_prepass_needed(decision) -> bool:
     """Vrai si l'audio doit être produite **avant** la passe d'encodage.
 
-    Défaut ffmpeg mesuré le 2026-08-28, reproductible : quand la même commande
-    transcode une piste audio **et** recopie un flux de sous-titres dont le
-    premier repère arrive tardivement, la piste transcodée n'est pas écrite.
-    Deux trames sortent, puis plus rien, sans un mot d'erreur — le bilan de
-    ffmpeg ne compte que l'audio recopiée.
+    Défaut ffmpeg mesuré le 2026-08-28, reproductible : quand une même
+    invocation décode une piste audio sans perte **et** mappe un flux de
+    sous-titres dont le premier repère arrive tardivement, la piste transcodée
+    n'est pas écrite. Deux trames sortent, puis plus rien, sans un mot d'erreur
+    et avec un code de retour nul.
 
     Mesuré sur un film dont les sous-titres « forced » n'ouvrent qu'à 6 min 20 :
-    1 875 paquets attendus sur 60 s, **2** produits. Les pistes simplement
-    recopiées survivent, la vidéo aussi. Aucun réglage n'y change rien — ni
-    `max_muxing_queue_size`, ni `max_interleave_delta`, ni `avoid_negative_ts`,
-    ni `copyts`, ni l'ordre des `-map`. Ne mapper que les sous-titres denses
-    suffit à faire disparaître le symptôme, ce qui désigne la cause.
+    1 875 paquets attendus sur 60 s, **2** produits.
 
-    La parade : produire les pistes finales à part, puis les **recopier** dans
-    la passe d'encodage — une copie n'est jamais perdue. C'est ce que fait déjà
-    le retrait du Dolby Vision, pour une autre raison.
+    **C'est la simultanéité, pas la sortie.** Écrire l'audio dans son propre
+    fichier ne la sauve pas ; isoler le sous-titre dans le sien non plus. Il
+    suffit que le sous-titre soit *mappé* quelque part dans l'invocation. En
+    revanche, un sous-titre présent dans l'entrée mais non mappé est sans
+    effet, et un **appel ffmpeg distinct** produit la piste entière.
+
+    Autres facteurs éliminés par mesure : le codec de sortie (l'AC3 meurt comme
+    l'E-AC3), les drapeaux de piste, la recopie contre le réencodage du
+    sous-titre, la durée, l'encodage matériel, et six réglages de muxeur —
+    `max_muxing_queue_size`, `max_interleave_delta`, `avoid_negative_ts`,
+    `copyts`, `muxdelay`, l'ordre des `-map`. Transcoder l'AC3 de la même
+    source, au lieu du TrueHD, sort indemne.
+
+    La parade est donc nécessairement un **processus séparé** : aucune
+    disposition des sorties n'y suffit. C'est ce que fait déjà le retrait du
+    Dolby Vision, pour une autre raison.
 
     On ne la paie que lorsque les deux conditions sont réunies.
     """

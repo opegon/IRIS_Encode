@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.7] — 2026-08-28
+
+### Le défaut d'audio tient à la simultanéité, pas à la sortie
+
+La v0.8.2.6 décrivait le défaut comme « transcoder une piste audio **et
+recopier** un sous-titre » — ce qui laissait croire que le partage d'un même
+fichier de sortie était en cause. La mesure dit autre chose :
+
+| Disposition | Paquets audio sur 60 s |
+|---|---|
+| une seule sortie, tout ensemble | 2 |
+| deux sorties, l'audio seule dans la sienne | 2 |
+| deux sorties, le sous-titre seul dans la sienne | 2 |
+| sous-titre présent dans l'entrée, **non mappé** | 1 875 |
+| **appel ffmpeg distinct** | 1 875 |
+
+Il suffit que le sous-titre soit **mappé** quelque part dans l'invocation. Le
+muxeur est hors de cause : aucune disposition des sorties ne sauve la piste,
+seul un processus séparé le fait — ce que la parade fait déjà.
+
+Deux facteurs de plus éliminés au passage : transcoder l'AC3 de la même source
+au lieu du TrueHD sort indemne, et un sous-titre laissé dans l'entrée sans être
+mappé est sans effet.
+
+Aucun changement de comportement : la parade était juste, et pour la bonne
+raison. Seule sa description l'était à moitié.
+
 ## [v0.8.2.6] — 2026-08-28
 
 ### Une piste audio transcodée pouvait disparaître sans un mot

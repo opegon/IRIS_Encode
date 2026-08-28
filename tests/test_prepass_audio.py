@@ -2,10 +2,10 @@
 tests/test_prepass_audio.py — Une piste audio transcodée disparaissait en silence.
 
 Défaut ffmpeg mesuré le 2026-08-28, et **reproductible** : quand une même
-commande transcode une piste audio *et* recopie un flux de sous-titres dont le
-premier repère arrive tardivement, la piste transcodée n'est pas écrite. Deux
-trames sortent, puis plus rien. Aucune erreur, aucun code de retour non nul —
-le bilan de ffmpeg ne compte que l'audio recopiée.
+invocation décode une piste audio sans perte *et* mappe un flux de sous-titres
+dont le premier repère arrive tardivement, la piste transcodée n'est pas
+écrite. Deux trames sortent, puis plus rien. Aucune erreur, aucun code de
+retour non nul.
 
 Mesuré sur un film dont les sous-titres « forced » n'ouvrent qu'à 6 min 20 :
 
@@ -15,10 +15,16 @@ Mesuré sur un film dont les sous-titres « forced » n'ouvrent qu'à 6 min 20 :
 | les denses seules (premier repère à 23 s) | 1 875 — correct |
 | la seule piste « forced » (premier repère à 380 s) | **2** |
 
+**C'est la simultanéité, pas la sortie.** Une seule invocation, deux fichiers
+de sortie : l'audio dans le sien meurt quand même. Le sous-titre isolé dans le
+sien ne la sauve pas davantage. Il suffit qu'il soit *mappé*. Non mappé, il est
+sans effet ; dans un appel ffmpeg distinct, la piste sort entière.
+
 Ni `max_muxing_queue_size`, ni `max_interleave_delta`, ni `avoid_negative_ts`,
-ni `copyts`, ni l'ordre des `-map` n'y changent quoi que ce soit. Le défaut ne
-dépend pas du codec — l'AC3 meurt comme l'E-AC3 — ni de la durée : il se
-reproduit sur soixante secondes.
+ni `copyts`, ni `muxdelay`, ni l'ordre des `-map` n'y changent quoi que ce soit.
+Le défaut ne dépend pas du codec de sortie — l'AC3 meurt comme l'E-AC3 — ni de
+la durée : il se reproduit sur soixante secondes. Transcoder l'AC3 de la même
+source, au lieu du TrueHD, sort indemne.
 
 C'est la cause des entrées IE-12 et IE-16, closes faute d'explication : le
 fichier « mal entrelacé » n'avait tout simplement pas de piste anglaise.

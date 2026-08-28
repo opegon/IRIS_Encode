@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.6 — document de référence courant
+**Version** : 0.8.2.7 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -916,14 +916,29 @@ l'opération est refusée en amont plutôt que d'échouer en cours d'encodage.
 | **SDR tone map** | `dv_action == SDR` | nvenc / libx265 (CPU) | Filtre `zscale+tonemap`, pas de hwaccel |
 | **Standard** | Tous autres cas | nvenc / libx265 / libx264 / av1_nvenc | hwaccel si disponible |
 
-**Passe audio préalable.** Quand une commande transcode une piste audio *et*
-recopie un flux de sous-titres dont le premier repère arrive tardivement,
-ffmpeg n'écrit pas la piste transcodée : deux trames sortent, puis plus rien,
-sans erreur ni code de retour non nul. Mesuré et reproductible sur soixante
-secondes ; indépendant du codec audio et de la durée ; insensible à
-`max_muxing_queue_size`, `max_interleave_delta`, `avoid_negative_ts`, `copyts`
-et à l'ordre des `-map`. Ne mapper que les sous-titres denses fait disparaître
-le symptôme, ce qui désigne la cause.
+**Passe audio préalable.** Quand une invocation ffmpeg décode une piste audio
+sans perte *et* mappe un flux de sous-titres dont le premier repère arrive
+tardivement, la piste transcodée n'est pas écrite : deux trames sortent, puis
+plus rien, sans erreur ni code de retour non nul. Mesuré et reproductible sur
+soixante secondes.
+
+**C'est la simultanéité, pas la sortie** — le tableau ci-dessous le tranche :
+
+| Disposition | Paquets audio sur 60 s |
+|---|---|
+| une seule sortie, tout ensemble | 2 |
+| deux sorties, l'audio seule dans la sienne | 2 |
+| deux sorties, le sous-titre seul dans la sienne | 2 |
+| sous-titre présent dans l'entrée, **non mappé** | 1 875 |
+| **appel ffmpeg distinct** | 1 875 |
+
+Aucune disposition des sorties ne sauve la piste : seul un processus séparé le
+fait. Facteurs éliminés par mesure — le codec de sortie (l'AC3 meurt comme
+l'E-AC3), la durée, l'encodage matériel, les drapeaux de piste, et six réglages
+de muxeur (`max_muxing_queue_size`, `max_interleave_delta`,
+`avoid_negative_ts`, `copyts`, `muxdelay`, l'ordre des `-map`). Transcoder
+l'AC3 de la même source au lieu du TrueHD sort indemne, et ne mapper que les
+sous-titres denses aussi.
 
 `encoder.audio_prepass_needed()` détecte la conjonction ; les pistes finales
 sont alors produites par `build_audio_command()` puis **recopiées** dans la
@@ -1704,6 +1719,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.2.7 | 2026-08-28 | **Le défaut d'IE-22 tient à la simultanéité, pas à la sortie** : séparer les fichiers de sortie ne sauve pas la piste, il suffit que le sous-titre soit *mappé* dans l'invocation. Seul un processus distinct protège — ce que fait la parade. Caractérisation corrigée dans la spec, le code et les tests |
 | 0.8.2.6 | 2026-08-28 | **Une piste audio transcodée disparaissait en silence** quand la même commande recopiait un sous-titre au premier repère tardif — deux trames produites au lieu de 1 875. Cause d'IE-12 et IE-16, closes faute d'explication : le fichier « mal entrelacé » n'avait pas de piste anglaise. Passe audio préalable, payée seulement quand les deux conditions sont réunies |
 | 0.8.2.5 | 2026-08-28 | **IE-17 clos par la mesure** : le mode « HDR10 quality » (libx265) garde `-maxrate` égal à la cible, et c'est le bon réglage — 99,9 % du débit visé, contre 93,6 % avec la marge appliquée à NVENC. Les deux encodeurs veulent des réglages opposés · `tests/test_x265_debit.py` fait échouer une harmonisation |
 | 0.8.2.4 | 2026-08-28 | **`SubtitleTrack.title`** : le nom déclaré était lu par le scanner puis jeté — six pistes « Français (…) » ne se distinguent que par lui · colonnes élargies (sélecteur du donneur, `Nom` du recalage) et `tronquer_milieu`, qui coupe au milieu parce que le sens est à la fin |

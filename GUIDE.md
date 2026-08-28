@@ -106,6 +106,15 @@ ses pistes dans ce fichier. Le fichier de travail est exclu de la liste.
 `↵` choisit, `Esc` annule. Plusieurs donneurs s'enchaînent sans quitter
 l'écran suivant.
 
+**Lisez la colonne Nom jusqu'au bout.** Un rip livre couramment six pistes
+françaises : France et Canada, chacune en normal, `(forced)` et `(SDH)`. Elles
+ont le même codec et la même langue — **le nom est la seule chose qui les
+sépare**, et il est affiché en entier.
+
+Une piste `(forced)` ne contient que les répliques en langue étrangère :
+vingt-trois sur un épisode. Choisie par erreur, elle apparaît dans le lecteur
+et n'affiche presque jamais rien. C'est en général la **première** de la liste.
+
 ### 2.4 Recalage — l'écran qui demande le plus d'attention
 
 Une ligne par piste greffée. Les champs se parcourent avec `←/→`, les valeurs

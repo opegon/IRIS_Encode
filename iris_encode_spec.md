@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.1.24 — document de référence courant
+**Version** : 0.8.1.25 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -338,8 +338,28 @@ recalculée, et le HDR10+ éventuel survit, ce qu'aucun réencodage ne permet.
 ```
 1. ffmpeg    : extrait le flux HEVC brut     (source     → *.iris_bl.hevc)
 2. dovi_tool : remove                        (*.iris_bl  → *.iris_nodv.hevc)
-3. mkvmerge  : remux avec les pistes source  (→ <nom>_[hdr10].mkv)
+3. ffmpeg    : pistes audio finales          (source     → *.iris_audio.mka)
+4. mkvmerge  : remux                         (→ <nom>_[hdr10].mkv)
 ```
+
+**La décision audio s'applique ici aussi.** Ce chemin ne portait que la vidéo :
+mkvmerge recopiait les pistes de la source en bloc, quoi qu'ait annoncé l'écran
+— un TrueHD annoncé « → E-AC3 » sortait en TrueHD, sous son ancien titre. Ce que
+chaque opération coûte n'est pas le même, et le chemin le reflète :
+
+| Opération | Comment |
+|---|---|
+| Exclure une piste par langue | `--audio-tracks` sur la commande existante, aucune passe |
+| Écarter des sous-titres | `--subtitle-tracks`, aucune passe |
+| Transcoder (TrueHD/DTS → E-AC3) | étape 3, puis `--no-audio` sur la source |
+| Retitrer une piste transcodée | `-metadata` de l'étape 3 |
+
+L'étape 3 n'existe **que** si une piste est à transcoder : mkvmerge sait ne pas
+prendre une piste, et recopier des gigaoctets pour en écarter une serait absurde.
+Elle produit toutes les pistes finales — les recopies comprises, pour que leur
+ordre et leurs métadonnées ne dépendent pas de deux entrées différentes. En MP4,
+il n'y a jamais d'étape 3 : ffmpeg recompose déjà le fichier et transcode dans
+la même passe.
 
 Mesuré sur un film 4K de 5,7 Go (2 h 24) : **2 min 16 s** au total, sortie
 bit à bit identique à la source (`framemd5`). Le même fichier réencodé en
@@ -1605,6 +1625,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.1.25 | 2026-08-28 | **La décision audio s'applique au retrait du Dolby Vision** (§ 7.3) : le chemin ne portait que la vidéo, un TrueHD annoncé « → E-AC3 » sortait en TrueHD sous son ancien titre · transcodage en étape 3 puis `--no-audio` sur la source ; exclusion de piste et de sous-titre par options mkvmerge, sans passe · le MP4 transcode dans sa passe ffmpeg existante |
 | 0.8.1.24 | 2026-08-28 | **Le débit demandé redevient une cible** : `-rc cbr` avec `-maxrate` égal à `-b:v` en faisait un plafond que seules les pertes pouvaient déplacer · VBR avec 50 % de marge, tampon doublé — 92 % → 99 % du débit demandé sur un film en prises de vues réelles · le retrait sur contenu facile (animation, 10 bits) n'est pas un défaut : mesuré plus fidèle qu'un 8 bits consommant 62 % de bits en plus |
 | 0.8.1.23 | 2026-08-28 | **Sortie des outils lue en UTF-8** : `text=True` laissait Python décoder ffprobe en cp1252 ; un tag contenant « ❤️ » tuait le thread de lecture, `stdout` valait `None` et le fichier disparaissait de la liste sans message · six appels corrigés (`scanner`, `encoder`, `muxer` ×2, `preflight`, `sync`) |
 | 0.8.1.22 | 2026-08-28 | **L'AV1 était cassé sur toute machine** : `-profile:v` passé à `av1_nvenc`, qui n'a pas cette option · capacités d'encodage sondées au lancement, option conservée mais annotée, refus qui nomme la cause · diagnostic des échecs ffmpeg |

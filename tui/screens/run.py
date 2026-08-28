@@ -15,9 +15,10 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Header, Label, ProgressBar, Static
 
-from core.decision import FileDecision, VideoAction
+from core.decision import AudioAction, FileDecision, VideoAction
 from core.encoder import (
-    EncoderProcess, build_command, diagnostiquer, encodeur_de,
+    EncoderProcess, audio_pass_needed, build_audio_command, build_command,
+    diagnostiquer, encodeur_de,
 )
 from core.muxer import (
     MuxProcess, build_mux_command, build_strip_command, needs_premux,
@@ -419,17 +420,25 @@ class RunScreen(TableNavMixin, Screen):
         # 30 Go de flux brut n'ont pas leur place sur le disque du système.
         brut = source.with_name(f"{source.stem}.iris_bl.hevc")
         nodv = source.with_name(f"{source.stem}.iris_nodv.hevc")
+        # Les pistes audio finales, quand la décision demande un transcodage.
+        # mkvmerge ne sait que recopier : sans ce fichier, le TrueHD annoncé
+        # « → E-AC3 » sortait en TrueHD.
+        mka  = source.with_name(f"{source.stem}.iris_audio.mka")
+        # Le MP4 est recomposé par ffmpeg, qui transcode dans la même passe.
+        passe_audio = (dec.output_container != ".mp4"
+                       and audio_pass_needed(dec.audio))
+        n_etapes = 4 if passe_audio else 3
         s.percent = -1
 
         try:
-            # 1/3 — extraction du flux HEVC (copie)
+            # 1/N — extraction du flux HEVC (copie)
             cmd = dovi.build_extract_hevc_command(
                 source, brut, getattr(self.app, "ffmpeg_path", "ffmpeg"),
                 quiet=False)
             self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
             self.app.call_from_thread(
                 self._update_ffmpeg_line,
-                "▶ 1/3 Extraction du flux HEVC — copie, sans réencodage…")
+                f"▶ 1/{n_etapes} Extraction du flux HEVC — copie, sans réencodage…")
             self.app.call_from_thread(self._update_row, index)
 
             proc = EncoderProcess(cmd, dec.info.duration)
@@ -451,13 +460,13 @@ class RunScreen(TableNavMixin, Screen):
                         f"L'extraction du flux HEVC a échoué (code {code}).")
                 return
 
-            # 2/3 — retrait du RPU
+            # 2/N — retrait du RPU
             self.app.call_from_thread(
                 self._update_cmd_lines,
                 f"{dovi_path} remove -i {brut.name} -o {nodv.name}")
             self.app.call_from_thread(
                 self._update_ffmpeg_line,
-                "▶ 2/3 Retrait du RPU Dolby Vision par dovi_tool…")
+                f"▶ 2/{n_etapes} Retrait du RPU Dolby Vision par dovi_tool…")
             s.percent = -1
             self.app.call_from_thread(self._update_row, index)
 
@@ -466,7 +475,37 @@ class RunScreen(TableNavMixin, Screen):
                         "dovi_tool n'a pas pu retirer le RPU du flux.")
                 return
 
-            # 3/3 — remux avec les pistes de la source. mkvmerge ne sait
+            # 3/4 — pistes audio finales, quand la décision en transcode une.
+            if passe_audio:
+                cmd = build_audio_command(
+                    source, mka, dec.audio,
+                    getattr(self.app, "ffmpeg_path", "ffmpeg"))
+                self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+                self.app.call_from_thread(
+                    self._update_ffmpeg_line,
+                    "▶ 3/4 Transcodage des pistes audio…")
+                s.percent = -1
+                self.app.call_from_thread(self._update_row, index)
+
+                proc = EncoderProcess(cmd, dec.info.duration)
+                self._process = proc
+                proc.start()
+                for ligne, progress in proc.iter_progress():
+                    s.last_line = ligne
+                    if progress:
+                        s.percent = progress.percent
+                        self.app.call_from_thread(self._update_row, index)
+                code = proc.wait()
+                self._process = None
+
+                if s.state == FileState.SKIPPED:
+                    return
+                if code != 0 or not mka.exists():
+                    echouer(f"transcodage audio : code {code}",
+                            f"Le transcodage des pistes audio a échoué (code {code}).")
+                    return
+
+            # N/N — remux avec les pistes de la source. mkvmerge ne sait
             # écrire que du Matroska : quand le profil demande du MP4, c'est
             # ffmpeg qui recompose.
             if dec.output_container == ".mp4":
@@ -474,11 +513,12 @@ class RunScreen(TableNavMixin, Screen):
                     nodv, source, sortie,
                     fps=dec.info.frame_rate,
                     sous_titres=[st.index for st in dec.subtitles_finales],
-                    ffmpeg_path=getattr(self.app, "ffmpeg_path", "ffmpeg"))
+                    ffmpeg_path=getattr(self.app, "ffmpeg_path", "ffmpeg"),
+                    audio=dec.audio)
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
-                    "▶ 3/3 Remux des pistes par ffmpeg…")
+                    f"▶ {n_etapes}/{n_etapes} Remux des pistes par ffmpeg…")
                 proc = EncoderProcess(cmd, dec.info.duration)
                 self._process = proc
                 proc.start()
@@ -491,13 +531,21 @@ class RunScreen(TableNavMixin, Screen):
                 self._process = None
                 erreurs: list[str] = []
             else:
-                cmd = build_strip_command(nodv, source, sortie,
-                                          fps=dec.info.frame_rate,
-                                          tracks=dec.external_tracks)
+                exclues = [ad for ad in dec.audio
+                           if ad.action == AudioAction.EXCLUDE]
+                cmd = build_strip_command(
+                    nodv, source, sortie,
+                    fps=dec.info.frame_rate,
+                    tracks=dec.external_tracks,
+                    audio_source=mka if passe_audio else None,
+                    audio_indices=([ad.track.index for ad in dec.audio
+                                    if ad.action != AudioAction.EXCLUDE]
+                                   if exclues and not passe_audio else None),
+                    sous_titres=[st.index for st in dec.subtitles_finales])
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
-                    "▶ 3/3 Remux des pistes par mkvmerge…")
+                    f"▶ {n_etapes}/{n_etapes} Remux des pistes par mkvmerge…")
 
                 mux = MuxProcess(cmd)
                 mux.start()
@@ -536,7 +584,7 @@ class RunScreen(TableNavMixin, Screen):
             self._process = None
             # Les deux flux bruts pèsent chacun le poids du film : les laisser
             # traîner remplirait le disque, que l'opération ait abouti ou non.
-            for tmp in (brut, nodv):
+            for tmp in (brut, nodv, mka):
                 try:
                     if tmp.exists():
                         tmp.unlink()

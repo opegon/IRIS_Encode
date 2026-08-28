@@ -1,5 +1,29 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.25] — 2026-08-28
+
+### La décision audio survit au retrait du Dolby Vision
+
+L'écran annonçait `→ eac3 3501k` et le titre corrigé `ENG VO : E-AC3 5.1` ; la
+sortie contenait un TrueHD inchangé, sous son ancien titre. Le retrait du DV
+remuxait par `mkvmerge -o <sortie> <video_nodv> --no-video <source>` : aucune
+décision audio ne lui était transmise. Transcodage, exclusion d'une piste par
+langue et retitrage étaient perdus, en MKV comme en MP4.
+
+Les quatre opérations n'ont pas le même prix, et le chemin le reflète
+désormais. Exclure une piste audio ou un sous-titre passe par des options de la
+commande mkvmerge existante — aucune étape, aucun octet recopié. Seul le
+transcodage coûte une passe : une étape 3 produit les pistes finales dans un
+Matroska audio, que le remux prend comme seconde entrée. Elle n'existe que
+lorsqu'une piste est réellement à transcoder. En MP4, il n'y a jamais d'étape
+supplémentaire : ffmpeg recompose déjà le fichier et transcode au passage.
+
+Vérifié sur un extrait de 60 s de `Watchmen` 2160p DV P8.1, profil
+`cinema_4k_basic` : ce que l'écran annonce et ce que `ffprobe` lit dans la
+sortie coïncident piste par piste, titres compris — `ac3 6ch fre « FR VFF :
+AC3 5.1 »` recopié, `eac3 6ch eng 3501k « ENG VO : E-AC3 5.1 »` transcodé, six
+sous-titres conservés, RPU Dolby Vision absent, transfert `smpte2084` intact.
+
 ## [v0.8.1.24] — 2026-08-28
 
 ### Le débit demandé redevient une cible, et non un plafond

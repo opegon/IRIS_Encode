@@ -105,7 +105,8 @@ def build_extract_hevc_command(input_path: Path, output_hevc: Path,
 
 def build_strip_remux_mp4(video: Path, source: Path, output: Path,
                           fps: str, sous_titres: list[int],
-                          ffmpeg_path: str = "ffmpeg") -> list[str]:
+                          ffmpeg_path: str = "ffmpeg",
+                          audio: list | None = None) -> list[str]:
     """Remux du flux dépouillé et des pistes de la source, vers du MP4.
 
     mkvmerge ne sait écrire que du Matroska : quand le profil demande du MP4,
@@ -115,15 +116,29 @@ def build_strip_remux_mp4(video: Path, source: Path, output: Path,
     Les sous-titres SubRip deviennent du `mov_text` ; les sous-titres image
     n'entrent pas dans un MP4 et sont exclus en amont par la décision — s'ils
     étaient les seuls, c'est le conteneur qui aurait cédé.
+
+    `audio` porte la décision piste par piste. Absente, l'audio de la source
+    est recopiée en bloc — ce que ce chemin faisait toujours, quoi qu'ait
+    annoncé l'écran. Ici ffmpeg recompose déjà le fichier : appliquer la
+    décision ne coûte aucune étape de plus.
     """
+    from .decision import AudioAction
+    from .encoder import audio_args
     cmd = [ffmpeg_path, "-y", "-loglevel", "error"]
     if fps:
         cmd += ["-r", fps]
-    cmd += ["-i", str(video), "-i", str(source),
-            "-map", "0:v:0", "-map", "1:a?"]
+    cmd += ["-i", str(video), "-i", str(source), "-map", "0:v:0"]
+    gardees = [ad for ad in (audio or []) if ad.action != AudioAction.EXCLUDE]
+    if audio is None:
+        cmd += ["-map", "1:a?"]
+    else:
+        for ad in gardees:
+            cmd += ["-map", f"1:a:{ad.track.index}"]
     for index in sous_titres:
         cmd += ["-map", f"1:s:{index}"]
     cmd += ["-c", "copy"]
+    # `-c copy` vaut pour tout ; les options par piste, plus précises, gagnent.
+    cmd += audio_args(gardees)
     if sous_titres:
         cmd += ["-c:s", "mov_text"]
     # Un flux HEVC brut réordonné donne des DTS négatifs sur ses premières

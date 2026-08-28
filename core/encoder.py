@@ -207,6 +207,68 @@ def diagnostiquer(lignes: list[str]) -> Optional[str]:
 
 # ─── Construction commande ────────────────────────────────────────────────────
 
+def build_audio_command(source: Path, output: Path, audio: list,
+                        ffmpeg_path: str = "ffmpeg") -> list[str]:
+    """Reconstruit les pistes audio d'un fichier, sans toucher à la vidéo.
+
+    Le retrait du Dolby Vision remuxe un flux HEVC intact : mkvmerge y recopie
+    les pistes de la source telles quelles, et ne sait ni transcoder ni
+    retitrer. Les pistes finales sont donc produites à part, dans un Matroska
+    audio que le remux prend comme seconde entrée.
+
+    Les pistes déjà au bon format sont recopiées, pas réencodées — l'étape ne
+    coûte que ce que la décision demande vraiment.
+    """
+    gardees = [ad for ad in audio if ad.action != AudioAction.EXCLUDE]
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(source),
+           "-vn", "-sn", "-dn"]
+    for ad in gardees:
+        cmd += ["-map", f"0:a:{ad.track.index}"]
+    cmd += audio_args(gardees)
+    cmd += [str(output)]
+    return cmd
+
+
+def audio_pass_needed(audio: list) -> bool:
+    """Vrai si la décision audio demande autre chose qu'une recopie à l'identique.
+
+    Une exclusion seule ne justifie pas cette passe : mkvmerge sait ne pas
+    prendre une piste. Un transcodage, si — et il entraîne avec lui le
+    retitrage, qui n'a de sens que sur la piste transcodée.
+    """
+    return any(ad.action == AudioAction.TRANSCODE for ad in audio)
+
+
+def audio_args(included_audio: list) -> list[str]:
+    """Arguments ffmpeg des pistes audio retenues, dans leur ordre de sortie.
+
+    Partagé par l'encodage et par le chemin de retrait du Dolby Vision, qui
+    doit produire exactement les mêmes pistes sans toucher à la vidéo.
+    """
+    args: list[str] = []
+    for out_i, ad in enumerate(included_audio):
+        if ad.action == AudioAction.COPY:
+            args += [f"-c:a:{out_i}", "copy"]
+            continue
+        args += [
+            f"-c:a:{out_i}", ad.output_codec,
+            f"-b:a:{out_i}", str(ad.output_bitrate),
+        ]
+        # ffmpeg replierait le 7.1 de lui-même, l'encodeur ac3/eac3 ne
+        # connaissant que jusqu'au 5.1 ; l'écrire rend la commande
+        # affichée conforme à ce qui sort.
+        if ad.output_channels:
+            args += [f"-ac:a:{out_i}", str(ad.output_channels)]
+        if ad.output_codec == "aac":
+            args += [f"-ar:{out_i}", "48000"]
+        # Le titre de piste survit au transcodage : sans réécriture, un
+        # « TrueHD 5.1 » resterait affiché sur une piste E-AC3.
+        titre = ad.output_title
+        if titre:
+            args += [f"-metadata:s:a:{out_i}", f"title={titre}"]
+    return args
+
+
 def build_command(
     decision: FileDecision,
     platform: PlatformProfile,
@@ -408,26 +470,7 @@ def build_command(
         cmd += ["-map", f"{n}:{stream}:0"]
 
     # ── Encodage audio ────────────────────────────────────────────────────────
-    for out_i, ad in enumerate(included_audio):
-        if ad.action == AudioAction.COPY:
-            cmd += [f"-c:a:{out_i}", "copy"]
-        else:
-            cmd += [
-                f"-c:a:{out_i}", ad.output_codec,
-                f"-b:a:{out_i}", str(ad.output_bitrate),
-            ]
-            # ffmpeg replierait le 7.1 de lui-même, l'encodeur ac3/eac3 ne
-            # connaissant que jusqu'au 5.1 ; l'écrire rend la commande
-            # affichée conforme à ce qui sort.
-            if ad.output_channels:
-                cmd += [f"-ac:a:{out_i}", str(ad.output_channels)]
-            if ad.output_codec == "aac":
-                cmd += [f"-ar:{out_i}", "48000"]
-            # Le titre de piste survit au transcodage : sans réécriture, un
-            # « TrueHD 5.1 » resterait affiché sur une piste E-AC3.
-            titre = ad.output_title
-            if titre:
-                cmd += [f"-metadata:s:a:{out_i}", f"title={titre}"]
+    cmd += audio_args(included_audio)
 
     # ── Pistes externes : copie, langue, nom, drapeaux ────────────────────────
     ext_audio = [t for t in ext_tracks if t.kind == TrackKind.AUDIO]

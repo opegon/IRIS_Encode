@@ -188,6 +188,19 @@ def ffmpeg_stream_index(path: Path, tid: int, kind: TrackKind) -> int:
     return 0
 
 
+def mkvmerge_tid(path: Path, index: int, kind: TrackKind) -> int:
+    """Traduit un index ffmpeg par type (`0:s:N`) en tid mkvmerge.
+
+    Réciproque de `ffmpeg_stream_index`. Les décisions manipulent des index
+    par type, hérités de ffprobe ; mkvmerge numérote globalement. Voir
+    l'avertissement en tête de module.
+    """
+    same_kind = [t for t in identify(path) if t.kind == kind]
+    if 0 <= index < len(same_kind):
+        return same_kind[index].tid
+    return index
+
+
 # ─── Construction de la commande ──────────────────────────────────────────────
 
 def _sync_arg(t: ExternalTrack) -> str:
@@ -284,6 +297,9 @@ def build_strip_command(
     output:  Path,
     fps:     str = "",
     tracks:  list[ExternalTrack] | None = None,
+    audio_source:    Path | None      = None,
+    audio_indices:   list[int] | None = None,
+    sous_titres:     list[int] | None = None,
 ) -> list[str]:
     """
     Remuxe le flux HEVC `video` (RPU retiré) avec les pistes de `source`.
@@ -291,6 +307,16 @@ def build_strip_command(
     Un flux HEVC brut ne porte aucun horodatage : sans `fps`, mkvmerge se
     rabat sur ce qu'annonce le VUI du flux, qui peut manquer. On lui donne la
     cadence lue sur la source — sinon la vidéo dérive de l'audio.
+
+    La décision ne portait ici que sur la vidéo : l'audio et les sous-titres
+    de la source étaient recopiés en bloc, quoi qu'ait annoncé l'écran.
+
+    - `audio_source` : Matroska audio produit à part (voir
+      `encoder.build_audio_command`). Présent, il remplace entièrement l'audio
+      de la source — c'est le cas dès qu'une piste est transcodée.
+    - `audio_indices` : index ffmpeg des pistes de la source à garder, quand
+      il n'y a rien à transcoder mais des pistes à écarter.
+    - `sous_titres` : index ffmpeg des sous-titres à garder. `None` = tous.
     """
     if output.resolve() == source.resolve():
         raise ValueError(
@@ -305,7 +331,24 @@ def build_strip_command(
         num, _, den = fps.partition("/")
         cmd += ["--default-duration",
                 f"0:{num}p" if den in ("", "1") else f"0:{fps}p"]
-    cmd += [str(video), "--no-video", str(source)]
+    cmd += [str(video), "--no-video"]
+
+    if audio_source is not None:
+        cmd += ["--no-audio"]
+    elif audio_indices is not None:
+        tids = [str(mkvmerge_tid(source, i, TrackKind.AUDIO)) for i in audio_indices]
+        cmd += ["--audio-tracks", ",".join(tids)] if tids else ["--no-audio"]
+
+    if sous_titres is not None:
+        tids = [str(mkvmerge_tid(source, i, TrackKind.SUBTITLE)) for i in sous_titres]
+        cmd += ["--subtitle-tracks", ",".join(tids)] if tids else ["--no-subtitles"]
+
+    cmd += [str(source)]
+
+    if audio_source is not None:
+        cmd += ["--no-video", "--no-chapters", "--no-global-tags", "--no-subtitles",
+                str(audio_source)]
+
     cmd += _donor_args(tracks or [])
     return cmd
 

@@ -282,6 +282,15 @@ class ProfileForm(Widget):
                 yield Checkbox("copier AAC / AC3 / E-AC3 sans transcoder",
                                id="field-copy-compat")
 
+        # Les sous-titres ont leur propre liste : un rip streaming en embarque
+        # quarante, et vouloir deux langues audio ne veut pas dire vouloir les
+        # mêmes en sous-titres. Vide = toutes, comme avant l'existence de la clé.
+        with Widget(classes="form-row"):
+            with Widget(classes="form-cell"):
+                yield Label("Langues sous-titres", classes="form-lbl")
+                yield Input(placeholder="fre, eng — vide : toutes",
+                            id="field-sublangs", classes="form-ctrl")
+
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
                 yield Label("Stéréo kbps", classes="form-lbl")
@@ -470,6 +479,8 @@ class ProfileForm(Widget):
         _set_chk("#field-delsrc", data.get("delete_source",          False))
         _set_inp("#field-langs",
                  ", ".join(data.get("audio_languages", ["fre", "eng"])))
+        _set_inp("#field-sublangs",
+                 ", ".join(data.get("subtitle_languages") or []))
         _set_sel("#field-stereo", data.get("audio_stereo_kbps",        192))
         _set_sel("#field-51",     data.get("audio_surround_kbps",      448))
         _set_sel("#field-71",     data.get("audio_surround_7_1_kbps",  640))
@@ -509,6 +520,10 @@ class ProfileForm(Widget):
         langs = [l.strip() for l in langs_raw.replace(";", ",").split(",") if l.strip()]
         if not langs:
             langs = ["fre", "eng"]
+        # Vide = aucun filtre, c'est-à-dire le comportement d'avant la clé.
+        sub_raw   = _g_inp("#field-sublangs", "")
+        sub_langs = [l.strip() for l in sub_raw.replace(";", ",").split(",")
+                     if l.strip()]
 
         return {
             "bitrate_720p_kbps":       _g_sel("#field-720p",   1500),
@@ -520,6 +535,7 @@ class ProfileForm(Widget):
             "keep_4k":                 _g_chk("#field-keep4k"),
             "delete_source":           _g_chk("#field-delsrc"),
             "audio_languages":         langs,
+            "subtitle_languages":      sub_langs,
             "audio_stereo_kbps":       _g_sel("#field-stereo",  192),
             "audio_surround_kbps":     _g_sel("#field-51",      448),
             "audio_surround_7_1_kbps": _g_sel("#field-71",      640),

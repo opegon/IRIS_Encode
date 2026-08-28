@@ -35,8 +35,12 @@ une passe. Voir § 4.6 pour la seule exception.
 ## 1bis. L'assistant
 
 L'application s'ouvre en **mode assistant** : un fichier à la fois, cinq étapes,
-`↵` pour avancer et `⌫` pour revenir. La barre de profil dit toujours dans quel
-mode vous êtes, parce que le mode change ce que fait `↵` sur un fichier.
+`↵` pour avancer et `⌫` pour revenir.
+
+Le mode se lit à trois endroits, parce qu'il change ce que fait `↵` sur un
+fichier : la barre de profil (`[W] Assistant`), le libellé de la touche `W` dans
+le pied de page, et **la couleur de ce pied de page** — le mode manuel garde le
+bleu habituel, l'assistant prend l'accent du thème.
 
 `W` bascule entre assistant et parcours libre. Le choix tient pour la session.
 
@@ -56,7 +60,7 @@ venus du même fichier. Vous n'avez rien à lancer.
 
 Si la mesure échoue — montage différent, piste trop courte — le décalage reste à
 zéro et l'assistant le dit. Passez alors par le parcours libre (`W`), où l'écran
-de recalage offre `S`, `P` et `C` (§ 4.5).
+de recalage offre `S`, `P`, `C` (§ 4.5) et le point de repère `R` (§ 4.5bis).
 
 **En mode manuel**, `↵` sur un fichier ouvre l'écran des pistes, et le parcours
 reste celui décrit ci-dessous.
@@ -72,11 +76,12 @@ d'après le profil actif.
 
 | Touche | Action |
 |---|---|
-| `↵` | Ouvrir le dossier |
+| `↵` | Sur un dossier : l'ouvrir. Sur un fichier : **ouvrir l'assistant**, ou l'écran des pistes en mode manuel |
+| `W` | Basculer **assistant / manuel** — change ce que fait `↵` sur un fichier |
 | `⌫` | Remonter |
 | `Espace` | Cocher / décocher le fichier |
 | `A` / `N` | Tout cocher / tout décocher |
-| `T` | Écran des pistes du fichier sous le curseur |
+| `T` | Écran des pistes du fichier sous le curseur, quel que soit le mode |
 | `V` | Ouvrir dans mpv |
 | `Ctrl+D` | **Supprimer définitivement** le fichier (confirmation, pas de corbeille) |
 | `F1` / `F2` | Dry-run / Encoder la sélection |
@@ -103,6 +108,7 @@ ligne vidéo en tête.
 | `F8` | Supprimer ou garder le fichier source après encodage |
 | `F9` | **Greffer une piste externe** — mène au choix du donneur |
 | `F4` | Changer de profil |
+| `F1` / `F2` | Dry-run / Encoder ce seul fichier, sans repasser par la liste |
 
 Écarter tous les sous-titres image (PGS, VobSub) libère le conteneur MP4 ;
 en garder un impose le MKV.
@@ -112,8 +118,9 @@ en garder un impose le MKV.
 Après `F9`. On choisit d'abord le fichier qui porte la piste à greffer, puis
 ses pistes dans ce fichier. Le fichier de travail est exclu de la liste.
 
-`↵` choisit, `Esc` annule. Plusieurs donneurs s'enchaînent sans quitter
-l'écran suivant.
+`↵` choisit le fichier, puis `Espace` coche les pistes à greffer et `↵` valide.
+`Esc` annule. Une piste seule est présélectionnée. Plusieurs donneurs
+s'enchaînent sans quitter l'écran suivant.
 
 **Lisez la colonne Nom jusqu'au bout.** Un rip livre couramment six pistes
 françaises : France et Canada, chacune en normal, `(forced)` et `(SDH)`. Elles
@@ -140,6 +147,7 @@ se changent avec `+/-`.
 | `S` | Détail des **plages** détectées |
 | `P` | **Appliquer les plages** à la piste sous le curseur |
 | `C` | Reprendre le décalage d'une autre piste |
+| `R` | **Point de repère** — quand la mesure ne conclut pas (§ 4.5bis) |
 | `V` | Contrôler dans mpv |
 | `K` | Extrait de contrôle réellement muxé |
 | `D` | Retirer la piste |
@@ -189,7 +197,9 @@ après un encodage réussi — à vérifier avant de lancer un lot.
 
 ---
 
-## 3. Recette : ajouter une VF et ses sous-titres
+## 3. Cas d'usage
+
+### 3.1 Ajouter une VF et ses sous-titres à une VO
 
 **Avant tout, regardez ce que la cible contient déjà.** Un rip streaming
 embarque souvent trente sous-titres, français compris : il n'y a alors qu'une
@@ -208,6 +218,7 @@ pistes (`T`) les liste toutes.
    | `✗ montage différent — N plages` (§ 4.5) | `P` — et `P` aussi sur l'audio |
    | `✗ trop peu de repères` (§ 4.3) | rien, sauf autre donneur → `C` |
    | `✗ sous-titre image` (§ 4.4) | rien, sauf autre donneur → `C` |
+   | `✗ aucun alignement commun` (§ 4.5bis) | `R` — donner un point de repère |
 
    Une mesure réussie se **reporte d'elle-même** sur les sous-titres venus du
    même fichier : leur colonne d'origine passe à « repris de #N ». C'est
@@ -219,6 +230,82 @@ pistes (`T`) les liste toutes.
 5. Renseigner la **langue** de chaque piste si elle manque.
 6. `V` ou `K` pour contrôler.
 7. `F3` pour muxer sans réencoder, ou `F2` pour réencoder aussi la vidéo.
+
+### 3.2 Réencoder toute une arborescence selon le profil
+
+Pour une saison entière, ou une bibliothèque rangée en sous-dossiers.
+
+1. Placez le curseur **sur un dossier** — `F3` ne fait rien sur un fichier.
+2. `F3`, puis confirmez. Tous les fichiers vidéo du dossier **et de ses
+   sous-dossiers**, sans limite de profondeur, sont analysés avec le profil
+   actif.
+3. Le dry-run s'ouvre sur le résultat. `Espace` retire une ligne, `F6` et `F7`
+   changent le codec ou le débit **de cette ligne seulement**.
+4. `F2` lance.
+
+Deux choses à savoir avant de lancer :
+
+- **Les fichiers déjà assez compressés sont écartés** de la liste. Le dry-run ne
+  montre que ce qui sera réellement encodé — si un fichier manque, c'est qu'il
+  n'avait rien à gagner.
+- **Aucune sélection manuelle de pistes.** Les décisions viennent du profil, y
+  compris le sort des langues. Vérifiez-les sur un fichier seul (`T`) avant de
+  lancer un lot.
+
+Un profil marqué `⚠ suppr.` efface chaque source après un encodage réussi. Sur
+une arborescence entière, relisez ce point deux fois.
+
+### 3.3 Rendre lisible un 4K Dolby Vision qui bloque à la lecture
+
+Certains lecteurs — dont les clients webOS — refusent la lecture directe d'un
+Dolby Vision profil 8 et basculent en transcodage, avec des coupures de son.
+Retirer le DV **améliore** la lecture, contrairement à ce qu'on croirait.
+
+Avec un profil réglé sur `dolby_vision = hdr10` (`F5`, champ **DV**), une source
+DV que le profil n'a aucune raison de réencoder sort en `_[hdr10].mkv` :
+
+- le RPU est retiré, **aucune image n'est recalculée** ;
+- le HDR10+ éventuel survit, ce qu'aucun réencodage ne permet ;
+- comptez deux à trois minutes pour un film de 15 Go, contre plusieurs heures.
+
+La colonne **Décision** affiche `→ HDR10` sur ces fichiers. C'est le cas le plus
+rentable de l'application : beaucoup gagné, presque rien dépensé.
+
+### 3.4 Ne garder que certaines langues
+
+Un rip streaming embarque couramment deux pistes audio et **quarante
+sous-titres**. Le profil décide ce qui traverse.
+
+`F5`, puis `E` sur le profil :
+
+| Champ | Effet |
+|---|---|
+| **Langues** | Pistes audio conservées, par code ISO — `fre, eng` |
+| **Langues sous-titres** | Idem pour les sous-titres. **Vide = toutes** |
+
+Les deux jeux de codes ISO sont réconciliés : écrire `fre` retient aussi les
+pistes étiquetées `fra`, et de même pour `ger`/`deu`, `dut`/`nld`, `cze`/`ces`.
+
+La première piste audio est toujours gardée, quelle que soit sa langue : c'est
+la piste d'origine, et la perdre serait perdre le film.
+
+Pour un contrôle piste par piste sur un seul fichier, `T` puis `Espace` — le
+profil ne décide que du cas général.
+
+### 3.5 Recaler un sous-titre trouvé sur internet
+
+Un `.srt` téléchargé n'est presque jamais synchronisé sur votre fichier.
+
+1. Sur le film, `T` puis `F9`, et choisissez le `.srt`.
+2. Sur l'écran de recalage, `M` sur la ligne du sous-titre.
+3. Selon ce que la mesure rend, voir § 4 — et si elle ne conclut pas du tout,
+   `R` donne un point de repère (§ 4.5bis).
+4. `V` pour contrôler à l'œil, `K` pour un extrait réellement muxé.
+5. `F3` muxe sans réencoder — quelques minutes, image intacte.
+
+Un sous-titre est corrigé **exactement** : il n'y a que des nombres à décaler,
+rien à rééchantillonner. C'est ce qui rend ce cas beaucoup plus sûr qu'un
+recalage audio.
 
 ---
 
@@ -273,8 +360,10 @@ qui suit, face à un rip streaming.
 4. `V` ou `K` pour contrôler, puis `F2` ou `F3`.
 
 Les plages restent en mémoire tant qu'aucune nouvelle mesure n'est lancée :
-une seule détection, sur l'audio, sert aux trois pistes. C'est voulu — le
-signal d'un sous-titre est trop creux pour retrouver les plages seul.
+une seule détection, sur l'audio, sert aux trois pistes. C'est le chemin le plus
+sûr — le signal d'une piste audio est dense, celui d'un sous-titre est creux.
+L'application sait tout de même retrouver des plages sur un sous-titre seul,
+mais elle y arrive moins souvent ; si elle n'y parvient pas, `R` (§ 4.5bis).
 
 Si le compte rendu signale « aucun silence trouvé » sur une frontière,
 l'insertion a été posée sur la position estimée. Rien n'est perdu, mais cette
@@ -395,23 +484,16 @@ chaque démarrage ; répondez `o`, ou placez les binaires dans `bin/`.
 
 ---
 
-## 4bis. Enchaîner plusieurs fichiers
-
-`Ctrl+Home` ramène à la liste des fichiers depuis n'importe quel écran :
-dry-run, encodage, mux, assistant, profils, pistes, recalage. Plus besoin de
-remonter les écrans un par un entre deux fichiers.
-
-`Home` seule garde son rôle : aller à la première ligne de la table.
-
-Depuis l'écran des **pistes** et celui du **recalage**, une confirmation est
-demandée — ces deux écrans portent un travail que le retour ne conserve pas :
-une sélection de pistes, une greffe, une mesure de décalage.
-
----
-
 ## 5. Conventions communes à tous les écrans
 
 - `⌫` ou `Esc` reviennent en arrière, partout.
+- `Ctrl+Home` **ramène à la liste des fichiers** depuis n'importe quel écran —
+  dry-run, encodage, mux, assistant, profils, pistes, recalage. C'est ce qui
+  permet d'enchaîner plusieurs fichiers sans remonter la pile un écran à la
+  fois. Depuis les **pistes** et le **recalage**, une confirmation est demandée :
+  ces deux écrans portent un travail que le retour ne conserve pas — une
+  sélection, une greffe, une mesure. `Home` seule garde son rôle, aller à la
+  première ligne de la table.
 - `F10` quitte, toujours en dernier dans le pied de page.
 - `Début` `Fin` `Page ↑` `Page ↓` naviguent dans les tables.
 - Le pied de page range les raccourcis par rôle, du haut vers le bas :

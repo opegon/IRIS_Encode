@@ -1,5 +1,46 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.3] — 2026-08-28
+
+### Le guide rattrape le code
+
+Audit des tables de raccourcis contre les `BINDINGS` réellement déclarés. Sept
+écarts, dont trois qui rendaient une fonction introuvable :
+
+- la touche **`W`** — qui change ce que fait `↵` sur un fichier — n'était nulle
+  part dans le tableau du browser ;
+- **`R`**, le point de repère, manquait dans celui du recalage ;
+- le choix des pistes d'un donneur se fait à l'**espace**, ce que la section ne
+  disait pas : on pouvait croire qu'`↵` suffisait.
+
+`Ctrl+Home` avait son propre chapitre, coincé **après** les sous-sections de
+dépannage. Une touche valable partout appartient aux conventions communes : elle
+y est passée, et le chapitre orphelin a disparu.
+
+Deux affirmations devenues fausses ont été corrigées : le mode se lit désormais
+à trois endroits et non plus seulement dans la barre de profil, et « le signal
+d'un sous-titre est trop creux pour retrouver les plages seul » n'est plus vrai
+depuis la détection par accord.
+
+### Un chapitre « Cas d'usage »
+
+Cinq parcours complets, du besoin au fichier produit : ajouter une VF et ses
+sous-titres à une VO, réencoder une arborescence entière selon le profil, rendre
+lisible un 4K Dolby Vision qui bloque à la lecture, ne garder que certaines
+langues, recaler un sous-titre trouvé sur internet.
+
+Chacun est vérifié contre le code, pas rédigé de mémoire : `F3` n'agit que sur
+un dossier et écarte les fichiers déjà assez compressés — le guide le dit
+maintenant, parce qu'un fichier absent de la liste inquiète.
+
+### `subtitle_languages` devient réglable
+
+La clé existait depuis la v0.8.2.0 mais le formulaire de profil ne l'exposait
+pas : il fallait éditer `profiles.toml` à la main. Elle a désormais son champ,
+sous les langues audio. **Vide = toutes**, comme avant l'existence de la clé.
+
+Écrire un cas d'usage sur les langues est ce qui l'a révélé.
+
 ## [v0.8.3.2] — 2026-08-28
 
 ### Le point de repère propose la réplique, au lieu de la demander

@@ -463,11 +463,18 @@ def build_command(
             cmd += ["-map", f"0:s:{si}"]
         n_src_subs = len(gardes)
 
-    # Pistes externes : chacune est l'unique flux utile de son entrée
-    from .muxer import TrackKind
+    # Pistes externes. Le donneur entre en entier : mapper son flux `:0`
+    # supposait qu'il n'en porte qu'un — vrai d'un .srt nu, faux d'un
+    # conteneur. Un donneur à six pistes de sous-titres rendait toujours la
+    # première, quelle que soit celle choisie, pendant que la langue et le
+    # titre venaient de la bonne. La piste apparaissait donc au lecteur,
+    # correctement nommée, et n'affichait rien — la première d'un rip est en
+    # général la piste « forced », vingt-trois répliques sur un épisode.
+    from .muxer import TrackKind, ffmpeg_stream_index
     for n, ext in enumerate(ext_tracks, start=1):
         stream = "a" if ext.kind == TrackKind.AUDIO else "s"
-        cmd += ["-map", f"{n}:{stream}:0"]
+        idx    = ffmpeg_stream_index(ext.source_path, ext.source_tid, ext.kind)
+        cmd += ["-map", f"{n}:{stream}:{idx}"]
 
     # ── Encodage audio ────────────────────────────────────────────────────────
     cmd += audio_args(included_audio)

@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.2] — 2026-08-28
+
+### La piste greffée n'était pas celle qu'on avait choisie
+
+Signalé à l'usage : des sous-titres ajoutés apparaissaient dans le lecteur, au
+bon nom, et n'affichaient rien.
+
+Le fichier donneur entre dans ffmpeg **en entier**, et la commande mappait son
+flux `:0` — ce qui suppose qu'il n'en porte qu'un. Vrai d'un `.srt` nu, faux
+d'un conteneur. Un rip qui embarque six pistes françaises rendait donc toujours
+la première, quelle que soit celle demandée ; et la première d'un rip est en
+général la piste « **forced** », vingt-trois répliques sur un épisode entier.
+
+Le défaut résistait à la relecture de la commande, parce que la langue, le titre
+et les drapeaux venaient bien de la piste choisie : le lecteur affichait
+« Français (France) » sur le contenu de « Français (France) (forced) ».
+
+`muxer.ffmpeg_stream_index` traduit désormais le tid choisi en index ffmpeg —
+c'est déjà le seul endroit du code où les deux numérotations se croisent. Un
+donneur illisible retombe sur le premier flux, comme avant.
+
+Vérifié sur les fichiers du signalement : la piste tid 3 se mappe `1:s:1` et
+rend 949 repères, là où l'ancienne commande en rendait 23.
+
+**Le chemin mkvmerge n'était pas touché** — il raisonne en tid de bout en bout.
+Le défaut ne frappait que les fichiers réencodés.
+
 ## [v0.8.2.1] — 2026-08-28
 
 ### Trois défauts de l'assistant, dont deux silencieux

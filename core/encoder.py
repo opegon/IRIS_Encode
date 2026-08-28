@@ -483,7 +483,10 @@ class EncoderProcess:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
-            text=True,
+        # Voir scanner._ffprobe_json : lire dans l'encodage local
+        # tue le thread de lecture dès qu'un nom de fichier en sort.
+            encoding="utf-8",
+            errors="replace",
             bufsize=1,
         )
 

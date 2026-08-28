@@ -1,5 +1,31 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.23] — 2026-08-28
+
+### Un fichier pouvait disparaître de la liste sans un mot
+
+Un WebM déposé dans le dossier n'apparaissait pas. Ni l'extension ni le codec
+n'étaient en cause : le fichier portait un tag `DESCRIPTION` contenant « ❤️ ».
+
+ffprobe écrit sa sortie en UTF-8. La lire avec `text=True` laisse Python choisir
+l'encodage de la machine — cp1252 sur un Windows français — et le premier
+caractère hors de cette table lève `UnicodeDecodeError` **dans le thread de
+lecture de subprocess**. L'exception n'y remonte pas jusqu'à l'appelant :
+`stdout` vaut simplement `None`, `json.loads(None)` échoue, et le fichier est
+écarté comme illisible. `scan_directory` avalant les erreurs par fichier, il n'en
+restait rien à l'écran — une ligne de moins, sans message.
+
+Six appels lisaient ainsi la sortie de ffprobe, ffmpeg et mkvmerge, dont les
+lignes de progression citent les noms de fichiers : `scanner`, `encoder`,
+`muxer` (deux), `preflight` et `sync`. Tous lisent désormais en UTF-8, les
+octets invalides étant remplacés plutôt que fatals. Un test interdit le motif
+`text=True` dans `core/`, et deux autres vérifient sur un fichier réel qu'un
+titre hors cp1252 ne fait plus perdre le fichier.
+
+Vu de l'utilisateur : les WebM VP9/Opus et les MKV AV1/Opus sont listés,
+décidés et encodés comme le reste — VP9 et AV1 vers HEVC, Opus vers AAC ou AC3,
+le HDR10 conservé en 10 bits.
+
 ## [v0.8.1.22] — 2026-08-28
 
 ### L'AV1 était cassé sur toute machine

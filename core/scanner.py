@@ -191,7 +191,13 @@ class VideoInfo:
 
 def _ffprobe_json(args: list[str]) -> dict:
     cmd = [_ffprobe_path, "-v", "error", "-print_format", "json"] + args
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    # ffprobe, ffmpeg et mkvmerge écrivent en UTF-8. Les lire avec l'encodage
+    # local — cp1252 sur un Windows français — fait mourir le thread de lecture
+    # de subprocess dès qu'un titre ou un nom de fichier sort de cette table :
+    # l'exception n'y remonte pas, `stdout` vaut None, et le fichier est écarté
+    # comme illisible. Vu sur un WebM dont un tag portait « ❤️ ».
+    r = subprocess.run(cmd, capture_output=True, timeout=30,
+                       encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise RuntimeError(f"ffprobe: {r.stderr.strip()}")
     return json.loads(r.stdout)

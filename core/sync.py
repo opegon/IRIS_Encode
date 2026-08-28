@@ -903,8 +903,11 @@ def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
 
     cmd = build_retime_command(donor, audio_index, inserts, out, bitrate_kbps)
     try:
+        # Voir scanner._ffprobe_json : lire dans l'encodage local
+        # tue le thread de lecture dès qu'un nom de fichier en sort.
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, text=True, bufsize=1)
+                                stderr=subprocess.PIPE, bufsize=1,
+                                encoding="utf-8", errors="replace")
     except (OSError, subprocess.SubprocessError) as e:
         return None, [f"ffmpeg a échoué : {e}"]
 

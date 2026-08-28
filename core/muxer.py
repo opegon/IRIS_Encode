@@ -145,7 +145,10 @@ def identify(path: Path) -> list[IdentifiedTrack]:
     try:
         r = subprocess.run(
             [_mkvmerge_path, "-J", str(path)],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True, timeout=30,
+            # Voir scanner._ffprobe_json : lire dans l'encodage local tue le
+            # thread de lecture dès qu'un nom de fichier en sort.
+            encoding="utf-8", errors="replace",
         )
         # 0 = OK, 1 = avertissements non bloquants
         if r.returncode not in (0, 1) or not r.stdout:
@@ -441,7 +444,9 @@ class MuxProcess:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True,
+        # Voir scanner._ffprobe_json : lire dans l'encodage local
+        # tue le thread de lecture dès qu'un nom de fichier en sort.
+            encoding="utf-8", errors="replace",
             bufsize=1,
         )
 

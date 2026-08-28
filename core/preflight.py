@@ -67,7 +67,8 @@ def _get_version(path: str) -> str:
         try:
             r = subprocess.run(
                 [path, flag],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True, timeout=5,
+                encoding="utf-8", errors="replace",
             )
             output = (r.stdout or r.stderr or "").strip()
             if not output or r.returncode not in (0, 1):

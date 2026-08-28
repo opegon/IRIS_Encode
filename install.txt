@@ -1,8 +1,21 @@
-# Installer Python
-# https://www.python.org/downloads/
+IRIS ENCODE — installation
 
-https://www.python.org/downloads/release/pymanager-262/
-# Surtout répondre oui à la mise à jour du path
+  1. Double-cliquez launch.bat.
 
-pip install -r requirements.txt
-python main.py
+C'est tout.
+
+S'il ne trouve pas de Python 3.11+, il installe le sien : uv, un CPython et un
+environnement .venv, dans ce dossier. Deux à trois minutes et environ 140 Mo la
+premiere fois, aucun droit administrateur, rien d'ecrit ailleurs.
+
+ffmpeg, mkvmerge et dovi_tool arrivent de la meme facon, dans bin/, a la
+premiere execution qui en a besoin.
+
+Reconstruire l'environnement, si quelque chose s'est mal passe :
+  powershell -ExecutionPolicy Bypass -File bootstrap.ps1 -Force
+
+Installer Python soi-meme reste possible et n'est pas necessaire :
+  https://www.python.org/downloads/   (cocher "Add Python to PATH")
+  pip install -r requirements.txt
+
+Details : README.md, chapitre 1.

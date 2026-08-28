@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.3.5 — document de référence courant
+**Version** : 0.8.3.6 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -31,7 +31,8 @@ Deux familles d'opérations coexistent :
 ```
 iris_encode/
 ├── GUIDE.md                      ← guide d'utilisation (procédures, cas)
-├── launch.bat                    ← vérification Python, point d'entrée Windows
+├── launch.bat                    ← choix de l'interpréteur, point d'entrée Windows
+├── bootstrap.ps1                 ← installe uv + CPython + .venv, sans droits admin
 ├── main.py                       ← point d'entrée Python (autonome)
 ├── version.py                    ← source unique de la version
 ├── config.toml                   ← configuration générale (éditable à la main)
@@ -103,11 +104,61 @@ iris_encode/
 launch.bat
 ```
 
-- Vérifie la présence de Python 3.11+ dans le PATH
-- Si absent : message explicite + redirection vers python.org
-- Si présent : délègue à `main.py` en passant les arguments (`%*`)
+Choisit un interpréteur, dans cet ordre — le premier qui convient :
+
+| Rang | Candidat | Retenu si |
+|---|---|---|
+| 1 | `.venv\Scripts\python.exe` | les six modules de `requirements.txt` s'importent |
+| 2 | `python` du PATH | il annonce 3.11 ou mieux |
+| 3 | `bootstrap.ps1` | les deux précédents ont échoué — il construit le rang 1 |
+
+Le `.venv` passe devant le Python du système : c'est le seul dont les versions
+de bibliothèques soient connues. Un Python système qui convient est *utilisé*,
+jamais remplacé — mais si `pip` échoue dessus (poste verrouillé, dépôt interne,
+permissions), le lanceur bascule sur `bootstrap.ps1` plutôt que de s'arrêter.
+
+- Délègue à `main.py` en passant les arguments (`%*`)
 - Utilise `%~dp0` pour garantir la portabilité du chemin
-- Lit la version depuis `version.py` (aucune version en dur)
+- Lit la version depuis `version.py` (aucune version en dur), avec
+  l'interpréteur retenu — donc après son choix. Les `^"` encadrant l'appel
+  `for /f` sont nécessaires : sans eux, une commande dont l'exécutable *et*
+  l'argument sont entre guillemets se casse, et la version reste vide
+
+### 3.1.1 `bootstrap.ps1` — l'environnement Python, sans droits admin
+
+Le prérequis Python était le seul que l'application ne savait pas satisfaire
+elle-même. Ce n'était pas un oubli mais une contrainte mécanique : le code qui
+télécharge ffmpeg, mkvmerge et dovi_tool *est* du Python, et ne peut donc pas
+s'exécuter avant lui. `bootstrap.ps1` est cette exception, écrite en PowerShell.
+
+Il suit la convention de `core/preflight.py` — récupérer dans `bin/`, sans
+droits administrateur, sans toucher au PATH ni au registre :
+
+| Étape | Ce qui est récupéré | Où |
+|---|---|---|
+| 1 | `uv`, exécutable unique, depuis GitHub | `bin\uv.exe` |
+| 2 | un CPython 3.12, que `uv` va chercher lui-même | `bin\python\` |
+| 3 | l'environnement et `requirements.txt` | `.venv\` |
+
+`UV_PYTHON_INSTALL_DIR` détourne l'installation de `%LOCALAPPDATA%` vers
+`bin/python/` : sans elle, l'interpréteur survivrait à la suppression du dossier
+et manquerait à une copie sur clé. `UV_LINK_MODE=copy` évite l'avertissement de
+lien physique quand le cache de `uv` (sur `C:`) et l'application sont sur des
+volumes différents — la copie *est* le comportement voulu ici.
+
+3.12 plutôt que la version la plus récente : une version fraîche casse
+régulièrement une roue binaire, et `numpy` en publie une pour 3.12.
+
+Le script est **idempotent** : relancé, il constate et ne retélécharge rien.
+`-Force` reconstruit `.venv` de zéro.
+
+Il vérifie sa sortie en important les six modules, plutôt que de se fier au code
+de retour de `uv` — une installation interrompue laisse un `.venv` présent et
+incomplet, exactement l'état qu'un code de retour nul ne distingue pas. Même
+principe que `encoder.pistes_audio_vides`.
+
+**Encodage** : le fichier porte une BOM UTF-8. Sans elle, Windows PowerShell 5.1
+lit les accents en ANSI et le script ne se parse plus.
 
 ### 3.2 Via `main.py` (direct)
 
@@ -1699,8 +1750,9 @@ beautifulsoup4 ← scraping AlloCiné
 numpy          ← corrélation FFT (core/sync.py)
 ```
 
-`tests/test_deps.py` vérifie que les listes de `main.py` et `launch.bat` couvrent
-`requirements.txt`.
+`tests/test_deps.py` vérifie que les listes de `main.py`, `launch.bat` et
+`bootstrap.ps1` couvrent `requirements.txt` — et que les quatre appels répartis
+sur les deux scripts disent tous la même chose.
 
 ### 17.3 Binaires externes et licences
 
@@ -1781,6 +1833,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.3.6 | 2026-08-29 | **Installation autonome de Python** : `bootstrap.ps1` récupère uv, un CPython et un `.venv`, sans droits administrateur et sans rien écrire hors du dossier · `launch.bat` choisit entre `.venv`, le Python du PATH et le bootstrap |
 | 0.8.3.5 | 2026-08-29 | **Revue d'interface, IE-28 à IE-33** : troncatures rendues visibles (`cellule()` partout), planchers de colonnes tenant les libellés énumérables, plafond de redimensionnement, pied de page dérivé des `BINDINGS`, intitulés de section lisibles, colonnes Source/Titre séparées, « ← écartée » explicite · **avancement global** comptant le fichier en cours, ligne ffmpeg qui n'est plus chassée par la commande |
 | 0.8.3.4 | 2026-08-28 | **`T` ouvrait l'assistant** au lieu de l'écran des pistes : la bascule de mode était branchée sur `action_open_tracks`, qui sert aux deux touches · seul `↵` dépend du mode désormais · trouvé par le harnais de captures |
 | 0.8.3.3 | 2026-08-28 | **Guide remis à jour** : sept écarts entre ce qu'il annonçait et ce que le code lie · chapitre **Cas d'usage** (§ 3) · `subtitle_languages` devient éditable dans le formulaire de profil, elle ne l'était pas depuis sa création |

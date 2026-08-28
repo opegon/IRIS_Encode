@@ -1,5 +1,57 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.6] — 2026-08-29
+
+### L'installation ne demande plus rien
+
+Python était le seul prérequis que l'application ne savait pas satisfaire
+elle-même. Ce n'était pas un oubli mais une contrainte mécanique : le code qui
+télécharge ffmpeg, mkvmerge et dovi_tool *est* du Python, et ne peut donc pas
+s'exécuter avant lui.
+
+`bootstrap.ps1` est cette exception, écrite en PowerShell. Il suit la convention
+du reste de l'outillage — récupérer dans `bin/`, sans droits administrateur,
+sans toucher au PATH ni au registre :
+
+1. **`uv`** — un exécutable unique, téléchargé depuis GitHub, une dépendance de
+   plus à côté de ffmpeg et mkvmerge ;
+2. **un CPython 3.12**, que `uv` va chercher lui-même ;
+3. **un `.venv` local**, garni depuis `requirements.txt`.
+
+Tout tient dans le dossier de l'application. Copier le dossier sur une clé,
+c'est copier l'installation entière — la portabilité que `launch.bat` protège
+depuis l'origine.
+
+`launch.bat` choisit désormais son interpréteur : le `.venv` s'il est complet,
+sinon le Python du PATH s'il annonce 3.11 ou mieux, sinon le bootstrap. Un
+Python système qui convient est *utilisé*, jamais remplacé — mais si `pip`
+échoue dessus (poste verrouillé, dépôt interne, permissions), le lanceur bascule
+sur l'environnement isolé plutôt que de s'arrêter sur un message.
+
+Le script vérifie sa sortie en important les six modules, plutôt que de se fier
+au code de retour de `uv` : une installation interrompue laisse un `.venv`
+présent et incomplet, exactement l'état qu'un code de retour nul ne distingue
+pas. Même principe que `pistes_audio_vides`.
+
+Testé sur le chemin froid complet — sans uv, sans `.venv`, sans Python dans le
+PATH : téléchargement, installation, vérification, lancement.
+
+### Deux pièges rencontrés en chemin
+
+- **La BOM.** Sans BOM UTF-8, Windows PowerShell 5.1 lit les accents du script
+  en ANSI et ne parse plus les chaînes. Le fichier en porte une.
+- **`for /f` et les guillemets.** L'appel qui lit `version.py` se cassait dès
+  que l'exécutable *et* l'argument étaient entre guillemets — la version
+  disparaissait du bandeau sans erreur. Les `^"` encadrants le corrigent.
+
+### La liste des dépendances vit désormais en quatre endroits
+
+Deux dans `launch.bat`, deux dans `bootstrap.ps1`, plus `main.py` — chacun
+répondant à une question différente, aucun superflu. `tests/test_deps.py` exige
+maintenant que **tous** disent la même chose que `requirements.txt`, et que les
+quatre appels des deux scripts coïncident entre eux. C'est la même divergence
+silencieuse que le pied de page en v0.8.3.5, fermée avant qu'elle s'ouvre.
+
 ## [v0.8.3.5] — 2026-08-29
 
 Les huit constats de la revue du 2026-08-28 (IE-28 à IE-33), plus deux défauts

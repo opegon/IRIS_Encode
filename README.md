@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.3.5 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.3.6 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`.
@@ -58,7 +58,7 @@ de l'appliquer**, fichier par fichier, et qui permet de la contredire.
 | Composant | Version minimale | Obligatoire |
 |-----------|-----------------|-------------|
 | Windows   | 10 / 11         | ✓           |
-| Python    | 3.11            | ✓           |
+| Python    | 3.11            | ✓ (auto-installable) |
 | ffmpeg    | 7.x             | ✓ (auto-installable) |
 | ffprobe   | 7.x             | ✓ (inclus avec ffmpeg) |
 | dovi_tool | 2.x             | ✗ (optionnel — Dolby Vision) |
@@ -68,49 +68,91 @@ de l'appliquer**, fichier par fichier, et qui permet de la contredire.
 
 ---
 
-## 1. Installer Python
+## 1. Installer Python et ses dépendances
 
-### 1.1 Téléchargement
+### 1.1 Ne rien faire (recommandé)
 
-Rendez-vous sur **https://www.python.org/downloads/** et téléchargez la dernière version **3.11 ou supérieure** (3.12, 3.13, 3.14…).
+Double-cliquez **`launch.bat`**. S'il ne trouve pas de Python 3.11+ utilisable,
+il installe le sien et vous n'avez rien d'autre à faire :
 
-> ⚠ Ne pas utiliser Python 3.10 ou antérieur — IRIS ENCODE utilise des fonctionnalités de syntaxe introduites en 3.11.
+```
+ [INFO] Aucun Python 3.11+ utilisable — installation de l'environnement.
+ Aucun droit administrateur n'est requis ; tout est écrit dans ce dossier.
 
-### 1.2 Installation
+  Téléchargement de uv (x86_64-pc-windows-msvc)…
+  uv installé : bin\uv.exe
+  Python 3.12…
+  Environnement .venv…
+  Dépendances (requirements.txt)…
 
-Lancez l'installateur téléchargé. **Important : cochez impérativement** l'option suivante avant de cliquer sur *Install Now* :
+  Prêt — Python 3.12.14 dans .venv
+```
+
+Comptez deux à trois minutes et environ 140 Mo la première fois. Les fois
+suivantes, `launch.bat` constate que tout est en place et démarre aussitôt.
+
+**Aucun droit administrateur n'est requis, et rien n'est écrit hors du dossier
+de l'application** — ni dans le PATH, ni dans le registre, ni dans les dossiers
+système. Copier le dossier sur une clé, c'est copier l'installation entière :
+
+| Ce qui arrive | Où |
+|---|---|
+| `uv`, l'exécutable qui va chercher le reste | `bin\uv.exe` |
+| L'interpréteur CPython | `bin\python\` |
+| L'environnement et ses bibliothèques | `.venv\` |
+
+C'est la convention que suit déjà le reste de l'outillage : ffmpeg, mkvmerge et
+dovi_tool arrivent dans `bin/` de la même façon (chapitre 3). Python faisait
+exception pour une raison mécanique — le code qui télécharge les outils *est*
+du Python, et ne pouvait pas s'exécuter avant lui. C'est ce que `bootstrap.ps1`
+corrige, en PowerShell.
+
+### 1.2 Quel interpréteur `launch.bat` retient
+
+Dans cet ordre, le premier qui convient :
+
+1. **`.venv\` local**, s'il est complet — le seul dont les versions de
+   bibliothèques soient connues ;
+2. **le Python du PATH**, s'il annonce 3.11 ou mieux — évite le téléchargement ;
+3. **`bootstrap.ps1`** — installe uv, un CPython et le `.venv`.
+
+Un Python système qui convient est *utilisé*, jamais remplacé. À l'inverse, si
+`pip` échoue sur ce Python-là (poste verrouillé, dépôt interne, permissions),
+`launch.bat` bascule tout seul sur l'environnement isolé plutôt que de s'arrêter.
+
+### 1.3 Reconstruire l'environnement
+
+Si quelque chose s'est mal passé, ou après une mise à jour de
+`requirements.txt` :
+
+```
+powershell -ExecutionPolicy Bypass -File bootstrap.ps1 -Force
+```
+
+`-Force` reconstruit `.venv` de zéro. Sans lui, le script constate et ne
+retélécharge rien : il est fait pour être relancé sans conséquence.
+
+---
+
+## 2. Installer Python à la main (facultatif)
+
+Rien n'oblige à passer par le chapitre 1. Un Python installé classiquement est
+reconnu et utilisé tel quel.
+
+Rendez-vous sur **https://www.python.org/downloads/** et téléchargez la dernière
+version **3.11 ou supérieure**. Cochez impérativement, avant *Install Now* :
 
 ```
 ☑  Add Python X.XX to PATH
 ```
 
-Sans cette case cochée, Python ne sera pas accessible depuis le terminal et `launch.bat` échouera.
+Sans cette case, `launch.bat` ne le verra pas — et installera le sien.
 
-### 1.3 Vérification
-
-Ouvrez un terminal (`cmd` ou PowerShell) et tapez :
-
-```
-python --version
-```
-
-Résultat attendu : `Python 3.11.x` (ou version supérieure).
-
----
-
-## 2. Installer les dépendances Python
-
-IRIS ENCODE utilise plusieurs bibliothèques tierces listées dans `requirements.txt`.
-
-### 2.1 Installation automatique (recommandée)
-
-Ouvrez un terminal dans le dossier d'IRIS ENCODE et exécutez :
+Puis, dans le dossier de l'application :
 
 ```
 pip install -r requirements.txt
 ```
-
-Cette commande installe :
 
 | Bibliothèque    | Rôle |
 |-----------------|------|
@@ -119,25 +161,11 @@ Cette commande installe :
 | `tomli-w`       | Écriture de fichiers TOML (config, profils) |
 | `requests`      | Téléchargement automatique de ffmpeg |
 | `beautifulsoup4`| Scraping IMDB (F8) et AlloCiné (F7) pour les métadonnées |
+| `numpy`         | Corrélation audio pour le recalage des pistes greffées |
 
-> `launch.bat` vérifie les dépendances à chaque démarrage et lance automatiquement
-> `pip install -r requirements.txt` si l'une d'elles est manquante.
-
-### 2.2 En cas d'erreur `pip introuvable`
-
-Si `pip` n'est pas reconnu, essayez :
-
-```
-python -m pip install -r requirements.txt
-```
-
-### 2.3 En cas d'erreur de permissions
-
-Sur certains postes avec restrictions, ajoutez `--user` :
-
-```
-pip install --user -r requirements.txt
-```
+Si `pip` est introuvable : `python -m pip install -r requirements.txt`. Sur un
+poste à permissions restreintes : `pip install --user -r requirements.txt` —
+ou, plus simplement, laissez le chapitre 1 faire le travail.
 
 ---
 
@@ -231,11 +259,11 @@ Double-cliquez sur **`launch.bat`** ou exécutez dans un terminal :
 launch.bat
 ```
 
-Le lanceur vérifie automatiquement :
-- La présence de Python 3.11+
-- La présence et l'installation des dépendances Python
-- La présence de ffmpeg / ffprobe
-- La validité de la configuration
+Le lanceur vérifie, et installe ce qui manque :
+- un Python 3.11+ utilisable — sinon il en installe un (chapitre 1) ;
+- les dépendances Python listées dans `requirements.txt` ;
+- ffmpeg / ffprobe, téléchargés dans `bin/` au premier besoin ;
+- la validité de la configuration.
 
 ---
 
@@ -244,12 +272,14 @@ Le lanceur vérifie automatiquement :
 ```
 iris_encode/
 ├── launch.bat          ← Point d'entrée Windows (double-clic)
+├── bootstrap.ps1       ← Installe Python et ses dépendances, sans droits admin
 ├── main.py             ← Point d'entrée Python
 ├── config.toml         ← Configuration générale (éditable)
 ├── profiles.toml       ← Profils d'encodage (éditable)
 ├── requirements.txt    ← Dépendances Python
 ├── version.py          ← Version de l'application (source unique)
-├── bin/                ← ffmpeg / ffprobe / dovi_tool / mkvmerge / mpv (auto)
+├── .venv/              ← Environnement Python local (auto)
+├── bin/                ← uv / python / ffmpeg / ffprobe / dovi_tool / mkvmerge / mpv (auto)
 ├── data/               ← Sources de téléchargement (embarquées)
 ├── core/               ← Logique métier
 ├── tui/                ← Interface utilisateur

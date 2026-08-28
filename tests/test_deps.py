@@ -39,21 +39,42 @@ def _main_py_modules() -> set[str]:
     return set(re.findall(r'"([^"]+)"', m.group(1)))
 
 
+# La liste vit dans quatre appels, répartis sur deux scripts : deux dans
+# launch.bat (le .venv d'abord, puis le Python du PATH) et deux dans
+# bootstrap.ps1 (avant et après construction). Aucun n'est superflu — chacun
+# répond à une question différente — mais aucun ne doit diverger. On les
+# ramasse tous plutôt que d'en choisir un.
+_IMPORTS = re.compile(r'-c "import ([a-z0-9_]+(?:\s*,\s*[a-z0-9_]+)+)"')
+
+
+def _modules_des_scripts(nom: str) -> list[set[str]]:
+    txt = (ROOT / nom).read_text(encoding="utf-8", errors="replace")
+    listes = [{x.strip() for x in m.split(",")} for m in _IMPORTS.findall(txt)]
+    assert listes, f"aucune vérification de dépendances trouvée dans {nom}"
+    return listes
+
+
 def _launch_bat_modules() -> set[str]:
-    """
-    launch.bat contient plusieurs `python -c` : celui qui lit la version, et
-    celui qui teste les dépendances. On ne veut que le second, reconnaissable
-    à sa liste d'imports séparés par des virgules et sans point-virgule.
-    """
-    txt = (ROOT / "launch.bat").read_text(encoding="utf-8", errors="replace")
-    m = re.search(r'python -c "import ([a-z0-9_]+(?:\s*,\s*[a-z0-9_]+)+)"', txt)
-    assert m, "la vérification des dépendances a changé de forme dans launch.bat"
-    return {x.strip() for x in m.group(1).split(",")}
+    listes = _modules_des_scripts("launch.bat")
+    assert all(l == listes[0] for l in listes), (
+        f"les {len(listes)} vérifications de launch.bat ne disent pas la même "
+        f"chose : {listes}"
+    )
+    return listes[0]
+
+
+def _bootstrap_ps1_modules() -> set[str]:
+    listes = _modules_des_scripts("bootstrap.ps1")
+    assert all(l == listes[0] for l in listes), (
+        f"les {len(listes)} vérifications de bootstrap.ps1 divergent : {listes}"
+    )
+    return listes[0]
 
 
 @pytest.mark.parametrize("source,extraire", [
-    ("main.py",    _main_py_modules),
-    ("launch.bat", _launch_bat_modules),
+    ("main.py",       _main_py_modules),
+    ("launch.bat",    _launch_bat_modules),
+    ("bootstrap.ps1", _bootstrap_ps1_modules),
 ])
 def test_dependency_lists_match_requirements(source: str, extraire):
     attendu = _requirements()

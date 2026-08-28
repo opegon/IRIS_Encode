@@ -1,5 +1,20 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.9] — 2026-08-28
+
+### Le flux `bin_data` des sorties MP4 : c'est la piste de chapitres
+
+Relevé en vérifiant la passe audio, sur une sortie MP4 qui portait un flux de
+plus que ceux demandés. Identifié plutôt que soupçonné :
+`codec_tag_string=text`, `handler_name=SubtitleHandler`, une trame par
+chapitre — et `-map_chapters -1` le fait disparaître, emportant les chapitres
+avec lui.
+
+Le MP4 ne sait porter les chapitres que sous la forme d'une piste texte
+QuickTime ; c'est ainsi que les lecteurs les retrouvent. Rien à corriger. C'est
+noté dans la spec (§ 8.6) pour que personne ne réenquête, la mention `bin_data`
+d'ffprobe ayant tout d'une piste parasite.
+
 ## [v0.8.2.8] — 2026-08-28
 
 ### La passe audio ne se paie plus que là où elle sert

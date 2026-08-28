@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.8 — document de référence courant
+**Version** : 0.8.2.9 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -609,6 +609,15 @@ négatifs que le muxeur MP4 **jetait** — deux images perdues sur 2270, mesuré
 **Conteneur de sortie** — `output_container` suit les pistes réellement conservées :
 écarter les sous-titres image libère le MP4 ; `mov_text` n'est jamais proposé en
 Matroska. La présence d'au moins une piste externe force le `.mkv` (§ 9).
+
+**Le flux `bin_data` d'un MP4 est sa piste de chapitres.** `ffprobe` rapporte,
+sur une sortie MP4 issue d'une source chapitrée, un flux de plus que ceux
+demandés : `bin_data`, `codec_tag_string=text`, `handler_name=SubtitleHandler`,
+une trame par chapitre. Ce n'est pas une piste parasite — le MP4 ne sait porter
+les chapitres que sous la forme d'une piste texte QuickTime, et c'est ainsi que
+les lecteurs les retrouvent. Vérifié : `-map_chapters -1` le fait disparaître,
+et les chapitres avec lui. Le Matroska, qui a un conteneur de chapitres propre,
+n'affiche rien de tel.
 
 ### 8.7 Nommage des sorties
 
@@ -1729,6 +1738,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.2.9 | 2026-08-28 | **Le flux `bin_data` des sorties MP4 identifié** : c'est la piste de chapitres, seule forme sous laquelle le MP4 sait les porter. Pas une piste parasite, rien à corriger — noté pour ne pas le réenquêter (§ 8.6) |
 | 0.8.2.8 | 2026-08-28 | **Passe audio restreinte aux sources sans perte** — l'AC3 du même fichier sort indemne, la passe ne se paie donc plus sur la plupart des encodages · **`pistes_audio_vides`** : un code de retour nul ne vaut plus succès, la sortie est relue et une piste écourtée fait échouer le fichier au lieu de passer |
 | 0.8.2.7 | 2026-08-28 | **Le défaut d'IE-22 tient à la simultanéité, pas à la sortie** : séparer les fichiers de sortie ne sauve pas la piste, il suffit que le sous-titre soit *mappé* dans l'invocation. Seul un processus distinct protège — ce que fait la parade. Caractérisation corrigée dans la spec, le code et les tests |
 | 0.8.2.6 | 2026-08-28 | **Une piste audio transcodée disparaissait en silence** quand la même commande recopiait un sous-titre au premier repère tardif — deux trames produites au lieu de 1 875. Cause d'IE-12 et IE-16, closes faute d'explication : le fichier « mal entrelacé » n'avait pas de piste anglaise. Passe audio préalable, payée seulement quand les deux conditions sont réunies |

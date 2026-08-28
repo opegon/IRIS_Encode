@@ -291,11 +291,12 @@ alignée*.
 
 La corrélation reste pourtant utilisable si on lui dit **où** chercher.
 
-1. `V` ouvre mpv avec la piste : repérez une réplique, et notez deux instants —
-   celui affiché dans le sous-titre, celui où vous l'entendez.
-2. `R` les saisit. Formats acceptés : `13:16`, `1:13:16`, `13:16,5`, `796`.
-3. La recherche se centre sur leur écart. Elle retrouve alors le décalage, et
-   les plages s'il y a plusieurs coupures.
+1. `R` **propose une réplique** et l'instant où elle est écrite. `↓` et `↑` en
+   proposent une autre, si celle-ci ne se retrouve pas.
+2. Écoutez le film à cet endroit, et donnez l'instant où vous l'entendez
+   réellement. Formats acceptés : `13:22`, `1:13:22`, `13:22,5`, `802`.
+3. La recherche se centre sur l'écart entre les deux. Elle retrouve alors le
+   décalage, et les plages s'il y a plusieurs coupures.
 
 Si l'analyse trouve un décalage **très différent** de celui que vous avez
 donné, elle le dit et n'applique rien : c'est le signe que l'un des deux

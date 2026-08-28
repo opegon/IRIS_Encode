@@ -399,6 +399,78 @@ def read_cues(path: Path) -> list[tuple[float, float]]:
     return cues
 
 
+# Nombre de répliques proposées comme point de repère, et longueur minimale du
+# texte : « Oui. » ne se retrouve pas à l'oreille, une phrase entière si.
+_REPERES_PROPOSES  = 6
+_REPERE_MIN_LETTRES = 18
+
+
+def reperes_proposables(path: Path,
+                        n: int = _REPERES_PROPOSES) -> list[tuple[float, str]]:
+    """Répliques utilisables comme point de repère, réparties dans le film.
+
+    L'utilisateur n'a pas à chercher lui-même une réplique ni à relever son
+    horodatage : on la lui propose, et il ne reste qu'un nombre à trouver —
+    l'instant où il l'entend.
+
+    Sont écartées les répliques trop courtes, qui ne se repèrent pas à
+    l'oreille, et celles des trente premières secondes ou des trente dernières,
+    souvent des cartons de générique communs à toutes les versions.
+    """
+    blocs = _blocs_texte(path)
+    if not blocs:
+        return []
+    fin = blocs[-1][0]
+    utiles = [b for b in blocs
+              if len(b[1]) >= _REPERE_MIN_LETTRES
+              and 30.0 <= b[0] <= max(30.0, fin - 30.0)]
+    if not utiles:
+        utiles = blocs
+    if len(utiles) <= n:
+        return utiles
+    pas = len(utiles) / n
+    return [utiles[min(len(utiles) - 1, int(i * pas + pas / 2))]
+            for i in range(n)]
+
+
+def _blocs_texte(path: Path) -> list[tuple[float, str]]:
+    """(instant, texte) de chaque réplique. Vide sur un format non textuel."""
+    texte = _read_text(path)
+    out: list[tuple[float, str]] = []
+
+    if path.suffix.lower() in (".ass", ".ssa"):
+        for ligne in texte.splitlines():
+            m = _ASS_LINE.match(ligne.strip())
+            if m:
+                h, mi, sec, cs = (int(g) for g in m.groups()[:4])
+                # Le texte d'un Dialogue ASS suit le neuvième champ.
+                champs = ligne.split(",", 9)
+                if len(champs) == 10:
+                    out.append((h * 3600 + mi * 60 + sec + cs / 100.0,
+                                _nettoie(champs[9])))
+        return out
+
+    for bloc in re.split(r"\n\s*\n", texte):
+        m = _SRT_TIME.search(bloc)
+        if not m:
+            continue
+        h, mi, sec, ms = (int(g) for g in m.groups()[:4])
+        lignes = [l for l in bloc.splitlines()
+                  if "-->" not in l and not l.strip().isdigit()]
+        contenu = _nettoie(" ".join(lignes))
+        if contenu:
+            out.append((h * 3600 + mi * 60 + sec + ms / 1000.0, contenu))
+    return out
+
+
+def _nettoie(texte: str) -> str:
+    """Retire le balisage d'affichage : il gêne la lecture, pas le repérage."""
+    t = re.sub(r"\{\\[^}]*\}", "", texte)        # overrides ASS
+    t = re.sub(r"</?[a-zA-Z][^>]*>", "", t)      # balises HTML du SubRip
+    t = t.replace("\\N", " ").replace("﻿", "")
+    return re.sub(r"\s+", " ", t).strip()
+
+
 def extract_subtitle(video: Path, ffmpeg_index: int) -> Optional[Path]:
     """
     Sort une piste de sous-titres embarquée du conteneur, vers un .srt temporaire.

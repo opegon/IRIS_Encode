@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.2] — 2026-08-28
+
+### Le point de repère propose la réplique, au lieu de la demander
+
+La première version demandait **deux** instants : celui écrit dans le
+sous-titre et celui entendu. C'était obliger à charger le fichier dans un
+lecteur rien que pour relire une valeur que l'application connaît déjà.
+
+`R` propose désormais une réplique et son horodatage ; il ne reste qu'un nombre
+à trouver. `↓` et `↑` en proposent une autre — une réplique peut tomber dans un
+passage muet, ou ne pas se retrouver à l'oreille.
+
+Six répliques sont proposées, réparties dans le film. Sont écartées celles de
+moins de dix-huit lettres, qui ne se repèrent pas — « Oui. » n'aide personne —
+et celles des trente premières et dernières secondes, souvent des cartons de
+générique communs à toutes les versions.
+
 ## [v0.8.3.1] — 2026-08-28
 
 ### Un point de repère quand la mesure ne peut pas conclure

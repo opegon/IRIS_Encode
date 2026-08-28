@@ -32,8 +32,8 @@ from core.muxer import (
     sample_windows, timecode,
 )
 from core.sync import (
-    Segment, SyncResult, measure_external_track, measure_with_anchor,
-    read_cues,
+    Segment, SyncResult, extract_subtitle, measure_external_track,
+    measure_with_anchor, read_cues, reperes_proposables,
 )
 
 from ..common import footer_line2, raccourcis, touche, tronquer_milieu, retour_accueil
@@ -559,6 +559,27 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
 
         from .ancrage import AncrageModal
 
+        # Les répliques proposées viennent du fichier lui-même : une piste
+        # embarquée doit d'abord être extraite, comme pour la mesure.
+        try:
+            src = t.source_path
+            if src.suffix.lower() != ".srt":
+                idx = ffmpeg_stream_index(src, t.source_tid,
+                                          TrackKind.SUBTITLE)
+                extrait = extract_subtitle(t.source_path, idx)
+                if extrait is None:
+                    self._set_hint("Sous-titre image (PGS, VobSub) : aucun "
+                                   "texte à proposer comme repère.")
+                    return
+                src = extrait
+            reperes = reperes_proposables(src)
+        except Exception as e:                       # noqa: BLE001
+            self._set_hint(f"Lecture des répliques impossible : {e}")
+            return
+        if not reperes:
+            self._set_hint("Aucune réplique lisible dans cette piste.")
+            return
+
         def _apres(points) -> None:
             if points is None:
                 return
@@ -572,7 +593,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self._mesure_ancree(i, ecrit, entendu)
 
         self.app.push_screen(
-            AncrageModal(t.track_name or t.source_path.name), _apres)
+            AncrageModal(reperes, t.track_name or t.source_path.name), _apres)
 
     @work(thread=True, name="sync-ancrage")
     def _mesure_ancree(self, i: int, ecrit: float, entendu: float) -> None:

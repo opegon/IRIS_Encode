@@ -1,5 +1,20 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.1.26] — 2026-08-28
+
+### Le transcodage des pistes sans perte ne suit plus le débit de la source
+
+`CODEC_MAX_BPS["eac3"]` valait 6 144k — la limite de l'encodeur ffmpeg, pas un
+choix. Une piste sans perte étant transcodée **au débit présent dans la piste**,
+un TrueHD 5.1 à 3 501k donnait un E-AC3 à 3 501k : 5,66 Go pour un film de
+3 h 35, quand aucun décodeur ne tire quoi que ce soit d'un Dolby Digital Plus
+5.1 au-delà du palier haut usuel. Le plafond passe à 1 024k, et la même piste y
+pèse 1,65 Go.
+
+Le plafond AC3 ne bouge pas : ses 640k sont ceux de l'encodeur, qui ramène
+silencieusement toute demande supérieure. Les sources déjà sous le nouveau
+plafond gardent leur débit — un DTS à 768k reste à 768k.
+
 ## [v0.8.1.25] — 2026-08-28
 
 ### La décision audio survit au retrait du Dolby Vision

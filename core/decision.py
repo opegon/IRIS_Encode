@@ -618,10 +618,16 @@ def retitle(title: str, out_codec: str,
     return nouveau or None
 
 
-# Plafonds réels des encodeurs ffmpeg, mesurés et non déduits de la norme :
-# l'AC3 ramène silencieusement toute demande supérieure à 640 kbps, l'E-AC3
-# honore jusqu'à 6144 kbps puis refuse la commande.
-CODEC_MAX_BPS: dict[str, int] = {"ac3": 640_000, "eac3": 6_144_000}
+# Plafonds de transcodage des pistes sans perte. Celui de l'AC3 est celui de
+# l'encodeur, mesuré et non déduit de la norme : il ramène silencieusement
+# toute demande supérieure à 640 kbps.
+#
+# Celui de l'E-AC3 est un choix, pas une limite technique — l'encodeur honore
+# jusqu'à 6144 kbps. Suivre le débit de la source y menait tout droit : un
+# TrueHD à 3501k donnait un E-AC3 à 3501k, soit 5,66 Go pour un film de 3 h 35,
+# quand aucun décodeur ne tire quoi que ce soit d'un DD+ 5.1 au-delà du palier
+# haut usuel. La même piste y pèse 1,65 Go.
+CODEC_MAX_BPS: dict[str, int] = {"ac3": 640_000, "eac3": 1_024_000}
 
 # Les deux encodeurs s'arrêtent au 5.1 : « Specified channel layout 7.1 is not
 # supported by the ac3 encoder ». ffmpeg négocie le repli tout seul — vérifié,

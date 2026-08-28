@@ -77,11 +77,17 @@ def test_is_hd_audio(codec, profil, attendu):
 
 # ─── Débit repris de la source ────────────────────────────────────────────────
 
-def test_eac3_reprend_le_debit_de_la_piste(tmp_path):
-    d = _only(tmp_path, _track(bitrate=3_501_887), audio_hd_codec="eac3")
+@pytest.mark.parametrize("debit_source", [3_501_887, 9_000_000])
+def test_une_piste_sans_perte_est_transcodee_et_plafonnee(tmp_path, debit_source):
+    """3501k est le débit courant d'un TrueHD 5.1 — le cas nominal.
+
+    L'encodeur E-AC3 monterait à 6144 kbps : le plafond est un choix, pas sa
+    limite. Suivre le débit de la source donnait 5,66 Go de piste anglaise sur
+    un film de 3 h 35, sans qu'aucun décodeur en tire quoi que ce soit."""
+    d = _only(tmp_path, _track(bitrate=debit_source), audio_hd_codec="eac3")
     assert d.action == AudioAction.TRANSCODE
     assert d.output_codec == "eac3"
-    assert d.output_bitrate == 3_501_887
+    assert d.output_bitrate == CODEC_MAX_BPS["eac3"] == 1_024_000
 
 
 def test_ac3_plafonne_a_640(tmp_path):
@@ -90,11 +96,6 @@ def test_ac3_plafonne_a_640(tmp_path):
     d = _only(tmp_path, _track(bitrate=3_501_887), audio_hd_codec="ac3")
     assert d.output_codec == "ac3"
     assert d.output_bitrate == CODEC_MAX_BPS["ac3"] == 640_000
-
-
-def test_eac3_plafonne_au_maximum_de_l_encodeur(tmp_path):
-    d = _only(tmp_path, _track(bitrate=9_000_000), audio_hd_codec="eac3")
-    assert d.output_bitrate == CODEC_MAX_BPS["eac3"] == 6_144_000
 
 
 def test_debit_inferieur_au_plafond_conserve(tmp_path):
@@ -140,7 +141,7 @@ def test_une_piste_71_est_annoncee_en_51(tmp_path):
 def test_une_piste_51_ne_declare_aucun_downmix(tmp_path):
     d = _only(tmp_path, _track(channels=6), audio_hd_codec="eac3")
     assert d.output_channels == 0
-    assert d.display() == "→ eac3 3501k"
+    assert d.display() == "→ eac3 1024k"
 
 
 def test_commande_ffmpeg_pose_le_downmix(tmp_path):
@@ -155,7 +156,7 @@ def test_commande_ffmpeg_pose_le_downmix(tmp_path):
     cmd  = build_command(decide(info, _profile(audio_hd_codec="eac3",
                                                bitrate_4k_kbps=8000)), plat)
     assert "-c:a:0" in cmd and cmd[cmd.index("-c:a:0") + 1] == "eac3"
-    assert cmd[cmd.index("-b:a:0") + 1] == "4000000"
+    assert cmd[cmd.index("-b:a:0") + 1] == "1024000"
     assert cmd[cmd.index("-ac:a:0") + 1] == "6"
 
 

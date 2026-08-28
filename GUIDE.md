@@ -280,6 +280,27 @@ Si le compte rendu signale « aucun silence trouvé » sur une frontière,
 l'insertion a été posée sur la position estimée. Rien n'est perdu, mais cette
 zone mérite une écoute.
 
+### 4.5bis Rien n'y fait — le point de repère (`R`)
+
+Certains sous-titres ne se mesurent pas, quel que soit le réglage. Le cas
+typique : un `.srt` communautaire dont **l'adaptation du texte diffère de celle
+du doublage**. Les répliques sont découpées et condensées autrement, donc leur
+rythme ne décalque pas celui de la parole — mesuré sur un cas réel, la
+corrélation y plafonne à moins de la moitié du seuil *même parfaitement
+alignée*.
+
+La corrélation reste pourtant utilisable si on lui dit **où** chercher.
+
+1. `V` ouvre mpv avec la piste : repérez une réplique, et notez deux instants —
+   celui affiché dans le sous-titre, celui où vous l'entendez.
+2. `R` les saisit. Formats acceptés : `13:16`, `1:13:16`, `13:16,5`, `796`.
+3. La recherche se centre sur leur écart. Elle retrouve alors le décalage, et
+   les plages s'il y a plusieurs coupures.
+
+Si l'analyse trouve un décalage **très différent** de celui que vous avez
+donné, elle le dit et n'applique rien : c'est le signe que l'un des deux
+instants est faux. Revérifiez-les plutôt que d'insister.
+
 ### 4.6 « demande un facteur d'étirement »
 
 Une source PAL accélérée (25 vs 23,976 images/s) dérive au lieu d'être

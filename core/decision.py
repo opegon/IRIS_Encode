@@ -808,52 +808,6 @@ def decide_subtitles(
             if normalize_language(st.language) in voulues]
 
 
-@dataclass
-class Ambiguite:
-    """Une langue voulue pour laquelle plusieurs pistes candidatent."""
-    kind:     str    # "audio" | "subtitle"
-    language: str    # code tel que le fichier le déclare, pour l'affichage
-    tracks:   list   # AudioTrack ou SubtitleTrack, dans l'ordre du fichier
-
-    def label(self) -> str:
-        quoi = "audio" if self.kind == "audio" else "sous-titre"
-        return f"{len(self.tracks)} pistes {quoi} en « {self.language} »"
-
-
-def ambiguites(info: VideoInfo, profile: Profile) -> list[Ambiguite]:
-    """Langues voulues que plusieurs pistes revendiquent.
-
-    Une seule piste candidate : on la prend, il n'y a rien à demander.
-    Plusieurs : seul le **titre** les sépare — « Français » contre « Français
-    canadien », « (forced) » contre « (SDH) ». Un titre ne se devine pas, et
-    une règle par motifs serait une liste de mots-clés à maintenir sans fin.
-    Le compte suffit à savoir quand il faut demander.
-
-    Les sous-titres ne comptent que si le profil les filtre : sans
-    `subtitle_languages`, tout est gardé et il n'y a rien à arbitrer.
-    """
-    out: list[Ambiguite] = []
-
-    def _grouper(pistes: list, langues: list[str], kind: str) -> None:
-        voulues = {normalize_language(l) for l in langues}
-        vues: dict[str, list] = {}
-        for t in pistes:
-            code = normalize_language(t.language)
-            if code in voulues:
-                vues.setdefault(code, []).append(t)
-        for _, groupe in vues.items():
-            if len(groupe) > 1:
-                out.append(Ambiguite(kind=kind, language=groupe[0].language,
-                                     tracks=groupe))
-
-    _grouper(info.audio_tracks,
-             profile.get("audio_languages", ["fre", "eng"]), "audio")
-    st_langues = profile.get("subtitle_languages", None)
-    if st_langues:
-        _grouper(info.subtitle_tracks, st_langues, "subtitle")
-    return out
-
-
 def decide(
     info:               VideoInfo,
     profile:            Profile,

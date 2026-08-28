@@ -119,6 +119,32 @@ def mmss(seconds: float) -> str:
     return f"{s // 60}:{s % 60:02d}"
 
 
+def lire_timecode(texte: str) -> Optional[float]:
+    """Lit « 13:16 », « 1:13:16 », « 13:16,5 » ou « 796 » en secondes.
+
+    Tolérante à dessein : personne ne doit avoir à deviner le format attendu
+    d'un instant relevé à l'oreille. Retourne None sur ce qui n'est pas lisible,
+    plutôt qu'un zéro qui passerait pour une réponse.
+    """
+    t = (texte or "").strip().replace(",", ".")
+    if not t:
+        return None
+    parts = t.split(":")
+    if len(parts) > 3:
+        return None
+    try:
+        valeurs = [float(x) for x in parts]
+    except ValueError:
+        return None
+    if any(v < 0 for v in valeurs):
+        return None
+    if len(valeurs) == 1:
+        return valeurs[0]
+    if len(valeurs) == 2:
+        return valeurs[0] * 60 + valeurs[1]
+    return valeurs[0] * 3600 + valeurs[1] * 60 + valeurs[2]
+
+
 @dataclass
 class Segment:
     """
@@ -730,7 +756,7 @@ _ACCORD_MIN_COHERENCE = 0.60
 
 
 def _lag_borne(x: np.ndarray, y: np.ndarray, max_lag_s: float,
-               pas_ms: int) -> tuple[Optional[int], float]:
+               pas_ms: int, centre_ms: int = 0) -> tuple[Optional[int], float]:
     """Meilleur décalage dans une fenêtre de recherche bornée, et sa saillance.
 
     Retourne `None` quand le pic tombe **sur la borne** : c'est le signe qu'il
@@ -742,10 +768,15 @@ def _lag_borne(x: np.ndarray, y: np.ndarray, max_lag_s: float,
     b = y.astype(float) - y.mean()
     if a.std() == 0 or b.std() == 0:
         return None, 0.0
-    m   = int(max_lag_s * 1000 / BIN_MS)
-    pas = max(1, pas_ms // BIN_MS)
+    m      = int(max_lag_s * 1000 / BIN_MS)
+    pas    = max(1, pas_ms // BIN_MS)
+    # Surtout pas `c` : la boucle s'en sert pour la corrélation, et l'écrasait
+    # silencieusement. Le contrôle de borne comparait alors un décalage à un
+    # coefficient — il ne se déclenchait plus jamais avec un centre proche de
+    # zéro, et toujours avec un centre lointain.
+    centre = int(round(centre_ms / BIN_MS))
     scores: list[tuple[float, int]] = []
-    for d in range(-m, m + 1, pas):
+    for d in range(centre - m, centre + m + 1, pas):
         u, v = (a[d:], b[:len(b) - d]) if d > 0 else                ((a, b) if d == 0 else (a[:len(a) + d], b[-d:]))
         k = min(len(u), len(v))
         if k < 400:
@@ -757,13 +788,15 @@ def _lag_borne(x: np.ndarray, y: np.ndarray, max_lag_s: float,
         return None, 0.0
     scores.sort(reverse=True)
     meilleur, d = scores[0]
-    if abs(d) >= m - pas:
+    if abs(d - centre) >= m - pas:
         return None, 0.0                 # collé à la borne : pas de pic
     saillance = meilleur - float(np.median([c for c, _ in scores]))
     return int(round(d * BIN_MS)), saillance
 
 
-def _segments_par_accord(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
+def _segments_par_accord(ref: np.ndarray, sig: np.ndarray, *,
+                         centre_ms: int = 0,
+                         max_lag_s: float = _ACCORD_MAX_LAG_S) -> list[Segment]:
     """Paliers déduits de l'**accord entre fenêtres voisines**, non de l'amplitude.
 
     La voie ordinaire juge une corrélation sur sa force. Certains couples n'y
@@ -790,8 +823,8 @@ def _segments_par_accord(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
     mesures: list[tuple[int, int, Optional[int], float]] = []
     for k in range(n // fen):
         a, b = k * fen, min((k + 1) * fen, n)
-        lag, sal = _lag_borne(ref[a:b], sig[a:b],
-                              _ACCORD_MAX_LAG_S, _ACCORD_PAS_MS)
+        lag, sal = _lag_borne(ref[a:b], sig[a:b], max_lag_s, _ACCORD_PAS_MS,
+                              centre_ms)
         mesures.append((a, b, lag, sal))
 
     trouves = [m[2] for m in mesures if m[2] is not None]
@@ -833,6 +866,19 @@ def _segments_par_accord(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
     if not runs:
         return []
 
+    # Écarter un palier isolé peut couper en deux un palier qui n'en formait
+    # qu'un. On recolle ce qui s'accorde : deux plages voisines de même
+    # décalage ne décrivent pas deux montages.
+    fusionnes: list[list] = []
+    for r in runs:
+        if fusionnes and abs(r[2] - fusionnes[-1][2]) <= CROSS_TOLERANCE_MS:
+            fusionnes[-1][1] = r[1]
+            fusionnes[-1][3] = max(fusionnes[-1][3], r[3])
+            fusionnes[-1][4] += r[4]
+        else:
+            fusionnes.append(r)
+    runs = fusionnes
+
     # Écarter les paliers isolés laisse des trous. Or `delay_at` lit la
     # première plage qui couvre l'instant : un trou lui ferait rendre le
     # décalage du palier *suivant* sur une zone qui appartient au précédent.
@@ -848,8 +894,8 @@ def _segments_par_accord(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
     for run in runs:
         a, b = run[0], run[1]
         if b - a >= _MIN_SEGMENT_BINS:
-            lag, sal = _lag_borne(ref[a:b], sig[a:b],
-                                  _ACCORD_MAX_LAG_S, _ACCORD_PAS_MS)
+            lag, sal = _lag_borne(ref[a:b], sig[a:b], max_lag_s,
+                                  _ACCORD_PAS_MS, centre_ms)
             if lag is not None:
                 run[2], run[3] = lag, sal
 
@@ -1109,6 +1155,99 @@ def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
     if progress:
         progress(1.0)
     return out, approx
+
+
+# Autour d'un point d'ancrage, la recherche n'a plus besoin d'être large : le
+# décalage est connu à quelques secondes près. Cette marge couvre les paliers
+# d'un montage différent sans rouvrir la porte aux candidats fantômes.
+ANCRE_MARGE_S = 12.0
+
+
+# Écart toléré entre le point donné par l'utilisateur et ce que l'analyse
+# retrouve. Au-delà, l'un des deux se trompe : le dire vaut mieux que choisir.
+ANCRE_ACCORD_MS = 2_000
+
+
+def accord_avec_ancre(segments: list[Segment], centre_ms: int,
+                      tolerance_ms: int = ANCRE_ACCORD_MS) -> bool:
+    """Au moins une plage confirme-t-elle le point donné par l'utilisateur ?
+
+    Un point d'ancrage faux ne rend pas la recherche muette : elle trouve un
+    pic secondaire, et sa régularité suffit à composer des plages d'allure
+    honnête — mesuré, +1600 ms là où l'utilisateur annonçait −8000. Le
+    désaccord entre les deux est justement ce qui trahit l'erreur.
+    """
+    return any(abs(seg.delay_ms - centre_ms) <= tolerance_ms
+               for seg in segments)
+
+
+def measure_with_anchor(video: Path, subtitle: Path, *,
+                        sous_titre_s: float, entendu_s: float,
+                        progress: Optional[Progress] = None,
+                        duration: float = 0.0,
+                        donor_track: Optional[int] = None) -> "SyncResult":
+    """Recale un sous-titre à partir d'un point donné par l'utilisateur.
+
+    Certains couples ne se mesurent pas : un sous-titre dont l'adaptation
+    diffère de celle du doublage plafonne sous le seuil de confiance **même
+    parfaitement aligné** — mesuré, 0,117 pour un seuil de 0,25. La corrélation
+    n'y est pas fiable, mais elle reste utilisable si on lui dit où chercher.
+
+    L'utilisateur fournit ce point : « la réplique écrite à `sous_titre_s` est
+    entendue à `entendu_s` ». La recherche est alors centrée sur cet écart et
+    resserrée à ±12 s, ce qui suffit à retrouver les paliers d'un montage
+    différent sans rouvrir la porte aux candidats fantômes.
+
+    Retourne un `SyncResult` porteur de plages, jamais appliquées d'office.
+    """
+    path = subtitle
+    if subtitle.suffix.lower() not in _TEXT_SUB_EXT:
+        if donor_track is None:
+            return SyncResult(0, None, 0.0, False,
+                              "piste embarquée sans index de piste")
+        path = extract_subtitle(subtitle, donor_track)
+        if path is None:
+            return SyncResult(0, None, 0.0, False,
+                              "sous-titre image — aucun texte à corréler")
+
+    cues = read_cues(path)
+    if not cues:
+        return SyncResult(0, None, 0.0, False, "aucune réplique lisible")
+
+    envelope = _decode_envelope(video, 0, progress,
+                                int(duration * 1000 / BIN_MS))
+    if envelope.size == 0:
+        return SyncResult(0, None, 0.0, False, "aucun audio dans la vidéo")
+
+    ref    = _speech_mask(envelope)
+    sig    = _cue_mask(cues, ref.size, (1, 1))
+    centre = int(round((entendu_s - sous_titre_s) * 1000))
+
+    segments = _segments_par_accord(ref, sig, centre_ms=centre,
+                                    max_lag_s=ANCRE_MARGE_S)
+    if not segments:
+        # Rien de structuré : le point donné reste la meilleure réponse, et
+        # c'est l'utilisateur qui l'a mesuré. On le rend tel quel.
+        return SyncResult(centre, None, MIN_CONFIDENCE, True,
+                          "décalage repris du point d'ancrage — aucun palier "
+                          "détecté au-delà", floor=MIN_CONFIDENCE)
+
+    if not accord_avec_ancre(segments, centre):
+        trouves = ", ".join(f"{s.delay_ms:+d} ms" for s in segments[:3])
+        return SyncResult(0, None, 0.0, False,
+                          f"le point donné annonce {centre:+d} ms, l'analyse "
+                          f"trouve {trouves} — vérifiez les deux instants",
+                          floor=MIN_CONFIDENCE)
+
+    if len(segments) == 1:
+        return SyncResult(segments[0].delay_ms, None, segments[0].confidence,
+                          True, "décalage constant confirmé autour du point "
+                          "d'ancrage", floor=MIN_CONFIDENCE, segments=[])
+
+    return SyncResult(centre, None, MIN_CONFIDENCE, False,
+                      f"{len(segments)} plages détectées autour du point "
+                      f"d'ancrage — montage différent",
+                      floor=MIN_CONFIDENCE, segments=segments)
 
 
 def measure_external_track(target: Path, track, progress=None,

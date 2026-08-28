@@ -1,5 +1,41 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.1] — 2026-08-28
+
+### Un point de repère quand la mesure ne peut pas conclure
+
+Certains couples ne se mesurent pas, et aucun réglage n'y changera rien : un
+sous-titre dont l'adaptation diffère de celle du doublage plafonne à **0,117**
+pour un seuil de 0,25, *même parfaitement aligné*. La corrélation n'y est pas
+fiable — mais elle reste utilisable si on lui dit **où** chercher.
+
+`R`, sur l'écran de recalage, demande deux instants : celui écrit dans le
+sous-titre, celui où on l'entend. La recherche se centre alors sur leur écart
+et se resserre à ±12 s. Sur le fichier du signalement, elle retrouve les trois
+plages — +280 / +1480 / +5580 ms là où la vérité établie à l'oreille est
++300 / +1500 / +5600.
+
+**Un ancrage faux ne reste pas muet, et c'est le piège.** La recherche
+mal centrée trouve un pic secondaire dont la régularité compose des plages
+d'allure honnête — mesuré : +1600 ms là où l'utilisateur annonçait −8000. C'est
+le **désaccord** entre les deux qui trahit l'erreur, pas l'absence de résultat.
+`accord_avec_ancre()` le vérifie, et le refus nomme les deux valeurs pour que
+l'utilisateur sache quoi corriger.
+
+Deux défauts trouvés en chemin par les tests, pas à la relecture : le centre de
+recherche était nommé `c`, **écrasé par la variable de corrélation** dans la
+boucle — le contrôle de borne comparait un décalage à un coefficient, et ne se
+déclenchait donc jamais près de zéro ni jamais loin. Et écarter un palier isolé
+pouvait couper en deux un palier qui n'en formait qu'un : les plages voisines de
+même décalage sont désormais recollées.
+
+### Du code mort retiré
+
+`decision.ambiguites()` détectait les langues revendiquées par plusieurs pistes.
+La refonte de l'assistant l'a rendue inutile — sa table montre toutes les pistes
+avec leur nom et se coche à l'espace — et elle n'avait plus d'appelant depuis.
+Retirée avec ses tests : c'est ce changement-là qui l'avait orpheline.
+
 ## [v0.8.3.0] — 2026-08-28
 
 Version publiée. Elle rassemble treize incréments, dont trois qui changent ce

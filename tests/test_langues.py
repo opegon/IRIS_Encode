@@ -22,8 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from core.decision import (AudioAction, ambiguites, decide_audio,
-                           decide_subtitles)
+from core.decision import AudioAction, decide_audio, decide_subtitles
 from core.profiles import Profile
 from core.scanner import (AudioTrack, SubtitleTrack, VideoInfo,
                           normalize_language, same_language)
@@ -119,46 +118,3 @@ def test_la_selection_manuelle_prime_sur_le_filtre(tmp_path):
     info = _info(tmp_path, sous_titres=[_st(0, "eng"), _st(1, "jpn")])
     assert decide_subtitles(info, _profile(subtitle_languages=["fre"]),
                             override=[1]) == [1]
-
-
-# ─── Quand faut-il demander à l'utilisateur ? ─────────────────────────────────
-
-def _at(index, langue, titre=""):
-    return AudioTrack(index=index, codec="eac3", channels=6, language=langue,
-                      title=titre, bitrate=640_000)
-
-
-def test_une_seule_candidate_ne_se_demande_pas(tmp_path):
-    info = _info(tmp_path, audio=[_at(0, "eng"), _at(1, "fre")])
-    assert ambiguites(info, _profile()) == []
-
-
-def test_deux_pistes_de_la_meme_langue_se_demandent(tmp_path):
-    """« Français » contre « Français canadien » : seul le titre les sépare."""
-    info = _info(tmp_path, audio=[_at(0, "fre", "Français"),
-                                  _at(1, "fra", "Français canadien")])
-    amb = ambiguites(info, _profile())
-    assert len(amb) == 1
-    assert amb[0].kind == "audio"
-    assert len(amb[0].tracks) == 2, "« fra » et « fre » comptent ensemble"
-
-
-def test_une_langue_hors_profil_ne_cree_pas_d_ambiguite(tmp_path):
-    info = _info(tmp_path, audio=[_at(0, "eng"), _at(1, "jpn"), _at(2, "jpn")])
-    assert ambiguites(info, _profile()) == []
-
-
-def test_les_sous_titres_ne_comptent_que_si_le_profil_les_filtre(tmp_path):
-    """Sans `subtitle_languages`, tout est gardé : il n'y a rien à arbitrer."""
-    info = _info(tmp_path, sous_titres=[_st(0, "fre"), _st(1, "fra")])
-    assert ambiguites(info, _profile()) == []
-    amb = ambiguites(info, _profile(subtitle_languages=["fre"]))
-    assert len(amb) == 1 and amb[0].kind == "subtitle"
-
-
-def test_deux_langues_ambigues_donnent_deux_arrets(tmp_path):
-    info = _info(tmp_path, sous_titres=[_st(0, "eng"), _st(1, "eng"),
-                                        _st(2, "fra"), _st(3, "fre")])
-    amb = ambiguites(info, _profile(subtitle_languages=["fre", "eng"]))
-    assert len(amb) == 2
-    assert {a.language for a in amb} == {"eng", "fra"}

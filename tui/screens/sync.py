@@ -32,7 +32,8 @@ from core.muxer import (
     sample_windows, timecode,
 )
 from core.sync import (
-    Segment, SyncResult, measure_external_track, read_cues,
+    Segment, SyncResult, measure_external_track, measure_with_anchor,
+    read_cues,
 )
 
 from ..common import footer_line2, raccourcis, touche, tronquer_milieu, retour_accueil
@@ -85,7 +86,8 @@ _HINT = (raccourcis([("←/→", "Champ"), ("+/-", "±100 ms"),
                      ("Shift+↑/↓", "±1 s"), ("enter", "Liste")]) + "\n"
          + raccourcis([("m", "Mesurer"), ("v", "Visualiser"),
                        ("k", "Extrait de contrôle"), ("c", "Copier"),
-                       ("F9", "Ajouter"), ("d", "Retirer")]))
+                       ("r", "Repère"), ("F9", "Ajouter"),
+                       ("d", "Retirer")]))
 _HINT_NO_LANG = (f"⚠ Langue manquante — +/- ou {touche('enter')} pour la "
                  f"choisir. Sans elle, la piste sortirait en « und ».")
 
@@ -112,6 +114,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("p",         "apply_segments",
                 "Appliquer",  show=True),
         Binding("c",         "copy_delay",   "Copier", show=True),
+        Binding("r",         "ancrer",       "Repère", show=True),
         Binding("d",         "remove_track", "Retirer",       show=True),
         # F1/F2 gardent partout le même sens : dry-run et encodage. Le mux,
         # propre à cet écran, prend F3.
@@ -538,6 +541,57 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         accord = "s" if n > 1 else ""
         return (f"\n{n} {pistes} du même fichier recalé{accord} d'autant "
                 f"— 'c' pour en reprendre un autre.")
+
+    def action_ancrer(self) -> None:
+        """Recale à partir d'un point donné à l'oreille.
+
+        Dernier recours quand la mesure refuse : elle n'a pas besoin d'être
+        fiable, seulement d'être **bornée**. Voir `sync.measure_with_anchor`.
+        """
+        i = self._current()
+        if i is None or self._measuring:
+            return
+        t = self._tracks[i]
+        if t.kind != TrackKind.SUBTITLE:
+            self._set_hint("Le point de repère sert aux sous-titres : une piste "
+                           "audio se mesure directement avec 'm'.")
+            return
+
+        from .ancrage import AncrageModal
+
+        def _apres(points) -> None:
+            if points is None:
+                return
+            ecrit, entendu = points
+            self._measuring = True
+            self._set_hint(f"⏳ Recherche autour de {entendu - ecrit:+.1f} s.\n"
+                           f"Décodage de l'audio du film — comptez plusieurs "
+                           f"dizaines de secondes.")
+            self._set_origin_cell(i, Text("mesure…", style="yellow"))
+            self._show_bar(True)
+            self._mesure_ancree(i, ecrit, entendu)
+
+        self.app.push_screen(
+            AncrageModal(t.track_name or t.source_path.name), _apres)
+
+    @work(thread=True, name="sync-ancrage")
+    def _mesure_ancree(self, i: int, ecrit: float, entendu: float) -> None:
+        t = self._tracks[i]
+
+        def report(fraction: float) -> None:
+            self.app.call_from_thread(self._set_progress, fraction)
+
+        try:
+            idx = ffmpeg_stream_index(t.source_path, t.source_tid,
+                                      TrackKind.SUBTITLE)
+            res = measure_with_anchor(self._source, t.source_path,
+                                      sous_titre_s=ecrit, entendu_s=entendu,
+                                      progress=report,
+                                      duration=self._decision.info.duration,
+                                      donor_track=idx)
+        except Exception as e:                       # noqa: BLE001
+            res = SyncResult(0, None, 0.0, False, f"mesure impossible : {e}")
+        self.app.call_from_thread(self._apply_measure, i, res)
 
     def _set_hint(self, text: str) -> None:
         """Message persistant : il survit à la navigation entre champs."""

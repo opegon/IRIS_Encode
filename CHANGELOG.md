@@ -1,5 +1,21 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.12] — 2026-08-28
+
+### Le mode se lit dans le footer, et dans sa couleur
+
+La barre de profil annonçait déjà le mode, mais le footer disait seulement
+« W Mode » — ce qui n'apprend rien sur celui qui est actif. Il nomme désormais
+le mode courant : `W Assistant` ou `W Manuel`.
+
+Et le fond du footer change : le **manuel garde le code couleur par défaut**,
+l'assistant prend l'accent du thème. Sur l'accueil comme sur les écrans de
+l'assistant lui-même.
+
+Une couleur se remarque sans être lue. Le mode commande ce que fait une touche
+aussi banale que `↵` sur un fichier : il ne devait pas demander qu'on aille le
+chercher.
+
 ## [v0.8.2.11] — 2026-08-28
 
 ### L'assistant devient un écran à lui seul

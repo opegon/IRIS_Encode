@@ -276,6 +276,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         ("a",         "Tout"),
         ("n",         "Aucun"),
         ("enter",     "Ouvrir"),
+        ("w",         "Mode"),
         ("v",         "Visualiser"),
         ("ctrl+d",    "Supprimer"),
         ("backspace", "Remonter"),
@@ -285,17 +286,32 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         ("pagedown",  "Page ↓"),
     ]
 
+    def _raccourcis_fichiers(self) -> list[tuple[str, str]]:
+        """La liste des fichiers, avec le mode courant nommé sur la touche W.
+
+        « Mode » seul n'apprend rien : ce qui compte est celui qui est actif,
+        parce qu'il commande ce que fait ↵ sur un fichier.
+        """
+        assistant = getattr(self._app, "wizard_mode", True)
+        return [(k, "Assistant" if assistant else "Manuel") if k == "w"
+                else (k, lib)
+                for k, lib in self._RACCOURCIS_FICHIERS]
+
     def _footer_suit_le_mode(self) -> None:
         """Le footer n'annonce que ce que le mode courant sait faire."""
         try:
             pied = self.query_one(KeyFooter)
         except Exception:
             return
+        # La couleur double le libellé : le manuel garde le code par défaut,
+        # l'assistant prend l'accent du thème.
+        pied.set_class(bool(getattr(self._app, "wizard_mode", True)),
+                       "assistant")
         if self._nav.is_virtual:
             pied.update_line(1, self._RACCOURCIS_VOLUMES)
             pied.update_line(2, footer_line2(nav=False))
         else:
-            pied.update_line(1, self._RACCOURCIS_FICHIERS)
+            pied.update_line(1, self._raccourcis_fichiers())
             pied.update_line(2, footer_line2(
                 nav=False, resize=True,
                 extra=(("f1", "Dry-run"), ("f2", "Run"), ("f3", "Récursif"),
@@ -742,6 +758,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         app = self.app
         app.wizard_mode = not getattr(app, "wizard_mode", True)   # type: ignore[attr-defined]
         self._update_profile_bar()
+        self._footer_suit_le_mode()
         self._flash_status(
             "Mode assistant — ↵ ouvre le parcours guidé, un fichier à la fois."
             if app.wizard_mode else                               # type: ignore[attr-defined]

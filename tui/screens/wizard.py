@@ -124,8 +124,10 @@ class WizardScreen(TableNavMixin, Screen):
         yield Static("", id="wiz-corps", markup=False)
         yield DataTable(id="wiz-table", cursor_type="row", show_header=True)
         yield Static("", id="wiz-hint", markup=False)
-        yield KeyFooter(actions=[], nav=footer_line2(back=True, nav=True,
-                                                     accueil=True))
+        # Même accent que la barre de l'accueil en mode assistant : on sait
+        # d'un coup d'œil dans quel parcours on se trouve.
+        yield KeyFooter(actions=[], classes="assistant",
+                        nav=footer_line2(back=True, nav=True, accueil=True))
 
     def on_mount(self) -> None:
         self._afficher()

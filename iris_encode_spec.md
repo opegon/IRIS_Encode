@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.11 — document de référence courant
+**Version** : 0.8.2.12 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1190,6 +1190,14 @@ lire sans avoir à l'essayer.
 
 En mode assistant, `↵` sur un fichier ouvre le parcours. Un fichier à la fois.
 
+**Le mode se lit à trois endroits**, parce qu'il commande ce que fait une touche
+aussi banale que `↵` : la barre de profil (`[W] Assistant` / `[W] Manuel`), le
+libellé de la touche `W` dans le footer, et **la couleur du footer**. Le manuel
+garde le code couleur par défaut (`$primary-darken-2`) ; l'assistant prend
+l'accent du thème (`KeyFooter.assistant`), sur l'accueil comme sur ses propres
+écrans. Une couleur se remarque sans être lue — c'est le seul des trois qui ne
+demande aucune attention.
+
 | Étape | Ce qu'on y fait | Touches |
 |---|---|---|
 | 1 — Fichier | Le nom du fichier, ses caractéristiques, le profil actif | `↵` |
@@ -1758,6 +1766,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.2.12 | 2026-08-28 | **Le mode se lit dans le footer et dans sa couleur** : touche `W` nommée par le mode actif, et fond du footer à l'accent du thème en mode assistant — le manuel garde le code couleur par défaut |
 | 0.8.2.11 | 2026-08-28 | **Assistant refondu** : écran autonome de cinq étapes au lieu d'un enchaînement des écrans existants · bascule par `W` depuis l'accueil, mode affiché dans la barre de profil, `↵` sur un fichier ouvre le parcours · codec, débit et pistes sur un seul écran · une piste greffée est mesurée et appliquée aussitôt · mux et encodage toujours offerts, puis retour à l'accueil |
 | 0.8.2.10 | 2026-08-28 | **`Ctrl+Home` — retour à l'accueil** depuis les sept écrans non modaux, pour enchaîner les fichiers sans remonter la pile un écran à la fois. `Home` reste la navigation dans les tables · les deux écrans qui portent un travail non validé confirment avant de le perdre |
 | 0.8.2.9 | 2026-08-28 | **Le flux `bin_data` des sorties MP4 identifié** : c'est la piste de chapitres, seule forme sous laquelle le MP4 sait les porter. Pas une piste parasite, rien à corriger — noté pour ne pas le réenquêter (§ 8.6) |

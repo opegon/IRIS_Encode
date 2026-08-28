@@ -116,6 +116,12 @@ class KeyFooter(Widget):
         color: $text;
         padding: 0 1;
     }
+    /* Le mode assistant change ce que fait une touche aussi banale que ↵ :
+       il doit se voir sans être lu. Le manuel garde le code couleur par
+       défaut, l'assistant prend l'accent du thème. */
+    KeyFooter.assistant #footer-body {
+        background: $accent-darken-2;
+    }
     """
 
     def __init__(

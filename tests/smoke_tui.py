@@ -647,7 +647,12 @@ async def scenario_wizard() -> None:
             assert app.wizard_mode is True, "l'assistant est le mode d'entree"
             barre = str(app.screen.query_one("#profile-bar", Static).render())
             assert "Assistant" in barre, f"mode absent de la barre -> {barre[:80]!r}"
-            print("[15] Mode assistant annonce dans la barre de profil")
+            from tui.widgets.footer import KeyFooter
+            pied = app.screen.query_one(KeyFooter)
+            assert "Assistant" in str(pied.query_one("#footer-body", Static).render()),                 "le footer doit nommer le mode"
+            assert pied.has_class("assistant"), "le footer doit changer de couleur"
+            print("[15] Mode assistant : nomme dans la barre, dans le footer, "
+                  "et signale par la couleur")
 
             # ↵ sur un fichier ouvre l'assistant
             await pilot.press("enter")
@@ -698,6 +703,9 @@ async def scenario_wizard() -> None:
             assert app.wizard_mode is False
             barre = str(app.screen.query_one("#profile-bar", Static).render())
             assert "Manuel" in barre, barre[:80]
+            pied = app.screen.query_one(KeyFooter)
+            assert "Manuel" in str(pied.query_one("#footer-body", Static).render())
+            assert not pied.has_class("assistant"),                 "le manuel garde le code couleur par defaut"
             await pilot.press("enter")
             await pilot.pause(0.8)
             assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__

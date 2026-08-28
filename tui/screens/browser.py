@@ -29,6 +29,7 @@ from core.decision import (
 from core.scanner import scan, scan_directory_recursive
 from ..common import (
     touche,
+    cellule,
     DV_VALUE_STYLES,
     estimate_encoding_duration,
     fmt_bytes,
@@ -149,6 +150,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     # Les planchers imposés par le contenu viennent de core.config, seule
     # source de vérité : ils valent aussi à la lecture d'une largeur persistée.
     RESIZE_MIN    = {"fichier": 30, "audio": 10, **cfg_mod.COLUMN_MIN_WIDTHS}
+    RESIZE_FIXE   = 3   # case à cocher
 
     DEFAULT_CSS = """
     BrowserScreen {
@@ -465,15 +467,17 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         info = dec.info
         vid  = dec.video
 
-        name_txt  = Text(f"{_FILE_ICON} {info.path.name}", overflow="ellipsis", no_wrap=True)
-        size_txt  = Text(fmt_size(info.path), style="dim", no_wrap=True)
-        res_txt   = Text(f"{info.width}x{info.height}")
-        dur_txt   = Text(fmt_duration(info.duration), style="dim",
-                         no_wrap=True, overflow="ellipsis")
-        kbps_txt  = Text(f"{info.kbps}k")
-        codec_txt = Text(info.codec)
-        dv_txt    = Text(info.dv_label)
-        dec_txt   = Text(vid.label(), style=vid.style())
+        # Toute cellule passe par `cellule()` : ce qui déborde se voit déborder.
+        # `→ HEVC → HDR10` rendu `→ HEVC →` se lisait comme une décision
+        # complète — voir tests/test_troncature.py.
+        name_txt  = cellule(f"{_FILE_ICON} {info.path.name}")
+        size_txt  = cellule(fmt_size(info.path), style="dim")
+        res_txt   = cellule(f"{info.width}x{info.height}")
+        dur_txt   = cellule(fmt_duration(info.duration), style="dim")
+        kbps_txt  = cellule(f"{info.kbps}k")
+        codec_txt = cellule(info.codec)
+        dv_txt    = cellule(info.dv_label)
+        dec_txt   = cellule(vid.label(), style=vid.style())
 
         # Estimation taille de sortie
         try:
@@ -483,7 +487,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         est_bytes = _estimate_output_bytes(dec)
 
         if est_bytes == 0:
-            estim_txt = Text("—", style="dim", no_wrap=True)
+            estim_txt = cellule("—", style="dim")
         elif src_bytes > 0:
             delta_pct = (est_bytes - src_bytes) * 100 / src_bytes
             sign      = "+" if delta_pct > 0 else ""
@@ -492,12 +496,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             # signaler. Le vert reste réservé au « sans réencodage ».
             color     = STYLE_PAR_EMPHASE[
                 Emphase.ALERTE if delta_pct > 0 else Emphase.ORDINAIRE]
-            estim_txt = Text(
-                f"{fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)",
-                style=color, no_wrap=True,
-            )
+            estim_txt = cellule(
+                f"{fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)", style=color)
         else:
-            estim_txt = Text(fmt_bytes(est_bytes), no_wrap=True)
+            estim_txt = cellule(fmt_bytes(est_bytes))
 
         # Estimation temps d'encodage
         prof = self._active_profile()
@@ -507,11 +509,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             info.duration, info.kbps * 1000, vid.target_bitrate,
             vid.action, preset, measured_speed
         )
-        temps_txt = Text(fmt_duration(est_duration), no_wrap=True,
-                         overflow="ellipsis",
-                         style="dim" if vid.action == VideoAction.SKIP else "")
+        temps_txt = cellule(fmt_duration(est_duration),
+                            style="dim" if vid.action == VideoAction.SKIP else "")
 
-        audio_txt = Text(dec.audio_summary, overflow="ellipsis", no_wrap=True)
+        audio_txt = cellule(dec.audio_summary)
 
         return (check, name_txt, size_txt, res_txt, dur_txt, kbps_txt, codec_txt, dv_txt, dec_txt, estim_txt, temps_txt, audio_txt)
 

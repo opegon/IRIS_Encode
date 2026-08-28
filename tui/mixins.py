@@ -121,6 +121,10 @@ class ColumnResizeMixin:
     RESIZE_MIN:         dict[str, int] = {}
     RESIZE_STEP:        int            = 2
     RESIZE_MIN_DEFAULT: int            = 6
+    # Largeur des colonnes que l'écran ajoute hors du cycle de redimensionnement
+    # (la case à cocher, le numéro de piste), plus les séparateurs. Elle compte
+    # dans le total, donc dans le plafond.
+    RESIZE_FIXE:        int            = 0
 
     BINDINGS = [
         Binding("shift+tab", "col_prev",   "Col préc.", show=True, priority=True),
@@ -189,12 +193,55 @@ class ColumnResizeMixin:
     def action_col_grow(self) -> None:
         self._apply_resize(+self.RESIZE_STEP)
 
+    def _place_disponible(self) -> int:
+        """Colonnes offertes par le terminal, ou 0 si l'écran n'est pas monté."""
+        try:
+            return int(self.size.width)          # type: ignore[attr-defined]
+        except Exception:
+            return 0
+
+    def _total_largeurs(self, widths: dict[str, int]) -> int:
+        return sum(widths.get(k, 0) for k in self.RESIZE_COLS) + self.RESIZE_FIXE
+
     def _apply_resize(self, delta: int) -> None:
         key     = self.resize_col_key
-        current = self._resize_widths().get(key, 12)
+        widths  = self._resize_widths()
+        current = widths.get(key, 12)
         floor   = self.RESIZE_MIN.get(key, self.RESIZE_MIN_DEFAULT)
         new_w   = max(floor, current + delta)
         if new_w == current:
             return
+        # IE-02 a donné un plancher par colonne ; rien ne limitait la somme.
+        # Mesuré sur le dry-run : 186 colonnes enregistrées pour un terminal de
+        # 160. Les dernières colonnes sortaient de l'écran, « 34.6 Go » perdait
+        # son « o », et le réglage était persisté — l'écran restait faux au
+        # lancement suivant, sans que rien ne l'ait signalé.
+        place = self._place_disponible()
+        if delta > 0 and place:
+            total = self._total_largeurs({**widths, key: new_w})
+            if total > place:
+                marge = place - self._total_largeurs(widths)
+                if marge <= 0:
+                    self._refus_elargir(place)
+                    return
+                new_w = current + marge          # on donne ce qui reste, pas plus
+                if new_w <= current:
+                    self._refus_elargir(place)
+                    return
         self._resize_persist(key, new_w)
         self._resize_rebuild()
+
+    def _refus_elargir(self, place: int) -> None:
+        """Dire pourquoi la colonne ne s'élargit plus, plutôt que ne rien faire.
+
+        Une touche sans effet et sans message se lit comme une touche cassée.
+        """
+        try:
+            self.notify(                          # type: ignore[attr-defined]
+                f"Les colonnes occupent déjà les {place} colonnes du terminal — "
+                f"rétrécissez-en une autre ({self.resize_col_label} reste "
+                f"réglable vers le bas).",
+                severity="warning", timeout=4,
+            )
+        except Exception:
+            pass

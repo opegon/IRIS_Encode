@@ -43,7 +43,8 @@ from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import measure_external_track
 
 from ..common import (bitrate_picker_config, codec_picker_opts, fmt_duration,
-                      footer_line2, retour_accueil, tronquer_milieu)
+                      footer_line2, retour_accueil, tronquer_milieu,
+                      ECARTEE, actions_ecran, cellule)
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 from .value_picker import ValuePickerScreen
@@ -60,6 +61,12 @@ class Etape(Enum):
 _ORDRE = [Etape.FICHIER, Etape.DECISION, Etape.PISTES, Etape.LANCER,
           Etape.TERMINE]
 
+# Les touches utiles changent d'une étape à l'autre : proposer « Encoder » au
+# moment de choisir le fichier n'aide personne. Le pied de page ne liste donc
+# que celles qui agissent ici — mais leurs libellés viennent des `BINDINGS`,
+# jamais d'une seconde liste écrite à côté (voir `actions_ecran`).
+_TOUCHES_ETAPE: dict["Etape", tuple[str, ...]] = {}
+
 _TITRES = {
     Etape.FICHIER:  "Fichier",
     Etape.DECISION: "Décision",
@@ -67,6 +74,14 @@ _TITRES = {
     Etape.LANCER:   "Lancer",
     Etape.TERMINE:  "Terminé",
 }
+
+_TOUCHES_ETAPE.update({
+    Etape.FICHIER:  ("enter",),
+    Etape.DECISION: ("space", "f6", "f7", "enter"),
+    Etape.PISTES:   ("f9", "d", "enter"),
+    Etape.LANCER:   ("enter", "m", "e"),
+    Etape.TERMINE:  ("enter",),
+})
 
 # Genres de lignes de la table de l'étape 2
 _L_AUDIO, _L_SUB, _L_EXT = "a", "s", "e"
@@ -100,7 +115,7 @@ class WizardScreen(TableNavMixin, Screen):
     # système de bindings soit consulté — voir l'avertissement en tête de
     # tui/mixins.py. Sans cela, ↵ ne fait rien sur les étapes à table.
     BINDINGS = [
-        Binding("enter",     "suivant",  "Suivant", show=True,  priority=True),
+        Binding("enter",     "suivant",  "Continuer", show=True,  priority=True),
         Binding("space",     "basculer", "Garder",  show=True,  priority=True),
         Binding("f6",        "codec",    "Codec",   show=True,  priority=True),
         Binding("f7",        "debit",    "Débit",   show=True,  priority=True),
@@ -138,7 +153,8 @@ class WizardScreen(TableNavMixin, Screen):
         yield Static("", id="wiz-hint", markup=False)
         # Même accent que la barre de l'accueil en mode assistant : on sait
         # d'un coup d'œil dans quel parcours on se trouve.
-        yield KeyFooter(actions=[], classes="assistant",
+        yield KeyFooter(actions=actions_ecran(self, _TOUCHES_ETAPE[self._etape]),
+                        classes="assistant",
                         nav=footer_line2(back=True, nav=True, accueil=True))
 
     def on_mount(self) -> None:
@@ -192,6 +208,11 @@ class WizardScreen(TableNavMixin, Screen):
         table.display = avec_table
         if avec_table:
             table.focus()
+        try:
+            self.query_one(KeyFooter).update_line(
+                1, actions_ecran(self, _TOUCHES_ETAPE[self._etape]))
+        except Exception:
+            pass                      # pas encore monté : compose a déjà servi
 
     # ── Étape 1 — le fichier ──────────────────────────────────────────────────
 
@@ -239,12 +260,12 @@ class WizardScreen(TableNavMixin, Screen):
                         ad.action != AudioAction.EXCLUDE,
                         f"0:a:{ad.track.index}", ad.track.codec,
                         ad.track.language, ad.track.title,
-                        ad.display() or "—")
+                        ad.display() or ECARTEE)
         gardes = {st.index for st in d.subtitles_finales}
         for st in d.info.subtitle_tracks:
             self._ligne(_L_SUB, st.index, st.index in gardes,
                         f"0:s:{st.index}", st.codec, st.language, st.title,
-                        "copie" if st.index in gardes else "")
+                        "copie" if st.index in gardes else ECARTEE)
         for n, ext in enumerate(d.external_tracks):
             kind = "audio" if ext.kind == TrackKind.AUDIO else "sous-titre"
             self._ligne(_L_EXT, n, True, f"greffe {kind}", ext.codec,
@@ -256,11 +277,11 @@ class WizardScreen(TableNavMixin, Screen):
         style = "" if garde else "dim"
         table.add_row(
             Text("✓" if garde else " ", style="bold green" if garde else "dim"),
-            Text(piste, no_wrap=True, style=style),
-            Text(codec, no_wrap=True, style=style),
-            Text(langue or "?", no_wrap=True, style=style),
-            Text(tronquer_milieu(nom or "—", 30), no_wrap=True, style=style),
-            Text(decision, style="green" if garde else "dim"),
+            cellule(piste,        style=style),
+            cellule(codec,        style=style),
+            cellule(langue or "?", style=style),
+            cellule(nom or "—",   style=style, largeur=30),
+            cellule(decision,     style="green" if garde else "dim"),
         )
         self._lignes.append((genre, idx))
 

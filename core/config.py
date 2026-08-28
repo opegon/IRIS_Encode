@@ -110,9 +110,24 @@ def get_bin_dir(cfg: dict[str, Any]) -> Path:
 # lecture comme au redimensionnement, parce qu'une largeur trop courte a pu
 # être persistée avant qu'ils existent.
 COLUMN_MIN_WIDTHS: dict[str, int] = {
-    "duree":       7,
-    "temps_estim": 7,
+    "duree":        7,   # « 3:17:24 »
+    "temps_estim":  7,
+    # « → HEVC → HDR10 » et « → HEVC → SDR ⚠ » font quatorze caractères. À huit,
+    # la colonne rendait « → HEVC → » : le sort du Dolby Vision — conservé,
+    # converti en HDR10, aplati en SDR — disparaissait, et les trois sorties
+    # s'affichaient à l'identique. `decision` sur l'accueil, `action` sur le
+    # dry-run, même libellé des deux côtés.
+    "decision":    14,
+    "action":      14,
+    # « DV:P8.1 » — sept caractères. Les deux écrans nomment cette colonne
+    # différemment, le plancher vaut pour les deux noms.
+    "dolby_vision": 7,
+    "dv":           7,
 }
+
+# Ces planchers ne se maintiennent pas à la main : `tests/test_troncature.py`
+# énumère les libellés que chaque colonne peut produire et échoue si l'un
+# dépasse.
 
 
 def _plancher(widths: dict[str, int]) -> dict[str, int]:
@@ -194,10 +209,14 @@ def set_dryrun_column_width(cfg: dict[str, Any], col: str, width: int) -> None:
      .setdefault("columns", {}))[col] = width
 
 
+# « Source » portait deux sens — le motif de sélection pour l'audio, le titre
+# déclaré pour les sous-titres. Séparées, les deux colonnes tiennent dans la
+# largeur qu'occupait l'ancienne à elle seule, à quatre colonnes près.
 _TRACKS_COL_DEFAULTS: dict[str, int] = {
     "codec": 12,
     "fmt":   16,
-    "src":   32,
+    "src":   18,   # « exclu manuellement »
+    "titre": 24,
 }
 
 

@@ -26,7 +26,8 @@ from core.muxer import (
     premux_output_path,
 )
 from core.platform import PlatformProfile
-from ..common import footer_line2, record_measured_speed, retour_accueil
+from ..common import (actions_ecran, footer_line2, record_measured_speed,
+                      retour_accueil)
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 
@@ -72,21 +73,29 @@ class RunScreen(TableNavMixin, Screen):
     #file-table {
         height: 1fr;
     }
+    /* La commande ffmpeg s'enroule sur quatre lignes ou plus. À hauteur fixe,
+       elle occupait toute la zone et chassait la ligne d'avancement en
+       dessous : frame, fps, vitesse et temps restant devenaient invisibles
+       pendant tout l'encodage. La zone suit désormais son contenu, la ligne
+       d'avancement passe devant, et la commande cède la place quand la
+       fenêtre est courte. */
     #cmd-zone {
-        height: 5;
+        height: auto;
+        max-height: 12;
         background: $panel;
         padding: 0 1;
         border-top: solid $primary;
         layout: vertical;
     }
+    #ffmpeg-line {
+        color: $text;
+        height: 1;
+        text-style: bold;
+    }
     #cmd-lines {
         height: auto;
         color: $text-muted;
         width: 1fr;
-    }
-    #ffmpeg-line {
-        color: $text;
-        height: 1;
     }
     #global-bar-row {
         height: 2;
@@ -126,15 +135,13 @@ class RunScreen(TableNavMixin, Screen):
             yield Label("Global", id="global-label")
             yield ProgressBar(total=100, show_eta=False, id="global-bar")
         with Static(id="cmd-zone"):
-            yield Static("", id="cmd-lines", markup=False)
+            # L'avancement d'abord : c'est la seule ligne qui change, et la
+            # seule dont l'absence se remarque.
             yield Static("", id="ffmpeg-line", markup=False)
+            yield Static("", id="cmd-lines", markup=False)
         yield KeyFooter(
-            actions=[
-                ("p",         "Pause / Reprendre"),
-                ("s",         "Passer le fichier"),
-                ("backspace", "Retour"),
-            ],
-            nav=footer_line2(nav=True, accueil=True),
+            actions=actions_ecran(self),
+            nav=footer_line2(back=True, nav=True, accueil=True),
         )
 
     def on_mount(self) -> None:
@@ -212,13 +219,28 @@ class RunScreen(TableNavMixin, Screen):
             pass
 
     def _update_header(self) -> None:
+        """L'avancement global, fichiers terminés **et** fichier en cours.
+
+        Le compte ne portait que sur les fichiers achevés : sur un encodage
+        d'un seul fichier — le cas ordinaire depuis l'assistant — la barre
+        restait à 0 % pendant deux heures, puis passait à 100 %. Le fichier
+        affichait pourtant 69 % dans sa ligne : deux chiffres contradictoires
+        à l'écran, dont le plus visible était le faux.
+        """
         try:
-            done    = sum(1 for s in self._statuses if s.state in {FileState.SUCCESS, FileState.ERROR})
+            finis   = {FileState.SUCCESS, FileState.ERROR, FileState.SKIPPED}
             total   = len(self._statuses)
+            done    = sum(1 for s in self._statuses if s.state in finis)
+            # `percent` vaut -1 tant que ffmpeg n'a pas rendu de durée : une
+            # progression inconnue compte pour rien, jamais pour du négatif.
+            encours = sum(min(1.0, max(0.0, s.percent))
+                          for s in self._statuses
+                          if s.state not in finis)
             profile = self.app.active_profile_id  # type: ignore[attr-defined]
-            bar_pct = int(done / total * 100) if total else 0
+            bar_pct = int((done + encours) / total * 100) if total else 0
             self.query_one("#run-header-bar", Static).update(
-                f" Encodage — {total} fichiers · Profil : {profile} ── Global : {bar_pct}%"
+                f" Encodage — {total} fichiers · Profil : {profile}"
+                f" ── {done}/{total} terminés ── Global : {bar_pct}%"
             )
             self.query_one("#global-bar", ProgressBar).progress = bar_pct
         except Exception:

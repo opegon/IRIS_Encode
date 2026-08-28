@@ -52,6 +52,9 @@ Thumbs.db
 # Configuration locale de l'outillage
 .claude/
 
-# Revue d'interface : le generateur de captures et sa sortie.
-tests/shots_tui.py
+# Revue d'interface : la sortie des captures, pas le generateur.
+# Le generateur (tests/shots_tui.py) est versionne depuis la v0.8.3.5 : c'est
+# lui qui a trouve le detournement de la touche T, qu'aucun test ni relecture
+# ne voyait. Un garde-fou qui n'existe que sur une machine disparait au
+# premier clone.
 _shots/

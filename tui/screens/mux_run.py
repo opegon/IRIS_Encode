@@ -18,7 +18,7 @@ from textual.widgets import Header, Label, ProgressBar, Static
 from core.decision import FileDecision, force_skip_to_encode
 from core.muxer import MuxProcess, build_mux_command, mux_output_path
 
-from ..common import footer_line2, retour_accueil
+from ..common import actions_ecran, footer_line2, retour_accueil
 from ..widgets.footer import KeyFooter
 
 
@@ -80,12 +80,8 @@ class MuxScreen(Screen[bool]):
             yield Static("", id="mux-state", markup=False)
             yield Static("", id="mux-cmd")
         yield KeyFooter(
-            actions=[
-                ("f1",        "Dry-run"),
-                ("f2",        "Encoder"),
-                ("backspace", "Retour"),
-            ],
-            nav=footer_line2(nav=False, accueil=True),
+            actions=actions_ecran(self),
+            nav=footer_line2(back=True, nav=False, accueil=True),
         )
 
     def on_mount(self) -> None:

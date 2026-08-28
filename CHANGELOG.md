@@ -1,5 +1,83 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.5] — 2026-08-29
+
+Les huit constats de la revue du 2026-08-28 (IE-28 à IE-33), plus deux défauts
+d'avancement rapportés en cours d'encodage.
+
+### Ce qui déborde se voit déborder
+
+Sept constats sur huit étaient la même famille : une valeur coupée net, qui
+reste plausible une fois coupée. `→ HEVC → HDR10` rendu `→ HEVC →` se lit comme
+une décision complète — le sort du Dolby Vision avait disparu sans laisser de
+trace, et les trois sorties possibles s'affichaient à l'identique.
+
+Corriger une colonne à la fois n'avait jamais suffi ; la famille revenait à
+chaque version depuis IE-01. Trois garde-fous la remplacent :
+
+- **`cellule()`** — toute cellule de table passe par elle, et elle pose
+  l'ellipse. `hdmv_pgs_sub`, `→ HEVC → HDR10`, `34.6 Go` : ce qui manque se
+  voit manquer.
+- **Des planchers qui tiennent le contenu** — `COLUMN_MIN_WIDTHS` couvrait deux
+  colonnes sur onze. Les colonnes à valeurs énumérables (décision, Dolby Vision)
+  ont désormais un plancher, et `tests/test_troncature.py` énumère les libellés
+  que chacune peut produire : un libellé qui s'allonge sans que le plancher
+  suive fait échouer la suite.
+- **Un plafond au redimensionnement** — IE-02 avait donné un plancher par
+  colonne, rien ne limitait la somme. Mesuré sur le dry-run : 186 colonnes
+  persistées pour un terminal de 160. `>` s'arrête à la largeur réelle, donne
+  la place qui reste plutôt que rien, et dit pourquoi il s'arrête.
+
+### Une touche déclarée s'annonce
+
+La touche `R` du point de repère était déclarée `show=True` et n'apparaissait
+nulle part : la liste du pied de page était écrite à la main, à côté des
+`BINDINGS`, et les deux ont divergé en silence. L'assistant, lui, construisait
+son pied de page avec `actions=[]` — ses huit touches n'étaient annoncées nulle
+part.
+
+`actions_ecran()` lit les `BINDINGS`. L'assistant filtre par étape : proposer
+« Encoder » au moment de choisir le fichier n'aide personne, et `↵` garde le
+même sens d'un bout à l'autre — avancer.
+
+`tests/test_footer_bindings.py` porte sur le pied de page **complet**, bande 2
+comprise, en relisant l'appel `footer_line2` de chaque `compose()`. C'est ce
+test qui a rattrapé le `⌫ Retour` que la dérivation venait de faire disparaître
+de quatre écrans.
+
+### Trois défauts d'affichage dans l'écran des pistes
+
+- `── SOUS-TI` : les intitulés de section vivaient dans une colonne de dix
+  caractères. Le trait décoratif part dans les autres cellules — la ligne se lit
+  comme une règle en travers de la table — et la colonne prend la largeur du
+  plus long intitulé.
+- La colonne **Source** portait deux sens : le motif de sélection pour l'audio,
+  le titre déclaré pour les sous-titres. Les deux comptent : ce sont deux
+  colonnes.
+- Une piste écartée laissait une case **vide**, qui se lit comme une donnée
+  manquante et non comme une décision. Elle dit `← écartée`, du même mot
+  partout.
+
+### L'avancement, rapporté en cours d'encodage
+
+- **La barre globale restait à 0 %.** Le compte ne portait que sur les fichiers
+  *achevés* : sur un encodage d'un seul fichier — le cas ordinaire depuis
+  l'assistant — elle affichait 0 % pendant deux heures pendant que la ligne du
+  fichier annonçait 69 %. Deux chiffres contradictoires à l'écran, dont le plus
+  visible était le faux. Le fichier en cours compte désormais pour sa fraction,
+  et l'en-tête dit aussi `2/7 terminés`.
+- **La ligne d'avancement était chassée par la commande.** La zone du bas avait
+  une hauteur fixe de cinq lignes ; la commande ffmpeg s'y enroule sur quatre ou
+  plus et occupait tout, poussant hors champ frame, fps, vitesse et temps
+  restant. La zone suit son contenu, et l'avancement passe devant la commande.
+
+### Outillage
+
+`tests/shots_tui.py` — le générateur des vingt-sept captures — est **versionné**.
+Il était ignoré par git depuis la première revue : c'est pourtant lui qui a
+trouvé le détournement de la touche `T`, qu'aucun test ni relecture ne voyait.
+Un garde-fou qui n'existe que sur une machine disparaît au premier clone.
+
 ## [v0.8.3.4] — 2026-08-28
 
 ### `T` ouvrait l'assistant au lieu de l'écran des pistes

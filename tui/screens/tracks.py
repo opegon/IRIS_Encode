@@ -44,8 +44,11 @@ from core.decision import (
     VideoAction, VideoOverride, decide_audio, decide_video,
 )
 from ..common import (
+    ECARTEE,
+    actions_ecran,
     retour_accueil,
     raccourcis,
+    cellule,
     codec_picker_opts,
     bitrate_picker_config,
     footer_line2,
@@ -53,6 +56,15 @@ from ..common import (
 from ..mixins import ColumnResizeMixin, TableNavMixin
 from ..widgets.footer import KeyFooter
 from .value_picker import ValuePickerScreen
+
+# Les intitulés de section vivaient dans la colonne « Piste », large de dix :
+# « ── SOUS-TITRES ───── » y devenait « ── SOUS-TI », coupé au milieu d'un mot.
+# Le trait décoratif part donc dans les autres cellules — la ligne se lit comme
+# une règle en travers de la table — et la colonne prend la largeur du plus long
+# intitulé, jamais moins.
+SECTIONS: tuple[str, ...] = ("VIDÉO", "AUDIO", "SOUS-TITRES", "EXTERNES")
+_W_IDX: int = max(10, *(len(s) for s in SECTIONS))
+
 
 # ── Types de lignes ───────────────────────────────────────────────────────────
 _ROW_VIDEO    = "video"
@@ -115,8 +127,10 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
     ]
 
     # Colonnes redimensionnables (ColumnResizeMixin)
-    RESIZE_COLS   = ["codec", "fmt", "src"]
-    RESIZE_LABELS = {"codec": "Codec", "fmt": "Format", "src": "Source"}
+    RESIZE_COLS   = ["codec", "fmt", "src", "titre"]
+    RESIZE_LABELS = {"codec": "Codec", "fmt": "Format", "src": "Source",
+                     "titre": "Titre"}
+    RESIZE_FIXE   = 26   # case (7) + Piste (_W_IDX) + Langue (8), hors cycle
 
     DEFAULT_CSS = """
     TracksScreen { layout: vertical; }
@@ -186,17 +200,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                         zebra_stripes=False, show_header=True)
         yield Static(_HINT_TRACK, id="hint-bar")
         yield KeyFooter(
-            actions=[
-                ("space", "Sélect"),
-                ("enter", "Valider"),
-                ("f1",    "Dry-run"),
-                ("f2",    "Run"),
-                ("f4",    "Profil"),
-                ("f6",    "Codec"),
-                ("f7",    "Débit"),
-                ("f8",    "Suppr./garder source"),
-                ("f9",    "Piste externe"),
-            ],
+            actions=actions_ecran(self),
             nav=footer_line2(back=True, nav=True, resize=True, accueil=True),
         )
 
@@ -208,6 +212,26 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
     # ── Construction table ────────────────────────────────────────────────────
 
+    def _ligne_section(self, table, titre: str, cle: str) -> None:
+        """Une règle en travers de la table, l'intitulé lisible en entier.
+
+        Chaque cellule porte le trait sur sa propre largeur ; l'intitulé occupe
+        la colonne « Piste », dimensionnée pour lui (`_W_IDX`). Un DataTable ne
+        sait pas fusionner de cellules — c'est la seule façon d'obtenir une
+        règle qui traverse sans couper le titre.
+        """
+        w    = self._resize_widths()
+        _min = self.RESIZE_MIN_DEFAULT
+        # « Décision / Cible » s'ajuste à son contenu : le trait n'a pas de
+        # largeur à suivre, il prend celle du plus long libellé qu'on y écrit.
+        largeurs = [7, _W_IDX, max(_min, w["codec"]), max(_min, w["fmt"]), 8,
+                    max(_min, w["src"]), max(_min, w["titre"]), 24]
+        cells = [Text(titre, style="bold dim") if i == 1
+                 else Text("─" * n, style="dim")
+                 for i, n in enumerate(largeurs)]
+        table.add_row(*cells, key=cle)
+        self._rows.append((_ROW_SECTION, -1))
+
     def _build_table(self, keep_cursor: bool = False) -> None:
         table      = self.query_one(DataTable)
         cursor_row = table.cursor_row if keep_cursor else 0
@@ -217,30 +241,25 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         _min   = self.RESIZE_MIN_DEFAULT
 
         table.add_column("",                          width=7,                          key="check")
-        table.add_column("Piste",                     width=10,                         key="idx")
+        table.add_column("Piste",                     width=_W_IDX,                     key="idx")
         table.add_column(self.resize_header("codec"), width=max(_min, widths["codec"]), key="codec")
         table.add_column(self.resize_header("fmt"),   width=max(_min, widths["fmt"]),   key="fmt")
         table.add_column("Langue",                    width=8,                          key="lang")
+        # « Source » portait deux sens : le motif de sélection pour l'audio
+        # (« défaut », « sélectionné ») et le titre déclaré pour les
+        # sous-titres (« QoQ-Team »). Les deux comptent — ce sont deux
+        # colonnes, pas deux usages d'une seule.
         table.add_column(self.resize_header("src"),   width=max(_min, widths["src"]),   key="src")
+        table.add_column(self.resize_header("titre"), width=max(_min, widths["titre"]), key="titre")
         table.add_column("Décision / Cible",          width=None,                       key="dec")
         self._rows = []
 
         # ── Section VIDÉO ─────────────────────────────────────────────────────
-        table.add_row(
-            Text(""), Text("── VIDÉO ───────────────", style="bold dim"),
-            Text(""), Text(""), Text(""), Text(""), Text(""),
-            key="__sec_video__",
-        )
-        self._rows.append((_ROW_SECTION, -1))
+        self._ligne_section(table, "VIDÉO", "__sec_video__")
         self._add_video_row(table)
 
         # ── Section AUDIO ─────────────────────────────────────────────────────
-        table.add_row(
-            Text(""), Text("── AUDIO ───────────────", style="bold dim"),
-            Text(""), Text(""), Text(""), Text(""), Text(""),
-            key="__sec_audio__",
-        )
-        self._rows.append((_ROW_SECTION, -1))
+        self._ligne_section(table, "AUDIO", "__sec_audio__")
         for ad in self._decision.audio:
             t   = ad.track
             idx = t.index
@@ -258,28 +277,25 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
             table.add_row(
                 self._check_text(_ROW_AUDIO, idx),
-                Text(f"0:a:{idx}{lock}", no_wrap=True, style=dim),
-                Text(t.codec,            no_wrap=True, style=dim),
-                Text(t.channel_layout,   no_wrap=True, style=dim),
-                Text(t.language or "?",  no_wrap=True, style=dim),
-                Text(reason,             overflow="ellipsis", no_wrap=True, style=dim),
-                Text(ad.display() or "—", style="green" if not excl else "dim"),
+                cellule(f"0:a:{idx}{lock}",   style=dim),
+                cellule(t.codec,              style=dim),
+                cellule(t.channel_layout,     style=dim),
+                cellule(t.language or "?",    style=dim),
+                cellule(reason,               style=dim),
+                cellule(t.title or "—",       style=dim),
+                cellule(ad.display() or ECARTEE,
+                        style="green" if not excl else "dim"),
                 key=f"a:{idx}",
             )
             self._rows.append((_ROW_AUDIO, idx))
 
         # ── Section SOUS-TITRES ───────────────────────────────────────────────
-        table.add_row(
-            Text(""), Text("── SOUS-TITRES ─────────", style="bold dim"),
-            Text(""), Text(""), Text(""), Text(""), Text(""),
-            key="__sec_subs__",
-        )
-        self._rows.append((_ROW_SECTION, -1))
+        self._ligne_section(table, "SOUS-TITRES", "__sec_subs__")
         subs = self._decision.info.subtitle_tracks
         if not subs:
             table.add_row(
                 Text(""), Text("  (aucun)", style="dim italic"),
-                Text(""), Text(""), Text(""), Text(""), Text(""),
+                Text(""), Text(""), Text(""), Text(""), Text(""), Text(""),
                 key="__no_subs__",
             )
             self._rows.append((_ROW_SECTION, -1))
@@ -298,17 +314,14 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
                 table.add_row(
                     self._check_text(_ROW_SUBTITLE, st.index),
-                    Text(f"0:s:{st.index}", no_wrap=True, style=style),
-                    Text(st.codec,          no_wrap=True, style=style),
-                    Text(type_str,          no_wrap=True, style=style),
-                    Text(st.language or "?",no_wrap=True, style=style),
-                    # Le nom déclaré prime sur la raison : « défaut » et
-                    # « sélectionné » se lisent déjà dans la case cochée,
-                    # tandis que « Français canadien » ne se lit nulle part
-                    # ailleurs.
-                    Text(st.title or reason, overflow="ellipsis",
-                         no_wrap=True, style=style),
-                    Text(cont_str, style="green" if sel else "dim"),
+                    cellule(f"0:s:{st.index}",  style=style),
+                    cellule(st.codec,           style=style),
+                    cellule(type_str,           style=style),
+                    cellule(st.language or "?", style=style),
+                    cellule(reason,             style=style),
+                    cellule(st.title or "—",    style=style),
+                    cellule(cont_str if sel else ECARTEE,
+                            style="green" if sel else "dim"),
                     key=f"s:{st.index}",
                 )
                 self._rows.append((_ROW_SUBTITLE, st.index))
@@ -316,23 +329,19 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         # ── Section PISTES EXTERNES ───────────────────────────────────────────
         ext = self._decision.external_tracks
         if ext:
-            table.add_row(
-                Text(""), Text("── PISTES EXTERNES ─────", style="bold dim"),
-                Text(""), Text(""), Text(""), Text(""), Text(""),
-                key="__sec_ext__",
-            )
-            self._rows.append((_ROW_SECTION, -1))
+            self._ligne_section(table, "EXTERNES", "__sec_ext__")
             for i, et in enumerate(ext):
                 kind = "audio" if et.kind == TrackKind.AUDIO else "sous-titre"
                 table.add_row(
                     Text("  ✓  ", style="bold green"),
-                    Text(f"ext #{et.source_tid}", no_wrap=True),
-                    Text(et.codec or kind, no_wrap=True),
-                    Text(et.sync_label(),   no_wrap=True),
-                    Text(et.language or "?", no_wrap=True,
-                         style="" if et.language else "bold dark_orange"),
-                    Text(et.source_path.name, overflow="ellipsis", no_wrap=True),
-                    Text(f"→ greffe {kind}", style="green"),
+                    cellule(f"ext #{et.source_tid}"),
+                    cellule(et.codec or kind),
+                    cellule(et.sync_label()),
+                    cellule(et.language or "?",
+                            style="" if et.language else "bold dark_orange"),
+                    cellule(et.source_path.name),
+                    cellule(et.track_name or "—"),
+                    cellule(f"→ greffe {kind}", style="green"),
                     key=f"e:{i}",
                 )
                 self._rows.append((_ROW_EXTERNAL, i))
@@ -412,11 +421,12 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
         table.add_row(
             check_txt,
-            Text("0:v:0", no_wrap=True),
-            Text(info.codec, no_wrap=True),
-            Text(f"{info.width}x{info.height}", no_wrap=True),
-            Text("—"),
+            cellule("0:v:0"),
+            cellule(info.codec),
+            cellule(f"{info.width}x{info.height}"),
+            cellule("—"),
             src_txt,
+            cellule("—", style="dim"),      # la vidéo n'a pas de titre de piste
             dec_txt,
             key="v:0",
         )

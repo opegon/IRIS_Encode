@@ -36,7 +36,8 @@ from core.sync import (
     measure_with_anchor, read_cues, reperes_proposables,
 )
 
-from ..common import footer_line2, raccourcis, touche, tronquer_milieu, retour_accueil
+from ..common import (actions_ecran, footer_line2, raccourcis, touche,
+                      tronquer_milieu, retour_accueil)
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 from .segments import SegmentsScreen
@@ -185,23 +186,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             yield ProgressBar(total=100, show_eta=False, id="sync-bar")
         yield Static(_HINT, id="sync-hint", markup=False)
         yield KeyFooter(
-            actions=[
-                ("enter",     "Liste"),
-                ("m",         "Mesurer"),
-                ("v",         "mpv"),
-                ("k",         "Extrait"),
-                ("a",         "Forcer"),
-                ("s",         "Plages"),
-                ("p",         "Appliquer"),
-                ("c",         "Copier"),
-                ("d",         "Retirer"),
-                ("f9",        "Ajouter"),
-                ("f1",        "Dry-run"),
-                ("f2",        "Encoder"),
-                ("f3",        "Muxer"),
-                ("backspace", "Retour"),
-            ],
-            nav=footer_line2(nav=True, accueil=True),
+            actions=actions_ecran(self),
+            nav=footer_line2(back=True, nav=True, accueil=True),
         )
 
     def on_mount(self) -> None:

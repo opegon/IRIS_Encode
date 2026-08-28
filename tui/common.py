@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rich.text import Text
+
 from core import config as cfg_mod
 from core.decision import (
     DVAction,
@@ -126,6 +128,32 @@ def tronquer_milieu(texte: str, largeur: int) -> str:
     queue = -(-(largeur - 1) // 2)          # arrondi au-dessus
     tete  = largeur - 1 - queue
     return texte[:tete] + "…" + texte[len(texte) - queue:]
+
+
+# Les colonnes d'un DataTable ont une largeur fixe, et Rich coupe net ce qui
+# dépasse. « → HEVC → HDR10 » devient « → HEVC → » : une décision valide, et
+# fausse — le sort du Dolby Vision a disparu sans laisser de trace. Une ellipse
+# ne rend pas la valeur, mais elle dit qu'il en manque, et c'est la différence
+# entre une lecture prudente et une lecture confiante.
+#
+# Toute cellule de table passe par ici. `tests/test_troncature.py` le vérifie.
+def cellule(texte: str, *, style: str = "", largeur: int | None = None) -> Text:
+    """Une cellule de table : coupée à vue, jamais en silence.
+
+    `largeur` déclenche en plus une troncature au milieu — la fin d'un nom de
+    piste porte ce qui la distingue (voir `tronquer_milieu`). Sans elle, Rich
+    coupe par la droite et pose l'ellipse lui-même.
+    """
+    if largeur is not None:
+        texte = tronquer_milieu(texte, largeur)
+    return Text(texte, style=style, no_wrap=True, overflow="ellipsis")
+
+
+# Une piste que l'encodage laissera de côté. L'accueil, l'écran des pistes et
+# l'assistant l'écrivaient chacun à leur façon — et l'assistant ne l'écrivait
+# pas du tout : une case vide se lit comme une donnée manquante, pas comme une
+# décision prise.
+ECARTEE: str = "← écartée"
 
 
 def fmt_bytes(b: int) -> str:
@@ -286,6 +314,53 @@ FOOTER_BACK: tuple[str, str] = ("backspace", "Retour")
 # chose d'un cran au-dessus.
 FOOTER_ACCUEIL: tuple[str, str] = ("ctrl+home", "Accueil")
 FOOTER_QUIT: tuple[str, str] = ("f10",       "Quitter")
+
+
+# Touches rendues par `footer_line2` : elles ont leur place fixe en bande 2 et
+# n'ont rien à faire dans la bande propre à l'écran.
+_TOUCHES_BANDE_2: frozenset[str] = frozenset({
+    "backspace", "escape", "ctrl+home", "f10",
+    "home", "end", "pageup", "pagedown",
+    "tab", "shift+tab", "<", ">",
+})
+
+
+def actions_ecran(ecran, garder: tuple[str, ...] | None = None
+                  ) -> list[tuple[str, str]]:
+    """Les raccourcis propres à un écran, lus dans ses `BINDINGS`.
+
+    Chaque écran écrivait sa liste à la main, à côté de ses `BINDINGS`. Les
+    deux ont divergé en silence : la touche `R` du recalage, déclarée
+    `show=True`, n'apparaissait nulle part, et l'assistant n'annonçait aucune
+    de ses huit touches. Une déclaration ne peut plus mentir sur ce qu'elle
+    déclare.
+
+    `garder` restreint à une liste de touches, pour un écran dont l'ensemble
+    utile change d'une étape à l'autre.
+    """
+    vus:  set[str] = set()
+    sortie: list[tuple[str, str]] = []
+    # Une instance en usage, une classe sous test : les BINDINGS sont les mêmes.
+    origine = ecran if isinstance(ecran, type) else type(ecran)
+    # Les BINDINGS de l'écran d'abord, ceux des mixins ensuite : l'ordre de
+    # déclaration est le seul ordre que l'auteur de l'écran a choisi.
+    for classe in origine.__mro__:
+        for b in classe.__dict__.get("BINDINGS", ()):
+            touches = getattr(b, "key", "").split(",")
+            libelle = getattr(b, "description", "")
+            if not getattr(b, "show", False) or not libelle:
+                continue
+            cle = touches[0].strip().lower()
+            if cle in _TOUCHES_BANDE_2 or cle in vus:
+                continue
+            if garder is not None and cle not in garder:
+                continue
+            vus.add(cle)
+            sortie.append((cle, libelle))
+    if garder is not None:
+        rang = {k: i for i, k in enumerate(garder)}
+        sortie.sort(key=lambda p: rang[p[0]])
+    return sortie
 
 
 def footer_line2(

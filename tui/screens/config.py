@@ -17,7 +17,8 @@ from textual.widgets import Button, DataTable, Header, Static
 
 from core import profiles as prof_mod
 from core.profiles import Profile
-from ..common import DV_VALUE_STYLES, footer_line2, raccourcis, retour_accueil
+from ..common import (DV_VALUE_STYLES, actions_ecran, footer_line2, raccourcis,
+                      retour_accueil)
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
 from ..widgets.profile_form import ProfileCancelled, ProfileForm, ProfileSaved
@@ -78,7 +79,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             yield Button("← Retour",          id="btn-back", variant="default")
         yield KeyFooter(
             actions=self._RACCOURCIS_ECRAN,
-            nav=footer_line2(nav=True, accueil=True),
+            nav=footer_line2(back=True, nav=True, accueil=True),
         )
 
     def on_mount(self) -> None:
@@ -210,13 +211,10 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         )
 
     # Raccourcis de l'écran lui-même, restaurés à la fermeture du formulaire.
-    _RACCOURCIS_ECRAN: list[tuple[str, str]] = [
-        ("enter",     "Activer profil"),
-        ("n",         "Nouveau"),
-        ("e",         "Éditer"),
-        ("d",         "Supprimer"),
-        ("backspace", "Retour"),
-    ]
+    @property
+    def _RACCOURCIS_ECRAN(self) -> list[tuple[str, str]]:
+        """Les touches de la liste des profils, lues dans les `BINDINGS`."""
+        return actions_ecran(self)
 
     def _footer_suit(self, en_formulaire: bool) -> None:
         """Le footer annonce les touches qui répondent, pas celles de l'écran.

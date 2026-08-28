@@ -26,6 +26,8 @@ from core.decision import (
     AudioAction, DVAction, FileDecision, VideoAction,
 )
 from ..common import (
+    actions_ecran,
+    cellule,
     retour_accueil,
     codec_picker_opts,
     bitrate_picker_config,
@@ -105,6 +107,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         "audio":       "Audio",
     }
     RESIZE_MIN    = {"fichier": 20, "audio": 10, **cfg_mod.COLUMN_MIN_WIDTHS}
+    RESIZE_FIXE   = 3   # case à cocher
 
     DEFAULT_CSS = """
     DryrunScreen { layout: vertical; }
@@ -133,13 +136,8 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         yield DataTable(id="dryrun-table", cursor_type="row", zebra_stripes=True)
         yield Static("", id="dryrun-summary")
         yield KeyFooter(
-            actions=[
-                ("f2",        "Lancer"),
-                ("f6",        "Codec"),
-                ("f7",        "Débit"),
-                ("backspace", "Retour"),
-            ],
-            nav=footer_line2(nav=True, resize=True, accueil=True),
+            actions=actions_ecran(self),
+            nav=footer_line2(back=True, nav=True, resize=True, accueil=True),
         )
 
     def on_mount(self) -> None:
@@ -214,7 +212,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 total_est += src_bytes
 
             if est_bytes == 0:
-                estim_txt = Text("—", style="dim", no_wrap=True)
+                estim_txt = cellule("—", style="dim")
             elif src_bytes > 0:
                 delta_pct = (est_bytes - src_bytes) * 100 / src_bytes
                 sign      = "+" if delta_pct > 0 else ""
@@ -228,7 +226,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                     style=color, no_wrap=True,
                 )
             else:
-                estim_txt = Text(fmt_bytes(est_bytes), no_wrap=True)
+                estim_txt = cellule(fmt_bytes(est_bytes))
 
             # Estimation temps d'encodage
             prof = self._app.profiles.get(self._app.active_profile_id)
@@ -245,19 +243,19 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             check_str = Text("[x]", no_wrap=True) if idx in self._selected else Text("[ ]", no_wrap=True)
             table.add_row(
                 check_str,
-                Text(info.path.name, overflow="ellipsis", no_wrap=True),
-                Text(fmt_bytes(src_bytes) if src_bytes else "—", style="dim", no_wrap=True),
+                cellule(info.path.name),
+                cellule(fmt_bytes(src_bytes) if src_bytes else "—", style="dim"),
                 Text(fmt_duration(info.duration), style="dim", no_wrap=True,
                      overflow="ellipsis"),
                 estim_txt,
                 temps_txt,
-                Text(vid.label(), style=vid.style()),
+                cellule(vid.label(), style=vid.style()),
                 Text(container, no_wrap=True,
                      style=STYLE_PAR_EMPHASE[Emphase.MODIFIEE] if ecartes else ""),
-                Text(dv_str, no_wrap=True),
-                Text(bitrate_str, no_wrap=True),
-                Text(res_str, no_wrap=True),
-                Text("  |  ".join(audio_parts) or "—", overflow="ellipsis", no_wrap=True),
+                cellule(dv_str),
+                cellule(bitrate_str),
+                cellule(res_str),
+                cellule("  |  ".join(audio_parts) or "—"),
             )
 
         self._totals = (total_src, total_est)

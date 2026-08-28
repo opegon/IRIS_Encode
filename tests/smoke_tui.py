@@ -271,6 +271,8 @@ async def scenario_external_tracks() -> None:
             app.push_screen(BrowserScreen(td, start_virtual=False))
             await pilot.pause(4.0)
 
+            # Ces scenarios eprouvent le parcours libre ; l'assistant a le sien.
+            app.wizard_mode = False
             await pilot.press("t")
             await pilot.pause(0.8)
             assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
@@ -572,6 +574,7 @@ async def scenario_measure() -> None:
             from tui.screens.browser import BrowserScreen
             app.push_screen(BrowserScreen(td, start_virtual=False))
             await pilot.pause(5.0)
+            app.wizard_mode = False
             await pilot.press("t")
             await pilot.pause(0.8)
             await _add_donor(pilot, app, "film.fr.srt")
@@ -626,11 +629,63 @@ async def scenario_measure() -> None:
             print("[14c] 'p' sans plages : refus explicite, piste intacte")
 
 
+async def scenario_wizard() -> None:
+    """L'assistant : le mode d'entree, et sa bascule vers le parcours libre."""
+    with tempfile.TemporaryDirectory() as td_str:
+        td = Path(td_str)
+        if not _make_test_videos(td, 1):
+            print("[15] SKIP : ffmpeg introuvable, assistant non teste")
+            return
+
+        app = IrisEncodeApp(start_path=td)
+        async with app.run_test(size=(160, 45)) as pilot:
+            await pilot.pause(0.5)
+            from tui.screens.browser import BrowserScreen
+            app.push_screen(BrowserScreen(td, start_virtual=False))
+            await pilot.pause(3.0)
+
+            assert app.wizard_mode is True, "l'assistant est le mode d'entree"
+
+            await pilot.press("t")
+            await pilot.pause(0.6)
+            assert type(app.screen).__name__ == "WizardScreen", type(app.screen).__name__
+            wiz = app.screen
+            print(f"[15] Assistant : {len(wiz._etapes)} etapes sur un clip sans "
+                  f"piste ambigue")
+
+            # Le resume doit nommer le fichier de sortie : un assistant qui
+            # n'annonce pas ce qu'il produit remplace un doute par un autre.
+            corps = str(wiz.query_one("#wiz-corps", Static).render())
+            assert wiz._dec.output_path.name in corps, corps[:200]
+            print("[15b] L'etape 1 annonce le fichier produit")
+
+            # Enter avance, Backspace revient : le rail se parcourt dans les
+            # deux sens sans rien lancer.
+            await pilot.press("enter")
+            await pilot.pause(0.3)
+            assert wiz._i == 1, wiz._i
+            await pilot.press("backspace")
+            await pilot.pause(0.3)
+            assert wiz._i == 0, wiz._i
+            print("[15c] Enter avance, Backspace revient")
+
+            # F12 : bascule vers le parcours libre, et le choix tient.
+            await pilot.press("f12")
+            await pilot.pause(0.5)
+            assert app.wizard_mode is False
+            assert type(app.screen).__name__ == "BrowserScreen", type(app.screen).__name__
+            await pilot.press("t")
+            await pilot.pause(0.6)
+            assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
+            print("[15d] F12 : bascule vers le parcours libre, T ouvre les pistes")
+
+
 async def main() -> None:
     await scenario_navigation()
     await scenario_parallel_scan()
     await scenario_external_tracks()
     await scenario_measure()
+    await scenario_wizard()
     print("SMOKE OK")
 
 

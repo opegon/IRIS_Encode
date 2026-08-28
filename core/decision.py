@@ -14,7 +14,8 @@ from typing import Optional
 
 from .muxer import MUX_SUFFIX, ExternalTrack
 from .profiles import Profile
-from .scanner import AudioTrack, VideoInfo, channel_layout_label
+from .scanner import (AudioTrack, VideoInfo, channel_layout_label,
+                      normalize_language)
 
 
 # ─── Décision vidéo ───────────────────────────────────────────────────────────
@@ -688,6 +689,9 @@ def decide_audio(
     override_selected : liste d'indices (override TUI) ; None = règle automatique.
     """
     languages    = profile.get("audio_languages", ["fre", "eng"])
+    # « fra » et « fre » sont le même français : comparer les codes bruts
+    # faisait disparaître la piste sans un mot. Voir scanner.normalize_language.
+    langues_voulues = {normalize_language(l) for l in languages}
     preserve_hd  = profile.get("preserve_hd_audio", False)
     copy_compat  = profile.get("audio_copy_compatible", True)
     decisions:   list[AudioDecision] = []
@@ -700,7 +704,7 @@ def decide_audio(
         elif i == 0:
             included = True
             reason   = "piste originale (index 0)"
-        elif track.language in languages:
+        elif normalize_language(track.language) in langues_voulues:
             included = True
             reason   = f"langue {track.language}"
         else:
@@ -783,6 +787,73 @@ def force_skip_to_encode(dec: FileDecision) -> FileDecision:
     ))
 
 
+def decide_subtitles(
+    info: VideoInfo,
+    profile: Profile,
+    override: Optional[list[int]] = None,
+) -> Optional[list[int]]:
+    """Indices des sous-titres retenus. `None` = tous, sans filtre.
+
+    Le profil filtrait l'audio par langue mais jamais les sous-titres : un rip
+    streaming en embarque quarante, et les quarante traversaient la chaîne. La
+    clé `subtitle_languages` pose la règle ; absente, rien ne change.
+    """
+    if override is not None:
+        return override
+    langues = profile.get("subtitle_languages", None)
+    if not langues:
+        return None
+    voulues = {normalize_language(l) for l in langues}
+    return [st.index for st in info.subtitle_tracks
+            if normalize_language(st.language) in voulues]
+
+
+@dataclass
+class Ambiguite:
+    """Une langue voulue pour laquelle plusieurs pistes candidatent."""
+    kind:     str    # "audio" | "subtitle"
+    language: str    # code tel que le fichier le déclare, pour l'affichage
+    tracks:   list   # AudioTrack ou SubtitleTrack, dans l'ordre du fichier
+
+    def label(self) -> str:
+        quoi = "audio" if self.kind == "audio" else "sous-titre"
+        return f"{len(self.tracks)} pistes {quoi} en « {self.language} »"
+
+
+def ambiguites(info: VideoInfo, profile: Profile) -> list[Ambiguite]:
+    """Langues voulues que plusieurs pistes revendiquent.
+
+    Une seule piste candidate : on la prend, il n'y a rien à demander.
+    Plusieurs : seul le **titre** les sépare — « Français » contre « Français
+    canadien », « (forced) » contre « (SDH) ». Un titre ne se devine pas, et
+    une règle par motifs serait une liste de mots-clés à maintenir sans fin.
+    Le compte suffit à savoir quand il faut demander.
+
+    Les sous-titres ne comptent que si le profil les filtre : sans
+    `subtitle_languages`, tout est gardé et il n'y a rien à arbitrer.
+    """
+    out: list[Ambiguite] = []
+
+    def _grouper(pistes: list, langues: list[str], kind: str) -> None:
+        voulues = {normalize_language(l) for l in langues}
+        vues: dict[str, list] = {}
+        for t in pistes:
+            code = normalize_language(t.language)
+            if code in voulues:
+                vues.setdefault(code, []).append(t)
+        for _, groupe in vues.items():
+            if len(groupe) > 1:
+                out.append(Ambiguite(kind=kind, language=groupe[0].language,
+                                     tracks=groupe))
+
+    _grouper(info.audio_tracks,
+             profile.get("audio_languages", ["fre", "eng"]), "audio")
+    st_langues = profile.get("subtitle_languages", None)
+    if st_langues:
+        _grouper(info.subtitle_tracks, st_langues, "subtitle")
+    return out
+
+
 def decide(
     info:               VideoInfo,
     profile:            Profile,
@@ -794,5 +865,5 @@ def decide(
     audio = decide_audio(info, profile, override_audio)
     return FileDecision(
         info=info, profile=profile, video=video, audio=audio,
-        subtitle_indices=override_subtitles,
+        subtitle_indices=decide_subtitles(info, profile, override_subtitles),
     )

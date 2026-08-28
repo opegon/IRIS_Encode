@@ -108,6 +108,10 @@ class IrisEncodeApp(App):
         self.ffmpeg_path = ffmpeg_p or "ffmpeg"
         decision_mod.set_strip_dv_available(
             dovi_path is not None and mkvmerge_p is not None)
+        # L'assistant est le mode d'entrée : un fichier, une suite d'étapes.
+        # Le parcours libre reste à une touche (F12), et le choix tient pour
+        # la session — on ne le repose pas à chaque fichier.
+        self.wizard_mode = True
         # Câble mpv pour le contrôle du recalage à l'œil (optionnel)
         from core import preview as preview_mod
         preview_mod.set_mpv_path(get_tool_path("mpv", bin_dir))

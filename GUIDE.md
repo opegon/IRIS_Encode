@@ -32,6 +32,28 @@ une passe. Voir § 4.6 pour la seule exception.
 
 ---
 
+## 1bis. L'assistant, et comment en sortir
+
+L'application s'ouvre sur l'**assistant** : un fichier à la fois, quatre étapes,
+`↵` pour avancer et `⌫` pour revenir. Il ne décide rien de plus que le parcours
+libre — il impose l'ordre et montre, à chaque étape, ce qui a été décidé.
+
+| Étape | Ce qu'on y fait |
+|---|---|
+| 1 — Résumé | Lire ce qui sera produit, jusqu'au nom du fichier. `A` ouvre l'écran des pistes pour ajuster |
+| 2 — Langues | N'apparaît que si plusieurs pistes revendiquent la même langue. Cocher celles à garder |
+| 3 — Donneur | `O` pour présenter un fichier portant une VF ou des sous-titres, `N` s'il n'y en a pas |
+| 4 — Lancer | `↵` |
+
+**`F12` bascule vers le parcours libre**, décrit ci-dessous, et le choix tient
+pour la session. `F12` à nouveau y ramène.
+
+L'assistant ne cherche aucun fichier tout seul : c'est vous qui présentez le
+donneur à l'étape 3, s'il y en a un. Un appariement automatique se trompe en
+silence, et l'erreur ne s'entend qu'une fois le fichier produit.
+
+---
+
 ## 2. Écran par écran
 
 ### 2.1 Browser — navigation et sélection

@@ -1,5 +1,59 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.0] — 2026-08-28
+
+### L'assistant
+
+L'application s'ouvre désormais sur un assistant : **un fichier, quatre étapes,
+une touche pour avancer**. `F12` bascule vers le parcours libre, et le choix
+tient pour la session.
+
+Il ne calcule rien de neuf. `decide()` arbitrait déjà le codec, le débit, le
+conteneur, le sort du Dolby Vision et chaque piste ; l'assistant parcourt cette
+décision et rend la main aux écrans existants — sélection des pistes, choix du
+donneur, recalage — pour ce qu'ils font déjà.
+
+Deux étapes seulement sont conditionnelles :
+
+- **les langues ambiguës**, quand plusieurs pistes revendiquent la même langue
+  voulue. Le doute se définit par un **compte**, pas par une heuristique : une
+  seule candidate, on la prend ; plusieurs, seul leur titre les sépare
+  (« Français » contre « Français canadien »), et un titre ne se devine pas ;
+- **les pistes additionnelles**. Aucun fichier donneur n'est cherché
+  automatiquement : les conventions de nommage des releases sont sans limite et
+  un mauvais appariement est *silencieux*. C'est l'utilisateur qui le présente,
+  quand il y en a un — il peut n'y en avoir aucun.
+
+Ce qui est retiré, c'est la navigation, jamais l'information : chaque étape
+montre ce qu'elle a décidé, et l'étape 1 nomme le fichier produit. Un assistant
+qui déciderait en silence remplacerait un doute de manipulation par un doute de
+contenu, qui ne se voit qu'après l'encodage.
+
+### « fra » n'était pas « fre », et une VF disparaissait sans un mot
+
+ISO 639-2 a deux jeux de codes pour vingt langues — un bibliographique (`fre`,
+`ger`, `dut`), un terminologique (`fra`, `deu`, `nld`) — et les conteneurs
+emploient l'un ou l'autre sans règle. La comparaison portait sur les chaînes
+brutes : `audio_languages = ["fre"]` **excluait une piste étiquetée « fra »**,
+qui n'atteignait jamais le fichier produit.
+
+Mesuré sur un épisode réel : ses sous-titres portent `fra`, `ces`, `nld`, `deu`,
+`ell`, `ron`, `slk`, `zho` — huit codes terminologiques dans un seul fichier.
+`scanner.normalize_language` les réconcilie ; l'affichage garde ce que le
+fichier déclare.
+
+### Les sous-titres n'étaient filtrés par rien
+
+Le profil filtrait l'audio par langue, jamais les sous-titres :
+`subtitle_indices = None` vaut « toutes », et aucune règle ne s'y appliquait.
+Un épisode de rip streaming en embarque quarante-trois ; les quarante-trois
+traversaient la chaîne. La clé `subtitle_languages` pose la règle, et les dix
+profils intégrés la portent désormais aux mêmes langues que leur audio. Sur le
+fichier de test : 43 pistes en entrée, 4 retenues.
+
+Une clé absente ne change rien — les profils personnels gardent leur
+comportement.
+
 ## [v0.8.1.27] — 2026-08-28
 
 ### La recette de greffe s'arrêtait avant les sous-titres

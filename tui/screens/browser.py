@@ -127,6 +127,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("enter",     "enter_dir",          "Ouvrir",   show=True, priority=True),
         Binding("backspace", "go_up",              "Remonter", show=True),
         Binding("t",         "open_tracks",        "Pistes",   show=False),
+        Binding("f12",       "toggle_wizard",      "Mode",     show=False),
         Binding("v",         "play",               "Visualiser", show=True),
         Binding("ctrl+d",    "delete_file",        "Supprimer", show=True),
         Binding("f1",        "open_dryrun",        "Dry-run",  show=True),
@@ -727,12 +728,23 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     # ─── Ouverture des autres écrans ──────────────────────────────────────────
 
+    def action_toggle_wizard(self) -> None:
+        """Bascule assistant / parcours libre. Le choix tient pour la session."""
+        app = self.app
+        app.wizard_mode = not getattr(app, "wizard_mode", True)   # type: ignore[attr-defined]
+        mode = "Assistant" if app.wizard_mode else "Parcours libre"  # type: ignore[attr-defined]
+        self._flash_status(f"Mode : {mode}")
+
     def action_open_tracks(self) -> None:
         row_type, path = self._current_row_info()
         if row_type != _ROW_TYPE_FILE or path is None:
             return
         dec = self._decisions.get(path)
         if dec is None:
+            return
+        if getattr(self.app, "wizard_mode", False):
+            from .wizard import WizardScreen
+            self.app.push_screen(WizardScreen(dec), lambda _: self._update_status())
             return
         from .tracks import TracksScreen
         from core.decision import TracksSelection, decide_audio

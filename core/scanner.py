@@ -40,6 +40,33 @@ def channel_layout_label(channels: int) -> str:
     if channels == 8:  return "7.1"
     return f"{channels}ch"
 _IMAGE_SUB_CODECS = frozenset({"hdmv_pgs_subtitle", "dvd_subtitle", "dvdsub", "pgssub"})
+
+# ISO 639-2 a deux jeux de codes pour vingt langues : un bibliographique (fre,
+# ger, dut…) et un terminologique (fra, deu, nld…). Les deux désignent la même
+# langue, et les conteneurs emploient l'un ou l'autre sans règle — un même
+# fichier peut mêler les deux. Comparer les chaînes brutes fait donc échouer
+# `audio_languages = ["fre"]` sur une piste étiquetée « fra », qui disparaît du
+# fichier produit sans un mot.
+_LANG_TERMINOLOGIQUES: dict[str, str] = {
+    "sqi": "alb", "hye": "arm", "eus": "baq", "mya": "bur", "zho": "chi",
+    "ces": "cze", "nld": "dut", "fra": "fre", "kat": "geo", "deu": "ger",
+    "ell": "gre", "isl": "ice", "mkd": "mac", "mri": "mao", "msa": "may",
+    "fas": "per", "ron": "rum", "slk": "slo", "bod": "tib", "cym": "wel",
+}
+
+
+def normalize_language(code: str) -> str:
+    """Ramène un code ISO 639-2 à sa forme bibliographique, pour comparaison.
+
+    Ne sert qu'à comparer : l'affichage garde ce que le fichier déclare.
+    """
+    c = (code or "").strip().lower()
+    return _LANG_TERMINOLOGIQUES.get(c, c)
+
+
+def same_language(a: str, b: str) -> bool:
+    """Deux codes désignent-ils la même langue ? « fra » et « fre », oui."""
+    return bool(a) and normalize_language(a) == normalize_language(b)
 _COPY_COMPAT_CODECS = frozenset({"aac", "ac3", "eac3"})
 
 # ── Chemin dovi_tool (singleton, settable par l'app au démarrage) ────────────

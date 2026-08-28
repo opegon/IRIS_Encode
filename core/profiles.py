@@ -28,6 +28,10 @@ ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,32}$")
 
 _BASE_AUDIO = {
     "audio_languages":         ["fre", "eng"],
+    # Les sous-titres n'étaient filtrés par rien : un rip streaming en embarque
+    # quarante, et les quarante traversaient la chaîne. Clé absente d'un profil
+    # personnel = comportement historique, tout est gardé.
+    "subtitle_languages":      ["fre", "eng"],
     "audio_stereo_kbps":       192,
     "audio_surround_kbps":     448,
     "audio_surround_7_1_kbps": 640,

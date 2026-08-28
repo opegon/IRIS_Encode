@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.4] — 2026-08-28
+
+### `T` ouvrait l'assistant au lieu de l'écran des pistes
+
+La bascule de mode avait été branchée sur `action_open_tracks`, qui sert à la
+fois à `↵` et à `T`. Les deux touches ont été détournées d'un coup, et l'écran
+des pistes devenait **inatteignable en mode assistant** — alors que la consigne
+ne visait que `↵`.
+
+Seul `↵` dépend du mode désormais ; `T` garde son sens partout.
+
+Ni la suite de tests ni la relecture ne le voyaient. C'est le harnais de captures
+qui a buté dessus pendant la revue d'interface, en cherchant `TracksScreen` et en
+trouvant `WizardScreen` — et le guide, audité la veille, affirmait pourtant que
+`T` fonctionnait « quel que soit le mode ». Le scénario 15 du smoke TUI le
+verrouille.
+
 ## [v0.8.3.3] — 2026-08-28
 
 ### Le guide rattrape le code

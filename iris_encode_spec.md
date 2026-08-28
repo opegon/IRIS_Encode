@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.3.3 — document de référence courant
+**Version** : 0.8.3.4 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1781,6 +1781,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.3.4 | 2026-08-28 | **`T` ouvrait l'assistant** au lieu de l'écran des pistes : la bascule de mode était branchée sur `action_open_tracks`, qui sert aux deux touches · seul `↵` dépend du mode désormais · trouvé par le harnais de captures |
 | 0.8.3.3 | 2026-08-28 | **Guide remis à jour** : sept écarts entre ce qu'il annonçait et ce que le code lie · chapitre **Cas d'usage** (§ 3) · `subtitle_languages` devient éditable dans le formulaire de profil, elle ne l'était pas depuis sa création |
 | 0.8.3.2 | 2026-08-28 | **Le point de repère propose la réplique** : l'application connaît déjà l'horodatage écrit, il ne reste qu'un nombre à trouver · six répliques réparties dans le film, `↓/↑` pour en changer |
 | 0.8.3.1 | 2026-08-28 | **Point de repère** (`R` sur l'écran de recalage) : deux instants donnés à l'oreille bornent la recherche là où la corrélation ne peut pas conclure · un ancrage faux est reconnu comme tel plutôt que suivi · `decision.ambiguites()`, sans appelant depuis la refonte de l'assistant, est retirée |

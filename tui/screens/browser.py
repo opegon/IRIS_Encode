@@ -714,9 +714,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self._selected.clear()
             self._refresh_view()
         elif row_type == _ROW_TYPE_FILE:
-            # En mode assistant, ↵ ouvre le parcours guidé ; en mode libre,
-            # il ouvre l'écran des pistes comme avant.
-            self.action_open_tracks()
+            # C'est ↵ que le mode commande, et lui seul : `T` garde son sens
+            # d'origine — l'écran des pistes — quel que soit le mode. Router la
+            # bascule sur `action_open_tracks` détournait les deux touches à la
+            # fois, et rendait l'écran des pistes inatteignable en assistant.
+            if getattr(self.app, "wizard_mode", False):
+                self.action_open_wizard()
+            else:
+                self.action_open_tracks()
 
     def action_go_up(self) -> None:
         changed = self._nav.go_up()
@@ -764,16 +769,24 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             if app.wizard_mode else                               # type: ignore[attr-defined]
             "Mode manuel — ↵ ouvre l'écran des pistes.")
 
-    def action_open_tracks(self) -> None:
+    def action_open_wizard(self) -> None:
+        """Ouvre le parcours guidé sur le fichier sous le curseur."""
         row_type, path = self._current_row_info()
         if row_type != _ROW_TYPE_FILE or path is None:
             return
         dec = self._decisions.get(path)
         if dec is None:
             return
-        if getattr(self.app, "wizard_mode", False):
-            from .wizard import WizardScreen
-            self.app.push_screen(WizardScreen(dec), lambda _: self._update_status())
+        from .wizard import WizardScreen
+        self.app.push_screen(WizardScreen(dec),
+                             lambda _: self._update_status())
+
+    def action_open_tracks(self) -> None:
+        row_type, path = self._current_row_info()
+        if row_type != _ROW_TYPE_FILE or path is None:
+            return
+        dec = self._decisions.get(path)
+        if dec is None:
             return
         from .tracks import TracksScreen
         from core.decision import TracksSelection, decide_audio

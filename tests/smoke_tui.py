@@ -729,6 +729,14 @@ async def scenario_wizard() -> None:
             print("[15f] Backspace remonte les etapes jusqu'a l'accueil")
 
             # W bascule, et ↵ ouvre alors l'ecran des pistes
+            # `T` garde son sens quel que soit le mode : l'ecran des pistes.
+            await pilot.press("t")
+            await pilot.pause(0.8)
+            assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
+            await pilot.press("backspace")
+            await pilot.pause(0.5)
+            print("[15f2] En mode assistant, T ouvre quand meme les pistes")
+
             await pilot.press("w")
             await pilot.pause(0.4)
             assert app.wizard_mode is False

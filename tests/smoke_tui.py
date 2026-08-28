@@ -25,6 +25,19 @@ from tui.app import IrisEncodeApp
 force_utf8_output()
 
 
+def _styles_du_footer(pied) -> str:
+    """Styles Rich reellement appliques dans le footer, mis a plat.
+
+    Rich normalise et reordonne les styles (« bold white » ressort en
+    « ansi_white bold ») : chercher la couleur dans le texte des styles evite
+    de faire echouer le test pour une raison qui n'a rien a voir avec ce qu'il
+    verifie.
+    """
+    from textual.widgets import Static as _S
+    rendu = pied.query_one("#footer-body", _S).render()
+    return " ".join(str(sp.style) for sp in rendu.spans)
+
+
 def _make_test_videos(td: Path, n: int) -> bool:
     """Genere n clips de 1 s avec ffmpeg. False si ffmpeg introuvable."""
     from core import config as cfg_mod
@@ -651,6 +664,10 @@ async def scenario_wizard() -> None:
             pied = app.screen.query_one(KeyFooter)
             assert "Assistant" in str(pied.query_one("#footer-body", Static).render()),                 "le footer doit nommer le mode"
             assert pied.has_class("assistant"), "le footer doit changer de couleur"
+            # Le jaune des touches se noie dans l'accent : elles passent au
+            # blanc, sinon le footer devient illisible la ou il compte le plus.
+            styles = _styles_du_footer(pied)
+            assert "white" in styles and "yellow" not in styles, styles
             print("[15] Mode assistant : nomme dans la barre, dans le footer, "
                   "et signale par la couleur")
 
@@ -720,6 +737,8 @@ async def scenario_wizard() -> None:
             pied = app.screen.query_one(KeyFooter)
             assert "Manuel" in str(pied.query_one("#footer-body", Static).render())
             assert not pied.has_class("assistant"),                 "le manuel garde le code couleur par defaut"
+            styles = _styles_du_footer(pied)
+            assert "yellow" in styles, styles
             await pilot.press("enter")
             await pilot.pause(0.8)
             assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.14 — document de référence courant
+**Version** : 0.8.2.15 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1201,7 +1201,9 @@ aussi banale que `↵` : la barre de profil (`[W] Assistant` / `[W] Manuel`), le
 libellé de la touche `W` dans le footer, et **la couleur du footer**. Le manuel
 garde le code couleur par défaut (`$primary-darken-2`) ; l'assistant prend
 l'accent du thème (`KeyFooter.assistant`), sur l'accueil comme sur ses propres
-écrans. Une couleur se remarque sans être lue — c'est le seul des trois qui ne
+écrans. Les noms de touches suivent : jaune sur le bleu,
+**blanc sur l'accent** — deux couleurs chaudes de luminosité voisine rendaient
+le footer illisible là où il compte le plus. Une couleur se remarque sans être lue — c'est le seul des trois qui ne
 demande aucune attention.
 
 | Étape | Ce qu'on y fait | Touches |
@@ -1779,6 +1781,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.2.15 | 2026-08-28 | **Touches du footer illisibles en mode assistant** : le jaune se noyait dans l'accent orange · elles passent au blanc sur ce fond, et gardent le jaune sur le bleu du mode manuel |
 | 0.8.2.14 | 2026-08-28 | **La mesure de l'assistant visait le mauvais flux** : le tid mkvmerge était passé tel quel au lieu de l'index ffmpeg · `sync.measure_external_track` devient le point d'entrée unique, la traduction n'existe plus qu'une fois · jauge d'avancement pendant la mesure |
 | 0.8.2.13 | 2026-08-28 | **Le fichier traité est rappelé sur les cinq étapes** de l'assistant, dans le bandeau — nom seul, tronqué au milieu, jamais le chemin |
 | 0.8.2.12 | 2026-08-28 | **Le mode se lit dans le footer et dans sa couleur** : touche `W` nommée par le mode actif, et fond du footer à l'accent du thème en mode assistant — le manuel garde le code couleur par défaut |

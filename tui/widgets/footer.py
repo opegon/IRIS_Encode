@@ -86,13 +86,22 @@ def split_bands(actions: list[tuple[str, str]],
     return [propres, globaux, fonctions]
 
 
-def _render_line(pairs: list[tuple[str, str]]) -> Text:
+# Le jaune se détache du bleu du footer par défaut. Sur l'accent du mode
+# assistant, il s'y noie : deux couleurs chaudes de luminosité voisine, et les
+# touches deviennent illisibles. Le blanc tranche sur les deux, mais garder le
+# jaune là où il fonctionne évite de banaliser le footer ordinaire.
+STYLE_TOUCHE          = "bold yellow"
+STYLE_TOUCHE_ASSISTANT = "bold white"
+
+
+def _render_line(pairs: list[tuple[str, str]],
+                 style_touche: str = STYLE_TOUCHE) -> Text:
     """Une ligne Rich avec les paires (touche, description) stylées."""
     t = Text(overflow="ellipsis", no_wrap=True)
     for i, (key, desc) in enumerate(pairs):
         if i:
             t.append(_SEP, style="")
-        t.append(_fmt_key(key), style="bold yellow")
+        t.append(_fmt_key(key), style=style_touche)
         t.append(f"{SEP_TOUCHE}{desc}", style="")
     return t
 
@@ -155,7 +164,10 @@ class KeyFooter(Widget):
         # simplement plus toujours en tête de ligne.
         raccourcis = [p for bande in split_bands(self._actions, self._nav)
                       for p in bande]
-        lignes: list[Text] = [_render_line(l) for l in pack(raccourcis, largeur)]
+        style_touche = (STYLE_TOUCHE_ASSISTANT if self.has_class("assistant")
+                        else STYLE_TOUCHE)
+        lignes: list[Text] = [_render_line(l, style_touche)
+                              for l in pack(raccourcis, largeur)]
         bloc = Text("\n").join(lignes) if lignes else Text("")
         try:
             self.query_one("#footer-body", Static).update(bloc)

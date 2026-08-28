@@ -1,5 +1,19 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.15] — 2026-08-28
+
+### Les touches du footer redeviennent lisibles en mode assistant
+
+Le fond du footer passe à l'accent du thème en mode assistant, mais les noms de
+touches restaient en `bold yellow` — la couleur choisie pour le bleu du mode
+manuel. Deux couleurs chaudes de luminosité voisine : les touches disparaissaient
+dans le fond, précisément sur les écrans où l'on découvre le parcours.
+
+Elles passent au blanc sur ce fond, et gardent le jaune sur le bleu, qui n'avait
+aucune raison de changer.
+
+Le smoke test vérifie les deux : la couleur des touches suit le mode.
+
 ## [v0.8.2.14] — 2026-08-28
 
 ### La mesure de l'assistant visait un flux qui n'existait pas

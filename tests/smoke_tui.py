@@ -629,102 +629,8 @@ async def scenario_measure() -> None:
             print("[14c] 'p' sans plages : refus explicite, piste intacte")
 
 
-def _make_ambiguous_video(td: Path) -> bool:
-    """Un clip a deux pistes audio « fre » : de quoi creer une ambiguite."""
-    from core import config as cfg_mod
-    from core.preflight import get_tool_path
-    ffmpeg = get_tool_path("ffmpeg", cfg_mod.get_bin_dir(cfg_mod.load()))
-    if not ffmpeg:
-        return False
-    subprocess.run(
-        [str(ffmpeg), "-y", "-loglevel", "error",
-         "-f", "lavfi", "-i", "testsrc=duration=1:size=320x240:rate=10",
-         "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
-         "-f", "lavfi", "-i", "sine=frequency=880:duration=1",
-         "-map", "0:v", "-map", "1:a", "-map", "2:a",
-         "-c:v", "libx264", "-c:a", "ac3",
-         "-metadata:s:a:0", "language=fre", "-metadata:s:a:0", "title=Francais",
-         "-metadata:s:a:1", "language=fra", "-metadata:s:a:1", "title=Francais canadien",
-         str(td / "ambigu.mkv")],
-        check=True, capture_output=True,
-    )
-    return True
-
-
-async def scenario_wizard_ambiguite() -> None:
-    """Regression : revenir en arriere apres le dernier arbitrage plantait.
-
-    `_amb_i` depassait la fin en validant, et `action_retour` ne le recadrait
-    pas — l'etape LANGUES reaffichee indexait hors des bornes. Second defaut,
-    silencieux : les choix se retranchaient de la selection courante, donc
-    recocher une piste ecartee ne la ramenait pas.
-    """
-    with tempfile.TemporaryDirectory() as td_str:
-        td = Path(td_str)
-        if not _make_ambiguous_video(td):
-            print("[16] SKIP : ffmpeg introuvable")
-            return
-
-        app = IrisEncodeApp(start_path=td)
-        async with app.run_test(size=(160, 45)) as pilot:
-            await pilot.pause(0.5)
-            from tui.screens.browser import BrowserScreen
-            app.push_screen(BrowserScreen(td, start_virtual=False))
-            await pilot.pause(3.0)
-
-            await pilot.press("t")
-            await pilot.pause(0.6)
-            wiz = app.screen
-            assert type(wiz).__name__ == "WizardScreen", type(wiz).__name__
-            assert len(wiz._amb) == 1, [a.label() for a in wiz._amb]
-            assert len(wiz._amb[0].tracks) == 2, "« fre » et « fra » comptent ensemble"
-            print("[16] Assistant : deux pistes « fre » detectees comme ambigues")
-
-            # Les cases partent cochees sur ce que la decision garde deja.
-            assert len(wiz._coches) == 2, wiz._coches
-
-            await pilot.press("enter")          # etape 1 -> langues
-            await pilot.pause(0.3)
-            assert wiz._etape.name == "LANGUES", wiz._etape
-
-            # Decocher la seconde piste, valider.
-            await pilot.press("down")
-            await pilot.pause(0.2)
-            await pilot.press("space")
-            await pilot.pause(0.2)
-            assert len(wiz._coches) == 1, wiz._coches
-            await pilot.press("enter")
-            await pilot.pause(0.3)
-            assert wiz._etape.name == "DONNEUR", wiz._etape
-            gardees = [a for a in wiz._dec.audio
-                       if a.action.name != "EXCLUDE"]
-            assert len(gardees) == 1, [a.track.index for a in gardees]
-            print("[16b] Une piste decochee : la decision n'en garde plus qu'une")
-
-            # LE CRASH : revenir sur l'etape des langues.
-            await pilot.press("backspace")
-            await pilot.pause(0.4)
-            assert wiz._etape.name == "LANGUES", wiz._etape
-            assert wiz._amb_i == 0, wiz._amb_i
-            print("[16c] Retour sur l'etape des langues : plus d'IndexError")
-
-            # Recocher doit RENDRE la piste, pas seulement ne plus la retirer.
-            # La table est reconstruite a chaque affichage : le curseur est
-            # revenu en tete, il faut redescendre sur la piste decochee.
-            await pilot.press("down")
-            await pilot.pause(0.2)
-            await pilot.press("space")
-            await pilot.pause(0.2)
-            await pilot.press("enter")
-            await pilot.pause(0.3)
-            gardees = [a for a in wiz._dec.audio
-                       if a.action.name != "EXCLUDE"]
-            assert len(gardees) == 2, [a.track.index for a in gardees]
-            print("[16d] Choix revise : la piste recochee revient")
-
-
 async def scenario_wizard() -> None:
-    """L'assistant : le mode d'entree, et sa bascule vers le parcours libre."""
+    """L'assistant : mode d'entree, cinq etapes, bascule par W."""
     with tempfile.TemporaryDirectory() as td_str:
         td = Path(td_str)
         if not _make_test_videos(td, 1):
@@ -739,39 +645,63 @@ async def scenario_wizard() -> None:
             await pilot.pause(3.0)
 
             assert app.wizard_mode is True, "l'assistant est le mode d'entree"
+            barre = str(app.screen.query_one("#profile-bar", Static).render())
+            assert "Assistant" in barre, f"mode absent de la barre -> {barre[:80]!r}"
+            print("[15] Mode assistant annonce dans la barre de profil")
 
-            await pilot.press("t")
-            await pilot.pause(0.6)
-            assert type(app.screen).__name__ == "WizardScreen", type(app.screen).__name__
-            wiz = app.screen
-            print(f"[15] Assistant : {len(wiz._etapes)} etapes sur un clip sans "
-                  f"piste ambigue")
-
-            # Le resume doit nommer le fichier de sortie : un assistant qui
-            # n'annonce pas ce qu'il produit remplace un doute par un autre.
-            corps = str(wiz.query_one("#wiz-corps", Static).render())
-            assert wiz._dec.output_path.name in corps, corps[:200]
-            print("[15b] L'etape 1 annonce le fichier produit")
-
-            # Enter avance, Backspace revient : le rail se parcourt dans les
-            # deux sens sans rien lancer.
+            # ↵ sur un fichier ouvre l'assistant
             await pilot.press("enter")
-            await pilot.pause(0.3)
-            assert wiz._i == 1, wiz._i
-            await pilot.press("backspace")
-            await pilot.pause(0.3)
-            assert wiz._i == 0, wiz._i
-            print("[15c] Enter avance, Backspace revient")
+            await pilot.pause(0.8)
+            wiz = app.screen
+            assert type(wiz).__name__ == "WizardScreen", type(wiz).__name__
+            assert len(wiz._lignes) == 0, "l'etape 1 n'affiche pas de table"
+            corps = str(wiz.query_one("#wiz-corps", Static).render())
+            assert "clip0.mkv" in corps, corps[:120]
+            assert app.active_profile_id in corps, "le profil doit etre nomme"
+            print("[15b] Etape 1 : le fichier et le profil sont nommes")
 
-            # F12 : bascule vers le parcours libre, et le choix tient.
-            await pilot.press("f12")
+            # Etape 2 : codec, debit et pistes sur un seul ecran
+            await pilot.press("enter")
             await pilot.pause(0.5)
-            assert app.wizard_mode is False
+            assert wiz._etape.name == "DECISION", wiz._etape
+            corps = str(wiz.query_one("#wiz-corps", Static).render())
+            assert wiz._dec.output_path.name in corps, "la sortie doit etre nommee"
+            print("[15c] Etape 2 : la sortie est annoncee")
+
+            # Etape 3 puis 4 : les deux lancements restent offerts
+            await pilot.press("enter"); await pilot.pause(0.4)
+            assert wiz._etape.name == "PISTES", wiz._etape
+            await pilot.press("enter"); await pilot.pause(0.4)
+            assert wiz._etape.name == "LANCER", wiz._etape
+            aide = str(wiz.query_one("#wiz-hint", Static).render())
+            assert "Muxer" in aide and "Encoder" in aide, aide
+            print("[15d] Etape 4 : mux et encodage tous deux offerts")
+
+            # M sans piste externe : refus explicite, on ne lance rien
+            await pilot.press("m")
+            await pilot.pause(0.5)
+            assert type(app.screen).__name__ == "WizardScreen", type(app.screen).__name__
+            assert "Rien a muxer" in str(
+                wiz.query_one("#wiz-hint", Static).render()).replace("à", "a")
+            print("[15e] M sans piste externe : refus explicite")
+
+            # ⌫ remonte les etapes, puis rend la main a l'accueil
+            for _ in range(4):
+                await pilot.press("backspace")
+                await pilot.pause(0.3)
             assert type(app.screen).__name__ == "BrowserScreen", type(app.screen).__name__
-            await pilot.press("t")
-            await pilot.pause(0.6)
+            print("[15f] Backspace remonte les etapes jusqu'a l'accueil")
+
+            # W bascule, et ↵ ouvre alors l'ecran des pistes
+            await pilot.press("w")
+            await pilot.pause(0.4)
+            assert app.wizard_mode is False
+            barre = str(app.screen.query_one("#profile-bar", Static).render())
+            assert "Manuel" in barre, barre[:80]
+            await pilot.press("enter")
+            await pilot.pause(0.8)
             assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
-            print("[15d] F12 : bascule vers le parcours libre, T ouvre les pistes")
+            print("[15g] W bascule en manuel : ↵ ouvre les pistes")
 
 
 async def scenario_accueil() -> None:
@@ -844,7 +774,6 @@ async def main() -> None:
     await scenario_external_tracks()
     await scenario_measure()
     await scenario_wizard()
-    await scenario_wizard_ambiguite()
     await scenario_accueil()
     print("SMOKE OK")
 

@@ -1,50 +1,75 @@
 """
-tui/screens/wizard.py — L'assistant : un fichier, une suite d'étapes.
+tui/screens/wizard.py — L'assistant : un fichier, cinq étapes, `↵` pour avancer.
 
-Le parcours manuel laisse le choix de l'ordre, ce qui suppose de le connaître.
-L'assistant l'impose : chaque étape montre ce qui a été décidé, et une touche
-avance. Ce qu'on retire, c'est la navigation — **jamais l'information**. Un
-assistant qui déciderait en silence remplacerait un doute de manipulation par
-un doute de contenu, qui ne se voit qu'après l'encodage.
+Écran **autonome**, et non un enchaînement des écrans existants. Le parcours
+libre laisse le choix de l'ordre, ce qui suppose de le connaître ; l'assistant
+l'impose et ne pose qu'une question à la fois. Ce qu'on retire, c'est la
+navigation — **jamais l'information** : chaque étape affiche ce qu'elle a
+décidé, et l'étape 2 nomme le fichier qui sortira.
+
+| Étape | Ce qu'on y fait |
+|---|---|
+| 1 — Fichier | Le nom du fichier et le profil actif. Rien à décider |
+| 2 — Décision | Codec, débit et pistes conservées, sur un seul écran |
+| 3 — Pistes externes | Présenter un donneur. La mesure est lancée et appliquée aussitôt |
+| 4 — Lancer | Muxer ou encoder — les deux sont toujours offerts |
+| 5 — Terminé | Le résultat, puis retour à l'accueil |
 
 Il ne calcule rien de neuf : `decide()` a déjà arbitré le codec, le débit, le
 conteneur, le sort du Dolby Vision et chaque piste. L'assistant parcourt cette
-décision, s'arrête là où elle ne suffit pas, et rend la main aux écrans
-existants pour ce qu'ils font déjà — sélection des pistes, greffe, recalage.
+décision, la rend modifiable au même endroit, et n'appelle les écrans
+d'exécution qu'à la fin.
 
-Deux arrêts seulement :
-
-- **les langues ambiguës** — plusieurs pistes revendiquent la même langue
-  voulue, et seul leur titre les sépare (voir `decision.ambiguites`) ;
-- **les pistes additionnelles** — l'assistant ne cherche aucun fichier donneur
-  tout seul : les conventions de nommage des releases sont sans limite, et un
-  mauvais appariement est silencieux. C'est l'utilisateur qui le présente, s'il
-  y en a un — il peut n'y en avoir aucun.
+Aucun fichier donneur n'est cherché automatiquement : les conventions de nommage
+des releases sont sans limite, et un mauvais appariement est *silencieux*.
 """
 from __future__ import annotations
 
+from dataclasses import replace as dc_replace
 from enum import Enum, auto
 from typing import Optional
 
 from rich.text import Text
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Header, Static
 
-from core.decision import (AudioAction, FileDecision, VideoAction, ambiguites,
+from core.decision import (ACTION_CYCLE, SUFFIX_BY_ACTION, AudioAction,
+                           DVAction, FileDecision, VideoAction, cycle_index,
                            decide_audio)
+from core.muxer import SyncOrigin, TrackKind, propager_recalage
+from core.sync import measure_audio, measure_subtitle
 
-from ..common import fmt_duration, footer_line2, retour_accueil
+from ..common import (bitrate_picker_config, codec_picker_opts, fmt_duration,
+                      footer_line2, retour_accueil, tronquer_milieu)
 from ..mixins import TableNavMixin
 from ..widgets.footer import KeyFooter
+from .value_picker import ValuePickerScreen
 
 
 class Etape(Enum):
-    RESUME  = auto()   # ce qui va se passer
-    LANGUES = auto()   # une ambiguïté à trancher
-    DONNEUR = auto()   # des pistes venues d'un autre fichier ?
-    LANCER  = auto()   # muxer ou encoder
+    FICHIER  = auto()
+    DECISION = auto()
+    PISTES   = auto()
+    LANCER   = auto()
+    TERMINE  = auto()
+
+
+_ORDRE = [Etape.FICHIER, Etape.DECISION, Etape.PISTES, Etape.LANCER,
+          Etape.TERMINE]
+
+_TITRES = {
+    Etape.FICHIER:  "Fichier",
+    Etape.DECISION: "Décision",
+    Etape.PISTES:   "Pistes externes",
+    Etape.LANCER:   "Lancer",
+    Etape.TERMINE:  "Terminé",
+}
+
+# Genres de lignes de la table de l'étape 2
+_L_AUDIO, _L_SUB, _L_EXT = "a", "s", "e"
 
 
 class WizardScreen(TableNavMixin, Screen):
@@ -57,86 +82,39 @@ class WizardScreen(TableNavMixin, Screen):
         padding: 0 1;
         height: 1;
     }
-    #wiz-corps {
-        height: auto;
-        padding: 1 2;
-    }
-    #wiz-table {
-        height: 1fr;
-        margin: 1 0;
-    }
-    #wiz-hint {
-        color: $text-muted;
-        padding: 0 2;
-        height: auto;
-    }
+    #wiz-corps { height: auto; padding: 1 2; }
+    #wiz-table { height: 1fr; margin: 0 2; }
+    #wiz-hint  { color: $text-muted; padding: 0 2; height: auto; }
     """
 
-    # `priority=True` partout : un DataTable étouffe les touches avant que le
-    # système de bindings soit consulté — voir l'avertissement de TableNavMixin.
-    # Sans ça, ↵ ne fait rien sur les étapes qui affichent une table.
+    # `priority` partout : un DataTable étouffe les touches avant que le
+    # système de bindings soit consulté — voir l'avertissement en tête de
+    # tui/mixins.py. Sans cela, ↵ ne fait rien sur les étapes à table.
     BINDINGS = [
-        Binding("enter",     "suivant", "Suivant",     show=True,  priority=True),
-        Binding("space",     "cocher",  "Sélect",      show=True,  priority=True),
-        Binding("a",         "ajuster", "Ajuster",     show=True,  priority=True),
-        Binding("o",         "donneur", "Ajouter",     show=True,  priority=True),
-        Binding("n",         "sans",    "Aucune",      show=True,  priority=True),
-        Binding("backspace", "retour",  "Retour",      show=True,  priority=True),
-        Binding("escape",    "retour",  "Retour",      show=False, priority=True),
-        Binding("f12",       "manuel",  "Mode manuel", show=True,  priority=True),
-        # `priority` : un DataTable etouffe la touche avant les bindings —
-        # meme avertissement qu'en tete de tui/mixins.py.
-        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
-                priority=True),
+        Binding("enter",     "suivant",  "Suivant", show=True,  priority=True),
+        Binding("space",     "basculer", "Garder",  show=True,  priority=True),
+        Binding("f6",        "codec",    "Codec",   show=True,  priority=True),
+        Binding("f7",        "debit",    "Débit",   show=True,  priority=True),
+        Binding("f9",        "donneur",  "Ajouter", show=True,  priority=True),
+        Binding("d",         "retirer",  "Retirer", show=True,  priority=True),
+        Binding("m",         "muxer",    "Muxer",   show=True,  priority=True),
+        Binding("e",         "encoder",  "Encoder", show=True,  priority=True),
+        Binding("backspace", "retour",   "Retour",  show=True,  priority=True),
+        Binding("escape",    "retour",   "Retour",  show=False, priority=True),
+        Binding("ctrl+home", "accueil",  "Accueil", show=True,  priority=True),
     ]
 
     def __init__(self, decision: FileDecision) -> None:
         super().__init__()
-        self._dec   = decision
-        self._i     = 0
-        self._amb_i = 0
-        self._relever()
-
-    # ── Le plan, recalculé quand la décision change ───────────────────────────
-
-    def _relever(self) -> None:
-        """Repart de la décision courante : ambiguïtés, base, choix par défaut.
-
-        La **base** est la sélection avant tout arbitrage de langue. Les choix
-        se réappliquent toujours depuis elle, jamais par retranchements
-        successifs : sinon revenir sur un choix et recocher une piste écartée
-        ne la ramènerait pas — elle aurait déjà quitté la liste, et on croirait
-        l'avoir reprise.
-
-        Les cases partent cochées sur ce que la décision garde déjà : valider
-        sans rien toucher ne retire donc rien.
-        """
-        d = self._dec
-        self._amb        = ambiguites(d.info, d.profile)
-        self._base_audio = [a.track.index for a in d.audio
-                            if a.action != AudioAction.EXCLUDE]
-        self._base_subs  = (list(d.subtitle_indices)
-                            if d.subtitle_indices is not None else None)
-        self._choix: dict[int, set[int]] = {
-            i: {t.index for t in a.tracks} for i, a in enumerate(self._amb)
-        }
-        self._etapes = self._plan()
-
-    @property
-    def _coches(self) -> set[int]:
-        """Cases de l'ambiguïté courante — conservées d'un aller-retour à l'autre."""
-        return self._choix.setdefault(self._amb_i, set())
-
-    def _plan(self) -> list[Etape]:
-        plan = [Etape.RESUME]
-        if self._amb:
-            plan.append(Etape.LANGUES)
-        plan += [Etape.DONNEUR, Etape.LANCER]
-        return plan
+        self._dec    = decision
+        self._i      = 0
+        self._lignes: list[tuple[str, int]] = []
+        self._mesure = False
+        self._bilan  = ""            # ce que l'étape 5 annonce
 
     @property
     def _etape(self) -> Etape:
-        return self._etapes[min(self._i, len(self._etapes) - 1)]
+        return _ORDRE[self._i]
 
     # ── Composition ───────────────────────────────────────────────────────────
 
@@ -146,12 +124,13 @@ class WizardScreen(TableNavMixin, Screen):
         yield Static("", id="wiz-corps", markup=False)
         yield DataTable(id="wiz-table", cursor_type="row", show_header=True)
         yield Static("", id="wiz-hint", markup=False)
-        yield KeyFooter(actions=[], nav=footer_line2(back=True, nav=True, accueil=True))
+        yield KeyFooter(actions=[], nav=footer_line2(back=True, nav=True,
+                                                     accueil=True))
 
     def on_mount(self) -> None:
         self._afficher()
 
-    # ── Rendu d'une étape ─────────────────────────────────────────────────────
+    # ── Rendu ─────────────────────────────────────────────────────────────────
 
     def _afficher(self) -> None:
         titre = self.query_one("#wiz-titre", Static)
@@ -159,253 +138,381 @@ class WizardScreen(TableNavMixin, Screen):
         table = self.query_one(DataTable)
         hint  = self.query_one("#wiz-hint", Static)
 
-        n = self._etapes.index(self._etape) + 1
-        titre.update(f" Assistant — étape {n} sur {len(self._etapes)}"
-                     f"   ·   {self._dec.info.path.name}")
-
+        titre.update(f" Assistant   ·   étape {self._i + 1} sur {len(_ORDRE)}"
+                     f"   ·   {_TITRES[self._etape]}")
         table.display = False
         table.clear(columns=True)
+        self._lignes = []
 
-        if self._etape == Etape.RESUME:
-            corps.update(self._texte_resume())
-            hint.update("↵ Suivant   ·   A Ajuster les pistes et le codec   ·   "
-                        "⌫ Retour   ·   F12 Mode manuel")
-        elif self._etape == Etape.LANGUES:
-            corps.update(self._texte_langues())
-            self._remplir_table()
-            table.display = True
-            # Masquer la table lui retire le focus : sans ce rappel, les
-            # flèches ne déplaçaient plus le curseur en revenant sur l'étape.
+        rendu = {
+            Etape.FICHIER:  self._etape_fichier,
+            Etape.DECISION: self._etape_decision,
+            Etape.PISTES:   self._etape_pistes,
+            Etape.LANCER:   self._etape_lancer,
+            Etape.TERMINE:  self._etape_termine,
+        }[self._etape]
+        texte, aide, avec_table = rendu()
+        corps.update(texte)
+        hint.update(aide)
+        table.display = avec_table
+        if avec_table:
             table.focus()
-            hint.update("Espace coche ou décoche   ·   ↵ Valider ce choix   ·   "
-                        "⌫ Retour")
-        elif self._etape == Etape.DONNEUR:
-            corps.update(self._texte_donneur())
-            hint.update("O Présenter un fichier   ·   N ou ↵ Aucune piste à "
-                        "ajouter   ·   ⌫ Retour")
-        else:
-            corps.update(self._texte_lancer())
-            hint.update("↵ Lancer   ·   ⌫ Retour")
 
-    def _texte_resume(self) -> Text:
+    # ── Étape 1 — le fichier ──────────────────────────────────────────────────
+
+    def _etape_fichier(self):
+        d = self._dec
+        t = Text()
+        t.append("Fichier à traiter\n\n", style="bold")
+        t.append(f"  {d.info.path.name}\n\n")
+        t.append(f"  {d.info.width}×{d.info.height} · {d.info.codec} · "
+                 f"{d.info.kbps}k · {fmt_duration(d.info.duration)}\n")
+        t.append(f"  {len(d.info.audio_tracks)} piste(s) audio · "
+                 f"{len(d.info.subtitle_tracks)} sous-titre(s)\n\n")
+        t.append(f"  Profil actif   {d.profile.id}\n", style="bold")
+        return t, "↵ Continuer   ·   ⌫ Retour à la liste", False
+
+    # ── Étape 2 — codec, débit, pistes ────────────────────────────────────────
+
+    def _etape_decision(self):
         d, v = self._dec, self._dec.video
         t = Text()
-        t.append("Ce qui va être produit\n\n", style="bold")
-        t.append(f"  Source     {d.info.width}×{d.info.height} · "
-                 f"{d.info.codec} · {d.info.kbps}k · "
-                 f"{fmt_duration(d.info.duration)}\n")
-        t.append(f"  Vidéo      {v.label()}")
+        t.append("Ce qui sera produit\n\n", style="bold")
+        t.append(f"  Sortie   {d.output_path.name}\n", style="bold")
+        t.append(f"  Vidéo    {v.label()}")
         if v.target_bitrate:
             t.append(f" · {v.target_bitrate // 1000}k visés")
-        t.append(f"\n             {v.reason}\n")
+        t.append(f"\n           {v.reason}\n")
+        self._remplir_decision()
+        return (t,
+                "Espace garde ou écarte une piste   ·   F6 Codec   ·   "
+                "F7 Débit   ·   ↵ Continuer   ·   ⌫ Retour",
+                True)
 
-        gardees = [a for a in d.audio if a.action != AudioAction.EXCLUDE]
-        t.append(f"  Audio      {len(gardees)} piste(s) sur {len(d.audio)}\n")
-        for a in gardees:
-            t.append(f"             {a.track.language or '?':4} "
-                     f"{a.track.codec} {a.track.channel_layout} "
-                     f"{a.display()}\n", style="dim")
+    def _remplir_decision(self) -> None:
+        table = self.query_one(DataTable)
+        table.add_column("", width=3)
+        table.add_column("Piste",    width=14)
+        table.add_column("Codec",    width=12)
+        table.add_column("Langue",   width=8)
+        table.add_column("Nom",      width=30)
+        table.add_column("Décision", width=None)
 
-        st    = d.subtitles_finales
-        total = len(d.info.subtitle_tracks)
-        t.append(f"  Sous-titre {len(st)} piste(s) sur {total}")
-        if len(st) != total:
-            langues = sorted({s.language or "?" for s in st})
-            t.append(f" — {', '.join(langues)}")
-        t.append("\n")
+        d = self._dec
+        for ad in d.audio:
+            self._ligne(_L_AUDIO, ad.track.index,
+                        ad.action != AudioAction.EXCLUDE,
+                        f"0:a:{ad.track.index}", ad.track.codec,
+                        ad.track.language, ad.track.title,
+                        ad.display() or "—")
+        gardes = {st.index for st in d.subtitles_finales}
+        for st in d.info.subtitle_tracks:
+            self._ligne(_L_SUB, st.index, st.index in gardes,
+                        f"0:s:{st.index}", st.codec, st.language, st.title,
+                        "copie" if st.index in gardes else "")
+        for n, ext in enumerate(d.external_tracks):
+            kind = "audio" if ext.kind == TrackKind.AUDIO else "sous-titre"
+            self._ligne(_L_EXT, n, True, f"greffe {kind}", ext.codec,
+                        ext.language, ext.track_name or ext.source_path.name,
+                        ext.sync_label())
 
-        if d.external_tracks:
-            t.append(f"  Greffées   {len(d.external_tracks)} piste(s) "
-                     f"d'un autre fichier\n")
-        t.append(f"\n  Sortie     {d.output_path.name}\n")
-        return t
+    def _ligne(self, genre, idx, garde, piste, codec, langue, nom, decision):
+        table = self.query_one(DataTable)
+        style = "" if garde else "dim"
+        table.add_row(
+            Text("✓" if garde else " ", style="bold green" if garde else "dim"),
+            Text(piste, no_wrap=True, style=style),
+            Text(codec, no_wrap=True, style=style),
+            Text(langue or "?", no_wrap=True, style=style),
+            Text(tronquer_milieu(nom or "—", 30), no_wrap=True, style=style),
+            Text(decision, style="green" if garde else "dim"),
+        )
+        self._lignes.append((genre, idx))
 
-    def _texte_langues(self) -> Text:
-        a = self._amb[self._amb_i]
+    # ── Étape 3 — les pistes externes ─────────────────────────────────────────
+
+    def _etape_pistes(self):
+        d = self._dec
         t = Text()
-        t.append(f"Plusieurs pistes revendiquent la même langue "
-                 f"({self._amb_i + 1} sur {len(self._amb)})\n\n", style="bold")
-        t.append(a.label() + ". Seul leur titre les distingue, et un titre ne\n"
-                 "se devine pas — cochez celles à garder.\n", style="dim")
-        return t
-
-    def _texte_donneur(self) -> Text:
-        t = Text()
-        t.append("Des pistes à ajouter depuis un autre fichier ?\n\n",
-                 style="bold")
-        if self._dec.external_tracks:
-            t.append(f"  {len(self._dec.external_tracks)} piste(s) déjà "
-                     f"présentée(s) :\n")
-            for e in self._dec.external_tracks:
-                t.append(f"    {e.language or '?':4} {e.codec} — "
-                         f"{e.source_path.name}   {e.sync_label()}\n",
-                         style="dim")
-            t.append("\n  O pour en ajouter d'autres, ↵ pour continuer.\n",
+        t.append("Pistes venues d'un autre fichier\n\n", style="bold")
+        if self._mesure:
+            t.append("  ⏳ Mesure du décalage en cours…\n", style="yellow")
+        elif not d.external_tracks:
+            t.append("  Aucune pour l'instant.\n\n", style="dim")
+            t.append("  Une VF, des sous-titres : présentez le fichier qui les\n"
+                     "  porte. L'assistant n'en cherche aucun tout seul — un\n"
+                     "  mauvais appariement ne s'entend qu'après coup.\n",
                      style="dim")
         else:
-            t.append("  Une VF, des sous-titres — l'assistant ne cherche aucun\n"
-                     "  fichier tout seul : présentez-le, ou passez.\n",
-                     style="dim")
-        return t
+            for ext in d.external_tracks:
+                kind = "audio" if ext.kind == TrackKind.AUDIO else "sous-titre"
+                t.append(f"  {kind:11} {ext.language or '?':4} "
+                         f"{ext.track_name or ext.source_path.name}\n")
+                t.append(f"              {ext.sync_label()}   "
+                         f"{self._origine(ext)}\n", style="dim")
+        return (t,
+                "F9 Présenter un fichier   ·   D Retirer la dernière   ·   "
+                "↵ Continuer   ·   ⌫ Retour",
+                False)
 
-    def _texte_lancer(self) -> Text:
-        t = Text()
-        t.append("Prêt\n\n", style="bold")
-        if self._muxable():
-            t.append("  Rien à réencoder : les pistes sont greffées par "
-                     "mkvmerge,\n  l'image est recopiée telle quelle.\n")
-        else:
-            t.append(f"  {self._dec.video.label()} — la vidéo est réencodée.\n")
-        t.append(f"\n  Sortie   {self._dec.output_path.name}\n")
-        return t
+    @staticmethod
+    def _origine(ext) -> str:
+        return {
+            SyncOrigin.NONE:     "non mesuré",
+            SyncOrigin.MEASURED: "mesuré",
+            SyncOrigin.MANUAL:   "réglé à la main",
+            SyncOrigin.COPIED:   "repris de la piste audio",
+        }.get(ext.sync_origin, "")
+
+    # ── Étape 4 — lancer ──────────────────────────────────────────────────────
 
     def _muxable(self) -> bool:
         """Un mux suffit quand rien n'est à réencoder mais qu'il y a à greffer."""
-        return (self._dec.video.action == VideoAction.SKIP
+        return (self._dec.video.action in (VideoAction.SKIP,
+                                           VideoAction.STRIP_DV)
                 and bool(self._dec.external_tracks))
 
-    # ── Table des pistes ambiguës ─────────────────────────────────────────────
+    def _etape_lancer(self):
+        d = self._dec
+        t = Text()
+        t.append("Prêt\n\n", style="bold")
+        t.append(f"  Sortie   {d.output_path.name}\n\n", style="bold")
+        if self._muxable():
+            t.append("  Recommandé : muxer. Rien n'est à réencoder, les pistes\n"
+                     "  sont greffées par mkvmerge et l'image recopiée telle\n"
+                     "  quelle — quelques minutes au lieu de quelques heures.\n")
+        else:
+            t.append(f"  Recommandé : encoder. {d.video.label()}.\n")
+            if not d.external_tracks:
+                t.append("  Sans piste à greffer, le mux n'aurait rien à faire.\n",
+                         style="dim")
+        t.append("\n  Les deux restent offerts : ")
+        t.append("M", style="bold")
+        t.append(" muxer, ")
+        t.append("E", style="bold")
+        t.append(" encoder.\n")
+        return (t,
+                "↵ Lancer le choix recommandé   ·   M Muxer   ·   E Encoder   "
+                "·   ⌫ Retour",
+                False)
 
-    def _remplir_table(self) -> None:
-        table = self.query_one(DataTable)
-        table.add_column("", width=3)
-        table.add_column("Langue", width=8)
-        table.add_column("Codec", width=20)
-        table.add_column("Titre", width=48)
-        for tr in self._amb[self._amb_i].tracks:
-            coche = "✓" if tr.index in self._coches else " "
-            titre = getattr(tr, "title", "") or "—"
-            table.add_row(Text(coche, style="bold"),
-                          Text(tr.language or "?"),
-                          Text(tr.codec),
-                          Text(titre, overflow="ellipsis", no_wrap=True))
+    # ── Étape 5 — terminé ─────────────────────────────────────────────────────
 
-    def _rafraichir_coches(self) -> None:
-        table = self.query_one(DataTable)
-        for ligne, tr in enumerate(self._amb[self._amb_i].tracks):
-            table.update_cell_at(
-                (ligne, 0),
-                Text("✓" if tr.index in self._coches else " ", style="bold"))
+    def _etape_termine(self):
+        t = Text()
+        t.append((self._bilan or "Opération terminée.") + "\n", style="bold")
+        t.append(f"\n  {self._dec.output_path.name}\n")
+        return t, "↵ Retour à la liste des fichiers", False
 
-    # ── Actions ───────────────────────────────────────────────────────────────
-
-    def action_cocher(self) -> None:
-        if self._etape != Etape.LANGUES:
-            return
-        table  = self.query_one(DataTable)
-        ligne  = table.cursor_row
-        pistes = self._amb[self._amb_i].tracks
-        if not (0 <= ligne < len(pistes)):
-            return
-        self._coches.symmetric_difference_update({pistes[ligne].index})
-        self._rafraichir_coches()
+    # ── Navigation ────────────────────────────────────────────────────────────
 
     def action_suivant(self) -> None:
-        if self._etape == Etape.LANGUES:
-            if not self._coches:
-                self.query_one("#wiz-hint", Static).update(
-                    "Cochez au moins une piste — sinon la langue disparaît "
-                    "du fichier.")
-                return
-            self._appliquer_choix()
-            self._amb_i += 1
-            if self._amb_i < len(self._amb):
-                self._afficher()
-                return
-        elif self._etape == Etape.LANCER:
-            self._lancer()
+        if self._mesure:
             return
-        self._i = min(self._i + 1, len(self._etapes) - 1)
+        if self._etape == Etape.LANCER:
+            self._lancer(mux=self._muxable())
+            return
+        if self._etape == Etape.TERMINE:
+            retour_accueil(self.app)
+            return
+        self._i = min(self._i + 1, len(_ORDRE) - 1)
         self._afficher()
 
-    def action_sans(self) -> None:
-        if self._etape == Etape.DONNEUR:
-            self.action_suivant()
-
     def action_retour(self) -> None:
-        # Reculer d'une ambiguïté avant de reculer d'une étape.
-        if self._etape == Etape.LANGUES and self._amb_i > 0:
-            self._amb_i -= 1
-            self._afficher()
-            return
+        if self._mesure:
+            return                       # une mesure court : on ne quitte pas
         if self._i == 0:
             self.dismiss(None)
             return
         self._i -= 1
-        # Revenir *sur* l'étape des langues, c'est revenir sur sa dernière
-        # ambiguïté : en validant, le compteur avait dépassé la fin. Sans ce
-        # recadrage, l'affichage indexait hors des bornes.
-        if self._etape == Etape.LANGUES and self._amb:
-            self._amb_i = len(self._amb) - 1
         self._afficher()
 
-    def _appliquer_choix(self) -> None:
-        """Réapplique **tous** les choix depuis la base, jamais par retranchement.
+    def action_accueil(self) -> None:
+        if not self._mesure:
+            retour_accueil(self.app)
 
-        Un choix révisé doit pouvoir rendre une piste, pas seulement en
-        retirer. Repartir de la base est la seule façon de le garantir.
-        """
-        rejet_audio: set[int] = set()
-        rejet_subs:  set[int] = set()
-        for i, a in enumerate(self._amb):
-            rejetees = {t.index for t in a.tracks} - self._choix.get(i, set())
-            (rejet_audio if a.kind == "audio" else rejet_subs).update(rejetees)
+    # ── Étape 2 : modifier la décision ────────────────────────────────────────
 
-        gardes = [i for i in self._base_audio if i not in rejet_audio]
-        self._dec.audio = decide_audio(self._dec.info, self._dec.profile,
-                                       gardes)
-        base = (self._base_subs if self._base_subs is not None
-                else [s.index for s in self._dec.info.subtitle_tracks])
-        self._dec.subtitle_indices = [i for i in base if i not in rejet_subs]
+    def _ligne_courante(self) -> Optional[tuple[str, int]]:
+        if self._etape != Etape.DECISION:
+            return None
+        r = self.query_one(DataTable).cursor_row
+        return self._lignes[r] if 0 <= r < len(self._lignes) else None
 
-    def action_ajuster(self) -> None:
-        """Rend la main à l'écran des pistes — il fait déjà tout ce qu'il faut."""
-        if self._etape != Etape.RESUME:
+    def action_basculer(self) -> None:
+        courant = self._ligne_courante()
+        if courant is None:
             return
-        from .tracks import TracksScreen
+        genre, idx = courant
+        d = self._dec
+        if genre == _L_AUDIO:
+            gardes = [a.track.index for a in d.audio
+                      if a.action != AudioAction.EXCLUDE]
+            gardes = ([g for g in gardes if g != idx] if idx in gardes
+                      else sorted(gardes + [idx]))
+            d.audio = decide_audio(d.info, d.profile, gardes)
+        elif genre == _L_SUB:
+            gardes = [st.index for st in d.subtitles_finales]
+            d.subtitle_indices = ([g for g in gardes if g != idx]
+                                  if idx in gardes else sorted(gardes + [idx]))
+        else:
+            return                       # une greffe se retire avec D, étape 3
+        self._afficher()
 
-        def _retour(result) -> None:
-            if result is None:
+    def action_codec(self) -> None:
+        if self._etape != Etape.DECISION:
+            return
+        v = self._dec.video
+
+        def _appliquer(choix: Optional[int]) -> None:
+            if choix is None:
                 return
-            self._dec.audio = decide_audio(self._dec.info, self._dec.profile,
-                                           result.audio)
-            self._dec.subtitle_indices = result.subtitle_indices
-            # La sélection manuelle devient la nouvelle base : les arbitrages
-            # de langue repartent de ce que l'utilisateur vient de poser.
-            self._amb_i = 0
-            self._relever()
-            self._i     = 0
+            action = ACTION_CYCLE[choix]
+            dv     = v.dv_action
+            if action == VideoAction.ENCODE_H264 and dv == DVAction.DV:
+                dv = DVAction.HDR10          # H264 ne sait pas porter de RPU
+            self._dec.video = dc_replace(
+                v, action=action, dv_action=dv,
+                output_suffix=SUFFIX_BY_ACTION.get(action, v.output_suffix),
+                reason="Choisi dans l'assistant")
             self._afficher()
 
-        self.app.push_screen(TracksScreen(self._dec), _retour)
+        self.app.push_screen(
+            ValuePickerScreen(
+                "Codec",
+                codec_picker_opts(getattr(self.app, "platform", None)),
+                cycle_index(v.action)),
+            _appliquer)
+
+    def action_debit(self) -> None:
+        if self._etape != Etape.DECISION:
+            return
+        v = self._dec.video
+        titre, opts, courant, echelle = bitrate_picker_config(v.action,
+                                                              v.target_bitrate)
+
+        def _appliquer(choix: Optional[int]) -> None:
+            if choix is None:
+                return
+            self._dec.video = dc_replace(
+                v, target_bitrate=echelle[choix] * 1000,
+                reason="Débit choisi dans l'assistant")
+            self._afficher()
+
+        self.app.push_screen(ValuePickerScreen(titre, opts, courant), _appliquer)
+
+    # ── Étape 3 : greffer, puis mesurer aussitôt ──────────────────────────────
 
     def action_donneur(self) -> None:
-        if self._etape != Etape.DONNEUR:
+        if self._etape != Etape.PISTES or self._mesure:
             return
         from .donor_picker import pick_external_tracks
-        from .sync import SyncScreen
 
-        def _apres_ajout() -> None:
-            def _apres_recalage(_) -> None:
-                self._afficher()
-            self.app.push_screen(SyncScreen(self._dec), _apres_recalage)
+        avant = len(self._dec.external_tracks)
 
-        pick_external_tracks(self, self._dec, _apres_ajout)
+        def _ajoutees() -> None:
+            self._afficher()
+            self._mesurer(avant)
 
-    def action_manuel(self) -> None:
-        """Bascule vers le parcours libre, sur la même décision."""
-        self.app.wizard_mode = False   # type: ignore[attr-defined]
-        self.dismiss(None)
+        pick_external_tracks(self, self._dec, _ajoutees)
 
-    def _lancer(self) -> None:
-        if self._muxable():
+    def action_retirer(self) -> None:
+        if self._etape != Etape.PISTES or self._mesure:
+            return
+        if self._dec.external_tracks:
+            self._dec.external_tracks.pop()
+            self._afficher()
+
+    def _mesurer(self, depuis: int) -> None:
+        """Mesure les pistes ajoutées, sans le demander.
+
+        Une piste greffée sans recalage est une piste décalée : il n'y a rien à
+        arbitrer. L'audio est mesurée, et son décalage reporté sur les
+        sous-titres du même donneur — leur bon décalage *est* le sien.
+        """
+        nouvelles = list(range(depuis, len(self._dec.external_tracks)))
+        if not nouvelles:
+            return
+        self._mesure = True
+        self._afficher()
+        self._travail_mesure(nouvelles)
+
+    @work(thread=True, name="wizard-mesure")
+    def _travail_mesure(self, indices: list[int]) -> None:
+        pistes = self._dec.external_tracks
+        cible  = self._dec.info.path
+        duree  = self._dec.info.duration
+        notes: list[str] = []
+
+        # L'audio d'abord : c'est elle qui sert de référence aux sous-titres.
+        ordre = sorted(indices,
+                       key=lambda i: pistes[i].kind != TrackKind.AUDIO)
+        for i in ordre:
+            t = pistes[i]
+            if t.sync_origin != SyncOrigin.NONE:
+                continue                 # déjà reprise d'une piste mesurée
+            try:
+                if t.kind == TrackKind.AUDIO:
+                    res = measure_audio(cible, t.source_path, t.source_tid,
+                                        duration=duree)
+                else:
+                    res = measure_subtitle(cible, t.source_path,
+                                           duration=duree,
+                                           donor_track=t.source_tid)
+            except Exception as e:                       # noqa: BLE001
+                notes.append(f"{t.source_path.name} : mesure impossible ({e})")
+                continue
+            if res.ok:
+                t.delay_ms    = res.delay_ms
+                t.stretch     = res.stretch
+                t.sync_origin = SyncOrigin.MEASURED
+                n = len(propager_recalage(pistes, i))
+                notes.append(f"{t.language or '?'} {res.delay_ms:+d} ms"
+                             + (f", reporté sur {n} sous-titre(s)" if n else ""))
+            else:
+                notes.append(f"{t.language or '?'} : {res.reason} — décalage "
+                             f"laissé à 0, à vérifier avant de lancer")
+        self.app.call_from_thread(self._mesure_finie, notes)
+
+    def _mesure_finie(self, notes: list[str]) -> None:
+        self._mesure = False
+        self._afficher()
+        if notes:
+            self.query_one("#wiz-hint", Static).update(
+                " · ".join(notes) + "\nF9 Ajouter   ·   ↵ Continuer")
+
+    # ── Étape 4 : exécution ───────────────────────────────────────────────────
+
+    def action_muxer(self) -> None:
+        if self._etape == Etape.LANCER:
+            self._lancer(mux=True)
+
+    def action_encoder(self) -> None:
+        if self._etape == Etape.LANCER:
+            self._lancer(mux=False)
+
+    def _lancer(self, *, mux: bool) -> None:
+        if mux and not self._dec.external_tracks:
+            self.query_one("#wiz-hint", Static).update(
+                "Rien à muxer : aucune piste externe à greffer. "
+                "E pour encoder.")
+            return
+
+        def _apres(_res=None) -> None:
+            if self._dec.output_path.exists():
+                self._bilan = ("Terminé — les pistes ont été greffées."
+                               if mux else
+                               "Terminé — le fichier a été produit.")
+            else:
+                self._bilan = ("L'opération n'a produit aucun fichier. "
+                               "Revenez à l'étape précédente.")
+            self._i = _ORDRE.index(Etape.TERMINE)
+            self._afficher()
+
+        if mux:
             from .mux_run import MuxScreen
-            self.app.push_screen(MuxScreen(self._dec))
+            self.app.push_screen(MuxScreen(self._dec), _apres)
         else:
             from .run import RunScreen
             self.app.push_screen(
-                RunScreen([self._dec], self.app.platform))  # type: ignore[attr-defined]
-
-    def action_accueil(self) -> None:
-        """Retour au choix du fichier, sans repasser par les écrans intermédiaires."""
-        retour_accueil(self.app)
+                RunScreen([self._dec], self.app.platform), _apres)  # type: ignore[attr-defined]

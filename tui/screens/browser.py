@@ -127,7 +127,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("enter",     "enter_dir",          "Ouvrir",   show=True, priority=True),
         Binding("backspace", "go_up",              "Remonter", show=True),
         Binding("t",         "open_tracks",        "Pistes",   show=False),
-        Binding("f12",       "toggle_wizard",      "Mode",     show=False),
+        Binding("w",         "toggle_wizard",      "Mode",     show=True),
         Binding("v",         "play",               "Visualiser", show=True),
         Binding("ctrl+d",    "delete_file",        "Supprimer", show=True),
         Binding("f1",        "open_dryrun",        "Dry-run",  show=True),
@@ -350,8 +350,15 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         k4_style = "green"              if keep_4k else "dim"
         dv_color = DV_VALUE_STYLES.get(f["dv"], "")
 
-        # Ligne 1 : raccourci + nom du profil + infos techniques
+        # Ligne 1 : mode, raccourci, nom du profil, infos techniques
         line1 = Text()
+        # Le mode change ce que fait ↵ sur un fichier : il doit se lire sans
+        # avoir à l'essayer.
+        assistant = getattr(self._app, "wizard_mode", True)
+        line1.append("[W] ", style="dim")
+        line1.append("Assistant" if assistant else "Manuel",
+                     style="bold cyan" if assistant else "bold")
+        line1.append("  │  ", style="dim")
         line1.append("[F4] ", style="dim")
         if prof.data.get("delete_source", False):
             line1.append("⚠ ", style="bold dark_orange")
@@ -691,6 +698,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self._selected.clear()
             self._refresh_view()
         elif row_type == _ROW_TYPE_FILE:
+            # En mode assistant, ↵ ouvre le parcours guidé ; en mode libre,
+            # il ouvre l'écran des pistes comme avant.
             self.action_open_tracks()
 
     def action_go_up(self) -> None:
@@ -732,8 +741,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         """Bascule assistant / parcours libre. Le choix tient pour la session."""
         app = self.app
         app.wizard_mode = not getattr(app, "wizard_mode", True)   # type: ignore[attr-defined]
-        mode = "Assistant" if app.wizard_mode else "Parcours libre"  # type: ignore[attr-defined]
-        self._flash_status(f"Mode : {mode}")
+        self._update_profile_bar()
+        self._flash_status(
+            "Mode assistant — ↵ ouvre le parcours guidé, un fichier à la fois."
+            if app.wizard_mode else                               # type: ignore[attr-defined]
+            "Mode manuel — ↵ ouvre l'écran des pistes.")
 
     def action_open_tracks(self) -> None:
         row_type, path = self._current_row_info()

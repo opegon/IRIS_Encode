@@ -1,5 +1,41 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.11] — 2026-08-28
+
+### L'assistant devient un écran à lui seul
+
+La première version enchaînait les écrans existants — pistes, donneur,
+recalage — en leur donnant seulement un ordre. C'était un mélange, pas un
+parcours : chaque écran gardait ses propres touches, ses propres colonnes et
+ses propres détours.
+
+L'assistant est désormais **autonome**, cinq étapes, `↵` pour avancer :
+
+| Étape | Ce qu'on y fait |
+|---|---|
+| 1 — Fichier | Le nom du fichier et le profil actif |
+| 2 — Décision | Codec, débit et pistes conservées, **sur un seul écran** |
+| 3 — Pistes externes | Présenter un donneur ; la mesure suit aussitôt |
+| 4 — Lancer | Muxer ou encoder, les deux toujours offerts |
+| 5 — Terminé | Le résultat, puis retour à l'accueil |
+
+**L'accueil ne change pas.** `W` y bascule entre assistant et parcours libre, et
+la barre de profil affiche lequel est actif : le mode change ce que fait `↵` sur
+un fichier, cela devait se lire sans l'essayer. En mode assistant, `↵` ouvre le
+parcours — un fichier à la fois.
+
+**La mesure ne se demande plus.** Une piste greffée sans recalage est une piste
+décalée : il n'y a rien à arbitrer. L'audio est mesurée dès l'ajout et son
+décalage reporté sur les sous-titres du même donneur. Une mesure refusée laisse
+le décalage à zéro et le dit, plutôt que d'appliquer un candidat non confirmé.
+
+**Les deux lancements restent offerts.** `↵` prend le recommandé, `M` et `E`
+forcent l'autre. Un mux sans piste externe est refusé avec sa raison au lieu
+d'être exécuté à vide.
+
+`muxer.propager_recalage()` sort de l'écran de recalage pour que la règle
+n'existe qu'une fois : l'assistant s'en sert aussi.
+
 ## [v0.8.2.10] — 2026-08-28
 
 ### `Ctrl+Home` — revenir à l'accueil d'une touche

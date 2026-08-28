@@ -201,6 +201,37 @@ def mkvmerge_tid(path: Path, index: int, kind: TrackKind) -> int:
     return index
 
 
+def propager_recalage(tracks: list[ExternalTrack], source: int) -> list[int]:
+    """Reporte le décalage d'une piste audio sur les sous-titres du même donneur.
+
+    Retourne les index modifiés. Des sous-titres livrés avec une VF sont écrits
+    sur le timing de cette VF : leur bon décalage *est* celui de la piste audio.
+
+    Trois garde-fous, parce qu'un report automatique doit rester un service et
+    jamais une surprise : même fichier donneur ; ni piste mesurée pour
+    elle-même ni piste réglée à la main ; et seulement depuis une piste audio.
+    """
+    if not (0 <= source < len(tracks)) or tracks[source].kind != TrackKind.AUDIO:
+        return []
+    src = tracks[source]
+    touches: list[int] = []
+    for j, t in enumerate(tracks):
+        if j == source or t.kind == TrackKind.AUDIO:
+            continue
+        if t.source_path != src.source_path:
+            continue
+        if t.sync_origin not in (SyncOrigin.NONE, SyncOrigin.COPIED):
+            continue
+        if t.sync_origin == SyncOrigin.COPIED and t.copied_from != source:
+            continue
+        t.delay_ms    = src.delay_ms
+        t.stretch     = src.stretch
+        t.sync_origin = SyncOrigin.COPIED
+        t.copied_from = source
+        touches.append(j)
+    return touches
+
+
 # ─── Construction de la commande ──────────────────────────────────────────────
 
 def _sync_arg(t: ExternalTrack) -> str:

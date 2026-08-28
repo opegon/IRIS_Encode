@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.10 — document de référence courant
+**Version** : 0.8.2.11 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1182,49 +1182,46 @@ Conventions transverses :
 
 ### 14.0 Écran Wizard — l'assistant
 
-Le parcours libre laisse le choix de l'ordre, ce qui suppose de le connaître.
-L'assistant l'impose. Il est le **mode d'entrée** de l'application ; `F12`
-bascule vers le parcours libre, et le choix tient pour la session.
+Écran **autonome**, et non un enchaînement des écrans existants. Il est le mode
+d'entrée de l'application ; `W`, depuis l'accueil, bascule vers le parcours
+libre, et le choix tient pour la session. La barre de profil affiche lequel des
+deux est actif — le mode change ce que fait `↵` sur un fichier, cela doit se
+lire sans avoir à l'essayer.
 
-Il ne calcule rien de neuf : `decide()` a déjà arbitré le codec, le débit, le
-conteneur, le sort du Dolby Vision et chaque piste (§ 5, § 7, § 8). L'assistant
-parcourt cette décision et rend la main aux écrans existants pour ce qu'ils
-font déjà.
+En mode assistant, `↵` sur un fichier ouvre le parcours. Un fichier à la fois.
 
-| Étape | Toujours ? | Ce qu'elle fait |
+| Étape | Ce qu'on y fait | Touches |
 |---|---|---|
-| 1 — Résumé | oui | Annonce la source, l'action vidéo, les pistes retenues et **le nom du fichier produit**. `A` ouvre l'écran des pistes |
-| 2 — Langues | seulement si ambiguïté | Plusieurs pistes revendiquent la même langue voulue : l'utilisateur coche |
-| 3 — Donneur | oui | `O` présente un fichier (sélecteur et recalage existants), `N` passe |
-| 4 — Lancer | oui | Mux si rien n'est à réencoder et qu'il y a à greffer, encodage sinon |
+| 1 — Fichier | Le nom du fichier, ses caractéristiques, le profil actif | `↵` |
+| 2 — Décision | Codec, débit et pistes conservées, sur un seul écran | `Espace` `F6` `F7` `↵` |
+| 3 — Pistes externes | Présenter un donneur ; la mesure suit aussitôt | `F9` `D` `↵` |
+| 4 — Lancer | Muxer ou encoder — **les deux toujours offerts** | `M` `E` `↵` |
+| 5 — Terminé | Le résultat, puis retour à l'accueil | `↵` |
 
-**Ce qu'on retire, c'est la navigation — jamais l'information.** Un assistant
-qui déciderait en silence remplacerait un doute de manipulation par un doute de
-contenu, qui ne se voit qu'après l'encodage. Chaque étape montre donc ce qu'elle
-a décidé, et avancer tient à une touche.
+**La mesure ne se demande pas.** Une piste greffée sans recalage est une piste
+décalée : il n'y a rien à arbitrer. L'audio est mesurée dès l'ajout, et son
+décalage reporté sur les sous-titres du même donneur par
+`muxer.propager_recalage()` — leur bon décalage *est* le sien. Une mesure
+refusée laisse le décalage à zéro et le dit, plutôt que d'appliquer un candidat
+non confirmé.
 
-**Le doute se définit par un compte, pas par une heuristique.** Une seule piste
-candidate pour une langue voulue : on la prend. Plusieurs : seul leur *titre*
-les sépare — « Français » contre « Français canadien », « (forced) » contre
-« (SDH) ». Un titre ne se devine pas, et une règle par motifs serait une liste
-de mots-clés à maintenir sans fin. `decision.ambiguites()` compte, et l'étape 2
-n'existe que si le compte l'exige.
+**Les deux lancements sont toujours proposés.** `↵` prend le recommandé — mux si
+rien n'est à réencoder mais qu'il y a à greffer, encodage sinon — et `M` / `E`
+forcent l'autre. Un mux sans piste externe est refusé avec sa raison, pas
+exécuté à vide.
 
-**Aucun fichier donneur n'est cherché automatiquement.** Les conventions de
-nommage des releases sont sans limite, et un mauvais appariement est
-*silencieux* — il ne se découvre qu'à l'écoute du fichier produit. C'est
-l'utilisateur qui présente le donneur, quand il y en a un.
+**Ce qu'on retire, c'est la navigation, jamais l'information.** Un assistant qui
+déciderait en silence remplacerait un doute de manipulation par un doute de
+contenu, qui ne se voit qu'après l'encodage. L'étape 2 nomme donc le fichier
+produit, et chaque étape montre ce qu'elle a décidé.
 
-**Les choix se réappliquent depuis une base, jamais par retranchement.**
-`_relever()` fige la sélection d'avant tout arbitrage ; chaque validation
-recalcule l'ensemble depuis elle. Retrancher de la sélection courante rendait
-un choix irréversible : recocher une piste écartée ne la ramenait pas, alors
-que l'écran laissait croire le contraire.
+**Aucun donneur n'est cherché automatiquement.** Les conventions de nommage des
+releases sont sans limite, et un mauvais appariement est *silencieux* — il ne se
+découvre qu'à l'écoute. C'est l'utilisateur qui présente le fichier, s'il y en a
+un.
 
-**Les bindings de l'écran sont tous `priority=True`.** Un `DataTable` étouffe
-les touches avant que le système de bindings soit consulté (voir
-l'avertissement en tête de `tui/mixins.py`) : sans cela, `↵` ne fait rien sur
-les étapes qui affichent une table.
+**Les bindings sont tous `priority=True`** : un `DataTable` étouffe les touches
+avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`).
 
 ### 14.1 Écran Browser — navigation fichiers
 
@@ -1761,6 +1758,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.2.11 | 2026-08-28 | **Assistant refondu** : écran autonome de cinq étapes au lieu d'un enchaînement des écrans existants · bascule par `W` depuis l'accueil, mode affiché dans la barre de profil, `↵` sur un fichier ouvre le parcours · codec, débit et pistes sur un seul écran · une piste greffée est mesurée et appliquée aussitôt · mux et encodage toujours offerts, puis retour à l'accueil |
 | 0.8.2.10 | 2026-08-28 | **`Ctrl+Home` — retour à l'accueil** depuis les sept écrans non modaux, pour enchaîner les fichiers sans remonter la pile un écran à la fois. `Home` reste la navigation dans les tables · les deux écrans qui portent un travail non validé confirment avant de le perdre |
 | 0.8.2.9 | 2026-08-28 | **Le flux `bin_data` des sorties MP4 identifié** : c'est la piste de chapitres, seule forme sous laquelle le MP4 sait les porter. Pas une piste parasite, rien à corriger — noté pour ne pas le réenquêter (§ 8.6) |
 | 0.8.2.8 | 2026-08-28 | **Passe audio restreinte aux sources sans perte** — l'AC3 du même fichier sort indemne, la passe ne se paie donc plus sur la plupart des encodages · **`pistes_audio_vides`** : un code de retour nul ne vaut plus succès, la sortie est relue et une piste écourtée fait échouer le fichier au lieu de passer |

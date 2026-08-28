@@ -32,25 +32,34 @@ une passe. Voir § 4.6 pour la seule exception.
 
 ---
 
-## 1bis. L'assistant, et comment en sortir
+## 1bis. L'assistant
 
-L'application s'ouvre sur l'**assistant** : un fichier à la fois, quatre étapes,
-`↵` pour avancer et `⌫` pour revenir. Il ne décide rien de plus que le parcours
-libre — il impose l'ordre et montre, à chaque étape, ce qui a été décidé.
+L'application s'ouvre en **mode assistant** : un fichier à la fois, cinq étapes,
+`↵` pour avancer et `⌫` pour revenir. La barre de profil dit toujours dans quel
+mode vous êtes, parce que le mode change ce que fait `↵` sur un fichier.
+
+`W` bascule entre assistant et parcours libre. Le choix tient pour la session.
+
+Dans la liste, `↵` sur un fichier ouvre le parcours :
 
 | Étape | Ce qu'on y fait |
 |---|---|
-| 1 — Résumé | Lire ce qui sera produit, jusqu'au nom du fichier. `A` ouvre l'écran des pistes pour ajuster |
-| 2 — Langues | N'apparaît que si plusieurs pistes revendiquent la même langue. Cocher celles à garder |
-| 3 — Donneur | `O` pour présenter un fichier portant une VF ou des sous-titres, `N` s'il n'y en a pas |
-| 4 — Lancer | `↵` |
+| 1 — Fichier | Vérifier le fichier et le profil actif |
+| 2 — Décision | Codec (`F6`), débit (`F7`), pistes à garder (`Espace`) — tout sur le même écran, et le nom du fichier qui sortira |
+| 3 — Pistes externes | `F9` présente un fichier portant une VF ou des sous-titres, `D` retire la dernière |
+| 4 — Lancer | `↵` prend le choix recommandé ; `M` force le mux, `E` force l'encodage |
+| 5 — Terminé | Le résultat, `↵` ramène à la liste |
 
-**`F12` bascule vers le parcours libre**, décrit ci-dessous, et le choix tient
-pour la session. `F12` à nouveau y ramène.
+**La mesure du décalage est automatique.** Dès qu'une piste est ajoutée, elle
+est mesurée, et le décalage trouvé sur l'audio est reporté sur les sous-titres
+venus du même fichier. Vous n'avez rien à lancer.
 
-L'assistant ne cherche aucun fichier tout seul : c'est vous qui présentez le
-donneur à l'étape 3, s'il y en a un. Un appariement automatique se trompe en
-silence, et l'erreur ne s'entend qu'une fois le fichier produit.
+Si la mesure échoue — montage différent, piste trop courte — le décalage reste à
+zéro et l'assistant le dit. Passez alors par le parcours libre (`W`), où l'écran
+de recalage offre `S`, `P` et `C` (§ 4.5).
+
+**En mode manuel**, `↵` sur un fichier ouvre l'écran des pistes, et le parcours
+reste celui décrit ci-dessous.
 
 ---
 

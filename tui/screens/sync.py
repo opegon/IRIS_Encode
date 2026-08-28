@@ -28,7 +28,8 @@ from core import preview
 from core.decision import FileDecision
 from core.muxer import (
     ExternalTrack, MuxProcess, SyncOrigin, TrackKind, build_sample_command,
-    ffmpeg_stream_index, sample_output_path, sample_windows, timecode,
+    ffmpeg_stream_index, propager_recalage, sample_output_path,
+    sample_windows, timecode,
 )
 from core.sync import (
     Segment, SyncResult, measure_audio, measure_subtitle, read_cues,
@@ -530,45 +531,15 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._update_status()
 
     def _propager(self, i: int) -> int:
-        """Reporte le décalage d'une piste audio mesurée sur les sous-titres
-        **du même fichier donneur**. Retourne le nombre de pistes alignées.
+        """Reporte la mesure sur les sous-titres du même donneur, et rafraîchit.
 
-        Des sous-titres livrés avec une VF sont écrits sur le timing de cette
-        VF : leur bon décalage *est* celui de la piste audio. Le recopier à la
-        main n'apportait aucune information — seulement l'occasion de l'oublier,
-        et une piste décalée sans que rien ne le signale.
-
-        Trois garde-fous, parce qu'un report automatique doit rester un service
-        et jamais une surprise :
-
-        - **même donneur only** — un sous-titre venu d'un autre fichier n'a
-          aucune raison de partager ce timing ;
-        - **rien qui porte une décision** — une piste mesurée pour elle-même ou
-          ajustée à la main est laissée intacte ; seules les pistes jamais
-          touchées, et celles déjà reprises de cette audio, suivent ;
-        - **visible** — la colonne d'origine affiche « repris de #N », comme
-          après un 'c' manuel. Rien ne se fait sans trace à l'écran.
+        La règle vit dans `muxer.propager_recalage` : l'assistant s'en sert
+        aussi, et elle ne doit exister qu'une fois.
         """
-        src = self._tracks[i]
-        if src.kind != TrackKind.AUDIO:
-            return 0
-        n = 0
-        for j, t in enumerate(self._tracks):
-            if j == i or t.kind == TrackKind.AUDIO:
-                continue
-            if t.source_path != src.source_path:
-                continue
-            if t.sync_origin not in (SyncOrigin.NONE, SyncOrigin.COPIED):
-                continue
-            if t.sync_origin == SyncOrigin.COPIED and t.copied_from != i:
-                continue
-            t.delay_ms    = src.delay_ms
-            t.stretch     = src.stretch
-            t.sync_origin = SyncOrigin.COPIED
-            t.copied_from = i
+        touches = propager_recalage(self._tracks, i)
+        for j in touches:
             self._refresh_row(j)
-            n += 1
-        return n
+        return len(touches)
 
     @staticmethod
     def _note_propagation(n: int) -> str:

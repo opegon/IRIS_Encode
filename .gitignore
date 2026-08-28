@@ -58,3 +58,7 @@ Thumbs.db
 # ne voyait. Un garde-fou qui n'existe que sur une machine disparait au
 # premier clone.
 _shots/
+
+# Scripts de diagnostic ponctuels, ecrits pour une investigation puis gardes
+# sous la main. Ils ne decrivent pas le produit.
+_*.py

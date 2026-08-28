@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.15 — document de référence courant
+**Version** : 0.8.2.16 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -859,7 +859,7 @@ suivi par `-progress pipe:1` sur `out_time_ms`. Sans lui, la barre se figeait à
 pendant toute la phase longue — l'opération semblait bloquée alors qu'elle tournait
 (mesuré : 14 s de décodage, puis 65 s de réencodage muet sur 82 s au total).
 
-Vérifié sur un épisode réel — la piste produite mesure **+0 ms, confiance 0.72, trois
+Vérifié sur un épisode réel — la piste produite mesure **+0 ms, confiance excellente (0,72), trois
 tiers concordants à 0 ms**, et passe donc sans réserve.
 
 Un saut négatif (donneur plus long à cet endroit) est **ignoré et signalé** : le corriger
@@ -1781,6 +1781,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.2.16 | 2026-08-28 | **La confiance s'affiche en mots** — aucune / faible / moyenne / excellente — et relativement au seuil, qui varie avec le nombre de repères : un même chiffre n'avait pas le même sens d'une mesure à l'autre |
 | 0.8.2.15 | 2026-08-28 | **Touches du footer illisibles en mode assistant** : le jaune se noyait dans l'accent orange · elles passent au blanc sur ce fond, et gardent le jaune sur le bleu du mode manuel |
 | 0.8.2.14 | 2026-08-28 | **La mesure de l'assistant visait le mauvais flux** : le tid mkvmerge était passé tel quel au lieu de l'index ffmpeg · `sync.measure_external_track` devient le point d'entrée unique, la traduction n'existe plus qu'une fois · jauge d'avancement pendant la mesure |
 | 0.8.2.13 | 2026-08-28 | **Le fichier traité est rappelé sur les cinq étapes** de l'assistant, dans le bandeau — nom seul, tronqué au milieu, jamais le chemin |

@@ -1,5 +1,24 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.16] — 2026-08-28
+
+### La confiance d'une mesure s'affiche en mots
+
+« confiance 0.09 » ne dit rien à qui n'a pas le seuil en tête — et le seuil
+n'est pas fixe : il monte quand les repères se raréfient (`confidence_floor`),
+si bien qu'un même chiffre n'a pas le même sens d'une mesure à l'autre. 0,30
+est une bonne mesure sur un sous-titre bavard, une mauvaise sur une piste de
+forcés.
+
+Quatre niveaux, calculés **relativement au seuil** : `aucune`, `faible`,
+`moyenne`, `excellente`. Les deux premiers correspondent à une mesure refusée,
+les deux autres à une mesure retenue — la frontière n'est donc pas arbitraire,
+c'est celle de la décision.
+
+Le panneau de diagnostic garde les nombres derrière le mot — il existe pour
+qu'un refus soit analysable — mais personne n'a plus à traduire « 0,09 » de
+tête. La table des plages et le libellé compact, eux, n'affichent que le mot.
+
 ## [v0.8.2.15] — 2026-08-28
 
 ### Les touches du footer redeviennent lisibles en mode assistant

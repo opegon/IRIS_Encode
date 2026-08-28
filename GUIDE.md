@@ -224,10 +224,16 @@ pistes (`T`) les liste toutes.
 
 ## 4. Les cas rencontrés
 
-### 4.1 « ✓ +2450 ms (confiance 0.87) »
+### 4.1 « ✓ +2450 ms (confiance excellente) »
 
 Le cas nominal. Le décalage est posé. Un contrôle `V` reste une bonne habitude
 mais n'est pas indispensable.
+
+La confiance se lit en mots — **aucune**, **faible**, **moyenne**,
+**excellente** — et non en nombres : le seuil d'acceptation varie avec le
+nombre de répliques mesurées, si bien qu'un même chiffre n'a pas le même sens
+d'une mesure à l'autre. « Moyenne » ou « excellente » signifie que la mesure a
+été retenue ; « faible » ou « aucune », qu'elle a été refusée.
 
 **Les sous-titres ne sont pas recalés pour autant** : la mesure ne vaut que
 pour la ligne sur laquelle elle a tourné. Curseur sur chaque sous-titre, `C`,

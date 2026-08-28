@@ -54,6 +54,24 @@ RATIO_GRID: list[tuple[int, int]] = [
 # La bande intermédiaire existe parce qu'un film réel — musique, bruitages,
 # VAD imparfait — corrèle moins bien que du signal de test.
 MIN_CONFIDENCE  = 0.25    # en dessous : on refuse plutôt que de mentir
+
+# Une confiance brute ne dit rien à personne : « 0,09 » ne se lit qu'en le
+# comparant au seuil, qui varie avec le nombre de repères (voir
+# `confidence_floor`). Le libellé est donc **relatif au seuil** — c'est la
+# seule façon qu'il soit vrai d'une mesure à l'autre.
+NIVEAUX_CONFIANCE = ("aucune", "faible", "moyenne", "excellente")
+
+
+def libelle_confiance(confidence: float, seuil: float = MIN_CONFIDENCE) -> str:
+    """Confiance en mots. Sous le seuil, la mesure est refusée."""
+    seuil = seuil or MIN_CONFIDENCE
+    if confidence < seuil / 2:
+        return NIVEAUX_CONFIANCE[0]
+    if confidence < seuil:
+        return NIVEAUX_CONFIANCE[1]
+    if confidence < seuil * 1.5:
+        return NIVEAUX_CONFIANCE[2]
+    return NIVEAUX_CONFIANCE[3]
 SURE_CONFIDENCE = 0.40    # en dessous : on propose, mais on dit de vérifier
 # Garde-fou contre une courbe plate dont l'argmax ne veut rien dire. Bas
 # volontairement : la saillance est bruitée, elle ne sert qu'aux cas dégénérés.
@@ -159,7 +177,8 @@ class SyncResult:
         out = f"{self.delay_ms:+d} ms"
         if self.stretch:
             out += f" ×{self.stretch[0]}/{self.stretch[1]}"
-        out += f" (confiance {self.confidence:.2f})"
+        out += (f" (confiance "
+                f"{libelle_confiance(self.confidence, self.floor)})")
         return out if self.sure else f"{out} — à vérifier"
 
     def report(self) -> str:
@@ -167,7 +186,12 @@ class SyncResult:
         recoupe = (f"tiers concordants à {self.dispersion_ms} ms près"
                    if self.cross_checked
                    else f"tiers discordants ({self.dispersion_ms} ms d'écart)")
-        mesures = (f"confiance {self.confidence:.2f} / seuil {self.floor:.2f}"
+        # Le mot d'abord, les nombres ensuite : ce panneau existe pour qu'un
+        # refus soit analysable, mais personne ne devrait avoir à traduire
+        # « 0,09 » de tête.
+        mesures = (f"confiance "
+                   f"{libelle_confiance(self.confidence, self.floor)}"
+                   f" ({self.confidence:.2f} pour {self.floor:.2f} requis)"
                    f" · {recoupe}"
                    f" · {self.n_events} repères"
                    f" · parole {self.speech_ratio:.0%}")

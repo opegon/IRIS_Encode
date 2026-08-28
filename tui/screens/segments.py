@@ -17,7 +17,7 @@ from textual.widgets import DataTable, Label, Static
 
 from ..common import raccourcis
 
-from core.sync import Segment, mmss
+from core.sync import Segment, libelle_confiance, mmss
 
 _COLUMNS = ["Plage", "Durée", "Décalage", "Écart", "Confiance"]
 
@@ -84,8 +84,9 @@ class SegmentsScreen(ModalScreen[None]):
             d = seg.delay_ms - self._segments[i - 1].delay_ms
             ecart = Text(f"{d:+d} ms", style="dark_orange", no_wrap=True)
 
-        conf = Text(f"{seg.confidence:.2f}",
-                    style="" if seg.confidence >= 0.30 else "dim", no_wrap=True)
+        niveau = libelle_confiance(seg.confidence)
+        conf = Text(niveau, no_wrap=True,
+                    style="dim" if niveau in ("aucune", "faible") else "")
         return [plage, duree, delay, ecart, conf]
 
     # ── Composition ───────────────────────────────────────────────────────────

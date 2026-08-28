@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.2.5] — 2026-08-28
+
+### Le mode « HDR10 quality » gardera son plafond serré — c'est mesuré
+
+Le mode standard (NVENC) a reçu en v0.8.1.24 un plafond à 1,5 × la cible : son
+CBR traitait le débit demandé comme un plafond qu'il n'avait pas à atteindre.
+Le mode « HDR10 quality », qui passe par libx265, portait le même `-maxrate`
+égal à la cible et avait été laissé en l'état faute de mesure.
+
+La mesure dit l'inverse de l'intuition. L'ABR de x265 distribue un budget selon
+son modèle de qualité ; c'est un **VBV serré qui le force à le dépenser**, là où
+le CBR de NVENC n'y voyait qu'un plafond. Desserrer le plafond fait donc
+sous-consommer. Sur un film 1080p 10 bits, extraits de 120 s, cible 5 000k :
+
+| Réglage | t=1800 | t=4200 |
+|---|---|---|
+| `maxrate` = cible — **celui en place** | 99,9 % | 100,0 % |
+| `maxrate` = 1,5 × la cible | 93,6 % | 99,9 % |
+| ABR seul, sans VBV | 93,7 % | — |
+
+Au preset `slow`, celui de `cinema_4k_basic` : 99,6 %.
+
+Aucun changement de comportement, donc : appliquer la correction NVENC ici
+aurait coûté six points. Les deux branches de `build_command` se ressemblent et
+doivent différer — `tests/test_x265_debit.py` le verrouille, pour qu'une passe
+d'harmonisation échoue bruyamment plutôt que de casser ce mode en silence.
+
 ## [v0.8.2.4] — 2026-08-28
 
 ### Savoir quelle piste de sous-titres est laquelle

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.2.4 — document de référence courant
+**Version** : 0.8.2.5 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -938,6 +938,23 @@ sur une animation au dessin plat, le même extrait rend 41 % (ancien) et 54 %
 La fidélité mesurée reste supérieure à celle d'un encodage 8 bits qui, lui,
 consomme 62 % de bits en plus (SSIM 0,9991 contre 0,9970).
 
+**libx265 veut le réglage inverse, et c'est mesuré.** Le mode « HDR10 quality »
+(§ 12.1) garde `-maxrate` **égal** à la cible. L'ABR de x265 distribue un budget
+selon son modèle de qualité ; c'est un VBV serré qui le force à le dépenser, là
+où le CBR de NVENC ne voyait qu'un plafond. Desserrer le plafond y fait donc
+*sous*-consommer. Mesuré sur un film 1080p 10 bits, extraits de 120 s, cible
+5 000k :
+
+| Réglage | t=1800 | t=4200 |
+|---|---|---|
+| `maxrate` = cible (en place) | 99,9 % | 100,0 % |
+| `maxrate` = 1,5 × la cible | 93,6 % | 99,9 % |
+| ABR seul, sans VBV | 93,7 % | — |
+
+Au preset `slow`, celui de `cinema_4k_basic` : 99,6 %. Les deux branches de
+`build_command` se ressemblent et **doivent différer** ; `tests/test_x265_debit.py`
+fait échouer toute harmonisation.
+
 ### 12.2 Pause / Reprise
 
 - Windows : `NtSuspendProcess` / `NtResumeProcess` via ctypes
@@ -1672,6 +1689,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.2.5 | 2026-08-28 | **IE-17 clos par la mesure** : le mode « HDR10 quality » (libx265) garde `-maxrate` égal à la cible, et c'est le bon réglage — 99,9 % du débit visé, contre 93,6 % avec la marge appliquée à NVENC. Les deux encodeurs veulent des réglages opposés · `tests/test_x265_debit.py` fait échouer une harmonisation |
 | 0.8.2.4 | 2026-08-28 | **`SubtitleTrack.title`** : le nom déclaré était lu par le scanner puis jeté — six pistes « Français (…) » ne se distinguent que par lui · colonnes élargies (sélecteur du donneur, `Nom` du recalage) et `tronquer_milieu`, qui coupe au milieu parce que le sens est à la fin |
 | 0.8.2.3 | 2026-08-28 | **Le recalage mesuré se reporte seul sur les sous-titres du même donneur** : il fallait le recopier piste par piste avec `c`, une copie sans information dont l'oubli sortait une piste décalée en silence · trois garde-fous — même fichier, jamais une piste déjà décidée, depuis une audio seulement |
 | 0.8.2.2 | 2026-08-28 | **La piste greffée n'était pas celle choisie** sur le chemin de réencodage : le donneur entrant en entier, `-map {n}:s:0` rendait toujours son premier flux — la piste « forced » d'un rip, 23 répliques par épisode. Langue et titre venaient de la bonne piste, d'où une piste nommée correctement et vide à l'écran. Le chemin mkvmerge n'était pas touché, il raisonne en tid |

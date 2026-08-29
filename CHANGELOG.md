@@ -1,5 +1,53 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.6.1] — 2026-08-29
+
+### `GUIDE.md` remis à jour, et rattaché au code
+
+Le guide d'utilisation était resté en **0.8.1.23** — quinze incréments en
+arrière. Assez pour qu'on ne sache plus ce qu'il décrit.
+
+**Une erreur réelle trouvée en le relisant** : il annonçait `` `Tab` `<` `>` |
+Choisir une colonne, l'élargir, la rétrécir ``, ce qui donne `<` pour élargir.
+C'est l'inverse. `Maj+Tab`, qui remonte d'une colonne, n'était pas mentionné
+non plus.
+
+Ce que la revue a changé pour l'utilisateur y entre :
+
+- **§ 2.1** — l'application masque du navigateur ce qu'elle a encodé
+  (`_[hevc]`, `_[H264]`, `_[av1]`, `_[hdr10]`), et laisse `_[mux]` visible.
+  Un fichier qui « manque » après un encodage, c'est cela.
+- **§ 4.2bis** — le nouveau cas « ⚠ … → durées écartées de N % », ce qu'il
+  veut dire et comment trancher.
+- **§ 4.5** — le message « point d'insertion en retrait », et l'avertissement
+  sur les pistes produites par `P` avant la v0.8.4.5, qui peuvent porter un
+  passage en double.
+- **§ 4.6** — les greffes étirées faites avant la v0.8.4.3 peuvent avoir perdu
+  leur piste : à refaire.
+- **§ 4.12** — « libx265 indisponible ici » sur `cinema_4k_quality`, pourquoi
+  c'était le cas sur toute machine à carte graphique, et comment distinguer le
+  défaut corrigé d'un ffmpeg réellement construit sans libx265.
+- **§ 5** — comment couper la vérification des mises à jour au lancement, et
+  depuis quand ce réglage fonctionne.
+
+### Quatre tests rattachent le guide au code
+
+`tests/test_aide.py` tenait déjà le guide **embarqué**, qui dérive des
+`BINDINGS`. `GUIDE.md` est écrit à la main, et rien ne le rattachait : c'est
+ce qui lui a permis de dériver quinze versions durant.
+
+- Toute touche annoncée par une table du guide doit exister dans les
+  `BINDINGS` de l'écran concerné, mixins compris. Vérifié : le test attrape
+  bien une touche fantôme.
+- L'en-tête du guide doit porter la version de `version.py` (règle 5.4).
+- Un troisième test vérifie que l'extracteur trouve encore des touches à
+  contrôler — un balayage devenu muet passerait au vert en silence.
+
+Le périmètre est étroit à dessein : ces tests ne jugent pas une explication,
+qui est du texte. Ils attrapent la promesse d'un geste qui ne répond plus.
+
+**778 tests.**
+
 ## [v0.8.6.0] — 2026-08-29
 
 **Release.** Rassemble 0.8.5.1 à 0.8.5.3 — les neuf dernières entrées de la

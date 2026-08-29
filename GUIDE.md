@@ -1,7 +1,7 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.1.23
-**Date** : 2026-08-27
+**Version** : 0.8.6.1
+**Date** : 2026-08-29
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
 
@@ -88,11 +88,27 @@ d'après le profil actif.
 | `F3` | Encoder récursivement le dossier sous le curseur |
 | `F4` / `F5` | Choisir un profil / gérer les profils |
 | `F7` / `F8` | Fiche AlloCiné / IMDB |
-| `Tab` `<` `>` | Choisir une colonne, l'élargir, la rétrécir (largeurs mémorisées) |
+| `Tab` / `Maj+Tab` | Colonne suivante / précédente |
+| `<` / `>` | Rétrécir / élargir la colonne choisie (largeurs mémorisées) |
 
 La colonne **Décision** dit ce qui sera fait : `HEVC`, `H264`, `AV1` ou `SKIP`.
 Un fichier `SKIP` est déjà assez compressé — le cocher quand même le force à
 l'encodage au débit de la source.
+
+**Ce que l'application a encodé n'apparaît pas dans la liste.** Les sorties
+portant `_[hevc]`, `_[H264]`, `_[av1]` ou `_[hdr10]` sont écartées du scan :
+les reproposer reviendrait à offrir de réencoder par-dessus un fichier déjà
+traité, avec la perte de génération que cela implique. Si un fichier que vous
+venez de produire « manque » dans le navigateur, c'est cela — il est bien là,
+sur le disque.
+
+Un `_[mux]` fait exception et **reste visible** : ce n'est pas un encodage mais
+une greffe de pistes, et l'encoder ensuite est un enchaînement normal.
+
+> Avant la v0.8.5.1, seuls `_[hevc]` et `_[H264]` étaient reconnus. Une sortie
+> AV1 reparaissait donc dans la liste, et comme l'AV1 n'est pas un codec que la
+> chaîne sait relire, elle était classée « à réencoder en HEVC » — avec, sur un
+> profil `⚠ suppr.`, l'effacement de l'AV1 d'origine.
 
 ### 2.2 Pistes — choisir ce qu'on garde
 
@@ -339,6 +355,23 @@ La corrélation est moyenne et les tiers n'ont pas tranché. La valeur est
 appliquée mais **contrôlez avant de muxer** : `V` pour l'oreille, `K` pour un
 extrait réellement muxé.
 
+### 4.2bis « ⚠ … → durées écartées de N % »
+
+La mesure a trouvé un décalage cohérent, mais les deux fichiers ne durent pas
+la même chose à plus de **6 %** près. C'est beaucoup : deux copies d'un même
+film ne diffèrent que par leurs génériques.
+
+Le décalage trouvé peut être juste — un donneur amputé de son générique de fin
+reste alignable sur toute sa longueur. Il peut aussi signaler que vous avez
+pris **le mauvais fichier**, ou une autre version du film. `K` tranche en
+quelques minutes : un extrait muxé en fin de film montre immédiatement si
+l'alignement tient jusqu'au bout.
+
+> Cet avertissement existait depuis longtemps mais **n'était affiché nulle
+> part** avant la v0.8.5.1 : il était rangé avec les messages d'échec, que
+> l'application ne lit que sur une mesure refusée. Un donneur d'un autre
+> montage passait donc en silence.
+
 ### 4.3 « ✗ trop peu de repères »
 
 Le sous-titre est trop court pour être mesuré — typiquement une piste de
@@ -376,6 +409,21 @@ Si le compte rendu signale « aucun silence trouvé » sur une frontière,
 l'insertion a été posée sur la position estimée. Rien n'est perdu, mais cette
 zone mérite une écoute.
 
+Si le compte rendu signale « point d'insertion en retrait sur le précédent,
+repoussé de N s », deux frontières étaient trop proches pour que le silence de
+chacune tienne : la seconde a été décalée juste après la première. La durée
+insérée est intacte, seul son emplacement bouge — écoutez cette jonction.
+
+> **Sur une piste audio produite par `P` avant la v0.8.4.5** : deux points
+> d'insertion pouvaient se croiser, et le passage compris entre eux se
+> retrouvait alors **deux fois** dans la piste. Le fichier passait tous les
+> contrôles. Si vous entendez une réplique répétée sur une greffe ancienne,
+> c'est cela : relancez `P` avec cette version.
+
+> **Le recalage se figeait parfois** avant la v0.8.4.4 — barre d'avancement
+> bloquée, sans message, sans autre issue que de quitter l'application. C'était
+> ffmpeg suspendu sur un tube d'erreur plein. Corrigé.
+
 ### 4.5bis Rien n'y fait — le point de repère (`R`)
 
 Certains sous-titres ne se mesurent pas, quel que soit le réglage. Le cas
@@ -408,6 +456,12 @@ si mkvmerge est absent — dans ce cas, relancez le preflight pour l'installer.
 Un étirement ne se prévisualise pas dans mpv (`audio-delay` ne fait qu'un
 décalage constant) : utilisez `K`, qui produit deux fenêtres, début et fin, la
 dérive s'accumulant.
+
+> **Vérifiez les fichiers produits par ce chemin avant la v0.8.4.3.** La piste
+> greffée était bien muxée dans l'intermédiaire, puis **perdue** au moment du
+> réencodage : l'application annonçait un succès et rendait un fichier sans la
+> VF qu'on venait de recaler. Rien ne le signalait. Si un fichier étiré vous
+> semble amputé, il l'est — refaites la greffe.
 
 ### 4.7 Le fichier produit ne se lit pas sur le téléviseur
 
@@ -483,7 +537,23 @@ tel quel.
 Si tu veux au contraire garder la piste intacte, c'est `preserve_hd_audio`
 qu'il faut cocher : la copie sans perte l'emporte sur ce réglage.
 
-### 4.12 Un outil optionnel manque
+### 4.12 « libx265 indisponible ici » sur un profil 4K
+
+Le profil `cinema_4k_quality` encode sur **processeur**, avec libx265 : c'est
+ce qui lui permet d'injecter les métadonnées HDR10 statiques qu'attendent
+certains téléviseurs, et qu'aucun encodeur de carte graphique n'expose.
+
+Avant la v0.8.4.3, l'application ne vérifiait au lancement que les trois
+encodeurs de la carte, et tenait pour indisponible tout ce qu'elle n'avait pas
+essayé. Sur une machine équipée d'une carte graphique — donc sur presque
+toutes — le profil était refusé avant même de commencer, au nom d'une mesure
+qui n'avait pas eu lieu. Il fonctionne désormais.
+
+Si le message persiste, c'est que votre ffmpeg est réellement construit sans
+libx265 : `ffmpeg -encoders | findstr x265` le confirme. Utilisez alors
+`cinema_4k_hd`, qui passe par la carte.
+
+### 4.13 Un outil optionnel manque
 
 `dovi_tool`, `mkvmerge` et `mpv` sont optionnels : leur absence désactive une
 fonction sans bloquer le lancement. Le preflight propose de les installer à
@@ -514,3 +584,9 @@ chaque démarrage ; répondez `o`, ou placez les binaires dans `bin/`.
   redimensionnement y reste actif pendant la session.
 - Les erreurs de scan sont journalisées dans
   `~/.iris_encode/iris_encode.log`.
+- **Le lancement interroge le réseau une fois par jour** pour comparer vos
+  outils aux dernières versions publiées. Pour le couper, mettez
+  `check_on_startup = false` sous `[updates]` dans `config.toml` — et non sous
+  `[ffmpeg]`, qui n'est pas la bonne section. Le réglage n'a d'effet que depuis
+  la **v0.8.5.2** : il était jusque-là lu au mauvais endroit, donc sans jamais
+  rien changer. Hors ligne, le lancement se poursuit sans attendre.

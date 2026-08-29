@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.6.1 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.6.2 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`.
@@ -282,6 +282,34 @@ Le lanceur vérifie, et installe ce qui manque :
 - ffmpeg / ffprobe, téléchargés dans `bin/` au premier besoin ;
 - la validité de la configuration.
 
+### 5.1 Raccourci Bureau : IRIS_Encode.exe (optionnel)
+
+Un raccourci qui pointe directement sur `launch.bat` s'ouvre dans la console
+héritée (conhost), au rendu dégradé (chapitre 10). Le dépôt fournit de quoi
+compiler un petit lanceur natif dont c'est la seule fonction : ouvrir
+`launch.bat` dans **Windows Terminal** — et, à défaut, dans une console
+classique.
+
+1. Double-cliquer sur **`launcher\build.bat`**.
+2. Le script décode l'icône (`launcher\iris.ico.b64` → `iris.ico`, via
+   `certutil`, livré avec Windows), compile `launcher\IrisEncodeLauncher.cs`
+   avec le compilateur C# livré lui aussi avec Windows (le `csc.exe` du
+   .NET Framework 4.x — rien à installer) et produit **`IRIS_Encode.exe`**
+   à la racine du projet, icône comprise.
+3. Il propose ensuite de créer le raccourci « IRIS ENCODE » sur le Bureau.
+
+Le binaire n'est **pas versionné** : un `.exe` dans un dépôt est invérifiable,
+chacun compile le sien depuis le source — une trentaine de lignes, qui font
+foi. Après une mise à jour du lanceur, relancer `launcher\build.bat` suffit.
+
+> Sur une installation *propre* de Windows 11, **Smart App Control** peut
+> refuser un exécutable sans réputation, même compilé localement — même
+> famille de blocages qu'au chapitre 1.4. Dans ce cas, un raccourci `.lnk`
+> sans `.exe` rend le même service, avec cette cible :
+> `wt.exe -d "C:\chemin\vers\iris_encode" cmd /c launch.bat`
+> (icône au choix via *Propriétés* → *Changer d'icône* →
+> `launcher\iris.ico`, présent après un passage de `build.bat`).
+
 ---
 
 ## 6. Structure des fichiers
@@ -289,6 +317,7 @@ Le lanceur vérifie, et installe ce qui manque :
 ```
 iris_encode/
 ├── launch.bat          ← Point d'entrée Windows (double-clic)
+├── IRIS_Encode.exe     ← Lanceur Bureau, compilé par launcher\build.bat (auto)
 ├── bootstrap.ps1       ← Installe Python et ses dépendances, sans droits admin
 ├── main.py             ← Point d'entrée Python
 ├── config.toml         ← Configuration générale (éditable)
@@ -298,6 +327,7 @@ iris_encode/
 ├── .venv/              ← Environnement Python local (auto)
 ├── bin/                ← uv / python / ffmpeg / ffprobe / dovi_tool / mkvmerge / mpv (auto)
 ├── data/               ← Sources de téléchargement (embarquées)
+├── launcher/           ← Lanceur Bureau : source C#, icône, build.bat
 ├── core/               ← Logique métier
 ├── tui/                ← Interface utilisateur
 ├── tests/              ← Tests et smoke test TUI

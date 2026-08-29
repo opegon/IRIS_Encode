@@ -188,11 +188,17 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._measuring = False
         self._sampling  = False
         self._hint_override: str = ""
-        # (ligne, décalage) proposé par une mesure refusée
-        self._candidate: tuple[int, int] | None = None
-        # (ligne, plages) de la dernière mesure ayant constaté un montage
+        # Ce qui suit désigne des pistes par l'**objet**, jamais par son rang.
+        # Une mesure dure des minutes ; `D` peut retirer une piste entre-temps,
+        # et tous les rangs suivants glissent d'un cran. Le résultat s'écrivait
+        # alors sur la piste voisine — et `_propager` le recopiait sur les
+        # sous-titres du mauvais donneur, sans que rien ne le signale.
+        #
+        # (piste, décalage) proposé par une mesure refusée
+        self._candidate: tuple[ExternalTrack, int] | None = None
+        # (piste, plages) de la dernière mesure ayant constaté un montage
         # différent — consultables avec 's', jamais appliquées
-        self._segments: tuple[int, list[Segment]] | None = None
+        self._segments: tuple[ExternalTrack, list[Segment]] | None = None
 
     # ── Composition ───────────────────────────────────────────────────────────
 
@@ -345,6 +351,18 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         row = self.query_one(DataTable).cursor_row
         return row if 0 <= row < len(self._tracks) else None
 
+    def _rang(self, piste: ExternalTrack) -> int | None:
+        """Où se trouve cette piste **maintenant**, ou None si elle a disparu.
+
+        Comparaison par identité, pas par égalité : deux pistes issues du même
+        fichier peuvent être égales au sens du dataclass tout en étant deux
+        entrées distinctes de la liste.
+        """
+        for n, t in enumerate(self._tracks):
+            if t is piste:
+                return n
+        return None
+
     def action_val_up(self)   -> None: self._change(+1, _DELAY_STEP_MS)
     def action_val_down(self) -> None: self._change(-1, _DELAY_STEP_MS)
     def action_jump_up(self)  -> None: self._change(+1, _DELAY_JUMP_MS)
@@ -451,7 +469,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         # Visible dans la ligne elle-même : la barre du bas peut passer inaperçue
         self._set_origin_cell(i, Text("mesure…", style="yellow"))
         self._show_bar(True)
-        self._measure(i)
+        self._measure(self._tracks[i])
 
     def _set_origin_cell(self, i: int, text: Text) -> None:
         try:
@@ -482,10 +500,12 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             pass
 
     @work(thread=True, name="sync-measure")
-    def _measure(self, i: int) -> None:
-        """Corrélation hors du thread UI : le décodage audio prend du temps."""
-        t = self._tracks[i]
+    def _measure(self, t: ExternalTrack) -> None:
+        """Corrélation hors du thread UI : le décodage audio prend du temps.
 
+        La **piste** traverse le worker, pas son rang : la liste peut avoir
+        bougé quand le résultat revient, plusieurs minutes plus tard.
+        """
         def report(fraction: float) -> None:
             self.app.call_from_thread(self._set_progress, fraction)
 
@@ -496,12 +516,13 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                                          duration=self._decision.info.duration)
         except Exception as e:                       # ffmpeg absent, fichier illisible…
             res = SyncResult(0, None, 0.0, False, f"mesure impossible : {e}")
-        self.app.call_from_thread(self._apply_measure, i, res)
+        self.app.call_from_thread(self._apply_measure, t, res)
 
-    def _apply_measure(self, i: int, res: SyncResult) -> None:
+    def _apply_measure(self, piste: ExternalTrack, res: SyncResult) -> None:
         self._measuring = False
         self._show_bar(False)
-        if not (0 <= i < len(self._tracks)):
+        i = self._rang(piste)
+        if i is None:
             return                                   # piste retirée entre-temps
         if not res.ok:
             self.app.bell()
@@ -509,8 +530,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             # Le candidat refusé reste applicable : il est souvent correct
             # malgré une confiance basse, et un décalage d'une minute est
             # hors de portée des touches +/-.
-            self._candidate = (i, res.best_delay_ms)
-            self._segments  = (i, res.segments) if res.segments else None
+            self._candidate = (piste, res.best_delay_ms)
+            self._segments  = (piste, res.segments) if res.segments else None
             if res.segments:
                 # report() porte déjà les paliers et renvoie vers 's' :
                 # proposer d'appliquer un décalage unique serait ici trompeur.
@@ -523,7 +544,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return
         self._candidate = None
         self._segments  = None
-        t = self._tracks[i]
+        t = piste
         t.delay_ms    = res.delay_ms
         t.stretch     = res.stretch
         t.sync_origin = SyncOrigin.MEASURED
@@ -600,15 +621,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                            f"dizaines de secondes.")
             self._set_origin_cell(i, Text("mesure…", style="yellow"))
             self._show_bar(True)
-            self._mesure_ancree(i, ecrit, entendu)
+            self._mesure_ancree(t, ecrit, entendu)
 
         self.app.push_screen(
             AncrageModal(reperes, t.track_name or t.source_path.name), _apres)
 
     @work(thread=True, name="sync-ancrage")
-    def _mesure_ancree(self, i: int, ecrit: float, entendu: float) -> None:
-        t = self._tracks[i]
-
+    def _mesure_ancree(self, t: ExternalTrack, ecrit: float,
+                       entendu: float) -> None:
         def report(fraction: float) -> None:
             self.app.call_from_thread(self._set_progress, fraction)
 
@@ -622,7 +642,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                                       donor_track=idx)
         except Exception as e:                       # noqa: BLE001
             res = SyncResult(0, None, 0.0, False, f"mesure impossible : {e}")
-        self.app.call_from_thread(self._apply_measure, i, res)
+        self.app.call_from_thread(self._apply_measure, t, res)
 
     def _set_hint(self, text: str) -> None:
         """Message persistant : il survit à la navigation entre champs."""
@@ -642,11 +662,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self._set_hint("Aucun candidat en attente — lancez d'abord une "
                            "mesure avec 'm'.")
             return
-        i, delay = self._candidate
-        if not (0 <= i < len(self._tracks)):
+        piste, delay = self._candidate
+        i = self._rang(piste)
+        if i is None:                       # piste retirée depuis la mesure
             self._candidate = None
+            self._set_hint("La piste mesurée a été retirée — le candidat ne "
+                           "s'applique plus à rien.")
             return
-        t = self._tracks[i]
+        t = piste
         t.delay_ms    = delay
         t.sync_origin = SyncOrigin.MANUAL     # non validé par la corrélation
         t.copied_from = None
@@ -673,8 +696,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                            "qu'après une mesure ayant constaté un montage "
                            "différent.")
             return
-        i, segs = self._segments
-        nom = self._tracks[i].source_path.name if 0 <= i < len(self._tracks) else ""
+        piste, segs = self._segments
+        nom = piste.source_path.name if self._rang(piste) is not None else ""
         self.app.push_screen(SegmentsScreen(segs, nom))
 
     def action_apply_segments(self) -> None:
@@ -1094,6 +1117,20 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             lambda dec: RunScreen([dec], self.app.platform))  # type: ignore[attr-defined]
 
     def action_go_back(self) -> None:
+        """Rend les pistes à l'écran appelant — mais pas pendant une mesure.
+
+        `dismiss` remet la liste à l'écran des pistes, qui la tient pour
+        validée. Un worker encore en vol continuerait d'écrire dedans
+        **après** cette validation : l'état accepté changerait dans le dos de
+        l'utilisateur, sans un mot à l'écran.
+
+        Les cinq autres actions longues refusent déjà de la même façon ; celle
+        qui sort de l'écran n'avait pas de raison d'y échapper.
+        """
+        if self._measuring:
+            self._set_hint("Mesure en cours — attendez sa fin avant de "
+                           "revenir. La jauge indique où elle en est.")
+            return
         self.dismiss(self._tracks)
 
     def action_accueil(self) -> None:

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.3.11 — document de référence courant
+**Version** : 0.8.3.12 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1833,6 +1833,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.3.12 | 2026-08-29 | **Revue de code, IE-38 à IE-41** : la mesure porte la piste et non son rang · `config.toml` écrit atomiquement et sous verrou · le repli d'installation n'écrit plus un ZIP sous le nom d'un exe · un ffmpeg mort ne passe plus pour un film court |
 | 0.8.3.11 | 2026-08-29 | Le guide nomme les touches **en toutes lettres et en capitales** (BACKSPACE, SHIFT+TAB) là où le pied de page garde ses glyphes |
 | 0.8.3.10 | 2026-08-29 | **Le guide embarqué** : `H` sur tout écran ouvre la liste des touches, dérivée des `BINDINGS` · rappel « H Aide » dans l'en-tête |
 | 0.8.3.9 | 2026-08-29 | **Pas fin de 10 ms** sur le décalage (`Ctrl+↑/↓`), pour finir d'approcher une valeur mesurée |

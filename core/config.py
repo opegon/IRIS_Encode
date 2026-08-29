@@ -6,6 +6,8 @@ fréquemment utilisées (bin_dir, largeurs de colonnes).
 """
 from __future__ import annotations
 
+import os
+import threading
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -92,10 +94,39 @@ def load() -> dict[str, Any]:
         return _deep_merge({}, _DEFAULTS)
 
 
+# Deux threads écrivent la configuration : le thread d'interface quand une
+# largeur de colonne change, et le worker d'encodage quand il enregistre une
+# vitesse mesurée (`tui/common.record_measured_speed`, appelé sous
+# `@work(thread=True)`). Un encodage dure des heures ; la fenêtre est étroite
+# mais le coût est la configuration entière.
+_VERROU_ECRITURE = threading.Lock()
+
+
 def save(cfg: dict[str, Any]) -> None:
-    """Écrit config.toml."""
-    with CONFIG_PATH.open("wb") as f:
-        tomli_w.dump(cfg, f)
+    """Écrit config.toml — entièrement, ou pas du tout.
+
+    L'écriture directe ouvrait le fichier en `"wb"`, ce qui **tronque avant
+    d'écrire** : une coupure à mi-course laissait un TOML invalide, et
+    l'application ne redémarrait plus. On écrit donc à côté, puis on remplace
+    d'un seul geste — `os.replace` est atomique sur NTFS comme sur POSIX.
+
+    C'est la famille de la v0.8.1.4 par un autre chemin : un fichier de
+    configuration cassé se paie au lancement suivant, loin de sa cause.
+    """
+    with _VERROU_ECRITURE:
+        provisoire = CONFIG_PATH.with_name(CONFIG_PATH.name + ".tmp")
+        try:
+            with provisoire.open("wb") as f:
+                tomli_w.dump(cfg, f)
+                f.flush()
+                # Sans fsync, `os.replace` peut publier un fichier dont le
+                # contenu n'a pas encore atteint le disque : sur coupure
+                # secteur, on remplace un bon fichier par un vide.
+                os.fsync(f.fileno())
+            os.replace(provisoire, CONFIG_PATH)
+        except BaseException:
+            provisoire.unlink(missing_ok=True)
+            raise
 
 
 def get_bin_dir(cfg: dict[str, Any]) -> Path:

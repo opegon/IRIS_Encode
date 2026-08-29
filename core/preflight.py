@@ -196,15 +196,19 @@ def install_dovi_tool(bin_dir: Path, releases: dict) -> bool:
     if data is None:
         return False
     target_name = _exe("dovi_tool")
-    # Tente d'abord l'extraction ZIP
-    try:
-        with __import__('io').BytesIO(data) as buf:
-            ok = _install_from_zip(data, bin_dir, {target_name})
-        if ok:
-            return True
-    except Exception:
-        pass
-    # Fallback : binaire direct (certaines releases ne sont pas zippées)
+    # Certaines releases publient un ZIP, d'autres l'exécutable nu. On demande
+    # au contenu ce qu'il est, plutôt que de le déduire de l'échec d'une
+    # extraction.
+    #
+    # La version précédente tentait l'extraction sous `except Exception: pass`
+    # et repliait sur l'écriture directe : une erreur pendant l'extraction —
+    # disque plein, antivirus, archive tronquée — faisait écrire **les octets
+    # du ZIP** dans `dovi_tool.exe`, en annonçant « ✓ Installé ». Le défaut ne
+    # se serait vu qu'au premier fichier Dolby Vision, très loin de sa cause.
+    if zipfile.is_zipfile(io.BytesIO(data)):
+        return _install_from_zip(data, bin_dir, {target_name})
+
+    # Binaire direct.
     bin_dir.mkdir(parents=True, exist_ok=True)
     dest = bin_dir / target_name
     dest.write_bytes(data)

@@ -1,5 +1,83 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.12] — 2026-08-29
+
+Les quatre constats de la revue de code du 2026-08-29. Aucun ne se manifestait
+par un message : c'est ce qu'ils ont en commun, et c'est ce qui les rendait
+coûteux.
+
+### IE-38 — La mesure vit sur la piste, plus sur son rang
+
+Le worker de recalage emportait l'**index** de la piste et appliquait son
+résultat à `self._tracks[i]` plusieurs minutes plus tard. Deux touches
+n'étaient pas gardées pendant ce temps, alors que cinq autres l'étaient :
+
+- **`D` retirait une piste** → les rangs glissaient. Trois pistes, mesure sur
+  la deuxième, retrait de la première : le décalage s'écrivait sur la
+  troisième, et `propager_recalage` le recopiait sur les sous-titres du
+  **mauvais donneur**. La garde `0 ≤ i < len(...)` n'attrapait que le
+  débordement, jamais le glissement.
+- **`Backspace` quittait l'écran** → `dismiss` rendait la liste à l'écran des
+  pistes, qui la tenait pour validée, et le worker continuait d'écrire dedans
+  **après** cette validation.
+
+La piste traverse désormais le worker, et `_rang()` la retrouve à l'arrivée —
+par **identité**, pas par égalité : deux pistes du même fichier sont égales au
+sens du dataclass, et comparer par égalité n'aurait fait que déplacer le
+défaut. Si elle a disparu, le résultat est jeté. `_candidate` et `_segments`
+suivent la même règle. Et le retour refuse pendant une mesure, comme les cinq
+autres actions longues.
+
+L'assistant gardait déjà toutes ses touches : le défaut était propre à l'écran
+de recalage.
+
+### IE-39 — `config.toml` : écriture atomique, et verrou entre threads
+
+`save()` ouvrait en `"wb"` : **tronque, puis écrit**. Une coupure à mi-course
+laissait un TOML invalide et l'application ne redémarrait plus — la famille de
+la v0.8.1.4 par un autre chemin. On écrit désormais à côté, `fsync`, puis
+`os.replace`, atomique sur NTFS comme sur POSIX.
+
+Deux threads y écrivent : le worker d'encodage quand il enregistre une vitesse
+mesurée, le thread d'interface quand une largeur de colonne change. Un verrou
+module les sérialise.
+
+### IE-40 — Le repli d'installation n'écrit plus un ZIP sous le nom d'un exe
+
+L'extraction de `dovi_tool` était enveloppée d'un `except Exception: pass`, et
+le repli « binaire direct » écrivait alors **les octets du ZIP** dans
+`dovi_tool.exe` en annonçant « ✓ Installé ». Une erreur d'écriture pendant
+l'extraction — disque plein, antivirus — produisait un exécutable corrompu
+déclaré bon, dont le défaut ne se serait vu qu'au premier fichier Dolby Vision.
+
+`zipfile.is_zipfile()` décide maintenant ce qu'est le contenu, et les erreurs
+d'écriture remontent. Le repli garde sa raison d'être : certaines releases
+publient l'exécutable nu.
+
+### IE-41 — Un ffmpeg mort ne passe plus pour un film court
+
+`_decode_envelope` appelait `proc.wait()` **sans regarder le code retour** :
+fichier tronqué, ffmpeg tué, l'enveloppe partielle était rendue telle quelle et
+la corrélation la prenait pour le film entier. Le recoupement par tiers
+rattraperait une amputation grossière, pas quelques minutes.
+
+Le code retour est vérifié, et un `try/except` tue le processus si la boucle
+sort mal — un ffmpeg oublié décodait un film entier pour personne. L'`assert`
+sur `proc.stdout` devient un vrai test : sous `python -O` il aurait disparu, et
+le déréférencement aurait suivi.
+
+### Vérification
+
+`tests/test_revue_code.py` — douze tests, dont **neuf échouent sur le code
+d'avant** (vérifié en rejouant la suite contre l'ancien source). Deux des trois
+autres sont des non-régressions volontaires ; le troisième, le verrou entre
+threads, passait au début sur le code défectueux — un `dump` réel dure quelques
+microsecondes et huit threads peuvent se croiser sans se superposer. Une pause
+rend désormais le chevauchement certain en l'absence de verrou.
+
+677 tests, smoke TUI vert, et la mesure réelle sur *The Fall* rend toujours
+−10 ms à confiance excellente.
+
 ## [v0.8.3.11] — 2026-08-29
 
 ### Le guide nomme les touches, le pied de page les abrège

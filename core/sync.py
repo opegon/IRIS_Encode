@@ -281,29 +281,44 @@ def _decode_envelope(path: Path, track: int = 0,
         "-f", "s16le", "-",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    assert proc.stdout is not None
+    # `assert` disparaîtrait sous `python -O`, et le déréférencement suivrait.
+    if proc.stdout is None:
+        return np.zeros(0, dtype=np.float32)
 
     chunks: list[np.ndarray] = []
     leftover = b""
     # Multiple de la taille d'un bin pour ne jamais couper au milieu
     read_size = _BIN_SAMPLES * 2 * 1024
-    while True:
-        raw = proc.stdout.read(read_size)
-        if not raw:
-            break
-        raw = leftover + raw
-        usable = len(raw) - (len(raw) % (_BIN_SAMPLES * 2))
-        leftover, block = raw[usable:], raw[:usable]
-        if not block:
-            continue
-        samples = np.frombuffer(block, dtype="<i2").astype(np.float32)
-        frames  = samples.reshape(-1, _BIN_SAMPLES)
-        chunks.append(np.sqrt(np.mean(frames * frames, axis=1)))
-        if progress and expected_bins > 0:
-            done = sum(c.size for c in chunks)
-            progress(DECODE_SHARE * min(1.0, done / expected_bins))
-    proc.wait()
+    try:
+        while True:
+            raw = proc.stdout.read(read_size)
+            if not raw:
+                break
+            raw = leftover + raw
+            usable = len(raw) - (len(raw) % (_BIN_SAMPLES * 2))
+            leftover, block = raw[usable:], raw[:usable]
+            if not block:
+                continue
+            samples = np.frombuffer(block, dtype="<i2").astype(np.float32)
+            frames  = samples.reshape(-1, _BIN_SAMPLES)
+            chunks.append(np.sqrt(np.mean(frames * frames, axis=1)))
+            if progress and expected_bins > 0:
+                done = sum(c.size for c in chunks)
+                progress(DECODE_SHARE * min(1.0, done / expected_bins))
+    except BaseException:
+        # Sans ça, une exception dans la boucle laissait ffmpeg tourner sur un
+        # film entier, orphelin, jusqu'à la fin du processus parent.
+        proc.kill()
+        proc.wait()
+        raise
+    code = proc.wait()
 
+    # Un ffmpeg mort en route s'arrête sans un mot : l'enveloppe s'arrête là où
+    # il s'est arrêté, et la corrélation prendrait ce fragment pour le film
+    # entier. Le recoupement par tiers rattraperait une amputation grossière,
+    # pas quelques minutes manquantes — et il ne dirait pas pourquoi.
+    if code != 0:
+        return np.zeros(0, dtype=np.float32)
     if not chunks:
         return np.zeros(0, dtype=np.float32)
     rms = np.concatenate(chunks)

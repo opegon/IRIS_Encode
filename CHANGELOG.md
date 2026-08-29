@@ -1,5 +1,50 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.6.0] — 2026-08-29
+
+**Release.** Rassemble 0.8.5.1 à 0.8.5.3 — les neuf dernières entrées de la
+revue de `core/`. **Elle est close** : les quinze constats sont traités.
+
+Comme pour la v0.8.5.0, aucun de ces défauts ne levait d'erreur, et les tests
+d'alors passaient tous.
+
+- **Tous les profils de l'utilisateur pouvaient disparaître** (IE-50) — une
+  écriture tronquée de `profiles.toml`, et `load_all` ne rendait plus que les
+  profils livrés. Sans recours, et un redémarrage n'y changeait rien.
+- **L'application reproposait ses propres sorties au réencodage** (IE-49) — un
+  `_[av1]` reparu au scan, un codec que la chaîne ne lit pas, et une décision
+  qui propose de le réencoder en HEVC. Sur `basic_delete`, en effaçant
+  l'original.
+- **Une mesure acceptée pouvait porter une réserve que personne ne voyait**
+  (IE-52) — un donneur d'un autre montage passait en silence.
+- **Un réglage mort** (IE-51) — couper la vérification des mises à jour ne la
+  coupait pas.
+- **Une mise à jour ne rangeait pas comme une installation** (IE-54) — dovi_tool
+  publié en binaire nu échouait à chaque lancement, quand une installation
+  neuve de la même release réussissait.
+- **Le genre AlloCiné tronqué à cinq caractères** (IE-53).
+- **Trois coûts** : dix sous-processus en série au démarrage (IE-56),
+  vingt-six `mkvmerge` pour un seul remux (IE-55), un prédicat écrit deux fois
+  qui pouvait désynchroniser l'encodeur et l'accélération matérielle (IE-57).
+
+### Ce que la revue a appris
+
+**Trois des quinze défauts étaient la récidive d'une correction déjà faite
+ailleurs dans le dépôt** — IE-50 pour IE-39, IE-54 pour IE-40, IE-58 pour la
+disposition que trois lanceurs sur seize appliquaient déjà. À chaque fois le
+correctif existait, à côté, et personne n'avait cherché les autres occurrences
+de la même forme.
+
+C'est pourquoi cinq tests de cette revue sont **structurels** plutôt que
+comportementaux : ils lisent le source et refusent une forme, là où un test
+d'exécution n'aurait couvert qu'un chemin. Aucun lancement de sous-processus ne
+garde l'entrée du terminal ; aucun suffixe de sortie n'est écrit en dur dans un
+filtre ; le sondage des encodeurs couvre ce que la commande peut demander ; le
+prédicat HDR10 n'existe qu'en un exemplaire ; la ligne de touches ne s'efface
+jamais.
+
+**771 tests** — 677 au début de la revue, soit 94 de plus.
+
 ## [v0.8.5.3] — 2026-08-29
 
 Les trois dernières entrées de la revue de `core/`. **Elle est close** : les

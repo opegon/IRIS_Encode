@@ -1,5 +1,167 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.5.3] — 2026-08-29
+
+Les trois dernières entrées de la revue de `core/`. **Elle est close** : les
+quinze constats sont traités.
+
+### Le genre AlloCiné était tronqué à cinq caractères (IE-53)
+
+`data.get("genre", [])[:5]` s'appliquait **avant** l'`isinstance(genres, str)`
+qui suit. AlloCiné rend une chaîne nue quand le film n'a qu'un genre :
+« Science fiction »[:5] vaut « Scien », que la normalisation emballe ensuite
+consciencieusement en `["Scien"]`.
+
+Le casting, dix lignes plus haut dans la même fonction, faisait déjà les deux
+dans le bon ordre. La limite à cinq reste : elle existe pour l'affichage, et
+réparer l'ordre ne devait pas la lever.
+
+### Vingt-six processus mkvmerge pour un seul remux (IE-55)
+
+`build_strip_command` traduit un index par piste retenue, et chaque traduction
+relançait `mkvmerge -J` : six pistes audio et vingt sous-titres coûtaient
+26 sous-processus — timeout de 30 s chacun — sur le même fichier, qui ne change
+pas entre deux. `encoder.build_command` en relançait un par piste externe.
+
+- `identify()` mémorise son résultat, **par état de fichier** : la clé porte le
+  chemin, la taille et la date de modification. Un donneur remplacé entre deux
+  passages est relu au lieu d'être servi depuis un cache qui ne le décrit plus.
+  Un `stat()` contre un sous-processus, le compte est vite fait.
+- Un résultat **vide** n'est pas mémorisé : c'est aussi ce que rend un mkvmerge
+  absent, et l'installer en cours de session doit suffire.
+- `set_mkvmerge_path()` vide le cache : ce qu'il contient a été lu par
+  l'exécutable précédent.
+- Le résultat est rendu en copie, pour qu'un appelant ne puisse pas vider le
+  cache par inadvertance.
+
+### Le prédicat du mode HDR10 « quality » était écrit deux fois (IE-57)
+
+`hdr10_quality_check` et `hdr10_quality` étaient la même expression à trois
+termes, mot pour mot, dans la même fonction, sans que rien entre les deux ne
+change leurs entrées. Un seul nom désormais.
+
+Ce prédicat décide **deux choses à la fois** : l'encodeur (`libx265`) et
+l'absence de `-hwaccel`. Les modifier séparément aurait passé `-hwaccel` à un
+encodage processeur, ou l'aurait retiré à un NVENC. Deux tests verrouillent la
+bascule conjointe, un troisième refuse que l'expression réapparaisse en double.
+
+**771 tests** (contre 757), dont quatre échouent sur le code d'avant.
+
+## [v0.8.5.2] — 2026-08-29
+
+Les trois entrées de `core/preflight.py`, prises d'un bloc : elles vivent dans
+le même fichier et deux d'entre elles touchent le même chemin.
+
+### `check_on_startup` était lu dans la mauvaise section (IE-51)
+
+`check_for_updates` interrogeait `cfg["ffmpeg"]["check_on_startup"]`, alors que
+la clé vit sous `[updates]` — c'est là que `config._DEFAULTS` la pose, là que
+`config.toml` l'écrit, et là que la spec la documente. Le `.get(..., True)`
+retombait donc toujours sur le défaut : le réglage était mort, et l'utilisateur
+qui coupait la vérification pour éviter l'aller-retour réseau au lancement
+continuait de le payer à chaque démarrage.
+
+### Une mise à jour ne rangeait pas comme une installation (IE-54)
+
+`_installer_for` appelait `_install_from_zip` en direct, sautant
+`install_dovi_tool` et son `zipfile.is_zipfile` — le garde-fou posé par IE-40
+précisément parce que « certaines releases publient un ZIP, d'autres
+l'exécutable nu ». Sur une release en binaire nu, la mise à jour échouait à
+chaque lancement (`BadZipFile`, « Mise à jour de dovi_tool échouée ») pendant
+qu'une installation neuve de la même release réussissait.
+
+- **`preflight.poser()`** est désormais le point de passage unique : il sait
+  sous quelle forme chaque outil publie, et l'installation initiale comme la
+  mise à jour l'appellent. Un test vérifie l'invariant plutôt que le symptôme —
+  un même contenu doit donner le même résultat par les deux chemins.
+- Les lambdas d'avant transformaient aussi un `_download` échoué en `b""`,
+  remis à un extracteur qui n'avait plus qu'à échouer sur une archive vide, en
+  nommant la mauvaise cause. Le téléchargement raté est maintenant un refus net.
+- **Sur l'empreinte** : ce chemin ne vérifie aucun sha256, et il n'y en a pas à
+  vérifier. `Update` n'en porte pas, parce que l'URL vient d'une découverte
+  dynamique et non d'une source épinglée — c'est la limite que `_download`
+  documente déjà. Rien à corriger ici, contrairement à ce que la revue laissait
+  entendre.
+
+### Le relevé des versions bloquait le démarrage (IE-56)
+
+`check_tools` appelait `_get_version` sur les cinq outils l'un après l'autre, et
+`_get_version` essaie `-version` puis `--version` avec 5 s de délai chacun.
+mkvmerge et dovi_tool échouent sur le premier : jusqu'à dix lancements de
+sous-processus en série — et `check_tools` repasse une seconde fois après une
+installation de ffmpeg.
+
+`platform.sonder_encodeurs`, juste à côté, énonce la position du projet — « les
+sondages tournent en parallèle pour que le lancement n'en pâtisse pas » — et
+emploie un `ThreadPoolExecutor` pour exactement ça. Le relevé des versions
+l'emploie désormais aussi ; la localisation reste séquentielle, elle ne coûte
+qu'un parcours du PATH.
+
+**757 tests** (contre 742), dont quatre échouent sur le code d'avant.
+
+## [v0.8.5.1] — 2026-08-29
+
+Trois entrées de la revue de `core/`, prises par ordre de ce que l'utilisateur
+perd : d'abord l'irrécupérable.
+
+### `profiles.toml` pouvait emporter tous les profils de l'utilisateur (IE-50)
+
+`save_all` et `_write_defaults` ouvraient le fichier en `"wb"` : **tronquer,
+puis écrire**. Une coupure à mi-course laisse un TOML invalide ; `load_all`
+avale l'erreur de syntaxe, affiche un avertissement et rend les seuls profils
+livrés. Tout ce que l'utilisateur a créé ou modifié est perdu, sans recours, et
+un redémarrage n'y change rien.
+
+C'est mot pour mot IE-39, corrigé en v0.8.3.12 pour `config.toml` et jamais
+porté ici — alors que ce fichier-là pèse plus lourd : une configuration se
+refait en trois réglages, une bibliothèque de profils non.
+
+- Écriture dans un provisoire, `flush` + `fsync`, puis `os.replace` — atomique
+  sur NTFS comme sur POSIX. Le provisoire est retiré si quoi que ce soit échoue.
+- Un verrou de module, comme `config.save` : deux écrans peuvent enregistrer.
+- Les tests sont ceux d'IE-39, repris à la lettre : le défaut est le même, il
+  doit se vérifier de la même façon aux deux endroits.
+
+### L'application proposait de réencoder ses propres sorties (IE-49)
+
+Le filtre « déjà produit ici » connaissait deux littéraux, `_[hevc]` et
+`_[H264]`, **recopiés à quatre endroits** sans jamais dériver de
+`SUFFIX_BY_ACTION`. L'application a depuis appris à écrire `_[av1]` et
+`_[hdr10]`, et aucune des quatre copies n'a suivi.
+
+Le cas coûteux est l'AV1 : ce codec n'est pas dans `CODECS_LISIBLES`, donc un
+`Film_[av1].mkv` reparu au scan fait tomber la décision en CAS 3 — « codec non
+lu par la chaîne » — qui propose de le réencoder en HEVC. Sur le profil livré
+`basic_delete`, qui a `delete_source = true`, l'AV1 est effacé au passage :
+perte de génération irréversible sur un fichier que personne n'a demandé à
+retoucher.
+
+- Un seul prédicat, `scanner.deja_produit()`, dérivé de `SUFFIX_BY_ACTION` :
+  ajouter un codec au projet suffit désormais, le filtre suit.
+- **`MUX_SUFFIX` en est volontairement absent**, contrairement à ce que
+  proposait la revue. Un `_[mux]` n'est pas un encodage mais une greffe de
+  pistes, et l'encoder ensuite est un geste légitime — l'écarter du scan
+  rendrait le fichier invisible dans le navigateur. La spec § 15.2 l'affirmait
+  pourtant exclu ; elle avait tort, et elle est corrigée.
+- Un test refuse tout nouveau littéral `_[hevc]`/`_[H264]` dans ces filtres :
+  le défaut n'était pas la valeur, c'étaient les quatre copies.
+
+### Une mesure acceptée pouvait porter une réserve que personne ne voyait (IE-52)
+
+`measure_audio` écrivait « durées écartées de N % — vérifiez qu'il s'agit bien
+du même montage » dans `reason`, **alors que `ok` est vrai**. Or `reason` n'est
+lu que sur les échecs : `label()` ne le regarde que dans sa branche
+`if not self.ok`, `report()` n'y touche pas, l'assistant non plus.
+
+Un donneur dont la durée s'écarte de plus de 6 % — donc un autre montage — était
+donc accepté sans que rien ne le signale nulle part.
+
+- Un champ `warning` distinct, porté par le compte rendu de l'écran de recalage
+  et par la note de l'assistant. Un succès sous réserve s'affiche `⚠`, plus `✓`.
+- `reason` garde son seul rôle : dire pourquoi une mesure a été refusée.
+
+**742 tests** (contre 721), dont treize échouent sur le code d'avant.
+
 ## [v0.8.5.0] — 2026-08-29
 
 **Release.** Rassemble les six incréments 0.8.4.3 à 0.8.4.8, tous issus d'une

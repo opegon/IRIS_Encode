@@ -5,7 +5,9 @@ Gère les profils builtin (non supprimables) et user (CRUD complet).
 """
 from __future__ import annotations
 
+import os
 import re
+import threading
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -229,16 +231,48 @@ def load_all() -> dict[str, "Profile"]:
     return profiles
 
 
+# Deux écrans peuvent enregistrer, et `load_all` réécrit les défauts au premier
+# lancement : le verrou coûte le temps d'une écriture de quelques kilo-octets.
+_VERROU_ECRITURE = threading.Lock()
+
+
+def _ecrire(raw: dict[str, Any]) -> None:
+    """Écrit profiles.toml — entièrement, ou pas du tout.
+
+    L'écriture directe ouvrait le fichier en `"wb"`, ce qui **tronque avant
+    d'écrire** : une coupure à mi-course laisse un TOML invalide. `load_all`
+    avale alors l'erreur de syntaxe, avertit, et rend les seuls profils
+    livrés — tout ce que l'utilisateur a créé ou modifié est perdu, sans
+    recours. On écrit donc à côté, puis on remplace d'un seul geste.
+
+    C'est exactement la parade de `config.save`, posée en v0.8.3.12 pour
+    `config.toml` et jamais portée ici. Ce fichier-là pèse plus lourd : une
+    configuration se refait en trois réglages, une bibliothèque de profils
+    non.
+    """
+    with _VERROU_ECRITURE:
+        provisoire = PROFILES_PATH.with_name(PROFILES_PATH.name + ".tmp")
+        try:
+            with provisoire.open("wb") as f:
+                tomli_w.dump(raw, f)
+                f.flush()
+                # Sans fsync, `os.replace` peut publier un fichier dont le
+                # contenu n'a pas encore atteint le disque : sur coupure
+                # secteur, on remplace un bon fichier par un vide.
+                os.fsync(f.fileno())
+            os.replace(provisoire, PROFILES_PATH)
+        except BaseException:
+            provisoire.unlink(missing_ok=True)
+            raise
+
+
 def save_all(profiles: dict[str, "Profile"]) -> None:
     """Écrit tous les profils dans profiles.toml."""
-    raw = {name: p.as_toml_dict() for name, p in profiles.items()}
-    with PROFILES_PATH.open("wb") as f:
-        tomli_w.dump(raw, f)
+    _ecrire({name: p.as_toml_dict() for name, p in profiles.items()})
 
 
 def _write_defaults() -> None:
-    with PROFILES_PATH.open("wb") as f:
-        tomli_w.dump({k: dict(v) for k, v in _BUILTINS.items()}, f)
+    _ecrire({k: dict(v) for k, v in _BUILTINS.items()})
 
 
 # ─── Validation ───────────────────────────────────────────────────────────────

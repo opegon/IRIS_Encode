@@ -11,7 +11,7 @@ import sys
 import string
 from pathlib import Path
 
-from core.scanner import SUPPORTED_EXTENSIONS
+from core.scanner import SUPPORTED_EXTENSIONS, deja_produit
 
 
 # ─── Détection des volumes ─────────────────────────────────────────────────────
@@ -102,8 +102,7 @@ class FileNavigator:
                 p for p in self._current.iterdir()
                 if p.is_file()
                 and p.suffix.lower() in SUPPORTED_EXTENSIONS
-                and "_[hevc]" not in p.stem
-                and "_[H264]" not in p.stem
+                and not deja_produit(p.stem)
             )
         except (PermissionError, OSError):
             return []

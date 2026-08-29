@@ -247,10 +247,15 @@ def fetch_allocine(title: str, year: Optional[int] = None) -> MovieMeta:
             raw = actor_el.get_text(strip=True).removeprefix("Avec")
             cast = [n.strip() for n in raw.split(",") if n.strip()][:8]
 
-    # Genres
-    genres = data.get("genre", [])[:5]
+    # Genres. La normalisation passe **avant** le découpage : AlloCiné rend une
+    # chaîne nue quand le film n'a qu'un genre, et `"Science fiction"[:5]` vaut
+    # « Scien » — que l'`isinstance` emballe ensuite consciencieusement en
+    # `["Scien"]`. Le casting, dix lignes plus haut, fait déjà les deux dans
+    # le bon ordre.
+    genres = data.get("genre", [])
     if isinstance(genres, str):
         genres = [genres]
+    genres = list(genres)[:5]
 
     # Note (format français : virgule → point)
     rating: Optional[float] = None

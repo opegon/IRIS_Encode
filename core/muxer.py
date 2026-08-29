@@ -31,6 +31,32 @@ def set_mkvmerge_path(path: str) -> None:
     """Précise l'exécutable mkvmerge à utiliser (défaut: 'mkvmerge' du PATH)."""
     global _mkvmerge_path
     _mkvmerge_path = path
+    # Ce que le cache contient a été lu par l'exécutable précédent.
+    _CACHE_IDENTIFY.clear()
+
+
+# Résultat d'`identify`, par fichier et par état de ce fichier.
+#
+# `build_strip_command` traduit un index par piste retenue, et chaque
+# traduction relançait un `mkvmerge -J` : six pistes audio et vingt
+# sous-titres coûtaient **26 processus** — timeout de 30 s chacun — sur le
+# même fichier, pour une seule commande. `encoder.build_command` en relance un
+# par piste externe.
+#
+# La clé porte la taille et la date de modification plutôt que le seul chemin :
+# un donneur remplacé entre deux passages est relu, au lieu d'être servi
+# depuis un cache qui ne le décrit plus. Un `stat()` contre un sous-processus,
+# le compte est vite fait.
+_CACHE_IDENTIFY: dict[tuple[str, int, int], list["IdentifiedTrack"]] = {}
+
+
+def _signature(path: Path) -> Optional[tuple[str, int, int]]:
+    """Chemin, taille, date de modification. None si le fichier est illisible."""
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    return (str(path), st.st_size, st.st_mtime_ns)
 
 
 # ─── Modèles ──────────────────────────────────────────────────────────────────
@@ -142,6 +168,10 @@ def identify(path: Path) -> list[IdentifiedTrack]:
     comptent dans la numérotation : les tid retournés restent ceux de mkvmerge.
     Retourne [] si mkvmerge échoue ou ne reconnaît pas le fichier.
     """
+    signature = _signature(path)
+    if signature is not None and signature in _CACHE_IDENTIFY:
+        return list(_CACHE_IDENTIFY[signature])
+
     try:
         r = subprocess.run(
             [_mkvmerge_path, "-J", str(path)],
@@ -170,7 +200,11 @@ def identify(path: Path) -> list[IdentifiedTrack]:
             language=props.get("language", ""),
             track_name=props.get("track_name", ""),
         ))
-    return tracks
+    # Un résultat vide n'est pas mémorisé : c'est aussi ce que rend un
+    # mkvmerge absent, et l'installer en cours de session doit suffire.
+    if signature is not None and tracks:
+        _CACHE_IDENTIFY[signature] = tracks
+    return list(tracks)
 
 
 def ffmpeg_stream_index(path: Path, tid: int, kind: TrackKind) -> int:

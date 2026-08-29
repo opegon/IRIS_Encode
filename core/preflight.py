@@ -6,6 +6,7 @@ Installation via téléchargement ZIP avec vérification SHA256.
 """
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import io
 import platform
@@ -88,28 +89,42 @@ def _get_version(path: str) -> str:
     return ""
 
 
+def _localiser(name: str, bin_dir: Path) -> Optional[Path]:
+    """Chemin de l'outil : PATH système d'abord, puis ./bin/. None si absent."""
+    exe = _exe(name)
+    p = shutil.which(exe) or shutil.which(name)
+    if p:
+        return Path(p)
+    local = bin_dir / exe
+    return local if local.exists() else None
+
+
 def check_tools(bin_dir: Path) -> list[ToolStatus]:
-    statuses: list[ToolStatus] = []
-    for name in ALL_TOOLS:
-        exe = _exe(name)
-        # 1. PATH système
-        p = shutil.which(exe) or shutil.which(name)
-        if p:
-            statuses.append(ToolStatus(
-                name=name, found=True,
-                path=Path(p), version=_get_version(p),
-            ))
-            continue
-        # 2. ./bin/
-        local = bin_dir / exe
-        if local.exists():
-            statuses.append(ToolStatus(
-                name=name, found=True,
-                path=local, version=_get_version(str(local)),
-            ))
-            continue
-        statuses.append(ToolStatus(name=name, found=False))
-    return statuses
+    """État des cinq outils : présence, chemin, version.
+
+    Les versions sont relevées **en parallèle**. `_get_version` essaie deux
+    drapeaux à 5 s de délai chacun, et mkvmerge comme dovi_tool échouent sur
+    le premier : en série, un démarrage payait jusqu'à dix lancements de
+    sous-processus l'un après l'autre — et `check_tools` repasse une seconde
+    fois après une installation de ffmpeg. C'est la position que
+    `platform.sonder_encodeurs` énonce déjà pour les encodeurs, appliquée ici.
+
+    La localisation, elle, reste séquentielle : elle ne coûte qu'un parcours
+    du PATH et un `exists()`.
+    """
+    chemins = {name: _localiser(name, bin_dir) for name in ALL_TOOLS}
+    trouves = [name for name, chemin in chemins.items() if chemin is not None]
+
+    versions: dict[str, str] = {}
+    if trouves:
+        with concurrent.futures.ThreadPoolExecutor(
+                max_workers=len(trouves)) as pool:
+            versions = dict(zip(trouves, pool.map(
+                lambda n: _get_version(str(chemins[n])), trouves)))
+
+    return [ToolStatus(name=name, found=chemins[name] is not None,
+                       path=chemins[name], version=versions.get(name, ""))
+            for name in ALL_TOOLS]
 
 
 def _load_releases() -> dict:
@@ -174,13 +189,51 @@ def _install_from_zip(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
     return installed > 0
 
 
+def poser(nom: str, data: bytes, bin_dir: Path) -> bool:
+    """Range le contenu téléchargé, sous la forme que publie cet outil.
+
+    Point de passage **unique** : l'installation initiale et la mise à jour
+    doivent ranger un même téléchargement de la même façon. Elles ne le
+    faisaient pas — `_installer_for` appelait `_install_from_zip` en direct et
+    sautait donc le garde-fou d'IE-40, si bien qu'une release publiée en
+    binaire nu échouait à chaque mise à jour pendant qu'une installation neuve
+    de la même release réussissait.
+    """
+    if nom == "dovi_tool":
+        cible = _exe("dovi_tool")
+        # Certaines releases publient un ZIP, d'autres l'exécutable nu. On
+        # demande au contenu ce qu'il est, plutôt que de le déduire de l'échec
+        # d'une extraction.
+        #
+        # La version d'avant IE-40 tentait l'extraction sous
+        # `except Exception: pass` et repliait sur l'écriture directe : une
+        # erreur pendant l'extraction — disque plein, antivirus, archive
+        # tronquée — faisait écrire **les octets du ZIP** dans `dovi_tool.exe`,
+        # en annonçant « ✓ Installé ». Le défaut ne se serait vu qu'au premier
+        # fichier Dolby Vision, très loin de sa cause.
+        if zipfile.is_zipfile(io.BytesIO(data)):
+            return _install_from_zip(data, bin_dir, {cible})
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        dest = bin_dir / cible
+        dest.write_bytes(data)
+        if not _is_windows():
+            dest.chmod(0o755)
+        print(f"  ✓ Installé : {dest}")
+        return True
+    if nom == "mpv":
+        return _install_from_7z(data, bin_dir, {_exe("mpv")})
+    if nom == "ffmpeg":
+        return _install_from_zip(data, bin_dir,
+                                 {_exe("ffmpeg"), _exe("ffprobe")})
+    return _install_from_zip(data, bin_dir, {_exe(nom)})
+
+
 def install_ffmpeg(bin_dir: Path, fetch_url: str) -> bool:
-    targets = {_exe("ffmpeg"), _exe("ffprobe")}
     print(f"  Téléchargement depuis {fetch_url}")
     data = _download(fetch_url)
     if data is None:
         return False
-    return _install_from_zip(data, bin_dir, targets)
+    return poser("ffmpeg", data, bin_dir)
 
 
 def install_dovi_tool(bin_dir: Path, releases: dict) -> bool:
@@ -195,27 +248,7 @@ def install_dovi_tool(bin_dir: Path, releases: dict) -> bool:
     data = _download(url)
     if data is None:
         return False
-    target_name = _exe("dovi_tool")
-    # Certaines releases publient un ZIP, d'autres l'exécutable nu. On demande
-    # au contenu ce qu'il est, plutôt que de le déduire de l'échec d'une
-    # extraction.
-    #
-    # La version précédente tentait l'extraction sous `except Exception: pass`
-    # et repliait sur l'écriture directe : une erreur pendant l'extraction —
-    # disque plein, antivirus, archive tronquée — faisait écrire **les octets
-    # du ZIP** dans `dovi_tool.exe`, en annonçant « ✓ Installé ». Le défaut ne
-    # se serait vu qu'au premier fichier Dolby Vision, très loin de sa cause.
-    if zipfile.is_zipfile(io.BytesIO(data)):
-        return _install_from_zip(data, bin_dir, {target_name})
-
-    # Binaire direct.
-    bin_dir.mkdir(parents=True, exist_ok=True)
-    dest = bin_dir / target_name
-    dest.write_bytes(data)
-    if not _is_windows():
-        dest.chmod(0o755)
-    print(f"  ✓ Installé : {dest}")
-    return True
+    return poser("dovi_tool", data, bin_dir)
 
 
 def _install_from_7z(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
@@ -276,7 +309,7 @@ def install_mpv(bin_dir: Path, releases: dict) -> bool:
     data = _download(url, info.get("sha256", ""))
     if data is None:
         return False
-    return _install_from_7z(data, bin_dir, {_exe("mpv")})
+    return poser("mpv", data, bin_dir)
 
 
 def install_mkvtoolnix(bin_dir: Path, releases: dict) -> bool:
@@ -299,7 +332,7 @@ def install_mkvtoolnix(bin_dir: Path, releases: dict) -> bool:
     data = _download(url, info.get("sha256", ""))
     if data is None:
         return False
-    return _install_from_zip(data, bin_dir, {_exe("mkvmerge")})
+    return poser("mkvmerge", data, bin_dir)
 
 
 def print_status(statuses: list[ToolStatus]) -> None:
@@ -413,17 +446,33 @@ def _offer_mpv_install(bin_dir: Path) -> None:
         print("  mpv ignoré — vous ne pourrez pas contrôler un recalage à l'œil.")
 
 
+OUTILS_INSTALLABLES = frozenset({"ffmpeg", "mkvmerge", "dovi_tool", "mpv"})
+
+
 def _installer_for(name: str):
-    """Fonction d'installation associée à un outil, ou None."""
-    return {
-        "ffmpeg":    lambda bd, url: install_ffmpeg(bd, url),
-        "mkvmerge":  lambda bd, url: _install_from_zip(
-            _download(url) or b"", bd, {_exe("mkvmerge")}),
-        "dovi_tool": lambda bd, url: _install_from_zip(
-            _download(url) or b"", bd, {_exe("dovi_tool")}),
-        "mpv":       lambda bd, url: _install_from_7z(
-            _download(url) or b"", bd, {_exe("mpv")}),
-    }.get(name)
+    """Fonction de mise à jour associée à un outil, ou None.
+
+    Elle télécharge puis passe par `poser`, exactement comme l'installation
+    initiale. Les lambdas d'avant appelaient `_install_from_zip` en direct :
+    dovi_tool y perdait son garde-fou `is_zipfile`, et un `_download` échoué
+    devenait `b""` — remis à un extracteur qui n'avait plus qu'à échouer sur
+    une archive vide, en nommant la mauvaise cause.
+
+    Aucune empreinte à vérifier ici : `Update` n'en porte pas, et pour cause —
+    l'URL vient d'une découverte dynamique, pas d'une source épinglée. C'est
+    la limite que `_download` documente déjà.
+    """
+    if name not in OUTILS_INSTALLABLES:
+        return None
+
+    def _installer(bin_dir: Path, url: str) -> bool:
+        print(f"  Téléchargement depuis {url}")
+        data = _download(url)
+        if data is None:
+            return False
+        return poser(name, data, bin_dir)
+
+    return _installer
 
 
 def check_for_updates(cfg: dict, statuses: list[ToolStatus],
@@ -435,7 +484,12 @@ def check_for_updates(cfg: dict, statuses: list[ToolStatus],
     mensuellement, et un démarrage ne doit pas attendre le réseau. Une source
     injoignable est ignorée — hors ligne, le lancement se poursuit.
     """
-    if not cfg.get("ffmpeg", {}).get("check_on_startup", True):
+    # `[updates]`, pas `[ffmpeg]` : c'est là que `config._DEFAULTS` la pose et
+    # que `config.toml` l'écrit. Lue au mauvais endroit, elle retombait
+    # toujours sur le défaut `True` — le réglage était mort, et l'utilisateur
+    # qui coupait la vérification pour éviter l'aller-retour réseau au
+    # lancement continuait de le payer.
+    if not cfg.get("updates", {}).get("check_on_startup", True):
         return
 
     from . import updates

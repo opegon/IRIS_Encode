@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.5.0 — document de référence courant
+**Version** : 0.8.5.3 — document de référence courant
 **Date** : 2026-08-29
 **Statut** : stable
 
@@ -231,7 +231,22 @@ message d'information.
 
 Au démarrage, au plus **une fois par jour**, sans bloquer hors ligne. Compare la version
 installée de chaque outil à la dernière version publiée et signale les retards.
-Piloté par `[updates] check_on_startup`.
+Piloté par `[updates] check_on_startup` — lu dans cette section-là, et non sous
+`[ffmpeg]` comme ce fut le cas : le réglage retombait alors toujours sur son défaut.
+
+**Une mise à jour range comme une installation.** Les deux passent par
+`preflight.poser()`, point unique qui sait sous quelle forme chaque outil publie —
+dovi_tool tantôt en ZIP, tantôt en exécutable nu, mpv en 7z, le reste en ZIP. La mise à
+jour appelait auparavant l'extracteur ZIP en direct : une release dovi_tool livrée en
+binaire nu échouait à chaque lancement, pendant qu'une installation neuve de la même
+release réussissait. Aucune empreinte n'est vérifiée sur ce chemin, et il n'y en a pas à
+vérifier : l'URL vient d'une découverte dynamique, pas d'une source épinglée (§ 4.2).
+
+**Le relevé des versions est parallèle** (`check_tools`). `_get_version` essaie deux
+drapeaux à 5 s de délai chacun, et mkvmerge comme dovi_tool échouent sur le premier :
+en série, un démarrage payait jusqu'à dix lancements de sous-processus l'un après
+l'autre, deux fois s'il fallait installer ffmpeg. Même position que
+`platform.sonder_encodeurs` pour les encodeurs (§ 11).
 
 ### 4.5 Sortie console
 
@@ -753,7 +768,7 @@ retourne `.mkv` dès que cette liste n'est pas vide.
 
 | Fonction | Rôle |
 |---|---|
-| `identify(path)` | Pistes du fichier via `mkvmerge -J` → `list[IdentifiedTrack]` |
+| `identify(path)` | Pistes du fichier via `mkvmerge -J` → `list[IdentifiedTrack]`. Mémorisé par (chemin, taille, date) : traduire vingt index ne relançait pas vingt processus |
 | `ffmpeg_stream_index(path, tid, kind)` | Traduit un TID mkvmerge en index ffprobe |
 | `guess_language(path)` | Déduit une langue du nom de fichier (`film.VF.mka`) |
 | `build_mux_command(…)` | Arguments mkvmerge complets |
@@ -1750,7 +1765,19 @@ class VideoInfo:
 
 `scan_directory_recursive(root)` — tous les fichiers vidéo sous `root`, tous niveaux,
 triés par chemin. Mêmes filtres que `scan_directory` : extensions supportées, exclusion
-des fichiers déjà encodés (`_[hevc]`, `_[H264]`, `_[mux]`…).
+de ce que l'application a elle-même encodé.
+
+**Cette exclusion est dérivée, jamais recopiée.** `scanner.suffixes_produits()` la
+construit depuis `SUFFIX_BY_ACTION` — donc `_[hevc]`, `_[H264]`, `_[av1]` et `_[hdr10]`,
+et tout suffixe qu'une action vidéo apprendrait à écrire. La paire en dur qui la
+précédait ne connaissait que les deux premiers, à quatre endroits distincts : une sortie
+AV1 reparaissait au scan, `av1` n'est pas dans `CODECS_LISIBLES`, et la décision tombait
+en CAS 3 pour proposer de la réencoder en HEVC — sur `basic_delete`, qui a
+`delete_source = true`, en effaçant l'original au passage.
+
+`MUX_SUFFIX` en est **volontairement absent** : un `_[mux]` n'est pas un encodage mais
+une greffe de pistes, et l'encoder ensuite est un geste légitime que l'écarter du scan
+rendrait impossible — le fichier ne serait même pas visible.
 
 ### 15.3 Enrichissement DV au scan
 
@@ -1899,6 +1926,9 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.5.3 | 2026-08-29 | **IE-53** le genre AlloCiné n'est plus tronqué à cinq caractères (normalisation avant découpage) · **IE-55** `identify()` mémorisé par état de fichier (§ 9.3) : 26 processus mkvmerge pour un remux devenaient un seul · **IE-57** le prédicat du mode HDR10 « quality » n'est plus écrit deux fois. **La revue de `core/` est close.** |
+| 0.8.5.2 | 2026-08-29 | **IE-51** `check_on_startup` lu sous `[updates]`, la section où il vit · **IE-54** mise à jour et installation rangent par le même `poser()`, garde-fou d'IE-40 compris · **IE-56** relevé des versions en parallèle au démarrage (§ 4.4) |
+| 0.8.5.1 | 2026-08-29 | **IE-50** `profiles.toml` écrit atomiquement et sous verrou — la parade d'IE-39, jamais portée · **IE-49** le filtre du scan dérive de `SUFFIX_BY_ACTION` (§ 15.2) au lieu d'une paire recopiée à quatre endroits · **IE-52** une réserve sur une mesure acceptée a son propre champ, `reason` n'étant lu que sur les échecs |
 | **0.8.5.0** | 2026-08-29 | **Release.** Rassemble 0.8.4.3 à 0.8.4.8 : revue de code de `core/` (IE-43 à IE-48), entrée standard des sous-processus (IE-58), touches d'édition visibles à l'écran de recalage (IE-36) |
 | 0.8.4.8 | 2026-08-29 | **IE-36** — les touches qui modifient une valeur étaient les seules que l'écran de recalage ne montrait jamais : le bandeau leur donne une ligne propre au champ actif, qu'aucun message ne chasse (§ 14.4) · `Ctrl+↑/↓` et `R`, absents des tables de touches de la spec et du guide, y entrent |
 | 0.8.4.7 | 2026-08-29 | **IE-48** — le forçage à 48 kHz de l'AAC employait un spécificateur de flux nu (`-ar:{i}`) : il visait la vidéo puis glissait d'un cran sur les pistes audio, sur les deux chemins qui mappent la vidéo en tête |

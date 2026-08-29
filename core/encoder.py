@@ -405,8 +405,13 @@ def build_command(
     #   - SDR tone map (CPU obligatoire pour zscale)
     #   - DV preserve (copy)
     #   - HDR10 quality (libx265 CPU pour metadata propres)
-    preserve_video      = (vid.dv_action == DVAction.DV)
-    hdr10_quality_check = (
+    preserve_video = (vid.dv_action == DVAction.DV)
+    # Le mode HDR10 « quality » décide deux choses à la fois : l'encodeur
+    # (libx265, plus bas) et l'absence de hwaccel. Un seul nom pour un seul
+    # prédicat — l'expression était écrite deux fois, mot pour mot, et en
+    # modifier une seule aurait passé `-hwaccel` à un encodage processeur, ou
+    # l'aurait retiré à un NVENC.
+    hdr10_quality = (
         vid.dv_action == DVAction.HDR10
         and vid.action == VideoAction.ENCODE_HEVC
         and profile.get("hdr10_quality") == "quality"
@@ -415,7 +420,7 @@ def build_command(
         platform.hwaccel
         and vid.dv_action != DVAction.SDR
         and not preserve_video
-        and not hdr10_quality_check
+        and not hdr10_quality
     )
     if use_hwaccel:
         cmd += ["-hwaccel", platform.hwaccel]
@@ -481,12 +486,6 @@ def build_command(
     # HDR10 compat : re-encode NVENC standard (supprime RPU, pas de metadata HDR10 fines)
     # HDR10 quality : libx265 CPU + master-display + max-cll → compatibilité TV LG
     # SDR : re-encode + tone-mapping vers SDR (CPU intensif)
-    hdr10_quality = (
-        vid.dv_action == DVAction.HDR10
-        and vid.action == VideoAction.ENCODE_HEVC
-        and profile.get("hdr10_quality") == "quality"
-    )
-
     if preserve_video:
         cmd += ["-c:v", "copy"]
     elif hdr10_quality:

@@ -6,6 +6,7 @@ sous-titres et profil Dolby Vision.
 """
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import subprocess
@@ -20,6 +21,33 @@ SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
     ".mp4", ".avi", ".mkv", ".mov", ".wmv",
     ".flv", ".webm", ".m4v", ".3gp",
 })
+
+@functools.cache
+def suffixes_produits() -> frozenset[str]:
+    """Les suffixes qu'un encodage de cette application écrit dans un nom.
+
+    Dérivés de `SUFFIX_BY_ACTION`, jamais recopiés. La paire en dur ne
+    connaissait que `_[hevc]` et `_[H264]` ; l'application a depuis appris à
+    écrire `_[av1]` et `_[hdr10]`, et reproposait donc ses propres sorties.
+    Le cas coûteux est l'AV1 : ce codec n'est pas dans `CODECS_LISIBLES`, la
+    décision tombe en CAS 3 — « codec non lu par la chaîne » — et propose de
+    réencoder en HEVC une sortie que l'application venait de produire. Sur un
+    profil à `delete_source`, l'AV1 est effacé au passage.
+
+    `MUX_SUFFIX` n'en fait **pas** partie, à dessein : un `_[mux]` n'est pas
+    un encodage mais une greffe de pistes, et l'encoder ensuite est un geste
+    légitime. L'écarter du scan le rendrait invisible dans le navigateur.
+
+    Import différé : `decision` importe `scanner`, l'inverse ferait un cycle.
+    """
+    from .decision import SUFFIX_BY_ACTION
+    return frozenset(s for s in SUFFIX_BY_ACTION.values() if s)
+
+
+def deja_produit(stem: str) -> bool:
+    """Ce nom de fichier est-il celui d'une sortie de l'application ?"""
+    return any(suffixe in stem for suffixe in suffixes_produits())
+
 
 _LOSSLESS_CODECS = frozenset({"truehd", "dts-hd ma", "dtshd", "mlp"})
 # ffprobe nomme toutes les variantes DTS « dts » et met la famille dans
@@ -176,9 +204,8 @@ class VideoInfo:
 
     @property
     def is_already_encoded(self) -> bool:
-        """Vrai si le fichier porte un suffixe _[hevc] ou _[H264]."""
-        stem = self.path.stem
-        return "_[hevc]" in stem or "_[H264]" in stem
+        """Vrai si le fichier porte un suffixe produit par l'application."""
+        return deja_produit(self.path.stem)
 
     @property
     def resolution_label(self) -> str:
@@ -523,15 +550,14 @@ def scan(path: Path) -> VideoInfo:
 def scan_directory(directory: Path) -> list[VideoInfo]:
     """
     Scanne tous les fichiers vidéo supportés dans un répertoire (non récursif).
-    Ignore les fichiers déjà encodés (_[hevc] / _[H264]).
+    Ignore ce que l'application a elle-même produit (`suffixes_produits`).
     Les erreurs de scan sont silencieuses (fichier ignoré).
     """
     results: list[VideoInfo] = []
     for path in sorted(directory.iterdir()):
         if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
             continue
-        stem = path.stem
-        if "_[hevc]" in stem or "_[H264]" in stem:
+        if deja_produit(path.stem):
             continue
         try:
             results.append(scan(path))
@@ -552,8 +578,7 @@ def scan_directory_recursive(root: Path) -> list[VideoInfo]:
             continue
         if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
             continue
-        stem = path.stem
-        if "_[hevc]" in stem or "_[H264]" in stem:
+        if deja_produit(path.stem):
             continue
         try:
             results.append(scan(path))

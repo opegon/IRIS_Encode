@@ -531,7 +531,12 @@ class WizardScreen(TableNavMixin, Screen):
                 t.sync_origin = SyncOrigin.MEASURED
                 n = len(propager_recalage(pistes, i))
                 notes.append(f"{t.language or '?'} {res.delay_ms:+d} ms"
-                             + (f", reporté sur {n} sous-titre(s)" if n else ""))
+                             + (f", reporté sur {n} sous-titre(s)" if n else "")
+                             # Une mesure acceptée peut porter une réserve —
+                             # des durées trop écartées pour être le même
+                             # montage. La taire ici la perdrait : l'assistant
+                             # ne montre pas le compte rendu détaillé.
+                             + (f" — ⚠ {res.warning}" if res.warning else ""))
             else:
                 notes.append(f"{t.language or '?'} : {res.reason} — décalage "
                              f"laissé à 0, à vérifier avant de lancer")

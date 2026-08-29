@@ -180,6 +180,12 @@ class SyncResult:
     confidence: float
     ok:         bool
     reason:     str = ""
+    # Réserve sur un résultat **accepté**. `reason` ne convient pas : il n'est
+    # lu que sur les échecs — `label()` ne le regarde que dans sa branche
+    # `if not self.ok`, `report()` n'y touche pas, l'assistant non plus. Un
+    # avertissement écrit dedans alors que `ok` est vrai n'atteignait donc
+    # personne, et un donneur d'un autre montage était accepté en silence.
+    warning:    str = ""
     # Diagnostic : renseigné même en cas de refus, pour qu'un échec soit
     # analysable au lieu d'être un simple « non ».
     best_delay_ms: int   = 0      # candidat trouvé, appliqué ou non
@@ -232,6 +238,8 @@ class SyncResult:
             head = f"{'✓' if self.sure else '⚠'} {self.label()}"
             if not self.sure:
                 head += "  → contrôlez avant de muxer"
+            if self.warning:
+                head = f"⚠ {self.label()}  → {self.warning}"
             return f"{head}\n{mesures}"
 
         candidat = f"meilleur candidat {self.best_delay_ms:+d} ms"
@@ -1262,8 +1270,8 @@ def measure_audio(target: Path, donor: Path, donor_track: int = 0,
                   n_events=_count_speech_blocks(mask),
                   agreed=agreed, dispersion_ms=dispersion, segments=segments)
     if res.ok and ratio == (1, 1) and drift > MAX_DURATION_DRIFT:
-        res.reason = (f"durées écartées de {drift:.0%} — vérifiez qu'il s'agit "
-                      f"bien du même montage")
+        res.warning = (f"durées écartées de {drift:.0%} — vérifiez qu'il "
+                       f"s'agit bien du même montage")
     return res
 
 

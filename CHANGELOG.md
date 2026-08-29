@@ -1,5 +1,50 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.4.0] — 2026-08-29
+
+Release. Rassemble les six incréments depuis la v0.8.3.6, dont le détail suit
+plus bas. Trois choses en ressortent.
+
+### L'application embarque son guide
+
+`H`, depuis n'importe quel écran, ouvre la liste de **toutes** les touches avec
+ce que chacune fait — y compris celles qui ne s'affichent nulle part ailleurs.
+L'en-tête le rappelle en haut à droite. La liste est **dérivée des `BINDINGS`** :
+seules les explications sont rédigées, et attachées à une action plutôt qu'à une
+touche. Un guide écrit à côté du code dériverait comme le pied de page avait
+dérivé — en pire, puisqu'on le consulte justement quand on ne connaît pas la
+réponse.
+
+### Une piste alignée n'est plus refusée par la mesure
+
+Le classement des ratios d'étirement se faisait à la saillance seule, qui n'est
+pas comparable d'un ratio à l'autre. Sur *The Fall* S02E06, un ratio PAL
+l'emportait à 160 secondes de la vérité, sur une corrélation de 0.26, pendant
+que le vrai alignement — −10 ms, corrélation 0.83 — était écarté. La
+corrélation choisit désormais le ratio.
+
+Le réglage du décalage gagne au passage un **pas fin de 10 ms**
+(`Ctrl+↑/↓`), pour finir d'approcher une valeur mesurée.
+
+### Quatre défauts silencieux fermés
+
+Revue de code complète de `core/` et `tui/`. Les quatre constats partageaient
+un trait : aucun ne se signalait. Un décalage écrit sur la mauvaise piste, un
+`config.toml` tronqué, un ZIP installé sous le nom d'un exécutable, un ffmpeg
+mort dont l'enveloppe partielle passait pour le film entier.
+
+Les correctifs sont couverts par douze tests dont **neuf échouent sur le code
+d'avant**, mesuré en rejouant la suite contre l'ancien source.
+
+---
+
+**À l'installation** — rien n'a changé depuis la v0.8.3.6 : `launch.bat` installe
+Python lui-même s'il n'en trouve pas (uv, un CPython, un `.venv`), sans droits
+administrateur et sans rien écrire hors du dossier. La bannière nomme désormais
+l'interpréteur retenu et son origine.
+
+**677 tests**, smoke TUI de bout en bout, 28 captures d'écran.
+
 ## [v0.8.3.12] — 2026-08-29
 
 Les quatre constats de la revue de code du 2026-08-29. Aucun ne se manifestait

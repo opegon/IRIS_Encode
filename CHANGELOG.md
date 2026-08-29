@@ -1,5 +1,40 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.6.2] — 2026-08-29
+
+### Un raccourci Bureau qui ouvre le bon terminal : IRIS_Encode.exe (`launcher/`)
+
+Un raccourci qui pointe sur `launch.bat` s'ouvre dans la console héritée
+(conhost) — précisément l'hôte que le README déconseille pour le rendu TUI.
+Pour viser Windows Terminal il fallait écrire soi-même une cible
+`wt.exe -d … cmd /c launch.bat`, sans icône propre.
+
+Il n'existe pas de petit `.exe` open source tout fait et digne de confiance
+pour ce rôle : les convertisseurs bat→exe sont non libres ou régulièrement
+signalés par les antivirus, et un binaire pris sur étagère est de toute façon
+invérifiable. Le dépôt embarque donc le sien, réduit à l'os :
+
+- `launcher/IrisEncodeLauncher.cs` — une trentaine de lignes : ouvre
+  `launch.bat` dans Windows Terminal via ShellExecute (`wt.exe` est un alias
+  d'exécution de 0 octet que CreateProcess ne sait pas résoudre), bascule sur
+  une console cmd classique s'il est absent, et refuse poliment de tourner
+  loin de son dossier — le cas du fichier *copié* sur le Bureau au lieu d'un
+  raccourci.
+- `launcher/build.bat` — compile avec le `csc.exe` du .NET Framework 4.x
+  livré avec Windows : rien à installer, aucun binaire tiers, le source du
+  dépôt fait foi. Produit `IRIS_Encode.exe` à la racine (jamais versionné,
+  `.gitignore`) puis propose de créer le raccourci « IRIS ENCODE » sur le
+  Bureau.
+- `launcher/iris.ico.b64` — l'icône, versionnée en base64 : le dépôt ne
+  porte aucun binaire, `build.bat` la décode avec `certutil` (livré avec
+  Windows). Générée de façon déterministe par `launcher/make_icon.py`
+  (graine fixe : relancer le script reproduit le fichier à l'identique,
+  l'icône reste vérifiable depuis le source).
+
+`README.md` §5.1 documente l'usage, et l'alternative sans `.exe` — un `.lnk`
+vers `wt.exe` — pour les machines où Smart App Control refuse un exécutable
+sans réputation (même famille de blocages que le chapitre 1.4).
+
 ## [v0.8.6.1] — 2026-08-29
 
 ### `GUIDE.md` remis à jour, et rattaché au code
@@ -47,6 +82,7 @@ Le périmètre est étroit à dessein : ces tests ne jugent pas une explication,
 qui est du texte. Ils attrapent la promesse d'un geste qui ne répond plus.
 
 **778 tests.**
+
 
 ## [v0.8.6.0] — 2026-08-29
 

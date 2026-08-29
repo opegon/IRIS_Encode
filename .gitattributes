@@ -3,3 +3,6 @@
 *.bat text eol=crlf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
+
+# Icône du lanceur : binaire, aucune normalisation de fins de ligne.
+*.ico binary

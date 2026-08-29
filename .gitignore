@@ -43,6 +43,13 @@ data/ffmpeg_releases_cache.toml
 # Binaires externes installés par le preflight (ffmpeg, mkvmerge, mpv, dovi_tool)
 bin/
 
+# Lanceur Bureau compilé sur place par launcher\build.bat — jamais versionné :
+# un binaire dans un dépôt est invérifiable, chacun compile le sien depuis
+# launcher/IrisEncodeLauncher.cs. L'icône binaire suit la même règle : elle
+# est décodée par build.bat depuis launcher/iris.ico.b64 (texte, versionné).
+IRIS_Encode.exe
+launcher/iris.ico
+
 # Fichiers temporaires
 *.tmp
 *.temp

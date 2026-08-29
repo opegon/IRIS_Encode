@@ -1,5 +1,27 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.4.1] — 2026-08-29
+
+### Ménage du dépôt, devenu public
+
+- **`CLAUDE.md`** — sorti du dépôt **et de son historique**. C'est un
+  aide-mémoire local pour Claude Code, pas un document du produit : il restait à
+  l'état v0.8.1.5 alors que le projet est en 0.8.4.x, renvoyait à un fichier
+  n'existant que sur le poste de développement, et ses échappements markdown le
+  rendaient illisible sur GitHub. Le fichier reste en place localement, ignoré.
+- **`audit.md`** — retiré de l'arbre. Rapport d'audit de la v0.7, rédigé le
+  10 juin 2026 pour un public non technique, devenu obsolète trois versions
+  mineures plus tard.
+
+**Pourquoi les deux ne sont pas traités pareil.** `CLAUDE.md` décrivait
+faussement l'état courant du projet à qui le lisait : le laisser dans
+l'historique d'un dépôt public n'apportait rien. `audit.md` est un **instantané
+daté** — l'historique est exactement où ce genre de document doit vivre. L'en
+effacer falsifierait le fait qu'un audit a bien eu lieu à cette date.
+
+L'archive de la v0.8.4.0 contient encore `audit.md`, et c'est correct : elle
+correspond à son tag, qui n'a pas bougé.
+
 ## [v0.8.4.0] — 2026-08-29
 
 Release. Rassemble les six incréments depuis la v0.8.3.6, dont le détail suit

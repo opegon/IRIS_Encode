@@ -1,9 +1,25 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.6.2
+**Version** : 0.8.7.0
 **Date** : 2026-08-29
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
+
+---
+
+## 0. Ouvrir l'application
+
+**Le raccourci « IRIS ENCODE » du Bureau**, s'il a été créé. C'est le seul
+chemin qui garantit le bon terminal : un raccourci visant `launch.bat`
+directement ouvre la console héritée de Windows, au rendu dégradé — bordures
+approximatives, glyphes manquants.
+
+Pour le créer, une fois l'installation faite : double-clic sur
+**`launcher\build.bat`**, qui compile le lanceur et propose le raccourci.
+Détail et alternative sans exécutable au **README § 5.1**.
+
+À défaut, `launch.bat` fonctionne — de préférence lancé *depuis* Windows
+Terminal plutôt qu'au double-clic.
 
 ---
 

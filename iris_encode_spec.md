@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.6.2 — document de référence courant
+**Version** : 0.8.7.0 — document de référence courant
 **Date** : 2026-08-29
 **Statut** : stable
 
@@ -1926,6 +1926,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| **0.8.7.0** | 2026-08-29 | **Release.** Le raccourci Bureau entre dans le parcours d'installation : README § 5, § 10 et § 11 y renvoient, et le guide s'ouvre désormais sur « comment ouvrir l'application ». Rassemble 0.8.6.1 (guide rattaché au code) et 0.8.6.2 (lanceur `IRIS_Encode.exe`) |
 | 0.8.6.2 | 2026-08-29 | **Raccourci Bureau `IRIS_Encode.exe`** (dossier `launcher/`) : un lanceur d'une trentaine de lignes de C#, compilé sur place par `launcher/build.bat` avec le `csc.exe` livré avec Windows, qui ouvre `launch.bat` dans Windows Terminal (console classique à défaut) · icône versionnée en base64 (`iris.ico.b64`), décodée par `certutil` au build, générée de façon déterministe par `make_icon.py` · aucun binaire versionné · README § 5.1 |
 | 0.8.6.1 | 2026-08-29 | **`GUIDE.md` remis à jour** après la revue de `core/` — il était resté en 0.8.1.23 · correction d'une inversion `<`/`>` · quatre tests rattachent le guide au code : toute touche annoncée doit répondre, et son en-tête suivre `version.py` |
 | **0.8.6.0** | 2026-08-29 | **Release.** Rassemble 0.8.5.1 à 0.8.5.3 : les neuf dernières entrées de la revue de `core/` — profils perdus par une écriture tronquée, sorties de l'application reproposées au réencodage, réserve de mesure invisible, réglage mort, mise à jour qui ne rangeait pas comme l'installation, genre tronqué, et trois coûts de démarrage ou de remux. **La revue est close.** |

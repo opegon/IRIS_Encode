@@ -1,5 +1,50 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.7.0] — 2026-08-29
+
+**Release.** Rassemble 0.8.6.1 et 0.8.6.2, et met la documentation au niveau du
+lanceur qu'elle décrit.
+
+### Un raccourci Bureau qui ouvre le bon terminal
+
+Le rendu de l'interface dépend du **terminal hôte**, pas du shell. Un raccourci
+qui vise `launch.bat` ouvre la console héritée de Windows — bordures
+approximatives, glyphes manquants. Le README le déconseillait depuis toujours
+au chapitre 10, sans donner le moyen de faire autrement.
+
+`launcher/build.bat` compile désormais un lanceur d'une trentaine de lignes de
+C#, avec le `csc.exe` que Windows livre déjà, et propose le raccourci
+« IRIS ENCODE » sur le Bureau. Aucun binaire n'est versionné : l'exécutable et
+l'icône sont produits sur place, l'icône étant conservée en base64
+régénérable.
+
+### La documentation suit
+
+C'est ce que cette release ajoute au travail de la branche. Le lanceur existait,
+mais il n'était mentionné qu'au § 5.1 du README — on pouvait dérouler toute
+l'installation sans jamais le croiser.
+
+- **README § 5** — le parcours d'installation se termine sur le raccourci, au
+  lieu de s'arrêter à `launch.bat`.
+- **README § 10** — le chapitre qui recommande Windows Terminal dit maintenant
+  comment l'obtenir à chaque lancement, au lieu de le recommander en l'air.
+- **README § 11** — trois symptômes propres au lanceur : exécutable bloqué par
+  Smart App Control, `csc.exe` introuvable, console noire faute de Windows
+  Terminal.
+- **`GUIDE.md` § 0** — le guide s'ouvrait sur le parcours d'encodage sans dire
+  comment ouvrir l'application. Il commence maintenant par là.
+
+### Ce que 0.8.6.1 et 0.8.6.2 apportaient
+
+- **Le guide rattaché au code** (0.8.6.1) — `GUIDE.md` était resté quinze
+  incréments en arrière et annonçait `<` pour élargir une colonne, quand `<` la
+  rétrécit. Quatre tests le tiennent désormais : toute touche annoncée doit
+  répondre, et son en-tête suivre `version.py`.
+- **Le lanceur** (0.8.6.2) — dossier `launcher/`, rebasé et renuméroté à la
+  fusion, les deux branches ayant revendiqué le même numéro.
+
+**778 tests**, smoke TUI vert.
+
 ## [v0.8.6.2] — 2026-08-29
 
 ### Un raccourci Bureau qui ouvre le bon terminal : IRIS_Encode.exe (`launcher/`)

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.6.2 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.7.0 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`.
@@ -282,6 +282,14 @@ Le lanceur vérifie, et installe ce qui manque :
 - ffmpeg / ffprobe, téléchargés dans `bin/` au premier besoin ;
 - la validité de la configuration.
 
+Le premier lancement est le plus long : il télécharge ce qui manque. Les
+suivants démarrent en quelques secondes.
+
+**Une dernière étape, une fois que tout tourne** : le § 5.1 fabrique un
+raccourci « IRIS ENCODE » sur le Bureau, qui ouvre l'application dans
+Windows Terminal — le seul hôte au rendu correct (chapitre 10). C'est
+l'usage courant ensuite ; `launch.bat` reste là pour le dépannage.
+
 ### 5.1 Raccourci Bureau : IRIS_Encode.exe (optionnel)
 
 Un raccourci qui pointe directement sur `launch.bat` s'ouvre dans la console
@@ -418,6 +426,12 @@ IRIS ENCODE utilise Textual pour son interface graphique TUI. Le rendu dépend d
 > et est installé par défaut sur Windows 11.
 > Pour Windows 10 : https://aka.ms/terminal
 
+Un double-clic sur `launch.bat`, ou un raccourci qui le vise directement,
+ouvre la **console héritée** — la ligne dégradée du tableau. C'est la raison
+d'être du raccourci Bureau du § 5.1 : il ne fait rien d'autre que lancer
+l'application *dans le bon hôte*. Si vous ne deviez retenir qu'une chose de ce
+chapitre, c'est celle-là.
+
 ---
 
 ## 11. Résolution des problèmes courants
@@ -431,6 +445,9 @@ IRIS ENCODE utilise Textual pour son interface graphique TUI. Le rendu dépend d
 | `dovi_tool introuvable` | Optionnel non installé | Voir section 4 — uniquement si fichiers Dolby Vision |
 | Erreur à l'import d'un module | Dépendances manquantes | Relancer `pip install -r requirements.txt` |
 | `os error 4551` à l'installation | Smart App Control refuse un binaire sans réputation | Voir chapitre 1.4 |
+| Windows bloque `IRIS_Encode.exe` | Smart App Control, même cause qu'au 1.4 | Le raccourci `.lnk` sans `.exe` du § 5.1 rend le même service |
+| `csc.exe introuvable` au build | .NET Framework 4.x désactivé | *Fonctionnalités facultatives* de Windows, ou https://aka.ms/net48 |
+| Le raccourci ouvre une console noire | Windows Terminal absent : le lanceur bascule sur `cmd` | Installer Windows Terminal (chapitre 10) |
 | IMDB : note/synopsis absents | Clé OMDb non configurée | Voir section 9 |
 
 ---

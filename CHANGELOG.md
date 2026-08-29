@@ -1,5 +1,47 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.8] — 2026-08-29
+
+### Une piste audio alignée était refusée par la mesure
+
+Signalé sur *The Fall* S02E06 : le sous-titre se mesurait bien (−13 170 ms),
+la piste audio VF était rejetée — alors que les deux fichiers durent 1:29:40 et
+1:29:38, à deux secondes près.
+
+Les deux pistes étaient en réalité **alignées à dix millisecondes près**.
+
+`_search` essaie chaque ratio d'étirement de la grille et retenait le pic le plus
+**saillant**. Sur cette paire :
+
+| ratio | décalage | Pearson | saillance |
+|---|---|---|---|
+| (1, 1) | −10 ms | **0.83** | 546 |
+| (24000, 25025) — PAL→film | +160 280 ms | 0.26 | **1008** |
+
+Le ratio PAL l'emportait sur une corrélation de 0.26 — du bruit — à cent
+soixante secondes de la vérité. Le recoupement par tiers refusait ensuite ce
+résultat aberrant, à juste titre, et la mesure se soldait par un « montage
+différent » qui n'expliquait rien.
+
+**La saillance ne se compare pas d'un ratio à l'autre.** `_rescale` change la
+longueur du signal ; la médiane et le MAD qui normalisent la saillance sont
+calculés sur une courbe de corrélation d'une autre taille, donc sur une autre
+échelle. Comparer ces nombres revient à comparer des degrés et des kelvins.
+
+La corrélation choisit désormais le ratio ; la saillance garde son rôle —
+dire si le pic vaut quelque chose — et départage à corrélation comparable
+(0.10 d'écart). Le seuil est calé sur la situation que la grille doit
+distinguer : sur une paire réellement étirée, le vrai ratio sort à 0.9955 et
+son plus proche voisin — 24/25 contre 24000/25025, deux valeurs à 0.1 % l'une
+de l'autre — à 0.7993.
+
+Résultat sur la paire signalée : −10 ms, confiance **excellente** (0.83),
+recoupée sur les trois tiers avec 0 ms de dispersion.
+
+Le sous-titre, lui, reste à −13 170 ms — vérifié, la correction ne le déplace
+pas. L'écart entre les deux valeurs est normal : le `.srt` vient d'un DVDRip
+Netflix, une autre source que la VF 720p.
+
 ## [v0.8.3.7] — 2026-08-29
 
 ### La bannière dit quel Python tourne

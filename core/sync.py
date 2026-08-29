@@ -1059,28 +1059,57 @@ def _segments(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
     return trouves if trouves else _segments_par_accord(ref, sig)
 
 
+# Écart de corrélation au-delà duquel un ratio ne décrit plus le même contenu
+# qu'un autre. Mesuré sur les deux situations que la grille doit distinguer :
+# sur une paire étirée, le vrai ratio sort à 0.9955 et son plus proche voisin
+# — 24/25 contre 24000/25025, deux valeurs à 0.1 % l'une de l'autre — à 0.7993.
+_RATIO_CONF_MARGIN = 0.10
+
+
 def _search(ref: np.ndarray, build,
             progress: Optional[Progress] = None,
             ) -> tuple[int, tuple[int, int], float, float]:
     """
-    Cherche (décalage, ratio) sur la grille et retient le pic le plus saillant.
+    Cherche (décalage, ratio) sur la grille et retient le meilleur candidat.
 
     `build(ratio)` produit le signal candidat pour un ratio donné.
 
-    Une dérive d'étirement étale le pic au point de le rendre illisible : on
-    ne peut pas mesurer le décalage puis le ratio, il faut essayer chaque
-    ratio et regarder lequel donne un pic net. C'est la saillance qui tranche,
-    pas la corrélation brute : un mauvais ratio garde une corrélation moyenne
-    honorable tout en n'ayant plus aucun pic.
+    Une dérive d'étirement étale le pic au point de le rendre illisible : on ne
+    peut pas mesurer le décalage puis le ratio, il faut essayer chaque ratio et
+    regarder lequel tient. À l'intérieur d'un ratio, c'est bien la saillance qui
+    dit si le pic vaut quelque chose — un mauvais alignement garde une
+    corrélation moyenne honorable tout en n'ayant plus aucun pic.
+
+    **Mais la saillance ne se compare pas d'un ratio à l'autre.** `_rescale`
+    change la longueur du signal ; la médiane et le MAD qui normalisent la
+    saillance sont calculés sur une courbe de corrélation d'une autre taille,
+    donc sur une autre échelle. Comparer ces nombres entre eux revient à
+    comparer des températures en degrés et en kelvins.
+
+    Mesuré sur *The Fall* S02E06, VO 1080p contre VF 720p :
+
+    | ratio | décalage | Pearson | saillance |
+    |---|---|---|---|
+    | (1, 1) | −10 ms | **0.83** | 546 |
+    | (24000, 25025) | +160 280 ms | 0.26 | **1008** |
+
+    Les deux pistes sont alignées à dix millisecondes près. Le classement par
+    saillance seule élisait pourtant le ratio PAL, sur une corrélation de 0.26
+    — du bruit — et la mesure était refusée sans que rien n'explique pourquoi.
+
+    La corrélation choisit donc le ratio, la saillance départage à corrélation
+    comparable.
     """
-    best = (0, (1, 1), 0.0, -1.0)
+    candidats: list[tuple[int, tuple[int, int], float, float]] = []
     for k, ratio in enumerate(RATIO_GRID, start=1):
         lag, conf, salience = _best_lag(ref, build(ratio))
-        if salience > best[3]:
-            best = (lag, ratio, conf, salience)
+        candidats.append((lag, ratio, conf, salience))
         if progress:
             progress(DECODE_SHARE + (1 - DECODE_SHARE) * k / len(RATIO_GRID))
-    return best
+
+    meilleure = max(c[2] for c in candidats)
+    retenus   = [c for c in candidats if c[2] >= meilleure - _RATIO_CONF_MARGIN]
+    return max(retenus, key=lambda c: c[3])
 
 
 # ─── Mesures ──────────────────────────────────────────────────────────────────

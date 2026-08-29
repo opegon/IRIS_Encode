@@ -627,3 +627,56 @@ def test_retime_command_alternates_content_and_silence():
 def test_retime_command_needs_something_to_do():
     with pytest.raises(ValueError):
         sync.build_retime_command(Path("vf.mkv"), 0, [], Path("out.mka"))
+
+
+# ─── Arbitrage entre ratios ───────────────────────────────────────────────────
+
+def test_le_ratio_se_choisit_a_la_correlation_pas_a_la_saillance(monkeypatch):
+    """
+    La saillance ne se compare pas d'un ratio à l'autre.
+
+    `_rescale` change la longueur du signal ; la médiane et le MAD qui
+    normalisent la saillance sont alors calculés sur une courbe de corrélation
+    d'une autre taille, donc sur une autre échelle.
+
+    Les valeurs ci-dessous sont celles mesurées sur *The Fall* S02E06, VO 1080p
+    contre VF 720p. Les deux pistes sont alignées à dix millisecondes près, et
+    le classement par saillance seule élisait le ratio PAL sur une corrélation
+    de 0.26 — du bruit — à cent soixante secondes de la vérité.
+    """
+    mesures = {
+        (1, 1):           (-1,     0.8297,  546.39),
+        (24000, 25025):   (16028,  0.2550, 1008.38),
+        (25025, 24000):   (-16753, 0.2572,  101.89),
+        (24, 25):         (15922,  0.2638,  951.56),
+        (25, 24):         (-16602, 0.2665,  105.92),
+    }
+    ordre = list(mesures)
+    monkeypatch.setattr(sync, "RATIO_GRID", ordre)
+    monkeypatch.setattr(sync, "_best_lag",
+                        lambda ref, sig: mesures[sig])
+
+    lag, ratio, conf, _ = sync._search(np.zeros(10), lambda r: r)
+    assert ratio == (1, 1), f"ratio élu : {ratio}"
+    assert lag == -1
+    assert conf == pytest.approx(0.8297)
+
+
+def test_la_saillance_departage_a_correlation_comparable(monkeypatch):
+    """
+    Elle garde son rôle : à corrélation voisine, c'est le pic net qui tranche.
+
+    C'est la raison d'être du classement d'origine — un mauvais alignement
+    garde une corrélation moyenne honorable tout en n'ayant plus aucun pic.
+    """
+    mesures = {
+        (1, 1):         (100, 0.80, 12.0),
+        (24, 25):       (200, 0.78, 90.0),   # corrélation voisine, pic bien plus net
+        (25, 24):       (300, 0.40, 99.0),   # saillance maximale, mais hors bande
+    }
+    monkeypatch.setattr(sync, "RATIO_GRID", list(mesures))
+    monkeypatch.setattr(sync, "_best_lag", lambda ref, sig: mesures[sig])
+
+    lag, ratio, _, _ = sync._search(np.zeros(10), lambda r: r)
+    assert ratio == (24, 25)
+    assert lag == 200

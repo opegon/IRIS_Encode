@@ -524,6 +524,19 @@ async def scenario_external_tracks() -> None:
             print(f"[13] Depuis l'ecran de mux : F1 dry-run OK, F2 encode "
                   f"{run_dec.info.path.name} -> {run_dec.output_path.name}")
 
+            # L'encodage tourne encore, et ffmpeg tient le fichier source.
+            # Sortir du `with tempfile.TemporaryDirectory()` sans l'arreter
+            # faisait echouer le nettoyage : WinError 32, fichier utilise par
+            # un autre processus. Le scenario a fini de verifier ce qu'il
+            # voulait — on coupe.
+            proc = getattr(app.screen, "_process", None)
+            if proc is not None:
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
+            await pilot.pause(1.5)
+
 
 def _make_measurable_set(td: Path) -> bool:
     """Video a parole intermittente + SRT cale sur cette parole, mais decale."""
@@ -831,6 +844,57 @@ async def scenario_accueil() -> None:
             assert type(app.screen).__name__ == "BrowserScreen"
             assert app.is_running
             print("[17d] Ctrl+Home depuis l'accueil : sans effet")
+
+            # ── [18] Le guide embarque ────────────────────────────────────
+            # La question n'est pas que la liaison existe, c'est qu'elle
+            # traverse le DataTable (voir l'entete de tui/mixins.py) et
+            # qu'elle reponde depuis chaque ecran.
+            await pilot.press("h")
+            await pilot.pause(0.3)
+            assert type(app.screen).__name__ == "AideScreen", type(app.screen).__name__
+            texte = app.screen._contenu().plain
+            for attendu in ("PARTOUT", "ACCUEIL", "RECALAGE", "ASSISTANT",
+                            "Mesure le decalage par correlation audio"
+                            .replace("decalage", "décalage")
+                            .replace("correlation", "corrélation")):
+                assert attendu in texte, attendu
+            await pilot.press("h")            # h referme
+            await pilot.pause(0.3)
+            assert type(app.screen).__name__ == "BrowserScreen", type(app.screen).__name__
+            print(f"[18] Guide embarque : {len(texte.splitlines())} lignes, "
+                  "H ouvre et referme depuis l'accueil")
+
+            # Depuis un ecran a DataTable, et un ecran sans
+            await pilot.press("f1")           # dry-run
+            await pilot.pause(0.5)
+            await pilot.press("h")
+            await pilot.pause(0.3)
+            assert type(app.screen).__name__ == "AideScreen", type(app.screen).__name__
+            await pilot.press("backspace")
+            await pilot.pause(0.3)
+            assert type(app.screen).__name__ == "DryrunScreen", type(app.screen).__name__
+            await pilot.press("backspace")
+            await pilot.pause(0.4)
+            print("[18b] H repond aussi depuis le dry-run, backspace referme")
+
+            # Une saisie de texte doit recevoir le « h », pas ouvrir le guide
+            await pilot.press("f5")           # config
+            await pilot.pause(0.5)
+            await pilot.press("n")            # nouveau profil -> formulaire
+            await pilot.pause(0.5)
+            from textual.widgets import Input
+            champs = app.screen.query(Input)
+            if champs:
+                champs.first().focus()
+                await pilot.pause(0.2)
+                avant = champs.first().value
+                await pilot.press("h")
+                await pilot.pause(0.3)
+                assert type(app.screen).__name__ != "AideScreen",                     "H a ouvert le guide alors qu'une saisie avait le focus"
+                assert champs.first().value == avant + "h", champs.first().value
+                print("[18c] Dans une saisie, H ecrit la lettre et n'ouvre rien")
+            await pilot.press("escape")
+            await pilot.pause(0.3)
 
 
 async def main() -> None:

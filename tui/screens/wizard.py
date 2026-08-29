@@ -34,7 +34,7 @@ from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import DataTable, Header, Label, ProgressBar, Static
+from textual.widgets import DataTable, Label, ProgressBar, Static
 
 from core.decision import (ACTION_CYCLE, SUFFIX_BY_ACTION, AudioAction,
                            DVAction, FileDecision, VideoAction, cycle_index,
@@ -46,6 +46,7 @@ from ..common import (bitrate_picker_config, codec_picker_opts, fmt_duration,
                       footer_line2, retour_accueil, tronquer_milieu,
                       ECARTEE, actions_ecran, cellule)
 from ..mixins import TableNavMixin
+from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 from .value_picker import ValuePickerScreen
 
@@ -143,7 +144,7 @@ class WizardScreen(TableNavMixin, Screen):
     # ── Composition ───────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Entete()
         yield Static("", id="wiz-titre", markup=False)
         yield Static("", id="wiz-corps", markup=False)
         yield DataTable(id="wiz-table", cursor_type="row", show_header=True)

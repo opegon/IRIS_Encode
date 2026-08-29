@@ -17,7 +17,7 @@ from textual import on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import DataTable, Header, Static
+from textual.widgets import DataTable, Static
 
 from core import config as cfg_mod
 from core import preview
@@ -40,6 +40,7 @@ from ..common import (
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
 from ..widgets.file_tree import FileNavigator
+from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 
 if TYPE_CHECKING:
@@ -199,7 +200,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     # ─── Composition ──────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Entete()
         yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield Static("", id="spacer-1")
         yield Static("", id="profile-bar")

@@ -1,5 +1,49 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.10] — 2026-08-29
+
+### Le guide d'utilisation entre dans l'application
+
+`H` ouvre, depuis n'importe quel écran, la liste de **toutes** les touches avec
+ce que chacune fait. L'en-tête le rappelle en haut à droite : « H Aide », le seul
+endroit visible depuis tous les écrans, y compris ceux dont le pied de page est
+déjà plein.
+
+**La liste est dérivée des `BINDINGS`.** Seules les explications sont rédigées, et
+elles sont attachées à une *action* (`measure`, `apply_segments`…), pas à une
+touche : une touche qu'on déplace emporte son explication avec elle.
+
+C'est la leçon d'IE-30 appliquée au guide. Un pied de page écrit à côté des
+`BINDINGS` avait fini par ne plus les décrire, sans que personne le voie. Un
+guide dériverait de la même façon, en pire : on le consulte précisément parce
+qu'on ne connaît pas la réponse, donc on n'est pas en position de repérer
+qu'elle est fausse.
+
+`tests/test_aide.py` vérifie les **deux sens** : toute touche déclarée est
+expliquée, et toute explication porte sur une action qui existe encore. Le
+premier attrape la touche ajoutée sans un mot ; le second l'explication d'une
+fonction supprimée, qui survivrait en décrivant un comportement disparu.
+
+Le guide couvre aussi les touches `show=False` — les champs éditables, le pas
+fin, la navigation — celles-là mêmes qu'IE-36 signale comme invisibles.
+
+### Trois pièges rencontrés
+
+- **`H` dans une saisie.** Une liaison prioritaire au niveau de l'application
+  passe avant le widget focalisé : taper « h » dans un nom de profil aurait
+  ouvert le guide au lieu d'écrire la lettre. La liaison est donc sans priorité,
+  et `action_aide` refuse en plus d'agir quand une saisie a le focus. Le smoke
+  TUI tape la touche dans un champ et vérifie que la lettre s'écrit (`[18c]`).
+- **L'horloge disparue.** Deux widgets `dock: right` se recouvrent au lieu de
+  s'empiler — l'horloge s'était effacée sans que rien ne le signale, repéré à la
+  capture. Un seul widget porte désormais les deux : « H Aide · 00:12:34 ».
+- **Le nettoyage du smoke.** L'encodage lancé au scénario 13 tournait encore
+  quand le dossier temporaire était supprimé : ffmpeg tenait le fichier, et le
+  harnais sortait en erreur une fois sur deux. Le processus est coupé avant de
+  quitter le scénario.
+
+662 tests, smoke TUI vert trois fois d'affilée, 28 captures.
+
 ## [v0.8.3.9] — 2026-08-29
 
 ### Un pas de 10 ms pour affiner le décalage

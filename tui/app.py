@@ -57,6 +57,14 @@ class IrisEncodeApp(App):
     BINDINGS = [
         Binding("f10",    "request_quit", "F10 Quitter", show=True,  priority=True),
         Binding("ctrl+c", "request_quit", "Quitter",     show=False, priority=True),
+        # `H` sans `priority` : une liaison prioritaire au niveau de
+        # l'application passe **avant** le widget focalisé, et taper « h » dans
+        # un nom de profil ouvrirait le guide au lieu d'écrire la lettre.
+        # Sans priorité, la touche descend d'abord au champ de saisie, qui la
+        # consomme ; ailleurs elle remonte jusqu'ici. `action_aide` refuse en
+        # plus d'agir quand une saisie a le focus — ceinture et bretelles, le
+        # coût d'une erreur étant un texte corrompu sans message.
+        Binding("h",      "aide",         "Aide",        show=False),
     ]
 
     def __init__(self, start_path: Path | None = None) -> None:
@@ -119,6 +127,17 @@ class IrisEncodeApp(App):
     def on_mount(self) -> None:
         from tui.screens.browser import BrowserScreen
         self.push_screen(BrowserScreen(self.start_path, start_virtual=True))
+
+    def action_aide(self) -> None:
+        """Ouvre le guide des touches, sauf si on est en train d'écrire."""
+        from textual.widgets import Input, TextArea
+        from tui.screens.aide import AideScreen
+
+        if isinstance(self.focused, (Input, TextArea)):
+            return
+        if isinstance(self.screen, AideScreen):
+            return                       # déjà ouvert : `h` le referme
+        self.push_screen(AideScreen())
 
     def action_request_quit(self) -> None:
         """Affiche la modal de confirmation avant de quitter."""

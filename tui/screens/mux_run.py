@@ -13,12 +13,13 @@ from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import Header, Label, ProgressBar, Static
+from textual.widgets import Label, ProgressBar, Static
 
 from core.decision import FileDecision, force_skip_to_encode
 from core.muxer import MuxProcess, build_mux_command, mux_output_path
 
 from ..common import actions_ecran, footer_line2, retour_accueil
+from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 
 
@@ -70,7 +71,7 @@ class MuxScreen(Screen[bool]):
         self._ok       = False
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Entete()
         yield Static("", id="status-bar", classes="status-bar", markup=False)
         with Static(id="mux-body"):
             yield Static("", id="mux-out", markup=False)

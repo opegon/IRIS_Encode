@@ -22,7 +22,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.events import Key
 from textual.screen import Screen
-from textual.widgets import DataTable, Header, Label, ProgressBar, Static
+from textual.widgets import DataTable, Label, ProgressBar, Static
 
 from core import preview
 from core.decision import FileDecision
@@ -39,6 +39,7 @@ from core.sync import (
 from ..common import (actions_ecran, footer_line2, raccourcis, touche,
                       tronquer_milieu, retour_accueil)
 from ..mixins import TableNavMixin
+from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 from .segments import SegmentsScreen
 from .value_picker import ValuePickerScreen
@@ -196,7 +197,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     # ── Composition ───────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Entete()
         yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield DataTable(id="sync-table", cursor_type="row", zebra_stripes=False)
         with Static(id="sync-bar-row"):

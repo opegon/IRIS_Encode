@@ -13,7 +13,7 @@ from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import DataTable, Header, Static
+from textual.widgets import DataTable, Static
 
 from core import config as cfg_mod
 from core.decision import (
@@ -38,6 +38,7 @@ from ..common import (
     get_measured_speed,
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
+from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 from .value_picker import ValuePickerScreen
 
@@ -131,7 +132,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         return self.app  # type: ignore[return-value]
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Entete()
         yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield DataTable(id="dryrun-table", cursor_type="row", zebra_stripes=True)
         yield Static("", id="dryrun-summary")

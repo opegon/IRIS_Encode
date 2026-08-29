@@ -13,7 +13,7 @@ from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import DataTable, Header, Label, ProgressBar, Static
+from textual.widgets import DataTable, Label, ProgressBar, Static
 
 from core.decision import AudioAction, FileDecision, VideoAction
 from core.encoder import (
@@ -29,6 +29,7 @@ from core.platform import PlatformProfile
 from ..common import (actions_ecran, footer_line2, record_measured_speed,
                       retour_accueil)
 from ..mixins import TableNavMixin
+from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 
 
@@ -128,7 +129,7 @@ class RunScreen(TableNavMixin, Screen):
         self._done         = False
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Entete()
         yield Static("", id="run-header-bar", classes="status-bar")
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
         with Static(id="global-bar-row"):

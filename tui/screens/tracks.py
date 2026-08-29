@@ -26,7 +26,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.events import Key
 from textual.screen import Screen
-from textual.widgets import DataTable, Header, Static
+from textual.widgets import DataTable, Static
 
 import core.config as cfg_mod
 from core import dovi
@@ -54,6 +54,7 @@ from ..common import (
     footer_line2,
 )
 from ..mixins import ColumnResizeMixin, TableNavMixin
+from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 from .value_picker import ValuePickerScreen
 
@@ -194,7 +195,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
     # ── Composition ───────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Entete()
         yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield DataTable(id="tracks-table", cursor_type="row",
                         zebra_stripes=False, show_header=True)

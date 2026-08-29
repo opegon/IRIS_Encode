@@ -13,13 +13,14 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import Button, DataTable, Header, Static
+from textual.widgets import Button, DataTable, Static
 
 from core import profiles as prof_mod
 from core.profiles import Profile
 from ..common import (DV_VALUE_STYLES, actions_ecran, footer_line2, raccourcis,
                       retour_accueil)
 from ..mixins import TableNavMixin
+from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 from ..widgets.profile_form import ProfileCancelled, ProfileForm, ProfileSaved
 
@@ -70,7 +71,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         return self.app  # type: ignore[return-value]
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Entete()
         yield Static("", id="config-header-bar", classes="status-bar", markup=False)
         yield DataTable(id="profile-table", cursor_type="row", zebra_stripes=True)
         yield ProfileForm(id="form-container", classes="hidden")

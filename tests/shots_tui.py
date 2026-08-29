@@ -113,6 +113,7 @@ async def context_real() -> None:
             ("03-profile-picker", "Choix du profil (F4)",     "f4",  "ProfilePickerScreen"),
             ("04-config",         "Gestion des profils (F5)", "f5",  "ConfigScreen"),
             ("05-quit",           "Confirmation de sortie",   "f10", "QuitConfirmScreen"),
+            ("22-aide",           "Guide des touches (H)",    "h",   "AideScreen"),
         ):
             try:
                 await pilot.press(key)

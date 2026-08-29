@@ -62,3 +62,7 @@ _shots/
 # Scripts de diagnostic ponctuels, ecrits pour une investigation puis gardes
 # sous la main. Ils ne decrivent pas le produit.
 _*.py
+
+# Instructions de projet pour Claude Code : aide-memoire local, pas un
+# document du produit. Retire du depot et de son historique le 2026-08-29.
+CLAUDE.md

@@ -128,3 +128,32 @@ def test_les_planchers_ont_une_seule_source():
             assert ecran.RESIZE_MIN.get(col) == mini, (
                 f"{ecran.__name__} : plancher {col} désynchronisé"
             )
+
+
+def test_le_collage_reprend_la_largeur_de_nom_de_laccueil(monkeypatch):
+    """La colonne « Fichier » du collage ne se règle pas séparément.
+
+    Elle montre les mêmes fichiers que l'accueil : une largeur figée plus
+    étroite y tronquait des noms qui se lisent entiers là-bas. Elle suit donc
+    la largeur que l'accueil expose au redimensionnement — élargie à la main,
+    le collage en profite au prochain passage.
+    """
+    from core import config as cfg_mod
+    from tui.screens.join import JoinScreen
+
+    ecran = JoinScreen.__new__(JoinScreen)     # sans monter l'application
+
+    def _app_factice(cfg):
+        # `app` est une propriété en lecture seule côté Textual.
+        monkeypatch.setattr(JoinScreen, "app",
+                            property(lambda self: cfg), raising=False)
+
+    _app_factice(type("App", (), {"cfg": {
+        "tui": {"browser": {"columns": {"fichier": 72}}}}})())
+    assert ecran._largeur_fichier() == 72
+
+    # Sans configuration lisible, le défaut de l'accueil fait foi — jamais une
+    # valeur écrite en dur dans l'écran.
+    _app_factice(type("App", (), {})())
+    assert (ecran._largeur_fichier()
+            == cfg_mod.get_column_widths({})["fichier"])

@@ -146,6 +146,7 @@ _GUIDE = Path(__file__).resolve().parent.parent / "GUIDE.md"
 # Les tables de touches du guide, par écran documenté.
 _TABLES_GUIDE = {
     "2.1": ("tui.screens.browser", "BrowserScreen"),
+    "2.1bis": ("tui.screens.join", "JoinScreen"),
     "2.2": ("tui.screens.tracks",  "TracksScreen"),
     "2.4": ("tui.screens.sync",    "SyncScreen"),
     "2.5": ("tui.screens.dryrun",  "DryrunScreen"),

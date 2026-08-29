@@ -22,14 +22,15 @@ from tui.common import _TOUCHES_BANDE_2, actions_ecran, footer_line2
 from tui.screens.browser import BrowserScreen
 from tui.screens.config import ConfigScreen
 from tui.screens.dryrun import DryrunScreen
+from tui.screens.join import JoinScreen
 from tui.screens.mux_run import MuxScreen
 from tui.screens.run import RunScreen
 from tui.screens.sync import SyncScreen
 from tui.screens.tracks import TracksScreen
 from tui.screens.wizard import WizardScreen, _TOUCHES_ETAPE
 
-_ECRANS = [BrowserScreen, ConfigScreen, DryrunScreen, MuxScreen, RunScreen,
-           SyncScreen, TracksScreen, WizardScreen]
+_ECRANS = [BrowserScreen, ConfigScreen, DryrunScreen, JoinScreen, MuxScreen,
+           RunScreen, SyncScreen, TracksScreen, WizardScreen]
 
 
 def _declarees(classe) -> set[str]:
@@ -84,7 +85,8 @@ def _nav_de_lecran(module: str) -> list[tuple[str, str]]:
 
 _MODULES = {
     "BrowserScreen": "browser", "ConfigScreen": "config",
-    "DryrunScreen": "dryrun",   "MuxScreen": "mux_run",
+    "DryrunScreen": "dryrun",   "JoinScreen": "join",
+    "MuxScreen": "mux_run",
     "RunScreen": "run",         "SyncScreen": "sync",
     "TracksScreen": "tracks",   "WizardScreen": "wizard",
 }
@@ -160,6 +162,6 @@ def test_laccueil_annonce_ses_touches_malgre_sa_liste_explicite():
             | {k for k, _ in footer_line2(
                 nav=False, resize=True,
                 extra=(("f1", ""), ("f2", ""), ("f3", ""), ("f4", ""),
-                       ("f5", ""), ("f7", ""), ("f8", "")))})
+                       ("f5", ""), ("f6", ""), ("f7", ""), ("f8", "")))})
     manquantes = _declarees(BrowserScreen) - pied
     assert not manquantes, f"touches visibles absentes du pied de page : {manquantes}"

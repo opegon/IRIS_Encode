@@ -897,6 +897,99 @@ async def scenario_accueil() -> None:
             await pilot.pause(0.3)
 
 
+async def scenario_collage() -> None:
+    """F6 : recoudre les parties d'un film, puis les travailler comme un tout.
+
+    Le point de chute est le dernier assert : le fichier colle doit reapparaitre
+    dans l'accueil avec une decision, sinon le collage n'aurait servi a rien.
+    """
+    with tempfile.TemporaryDirectory() as td_str:
+        td = Path(td_str)
+        if not _make_test_videos(td, 3):
+            print("[19] SKIP : ffmpeg introuvable, scenario collage non joue")
+            return
+        # part10 est nomme pour piegier un tri alphabetique, qui le placerait
+        # entre part1 et part2.
+        for src, dst in (("clip0.mkv", "Film part2.mkv"),
+                         ("clip1.mkv", "Film part10.mkv"),
+                         ("clip2.mkv", "Film part1.mkv")):
+            (td / src).rename(td / dst)
+
+        app = IrisEncodeApp(start_path=td)
+        async with app.run_test(size=(140, 40)) as pilot:
+            await pilot.pause(0.5)
+            from tui.screens.browser import BrowserScreen
+            app.push_screen(BrowserScreen(td, start_virtual=False))
+            await pilot.pause(4.0)
+
+            # F6 sans parties cochees : refus, sans quitter l'accueil.
+            await pilot.press("f6")
+            await pilot.pause(0.4)
+            assert type(app.screen).__name__ == "BrowserScreen", \
+                type(app.screen).__name__
+            print("[19] F6 sans parties cochees : refus, on reste a l'accueil")
+
+            await pilot.press("a")           # coche les trois
+            await pilot.pause(0.3)
+            await pilot.press("f6")
+            await pilot.pause(0.8)
+            assert type(app.screen).__name__ == "JoinScreen", \
+                type(app.screen).__name__
+            join = app.screen
+            noms = [i.path.name for i in join._infos]
+            assert noms == ["Film part1.mkv", "Film part2.mkv",
+                            "Film part10.mkv"], noms
+            assert join._output.name == "Film_[join].mkv", join._output.name
+            # La colonne du nom suit celle de l'accueil : une largeur figee
+            # plus etroite tronquait des noms lisibles la-bas.
+            from core import config as cfg_mod
+            attendue = cfg_mod.get_column_widths(app.cfg)["fichier"]
+            largeurs = [c.width for c in
+                        join.query_one(DataTable).columns.values()]
+            assert largeurs[1] == attendue, (largeurs, attendue)
+            print(f"[19b] JoinScreen : ordre naturel {noms} -> "
+                  f"{join._output.name}, colonne nom {attendue}")
+
+            # Ctrl+bas doit traverser le DataTable focalise (cf. tui/mixins.py).
+            table = join.query_one(DataTable)
+            table.move_cursor(row=0)
+            await pilot.press("ctrl+down")
+            await pilot.pause(0.4)
+            assert [i.path.name for i in join._infos][0] == "Film part2.mkv", \
+                [i.path.name for i in join._infos]
+            assert table.cursor_row == 1, table.cursor_row
+            await pilot.press("ctrl+up")     # remis dans l'ordre naturel
+            await pilot.pause(0.4)
+            assert [i.path.name for i in join._infos][0] == "Film part1.mkv"
+            print("[19c] Ctrl+haut/bas deplacent la partie, curseur au pas")
+
+            from core import config as cfg_mod
+            from core.preflight import get_tool_path
+            if not get_tool_path("mkvmerge", cfg_mod.get_bin_dir(cfg_mod.load())):
+                print("[19d] SKIP : mkvmerge introuvable, collage reel non joue")
+                return
+
+            await pilot.press("f2")
+            for _ in range(20):              # le collage de 3 clips d'1 s est bref
+                await pilot.pause(0.5)
+                if join._done:
+                    break
+            assert join._done and join._ok, \
+                join.query_one("#join-state", Static).render()
+            assert join._output.exists(), join._output
+            print(f"[19d] Collage reel : {join._output.name} ecrit")
+
+            # Le retour a l'accueil doit faire apparaitre le fichier colle,
+            # scanne et decide comme n'importe quel autre.
+            await pilot.press("backspace")
+            await pilot.pause(4.0)
+            assert type(app.screen).__name__ == "BrowserScreen", \
+                type(app.screen).__name__
+            noms_vus = {p.name for p in app.screen._decisions}
+            assert "Film_[join].mkv" in noms_vus, noms_vus
+            print("[19e] Le fichier colle revient a l'accueil, decide comme les autres")
+
+
 async def main() -> None:
     await scenario_navigation()
     await scenario_parallel_scan()
@@ -904,6 +997,7 @@ async def main() -> None:
     await scenario_measure()
     await scenario_wizard()
     await scenario_accueil()
+    await scenario_collage()
     print("SMOKE OK")
 
 

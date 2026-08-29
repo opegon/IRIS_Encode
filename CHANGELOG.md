@@ -1,5 +1,69 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.7.1] — 2026-08-29
+
+### Coller les parties d'un film avant de l'encoder (`F6`)
+
+Un film livré en `part1` / `part2` n'était pas traitable : chaque partie prise
+seule sortait de son côté, avec sa propre décision, et l'application produisait
+deux fichiers là où il en faut un. `F6` sur les fichiers cochés les recoud
+d'abord ; le fichier produit se travaille ensuite comme n'importe quel autre.
+
+**`core/joiner.py`** — mkvmerge en mode `append` (`part1 + part2`), qui recale
+les horodatages de chaque partie sur la fin de la précédente. Aucun
+réencodage : c'est une copie disque. Le démultiplexeur `concat` de ffmpeg a été
+écarté — il exige des paramètres de flux strictement identiques et gère mal les
+pistes multiples.
+
+**L'ordre est la seule chose qu'on ne peut pas deviner sans risque.** Deux
+parties inversées donnent un fichier de la *bonne durée*, donc faux sans que
+rien ne le signale. Il est déduit des noms — avec les nombres comptés comme des
+nombres, `part10` après `part2` et non entre `part1` et `part2` — puis
+**montré** dans un tableau, et corrigeable par `Ctrl+↑/↓` avant de lancer.
+
+**L'appariement est contrôlé avant la copie**, pas au bout de 30 Go. mkvmerge
+distingue deux niveaux de refus, l'écran aussi : un codec vidéo, une définition
+ou un format audio différents **bloquent** ; une piste audio ou de sous-titres
+en trop se contente d'une **réserve** annoncée, mkvmerge n'appariant que les
+rangs communs. Confondre les deux, c'est soit refuser un collage possible, soit
+laisser produire un fichier amputé sans le dire — la leçon d'IE-52.
+
+**La durée du fichier produit est comparée à la somme des parties.** Un
+mkvmerge tué en cours de route laisse un fichier lisible et court, qui passerait
+sinon pour un collage réussi : c'est le piège d'IE-41, où un ffmpeg mort passait
+pour un film court.
+
+Détails :
+
+- Suffixe `_[join]`, **absent de `SUFFIX_BY_ACTION`** comme `_[mux]` et pour une
+  raison plus forte : un fichier collé n'existe que pour être encodé ensuite.
+  L'écarter du scan viderait la fonction de son objet.
+- Nom déduit du préfixe commun aux parties, marqueur de numérotation retiré —
+  `Film part1.mkv` + `Film part2.mkv` donnent `Film_[join].mkv`.
+- **Rien n'est effacé** : les parties sont conservées, et le collage refuse
+  d'écraser un fichier existant. `Ctrl+D` reste le seul geste qui supprime.
+- L'écran s'arrête au fichier produit, sans enchaîner sur le dry-run comme le
+  fait l'écran de mux : `⌫` le retrouve dans le navigateur, où toutes les
+  touches valent pour lui comme pour les autres. C'était la demande — « après
+  on le travaille normalement comme un autre ».
+- La colonne du nom de fichier **reprend la largeur réglée sur l'accueil** :
+  l'écran montre les mêmes fichiers, et une largeur propre — elle était figée à
+  46 — y tronquait des noms qui se lisent entiers dans le navigateur.
+- Exécution et progression reprises de `muxer.MuxProcess` : mkvmerge écrit la
+  même sortie `#GUI#progress` qu'au mux, il n'y avait pas de second runner à
+  écrire.
+
+**Documentation** — spec § 9bis (module) et § 14.5bis (écran), `GUIDE.md`
+§ 2.1bis, README § 4 et § 8. Le nouvel écran entre aussi dans le guide embarqué
+(`H`), où les tests d'IE-30 l'attendaient : une touche déclarée doit être
+expliquée et annoncée.
+
+**30 tests dédiés** (`tests/test_collage.py`, plus la largeur de
+colonne dans `tests/test_colonnes.py`), plus l'invariant de pied de page
+et les tables du guide étendus au nouvel écran, et un scénario de smoke qui colle
+trois clips réels : il vérifie l'ordre naturel, le réordonnancement, et le retour
+du fichier collé dans l'accueil. **814 tests**, smoke TUI vert.
+
 ## [v0.8.7.0] — 2026-08-29
 
 **Release.** Rassemble 0.8.6.1 et 0.8.6.2, et met la documentation au niveau du

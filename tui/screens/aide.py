@@ -85,6 +85,12 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                                "courant, selon le profil actif.",
         "open_profile_picker": "Change le profil actif.",
         "open_config":         "Gère les profils : créer, éditer, supprimer.",
+        "join_parts":          "Colle les fichiers cochés bout à bout en un "
+                               "seul, sans réencoder — un film livré en part1 / "
+                               "part2. L'ordre proposé vient des noms et se "
+                               "corrige avant de lancer. Le fichier produit "
+                               "porte « _[join] » et s'encode ensuite comme "
+                               "n'importe quel autre.",
         "open_allocine":       "Cherche la fiche AlloCiné du fichier.",
         "open_imdb":           "Cherche la fiche IMDB du fichier.",
     },
@@ -173,6 +179,18 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "encode":  "Encode le fichier produit par le mux.",
         "go_back": "Revient à l'écran précédent.",
     },
+    "JoinScreen": {
+        "monter":    "Fait monter d'un rang la partie sous le curseur. C'est "
+                     "l'ordre du tableau qui sera collé — le vérifier avant de "
+                     "lancer : deux parties inversées donnent un fichier de la "
+                     "bonne durée, et faux.",
+        "descendre": "Fait descendre d'un rang la partie sous le curseur.",
+        "coller":    "Lance le collage. Refusé si les parties ne s'apparient "
+                     "pas — codec vidéo, définition ou format audio "
+                     "différents — ou si le fichier de sortie existe déjà.",
+        "go_back":   "Revient à l'accueil. Un collage en cours est interrompu "
+                     "et son fichier partiel effacé.",
+    },
     "ConfigScreen": {
         "activate":       "Rend actif le profil sous le curseur.",
         "new_profile":    "Crée un profil.",
@@ -213,6 +231,8 @@ _ORDRE: list[tuple[str, str, str]] = [
      "L'encodage en cours."),
     ("MuxScreen", "Mux",
      "Le mux en cours, et ce qu'on peut en faire ensuite."),
+    ("JoinScreen", "Collage",
+     "Recoudre les parties d'un même film en un seul fichier."),
     ("ConfigScreen", "Profils",
      "Créer et régler les profils d'encodage."),
 ]
@@ -223,14 +243,15 @@ def classes_documentees() -> dict[str, type]:
     from .browser import BrowserScreen
     from .config import ConfigScreen
     from .dryrun import DryrunScreen
+    from .join import JoinScreen
     from .mux_run import MuxScreen
     from .run import RunScreen
     from .sync import SyncScreen
     from .tracks import TracksScreen
     from .wizard import WizardScreen
     return {c.__name__: c for c in (BrowserScreen, ConfigScreen, DryrunScreen,
-                                    MuxScreen, RunScreen, SyncScreen,
-                                    TracksScreen, WizardScreen)}
+                                    JoinScreen, MuxScreen, RunScreen,
+                                    SyncScreen, TracksScreen, WizardScreen)}
 
 
 def _lisible(touches: str) -> str:

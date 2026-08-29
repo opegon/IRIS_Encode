@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.7.0
+**Version** : 0.8.7.1
 **Date** : 2026-08-29
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -103,6 +103,7 @@ d'après le profil actif.
 | `F1` / `F2` | Dry-run / Encoder la sélection |
 | `F3` | Encoder récursivement le dossier sous le curseur |
 | `F4` / `F5` | Choisir un profil / gérer les profils |
+| `F6` | **Coller** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
 | `F7` / `F8` | Fiche AlloCiné / IMDB |
 | `Tab` / `Maj+Tab` | Colonne suivante / précédente |
 | `<` / `>` | Rétrécir / élargir la colonne choisie (largeurs mémorisées) |
@@ -119,12 +120,67 @@ venez de produire « manque » dans le navigateur, c'est cela — il est bien l�
 sur le disque.
 
 Un `_[mux]` fait exception et **reste visible** : ce n'est pas un encodage mais
-une greffe de pistes, et l'encoder ensuite est un enchaînement normal.
+une greffe de pistes, et l'encoder ensuite est un enchaînement normal. Un
+`_[join]` aussi, et pour une raison plus forte encore : un fichier collé
+n'existe que pour être encodé ensuite (§ 2.1bis).
 
 > Avant la v0.8.5.1, seuls `_[hevc]` et `_[H264]` étaient reconnus. Une sortie
 > AV1 reparaissait donc dans la liste, et comme l'AV1 n'est pas un codec que la
 > chaîne sait relire, elle était classée « à réencoder en HEVC » — avec, sur un
 > profil `⚠ suppr.`, l'effacement de l'AV1 d'origine.
+
+### 2.1bis Collage — recoudre un film livré en parties
+
+Un film en `part1` / `part2` ne s'encode pas tel quel : chaque partie prise
+seule sortirait de son côté, et vous auriez deux fichiers là où il en faut un.
+`F6`, sur l'accueil, recoud d'abord — ensuite le fichier se travaille comme
+n'importe quel autre.
+
+**Cocher les parties avec `Espace`** (deux au minimum), puis `F6`.
+
+| Touche | Action |
+|---|---|
+| `Ctrl+↑` / `Ctrl+↓` | Déplacer d'un rang la partie sous le curseur |
+| `F2` | Lancer le collage |
+| `⌫` | Retour à l'accueil — un collage en cours est interrompu et son fichier partiel effacé |
+
+**L'ordre est la seule chose à vérifier.** Il est déduit des noms, et les
+nombres y comptent comme des nombres : `part10` arrive bien après `part2`, là
+où un tri alphabétique le glisserait entre `part1` et `part2`. Le tableau est
+ce qui sera collé — s'il est faux, `Ctrl+↑/↓` le corrigent. Deux parties
+inversées produisent un fichier de la **bonne durée**, donc faux sans que rien
+ne vous le signale.
+
+La colonne **Collage** dit, ligne par ligne, si la partie s'apparie sur la
+première :
+
+| Ce qui s'affiche | Ce que ça veut dire |
+|---|---|
+| **référence** | La première partie. C'est elle qui donne au fichier produit ses codecs, sa définition et son jeu de pistes |
+| **✓** | Elle s'y colle sans rien perdre |
+| **✓ avec réserve** | Elle s'y colle, mais elle porte plus (ou moins) de pistes audio ou de sous-titres : seuls les rangs communs survivront. Le détail s'affiche sous le tableau |
+| **✗ incompatible** | Codec vidéo, définition ou format audio différents — `F2` est refusé |
+
+La colonne du nom de fichier est aussi large que celle de l'accueil : si vous
+l'y avez élargie (`Tab` puis `>`), le collage en profite.
+
+Le collage **ne réencode rien** : mkvmerge recale les horodatages de chaque
+partie sur la fin de la précédente. C'est une copie disque — comptez le temps
+d'écrire la somme des parties, et prévoyez la place, les originaux restant en
+place.
+
+**Rien n'est effacé.** Les parties sont conservées ; `Ctrl+D` sur l'accueil
+reste le seul geste qui supprime. Le fichier produit s'appelle
+`<nom commun>_[join].mkv` — `Film part1.mkv` + `Film part2.mkv` donnent
+`Film_[join].mkv` — et le collage refuse d'écraser un fichier existant.
+
+À la fin, l'écran compare la durée obtenue à la somme des parties. Un écart
+est annoncé plutôt que passé sous silence : un mkvmerge interrompu laisse un
+fichier lisible et **court**, qui passerait sinon pour un collage réussi.
+
+`⌫` ramène à l'accueil, où le fichier collé apparaît avec sa décision — à
+partir de là, `F1`, `F2`, `T` et le reste valent pour lui comme pour les
+autres.
 
 ### 2.2 Pistes — choisir ce qu'on garde
 

@@ -137,6 +137,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("f3",        "recursive_run",      "Récursif", show=True),
         Binding("f4",        "open_profile_picker","Profil",   show=True),
         Binding("f5",        "open_config",        "Gérer", show=True),
+        Binding("f6",        "join_parts",         "Coller",   show=True),
         Binding("f7",        "open_allocine",      "AlloCiné", show=True),
         Binding("f8",        "open_imdb",          "IMDB",     show=True),
     ]
@@ -217,6 +218,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                     ("f3", "Récursif"),
                     ("f4", "Profil"),
                     ("f5", "Gérer"),
+                    ("f6", "Coller"),
                     ("f7", "AlloCiné"),
                     ("f8", "IMDB"),
                 ),
@@ -318,7 +320,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             pied.update_line(2, footer_line2(
                 nav=False, resize=True,
                 extra=(("f1", "Dry-run"), ("f2", "Run"), ("f3", "Récursif"),
-                       ("f4", "Profil"), ("f5", "Gérer"),
+                       ("f4", "Profil"), ("f5", "Gérer"), ("f6", "Coller"),
                        ("f7", "AlloCiné"), ("f8", "IMDB"))))
 
     def _refresh_view(self) -> None:
@@ -877,6 +879,35 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
         from .run import RunScreen
         self.app.push_screen(RunScreen(decisions, self._app.platform))
+
+    # ─── Collage de parties (F6) ──────────────────────────────────────────────
+
+    def action_join_parts(self) -> None:
+        """Recoud les fichiers cochés en un seul, à encoder ensuite normalement.
+
+        Les décisions sont déjà en mémoire : l'écran de collage n'a pas à
+        rescanner, il lui faut seulement les `VideoInfo` des parties.
+        """
+        from core.joiner import MIN_PARTIES
+
+        infos = [self._decisions[p].info
+                 for p in self._selected if p in self._decisions]
+        if len(infos) < MIN_PARTIES:
+            self.app.bell()
+            self._flash_status(
+                f"Collage : cocher au moins {MIN_PARTIES} parties (ESPACE).")
+            return
+
+        from .join import JoinScreen
+
+        def _apres_collage(ok: bool | None) -> None:
+            if ok:
+                # Le fichier produit n'est pas dans la table : le dossier est
+                # relu pour qu'il s'y travaille comme les autres.
+                self._selected.clear()
+                self._refresh_view()
+
+        self.app.push_screen(JoinScreen(infos), _apres_collage)
 
     def action_open_config(self) -> None:
         from .config import ConfigScreen

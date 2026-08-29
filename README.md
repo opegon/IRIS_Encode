@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.7.0 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.7.1 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`.
@@ -227,7 +227,7 @@ désactive une fonction, elle ne bloque jamais le lancement.
 | Outil | Nécessaire pour | Taille |
 |---|---|---|
 | `dovi_tool` | contenus **Dolby Vision** (probe RPU, métadonnées HDR10) | ~2 Mo |
-| `mkvmerge` | **greffe de pistes externes** (VF, sous-titres) et extraits de contrôle | ~22 Mo |
+| `mkvmerge` | **greffe de pistes externes** (VF, sous-titres), **collage de parties** (`F6`) et extraits de contrôle | ~22 Mo |
 | `mpv` | **visualisation** d'un fichier ou d'un recalage | ~50 Mo |
 
 ### Option A — Installation automatique (recommandée)
@@ -385,6 +385,7 @@ dolby_vision       = "hdr"
 | `F3` | Run récursif (dossier sélectionné + tous ses sous-dossiers) |
 | `F4` | Changer de profil d'encodage |
 | `F5` | Gérer les profils (créer `N`, éditer `E`, supprimer `D`) |
+| `F6` | Coller les fichiers sélectionnés bout à bout en un seul (`part1` + `part2`) |
 | `F7` | Recherche AlloCiné (métadonnées film/série) |
 | `F8` | Recherche IMDB (métadonnées film/série) |
 | `Tab` / `Shift+Tab` | Colonne suivante / précédente (redimensionnement) |

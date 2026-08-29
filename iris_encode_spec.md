@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.7.0 — document de référence courant
+**Version** : 0.8.7.1 — document de référence courant
 **Date** : 2026-08-29
 **Statut** : stable
 
@@ -52,6 +52,7 @@ iris_encode/
 │   ├── encoder.py                ← construction commande ffmpeg + exécution
 │   ├── dovi.py                   ← wrapper dovi_tool (probe, RPU, x265-params HDR10)
 │   ├── muxer.py                  ← wrapper mkvmerge (identify, mux, extrait)
+│   ├── joiner.py                 ← collage bout à bout de plusieurs parties
 │   ├── sync.py                   ← mesure de décalage par corrélation croisée
 │   ├── preview.py                ← lancement mpv (visualisation)
 │   └── meta.py                   ← recherche métadonnées IMDB / AlloCiné
@@ -65,6 +66,7 @@ iris_encode/
 │   │   ├── donor_picker.py       ← choix du fichier donneur + de ses pistes
 │   │   ├── sync.py               ← recalage des pistes externes
 │   │   ├── mux_run.py            ← exécution mkvmerge + progression
+│   │   ├── join.py               ← ordre des parties + collage + progression
 │   │   ├── dryrun.py             ← prévisualisation décisions
 │   │   ├── run.py                ← encodage + progression
 │   │   ├── config.py             ← gestion profils (CRUD)
@@ -88,6 +90,7 @@ iris_encode/
 │   ├── test_deps.py              ← cohérence des listes de dépendances
 │   ├── test_dovi.py
 │   ├── test_muxer.py
+│   ├── test_collage.py
 │   ├── test_preview.py
 │   ├── test_sync.py
 │   └── test_updates.py
@@ -823,6 +826,77 @@ ne s'appliquent plus.
 
 ---
 
+## 9bis. Collage de parties — `core/joiner.py`
+
+Un film livré en `part1` / `part2` n'est pas encodable tel quel : chaque partie prise
+seule produirait sa propre sortie, et le profil déciderait deux fois au lieu d'une. Le
+collage recoud les parties en un fichier unique, **avant** toute décision.
+
+Numérotation `9bis` pour ne pas renuméroter les sections suivantes — même convention
+que le `1bis` du `GUIDE.md`.
+
+### 9bis.1 Décisions structurantes
+
+| Choix | Raison |
+|---|---|
+| **mkvmerge en mode `append`** (`fichier1 + fichier2`) | Sans réencodage : il recale les horodatages de chaque partie sur la fin de la précédente. Le démultiplexeur `concat` de ffmpeg exige des paramètres de flux strictement identiques et gère mal les pistes multiples. |
+| **Suffixe `_[join]`, absent de `SUFFIX_BY_ACTION`** | Le fichier collé est une *entrée* de travail, pas une sortie d'encodage : le scan doit continuer à le voir (§ 15.2). L'écarter comme `_[hevc]` rendrait le collage inutile. |
+| **Contrôle avant lancement** | mkvmerge refuse d'apparier des pistes qui ne se correspondent pas. L'apprendre au bout d'une copie de 30 Go n'est pas une option. |
+| **Ordre montré et corrigeable** | Deux parties inversées donnent un fichier de la **bonne durée**, donc faux sans que rien ne le signale. C'est la seule chose que le collage ne peut pas deviner sans risque. |
+| **Les parties sont conservées** | Le collage n'efface rien. `Ctrl+D` reste le seul geste qui supprime. |
+
+### 9bis.2 API du module
+
+| Fonction | Rôle |
+|---|---|
+| `ordre_naturel(parts)` | Tri où les nombres comptent comme des nombres : `part1 < part2 < part10`. Clé faite de tuples homogènes, jamais un `int` face à une `str`. |
+| `nom_commun(parts)` | Nom du tout, déduit du préfixe commun, marqueur de numérotation retiré (`part`, `CD`, `pt`, `disque`, `vol`, `tome`…). `Film part1` + `Film part2` → `Film`. |
+| `join_output_path(parts)` | `<nom commun>_[join].mkv`, dans le dossier des parties. |
+| `controler(infos)` | Rend un `Controle(blocages, avertissements)` — voir 9bis.3. |
+| `build_join_command(parts, out)` | La commande mkvmerge. Lève `ValueError` sur moins de deux parties, une partie en double, ou une sortie qui écrase une partie. |
+| `duree_attendue(infos)` | Somme des durées des parties. |
+| `derive_duree(attendue, obtenue)` | L'écart, s'il dépasse le bruit d'arrondi (2 s ou 1 %). |
+
+L'exécution réutilise `muxer.MuxProcess` : mkvmerge écrit la même progression
+`#GUI#progress` qu'au mux, il n'y avait pas de second runner à écrire.
+
+### 9bis.3 Deux niveaux de refus
+
+mkvmerge lui-même en a deux, et les confondre serait soit refuser un collage possible,
+soit laisser produire un fichier amputé sans le dire (même leçon qu'IE-52) :
+
+- **Blocages** — le collage est refusé : codec vidéo différent, définition différente,
+  codec ou nombre de canaux différent sur une piste audio appariée.
+- **Avertissements** — le collage est possible, avec une perte annoncée : une partie
+  porte plus (ou moins) de pistes audio ou de sous-titres que la référence, et mkvmerge
+  n'appariera que les rangs communs.
+
+**La première partie est la référence** : c'est elle qui donne au fichier produit ses
+codecs, sa définition et son jeu de pistes.
+
+### 9bis.4 Commande type
+
+```
+mkvmerge --gui-mode -o "D:/films/Film_[join].mkv"
+         "D:/films/Film part1.mkv" + "D:/films/Film part2.mkv"
+```
+
+Le `+` est ce qui distingue un collage d'un mux : sans lui, mkvmerge **superposerait**
+les pistes au lieu de les enchaîner.
+
+### 9bis.5 Après le collage
+
+La durée du fichier produit est relue et comparée à la somme des parties. Un mkvmerge
+tué en cours de route laisse un fichier lisible et court : sans ce contrôle, il passerait
+pour un collage réussi — le piège d'IE-41, où un ffmpeg mort passait pour un film court.
+Un écart au-delà de 2 s ou 1 % est annoncé, le fichier n'est pas effacé.
+
+L'écran n'enchaîne **pas** sur le dry-run ou l'encodage comme `MuxScreen` le fait
+(§ 9.7) : le fichier recousu est une entrée ordinaire, et `Backspace` le retrouve dans
+le navigateur, où toutes les touches valent pour lui comme pour les autres.
+
+---
+
 ## 10. Mesure du décalage — `core/sync.py`
 
 Corrélation croisée par FFT (numpy), en Python pur — ffmpeg est déjà présent pour le
@@ -1380,7 +1454,7 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 │[x] │ 🎬 film3.avi   │   2,3 Go │ 1280x720  │ 0:52:00 │  3200k  │  vp9    │  —         │  → H264    │ 1,2 Go (−48%) │     0:04:51    │ AC3 5.1     │
 ├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ Space Sélect  a Tout  n Aucun  Enter Ouvrir  v Visualiser  Ctrl+D Supprimer  Back Remonter  Home Début  End Fin  PgUp/PgDn                        │
-│ F1 Dry-run  F2 Run  F3 Récursif  F4 Profil  F5 Gérer profils  F7 AlloCiné  F8 IMDB  Sh+Tab/Tab Col  < Rétrécir  > Élargir  F10 Quitter            │
+│ F1 Dry-run  F2 Run  F3 Récursif  F4 Profil  F5 Gérer  F6 Coller  F7 AlloCiné  F8 IMDB  Sh+Tab/Tab Col  < Rétrécir  > Élargir  F10 Quitter         │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1401,6 +1475,7 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 | `F3` | dossier | Run récursif |
 | `F4` | — | Choisir le profil actif |
 | `F5` | — | Gérer les profils |
+| `F6` | sélection | **Coller les parties cochées** en un fichier unique (§ 9bis) |
 | `F7` / `F8` | fichier | AlloCiné / IMDB |
 | `F10` | — | Quitter |
 
@@ -1600,6 +1675,46 @@ Progression lue sur le protocole `--gui-mode` de mkvmerge. À la fin :
 Le fichier muxé devient le fichier de travail (§ 9.7). Une sortie partielle est supprimée
 si le mux échoue.
 
+### 14.5bis Écran Join — collage des parties
+
+Ouvert par `F6` depuis l'accueil, sur les fichiers cochés (deux au minimum). Il ne
+rescanne rien : les `VideoInfo` sont déjà en mémoire côté browser.
+
+```
+┌─ IRIS ENCODE ────────────────────────────────── 14:22 ─┐
+│ Collage — 3 parties ── Film_[join].mkv                  │
+├─ # ─┬─ Fichier ──────────┬─ Durée ─┬─ Pistes ─┬─ Collage ──────┤
+│  1  │ Film part1.mkv     │ 1:04:12 │ V+2A+1S  │ référence      │
+│  2  │ Film part2.mkv     │ 0:58:47 │ V+2A+1S  │ ✓              │
+│  3  │ Film part10.mkv    │ 0:41:03 │ V+2A+0S  │ ✓ avec réserve │
+├─────────────────────────────────────────────────────────────────┤
+│ Durée attendue du tout : 2:44:02                                │
+│ Sortie : Film_[join].mkv                                        │
+│ Collage  ███████████████████████░░░░░░░░░░░░  62%               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Touches
+
+| Touche | Action |
+|---|---|
+| `Ctrl+↑` / `Ctrl+↓` | Déplace la partie sous le curseur d'un rang |
+| `F2` | Lance le collage |
+| `⌫` / `Esc` | Retour. Un collage en cours est interrompu, son fichier partiel effacé |
+| `Ctrl+Début` | Accueil |
+
+L'ordre proposé vient de `ordre_naturel()` ; le tableau est ce qui sera collé. La colonne
+**Collage** dit, partie par partie, si elle s'apparie sur la référence — le détail du
+refus ou de la réserve s'affiche sous le tableau.
+
+**La colonne du nom reprend la largeur réglée sur l'accueil** (`get_column_widths()`,
+clé `fichier`), planchers compris : l'écran montre les mêmes fichiers, une largeur
+propre y tronquerait des noms qui se lisent entiers dans le navigateur. Les autres
+colonnes portent des libellés bornés et gardent une largeur fixe.
+
+`F2` est refusé sur un blocage (§ 9bis.3) ou si le fichier de sortie existe déjà : le
+collage n'écrase jamais rien.
+
 ### 14.6 Écran Dry-run
 
 Prévisualise les décisions de tous les fichiers sélectionnés, sans écriture disque.
@@ -1779,6 +1894,10 @@ en CAS 3 pour proposer de la réencoder en HEVC — sur `basic_delete`, qui a
 une greffe de pistes, et l'encoder ensuite est un geste légitime que l'écarter du scan
 rendrait impossible — le fichier ne serait même pas visible.
 
+`JOIN_SUFFIX` (`_[join]`) en est absent pour la même raison, en plus forte : un fichier
+collé n'existe **que** pour être encodé ensuite (§ 9bis). L'écarter du scan viderait la
+fonction de son objet.
+
 ### 15.3 Enrichissement DV au scan
 
 Si `dovi_tool` est disponible (câblé dans `app.py` via `scanner.set_dovi_path()`), chaque
@@ -1894,6 +2013,8 @@ python -m pytest tests/
 - Timeout ou concurrence sur le mode récursif
 - Pistes externes en traitement par lot (un fichier à la fois)
 - IPC mpv sur named pipe (ajustement en OSD, valeur retapée dans la TUI)
+- Collage de parties aux codecs ou définitions différents : refusé et nommé, jamais
+  rattrapé par un réencodage (§ 9bis.3)
 - Dolby Vision au remux mkvmerge — non vérifié (§ 9.5 piège 8)
 - Suppression de fichier vers la corbeille (`Ctrl+D` supprime définitivement)
 
@@ -1926,6 +2047,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.7.1 | 2026-08-29 | **Collage de parties** (`core/joiner.py`, § 9bis) : `F6` sur les fichiers cochés recoud un film livré en `part1` / `part2` en un `_[join].mkv` unique, par `mkvmerge` en mode append — sans réencodage · ordre déduit des noms (`part10` après `part2`), montré et corrigeable par `Ctrl+↑/↓` avant lancement · appariement des pistes contrôlé **avant** la copie, blocages et réserves distingués (§ 9bis.3) · durée du fichier produit comparée à la somme des parties (§ 9bis.5) · les parties sont conservées |
 | **0.8.7.0** | 2026-08-29 | **Release.** Le raccourci Bureau entre dans le parcours d'installation : README § 5, § 10 et § 11 y renvoient, et le guide s'ouvre désormais sur « comment ouvrir l'application ». Rassemble 0.8.6.1 (guide rattaché au code) et 0.8.6.2 (lanceur `IRIS_Encode.exe`) |
 | 0.8.6.2 | 2026-08-29 | **Raccourci Bureau `IRIS_Encode.exe`** (dossier `launcher/`) : un lanceur d'une trentaine de lignes de C#, compilé sur place par `launcher/build.bat` avec le `csc.exe` livré avec Windows, qui ouvre `launch.bat` dans Windows Terminal (console classique à défaut) · icône versionnée en base64 (`iris.ico.b64`), décodée par `certutil` au build, générée de façon déterministe par `make_icon.py` · aucun binaire versionné · README § 5.1 |
 | 0.8.6.1 | 2026-08-29 | **`GUIDE.md` remis à jour** après la revue de `core/` — il était resté en 0.8.1.23 · correction d'une inversion `<`/`>` · quatre tests rattachent le guide au code : toute touche annoncée doit répondre, et son en-tête suivre `version.py` |

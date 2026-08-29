@@ -14,6 +14,11 @@ premiere execution qui en a besoin.
 Reconstruire l'environnement, si quelque chose s'est mal passe :
   powershell -ExecutionPolicy Bypass -File bootstrap.ps1 -Force
 
+Si Windows annonce "os error 4551" : Smart App Control (actif par defaut sur une
+installation neuve de Windows 11) refuse un binaire sans reputation etablie.
+Installez Python 3.12 depuis python.org - binaires signes - et relancez
+launch.bat, il le prendra. Details : README.md, chapitre 1.4.
+
 Installer Python soi-meme reste possible et n'est pas necessaire :
   https://www.python.org/downloads/   (cocher "Add Python to PATH")
   pip install -r requirements.txt

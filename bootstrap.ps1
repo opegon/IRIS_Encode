@@ -63,8 +63,71 @@ function Test-EnvComplet {
     # Un venv peut exister et lui manquer une dépendance : une installation
     # interrompue laisse exactement cet état. On vérifie ce qui compte —
     # que les modules s'importent — plutôt que la seule présence du dossier.
-    & $VenvPy -c "import textual, rich, requests, tomli_w, bs4, numpy" 2>$null | Out-Null
+    try {
+        & $VenvPy -c "import textual, rich, requests, tomli_w, bs4, numpy" 2>$null | Out-Null
+    } catch {
+        # Un python.exe présent mais que Windows refuse de lancer : c'est l'état
+        # que laisse un venv construit par `uv venv` sur une machine où Smart App
+        # Control est actif (voir § 3). L'environnement est à refaire.
+        return $false
+    }
     return ($LASTEXITCODE -eq 0)
+}
+
+function Executer([string] $exe, [string[]] $arguments) {
+    # Exécute une commande native en gardant sa sortie sous la main : c'est le
+    # texte de l'erreur, et lui seul, qui dira si Windows a bloqué un binaire.
+    # `2>&1` sur une commande native lève une NativeCommandError tant que
+    # ErrorActionPreference vaut Stop et que la commande écrit sur stderr — ce
+    # que uv fait pour sa progression. D'où la bascule, le temps de l'appel.
+    $prealable = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $lignes = & $exe @arguments 2>&1 | ForEach-Object {
+            Write-Host "    $_" -ForegroundColor DarkGray
+            "$_"
+        }
+    } finally {
+        $ErrorActionPreference = $prealable
+    }
+    return @{ Code = $LASTEXITCODE; Sortie = ($lignes -join "`n") }
+}
+
+function Sortir([string] $message, [string] $sortie = '') {
+    Dire $message 'Red'
+    # 4551 est le code que Windows rend quand une politique d'intégrité du code
+    # refuse un exécutable. Smart App Control, actif par défaut sur une
+    # installation neuve de Windows 11, en est la source la plus courante. On
+    # ne conseille que sur cette preuve-là : l'état du registre dirait
+    # seulement que la politique existe, pas qu'elle est en cause ici.
+    # Le numéro seul ne suffit pas comme motif : 4551 peut apparaître dans un
+    # nom de paquet ou une taille. On exige son contexte, ou la phrase même.
+    if ($sortie -match "err(or|eur) 4551|contr[oô]le d.application|control policy") {
+        Write-Host ''
+        Dire "Windows a bloqué l'exécution d'un fichier (erreur 4551)." 'Yellow'
+        Dire "Smart App Control en est la cause la plus probable : il refuse" 'Yellow'
+        Dire "les binaires sans réputation établie. Deux issues :" 'Yellow'
+        Dire "  - installer Python 3.12 depuis python.org (binaires signés)," 'Yellow'
+        Dire "    puis relancer launch.bat : il prendra ce Python-là ;" 'Yellow'
+        Dire "  - désactiver Smart App Control (Sécurité Windows, rubrique" 'Yellow'
+        Dire "    Contrôle des applications et du navigateur). Attention :" 'Yellow'
+        Dire "    la désactivation est définitive, seule une réinstallation" 'Yellow'
+        Dire "    de Windows le réactive." 'Yellow'
+    }
+    exit 1
+}
+
+function Get-InterpreteurGere {
+    # uv range ses interpréteurs sous <install-dir>\cpython-X.Y.Z-<cible>\. On
+    # ne cherche pas plus profond : Lib\venv\scripts\nt\ contient un autre
+    # python.exe, qui est un lanceur et non un interpréteur.
+    $dossiers = @(Get-ChildItem -Path $PyDir -Directory -ErrorAction SilentlyContinue |
+                  Sort-Object LastWriteTime)
+    for ($i = $dossiers.Count - 1; $i -ge 0; $i--) {
+        $py = Join-Path $dossiers[$i].FullName 'python.exe'
+        if (Test-Path $py) { return $py }
+    }
+    Sortir "Interpréteur introuvable sous $PyDir."
 }
 
 # ── 0. Rien à faire ? ─────────────────────────────────────────────────────────
@@ -144,30 +207,43 @@ $env:UV_PYTHON_INSTALL_DIR = $PyDir
 $env:UV_LINK_MODE = 'copy'
 
 Dire "Python $PythonDemande…" 'White'
-& $UvExe python install $PythonDemande
-if ($LASTEXITCODE -ne 0) {
-    Dire "uv n'a pas pu installer Python $PythonDemande." 'Red'
-    exit 1
+$etape = Executer $UvExe @('python', 'install', $PythonDemande)
+if ($etape.Code -ne 0) {
+    Sortir "uv n'a pas pu installer Python $PythonDemande." $etape.Sortie
 }
 
 # ── 3. L'environnement et ses dépendances ─────────────────────────────────────
 
-if ($Force -and (Test-Path $VenvDir)) {
+# On repart d'un dossier vide : on n'arrive ici que si l'environnement manquait
+# ou était incomplet, et un `.venv` à moitié construit se répare mal.
+if (Test-Path $VenvDir) {
     Remove-Item $VenvDir -Recurse -Force
 }
 
+# Le venv est créé par le module `venv` de l'interpréteur, et non par `uv venv`.
+# La raison est Smart App Control, actif par défaut sur une installation neuve
+# de Windows 11 : il refuse les exécutables sans réputation établie. `uv venv`
+# pose dans Scripts\ un trampoline qu'il fabrique à la volée, avec le chemin de
+# la cible embarqué dedans — une empreinte unique par venv, donc aucune
+# réputation possible, donc blocage à la première exécution (erreur 4551). Le
+# module `venv` copie les lanceurs livrés avec la distribution : mêmes octets
+# pour tout le monde, réputation acquise. uv garnit ensuite ce venv comme avant.
+$BasePy = Get-InterpreteurGere
+
 Dire "Environnement .venv…" 'White'
-& $UvExe venv --python $PythonDemande $VenvDir
-if ($LASTEXITCODE -ne 0) {
-    Dire "Création de l'environnement impossible." 'Red'
-    exit 1
+# Le code de retour ne suffit pas : un exécutable que Windows refuse de lancer
+# ne laisse pas de code à lui, et `$LASTEXITCODE` garde alors sa valeur
+# précédente. On vérifie que le fichier attendu est là.
+$etape = Executer $BasePy @('-m', 'venv', $VenvDir)
+if ($etape.Code -ne 0 -or -not (Test-Path $VenvPy)) {
+    Sortir "Création de l'environnement impossible." $etape.Sortie
 }
 
 Dire "Dépendances (requirements.txt)…" 'White'
-& $UvExe pip install --python $VenvPy -r (Join-Path $Racine 'requirements.txt')
-if ($LASTEXITCODE -ne 0) {
-    Dire "Installation des dépendances impossible." 'Red'
-    exit 1
+$etape = Executer $UvExe @('pip', 'install', '--python', $VenvPy,
+                           '-r', (Join-Path $Racine 'requirements.txt'))
+if ($etape.Code -ne 0) {
+    Sortir "Installation des dépendances impossible." $etape.Sortie
 }
 
 # ── 4. Vérifier plutôt que déduire ────────────────────────────────────────────
@@ -176,8 +252,7 @@ if ($LASTEXITCODE -ne 0) {
 # leçon de `pistes_audio_vides`, et elle vaut ici aussi. On importe.
 if (-not (Test-EnvComplet)) {
     Dire "L'environnement s'est construit mais une dépendance manque à l'appel." 'Red'
-    Dire "Relancez avec -Force, ou signalez le cas." 'Yellow'
-    exit 1
+    Sortir "Relancez avec -Force, ou signalez le cas."
 }
 
 $v = (& $VenvPy --version) -join ''

@@ -132,6 +132,23 @@ powershell -ExecutionPolicy Bypass -File bootstrap.ps1 -Force
 `-Force` reconstruit `.venv` de zéro. Sans lui, le script constate et ne
 retélécharge rien : il est fait pour être relancé sans conséquence.
 
+### 1.4 Si Windows bloque un fichier (erreur 4551)
+
+Sur une installation *propre* de Windows 11, **Smart App Control** est actif par
+défaut. Il refuse d'exécuter les binaires dont la réputation n'est pas établie,
+et le signale par `os error 4551`. `bootstrap.ps1` reconnaît ce blocage et le
+nomme.
+
+Depuis la v0.8.4.2 il ne devrait plus le rencontrer : le `.venv` est construit
+par le module `venv` de l'interpréteur, dont le lanceur est un fichier connu.
+S'il survient malgré tout, deux issues :
+
+- **installer Python 3.12 depuis python.org** (chapitre 2) : ces binaires sont
+  signés par la Python Software Foundation, et `launch.bat` les retiendra ;
+- **désactiver Smart App Control** — *Sécurité Windows* → *Contrôle des
+  applications et du navigateur*. À savoir avant de le faire : la désactivation
+  est **définitive**, seule une réinstallation de Windows le réactive.
+
 ---
 
 ## 2. Installer Python à la main (facultatif)
@@ -383,6 +400,7 @@ IRIS ENCODE utilise Textual pour son interface graphique TUI. Le rendu dépend d
 | Encodage lent | Pas de GPU NVIDIA détecté | Normal — encodage CPU activé automatiquement |
 | `dovi_tool introuvable` | Optionnel non installé | Voir section 4 — uniquement si fichiers Dolby Vision |
 | Erreur à l'import d'un module | Dépendances manquantes | Relancer `pip install -r requirements.txt` |
+| `os error 4551` à l'installation | Smart App Control refuse un binaire sans réputation | Voir chapitre 1.4 |
 | IMDB : note/synopsis absents | Clé OMDb non configurée | Voir section 9 |
 
 ---

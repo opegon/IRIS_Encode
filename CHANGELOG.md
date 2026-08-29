@@ -1,5 +1,59 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.4.2] — 2026-08-29
+
+### `bootstrap.ps1` échouait sur une installation neuve de Windows 11
+
+Sur une machine vierge, l'installation s'arrêtait à la dernière étape :
+
+```
+error: Failed to inspect Python interpreter from provided path at `.venv\Scripts\python.exe`
+  Caused by: Une stratégie de contrôle d'application a bloqué ce fichier. (os error 4551)
+  Installation des dépendances impossible.
+```
+
+**Smart App Control**, actif par défaut sur une installation *propre* de
+Windows 11 — jamais sur une machine mise à niveau, ce qui explique qu'aucun
+poste de développement ne l'ait vu — refuse d'exécuter les binaires sans
+réputation établie auprès de l'ISG.
+
+Ce n'est pas la signature qui décide : le CPython téléchargé par `uv` n'est pas
+signé non plus, et il s'exécute sans difficulté — il est assez répandu pour
+avoir une réputation. Le fichier bloqué est le `python.exe` que **`uv venv`**
+pose dans `Scripts\` : un trampoline que uv fabrique à la volée, avec le chemin
+de sa cible embarqué dedans. Empreinte unique à chaque environnement, donc
+réputation impossible à acquérir.
+
+- **Le `.venv` est créé par le module `venv` de l'interpréteur**, et non plus
+  par `uv venv`. Ce module copie le redirecteur livré dans la distribution
+  (`Lib\venv\scripts\nt\python.exe`, 262 144 octets) — mêmes octets pour tout le
+  monde, réputation acquise. Vérifié : le `python.exe` du `.venv` en est la
+  copie exacte. `uv` garnit ensuite cet environnement comme avant, inchangé.
+- **Le `.venv` est reconstruit de zéro** dès qu'on atteint l'étape 3, `-Force`
+  ou non. On n'y arrive que s'il manquait ou était incomplet, et un
+  environnement laissé à moitié construit se répare mal. C'est aussi ce qui
+  répare les machines déjà touchées par le blocage.
+- **`Test-EnvComplet` survit à un `python.exe` inexécutable.** Il lançait
+  l'interpréteur sans filet : sur un `.venv` bloqué, le script mourait sur
+  l'erreur PowerShell brute au lieu de constater l'environnement incomplet.
+- **L'erreur 4551 est nommée et expliquée.** L'utilisateur recevait
+  « Installation des dépendances impossible », qui ne lui apprenait rien. Le
+  script reconnaît maintenant le blocage dans la sortie de la commande et
+  indique les deux issues : installer Python depuis python.org (binaires signés
+  PSF, `launch.bat` le retiendra), ou désactiver Smart App Control — en disant
+  que cette désactivation est définitive.
+
+**Le diagnostic porte sur le texte de l'erreur, pas sur l'état du registre.**
+La première version de ce correctif interrogeait
+`VerifiedAndReputablePolicyState` : elle annonçait Smart App Control sur une
+machine en mode *évaluation*, où rien n'est bloqué, et l'aurait fait aussi bien
+sur une panne réseau. Un message qui accuse le mauvais coupable coûte plus qu'il
+ne rapporte.
+
+Vérifié de bout en bout sur la machine cliente (blocage reproduit, correctif
+validé) et par une installation complète depuis zéro sur poste de développement.
+
+
 ## [v0.8.4.1] — 2026-08-29
 
 ### Ménage du dépôt, devenu public

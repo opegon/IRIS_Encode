@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.4.1 — document de référence courant
-**Date** : 2026-08-28
+**Version** : 0.8.4.2 — document de référence courant
+**Date** : 2026-08-29
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -148,6 +148,26 @@ volumes différents — la copie *est* le comportement voulu ici.
 
 3.12 plutôt que la version la plus récente : une version fraîche casse
 régulièrement une roue binaire, et `numpy` en publie une pour 3.12.
+
+**Le `.venv` est créé par le module `venv` de l'interpréteur, et non par
+`uv venv`.** Smart App Control, actif par défaut sur une installation *propre* de
+Windows 11, refuse d'exécuter les binaires sans réputation établie auprès de
+l'ISG. `uv venv` pose dans `Scripts\` un trampoline qu'il fabrique à la volée,
+avec le chemin de sa cible embarqué dedans : une empreinte unique par
+environnement, donc aucune réputation possible, donc blocage à la première
+exécution — `os error 4551`. Le module `venv` copie le redirecteur livré dans la
+distribution (`Lib\venv\scripts\nt\python.exe`), identique chez tout le monde.
+Ce n'est pas une affaire de signature : le CPython que `uv` télécharge n'est pas
+signé non plus, et il s'exécute sans difficulté.
+
+L'étape 3 reconstruit `.venv` de zéro à chaque fois qu'elle est atteinte — on ne
+l'atteint que si l'environnement manquait ou était incomplet, et c'est ce qui
+répare les postes où le trampoline avait été bloqué. Un échec dont la sortie
+porte l'erreur 4551 est nommé comme tel, avec ses deux issues : un Python signé
+depuis python.org, que `launch.bat` retiendra, ou la désactivation — définitive —
+de Smart App Control. Le diagnostic s'appuie sur le texte de l'erreur et non sur
+`VerifiedAndReputablePolicyState` : le registre dit que la politique existe, pas
+qu'elle est en cause.
 
 Le script est **idempotent** : relancé, il constate et ne retélécharge rien.
 `-Force` reconstruit `.venv` de zéro.
@@ -1833,6 +1853,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.4.2 | 2026-08-29 | **`bootstrap.ps1` échouait sur une installation neuve de Windows 11** : Smart App Control bloque le trampoline posé par `uv venv` (erreur 4551) · le `.venv` est créé par le module `venv` de l'interpréteur, qui copie un redirecteur à réputation établie · reconstruction systématique de `.venv`, et blocage nommé au lieu d'un « installation impossible » muet |
 | 0.8.4.1 | 2026-08-29 | Ménage du dépôt public : `CLAUDE.md` (aide-mémoire local) sorti du dépôt et de son historique, `audit.md` (rapport v0.7) retiré de l'arbre |
 | **0.8.4.0** | 2026-08-29 | **Release.** Rassemble 0.8.3.7 à 0.8.3.12 : guide embarqué (`H`), pas fin de 10 ms, correction de l'arbitrage des ratios de recalage, revue de code IE-38 à IE-41 |
 | 0.8.3.12 | 2026-08-29 | **Revue de code, IE-38 à IE-41** : la mesure porte la piste et non son rang · `config.toml` écrit atomiquement et sous verrou · le repli d'installation n'écrit plus un ZIP sous le nom d'un exe · un ffmpeg mort ne passe plus pour un film court |

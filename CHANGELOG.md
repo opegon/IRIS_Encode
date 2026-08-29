@@ -1,5 +1,33 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.9] — 2026-08-29
+
+### Un pas de 10 ms pour affiner le décalage
+
+Le réglage n'avait que deux pas : 100 ms et 1 s. Une mesure rend souvent la
+bonne valeur à quelques dizaines de millisecondes près, et on ne pouvait pas
+s'en approcher — de −1 100 on passait à −1 000, sans jamais atteindre −1 050.
+
+`Ctrl+↑` / `Ctrl+↓` déplacent le décalage de dix millisecondes.
+
+**Sur la touche demandée.** `Ctrl+±` n'est pas transmissible de façon fiable :
+Textual n'a même pas de nom pour `ctrl+plus`, et en mode terminal virtuel —
+celui qu'il active aussi sous Windows — `Ctrl+=` ne produit généralement aucun
+code. Seul `Ctrl+-` passe, sous le nom `ctrl+underscore` (0x1F). Un pas qui ne
+marcherait que dans un sens serait pire que pas de pas du tout.
+
+Les deux directions sont donc portées par `Ctrl+↑/↓`, séquences VT standard
+toujours transmises, avec les variantes `Ctrl+±` liées en alias pour les
+terminaux qui savent les envoyer. Le bandeau annonce la flèche — celle sur
+laquelle on peut compter.
+
+**Vérifié là où c'était risqué.** La question n'était pas que la liaison soit
+déclarée mais qu'elle traverse le `DataTable`, qui étouffe les touches avant le
+système de bindings. Le smoke TUI presse les touches et lit la valeur obtenue
+(`[11a]`). `tests/test_pas_decalage.py` vérifie en plus qu'au moins un nom
+**connu de Textual** figure dans chaque liaison : une liaison sur un nom inconnu
+ne déclenche jamais rien, et ne le dit pas.
+
 ## [v0.8.3.8] — 2026-08-29
 
 ### Une piste audio alignée était refusée par la mesure

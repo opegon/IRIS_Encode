@@ -80,10 +80,15 @@ _BOOLS = ["non", "oui"]
 # En dessous, deux pistes d'un même rip s'affichaient à l'identique.
 _NAME_WIDTH = 26
 
+# Trois pas pour le décalage. Le pas fin sert à finir le travail : une mesure
+# rend souvent la bonne valeur à quelques dizaines de millisecondes près, et
+# 100 ms est alors trop gros pour s'en approcher.
+_DELAY_FINE_MS = 10
 _DELAY_STEP_MS = 100
 _DELAY_JUMP_MS = 1000
 
-_HINT = (raccourcis([("←/→", "Champ"), ("+/-", "±100 ms"),
+_HINT = (raccourcis([("←/→", "Champ"), ("Ctrl+↑/↓", "±10 ms"),
+                     ("+/-", "±100 ms"),
                      ("Shift+↑/↓", "±1 s"), ("enter", "Liste")]) + "\n"
          + raccourcis([("m", "Mesurer"), ("v", "Visualiser"),
                        ("k", "Extrait de contrôle"), ("c", "Copier"),
@@ -105,6 +110,19 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("-,minus,kp_minus",             "val_down", "Valeur préc.", show=False),
         Binding("shift+up",  "jump_up",      "+1 s",          show=False),
         Binding("shift+down","jump_down",    "-1 s",          show=False),
+        # Pas fin, pour finir d'approcher une valeur mesurée.
+        #
+        # `Ctrl+↑/↓` d'abord : ce sont des séquences VT standard, toujours
+        # transmises. `Ctrl+±` ne l'est pas — Textual n'a même pas de nom pour
+        # `ctrl+plus`, et en mode terminal virtuel (celui qu'il active aussi
+        # sous Windows) `Ctrl+=` ne produit généralement aucun code. Seul
+        # `Ctrl+-` passe, sous le nom `ctrl+underscore` : 0x1F. Les alias sont
+        # là pour les terminaux qui savent les envoyer ; la flèche est celle
+        # sur laquelle on peut compter, et c'est elle que le bandeau annonce.
+        Binding("ctrl+up,ctrl+plus,ctrl+equals_sign,ctrl+kp_plus",
+                "fine_up",   "+10 ms", show=False),
+        Binding("ctrl+down,ctrl+underscore,ctrl+minus,ctrl+kp_minus",
+                "fine_down", "-10 ms", show=False),
         Binding("enter",     "open_picker",  "Liste",         show=True, priority=True),
         Binding("m",         "measure",      "Mesurer",       show=True),
         Binding("v",         "preview",      "Visualiser",    show=True),
@@ -330,6 +348,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     def action_val_down(self) -> None: self._change(-1, _DELAY_STEP_MS)
     def action_jump_up(self)  -> None: self._change(+1, _DELAY_JUMP_MS)
     def action_jump_down(self)-> None: self._change(-1, _DELAY_JUMP_MS)
+    # Sur un champ qui n'est pas le décalage, `_change` ignore le pas et fait
+    # défiler les valeurs : le raccourci reste vivant partout plutôt que de ne
+    # rien faire sur cinq champs sur six.
+    def action_fine_up(self)  -> None: self._change(+1, _DELAY_FINE_MS)
+    def action_fine_down(self)-> None: self._change(-1, _DELAY_FINE_MS)
 
     def _change(self, delta: int, step: int) -> None:
         i = self._current()

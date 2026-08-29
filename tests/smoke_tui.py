@@ -336,6 +336,22 @@ async def scenario_external_tracks() -> None:
             await pilot.pause(0.3)
             vf = sync._tracks[0]
             assert vf.delay_ms == -1100, vf.delay_ms
+
+            # Pas fin : la question n'est pas que la liaison soit declaree,
+            # c'est qu'elle traverse le DataTable, qui etouffe les touches
+            # avant le systeme de bindings (voir l'entete de tui/mixins.py).
+            await pilot.press("ctrl+down")    # -10 ms
+            await pilot.press("ctrl+down")
+            await pilot.pause(0.3)
+            assert vf.delay_ms == -1120, vf.delay_ms
+            await pilot.press("ctrl+up")      # +10 ms
+            await pilot.pause(0.3)
+            assert vf.delay_ms == -1110, vf.delay_ms
+            print(f"[11a] Pas fin Ctrl+haut/bas : {vf.delay_ms} ms "
+                  "(atteint l'action a travers le DataTable)")
+            await pilot.press("ctrl+up")      # retour a -1100
+            await pilot.pause(0.3)
+            assert vf.delay_ms == -1100, vf.delay_ms
             await pilot.press("right")        # champ etirement
             await pilot.press("plus")
             await pilot.pause(0.3)

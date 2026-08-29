@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.3.8 — document de référence courant
+**Version** : 0.8.3.9 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1833,6 +1833,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.3.9 | 2026-08-29 | **Pas fin de 10 ms** sur le décalage (`Ctrl+↑/↓`), pour finir d'approcher une valeur mesurée |
 | 0.8.3.8 | 2026-08-29 | **Le ratio se choisit à la corrélation, plus à la saillance** : une saillance ne se compare pas d'un ratio à l'autre, `_rescale` changeant la longueur du signal donc l'échelle de normalisation — une paire alignée à 10 ms était refusée au profit d'un ratio PAL à 160 s |
 | 0.8.3.7 | 2026-08-29 | **La bannière nomme l'interpréteur** : version complète et origine (`.venv` local ou système), le choix de `launch.bat` n'étant plus silencieux |
 | 0.8.3.6 | 2026-08-29 | **Installation autonome de Python** : `bootstrap.ps1` récupère uv, un CPython et un `.venv`, sans droits administrateur et sans rien écrire hors du dossier · `launch.bat` choisit entre `.venv`, le Python du PATH et le bootstrap |

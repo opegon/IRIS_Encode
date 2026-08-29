@@ -19,6 +19,7 @@ from __future__ import annotations
 import re
 import subprocess
 import tempfile
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
@@ -27,6 +28,12 @@ import numpy as np
 
 # Rapporte l'avancement entre 0 et 1
 Progress = Callable[[float], None]
+
+# Ce que `ffmpeg -progress` écrit : une suite de `clé=valeur`, une par ligne.
+# Sert à distinguer l'avancement des diagnostics, les deux arrivant par le même
+# tube — voir `retime_audio`.
+_LIGNE_PROGRES    = re.compile(r"^[a-z_0-9]+=")
+_ERREURS_GARDEES  = 20
 
 # Part de la barre consacrée au décodage : c'est la phase longue, la
 # corrélation ne prend qu'une poignée de FFT.
@@ -280,7 +287,14 @@ def _decode_envelope(path: Path, track: int = 0,
         "-ac", "1", "-ar", str(_SAMPLE_RATE),
         "-f", "s16le", "-",
     ]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    # `stdin` fermé, comme sur tout processus lancé d'ici. ffmpeg lit l'entrée
+    # standard pour son clavier interactif — `q` l'arrête, `+`/`-` changent le
+    # verbose — et il hérite sinon de celle du terminal, que l'interface est en
+    # train d'écouter. Les deux se disputent alors les frappes : celles que
+    # ffmpeg attrape ne parviennent jamais à l'écran, et un `q` de passage tue
+    # le décodage. Un décodage dure plusieurs minutes ; la fenêtre est large.
+    proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     # `assert` disparaîtrait sous `python -O`, et le déréférencement suivrait.
     if proc.stdout is None:
         return np.zeros(0, dtype=np.float32)
@@ -503,7 +517,7 @@ def extract_subtitle(video: Path, ffmpeg_index: int) -> Optional[Path]:
            "-i", str(video), "-map", f"0:s:{ffmpeg_index}",
            "-c:s", "srt", str(out)]
     try:
-        proc = subprocess.run(cmd, capture_output=True, timeout=120)
+        proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=120)
     except (OSError, subprocess.SubprocessError):
         return None
     if proc.returncode != 0 or not out.exists() or out.stat().st_size == 0:
@@ -626,9 +640,16 @@ def plan_inserts(envelope: np.ndarray,
 
     Les coordonnées des plages sont celles de la cible ; le donneur s'en déduit
     par `donneur = cible − décalage`.
+
+    Les positions rendues **croissent strictement** — c'est ce qu'attend
+    `build_retime_command`, et rien d'autre ne l'assure : une position en
+    retrait est repoussée d'un bin sur la précédente, et signalée.
     """
     inserts: list[tuple[float, float]] = []
     approx:  list[str] = []
+    # Dernière position retenue, en bins. Zéro est le début du donneur : une
+    # insertion posée là rendrait déjà un premier segment vide.
+    precedent = 0
     for gauche, droite in zip(segments, segments[1:]):
         saut = droite.delay_ms - gauche.delay_ms
         if saut <= 0:
@@ -646,6 +667,25 @@ def plan_inserts(envelope: np.ndarray,
             debut = centre
             approx.append(f"{mmss(gauche.end_s)} : aucun silence trouvé, "
                           f"insertion sur la frontière estimée")
+
+        # Les positions doivent croître, et rien ici ne l'assurait. Chaque
+        # frontière cherche son silence pour elle dans ±15 s, et `find_silence`
+        # recule encore de la moitié de l'insert pour le centrer : deux
+        # bascules proches, ou un insert un peu long, suffisent à faire passer
+        # une position avant la précédente.
+        #
+        # `build_retime_command` découpe alors le donneur en
+        # `atrim=start=précédente:end=celle-ci` : l'étage rend un segment vide,
+        # et le morceau compris entre les deux — déjà sorti dans le segment
+        # d'avant — repart dans le suivant. Il se retrouve **deux fois** dans
+        # la piste produite, qui passe pourtant le code retour et le contrôle
+        # de taille.
+        if debut <= precedent:
+            recul = (precedent + 1 - debut) * BIN_MS / 1000.0
+            approx.append(f"{mmss(gauche.end_s)} : point d'insertion en retrait "
+                          f"sur le précédent, repoussé de {recul:.2f} s")
+            debut = precedent + 1
+        precedent = debut
         inserts.append((debut * BIN_MS / 1000.0, saut / 1000.0))
     return inserts, approx
 
@@ -665,6 +705,9 @@ def build_retime_command(donor: Path, audio_index: int,
     et non un `anullsrc` : il porte ainsi d'office la fréquence
     d'échantillonnage et la disposition de canaux de la piste, que `concat`
     exige identiques sur tous ses segments.
+
+    Les positions doivent croître strictement — `plan_inserts` s'en charge.
+    Lève ValueError sinon : un `atrim` à l'envers ne se voit nulle part en aval.
     """
     if not inserts:
         raise ValueError("Aucune insertion à appliquer.")
@@ -673,6 +716,15 @@ def build_retime_command(donor: Path, audio_index: int,
     filtres, etiquettes = [], []
     precedent = 0.0
     for k, (position, duree) in enumerate(inserts):
+        # `plan_inserts` l'assure ; le vérifier ici rend l'invariant explicite
+        # et bruyant. Une position en retrait produit un `atrim` dont la fin
+        # précède le début : segment vide, et le donneur compris entre les deux
+        # positions sorti deux fois. Rien en aval ne le détecte — mieux vaut ne
+        # pas fabriquer la commande que rendre une piste fausse.
+        if position <= precedent:
+            raise ValueError(
+                f"Points d'insertion non croissants : {position:.3f} s après "
+                f"{precedent:.3f} s.")
         filtres.append(f"{src}atrim=start={precedent:.3f}:end={position:.3f},"
                        f"asetpts=PTS-STARTPTS[k{k}]")
         filtres.append(f"{src}atrim=start=0:end={duree:.3f},"
@@ -1244,16 +1296,34 @@ def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
 
     cmd = build_retime_command(donor, audio_index, inserts, out, bitrate_kbps)
     try:
+        # Un seul tube, comme `muxer.MuxProcess`. Deux tubes dont un seul est
+        # lu au fil de l'eau se bloquent dès que le second est plein : ffmpeg
+        # reste suspendu sur son écriture, ne sort jamais, et la boucle de
+        # lecture n'atteint jamais la fin de l'autre. Le graphe monté ici
+        # aligne `2N+1` étages devant un `concat` — un diagnostic par étage
+        # suffit à remplir les 64 Ko du tampon, et la barre d'avancement se
+        # fige alors sans qu'aucune erreur ne remonte.
+        #
         # Voir scanner._ffprobe_json : lire dans l'encodage local
         # tue le thread de lecture dès qu'un nom de fichier en sort.
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, bufsize=1,
+        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, bufsize=1,
                                 encoding="utf-8", errors="replace")
     except (OSError, subprocess.SubprocessError) as e:
         return None, [f"ffmpeg a échoué : {e}"]
 
+    # Ce que `-progress` écrit tient en `clé=valeur` ; tout le reste vient de
+    # `-v error`. On ne garde que la fin : le message utile est le dernier, et
+    # un graphe en défaut peut en produire des centaines.
+    erreurs: deque[str] = deque(maxlen=_ERREURS_GARDEES)
     if proc.stdout is not None:
-        for ligne in proc.stdout:
+        for brute in proc.stdout:
+            ligne = brute.rstrip()
+            if not _LIGNE_PROGRES.match(ligne):
+                if ligne:
+                    erreurs.append(ligne)
+                continue
             if progress and duree > 0 and ligne.startswith("out_time_ms="):
                 try:
                     fait = int(ligne.split("=", 1)[1]) / 1_000_000.0
@@ -1261,12 +1331,10 @@ def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
                     continue
                 part = min(1.0, max(0.0, fait / duree))
                 progress(DECODE_SHARE + (1 - DECODE_SHARE) * part)
-    code   = proc.wait()
-    erreur = proc.stderr.read().strip() if proc.stderr else ""
+    code = proc.wait()
 
     if code != 0 or not out.exists() or out.stat().st_size == 0:
-        detail = erreur.splitlines()
-        return None, [f"ffmpeg a échoué : {detail[-1] if detail else f'code {code}'}"]
+        return None, [f"ffmpeg a échoué : {erreurs[-1] if erreurs else f'code {code}'}"]
 
     if progress:
         progress(1.0)

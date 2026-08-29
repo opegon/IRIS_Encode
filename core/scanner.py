@@ -227,7 +227,7 @@ def _ffprobe_json(args: list[str]) -> dict:
     # de subprocess dès qu'un titre ou un nom de fichier sort de cette table :
     # l'exception n'y remonte pas, `stdout` vaut None, et le fichier est écarté
     # comme illisible. Vu sur un WebM dont un tag portait « ❤️ ».
-    r = subprocess.run(cmd, capture_output=True, timeout=30,
+    r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=30,
                        encoding="utf-8", errors="replace")
     if r.returncode != 0:
         raise RuntimeError(f"ffprobe: {r.stderr.strip()}")

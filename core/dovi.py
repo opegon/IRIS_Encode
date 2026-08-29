@@ -71,7 +71,7 @@ def extract_hevc_stream(input_path: Path, output_hevc: Path,
     cmd = build_extract_hevc_command(input_path, output_hevc, ffmpeg_path,
                                      duration_limit)
     try:
-        r = subprocess.run(cmd, capture_output=True, timeout=timeout)
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=timeout)
         return r.returncode == 0 and output_hevc.exists()
     except Exception as e:
         _log.warning("extract_hevc_stream failed: %s", e)
@@ -154,7 +154,7 @@ def extract_rpu(hevc_path: Path, rpu_path: Path, dovi_path: Path) -> bool:
     """Extrait le RPU DV depuis un flux HEVC Annex-B."""
     cmd = [str(dovi_path), "extract-rpu", str(hevc_path), "-o", str(rpu_path)]
     try:
-        r = subprocess.run(cmd, capture_output=True, timeout=300)
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=300)
         return r.returncode == 0 and rpu_path.exists()
     except Exception as e:
         _log.warning("extract_rpu failed: %s", e)
@@ -173,7 +173,7 @@ def remove_dv(hevc_in: Path, hevc_out: Path, dovi_path: Path) -> bool:
     """
     cmd = [str(dovi_path), "remove", "-i", str(hevc_in), "-o", str(hevc_out)]
     try:
-        r = subprocess.run(cmd, capture_output=True, timeout=1800)
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=1800)
         return r.returncode == 0 and hevc_out.exists()
     except Exception as e:
         _log.warning("remove_dv failed: %s", e)
@@ -185,7 +185,7 @@ def convert_p7_to_p8(rpu_in: Path, rpu_out: Path, dovi_path: Path) -> bool:
     cmd = [str(dovi_path), "convert", "-m", "2", "-i", str(rpu_in),
            "-o", str(rpu_out)]
     try:
-        r = subprocess.run(cmd, capture_output=True, timeout=120)
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=120)
         return r.returncode == 0 and rpu_out.exists()
     except Exception as e:
         _log.warning("convert_p7_to_p8 failed: %s", e)

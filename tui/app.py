@@ -98,10 +98,9 @@ class IrisEncodeApp(App):
             # qu'à partir d'Ada, et une carte antérieure ne le dit qu'au
             # moment d'échouer. ~0,7 s, en parallèle.
             from dataclasses import replace as _dc
-            from core.platform import sonder_encodeurs
+            from core.platform import encodeurs_a_sonder, sonder_encodeurs
             self.platform = _dc(self.platform, encodeurs_ok=sonder_encodeurs(
-                [self.platform.encoder_hevc, self.platform.encoder_h264,
-                 self.platform.encoder_av1], ffmpeg_p))
+                encodeurs_a_sonder(self.platform), ffmpeg_p))
             from core import sync as sync_mod
             sync_mod.set_ffmpeg_path(ffmpeg_p)
         # Câble mkvmerge pour la greffe de pistes externes (optionnel)

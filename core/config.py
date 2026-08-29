@@ -66,13 +66,16 @@ def _deep_merge(base: dict, override: dict) -> dict:
     """
     Fusionne `override` dans `base`, sans jamais partager de sous-dictionnaire.
 
-    La récursion porte sur **toute** valeur de type dict, y compris absente de
-    `base` : sans ça, `_deep_merge({}, _DEFAULTS)` — le cas d'une machine sans
-    config.toml — rendait un cfg dont les branches *sont* celles de _DEFAULTS.
-    La moindre écriture dans la configuration corrompait alors les valeurs par
-    défaut du module pour tout le reste du processus.
+    La récursion porte sur **toute** valeur de type dict, des deux côtés. Celles
+    de `base` comptent autant que celles d'`override` : `dict(base)` seul ne
+    recopiait que le premier niveau, et toute branche qu'`override` ne mentionne
+    pas restait *celle de base*. Sur `_deep_merge(_DEFAULTS, user)` — un
+    config.toml sans section `[tui]`, par exemple — cfg['tui'] était le `[tui]`
+    du module : `reset_browser_columns` y supprimait alors les colonnes par
+    défaut, et l'écran suivant s'ouvrait sur un KeyError.
     """
-    result = dict(base)
+    result = {k: _deep_merge(v, {}) if isinstance(v, dict) else v
+              for k, v in base.items()}
     for k, v in override.items():
         if isinstance(v, dict):
             existant = result.get(k)

@@ -431,6 +431,11 @@ class RunScreen(TableNavMixin, Screen):
             except OSError:
                 pass                      # tenu par un lecteur : on n'insiste pas
             dec.encode_source = None
+            # L'intermédiaire parti, la greffe redevient à faire : sans ce
+            # retour, un second essai sur la même décision produirait un
+            # fichier sans les pistes, le mux préalable ne se déclenchant plus.
+            dec.external_tracks = dec.premuxed_tracks
+            dec.premuxed_tracks = []
 
         # Préserve l'état SKIPPED posé par action_skip_current()
         if s.state != FileState.SKIPPED:
@@ -741,7 +746,11 @@ class RunScreen(TableNavMixin, Screen):
 
         # L'intermédiaire porte désormais les pistes : ffmpeg n'a plus qu'à
         # l'encoder. info.path reste la source, dont dépend le nom de sortie.
+        # Les pistes quittent `external_tracks` — ffmpeg ne doit pas rouvrir
+        # les donneurs — mais elles ne sont pas oubliées pour autant : la
+        # commande d'encodage a encore à les mapper depuis l'intermédiaire.
         dec.encode_source   = sortie
+        dec.premuxed_tracks = dec.external_tracks
         dec.external_tracks = []
         s.percent = -1
         self.app.call_from_thread(self._update_row, index)

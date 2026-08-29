@@ -53,6 +53,21 @@ class PlatformProfile:
         )
 
 
+def encodeurs_a_sonder(profil: "PlatformProfile") -> list[str]:
+    """Tous les encodeurs que `build_command` peut choisir sur cette machine.
+
+    La liste doit être exhaustive : ce qui n'y figure pas n'est jamais sondé,
+    et `peut_encoder` le rend alors `False` — indistinguable d'un encodeur
+    essayé et refusé. C'est ce qui rendait `cinema_4k_quality` inutilisable sur
+    toute machine à carte graphique : son mode HDR10 « quality » impose
+    libx265, qu'on ne sondait pas, et le lancement le refusait au nom d'une
+    mesure qui n'avait pas eu lieu.
+    """
+    from .encoder import ENCODEUR_HDR10_QUALITY
+    return [profil.encoder_hevc, profil.encoder_h264, profil.encoder_av1,
+            ENCODEUR_HDR10_QUALITY]
+
+
 def sonder_encodeurs(encodeurs: list[str], ffmpeg_path: str = "ffmpeg",
                      ) -> frozenset[str]:
     """Ceux de `encodeurs` que cette machine sait réellement ouvrir.
@@ -72,7 +87,7 @@ def sonder_encodeurs(encodeurs: list[str], ffmpeg_path: str = "ffmpeg",
                 [ffmpeg_path, "-v", "error",
                  "-f", "lavfi", "-i", "nullsrc=s=256x144:d=0.05:r=25",
                  "-c:v", nom, "-frames:v", "1", "-f", "null", "-"],
-                capture_output=True, timeout=20)
+                stdin=subprocess.DEVNULL, capture_output=True, timeout=20)
             return nom, r.returncode == 0
         except Exception:
             return nom, False
@@ -99,6 +114,7 @@ def _has_nvidia() -> bool:
     try:
         r = subprocess.run(
             ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             timeout=5,
         )

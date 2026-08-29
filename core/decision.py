@@ -278,6 +278,11 @@ class FileDecision:
     # reste la source, dont dépend le nom de sortie — l'intermédiaire vit dans
     # le dossier temporaire et ne doit pas déterminer où le résultat atterrit.
     encode_source:     Path | None = None
+    # Les pistes greffées par ce mux préalable. Elles quittent
+    # `external_tracks` — ffmpeg ne doit plus les rouvrir comme entrées — mais
+    # elles sont dans l'intermédiaire, et tout ce qui en dépend (mapping,
+    # conteneur) doit continuer à les voir.
+    premuxed_tracks:   list["ExternalTrack"] = field(default_factory=list)
 
     @property
     def kept_subtitles(self) -> list:
@@ -307,7 +312,8 @@ class FileDecision:
         if any(ad.action == AudioAction.COPY and ad.track.is_lossless
                for ad in self.audio):
             return True
-        return any(_needs_mkv_codec(ext.codec) for ext in self.external_tracks)
+        return any(_needs_mkv_codec(ext.codec)
+                   for ext in self.external_tracks + self.premuxed_tracks)
 
     @property
     def sous_titres_ecartes(self) -> list:

@@ -67,7 +67,7 @@ def _get_version(path: str) -> str:
         try:
             r = subprocess.run(
                 [path, flag],
-                capture_output=True, timeout=5,
+                stdin=subprocess.DEVNULL, capture_output=True, timeout=5,
                 encoding="utf-8", errors="replace",
             )
             output = (r.stdout or r.stderr or "").strip()
@@ -237,7 +237,7 @@ def _install_from_7z(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
         try:
             r = subprocess.run(
                 ["tar", "-xf", str(archive), "-C", str(extract_dir)],
-                capture_output=True, timeout=300,
+                stdin=subprocess.DEVNULL, capture_output=True, timeout=300,
             )
         except (OSError, subprocess.SubprocessError) as e:
             print(f"  ✗ Extraction impossible ({e}) — tar introuvable ?")

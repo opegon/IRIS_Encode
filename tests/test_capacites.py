@@ -145,3 +145,46 @@ def test_diagnostic_muet_sur_l_inconnu():
     """Sans cause reconnue, l'appelant retombe sur la dernière ligne : mieux
     vaut une ligne brute qu'un message inventé."""
     assert diagnostiquer(["Conversion failed!"]) is None
+
+
+# ─── Le sondage doit couvrir tout ce que build_command peut choisir ──────────
+#
+# `peut_encoder` ne distingue pas « sondé et refusé » de « jamais sondé » : les
+# deux valent False, et le lancement refuse l'encodage en nommant la carte. Le
+# mode HDR10 « quality » impose libx265, absent de la liste sondée : le profil
+# `cinema_4k_quality` était donc refusé sur toute machine à carte graphique,
+# alors que ffmpeg livre libx265 partout.
+
+def test_le_mode_hdr10_quality_choisit_un_encodeur_sonde(tmp_path):
+    """Le lien qui manquait : ce que la commande demande, le sondage le couvre."""
+    from core.decision import decide
+    from core.encoder import build_command
+    from core.platform import encodeurs_a_sonder
+    from core.profiles import Profile
+    from core.scanner import AudioTrack, VideoInfo
+
+    p = tmp_path / "film.mkv"
+    p.write_bytes(b"")
+    info = VideoInfo(
+        path=p, width=3840, height=2160, bitrate=12_000_000, codec="hevc",
+        duration=8000.0, frame_count=0, dv_profile=8, dv_bl_compat=1,
+        color_transfer="smpte2084", frame_rate="24/1",
+        audio_tracks=[AudioTrack(index=0, codec="eac3", channels=6,
+                                 language="fre", title="", bitrate=640_000)],
+        subtitle_tracks=[])
+    profil = Profile(id="test", data={
+        "bitrate_720p_kbps": 2000, "bitrate_1080p_kbps": 5000,
+        "bitrate_4k_kbps": 8000, "audio_languages": ["fre"], "keep_4k": True,
+        "audio_copy_compatible": True, "preserve_hd_audio": False,
+        "hdr10_quality": "quality"})
+    cmd = build_command(decide(info, profil), _PLAT)
+    assert encodeur_de(cmd) == "libx265", "ce n'est pas le mode quality"
+    assert encodeur_de(cmd) in encodeurs_a_sonder(_PLAT)
+
+
+def test_une_machine_ou_libx265_repond_ne_refuse_plus_le_profil():
+    """Sondé et présent : `peut_encoder` doit dire oui, pas « jamais essayé »."""
+    from core.platform import encodeurs_a_sonder
+
+    plat = replace(_PLAT, encodeurs_ok=frozenset(encodeurs_a_sonder(_PLAT)))
+    assert plat.peut_encoder("libx265") is True

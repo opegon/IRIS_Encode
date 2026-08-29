@@ -27,7 +27,7 @@ from core.encoder import build_command
 from core.muxer import ExternalTrack, IdentifiedTrack, TrackKind
 from core.platform import GPU, OS, PlatformProfile
 from core.profiles import Profile
-from core.scanner import AudioTrack, VideoInfo
+from core.scanner import AudioTrack, SubtitleTrack, VideoInfo
 
 
 def _plat() -> PlatformProfile:
@@ -152,3 +152,111 @@ def test_un_donneur_illisible_retombe_sur_le_premier_flux(tmp_path, monkeypatch)
     piste = ExternalTrack(source_path=p, source_tid=3, kind=TrackKind.SUBTITLE,
                           codec="SubRip", language="fre")
     assert "1:s:0" in _maps(_commande(tmp_path, [piste]))
+
+
+# ─── La greffe passée par un mux préalable ────────────────────────────────────
+#
+# Une piste étirée ne peut pas entrer par ffmpeg : mkvmerge la greffe d'abord,
+# ffmpeg encode l'intermédiaire. L'écran d'encodage vidait alors
+# `external_tracks` — à raison, ffmpeg ne doit pas rouvrir les donneurs — mais
+# rien ne mappait plus les pistes greffées, que ffmpeg laissait donc tomber.
+# Aucune erreur, code de retour nul : l'utilisateur récupérait un fichier sans
+# la VF qu'il venait de recaler.
+
+def _info_sous_titres(tmp_path: Path) -> VideoInfo:
+    """La même source, mais avec deux sous-titres à elle."""
+    info = _info(tmp_path)
+    info.subtitle_tracks = [
+        SubtitleTrack(index=0, codec="subrip", language="fre"),
+        SubtitleTrack(index=1, codec="subrip", language="eng"),
+    ]
+    return info
+
+
+def _commande_premux(tmp_path, pistes: list[ExternalTrack],
+                     intermediaire: Path | None = None) -> list[str]:
+    """La commande telle que l'écran d'encodage la construit après un mux."""
+    dec = decide(_info(tmp_path), _profile())
+    dec.encode_source   = intermediaire or (tmp_path / "premux.mkv")
+    dec.premuxed_tracks = pistes
+    return build_command(dec, _plat())
+
+
+def _piste_etiree(donneur: Path, tid: int, kind: TrackKind) -> ExternalTrack:
+    return ExternalTrack(source_path=donneur, source_tid=tid, kind=kind,
+                         codec="EAC3" if kind == TrackKind.AUDIO else "SubRip",
+                         language="fre", stretch=(24000, 25025))
+
+
+def test_la_piste_audio_muxee_en_amont_est_mappee(tmp_path, donneur):
+    """La source porte une piste audio : la greffée est la deuxième."""
+    cmd  = _commande_premux(tmp_path, [_piste_etiree(donneur, 1, TrackKind.AUDIO)])
+    maps = _maps(cmd)
+    assert "0:a:1" in maps, maps
+    # Et elle est recopiée, pas réencodée dans le codec par défaut du conteneur
+    assert "-c:a:1" in cmd and cmd[cmd.index("-c:a:1") + 1] == "copy"
+
+
+def test_le_sous_titre_muxe_en_amont_est_mappe(tmp_path, donneur):
+    """Sélection explicite de sous-titres — ce que font tous les profils livrés.
+
+    C'est le cas qui perdait la piste : `0:s?` prend tout l'intermédiaire, une
+    liste d'index ne prend que ce qu'elle nomme.
+    """
+    dec = decide(_info_sous_titres(tmp_path), _profile())
+    dec.subtitle_indices  = [0]
+    dec.encode_source     = tmp_path / "premux.mkv"
+    dec.premuxed_tracks   = [_piste_etiree(donneur, 3, TrackKind.SUBTITLE)]
+    maps = _maps(build_command(dec, _plat()))
+    assert "0:s:0" in maps and "0:s:2" in maps, maps
+    assert "0:s:1" not in maps, "l'anglais n'était pas retenu"
+
+
+def test_le_sous_titre_muxe_est_pris_une_seule_fois_par_0s(tmp_path, donneur):
+    """Sans sélection, `0:s?` prend déjà la greffée : la mapper doublerait."""
+    maps = _maps(_commande_premux(
+        tmp_path, [_piste_etiree(donneur, 3, TrackKind.SUBTITLE)]))
+    assert maps.count("0:s?") == 1 and not any(m.startswith("0:s:") for m in maps), maps
+
+
+def test_les_donneurs_ne_sont_pas_rouverts(tmp_path, donneur):
+    """mkvmerge les a déjà absorbés : une seconde entrée les doublerait."""
+    cmd = _commande_premux(tmp_path, [_piste_etiree(donneur, 1, TrackKind.AUDIO)])
+    entrees = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-i"]
+    assert entrees == [str(tmp_path / "premux.mkv")], entrees
+
+
+def test_la_langue_et_les_drapeaux_survivent_au_mux_prealable(tmp_path, donneur):
+    piste = _piste_etiree(donneur, 1, TrackKind.AUDIO)
+    piste.track_name = "VF"
+    piste.is_default = True
+    cmd = _commande_premux(tmp_path, [piste])
+    assert "-metadata:s:a:1" in cmd
+    assert "language=fre" in cmd and "title=VF" in cmd
+    # Le drapeau « défaut » se retire de la piste source, sinon deux le portent
+    assert cmd[cmd.index("-disposition:a:0") + 1] == "0"
+    assert cmd[cmd.index("-disposition:a:1") + 1] == "default"
+
+
+def test_l_ordre_des_greffees_est_celui_de_mkvmerge(tmp_path, donneur):
+    """mkvmerge écrit les pistes d'un donneur dans l'ordre de ses tid.
+
+    L'ordre où l'utilisateur les a choisies n'y change rien : prendre le sien
+    donnerait un décalage d'un cran entre chaque piste et son étiquette.
+    """
+    pistes = [_piste_etiree(donneur, 6, TrackKind.SUBTITLE),   # choisie en 1er
+              _piste_etiree(donneur, 3, TrackKind.SUBTITLE)]
+    pistes[0].track_name = "Canada"
+    pistes[1].track_name = "France"
+    cmd = _commande_premux(tmp_path, pistes)
+    # tid 3 avant tid 6 dans l'intermédiaire → « France » porte s:0
+    titres = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-metadata:s:s:0"]
+    assert "title=France" in titres, cmd
+
+
+def test_une_piste_etiree_encore_externe_reste_refusee(tmp_path, donneur):
+    """Le garde-fou vaut toujours : ffmpeg ne sait pas étirer en une passe."""
+    dec = decide(_info(tmp_path), _profile())
+    dec.external_tracks.append(_piste_etiree(donneur, 1, TrackKind.AUDIO))
+    with pytest.raises(ValueError, match="étirement"):
+        build_command(dec, _plat())

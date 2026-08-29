@@ -23,6 +23,13 @@ from .platform import PlatformProfile
 # neuve.
 _ffmpeg_path: str = "ffmpeg"
 
+# Le mode HDR10 « quality » encode sur processeur, quelle que soit la machine :
+# les métadonnées statiques que réclame la compatibilité TV passent par
+# `-x265-params`, que les encodeurs matériels n'exposent pas. Nommé ici parce
+# que le sondage du lancement doit l'inclure — un encodeur jamais sondé est
+# tenu pour absent, et le profil devient inutilisable sur toute machine à GPU.
+ENCODEUR_HDR10_QUALITY = "libx265"
+
 
 def set_ffmpeg_path(path: str) -> None:
     """Précise l'exécutable ffmpeg (défaut : celui du PATH)."""
@@ -350,7 +357,14 @@ def audio_args(included_audio: list) -> list[str]:
         if ad.output_channels:
             args += [f"-ac:a:{out_i}", str(ad.output_channels)]
         if ad.output_codec == "aac":
-            args += [f"-ar:{out_i}", "48000"]
+            # `-ar:a:{i}`, pas `-ar:{i}` : un spécificateur nu désigne le flux
+            # de sortie n° i **tous types confondus**. Comme `build_command` et
+            # `build_strip_remux_mp4` mappent la vidéo en premier, `-ar:0`
+            # visait la vidéo — ignoré — et `-ar:1` la première piste audio,
+            # alors qu'il était écrit pour la seconde. Le forçage à 48 kHz
+            # tombait donc systématiquement d'un cran, sans rien signaler.
+            # Toutes les options voisines emploient déjà la forme par type.
+            args += [f"-ar:a:{out_i}", "48000"]
         # Le titre de piste survit au transcodage : sans réécriture, un
         # « TrueHD 5.1 » resterait affiché sur une piste E-AC3.
         titre = ad.output_title
@@ -413,8 +427,16 @@ def build_command(
     # ── Entrées supplémentaires : pistes externes greffées ────────────────────
     # ffmpeg les absorbe dans la même passe que l'encodage : inutile de muxer
     # séparément quand le fichier est de toute façon réencodé.
+    from .muxer import TrackKind, ffmpeg_stream_index, premux_track_order
+
     ext_tracks = decision.external_tracks
-    stretched  = [t for t in ext_tracks if t.stretch]
+    # Après un mux préalable, les pistes greffées ne sont plus des entrées à
+    # part : elles sont déjà dans l'intermédiaire, à la suite de celles de la
+    # source. Elles restent entièrement à mapper — les oublier rend un fichier
+    # amputé de la piste que le mux venait d'y poser, sans un mot d'erreur et
+    # avec un code de retour nul.
+    premux_tracks = premux_track_order(decision.premuxed_tracks)
+    stretched     = [t for t in ext_tracks if t.stretch]
     if stretched:
         # Le mux préalable est censé avoir absorbé ces pistes en amont : y
         # arriver ici signifie qu'il n'a pas eu lieu, faute de mkvmerge.
@@ -477,7 +499,7 @@ def build_command(
             max_cll=info.hdr10_max_cll,
         )
         cmd += [
-            "-c:v",         "libx265",
+            "-c:v",         ENCODEUR_HDR10_QUALITY,
             "-pix_fmt",     "yuv420p10le",
             "-b:v",         str(vid.target_bitrate),
             "-maxrate",     str(vid.target_bitrate),
@@ -548,12 +570,22 @@ def build_command(
         # on la parcourt par rang, pas par index de source.
         cmd += ["-map", f"{audio_input}:a:{n if audio_source is not None else ad.track.index}"]
 
+    # L'intermédiaire porte la source entière — mkvmerge n'en écarte aucune
+    # piste — puis les greffées : leur index part donc du nombre de pistes
+    # audio de la source, quelles que soient celles que la décision garde.
+    premux_audio = [t for t in premux_tracks if t.kind == TrackKind.AUDIO]
+    for j in range(len(premux_audio)):
+        cmd += ["-map", f"0:a:{len(info.audio_tracks) + j}"]
+
     # Un profil en `container = "mp4"` écarte les sous-titres image, que le
     # MP4 ne porte pas — jamais en silence : la décision les liste, et si ce
     # sont les seuls du fichier, c'est le conteneur qui cède, pas eux.
     ecartes = {st.index for st in decision.sous_titres_ecartes}
     sub_indices = decision.subtitle_indices
+    premux_subs = [t for t in premux_tracks if t.kind != TrackKind.AUDIO]
     if sub_indices is None and not ecartes:
+        # `0:s?` prend tout l'intermédiaire, greffées comprises : les mapper
+        # une seconde fois les livrerait en double.
         cmd += ["-map", "0:s?"]
         n_src_subs = len(info.subtitle_tracks)
     else:
@@ -561,6 +593,8 @@ def build_command(
         for si in gardes:
             cmd += ["-map", f"0:s:{si}"]
         n_src_subs = len(gardes)
+        for j in range(len(premux_subs)):
+            cmd += ["-map", f"0:s:{len(info.subtitle_tracks) + j}"]
 
     # Pistes externes. Le donneur entre en entier : mapper son flux `:0`
     # supposait qu'il n'en porte qu'un — vrai d'un .srt nu, faux d'un
@@ -569,7 +603,6 @@ def build_command(
     # titre venaient de la bonne. La piste apparaissait donc au lecteur,
     # correctement nommée, et n'affichait rien — la première d'un rip est en
     # général la piste « forced », vingt-trois répliques sur un épisode.
-    from .muxer import TrackKind, ffmpeg_stream_index
     for n, ext in enumerate(ext_tracks, start=1):
         stream = "a" if ext.kind == TrackKind.AUDIO else "s"
         idx    = ffmpeg_stream_index(ext.source_path, ext.source_tid, ext.kind)
@@ -585,8 +618,11 @@ def build_command(
         cmd += audio_args(included_audio)
 
     # ── Pistes externes : copie, langue, nom, drapeaux ────────────────────────
-    ext_audio = [t for t in ext_tracks if t.kind == TrackKind.AUDIO]
-    ext_subs  = [t for t in ext_tracks if t.kind != TrackKind.AUDIO]
+    # Qu'elles soient entrées par mkvmerge ou par ffmpeg, les pistes greffées
+    # se recopient, se nomment et se marquent pareil — et les deux listes
+    # s'excluent : le mux préalable vide `external_tracks`.
+    ext_audio = [t for t in ext_tracks if t.kind == TrackKind.AUDIO] + premux_audio
+    ext_subs  = [t for t in ext_tracks if t.kind != TrackKind.AUDIO] + premux_subs
 
     # Une piste externe marquée « défaut » retire le drapeau des pistes source
     if any(t.is_default for t in ext_audio):

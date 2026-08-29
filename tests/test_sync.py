@@ -680,3 +680,215 @@ def test_la_saillance_departage_a_correlation_comparable(monkeypatch):
     lag, ratio, _, _ = sync._search(np.zeros(10), lambda r: r)
     assert ratio == (24, 25)
     assert lag == 200
+
+
+# ─── Le processus de recalage : deux tubes, un seul lu ───────────────────────
+#
+# `retime_audio` ouvrait stdout ET stderr en tube, ne lisait que stdout au fil
+# de l'eau, puis `proc.wait()` avant de lire stderr. Passé les ~64 Ko de tampon
+# du second tube, ffmpeg se bloque sur son écriture : il ne sort jamais, stdout
+# n'atteint jamais EOF, et la boucle de lecture ne rend jamais la main. Le
+# graphe monté par `build_retime_command` aligne `2N+1` étages devant un
+# `concat` — un diagnostic par étage suffit à remplir le tampon.
+#
+# Vu de l'utilisateur : la barre d'avancement se fige, définitivement, sans
+# qu'aucune erreur ne remonte. Ces tests substituent à ffmpeg un interpréteur
+# Python qui produit exactement les volumes en cause.
+
+import subprocess
+import sys
+import threading
+
+# Assez pour dépasser le tampon d'un tube sur toutes les plateformes.
+_GROS_VOLUME = 300_000
+
+
+def _faux_ffmpeg(script: str, *args: str) -> list[str]:
+    return [sys.executable, "-c", script, *args]
+
+
+def _sous_ffmpeg(monkeypatch, cmd: list[str]) -> None:
+    """Court-circuite tout ce qui précède le lancement du processus."""
+    monkeypatch.setattr(sync, "_decode_envelope",
+                        lambda *a, **k: np.ones(6_000, dtype=np.float32))
+    monkeypatch.setattr(sync, "plan_inserts",
+                        lambda *a, **k: ([(10.0, 2.0)], []))
+    monkeypatch.setattr(sync, "build_retime_command", lambda *a, **k: cmd)
+
+
+def _appel_borne(fn, secondes: float = 20.0):
+    """Exécute `fn` dans un thread et échoue si elle ne rend pas la main.
+
+    Sans cette borne, une régression ne ferait pas échouer la suite : elle la
+    suspendrait — exactement ce que subit l'utilisateur.
+    """
+    resultat: list = []
+    fil = threading.Thread(target=lambda: resultat.append(fn()), daemon=True)
+    fil.start()
+    fil.join(secondes)
+    assert not fil.is_alive(), (
+        f"retime_audio ne rend pas la main après {secondes:.0f} s — "
+        f"le tube d'erreur est plein et ffmpeg est bloqué dessus")
+    return resultat[0]
+
+
+def test_un_ffmpeg_bavard_ne_bloque_pas(tmp_path, monkeypatch):
+    """Beaucoup de diagnostics, un peu de progression, et une sortie valide."""
+    script = (
+        "import sys\n"
+        "sortie = sys.argv[1]\n"
+        "for i in range(3000):\n"
+        "    sys.stderr.write('[aac @ 0x1] diagnostic %d\\n' % i)\n"
+        "sys.stdout.write('out_time_ms=1000000\\n')\n"
+        "sys.stdout.write('progress=end\\n')\n"
+        "open(sortie, 'wb').write(b'x' * 64)\n"
+    )
+    out = tmp_path / "recale.mka"
+    _sous_ffmpeg(monkeypatch, _faux_ffmpeg(script, str(out)))
+
+    vues: list[float] = []
+    produit, restes = _appel_borne(
+        lambda: sync.retime_audio(tmp_path / "donneur.mkv", 0, [], out,
+                                  progress=vues.append))
+    assert produit == out, restes
+    assert vues and vues[-1] == 1.0
+
+
+def test_le_tampon_du_tube_est_depasse_sans_blocage(tmp_path, monkeypatch):
+    """Le cas exact du défaut : plus de 64 Ko sur stderr avant toute sortie."""
+    script = (
+        "import sys\n"
+        "sortie = sys.argv[1]\n"
+        "sys.stderr.write('e' * %d + '\\n')\n"
+        "sys.stdout.write('out_time_ms=500000\\n')\n"
+        "open(sortie, 'wb').write(b'x' * 64)\n"
+    ) % _GROS_VOLUME
+    out = tmp_path / "recale.mka"
+    _sous_ffmpeg(monkeypatch, _faux_ffmpeg(script, str(out)))
+
+    produit, restes = _appel_borne(
+        lambda: sync.retime_audio(tmp_path / "donneur.mkv", 0, [], out))
+    assert produit == out, restes
+
+
+def test_le_message_d_erreur_survit_au_tube_unique(tmp_path, monkeypatch):
+    """Fusionner les deux flux ne doit pas coûter le diagnostic à l'utilisateur."""
+    script = (
+        "import sys\n"
+        "sys.stdout.write('out_time_ms=1000\\n')\n"
+        "sys.stderr.write('[concat @ 0x1] Input link parameters differ\\n')\n"
+        "sys.stderr.write('Error while filtering: Invalid argument\\n')\n"
+        "sys.exit(1)\n"
+    )
+    out = tmp_path / "recale.mka"
+    _sous_ffmpeg(monkeypatch, _faux_ffmpeg(script))
+
+    produit, restes = _appel_borne(
+        lambda: sync.retime_audio(tmp_path / "donneur.mkv", 0, [], out))
+    assert produit is None
+    assert "Error while filtering: Invalid argument" in restes[0]
+
+
+def test_la_progression_n_est_pas_prise_pour_un_diagnostic(tmp_path, monkeypatch):
+    """Les `clé=valeur` de `-progress` ne doivent jamais être rendues comme erreur."""
+    script = (
+        "import sys\n"
+        "for ligne in ('frame=12', 'bitrate=192.0kbits/s', 'progress=continue'):\n"
+        "    sys.stdout.write(ligne + '\\n')\n"
+        "sys.exit(1)\n"
+    )
+    out = tmp_path / "recale.mka"
+    _sous_ffmpeg(monkeypatch, _faux_ffmpeg(script))
+
+    produit, restes = _appel_borne(
+        lambda: sync.retime_audio(tmp_path / "donneur.mkv", 0, [], out))
+    assert produit is None
+    assert restes == ["ffmpeg a échoué : code 1"], restes
+
+
+# ─── Les points d'insertion doivent croître ──────────────────────────────────
+#
+# `build_retime_command` découpe le donneur en `atrim=start=précédente:end=
+# celle-ci`. Une position en retrait sur la précédente rend donc un `atrim`
+# dont la fin précède le début : l'étage sort un segment vide, et le morceau
+# compris entre les deux — déjà écrit par le segment d'avant — repart dans le
+# suivant. Il se retrouve **deux fois** dans la piste produite.
+#
+# Rien ne l'empêchait : chaque frontière cherche son silence pour elle dans
+# ±15 s, `find_silence` recule encore de la moitié de l'insert pour le centrer,
+# et le centre lui-même (`end_s − delay_ms`) recule dès que le saut dépasse
+# l'écart entre deux bascules. La piste fausse passait le code retour et le
+# contrôle de taille, et se greffait comme correcte.
+
+
+def test_plan_inserts_positions_croissantes_meme_si_les_centres_reculent():
+    """Deux bascules à 4 s d'écart, séparées par un saut de 6 s.
+
+    Le second centre (`504 s − 6 s`) tombe deux secondes **avant** le premier
+    (`500 s − 0 s`) : les positions se croisaient sans qu'aucun silence n'y
+    soit pour rien.
+    """
+    segs = [sync.Segment(0.0,   500.0,      0, 0.8),
+            sync.Segment(500.0, 504.0,   6000, 0.8),
+            sync.Segment(504.0, 1000.0, 12000, 0.8)]
+    env = np.full(150_000, 1.0, dtype=np.float32)
+
+    inserts, approx = sync.plan_inserts(env, segs)
+    positions = [p for p, _ in inserts]
+    assert positions == sorted(set(positions)), positions
+    assert any("en retrait" in m for m in approx), approx
+    # Les durées ne bougent pas : on repousse le point, on n'ampute rien
+    assert [d for _, d in inserts] == [6.0, 6.0]
+
+
+def test_plan_inserts_ne_pose_jamais_une_insertion_a_zero():
+    """Une position nulle rendrait déjà un premier segment `atrim=0:0` vide."""
+    segs = [sync.Segment(0.0, 0.0,    0, 0.8),
+            sync.Segment(0.0, 500.0, 2000, 0.8)]
+    env = np.full(150_000, 1.0, dtype=np.float32)
+
+    inserts, approx = sync.plan_inserts(env, segs)
+    assert inserts[0][0] > 0.0, inserts
+    assert any("en retrait" in m for m in approx), approx
+
+
+def test_plan_inserts_laisse_intact_un_plan_deja_croissant():
+    """Le cas nominal ne doit rien payer : aucun message, aucune position bougée."""
+    segs = [sync.Segment(0.0,   300.0,    0, 0.8),
+            sync.Segment(300.0, 700.0, 2000, 0.8),
+            sync.Segment(700.0, 1000.0, 4000, 0.8)]
+    env = np.full(150_000, 1.0, dtype=np.float32)
+
+    inserts, approx = sync.plan_inserts(env, segs)
+    assert [p for p, _ in inserts] == [300.0, 698.0]
+    assert not any("en retrait" in m for m in approx), approx
+
+
+def test_le_plan_croissant_survit_a_la_commande():
+    """Bout à bout : ce que `plan_inserts` rend doit être acceptable tel quel."""
+    segs = [sync.Segment(0.0,   500.0,      0, 0.8),
+            sync.Segment(500.0, 504.0,   6000, 0.8),
+            sync.Segment(504.0, 1000.0, 12000, 0.8)]
+    env = np.full(150_000, 1.0, dtype=np.float32)
+
+    inserts, _ = sync.plan_inserts(env, segs)
+    cmd = sync.build_retime_command(Path("vf.mkv"), 0, inserts, Path("out.mka"))
+    fc  = cmd[cmd.index("-filter_complex") + 1]
+    assert fc.count("atrim") == 5          # 3 morceaux de contenu, 2 silences
+    assert "concat=n=5:v=0:a=1[out]" in fc
+
+
+def test_retime_command_refuse_un_point_en_retrait():
+    """Le garde-fou : mieux vaut ne pas fabriquer la commande qu'une piste fausse."""
+    with pytest.raises(ValueError, match="non croissants"):
+        sync.build_retime_command(Path("vf.mkv"), 0,
+                                  [(500.0, 2.0), (100.0, 2.0)],
+                                  Path("out.mka"))
+
+
+def test_retime_command_refuse_deux_points_identiques():
+    """Égalité comprise : `atrim=start=100:end=100` est un segment vide."""
+    with pytest.raises(ValueError, match="non croissants"):
+        sync.build_retime_command(Path("vf.mkv"), 0,
+                                  [(100.0, 2.0), (100.0, 2.0)],
+                                  Path("out.mka"))

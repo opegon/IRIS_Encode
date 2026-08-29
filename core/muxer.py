@@ -145,7 +145,7 @@ def identify(path: Path) -> list[IdentifiedTrack]:
     try:
         r = subprocess.run(
             [_mkvmerge_path, "-J", str(path)],
-            capture_output=True, timeout=30,
+            stdin=subprocess.DEVNULL, capture_output=True, timeout=30,
             # Voir scanner._ffprobe_json : lire dans l'encodage local tue le
             # thread de lecture dès qu'un nom de fichier en sort.
             encoding="utf-8", errors="replace",
@@ -291,6 +291,28 @@ def build_mux_command(
     return cmd
 
 
+def _group_by_donor(tracks: list[ExternalTrack]) -> dict[Path, list[ExternalTrack]]:
+    """Pistes regroupées par fichier donneur, dans l'ordre de première apparition."""
+    groups: dict[Path, list[ExternalTrack]] = {}
+    for t in tracks:
+        groups.setdefault(t.source_path, []).append(t)
+    return groups
+
+
+def premux_track_order(tracks: list[ExternalTrack]) -> list[ExternalTrack]:
+    """L'ordre dans lequel mkvmerge écrit ces pistes dans l'intermédiaire.
+
+    Il ne suit pas l'ordre où on les a choisies : mkvmerge écrit fichier par
+    fichier, dans l'ordre où ils lui sont donnés, et à l'intérieur d'un fichier
+    dans l'ordre de ses propres pistes. C'est cet ordre-là, et lui seul, qui
+    donne l'index des pistes greffées quand ffmpeg reprend l'intermédiaire.
+    """
+    ordonnees: list[ExternalTrack] = []
+    for donor_tracks in _group_by_donor(tracks).values():
+        ordonnees += sorted(donor_tracks, key=lambda t: t.source_tid)
+    return ordonnees
+
+
 def _donor_args(tracks: list[ExternalTrack]) -> list[str]:
     """Arguments mkvmerge des fichiers donneurs, groupés par fichier.
 
@@ -299,12 +321,7 @@ def _donor_args(tracks: list[ExternalTrack]) -> list[str]:
     """
     args: list[str] = []
 
-    # Regroupement par fichier donneur, dans l'ordre de première apparition
-    groups: dict[Path, list[ExternalTrack]] = {}
-    for t in tracks:
-        groups.setdefault(t.source_path, []).append(t)
-
-    for donor, donor_tracks in groups.items():
+    for donor, donor_tracks in _group_by_donor(tracks).items():
         audio_tids = [str(t.source_tid) for t in donor_tracks if t.kind == TrackKind.AUDIO]
         sub_tids   = [str(t.source_tid) for t in donor_tracks if t.kind == TrackKind.SUBTITLE]
 

@@ -136,9 +136,16 @@ et n'affiche presque jamais rien. C'est en général la **première** de la list
 Une ligne par piste greffée. Les champs se parcourent avec `←/→`, les valeurs
 se changent avec `+/-`.
 
+**La première ligne du bandeau dit ce que fait le champ sous le curseur**, et
+elle ne s'efface jamais — ni pour un avertissement, ni pour un compte rendu de
+mesure, qui prennent les lignes suivantes. C'est là qu'on lit quelles touches
+modifient la valeur affichée, et elles diffèrent d'un champ à l'autre : seul le
+décalage a trois pas, les autres champs font défiler leurs valeurs.
+
 | Touche | Action |
 |---|---|
 | `←/→` | Champ précédent / suivant |
+| `Ctrl+↑/↓` | ±10 ms sur le décalage — pour finir d'approcher une valeur mesurée |
 | `+/-` | ±100 ms sur le décalage, valeur suivante sur les autres champs |
 | `Maj+↑/↓` | ±1 s sur le décalage |
 | `↵` | Liste de valeurs du champ courant |

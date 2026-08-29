@@ -1,5 +1,229 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.4.8] — 2026-08-29
+
+### Les touches qui modifient étaient les seules que l'écran ne montrait pas (IE-36)
+
+Signalé comme une fonction manquante : « il n'existe pas de recalage manuel de
+la piste audio comme pour les sous-titres ». **Il existe** — le champ `Décalage`
+de l'écran de recalage s'édite pour n'importe quelle piste, audio comprise, avec
+trois pas et une liste de valeurs. Ce qui manquait, c'est sa trace à l'écran.
+
+Deux surfaces auraient pu la porter, aucune ne le faisait :
+
+- le **pied de page** dérive des `BINDINGS` (IE-30), et `←/→`, `+/-`,
+  `Shift+↑/↓`, `Ctrl+↑/↓` y sont tous `show=False` faute de place. Les touches
+  qui modifient sont exactement celles que le pied ne montre pas ;
+- le **bandeau** les portait, mais dans le même emplacement que ses messages.
+  Un avertissement de langue les chassait à l'arrivée sur l'écran — c'est l'état
+  d'ouverture quand une piste n'a pas de langue — et un compte rendu de mesure
+  les chassait juste après une mesure. Il ne restait que l'état où toutes les
+  pistes ont leur langue et où rien n'a été mesuré : celui où il n'y a rien à
+  régler.
+
+Les prises de vue le confirment : ni `12-sync` ni `12b-sync-mesure` ne portait
+une seule touche d'édition.
+
+- **Le bandeau porte désormais deux choses séparées.** Première ligne : ce que
+  sait faire le champ sous le curseur, qui ne s'efface jamais. Lignes suivantes :
+  le message du moment. La boîte passe de quatre à cinq lignes — un refus de
+  mesure en occupe trois, et les tronquer serait revenir au défaut d'IE-32.
+- **La ligne est propre au champ.** Seul le décalage a trois pas ; sur les
+  autres, `_change` ignore le pas et fait défiler les valeurs. Y annoncer
+  « ±10 ms » enverrait chercher un réglage qui n'existe pas.
+- `_set_hint` passe par la même recomposition : il écrivait directement dans le
+  bandeau, ce qui aurait effacé la ligne du champ.
+- **Seize tests**, dont quatre montent l'écran et relèvent le bandeau dans les
+  trois états qui comptent — arrivée, après mesure, après navigation.
+
+**Documentation** — `Ctrl+↑/↓` (livré en v0.8.3.9) et `R` (v0.8.3.x) manquaient
+aux tables de touches de la spec § 14.4 et du guide § 2.4. Les deux y entrent.
+
+**Hors périmètre, tel qu'arbitré** : le point de repère `R` reste réservé aux
+sous-titres. Sur une piste audio l'application n'a aucune réplique à proposer ;
+il faudrait deux instants saisis à la main, ce qui est une autre fonction que
+celle-ci.
+
+## [v0.8.4.7] — 2026-08-29
+
+### Le forçage à 48 kHz de l'AAC tombait sur le mauvais flux (IE-48)
+
+`audio_args` écrivait `-ar:{i}` — un spécificateur de flux **nu**, qui désigne
+le flux de sortie n° i tous types confondus. Toutes les options voisines
+(`-c:a:{i}`, `-b:a:{i}`, `-ac:a:{i}`) désignent au contraire la i-ème piste
+audio.
+
+`build_command` et `build_strip_remux_mp4` mappent la vidéo en premier : le flux
+0 y est donc la vidéo. `-ar:0` tombait dessus et était ignoré, `-ar:1` tombait
+sur la première piste audio alors qu'il avait été écrit pour la seconde. Le
+réglage glissait d'un cran, et la piste AAC qui l'avait demandé ne le recevait
+jamais. Aucun avertissement : une option audio posée sur un flux vidéo est
+simplement inutilisée.
+
+- `-ar:a:{i}`, la forme par type, correcte quel que soit l'ordre des `-map`.
+  Un seul endroit à corriger : les trois chemins partagent `audio_args`.
+- **Quatre tests**, un par contexte, tous en échec sur le code d'avant.
+
+Le défaut était invisible sur le troisième chemin : `build_audio_command`
+n'écrit que de l'audio (`-vn -sn -dn`), le flux 0 y **est** la piste 0, et la
+forme nue s'y trouvait juste par accident. Une suite qui n'aurait couvert que
+celui-là serait restée verte sur les trois — c'est la raison pour laquelle il a
+son propre test.
+
+## [v0.8.4.6] — 2026-08-29
+
+### Treize sous-processus se disputaient le clavier avec l'interface (IE-58)
+
+Relevé en clôturant IE-46, où seul `retime_audio` était en cause. Le balayage
+des seize lancements du projet en a trouvé **treize** sans `stdin` redirigé :
+tous héritaient de l'entrée du terminal, que l'interface Textual est en train
+d'écouter.
+
+ffmpeg lit `stdin` pour son clavier interactif — `q` l'arrête, `+`/`-` changent
+sa verbosité. Deux lecteurs sur la même entrée se partagent les octets au
+hasard : une frappe attrapée par ffmpeg ne parvient jamais à l'écran, et un `q`
+de passage tue le décodage ou l'encodage en cours. Les fenêtres sont larges —
+un décodage d'enveloppe dure plusieurs minutes, un `remove_dv` jusqu'à trente.
+
+- **`stdin=subprocess.DEVNULL` sur les seize lancements**, ffmpeg, ffprobe,
+  dovi_tool, mkvmerge, nvidia-smi et tar compris. La règle vaut aussi pour les
+  outils qui ne lisent pas l'entrée aujourd'hui : aucun n'en a besoin, et c'est
+  ce qui la rend vérifiable — donc tenable.
+- **Un test structurel** parcourt `core/` et `tui/` en AST et refuse tout
+  `subprocess.run` ou `subprocess.Popen` sans `stdin=`. Le défaut n'est pas dans
+  un chemin d'exécution, il est dans ce qu'un appel **omet** : seule une lecture
+  du source le voit. Deux tests l'accompagnent pour vérifier qu'il ne passe pas
+  sur du vide — un fichier fautif fabriqué doit le faire échouer, et le balayage
+  doit continuer de voir les seize lancements.
+
+`EncoderProcess`, `MuxProcess` et `preview.launch` fermaient déjà `stdin` : les
+trois endroits où quelqu'un s'était posé la question.
+
+## [v0.8.4.5] — 2026-08-29
+
+### Points d'insertion non croissants : le donneur sortait en double (IE-47)
+
+`build_retime_command` découpe le donneur en
+`atrim=start=précédente:end=celle-ci`. Une position en retrait sur la
+précédente rend donc un `atrim` **dont la fin précède le début** : l'étage sort
+un segment vide, et le morceau compris entre les deux positions — déjà écrit par
+le segment d'avant — repart dans le suivant. Il se retrouve deux fois dans la
+piste produite.
+
+Rien n'empêchait le cas. Chaque frontière cherche son silence pour elle dans
+±15 s (`CUT_SEARCH_S`), `find_silence` recule encore de la moitié de l'insert
+pour le centrer, et le centre lui-même — `end_s − delay_ms` — recule dès que le
+saut dépasse l'écart entre deux bascules : deux plages à 4 s d'écart séparées
+par un saut de 6 s suffisent, sans qu'aucun silence n'y soit pour rien.
+
+La piste fausse passait le code retour de ffmpeg **et** le contrôle de taille de
+`retime_audio`, puis se greffait comme correcte.
+
+- `plan_inserts` **impose la croissance** : une position en retrait est
+  repoussée d'un bin sur la précédente, et la correction est signalée dans les
+  réserves comme l'est déjà une frontière posée sans silence. Les durées ne
+  bougent pas — on repousse le point, on n'ampute rien, ce qui garde
+  l'invariant du mode : allonger n'efface jamais de contenu.
+- Une position nulle est écartée par la même règle : elle rendait déjà un
+  premier segment `atrim=0:0` vide.
+- `build_retime_command` **refuse** un plan non croissant au lieu de fabriquer
+  la commande. `plan_inserts` l'assure ; le vérifier rend l'invariant explicite,
+  et rien en aval ne rattraperait un `atrim` à l'envers.
+- **Six tests**, dont quatre échouent sur le code d'avant.
+
+## [v0.8.4.4] — 2026-08-29
+
+### `retime_audio` se bloquait quand ffmpeg remplissait le tube d'erreur (IE-46)
+
+`stdout` et `stderr` étaient deux tubes distincts, dont un seul était lu au fil
+de l'eau : `proc.stderr.read()` n'arrivait qu'après `proc.wait()`. Passé les
+~64 Ko de tampon du second, ffmpeg se bloque sur son écriture — il ne sort
+jamais, `stdout` n'atteint jamais sa fin, et la boucle de lecture ne rend jamais
+la main.
+
+Le graphe monté par `build_retime_command` aligne `2N+1` étages `atrim`/`asetpts`
+devant un `concat` : exactement la forme qui produit un diagnostic par étage.
+Vu de l'utilisateur, la barre d'avancement se fige pour de bon, sans qu'aucune
+erreur ne remonte et sans autre issue que de tuer l'application.
+
+- **Un seul tube**, `stderr=subprocess.STDOUT` — la disposition qu'emploie déjà
+  `muxer.MuxProcess`. Les lignes en `clé=valeur` sont l'avancement de
+  `-progress`, les autres sont gardées comme journal d'erreur, bornées aux vingt
+  dernières : un graphe en défaut peut en produire des centaines, et le message
+  utile est le dernier.
+- **Quatre tests**, dont deux **suspendent la suite** sur le code d'avant : ils
+  substituent à ffmpeg un interpréteur Python qui écrit 300 Ko sur `stderr`, et
+  bornent l'appel dans un thread — sans cette borne une régression ne ferait pas
+  échouer la suite, elle la figerait, exactement comme l'utilisateur.
+
+Les deux autres `Popen` de `core/` sont hors de cause : `_decode_envelope`
+écarte `stderr` sur `DEVNULL`, `EncoderProcess` ne tube que `stderr`.
+
+**Reste ouvert au même endroit** : `retime_audio` n'impose pas
+`stdin=DEVNULL`, là où `EncoderProcess` et `MuxProcess` le font — ffmpeg hérite
+donc de l'entrée du terminal. Constat séparé, non traité ici.
+
+## [v0.8.4.3] — 2026-08-29
+
+Trois défauts relevés par une revue de `core/`. Aucun ne lève d'erreur : deux
+produisent un fichier ou une configuration faux en silence, le troisième refuse
+un profil au nom d'une mesure qui n'a pas eu lieu.
+
+### La piste greffée disparaissait après un mux préalable
+
+Une piste étirée ne peut pas entrer par ffmpeg : mkvmerge la greffe d'abord vers
+un intermédiaire, ffmpeg encode celui-ci. L'écran d'encodage vidait alors
+`external_tracks` — à raison, ffmpeg ne doit pas rouvrir les donneurs — mais
+`build_command` ne mappait plus que les pistes de la source. Les greffées, bien
+présentes dans l'intermédiaire, n'étaient reprises nulle part.
+
+ffmpeg ne s'en plaint pas : il encode ce qu'on lui demande, rend un code de
+retour nul, et l'écran affiche un succès. L'utilisateur récupérait un fichier
+sans la VF qu'il venait de mesurer et de recaler.
+
+- Les pistes passent de `external_tracks` à **`FileDecision.premuxed_tracks`** :
+  elles ne sont plus des entrées, mais elles restent à mapper.
+- **`muxer.premux_track_order()`** donne l'ordre dans lequel mkvmerge les écrit
+  — fichier par fichier, puis par tid croissant, et non dans l'ordre où elles
+  ont été choisies. Prendre le second décalait chaque piste de son étiquette.
+- Leur index part du nombre de pistes de la **source entière** : mkvmerge la
+  recopie sans en écarter aucune, que la décision les garde toutes ou non.
+- Langue, titre, drapeaux et `-c:a copy` s'appliquent comme pour une greffe
+  directe — sans le `copy`, ffmpeg réencodait la piste dans le codec par défaut
+  du conteneur.
+- L'intermédiaire supprimé, les pistes **reviennent** dans `external_tracks` :
+  un second essai sur la même décision doit repasser par le mux préalable.
+
+### `_deep_merge` partageait encore la moitié de ses branches
+
+La v0.8.1.5 avait corrigé `_deep_merge({}, _DEFAULTS)` — la machine **sans**
+`config.toml`. L'autre sens restait entier : la récursion ne suivait
+qu'`override`, si bien que `_deep_merge(_DEFAULTS, user)` rendait telles quelles
+toutes les branches que le fichier utilisateur ne mentionne pas.
+
+Un `config.toml` présent mais sans section `[tui]` donnait donc un `cfg` dont
+`['tui']` **était** celui du module. Le premier `reset_browser_columns` y
+supprimait les colonnes par défaut, et l'ouverture du browser mourait sur un
+`KeyError: 'columns'`.
+
+Les valeurs de `base` sont désormais recopiées par la même récursion que celles
+d'`override`.
+
+### `cinema_4k_quality` était refusé sur toute machine à carte graphique
+
+Le mode HDR10 « quality » encode sur processeur avec `libx265` : les métadonnées
+statiques qu'il injecte passent par `-x265-params`, que les encodeurs matériels
+n'exposent pas. Mais le sondage du lancement n'essayait que les trois encodeurs
+de la plateforme, et `peut_encoder` ne distingue pas « sondé et refusé » de
+« jamais sondé » — les deux valent `False`. Le lancement refusait donc
+l'encodage avec « libx265 indisponible ici », sur une machine où ffmpeg le
+livre pourtant.
+
+**`platform.encodeurs_a_sonder()`** énumère maintenant tout ce que
+`build_command` peut choisir, `libx265` compris, et l'application sonde cette
+liste-là. Un test relie les deux : ce que la commande demande, le sondage le
+couvre.
+
 ## [v0.8.4.2] — 2026-08-29
 
 ### `bootstrap.ps1` échouait sur une installation neuve de Windows 11

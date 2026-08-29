@@ -152,3 +152,97 @@ def test_le_mp4_sans_decision_recopie_tout(tmp_path):
         tmp_path / "v.hevc", tmp_path / "src.mkv", tmp_path / "out.mp4",
         fps="24/1", sous_titres=[])
     assert "1:a?" in cmd
+
+
+# ─── IE-48 — le forçage à 48 kHz visait le mauvais flux ──────────────────────
+#
+# `audio_args` écrivait `-ar:{i}`, un spécificateur **nu** : il désigne le flux
+# de sortie n° i tous types confondus, là où toutes les options voisines
+# (`-c:a:{i}`, `-b:a:{i}`, `-ac:a:{i}`) désignent la i-ème piste audio.
+#
+# `build_command` et `build_strip_remux_mp4` mappent la vidéo en premier : le
+# flux 0 est donc la vidéo. `-ar:0` tombait dessus et était ignoré, `-ar:1`
+# tombait sur la première piste audio alors qu'il était écrit pour la seconde.
+# Le réglage glissait d'un cran, silencieusement, et la piste AAC pour laquelle
+# il avait été émis ne le recevait jamais.
+#
+# Le défaut était invisible sur le troisième chemin : `build_audio_command`
+# n'écrit que de l'audio (`-vn -sn -dn`), le flux 0 y **est** la piste 0, et la
+# forme nue s'y trouvait juste par accident. Un test qui n'aurait couvert que
+# celui-là aurait été vert sur les trois.
+
+
+def _aac(index, **kw):
+    """Une piste transcodée en AAC — le seul cas qui force la fréquence."""
+    return AudioDecision(
+        track=_piste(index, "dts", **kw), action=AudioAction.TRANSCODE,
+        reason="", output_codec="aac", output_bitrate=192_000)
+
+
+def _valeur_de(cmd: list[str], option: str) -> str:
+    return cmd[cmd.index(option) + 1]
+
+
+def test_le_forcage_48k_nomme_le_type_de_flux():
+    from core.encoder import audio_args
+
+    args = audio_args([_aac(0), _aac(1)])
+    assert _valeur_de(args, "-ar:a:0") == "48000"
+    assert _valeur_de(args, "-ar:a:1") == "48000"
+    assert "-ar:0" not in args and "-ar:1" not in args, args
+
+
+def test_le_forcage_48k_vise_la_bonne_piste_a_l_encodage(tmp_path):
+    """Vidéo mappée en tête : la forme nue visait la vidéo, puis l'audio #0."""
+    from core.decision import decide
+    from core.encoder import build_command
+    from core.platform import GPU, OS, PlatformProfile
+    from core.profiles import Profile
+    from core.scanner import VideoInfo
+
+    p = tmp_path / "film.mkv"
+    p.write_bytes(b"")
+    info = VideoInfo(
+        path=p, width=1920, height=1080, bitrate=8_000_000, codec="h264",
+        duration=3600.0, frame_count=0, dv_profile=None,
+        audio_tracks=[_piste(0, "ac3"), _piste(1, "dts")], subtitle_tracks=[])
+    profil = Profile(id="test", data={
+        "bitrate_720p_kbps": 2000, "bitrate_1080p_kbps": 5000,
+        "bitrate_4k_kbps": 8000, "audio_languages": ["fre"],
+        "audio_copy_compatible": True, "preserve_hd_audio": False})
+    plat = PlatformProfile(os=OS.WINDOWS, gpu=GPU.NVIDIA, hwaccel="cuda",
+                           encoder_hevc="hevc_nvenc", encoder_h264="h264_nvenc",
+                           encoder_av1="av1_nvenc")
+
+    dec = decide(info, profil)
+    # Seule la seconde piste est transcodée en AAC : c'est elle, et elle seule,
+    # qui doit recevoir la fréquence.
+    dec.audio = [_copy(0), _aac(1)]
+    cmd = build_command(dec, plat)
+
+    assert cmd.index("-map") < cmd.index("-ar:a:1"), "la vidéo est bien mappée avant"
+    assert _valeur_de(cmd, "-ar:a:1") == "48000"
+    assert "-ar:1" not in cmd, "cette forme visait la piste audio #0, une recopie"
+    assert "-ar:a:0" not in cmd, "la piste recopiée n'a rien à rééchantillonner"
+
+
+def test_le_mp4_du_retrait_dv_vise_aussi_la_bonne_piste(tmp_path):
+    """Même disposition, même défaut : `build_strip_remux_mp4` mappe la vidéo en tête."""
+    cmd = dovi.build_strip_remux_mp4(
+        tmp_path / "nodv.hevc", tmp_path / "src.mkv", tmp_path / "out.mp4",
+        fps="24/1", sous_titres=[], audio=[_copy(0), _aac(1)])
+    assert _valeur_de(cmd, "-ar:a:1") == "48000"
+    assert "-ar:1" not in cmd, cmd
+
+
+def test_la_passe_audio_seule_reste_juste(tmp_path):
+    """Le chemin où la forme nue était juste par accident : il doit le rester.
+
+    `build_audio_command` n'écrit que de l'audio, le flux 0 y est la piste 0.
+    La forme par type y donne le même résultat — c'est ce qui doit être vérifié,
+    pas l'inverse.
+    """
+    cmd = build_audio_command(tmp_path / "src.mkv", tmp_path / "out.mka",
+                              [_copy(0), _aac(1)])
+    assert _valeur_de(cmd, "-ar:a:1") == "48000"
+    assert "-vn" in cmd and "-sn" in cmd

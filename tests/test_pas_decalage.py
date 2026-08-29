@@ -67,8 +67,12 @@ def test_le_bandeau_annonce_le_pas_fin():
     Le bandeau nomme la touche garantie, pas les alias : annoncer `Ctrl+±`
     enverrait l'utilisateur sur une touche que son terminal peut ne pas
     transmettre.
+
+    L'annonce vit désormais sur la ligne du champ actif, qu'aucun message ne
+    chasse — voir `tests/test_champ_visible.py`.
     """
-    assert "±10 ms" in ecran._HINT
+    ligne = ecran.ligne_champ("delay")
+    assert "±10 ms" in ligne
     # `raccourcis()` capitalise les noms de touches — c'est son rendu, pas une
     # information : on cherche la touche, pas sa casse.
-    assert "ctrl+↑/↓" in ecran._HINT.lower()
+    assert "ctrl+↑/↓" in ligne.lower()

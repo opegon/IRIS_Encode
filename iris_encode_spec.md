@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.4.2 — document de référence courant
+**Version** : 0.8.4.8 — document de référence courant
 **Date** : 2026-08-29
 **Statut** : stable
 
@@ -918,6 +918,17 @@ Sans silence exploitable, l'insertion est **quand même posée** sur la frontiè
 au lieu d'abandonner : contrairement à une coupe, allonger n'efface rien — au pire on
 entend une pause un peu longue. La frontière concernée est signalée.
 
+**Les positions croissent strictement**, et rien ne l'assurait. Chaque frontière cherche
+son silence pour elle dans ±15 s, `find_silence()` recule encore de la moitié de
+l'insert pour le centrer, et le centre lui-même (`end_s − delay_ms`) recule dès que le
+saut dépasse l'écart entre deux bascules. Une position en retrait donnait un
+`atrim=start=précédente:end=celle-ci` **à l'envers** : segment vide, et le morceau
+compris entre les deux — déjà écrit — reparti dans le suivant, donc présent deux fois
+dans la piste produite, qui passait pourtant le code retour et le contrôle de taille.
+La position est désormais repoussée d'un bin sur la précédente et la correction
+signalée ; `build_retime_command()` refuse un plan non croissant plutôt que de
+fabriquer la commande.
+
 **Fabrication.** `atrim` découpe à l'échantillon près, là où une copie de flux se
 calerait sur la trame la plus proche ; sur cinq jointures, ces arrondis dériveraient
 audiblement. Le silence intercalé est un extrait du donneur passé à `volume=0`, et non
@@ -929,6 +940,19 @@ réencodage AAC, négligeable sur une piste déjà compressée.
 suivi par `-progress pipe:1` sur `out_time_ms`. Sans lui, la barre se figeait à 85 %
 pendant toute la phase longue — l'opération semblait bloquée alors qu'elle tournait
 (mesuré : 14 s de décodage, puis 65 s de réencodage muet sur 82 s au total).
+
+Progression et diagnostics arrivent par **un seul tube** (`stderr=STDOUT`, comme
+`muxer.MuxProcess`) : les lignes en `clé=valeur` sont l'avancement, les autres sont
+gardées comme journal d'erreur. Deux tubes dont un seul est lu au fil de l'eau se
+bloquent dès que le second est plein — ffmpeg reste suspendu sur son écriture, la
+lecture de l'autre n'atteint jamais la fin, et la barre se fige pour de bon.
+
+**Tout sous-processus du projet ferme son entrée standard** (`stdin=DEVNULL`), sans
+exception. ffmpeg lit `stdin` pour son clavier interactif — `q` l'arrête — et hérite
+sinon de celle du terminal, que l'interface écoute : les deux se disputent alors les
+frappes. La règle vaut aussi pour les outils qui ne lisent pas l'entrée, parce
+qu'aucun n'en a besoin et que c'est ce qui la rend vérifiable — un test parcourt les
+sources et refuse tout lancement sans `stdin=`.
 
 Vérifié sur un épisode réel — la piste produite mesure **+0 ms, confiance excellente (0,72), trois
 tiers concordants à 0 ms**, et passe donc sans réserve.
@@ -982,6 +1006,14 @@ dossier du film), puis ffmpeg encode celui-ci. L'utilisateur n'enchaîne plus de
 `FileDecision.encode_source` porte cet intermédiaire ; `info.path` reste la source,
 dont dépendent le nom et le dossier de sortie — l'intermédiaire ne doit pas décider où
 le résultat atterrit. Il est supprimé à la fin de la passe, réussie ou non.
+
+Les pistes greffées quittent alors `external_tracks` — ffmpeg ne doit pas rouvrir les
+donneurs, mkvmerge les ayant déjà absorbés — pour `premuxed_tracks`. Elles restent
+entièrement à mapper : dans l'intermédiaire elles suivent celles de la source, dans
+l'ordre où mkvmerge les écrit (`premux_track_order()` : fichier par fichier, puis par
+tid croissant), et leur index part donc du nombre de pistes de la source, que la
+décision les garde toutes ou non. Une fois l'intermédiaire supprimé, elles reviennent
+dans `external_tracks` : un second essai doit repasser par le mux préalable.
 
 Le surcoût — une écriture complète du film — n'est payé que dans ce cas. Sans mkvmerge,
 l'opération est refusée en amont plutôt que d'échouer en cours d'encodage.
@@ -1490,14 +1522,28 @@ Deux temps dans le même écran :
 Une piste externe = une ligne. Champs éditables par ligne : **décalage**, **étirement**,
 **langue**, **nom**, **défaut**, **forcé**.
 
+**Le bandeau porte deux choses distinctes.** Sa première ligne dit ce que sait faire le
+champ sous le curseur, et ne s'efface jamais ; les suivantes portent le message du
+moment. Les deux partageaient un seul emplacement, et le message gagnait : les touches
+d'édition disparaissaient sur un avertissement de langue — l'état d'arrivée quand une
+piste en manque — comme sur un compte rendu de mesure, c'est-à-dire dans les deux
+situations où l'on vient justement régler une valeur. Le pied de page ne les porte pas
+non plus : elles y sont `show=False` faute de place. Une capacité réelle ne se signalait
+donc nulle part, et a été rapportée comme absente.
+
+La ligne est propre au champ : seul le décalage a trois pas, les autres font défiler
+leurs valeurs — y annoncer un pas en millisecondes serait faux.
+
 | Touche | Action |
 |---|---|
 | `←` / `→` | Champ précédent / suivant |
+| `Ctrl+↑` / `Ctrl+↓` | ±10 ms sur le champ décalage — pas fin, pour finir d'approcher une mesure |
 | `+` / `-` | ±100 ms sur le champ décalage |
 | `Shift+↑` / `Shift+↓` | ±1 s |
 | `↵` | Ouvre la liste des valeurs du champ courant |
 | `M` | **Mesure automatique** (§ 10) |
 | `A` | Applique le candidat mesuré |
+| `R` | **Point de repère** — mesure guidée par une réplique, quand la mesure libre ne conclut pas |
 | `S` | **Plages détectées** (§ 10.4) — lecture seule |
 | `P` | **Applique les plages** à la piste sous le curseur — `.srt` réécrit (§ 10.5) ou piste audio rallongée et réencodée (§ 10.6). Le fichier produit devient la source, avec un décalage nul |
 | `V` | **Visualiser dans mpv**, piste greffée et décalage appliqué |
@@ -1853,6 +1899,12 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.4.8 | 2026-08-29 | **IE-36** — les touches qui modifient une valeur étaient les seules que l'écran de recalage ne montrait jamais : le bandeau leur donne une ligne propre au champ actif, qu'aucun message ne chasse (§ 14.4) · `Ctrl+↑/↓` et `R`, absents des tables de touches de la spec et du guide, y entrent |
+| 0.8.4.7 | 2026-08-29 | **IE-48** — le forçage à 48 kHz de l'AAC employait un spécificateur de flux nu (`-ar:{i}`) : il visait la vidéo puis glissait d'un cran sur les pistes audio, sur les deux chemins qui mappent la vidéo en tête |
+| 0.8.4.6 | 2026-08-29 | **IE-58** — treize sous-processus héritaient de l'entrée du terminal, que l'interface écoute : `stdin=DEVNULL` sur les seize lancements du projet (§ 10.6), et un test structurel qui refuse le prochain lancement sans |
+| 0.8.4.5 | 2026-08-29 | **IE-47** — points d'insertion non croissants : un `atrim` à l'envers rendait un segment vide et dupliquait le donneur compris entre les deux positions (§ 10.6) · six tests, dont quatre échouent sur le code d'avant |
+| 0.8.4.4 | 2026-08-29 | **IE-46** — `retime_audio` se bloquait quand ffmpeg remplissait le tube d'erreur : progression et diagnostics passent désormais par un seul tube (§ 10.6), quatre tests dont deux suspendent la suite sur le code d'avant |
+| 0.8.4.3 | 2026-08-29 | **Revue de code, trois défauts silencieux** : après un mux préalable, les pistes greffées n'étaient plus mappées et disparaissaient du fichier produit (§ 12) · `_deep_merge` partageait encore les branches absentes du `config.toml`, et la réinitialisation des colonnes vidait `_DEFAULTS` · `libx265` absent du sondage de lancement rendait `cinema_4k_quality` inutilisable sur toute machine à carte graphique |
 | 0.8.4.2 | 2026-08-29 | **`bootstrap.ps1` échouait sur une installation neuve de Windows 11** : Smart App Control bloque le trampoline posé par `uv venv` (erreur 4551) · le `.venv` est créé par le module `venv` de l'interpréteur, qui copie un redirecteur à réputation établie · reconstruction systématique de `.venv`, et blocage nommé au lieu d'un « installation impossible » muet |
 | 0.8.4.1 | 2026-08-29 | Ménage du dépôt public : `CLAUDE.md` (aide-mémoire local) sorti du dépôt et de son historique, `audit.md` (rapport v0.7) retiré de l'arbre |
 | **0.8.4.0** | 2026-08-29 | **Release.** Rassemble 0.8.3.7 à 0.8.3.12 : guide embarqué (`H`), pas fin de 10 ms, correction de l'arbitrage des ratios de recalage, revue de code IE-38 à IE-41 |

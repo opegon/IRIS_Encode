@@ -4,6 +4,10 @@ tui/screens/sync.py — Recalage manuel des pistes externes avant mux.
 Une ligne par piste greffée, chacune avec son propre décalage : ajouter une
 VF et ses sous-titres se règle indépendamment, piste par piste.
 
+Le bandeau du bas porte deux choses distinctes : sur sa première ligne, ce que
+le champ sous le curseur sait faire — elle ne s'efface jamais — et sur les
+suivantes le message du moment (avertissement, compte rendu de mesure).
+
   ←/→          champ suivant / précédent
   +/-          ±100 ms sur le décalage, valeur suivante sur les autres champs
   Shift+↑/↓    ±1 s sur le décalage
@@ -88,13 +92,39 @@ _DELAY_FINE_MS = 10
 _DELAY_STEP_MS = 100
 _DELAY_JUMP_MS = 1000
 
-_HINT = (raccourcis([("←/→", "Champ"), ("Ctrl+↑/↓", "±10 ms"),
-                     ("+/-", "±100 ms"),
-                     ("Shift+↑/↓", "±1 s"), ("enter", "Liste")]) + "\n"
-         + raccourcis([("m", "Mesurer"), ("v", "Visualiser"),
-                       ("k", "Extrait de contrôle"), ("c", "Copier"),
-                       ("r", "Repère"), ("F9", "Ajouter"),
-                       ("d", "Retirer")]))
+# Ce que sait faire le champ sous le curseur, et avec quelles touches. Sur le
+# décalage les trois pas diffèrent ; ailleurs les mêmes touches font défiler
+# les valeurs, et annoncer un pas en millisecondes y serait faux.
+_FIELD_KEYS: dict[str, list[tuple[str, str]]] = {
+    "delay":   [("Ctrl+↑/↓", "±10 ms"), ("+/-", "±100 ms"),
+                ("Shift+↑/↓", "±1 s"), ("enter", "Liste")],
+    "stretch": [("+/-", "Valeur suivante"), ("enter", "Liste")],
+    "lang":    [("+/-", "Valeur suivante"), ("enter", "Liste")],
+    "name":    [("+/-", "Valeur suivante"), ("enter", "Liste")],
+    "default": [("+/-", "Bascule"),         ("enter", "Liste")],
+    "forced":  [("+/-", "Bascule"),         ("enter", "Liste")],
+}
+
+
+def ligne_champ(field: str) -> str:
+    """Ce que le champ actif sait faire — la ligne qui ne s'efface jamais.
+
+    C'était la seule chose que l'écran ne disait nulle part. Le pied de page
+    dérive des `BINDINGS`, où les touches d'édition sont `show=False` faute de
+    place ; le bandeau les portait, mais un avertissement de langue ou un
+    compte rendu de mesure prenait toute sa hauteur — c'est-à-dire dans les
+    deux seules situations où l'on vient justement régler une valeur. Ne
+    restait que l'état où tout va bien et où il n'y a rien à faire.
+    """
+    return (f"{_FIELD_LABELS[field]} : "
+            + raccourcis(_FIELD_KEYS[field] + [("←/→", "Autre champ")]))
+
+
+# Les actions de l'écran, en repli quand aucun message ne les remplace.
+_HINT = raccourcis([("m", "Mesurer"), ("v", "Visualiser"),
+                    ("k", "Extrait de contrôle"), ("c", "Copier"),
+                    ("r", "Repère"), ("F9", "Ajouter"),
+                    ("d", "Retirer")])
 _HINT_NO_LANG = (f"⚠ Langue manquante — +/- ou {touche('enter')} pour la "
                  f"choisir. Sans elle, la piste sortirait en « und ».")
 
@@ -163,11 +193,13 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     #sync-bar-label { width: 20; color: $warning; }
     #sync-bar { width: 1fr; }
     #sync-hint {
-        /* 3 lignes de texte + 1 pour la bordure : `height` couvre la boîte
-           entière, bordure comprise. À 3, la troisième ligne disparaissait —
+        /* 4 lignes de texte + 1 pour la bordure : `height` couvre la boîte
+           entière, bordure comprise. La première ligne est celle du champ
+           actif et ne s'efface jamais ; les trois autres sont au message. À
+           une de moins, la dernière ligne d'un refus de mesure disparaissait —
            celle qui renvoie vers 'a' ou 's', donc précisément l'indication
-           dont l'utilisateur a besoin après un refus. */
-        height: 4;
+           dont l'utilisateur a besoin à ce moment-là. */
+        height: 5;
         background: $primary-darken-1;
         color: $text;
         padding: 0 2;
@@ -209,7 +241,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         with Static(id="sync-bar-row"):
             yield Label("Mesure en cours", id="sync-bar-label")
             yield ProgressBar(total=100, show_eta=False, id="sync-bar")
-        yield Static(_HINT, id="sync-hint", markup=False)
+        yield Static("", id="sync-hint", markup=False)
         yield KeyFooter(
             actions=actions_ecran(self),
             nav=footer_line2(back=True, nav=True, accueil=True),
@@ -315,10 +347,21 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             f" {self._source.name} ── {n} piste(s) à greffer"
             f" ── Champ : {_FIELD_LABELS[_FIELDS[self._field_idx]]}{warn}"
         )
+        self._refresh_hint(missing)
+
+    def _refresh_hint(self, missing: int | None = None) -> None:
+        """Recompose le bandeau : le champ actif, puis le message.
+
+        Chacun a sa ligne. Le message occupait la boîte entière, et chassait
+        donc les touches d'édition exactement quand elles servent.
+        """
+        if missing is None:
+            missing = sum(1 for t in self._tracks if not t.language)
         # Un message de mesure survit à la navigation : sans ça, la moindre
         # flèche effaçait le résultat et l'écran semblait n'avoir rien fait.
+        message = self._hint_override or (_HINT_NO_LANG if missing else _HINT)
         self.query_one("#sync-hint", Static).update(
-            self._hint_override or (_HINT_NO_LANG if missing else _HINT)
+            ligne_champ(_FIELDS[self._field_idx]) + "\n" + message
         )
 
     @on(DataTable.RowHighlighted)
@@ -645,9 +688,13 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self.app.call_from_thread(self._apply_measure, t, res)
 
     def _set_hint(self, text: str) -> None:
-        """Message persistant : il survit à la navigation entre champs."""
+        """Message persistant : il survit à la navigation entre champs.
+
+        Passe par `_refresh_hint` : écrire directement dans le bandeau
+        effacerait la ligne du champ actif, que ce message ne remplace pas.
+        """
         self._hint_override = text
-        self.query_one("#sync-hint", Static).update(text)
+        self._refresh_hint()
 
     def action_apply_candidate(self) -> None:
         """

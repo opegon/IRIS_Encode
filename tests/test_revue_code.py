@@ -280,3 +280,66 @@ def test_le_decodage_ne_repose_plus_sur_un_assert():
     src = inspect.getsource(sync_mod._decode_envelope)
     assert "assert proc.stdout" not in src
     assert "if proc.stdout is None" in src
+
+
+# ─── IE-58 — aucun sous-processus n'hérite de l'entrée du terminal ───────────
+#
+# ffmpeg lit l'entrée standard pour son clavier interactif : `q` l'arrête,
+# `+`/`-` changent son niveau de verbosité. Sans redirection il hérite de celle
+# du terminal — que l'interface Textual est en train d'écouter. Les deux se
+# disputent alors les frappes : celles que ffmpeg attrape ne parviennent jamais
+# à l'écran, et un `q` de passage tue l'encodage en cours.
+#
+# `EncoderProcess`, `MuxProcess` et `preview.launch` fermaient `stdin` ; les
+# treize autres lancements du projet, non. La règle vaut pour tous, y compris
+# ceux dont l'outil ne lit pas l'entrée aujourd'hui : aucun ne s'en sert, et
+# c'est ce qui rend la règle vérifiable — donc tenable.
+#
+# Ce test est structurel à dessein. Le défaut n'est pas dans un chemin
+# d'exécution, il est dans ce qu'un appel **omet** ; seule une lecture du source
+# le voit, et c'est ce qui empêche le prochain lancement de repartir sans.
+
+import ast
+
+_LANCEURS = ("subprocess.run", "subprocess.Popen")
+
+
+def _appels_sans_stdin(fichier: Path) -> list[int]:
+    arbre = ast.parse(fichier.read_text(encoding="utf-8"))
+    return [n.lineno for n in ast.walk(arbre)
+            if isinstance(n, ast.Call)
+            and ast.unparse(n.func) in _LANCEURS
+            and "stdin" not in {k.arg for k in n.keywords}]
+
+
+def _sources() -> list[Path]:
+    racine = Path(__file__).resolve().parent.parent
+    return sorted(racine.glob("core/*.py")) + sorted(racine.glob("tui/**/*.py"))
+
+
+def test_tout_lancement_ferme_son_entree_standard():
+    fautifs = {f.name: lignes for f in _sources()
+               if (lignes := _appels_sans_stdin(f))}
+    assert not fautifs, (
+        f"lancements sans `stdin=` : {fautifs}. Un sous-processus qui hérite de "
+        f"l'entrée du terminal dispute ses frappes à l'interface.")
+
+
+def test_le_test_verrait_un_lancement_nu():
+    """Le garde-fou du garde-fou : vérifier qu'il ne passe pas sur du vide."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        f = Path(tmp) / "faux.py"
+        f.write_text("import subprocess\n"
+                     "subprocess.run(['ffmpeg'], capture_output=True)\n",
+                     encoding="utf-8")
+        assert _appels_sans_stdin(f) == [2]
+
+
+def test_les_lancements_sont_bien_trouves():
+    """Et qu'il regarde bien là où les lancements sont."""
+    total = sum(
+        sum(1 for n in ast.walk(ast.parse(f.read_text(encoding="utf-8")))
+            if isinstance(n, ast.Call) and ast.unparse(n.func) in _LANCEURS)
+        for f in _sources())
+    assert total >= 16, f"seulement {total} lancements vus — le balayage a dérivé"

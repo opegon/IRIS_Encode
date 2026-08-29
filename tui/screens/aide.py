@@ -25,7 +25,7 @@ from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Static
 
-from ..common import TOUCHES, footer_line2
+from ..common import footer_line2, touche_longue
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 
@@ -119,8 +119,9 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "jump_up":         "Décalage +1 s — le pas grossier, pour dégrossir.",
         "jump_down":       "Décalage −1 s.",
         "fine_up":         "Décalage +10 ms — le pas fin, pour finir d'approcher "
-                           "une valeur mesurée. Ctrl et + est lié aussi, mais tous "
-                           "les terminaux ne le transmettent pas.",
+                           "une valeur mesurée. La combinaison Ctrl et + est liée "
+                           "aussi, mais tous les terminaux ne la transmettent "
+                           "pas.",
         "fine_down":       "Décalage −10 ms.",
         "open_picker":     "Ouvre la liste des valeurs du champ actif.",
         "measure":         "Mesure le décalage par corrélation audio. Compte "
@@ -237,10 +238,12 @@ def _lisible(touches: str) -> str:
 
     Les alias existent pour les dispositions de clavier, pas pour être lus : la
     première touche est celle qu'on écrit dans le guide.
+
+    Et on l'écrit **en toutes lettres**, pas avec le glyphe du pied de page :
+    « ⇧Tab » se devine, « Shift+Tab » se lit. Un glyphe se cherche sur le
+    clavier, un nom s'y trouve — et le guide existe pour ceux qui cherchent.
     """
-    premiere = touches.split(",")[0].strip()
-    return TOUCHES.get(premiere,
-                       premiere.capitalize() if len(premiere) > 1 else premiere)
+    return touche_longue(touches.split(",")[0].strip())
 
 
 def touches_de(classe: type) -> list[tuple[str, str, str]]:
@@ -317,23 +320,21 @@ class AideScreen(Screen):
         t.append("─" * 74 + "\n", style="dim")
         t.append("PARTOUT\n", style="bold")
         t.append("Ces touches répondent sur tous les écrans.\n\n", style="dim")
-        for touche, libelle in (("H", "Aide"), ("Ctrl+Home", "Accueil"),
-                                ("F10", "Quitter")):
-            action = {"H": "aide", "Ctrl+Home": "accueil",
-                      "F10": "request_quit"}[touche]
-            self._ligne(t, touche, _COMMUNES[action])
+        for cle, action in (("h", "aide"), ("ctrl+home", "accueil"),
+                            ("f10", "request_quit")):
+            self._ligne(t, touche_longue(cle), _COMMUNES[action])
         t.append("\n")
         t.append("Dans un tableau\n", style="bold")
-        for touche, action in (("Home", "table_home"), ("End", "table_end"),
-                               ("PgUp", "table_page_up"),
-                               ("PgDn", "table_page_down")):
-            self._ligne(t, touche, _COMMUNES[action])
+        for cle, action in (("home", "table_home"), ("end", "table_end"),
+                            ("pageup", "table_page_up"),
+                            ("pagedown", "table_page_down")):
+            self._ligne(t, touche_longue(cle), _COMMUNES[action])
         t.append("\n")
         t.append("Colonnes redimensionnables — accueil, pistes, dry-run\n",
                  style="bold")
-        for touche, action in (("Tab", "col_next"), ("⇧Tab", "col_prev"),
-                               (">", "col_grow"), ("<", "col_shrink")):
-            self._ligne(t, touche, _COMMUNES[action])
+        for cle, action in (("tab", "col_next"), ("shift+tab", "col_prev"),
+                            (">", "col_grow"), ("<", "col_shrink")):
+            self._ligne(t, touche_longue(cle), _COMMUNES[action])
         t.append("\n")
 
         deja = set(_COMMUNES)

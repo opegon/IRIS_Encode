@@ -1,5 +1,27 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.11] — 2026-08-29
+
+### Le guide nomme les touches, le pied de page les abrège
+
+`ENTER`, `BACKSPACE`, `SHIFT+TAB`, `ESPACE`, `CTRL+HAUT` — en toutes lettres et
+en capitales, là où le guide affichait `↵`, `⌫`, `⇧Tab`, `␣`, `Ctrl+↑`.
+
+Les deux endroits n'ont pas la même contrainte. Le pied de page tient en trois
+lignes : un glyphe y vaut une colonne, et c'est ce qui décide. Le guide a de la
+place et le devoir inverse — « ⇧Tab » se devine, « SHIFT+TAB » se lit. Un glyphe
+se cherche sur le clavier, un nom s'y trouve, et on ouvre le guide justement
+parce qu'on cherche.
+
+Les capitales suivent `raccourcis()`, qui les impose déjà dans les bandeaux : une
+touche s'écrit partout de la même façon. Elles détachent aussi le nom de son
+explication, ce qui compte dans une colonne de quarante lignes.
+
+`TOUCHES_LONGUES` ne couvre que les touches dont la forme courte est un symbole ;
+les autres — TAB, HOME, F1, CTRL+D — étaient déjà écrites, et `touche_longue`
+retombe sur `TOUCHES`. Deux tests tiennent la règle : aucun glyphe dans la
+colonne des touches, et toutes en capitales.
+
 ## [v0.8.3.10] — 2026-08-29
 
 ### Le guide d'utilisation entre dans l'application

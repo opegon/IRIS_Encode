@@ -73,6 +73,43 @@ TOUCHES: dict[str, str] = {
     "ctrl+d":    "Ctrl+D",
 }
 
+# Le guide (`H`) nomme les touches en toutes lettres. Le pied de page ne le peut
+# pas — il tient en trois lignes, et un glyphe y vaut une colonne ; le guide, lui,
+# a de la place et le devoir inverse : « ⇧Tab » se devine, « Shift+Tab » se lit.
+# Un glyphe se cherche sur le clavier, un nom s'y trouve.
+#
+# Seules les touches dont la forme courte est un symbole figurent ici. Les
+# autres — Tab, Home, F1, Ctrl+D — sont déjà écrites, et `touche_longue`
+# retombe sur `TOUCHES`.
+TOUCHES_LONGUES: dict[str, str] = {
+    "enter":      "Enter",
+    "backspace":  "Backspace",
+    "space":      "Espace",
+    "escape":     "Échap",
+    "shift+tab":  "Shift+Tab",
+    "left":       "Gauche",
+    "right":      "Droite",
+    "up":         "Haut",
+    "down":       "Bas",
+    "shift+up":   "Shift+Haut",
+    "shift+down": "Shift+Bas",
+    "ctrl+up":    "Ctrl+Haut",
+    "ctrl+down":  "Ctrl+Bas",
+}
+
+
+def touche_longue(nom: str) -> str:
+    """Le nom d'une touche écrit en toutes lettres et en capitales, pour le guide.
+
+    Les capitales suivent `raccourcis()`, qui les impose déjà dans les
+    bandeaux : une touche s'écrit partout de la même façon. Elles détachent
+    aussi le nom de l'explication qui le suit, ce qui compte dans une colonne
+    de quarante lignes.
+    """
+    brut = TOUCHES_LONGUES.get(nom) or TOUCHES.get(nom) or nom
+    return brut.upper()
+
+
 # Espacement, lui aussi commun : deux blancs entre la touche et son libellé,
 # cinq entre deux raccourcis. Le footer resserre à trois pour tenir en largeur.
 SEP_TOUCHE: str = "  "

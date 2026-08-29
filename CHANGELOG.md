@@ -1,5 +1,34 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.3.7] — 2026-08-29
+
+### La bannière dit quel Python tourne
+
+```
+╔═══════════════════════════════════════════╗
+║  IRIS ENCODE  v0.8.3.7                    ║
+║  Python 3.12.14 · .venv local             ║
+╚═══════════════════════════════════════════╝
+```
+
+Depuis la v0.8.3.6, `launch.bat` choisit entre trois candidats — le `.venv`
+local, le Python du PATH, celui que `bootstrap.ps1` installe. Le choix était
+**silencieux** : rien à l'écran ne disait lequel avait gagné. C'est pourtant la
+première chose à savoir quand une dépendance manque ou qu'une version surprend.
+
+La version est donnée entière, correctif compris : `3.12.14`, pas `3.12`. Un
+correctif de patch change des comportements, et un numéro tronqué empêche de
+comparer deux postes.
+
+Écrit dans `main.py`, pas dans `launch.bat` : `main.py` est le chemin autonome
+et tourne quel que soit le lanceur. L'inscrire des deux côtés aurait dupliqué
+l'information — la divergence silencieuse fermée en v0.8.3.5 pour le pied de
+page et en v0.8.3.6 pour la liste des dépendances.
+
+`tests/test_banniere.py` vérifie les deux branches de la détection, et que la
+ligne tient dans le cadre — dessiné à largeur fixe, il se crèverait sur un
+débordement, et c'est la première chose que voit l'utilisateur.
+
 ## [v0.8.3.6] — 2026-08-29
 
 ### L'installation ne demande plus rien

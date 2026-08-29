@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.3.6 — document de référence courant
+**Version** : 0.8.3.7 — document de référence courant
 **Date** : 2026-08-28
 **Statut** : stable
 
@@ -1833,6 +1833,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.3.7 | 2026-08-29 | **La bannière nomme l'interpréteur** : version complète et origine (`.venv` local ou système), le choix de `launch.bat` n'étant plus silencieux |
 | 0.8.3.6 | 2026-08-29 | **Installation autonome de Python** : `bootstrap.ps1` récupère uv, un CPython et un `.venv`, sans droits administrateur et sans rien écrire hors du dossier · `launch.bat` choisit entre `.venv`, le Python du PATH et le bootstrap |
 | 0.8.3.5 | 2026-08-29 | **Revue d'interface, IE-28 à IE-33** : troncatures rendues visibles (`cellule()` partout), planchers de colonnes tenant les libellés énumérables, plafond de redimensionnement, pied de page dérivé des `BINDINGS`, intitulés de section lisibles, colonnes Source/Titre séparées, « ← écartée » explicite · **avancement global** comptant le fichier en cours, ligne ffmpeg qui n'est plus chassée par la commande |
 | 0.8.3.4 | 2026-08-28 | **`T` ouvrait l'assistant** au lieu de l'écran des pistes : la bascule de mode était branchée sur `action_open_tracks`, qui sert aux deux touches · seul `↵` dépend du mode désormais · trouvé par le harnais de captures |

@@ -53,6 +53,22 @@ def _ensure_deps() -> None:
         sys.exit(1)
 
 
+def _environnement_python() -> str:
+    """La version de l'interpréteur, et d'où il vient.
+
+    `launch.bat` choisit entre trois candidats — le `.venv` local, le Python du
+    PATH, celui que `bootstrap.ps1` installe. Le choix est silencieux, et rien
+    à l'écran ne disait lequel avait gagné : une dépendance qui manque ou une
+    version inattendue se diagnostiquent mal quand on ignore quel Python
+    tourne.
+    """
+    v = sys.version_info
+    racine = Path(__file__).resolve().parent
+    exe    = Path(sys.executable).resolve()
+    origine = ".venv local" if exe.is_relative_to(racine / ".venv") else "système"
+    return f"Python {v.major}.{v.minor}.{v.micro} · {origine}"
+
+
 def main() -> None:
     force_utf8_output()    # avant tout print : la vérification ci-dessous en fait
     _check_python_version()
@@ -88,6 +104,7 @@ def main() -> None:
     print()
     print("╔" + "═" * inner + "╗")
     print(f"║  {f'IRIS ENCODE  v{__version__}':<{inner - 2}}║")
+    print(f"║  {_environnement_python():<{inner - 2}}║")
     print("╚" + "═" * inner + "╝")
     print()
     print("Vérification des outils :")

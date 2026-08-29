@@ -1,5 +1,46 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.5.0] — 2026-08-29
+
+**Release.** Rassemble les six incréments 0.8.4.3 à 0.8.4.8, tous issus d'une
+revue `max` des 6 082 lignes de `core/` — ou de sa clôture.
+
+Aucun de ces défauts ne levait d'erreur. Trois produisaient un fichier ou une
+configuration faux en silence, deux bloquaient ou refusaient une opération
+valide, un rendait une fonction réelle invisible. Les 677 tests d'alors
+passaient tous : ce sont des trous de couverture, pas des régressions.
+
+- **La piste greffée disparaissait après un mux préalable** (IE-43) — succès
+  affiché, code de retour nul, fichier sans la VF qu'on venait de recaler.
+- **`_deep_merge` partageait encore la moitié de ses branches** (IE-44) — la
+  v0.8.1.5 n'avait corrigé qu'un sens ; un `config.toml` sans `[tui]` faisait
+  planter l'ouverture du navigateur.
+- **`cinema_4k_quality` refusé sur toute machine à carte graphique** (IE-45) —
+  `libx265` n'était pas sondé, et « jamais sondé » valait « indisponible ».
+- **`retime_audio` se bloquait pour de bon** (IE-46) — deux tubes dont un seul
+  lu ; passé 64 Ko, ffmpeg reste suspendu sur son écriture.
+- **Le donneur sortait en double** (IE-47) — deux points d'insertion qui se
+  croisent donnent un `atrim` à l'envers, et le segment déjà écrit repart dans
+  le suivant.
+- **Le forçage à 48 kHz de l'AAC visait le mauvais flux** (IE-48) — un
+  spécificateur nu, qui glissait d'un cran dès que la vidéo était mappée en
+  tête.
+- **Treize sous-processus se disputaient le clavier avec l'interface** (IE-58,
+  hors revue, sorti de la clôture d'IE-46) — un `q` de passage tuait
+  l'encodage.
+- **Les touches qui modifient une valeur étaient les seules invisibles**
+  (IE-36) — le pied de page ne les porte pas, et le bandeau les cédait à ses
+  messages exactement quand elles servent.
+
+Deux de ces défauts sont la récidive d'une correction déjà faite ailleurs et
+jamais portée aux autres appels de la même forme — IE-50, encore ouverte, est
+du même genre. Trois tests structurels ferment cette famille : le sondage des
+encodeurs doit couvrir ce que la commande demande, aucun lancement ne garde
+l'entrée du terminal, et la ligne de touches ne s'efface jamais.
+
+**721 tests** (contre 677), dont vingt-trois échouent sur le code d'avant et
+deux suspendent la suite. Smoke TUI vert, 28 captures.
+
 ## [v0.8.4.8] — 2026-08-29
 
 ### Les touches qui modifient étaient les seules que l'écran ne montrait pas (IE-36)

@@ -7,6 +7,7 @@ Vérifie la navigation entre écrans, les modales de confirmation,
 le resize de colonnes et le scan parallèle du browser.
 """
 import asyncio
+import contextlib
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from textual.widgets import DataTable, Static
 
+from core import profiles as prof_mod
 from core.decision import VideoAction
 from main import force_utf8_output
 from tui.app import IrisEncodeApp
@@ -36,6 +38,35 @@ def _styles_du_footer(pied) -> str:
     from textual.widgets import Static as _S
     rendu = pied.query_one("#footer-body", _S).render()
     return " ".join(str(sp.style) for sp in rendu.spans)
+
+
+@contextlib.contextmanager
+def _profils_isoles():
+    """Un `profiles.toml` propre au smoke, portant les deux profils qu'il exige.
+
+    Le scenario de suppression a besoin d'un second profil : `ConfigScreen`
+    refuse d'effacer le dernier, a raison. Lu sur le fichier de la machine, le
+    smoke passait au poste de developpement — qui en porte dix — et echouait sur
+    l'archive publiee, ou une installation neuve n'en genere qu'un seul. Le
+    garde-fou etait donc inoperant la ou il sert (IE-60, v0.8.8.1).
+
+    Isoler le fichier evite au passage d'ecrire dans la bibliotheque de profils
+    de l'utilisateur pour faire tourner un test.
+    """
+    origine = prof_mod.PROFILES_PATH
+    with tempfile.TemporaryDirectory() as td:
+        prof_mod.PROFILES_PATH = Path(td) / "profiles.toml"
+        # `load_all` seme le fichier avec le profil plancher : on le duplique
+        # plutot que de recopier ici des reglages qui deriveraient du code.
+        profs = prof_mod.load_all()
+        base  = next(iter(profs.values()))
+        profs["smoke_second"] = prof_mod.Profile(id="smoke_second",
+                                                 data=dict(base.data))
+        prof_mod.save_all(profs)
+        try:
+            yield
+        finally:
+            prof_mod.PROFILES_PATH = origine
 
 
 def _make_test_videos(td: Path, n: int) -> bool:
@@ -109,6 +140,9 @@ async def scenario_navigation() -> None:
             # Tout profil s'efface depuis que profiles.toml fait foi : `d` ne
             # refuse plus d'emblee, il demande confirmation. On annule.
             avant_suppr = len(app.profiles)
+            # Sauf le dernier, qu'il refuse d'effacer : sans ce second profil,
+            # `d` ne fait rien et l'etape ne verifie plus rien (IE-60).
+            assert avant_suppr >= 2, f"il faut deux profils pour tester `d` -> {avant_suppr}"
             await pilot.press("d")
             await pilot.pause(0.3)
             assert type(app.screen).__name__ == "ConfirmModal", type(app.screen).__name__
@@ -998,13 +1032,14 @@ async def scenario_collage() -> None:
 
 
 async def main() -> None:
-    await scenario_navigation()
-    await scenario_parallel_scan()
-    await scenario_external_tracks()
-    await scenario_measure()
-    await scenario_wizard()
-    await scenario_accueil()
-    await scenario_collage()
+    with _profils_isoles():
+        await scenario_navigation()
+        await scenario_parallel_scan()
+        await scenario_external_tracks()
+        await scenario_measure()
+        await scenario_wizard()
+        await scenario_accueil()
+        await scenario_collage()
     print("SMOKE OK")
 
 

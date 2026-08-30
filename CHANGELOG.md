@@ -1,5 +1,48 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.8.1] — 2026-08-30
+
+### Le smoke test ne tournait pas là où il sert
+
+`tests/smoke_tui.py` est le garde-fou de l'étape de vérification en environnement
+client : on extrait l'archive publiée dans un répertoire vierge et on y rejoue le
+parcours complet. Lancé sur l'archive de la v0.8.8.0, il s'arrêtait à l'étape [5] :
+
+```
+tests/smoke_tui.py:114  AssertionError: ConfirmModal != ConfigScreen
+```
+
+Le produit n'était pas en cause. Une installation neuve n'a pas de `profiles.toml`
+et l'application en sème un, portant le seul profil plancher `_default_` ;
+`ConfigScreen.action_delete_focused` refuse alors — à raison — d'effacer le dernier
+profil, et aucune confirmation ne s'ouvre. Le dépôt de travail en porte dix, le
+scénario y passait donc sans rien révéler.
+
+Le contrôle censé attester qu'une release démarre chez l'utilisateur était donc le
+seul des trois à ne pas tenir sur une installation neuve — les 856 tests et le
+preflight, eux, passaient bien.
+
+### Le smoke se donne son propre fichier de profils
+
+`_profils_isoles()` redirige `core.profiles.PROFILES_PATH` vers un fichier
+temporaire pour la durée du run, semé de deux profils : le plancher que
+l'application écrit elle-même, et une copie. Le scénario ne dépend plus de ce que
+la machine possède.
+
+Deux effets de bord disparaissent au passage : le smoke n'écrit plus dans la
+bibliothèque de profils de l'utilisateur, et il ne sème plus de `profiles.toml`
+dans le répertoire d'une installation qu'il ne fait que tester.
+
+Une assertion explicite précède la touche `d` — deux profils au moins, faute de
+quoi l'étape ne vérifie plus rien. Le prochain glissement du même ordre échouera
+en le disant, au lieu de passer en silence.
+
+### Vérifié
+
+861 tests, smoke vert dans le dépôt **et** sur une installation neuve — étapes [1]
+à [19e]. `profiles.toml` et `config.toml` du dépôt inchangés après le run, empreinte
+à l'appui.
+
 ## [v0.8.8.0] — 2026-08-30
 
 ### Réencoder sans perdre le Dolby Vision

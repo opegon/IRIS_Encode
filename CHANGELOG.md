@@ -1,5 +1,212 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.8.0] — 2026-08-30
+
+### Réencoder sans perdre le Dolby Vision
+
+Un profil réglé sur `dolby_vision = "dv"` gardait le Dolby Vision — et le débit
+avec. Le RPU, les métadonnées DV image par image, vit *à l'intérieur* du flux
+HEVC, entre les tranches : ce n'est pas une piste qu'un `-map` laisse passer, et
+tout réencodage le détruit. Conserver le DV imposait donc `-c:v copy`, et le
+débit cible du profil restait lettre morte. Un film de 60 Mb/s ressortait à
+60 Mb/s.
+
+`VideoAction.ENCODE_DV` sort le RPU avant l'encodage et le remet après :
+
+```
+1. ffmpeg -c:v copy -f hevc -  |  dovi_tool extract-rpu -   →  film.rpu
+2. (profil 7) dovi_tool convert -m 2                        →  RPU en 8.1
+3. ffmpeg -c:v hevc_nvenc -f hevc                           →  enc.hevc
+4. dovi_tool inject-rpu                                     →  dv.hevc
+5. mkvmerge dv.hevc + pistes de la source                   →  sortie_[dv].mkv
+```
+
+La première étape est un tuyau : `dovi_tool extract-rpu` accepte `-` en entrée,
+ce qui évite de recopier trente gigaoctets sur le disque pour en tirer sept
+kilo-octets de métadonnées. L'injection, elle, exige de vrais fichiers — elle
+relit son entrée une première fois pour reconstituer l'ordre des images.
+
+**La passe vidéo ne porte aucun filtre**, pas même un `scale` aux dimensions
+d'origine. Le RPU est indexé image par image : l'encodage doit en rendre
+exactement autant que la source en compte.
+
+**Les métadonnées HDR10 statiques n'ont pas à être reposées.** ffmpeg recopie
+primaires BT.2020, courbe PQ, master display et MaxCLL de la source vers la
+sortie en SEI, y compris à travers NVENC. Mesuré avant d'écrire la première
+ligne de code : c'était le point sur lequel toute la faisabilité de la route GPU
+reposait.
+
+### Trois garde-fous, parce qu'un RPU mal remis ne se voit pas
+
+`decision.peut_reencoder_en_dv` refuse le réencodage DV et retombe sur la copie
+— annoncée « → DV (copie) » depuis la v0.8.7.4 — dans trois cas :
+
+| Refus | Pourquoi |
+|---|---|
+| couche de base non HDR10 (profils 5 et 8.4) | il n'y a rien à quoi rattacher le RPU ; l'injecter dans un flux HDR10 donnerait des couleurs fausses |
+| résolution modifiée (`keep_4k` décoché sur une source 4K) | le RPU décrit un cadrage image par image ; redimensionner le rend faux |
+| dovi_tool ou mkvmerge absents | les deux outils du pipeline |
+
+**Le Matroska est forcé**, même sur un profil en `container = "mp4"` : le remux
+passe par mkvmerge, et porter le RPU en MP4 demanderait de réécrire les
+en-têtes. Sans cette contrainte, un profil MP4 aurait rendu un fichier sans
+Dolby Vision — exactement ce que l'opération cherche à éviter.
+
+**L'écran des pistes range `ENCODE_DV` avec HEVC**, pas avec SKIP comme
+`STRIP_DV`. C'est bien un réencodage ; choisir « HEVC » dessus lève la surcharge
+au lieu de l'imposer, ce qui aurait fait perdre le Dolby Vision sans un mot.
+
+### L'estimation de taille suivait le même mensonge
+
+La colonne **Estimé** et le total du dry-run partaient du débit cible même
+quand la vidéo était recopiée, annonçant un fichier trois fois plus petit que
+ce qui allait sortir. Une vidéo recopiée est maintenant estimée au poids de sa
+source, comme un remux.
+
+### Ce qui est mesuré, et ce qui ne l'est pas
+
+Chaîne complète vérifiée de bout en bout, à travers l'écran d'encodage de
+l'application : RPU réextrait **octet pour octet identique** après injection,
+nombre d'images conservé, `DV:P8.1` reconnu par le scanner, débit 6541k →
+1992k, temporaires nettoyés, source conservée.
+
+Mais **sur 48 images de mire synthétique**, faute de source Dolby Vision réelle
+sous la main. Restent non vérifiés : un film entier avec changements de plans,
+le rendu sur un téléviseur Dolby Vision, et le profil 7 — éligible par
+construction, converti en 8.1 au passage, jamais essayé. Le premier encodage
+réel est à contrôler sur le matériel de lecture.
+
+### Bump de MINOR
+
+Sur instruction explicite (règle 5.1). Préserver le Dolby Vision à travers un
+réencodage est une capacité nouvelle et visible, pas un correctif : elle change
+ce que l'application sait produire.
+
+Rassemble les trois incréments de la série :
+
+- **0.8.7.2** — `profiles.toml` fait foi : les profils affichés, et leur ordre,
+  sont ceux du fichier.
+- **0.8.7.3** — le profil actif survit à la fermeture.
+- **0.8.7.4** — la décision ne promet plus un encodage qu'elle ne fait pas.
+
+861 tests, smoke TUI vert.
+
+## [v0.8.7.4] — 2026-08-30
+
+### La décision ne promet plus un encodage qu'elle ne fait pas
+
+Le Dolby Vision n'est pas une piste. Le RPU — les métadonnées dynamiques, image
+par image — vit *à l'intérieur* du flux HEVC, sous forme d'unités NAL
+intercalées entre les tranches d'image. Il n'y a rien à laisser passer par un
+`-map` : dès que ffmpeg réencode, il fabrique un flux neuf et le RPU disparaît.
+Conserver le DV impose donc `-c:v copy`, et c'est ce que fait `encoder.py:408`
+dès que `dv_action == DV`.
+
+Mais la couche décision l'ignorait. Sur une source DV dont le débit dépasse le
+plafond du profil, elle annonçait **« → HEVC → DV »** et nommait la sortie
+**`_[hevc]`** — pour un fichier dont l'image n'avait pas bougé d'un bit. Un
+film de 60 Mb/s ressortait à 60 Mb/s sous un nom qui promettait l'inverse, et
+rien à l'écran ne permettait de comprendre pourquoi.
+
+Ce que la décision annonce désormais, pour une source DV conservée :
+
+| | Avant | Après |
+|---|---|---|
+| Libellé | `→ HEVC → DV` | `→ DV (copie)` |
+| Sortie | `Film_[hevc].mkv` | `Film_[dv].mkv` |
+| Raison | `Débit 60000k ≥ 12000k cible` | `… · DV conservé → vidéo copiée` |
+| Emphase | ordinaire | verte — sans perte, comme un remux |
+
+La raison garde le déclencheur *et* sa neutralisation : c'est la seule occasion
+qu'a l'utilisateur de comprendre pourquoi son fichier n'a pas maigri.
+
+**Le correctif porte sur l'annonce, pas sur ce qui est exécuté.** La commande
+ffmpeg est inchangée — un test le verrouille. Écrêter le débit d'une source DV
+reste impossible tant que le réencodage avec RPU n'est pas implémenté ; la
+différence est qu'on ne prétend plus le faire.
+
+**`_[dv]` est déclaré au scanner.** `suffixes_produits()` dérive de
+`SUFFIX_BY_ACTION`, qui associe un suffixe à une *action* ; celui-ci dépend du
+traitement DV et n'y entre pas. Oublié, le fichier produit aurait été vu comme
+une source neuve au scan suivant — et sur un profil `delete_source`, l'original
+aurait été effacé pour être remplacé par lui-même.
+
+Une précision de portée : `"dv"` ne bride que les sources Dolby Vision. Une
+source HDR10 ou SDR passant par le même profil est encodée normalement, au
+débit cible.
+
+## [v0.8.7.3] — 2026-08-30
+
+### Le profil actif survit à la fermeture
+
+Depuis que `profiles.toml` fait foi (v0.8.7.2), le profil actif au démarrage
+était le premier du fichier. La conséquence n'est pas cosmétique : un profil
+`delete_source = true` posé en tête devenait le profil actif au lancement, et
+effaçait les sources d'un lot lancé sans regarder l'en-tête.
+
+Le choix du profil est un état de session, pas une propriété du fichier de
+profils. Il est désormais mémorisé dans `config.toml` (`[app] active_profile`),
+et l'application rouvre sur le profil qu'on utilisait la dernière fois. À
+défaut — premier lancement, ou profil effacé ou renommé à la main dans
+`profiles.toml` depuis — elle retombe sur le premier du fichier, sans planter.
+
+**La persistance tient dans une propriété de `IrisEncodeApp`**, non dans les
+écrans. Trois d'entre eux changent le profil : le sélecteur `F4`, l'activation
+depuis la liste des profils, et l'enregistrement d'un profil. Réparties, celle
+qu'on oublierait serait celle qui perdrait le réglage. Le démarrage écrit la
+propriété privée, pour ne pas réécrire `config.toml` à chaque lancement en y
+remettant la même valeur.
+
+### Le champ Nom ne laisse plus perdre une frappe
+
+La v0.8.7.2 avait déverrouillé le champ **Nom** du formulaire de profil, en
+retirant la distinction builtin / user qui le protégeait. Mais la sauvegarde
+réenregistre un profil existant sous son ancien nom (`ProfileForm._on_key` ne
+lit le champ qu'à la création) : la frappe aurait été perdue en silence. Le
+champ est reverrouillé en édition. Renommer un profil se fait dans
+`profiles.toml`, que l'application relit tel quel.
+
+## [v0.8.7.2] — 2026-08-30
+
+### `profiles.toml` fait foi
+
+Les profils affichés dans l'écran Config, et leur ordre, ne venaient pas du
+fichier. `load_all` posait d'abord neuf profils codés en dur, puis superposait
+`profiles.toml` par-dessus. Deux conséquences, invisibles tant qu'on ne touche
+pas au fichier :
+
+- **L'ordre lu était celui du code**, jamais celui du fichier. Un profil écrit
+  en tête de `profiles.toml` pouvait apparaître dixième dans la liste.
+- **Un profil livré retiré du fichier réapparaissait à chaque lancement**, et
+  l'écran Config refusait de le supprimer — il était marqué « builtin ». Un
+  utilisateur ayant renommé les neuf profils livrés en voyait seize là où son
+  fichier en décrivait dix, dont six qu'il ne pouvait pas faire disparaître.
+
+Le fichier fait désormais foi : ce qu'il contient, dans son ordre, et rien
+d'autre.
+
+**Un seul profil reste codé en dur, `_default_`** — recopie des réglages de
+l'ancien `serie_basic` (2200k en 1080p, 5000k en 4K, preset `medium`, `hdr10`,
+sans audio HD). Il ne s'affiche pas tant que le fichier décrit autre chose. Il
+sert de plancher dans deux cas : semer `profiles.toml` au premier lancement, et
+tenir la session si le TOML devient illisible — sans jamais le réécrire, pour
+qu'il reste réparable à la main.
+
+**La distinction builtin / user disparaît.** Tout profil s'édite, se renomme et
+s'efface. La colonne « Type » de l'écran Config, qui aurait affiché « user » sur
+chaque ligne, est retirée. Seule garde restante : on refuse d'effacer le dernier
+profil, une liste vide ne laissant rien à sélectionner pour encoder.
+
+**Deux noms codés en dur qui devenaient des plantages.** `tui/app.py` posait
+`serie_basic` comme profil actif au démarrage, et l'écran Config partait du même
+nom pour créer un profil : dès que le fichier ne le décrivait plus, le premier
+accès levait un `KeyError`. Le profil actif est maintenant le premier du
+fichier, et un nouveau profil part du profil actif.
+
+**Tests** — `test_hdr10` et `test_footer_focus` lisaient `profiles.toml`, le
+fichier personnel de l'utilisateur, pour y chercher un nom de profil livré. Ils
+construisent maintenant leur profil eux-mêmes, comme le reste de la suite.
+
 ## [v0.8.7.1] — 2026-08-29
 
 ### Coller les parties d'un film avant de l'encoder (`F6`)

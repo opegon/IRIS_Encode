@@ -24,6 +24,7 @@ from core.decision import (
     AV1_BITRATE_OPTS_KBPS,
     SUFFIX_BY_ACTION,
     AudioAction, DVAction, FileDecision, VideoAction,
+    video_recopiee,
 )
 from ..common import (
     actions_ecran,
@@ -52,8 +53,12 @@ def _estimate_output_bytes(dec: FileDecision) -> int:
     if dec.video.action == VideoAction.SKIP:
         return 0
     # Un remux ne recalcule aucune image : la sortie pèse ce que pèse la
-    # source, au RPU près — quelques mégaoctets sur un film.
-    if dec.video.action == VideoAction.STRIP_DV:
+    # source, au RPU près — quelques mégaoctets sur un film. Une source Dolby
+    # Vision dont le RPU ne peut pas être réinjecté est dans le même cas : sa
+    # vidéo est recopiée, et l'estimer au débit cible annonçait une réduction
+    # qui n'aura pas lieu.
+    if (dec.video.action == VideoAction.STRIP_DV
+            or video_recopiee(dec.video.action, dec.video.dv_action)):
         try:
             return dec.info.path.stat().st_size
         except OSError:
@@ -269,6 +274,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         av1    = counts[VideoAction.ENCODE_AV1]
         skip   = counts[VideoAction.SKIP]
         strip  = counts[VideoAction.STRIP_DV]
+        dv     = counts[VideoAction.ENCODE_DV]
 
         total_src, total_est = self._totals
         gain_str = ""
@@ -281,13 +287,14 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             )
 
         av1_str   = f"  ·  AV1 {av1}" if av1 else ""
+        dv_str    = f"  ·  HEVC+DV {dv}" if dv else ""
         strip_str = f"  ·  DV→HDR10 {strip}" if strip else ""
         self.query_one("#status-bar", Static).update(
             f" Dry-run — {total} fichier(s) sélectionné(s)"
             f"  ·  Col : {self.resize_col_label} [</>]"
         )
         self.query_one("#dryrun-summary", Static).update(
-            f" À encoder : HEVC {hevc}  ·  H264 {h264}{av1_str}"
+            f" À encoder : HEVC {hevc}  ·  H264 {h264}{av1_str}{dv_str}"
             f"{strip_str}  ·  SKIP {skip}{gain_str}"
         )
 

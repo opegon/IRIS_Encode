@@ -1,7 +1,11 @@
 """
 core/profiles.py — Lecture/écriture profiles.toml.
 
-Gère les profils builtin (non supprimables) et user (CRUD complet).
+`profiles.toml` fait foi : les profils, et leur ordre, viennent de lui seul.
+Le code n'en garde qu'un en dur, `_default_`, qui sert de plancher — il sème
+le fichier au premier lancement et tient lieu de secours si le TOML devient
+illisible. Tous les profils sont modifiables et supprimables, à ceci près
+qu'on refuse de vider la liste entièrement.
 """
 from __future__ import annotations
 
@@ -18,15 +22,13 @@ import tomli_w
 APP_DIR       = Path(__file__).resolve().parent.parent
 PROFILES_PATH = APP_DIR / "profiles.toml"
 
-BUILTIN_NAMES = frozenset({
-    "serie_anime", "serie_basic", "serie_hd",
-    "film_basic", "film_hd", "cinema_4k_basic",
-    "cinema_4k_hd", "cinema_4k_quality", "basic_delete",
-})
+# Le profil plancher. Ses réglages recopient l'ancien `serie_basic`, qui était
+# déjà le point de départ d'un nouveau profil et le profil actif au démarrage.
+PROFIL_DEFAUT_ID = "_default_"
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,32}$")
 
-# ─── Données builtin embarquées ────────────────────────────────────────────
+# ─── Profil par défaut embarqué ────────────────────────────────────────────
 
 _BASE_AUDIO = {
     "audio_languages":         ["fre", "eng"],
@@ -46,107 +48,16 @@ _BASE_AUDIO = {
     "container":               "auto",
 }
 
-_BUILTINS: dict[str, dict[str, Any]] = {
-    "serie_anime": {
-        "bitrate_720p_kbps":  1500,
-        "bitrate_1080p_kbps": 2000,
-        "bitrate_4k_kbps":    3500,
-        "keep_4k":            False,
-        "delete_source":      False,
-        "preset_encoder":     "fast",
-        "dolby_vision":       "sdr",
-        "preserve_hd_audio":  False,
-        **_BASE_AUDIO,
-    },
-    "serie_basic": {
-        "bitrate_720p_kbps":  1500,
-        "bitrate_1080p_kbps": 2200,
-        "bitrate_4k_kbps":    5000,
-        "keep_4k":            False,
-        "delete_source":      False,
-        "preset_encoder":     "medium",
-        "dolby_vision":       "hdr10",
-        "preserve_hd_audio":  False,
-        **_BASE_AUDIO,
-    },
-    "serie_hd": {
-        "bitrate_720p_kbps":  1500,
-        "bitrate_1080p_kbps": 2500,
-        "bitrate_4k_kbps":    5000,
-        "keep_4k":            False,
-        "delete_source":      False,
-        "preset_encoder":     "medium",
-        "dolby_vision":       "hdr10",
-        "preserve_hd_audio":  False,
-        **_BASE_AUDIO,
-    },
-    "film_basic": {
-        "bitrate_720p_kbps":  2000,
-        "bitrate_1080p_kbps": 3000,
-        "bitrate_4k_kbps":    5000,
-        "keep_4k":            False,
-        "delete_source":      False,
-        "preset_encoder":     "medium",
-        "dolby_vision":       "sdr",
-        "preserve_hd_audio":  False,
-        **_BASE_AUDIO,
-    },
-    "film_hd": {
-        "bitrate_720p_kbps":  3000,
-        "bitrate_1080p_kbps": 5000,
-        "bitrate_4k_kbps":    8000,
-        "keep_4k":            False,
-        "delete_source":      False,
-        "preset_encoder":     "slow",
-        "dolby_vision":       "hdr10",
-        "preserve_hd_audio":  True,
-        **_BASE_AUDIO,
-    },
-    "cinema_4k_basic": {
-        "bitrate_720p_kbps":  2000,
-        "bitrate_1080p_kbps": 5000,
-        "bitrate_4k_kbps":    8000,
-        "keep_4k":            True,
-        "delete_source":      False,
-        "preset_encoder":     "slow",
-        "dolby_vision":       "hdr10",
-        "preserve_hd_audio":  True,
-        **_BASE_AUDIO,
-    },
-    "cinema_4k_hd": {
-        "bitrate_720p_kbps":  2000,
-        "bitrate_1080p_kbps": 5000,
-        "bitrate_4k_kbps":    12000,
-        "keep_4k":            True,
-        "delete_source":      False,
-        "preset_encoder":     "slow",
-        "dolby_vision":       "dv",
-        "preserve_hd_audio":  True,
-        **_BASE_AUDIO,
-    },
-    "cinema_4k_quality": {
-        "bitrate_720p_kbps":  2000,
-        "bitrate_1080p_kbps": 5000,
-        "bitrate_4k_kbps":    12000,
-        "keep_4k":            True,
-        "delete_source":      False,
-        "preset_encoder":     "slow",
-        "dolby_vision":       "hdr10",
-        "hdr10_quality":      "quality",   # libx265 CPU + métadonnées HDR10 propres
-        "preserve_hd_audio":  True,
-        **_BASE_AUDIO,
-    },
-    "basic_delete": {
-        "bitrate_720p_kbps":  1500,
-        "bitrate_1080p_kbps": 2000,
-        "bitrate_4k_kbps":    3500,
-        "keep_4k":            False,
-        "delete_source":      True,
-        "preset_encoder":     "fast",
-        "dolby_vision":       "sdr",
-        "preserve_hd_audio":  False,
-        **_BASE_AUDIO,
-    },
+_PROFIL_DEFAUT: dict[str, Any] = {
+    "bitrate_720p_kbps":  1500,
+    "bitrate_1080p_kbps": 2200,
+    "bitrate_4k_kbps":    5000,
+    "keep_4k":            False,
+    "delete_source":      False,
+    "preset_encoder":     "medium",
+    "dolby_vision":       "hdr10",
+    "preserve_hd_audio":  False,
+    **_BASE_AUDIO,
 }
 
 
@@ -156,7 +67,6 @@ _BUILTINS: dict[str, dict[str, Any]] = {
 class Profile:
     id:   str
     data: dict[str, Any]
-    user: bool = False   # False = builtin
 
     # --- Accesseurs pratiques -----------------------------------------------
 
@@ -198,37 +108,46 @@ class Profile:
 
 # ─── Chargement ───────────────────────────────────────────────────────────────
 
-def load_all() -> dict[str, "Profile"]:
-    """Charge tous les profils (builtin + user)."""
-    profiles: dict[str, Profile] = {
-        name: Profile(id=name, data=dict(data), user=False)
-        for name, data in _BUILTINS.items()
-    }
+def _plancher() -> dict[str, "Profile"]:
+    """Le profil livré, seul — semence du premier lancement, secours d'un TOML cassé."""
+    return {PROFIL_DEFAUT_ID: Profile(id=PROFIL_DEFAUT_ID, data=dict(_PROFIL_DEFAUT))}
 
+
+def load_all() -> dict[str, "Profile"]:
+    """Charge les profils dans l'ordre où profiles.toml les écrit.
+
+    Le fichier fait foi : ce qu'il contient, dans son ordre, et rien d'autre.
+    La version précédente posait d'abord neuf profils codés en dur puis
+    superposait le fichier — l'ordre lu était donc celui du code, jamais celui
+    du fichier, et un profil livré retiré du fichier réapparaissait à chaque
+    lancement sans pouvoir être supprimé. Un utilisateur ayant renommé les
+    profils livrés en voyait seize là où son fichier en décrivait dix.
+    """
     if not PROFILES_PATH.exists():
         _write_defaults()
-        return profiles
+        return _plancher()
 
     try:
         with PROFILES_PATH.open("rb") as f:
             raw: dict[str, Any] = tomllib.load(f)
     except Exception as e:
-        # Syntaxe invalide — on conserve les builtins et on avertit
+        # Syntaxe invalide — on ne réécrit rien, le fichier reste réparable à
+        # la main, et on tient la session sur le seul profil plancher.
         print(
             f"⚠  profiles.toml illisible ({e}). "
-            "Chargement du profil [default] intégré."
+            f"Chargement du profil [{PROFIL_DEFAUT_ID}] intégré."
         )
-        return profiles
+        return _plancher()
 
-    for name, data in raw.items():
-        if name in BUILTIN_NAMES:
-            # L'utilisateur peut éditer un builtin — on merge sur la base
-            merged = dict(_BUILTINS[name]) | dict(data)
-            profiles[name] = Profile(id=name, data=merged, user=False)
-        else:
-            profiles[name] = Profile(id=name, data=dict(data), user=True)
+    profiles = {
+        name: Profile(id=name, data=dict(data))
+        for name, data in raw.items()
+        if isinstance(data, dict)
+    }
 
-    return profiles
+    # Un fichier vide, ou qui ne décrit pas une seule table nommée, ne laisse
+    # aucun profil sélectionnable : le plancher reprend la main.
+    return profiles or _plancher()
 
 
 # Deux écrans peuvent enregistrer, et `load_all` réécrit les défauts au premier
@@ -267,12 +186,12 @@ def _ecrire(raw: dict[str, Any]) -> None:
 
 
 def save_all(profiles: dict[str, "Profile"]) -> None:
-    """Écrit tous les profils dans profiles.toml."""
+    """Écrit tous les profils dans profiles.toml, dans l'ordre du dictionnaire."""
     _ecrire({name: p.as_toml_dict() for name, p in profiles.items()})
 
 
 def _write_defaults() -> None:
-    _ecrire({k: dict(v) for k, v in _BUILTINS.items()})
+    _ecrire({PROFIL_DEFAUT_ID: dict(_PROFIL_DEFAUT)})
 
 
 # ─── Validation ───────────────────────────────────────────────────────────────

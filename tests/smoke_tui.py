@@ -102,14 +102,21 @@ async def scenario_navigation() -> None:
             assert app.active_profile_id == before
             print("[4] ProfilePicker (F4) : table, Esc et Enter OK")
 
-            # F5 -> ConfigScreen ; d sur builtin refuse ; Backspace revient
+            # F5 -> ConfigScreen ; d demande confirmation ; Backspace revient
             await pilot.press("f5")
             await pilot.pause(0.3)
             assert type(app.screen).__name__ == "ConfigScreen"
+            # Tout profil s'efface depuis que profiles.toml fait foi : `d` ne
+            # refuse plus d'emblee, il demande confirmation. On annule.
+            avant_suppr = len(app.profiles)
             await pilot.press("d")
-            await pilot.pause(0.2)
+            await pilot.pause(0.3)
+            assert type(app.screen).__name__ == "ConfirmModal", type(app.screen).__name__
+            await pilot.press("escape")
+            await pilot.pause(0.3)
             assert type(app.screen).__name__ == "ConfigScreen"
-            print("[5] ConfigScreen : suppr. builtin refusee (flash)")
+            assert len(app.profiles) == avant_suppr, "l'annulation a supprime"
+            print("[5] ConfigScreen : suppr. demande confirmation, refus respecte")
             await pilot.press("backspace")
             await pilot.pause(0.3)
             assert type(app.screen).__name__ == "BrowserScreen", \

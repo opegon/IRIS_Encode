@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.7.1 — document de référence courant
-**Date** : 2026-08-29
+**Version** : 0.8.8.0 — document de référence courant
+**Date** : 2026-08-30
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -327,14 +327,38 @@ manuel dans l'interface.
 
 ## 6. Profils d'encodage — `profiles.toml`
 
-Format TOML, éditable à la main. Les profils builtin sont toujours présents
-(non supprimables, mais éditables).
+Format TOML, éditable à la main. **Le fichier fait foi** : les profils affichés,
+et leur ordre, sont ceux qu'il décrit — rien de plus, rien de moins. Tous sont
+éditables et supprimables ; l'application refuse seulement d'effacer le
+dernier, une liste vide ne laissant rien à sélectionner. Le nom d'un profil ne
+se saisit qu'à la création — pour renommer, on édite `profiles.toml`.
 
 Le champ `dolby_vision` accepte : `"hdr10"` (DV → HDR10), `"dv"` (DV → DV copy),
 `"sdr"` (DV → SDR tone map).
 
-**Profils builtin (9)** : `serie_anime`, `serie_basic`, `serie_hd`, `film_basic`,
-`film_hd`, `cinema_4k_basic`, `cinema_4k_hd`, `cinema_4k_quality`, `basic_delete`.
+**`"dv"` réencode quand il le peut, copie sinon.** Le RPU vit *à l'intérieur*
+du flux HEVC, entre les tranches d'image : ce n'est pas une piste qu'on laisse
+passer, et tout réencodage le détruit. Deux issues, tranchées par
+`decision.peut_reencoder_en_dv` (§ 7.4) :
+
+| | Action | Libellé | Débit cible |
+|---|---|---|---|
+| RPU réinjectable | `ENCODE_DV` | `→ HEVC → DV` | **appliqué** |
+| sinon | `ENCODE_HEVC` + `-c:v copy` | `→ DV (copie)` | sans effet |
+
+Les deux sorties portent le suffixe `_[dv]` — l'une comme l'autre rendent un
+fichier Dolby Vision ; ce qui les sépare est le débit, que la raison affichée
+explicite. Les sources sans DV sont encodées normalement par ce même profil.
+
+**Profil plancher `_default_`** : le seul profil codé en dur. Il n'apparaît pas
+tant que `profiles.toml` en décrit d'autres. Il sert dans deux cas : semer le
+fichier au premier lancement, et tenir la session si le TOML devient illisible.
+Ses réglages recopient l'ancien profil livré `serie_basic` (2200k en 1080p,
+5000k en 4K, preset `medium`, `hdr10`, sans audio HD).
+
+Le profil actif est **mémorisé dans `config.toml`** (`[app] active_profile`) :
+l'application rouvre sur celui qu'on utilisait la dernière fois. À défaut —
+premier lancement, ou profil disparu depuis — elle prend le premier du fichier.
 
 ### 6.1 Champs d'un profil
 
@@ -357,25 +381,19 @@ Le champ `dolby_vision` accepte : `"hdr10"` (DV → HDR10), `"dv"` (DV → DV co
 | `audio_hd_codec` | str | `none` / `ac3` / `eac3` — transcoder TrueHD et DTS au débit de la source (§ 8.5) |
 | `container` | str | `auto` / `mp4` / `mkv` — conteneur de sortie (§ 8.6) |
 
-### 6.2 Vue d'ensemble des builtins
+### 6.2 Comportement quand le fichier ne fournit rien
 
-| Profil | 1080p | 4K | Preset | DV | HD audio | Source |
-|---|---|---|---|---|---|---|
-| `serie_anime` | 2000k | →1080p | fast | sdr | non | gardée |
-| `serie_basic` | 2200k | →1080p | medium | hdr10 | non | gardée |
-| `serie_hd` | 2500k | →1080p | medium | hdr10 | non | gardée |
-| `film_basic` | 3000k | →1080p | medium | sdr | non | gardée |
-| `film_hd` | 5000k | →1080p | slow | hdr10 | oui | gardée |
-| `cinema_4k_basic` | 5000k | 8000k | slow | hdr10 | oui | gardée |
-| `cinema_4k_hd` | 5000k | 12000k | slow | dv | oui | gardée |
-| `cinema_4k_quality` | 5000k | 12000k | slow | hdr10 *quality* | oui | gardée |
-| `basic_delete` | 2000k | →1080p | fast | sdr | non | **supprimée** |
+| Cas | Ce que fait l'application |
+|---|---|
+| `profiles.toml` absent | écrit `[_default_]` dans un fichier neuf, et le charge |
+| TOML invalide | **ne réécrit rien** — le fichier reste réparable à la main — et tient la session sur `_default_` |
+| fichier vide, ou sans table nommée | charge `_default_` |
 
 **Comportement sur erreur de syntaxe :**
 
 ```
 ⚠ profiles.toml illisible (erreur syntaxe ligne 12).
-  Chargement du profil [default] intégré.
+  Chargement du profil [_default_] intégré.
 ```
 
 ---
@@ -461,17 +479,72 @@ prêter. Ils sont supprimés que l'opération aboutisse ou non.
 **Exclusions** — profil 5 (couche de base IPT-PQ, illisible sans RPU) et profil
 8.4 (couche de base HLG). Ces fichiers suivent le chemin de réencodage.
 
-**Pickers de codec.** `STRIP_DV` n'appartient pas à `ACTION_CYCLE` : ce n'est
-pas un codec proposable. `cycle_index()` lui rend la position de `SKIP`, et
-`same_intent()` fait que choisir `SKIP` sur un tel fichier lève la surcharge
-plutôt que d'imposer un SKIP sec. Toute action doit avoir une position dans le
+**Pickers de codec.** Ni `STRIP_DV` ni `ENCODE_DV` n'appartiennent à
+`ACTION_CYCLE` : ce ne sont pas des codecs proposables, mais ce que la décision
+retient d'elle-même. Chacun se range là où son intention le place —
+`cycle_index()` rend la position de `SKIP` pour `STRIP_DV` (ne pas réencoder)
+et celle d'`ENCODE_HEVC` pour `ENCODE_DV` (réencoder en HEVC). `same_intent()`
+fait que choisir cette position-là lève la surcharge plutôt que de l'imposer :
+un `SKIP` sec laisserait le RPU en place sans rien dire, un `ENCODE_HEVC` sec
+ferait perdre le Dolby Vision. Toute action doit avoir une position dans le
 cycle — un `.index()` direct lève un `ValueError` et fait tomber l'écran.
 
 **Prérequis** — `dovi_tool` *et* `mkvmerge`. Sans les deux,
 `decision.set_strip_dv_available(False)` fait retomber la décision sur `SKIP` :
 proposer une action qui échouera au lancement vaut moins que ne rien proposer.
 
-### 7.4 Paramètres x265 HDR10
+### 7.4 Réencodage préservant le Dolby Vision — `ENCODE_DV`
+
+Écrêter le débit d'une source Dolby Vision, ou la faire passer en HEVC, sans
+perdre le DV. Le RPU vit entre les tranches d'image du flux HEVC : on le sort
+avant l'encodage, on le remet après.
+
+**Éligibilité** — `decision.peut_reencoder_en_dv(info, w, h)`, trois conditions
+toutes nécessaires :
+
+| Condition | Pourquoi |
+|---|---|
+| couche de base HDR10 (`can_strip_dv` : profil 7, ou 8 avec `bl_compat = 1`) | réinjecter le RPU d'un profil 5 (base IPT-PQ) ou 8.4 (base HLG) dans un flux HDR10 donne des couleurs fausses |
+| `w == info.width` et `h == info.height` | le RPU est indexé image par image et décrit un cadrage ; redimensionner le rend faux |
+| dovi_tool **et** mkvmerge présents | les deux outils du pipeline |
+
+À défaut, la décision retombe sur la copie du flux — libellé « → DV (copie) ».
+
+**Le conteneur est forcé en Matroska**, même si le profil demande du MP4 : le
+remux passe par mkvmerge, et porter le RPU en MP4 demanderait de réécrire les
+en-têtes. Un `container = "mp4"` rendrait sinon un fichier sans Dolby Vision,
+soit exactement ce que l'opération cherche à éviter.
+
+**Pipeline** — `tui/screens/run.py:_encode_dv`, quatre à six étapes :
+
+```
+1. ffmpeg -c:v copy -f hevc -  |  dovi_tool extract-rpu -   →  film.rpu
+2. (profil 7) dovi_tool convert -m 2                        →  RPU en 8.1
+3. ffmpeg -c:v <encodeur> -f hevc                           →  enc.hevc
+4. dovi_tool inject-rpu -i enc.hevc --rpu-in film.rpu       →  dv.hevc
+5. (si transcodage audio) build_audio_command               →  audio.mka
+6. mkvmerge dv.hevc + pistes de la source                   →  sortie_[dv].mkv
+```
+
+L'étape 1 est un tuyau : `dovi_tool extract-rpu` accepte `-` en entrée, ce qui
+évite une recopie du film entier pour en tirer quelques kilo-octets.
+L'injection, elle, exige de vrais fichiers — elle relit son entrée une première
+fois pour reconstituer l'ordre des images.
+
+**La passe vidéo ne porte aucun filtre**, pas même un `scale` aux dimensions
+d'origine : le nombre d'images doit correspondre au RPU, et un `-vf` ajouté
+plus tard sans voir la contrainte rendrait des fichiers faux sans rien dire.
+Elle sort en 10 bits (`p010le` pour NVENC, `yuv420p10le` pour libx265).
+
+**Les métadonnées HDR10 statiques n'ont pas à être reposées.** ffmpeg recopie
+primaires BT.2020, courbe PQ, master display et MaxCLL de la source vers la
+sortie en SEI, y compris à travers NVENC — mesuré, pas supposé.
+
+**Coût en disque** : deux flux Annex-B coexistent (avant et après injection),
+soit environ deux fois la taille de la vidéo encodée. Ils sont écrits à côté de
+la source, sur le même volume, et effacés que l'opération aboutisse ou non.
+
+### 7.5 Paramètres x265 HDR10
 
 ```python
 params = [
@@ -494,6 +567,7 @@ params = [
 | **CAS 1** | bitrate source ≥ seuil cible | Réencodage HEVC (ou H264 si cible < 1080p) au bitrate cible |
 | **CAS 2** | bitrate OK mais résolution trop grande | Redimensionnement HEVC, bitrate original |
 | **CAS 3** | bitrate OK, résolution OK, **codec hors `CODECS_LISIBLES`** | Réencodage, bitrate conservé — H264 sous 1080p, HEVC au-dessus |
+| **ENCODE_DV** | un des trois cas ci-dessus, profil en `dv`, et RPU réinjectable (§ 7.4) | Réencodage au débit cible, RPU sorti puis remis |
 | **STRIP_DV** | aucun des cas ci-dessus, mais RPU retirable (DV 8.1 ou 7) et profil en `hdr10` | Retrait du RPU par remux, sans réencodage (§ 7.3) |
 | **SKIP** | bitrate OK, résolution OK, codec H264 ou HEVC | Aucun traitement |
 
@@ -540,6 +614,7 @@ est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans
 | `ENCODE_HEVC` | Réencodage HEVC (CAS 1 ou CAS 2 sur source ≥ 1080p) |
 | `ENCODE_H264` | Réencodage H264 (CAS 3, cible < 1080p, ou forçage manuel) |
 | `ENCODE_AV1` | AV1 — **manuel uniquement** (très gourmand CPU/GPU RTX30+) |
+| `ENCODE_DV` | Réencodage HEVC préservant le Dolby Vision — RPU extrait puis réinjecté (§ 7.4) |
 | `STRIP_DV` | Retrait du RPU Dolby Vision par remux — aucune image recalculée |
 | `SKIP` | Aucun traitement |
 
@@ -806,7 +881,7 @@ Chacun produit un résultat faux **sans erreur visible** — d'où leur coût.
 | 5 | **Une seule piste audio à la fois dans mpv.** `audio-delay` et `sub-delay` sont distincts : un audio + un sous-titre se calibrent ensemble, deux audio demandent deux passes. | L'écran le dit au lieu de laisser croire à un réglage simultané. |
 | 6 | **Métadonnées absentes des fichiers externes.** Un `.srt` n'a aucune langue → « und » dans tous les lecteurs. | Champs saisis dans l'écran, jamais déduits silencieusement ; `guess_language()` ne fait que pré-remplir. |
 | 7 | **mkvmerge réécrit le conteneur entier.** Pas d'ajout in-place en MKV : 30 Go = copie disque complète, une à trois minutes sur SSD. | Barre de progression réelle. Les deux fichiers coexistent le temps du mux — prévoir l'espace. |
-| 8 | **Dolby Vision et remux — vérifié pour le retrait (§ 7.3), pas pour la conservation.** Le chemin `STRIP_DV` est mesuré sur un fichier réel : sortie bit à bit identique, HDR10+ conservé. Porter un RPU *à travers* un remux mkvmerge (`dvcC`/`dvvC`) reste non testé. | Le profil 7 est éligible par construction mais n'a pas été essayé, faute de fichier. |
+| 8 | **Dolby Vision — les deux chemins sont mesurés, sur des clips courts.** `STRIP_DV` (§ 7.3) : sortie bit à bit identique, HDR10+ conservé, sur un film 4K réel. `ENCODE_DV` (§ 7.4) : chaîne complète vérifiée — RPU réextrait octet pour octet identique après injection, nombre d'images conservé, `DV:P8.1` reconnu par le scanner, débit 6541k → 1992k. Mais sur **48 images de mire synthétique**, faute de source Dolby Vision réelle. | Restent non vérifiés : un film entier avec changements de plans, le rendu sur un téléviseur Dolby Vision, et le profil 7 — éligible par construction, converti en 8.1 au passage, jamais essayé. Le premier encodage réel est à contrôler sur le matériel de lecture. |
 
 ### 9.6 Fichier déjà en réencodage
 
@@ -1112,7 +1187,8 @@ l'opération est refusée en amont plutôt que d'échouer en cours d'encodage.
 | Mode | Condition | Encodeur | Notes |
 |---|---|---|---|
 | **Retrait DV** | `action == STRIP_DV` | aucun — dovi_tool + mkvmerge | `build_command` retourne `[]`, ffmpeg n'est pas appelé (§ 7.3) |
-| **DV copy** | `dv_action == DV` | `-c:v copy` | Pas de réencodage, pas de hwaccel |
+| **Réencodage DV** | `action == ENCODE_DV` | nvenc / libx265 | Passe vidéo seule en Annex-B, sans filtre ; RPU réinjecté après (§ 7.4) |
+| **DV copy** | `dv_action == DV`, RPU non réinjectable | `-c:v copy` | Pas de réencodage, pas de hwaccel |
 | **HDR10 quality** | `dv_action == HDR10` + `hdr10_quality == "quality"` | `libx265` CPU | Métadonnées via `-x265-params`, `pix_fmt yuv420p10le` |
 | **SDR tone map** | `dv_action == SDR` | nvenc / libx265 (CPU) | Filtre `zscale+tonemap`, pas de hwaccel |
 | **Standard** | Tous autres cas | nvenc / libx265 / libx264 / av1_nvenc | hwaccel si disponible |
@@ -1757,8 +1833,12 @@ Débit cible · Résolution · Audio
 
 ### 14.8 Écran Config — gestion des profils
 
-Profils **builtin** (9) : éditables, non supprimables (message explicite si tentative).
-Profils **user** : éditables et supprimables (`D` / `Suppr`, avec confirmation).
+Tous les profils sont éditables et supprimables (`D` / `Suppr`, avec
+confirmation) — ils viennent tous de `profiles.toml`, qui fait foi. Seule
+exception : le dernier de la liste, dont la suppression est refusée par un
+message explicite. Un nouveau profil part des réglages du profil actif. Le
+champ **Nom** n'est saisissable qu'à la création : renommer se fait dans
+`profiles.toml`.
 
 Le formulaire `ProfileForm` est organisé en **six sections**, chacune suivie
 d'une ligne qui énonce **la conséquence des valeurs choisies** — recalculée à
@@ -2047,6 +2127,10 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.8.0 | 2026-08-30 | **Réencoder sans perdre le Dolby Vision** (`VideoAction.ENCODE_DV`, § 6 et § 7.4) : le RPU vit entre les tranches d'image du flux HEVC, tout réencodage le détruisait — conserver le DV imposait `-c:v copy`, et le débit cible d'un profil `dolby_vision = "dv"` restait lettre morte · `dovi_tool extract-rpu` en tuyau sur ffmpeg (aucun intermédiaire), encodage vidéo seul en Annex-B sans filtre, `inject-rpu`, remux mkvmerge · RPU du profil 7 converti en 8.1 au passage · garde-fous : couche de base HDR10 obligatoire (5 et 8.4 exclus), résolution inchangée, outils présents — à défaut la copie reprend, annoncée comme telle · Matroska forcé, un MP4 perdrait le RPU · métadonnées HDR10 statiques préservées par NVENC sans drapeau, mesuré · `tests/test_dv_reencodage.py` |
+| 0.8.7.4 | 2026-08-30 | **La décision ne promet plus un encodage qu'elle ne fait pas** (§ 6) : conserver le Dolby Vision impose `-c:v copy`, mais l'écran annonçait « → HEVC → DV » et nommait la sortie `_[hevc]` — un fichier de 60 Mb/s ressortait à 60 Mb/s sous un nom qui promettait l'inverse · libellé « → DV (copie) », suffixe `_[dv]`, mention « DV conservé → vidéo copiée » accolée à la raison, emphase verte comme un remux · `scanner.suffixes_produits` connaît `_[dv]`, sans quoi la sortie serait reproposée au scan suivant et un profil `delete_source` effacerait l'original · `tests/test_dv_copie.py` |
+| 0.8.7.3 | 2026-08-30 | **Le profil actif survit à la fermeture** (`[app] active_profile` dans `config.toml`, § 6) : il était repris sur le premier profil du fichier à chaque lancement, si bien qu'un profil `delete_source = true` posé en tête devenait actif au démarrage et effaçait les sources d'un lot lancé sans regarder · repli sur le premier du fichier si le profil mémorisé a disparu · la persistance tient dans une propriété de `IrisEncodeApp`, non dans les trois écrans qui changent le profil · champ **Nom** du formulaire reverrouillé en édition : la sauvegarde réenregistre sous l'ancien nom, une frappe y aurait été perdue sans le dire |
+| 0.8.7.2 | 2026-08-30 | **`profiles.toml` fait foi** (§ 6) : les profils affichés, et leur ordre, sont ceux du fichier — `load_all` posait d'abord neuf profils codés en dur puis superposait le fichier, imposant l'ordre du code et ressuscitant à chaque lancement un profil livré que l'utilisateur avait retiré, sans pouvoir le supprimer · un seul profil reste en dur, `_default_` (recopie de l'ancien `serie_basic`), qui sème le fichier au premier lancement et tient lieu de secours si le TOML est illisible · la distinction builtin / user disparaît : tout profil s'édite, se renomme et s'efface, sauf le dernier · profil actif au démarrage et point de départ d'un nouveau profil pris sur le fichier, non plus sur un nom codé en dur (§ 14.8) |
 | 0.8.7.1 | 2026-08-29 | **Collage de parties** (`core/joiner.py`, § 9bis) : `F6` sur les fichiers cochés recoud un film livré en `part1` / `part2` en un `_[join].mkv` unique, par `mkvmerge` en mode append — sans réencodage · ordre déduit des noms (`part10` après `part2`), montré et corrigeable par `Ctrl+↑/↓` avant lancement · appariement des pistes contrôlé **avant** la copie, blocages et réserves distingués (§ 9bis.3) · durée du fichier produit comparée à la somme des parties (§ 9bis.5) · les parties sont conservées |
 | **0.8.7.0** | 2026-08-29 | **Release.** Le raccourci Bureau entre dans le parcours d'installation : README § 5, § 10 et § 11 y renvoient, et le guide s'ouvre désormais sur « comment ouvrir l'application ». Rassemble 0.8.6.1 (guide rattaché au code) et 0.8.6.2 (lanceur `IRIS_Encode.exe`) |
 | 0.8.6.2 | 2026-08-29 | **Raccourci Bureau `IRIS_Encode.exe`** (dossier `launcher/`) : un lanceur d'une trentaine de lignes de C#, compilé sur place par `launcher/build.bat` avec le `csc.exe` livré avec Windows, qui ouvre `launch.bat` dans Windows Terminal (console classique à défaut) · icône versionnée en base64 (`iris.ico.b64`), décodée par `certutil` au build, générée de façon déterministe par `make_icon.py` · aucun binaire versionné · README § 5.1 |

@@ -47,7 +47,9 @@ async def _scenario():
         ecran = app.screen
 
         releve["liste"] = _lignes_du_footer(ecran)
-        ecran._open_form("cinema_4k_basic", False)
+        # Le profil actif existe toujours ; un nom codé en dur, non — depuis
+        # que profiles.toml fait foi, il dépend du fichier de l'utilisateur.
+        ecran._open_form(app.active_profile_id, False)
         await pilot.pause(0.4)
         releve["formulaire"] = _lignes_du_footer(ecran)
         ecran._close_form()

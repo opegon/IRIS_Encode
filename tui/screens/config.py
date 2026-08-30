@@ -1,7 +1,7 @@
 """
 tui/screens/config.py — Écran de gestion des profils d'encodage.
 
-Liste les profils (builtins + user) avec actions éditer/supprimer/activer.
+Liste les profils lus dans profiles.toml, avec actions éditer/supprimer/activer.
 Intègre ProfileForm pour la création et l'édition inline.
 """
 from __future__ import annotations
@@ -101,11 +101,9 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         names        = list(profiles.keys())
         fields_list  = [profiles[n].summary_fields() for n in names]
         name_vals    = [f"[{n}] ✓" if n == active else f"[{n}]" for n in names]
-        type_vals    = ["user" if profiles[n].user else "builtin" for n in names]
-        action_vals  = ["✎ éditer  ✕ suppr." if profiles[n].user else "✎ éditer" for n in names]
+        action_vals  = ["✎ éditer  ✕ suppr." for _ in names]
 
         table.add_column("Profil",   width=_cw("Profil",   name_vals,                       min_width=15), key="name")
-        table.add_column("Type",     width=_cw("Type",     type_vals,                       min_width=7),  key="type")
         table.add_column("Dolby V.", width=_cw("Dolby V.", [f["dv"]       for f in fields_list], min_width=9),  key="dv")
         table.add_column("1080p",    width=_cw("1080p",    [f["1080p"]    for f in fields_list], min_width=7),  key="br1080")
         table.add_column("4K",       width=_cw("4K",       [f["4k"]       for f in fields_list], min_width=10), key="br4k")
@@ -122,16 +120,11 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
                 f"[{name}]" + (" ✓" if is_active else ""),
                 style="bold green" if is_active else "bold",
             )
-            type_txt  = Text(
-                "user" if profile.user else "builtin",
-                style="dim cyan" if profile.user else "dim",
-            )
             dv_style  = DV_VALUE_STYLES.get(f["dv"], "")
-            actions   = Text("✎ éditer" + ("  ✕ suppr." if profile.user else ""), no_wrap=True)
+            actions   = Text("✎ éditer  ✕ suppr.", no_wrap=True)
 
             table.add_row(
                 name_txt,
-                type_txt,
                 Text(f["dv"],       style=dv_style, no_wrap=True),
                 Text(f["1080p"],    no_wrap=True),
                 Text(f["4k"],       no_wrap=True),
@@ -186,15 +179,17 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         self._open_form("", is_new=True)
 
     def action_delete_focused(self) -> None:
-        """Supprime le profil sous le curseur (user uniquement), avec confirmation."""
+        """Supprime le profil sous le curseur, avec confirmation."""
         name = self._focused_profile_name()
         if name is None:
             return
         prof = self._app.profiles.get(name)
         if prof is None:
             return
-        if not prof.user:
-            self._flash_header(f"✗ [{name}] est un profil builtin — non supprimable")
+        # Le fichier fait foi, donc tout profil s'efface — sauf le dernier :
+        # une liste vide ne laisse rien à sélectionner pour encoder.
+        if len(self._app.profiles) == 1:
+            self._flash_header(f"✗ [{name}] est le dernier profil — non supprimable")
             return
         from .confirm import ConfirmModal
         def _on_answer(ok: bool) -> None:
@@ -253,11 +248,13 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         form     = self.query_one(ProfileForm)
         profiles = self._app.profiles
         if is_new:
-            default_data = profiles["serie_basic"].data.copy()
-            form.load("", default_data, is_new=True, is_builtin=False)
+            # Le profil actif sert de point de départ : le nom codé en dur
+            # qui tenait ici levait un KeyError dès que le fichier ne le
+            # décrivait plus.
+            default_data = profiles[self._app.active_profile_id].data.copy()
+            form.load("", default_data, is_new=True)
         else:
-            p = profiles[profile_id]
-            form.load(profile_id, p.data, is_new=False, is_builtin=not p.user)
+            form.load(profile_id, profiles[profile_id].data, is_new=False)
 
     def _close_form(self) -> None:
         self._form_mode = False
@@ -272,9 +269,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         is_new   = msg.profile_id not in profiles
 
         if is_new:
-            profiles[msg.profile_id] = Profile(
-                id=msg.profile_id, data=msg.data, user=True
-            )
+            profiles[msg.profile_id] = Profile(id=msg.profile_id, data=msg.data)
         else:
             p = profiles[msg.profile_id]
             p.data.update(msg.data)
@@ -305,12 +300,11 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
     def _delete_profile(self, name: str) -> None:
         profiles = self._app.profiles
-        prof     = profiles.get(name)
-        if prof is None or not prof.user:
-            return  # builtin ou inexistant — jamais supprimé
+        if name not in profiles or len(profiles) == 1:
+            return  # inexistant, ou dernier de la liste
         del profiles[name]
         if self._app.active_profile_id == name:
-            self._app.active_profile_id = "serie_basic"
+            self._app.active_profile_id = next(iter(profiles))
         prof_mod.save_all(profiles)
         self._changed = True
         self._build_table()

@@ -361,8 +361,8 @@ def test_les_lancements_sont_bien_trouves():
 # façon aux deux endroits.
 
 def _profils(prof_mod, ids: list[str]) -> dict:
-    return {i: prof_mod.Profile(id=i, data={"bitrate_1080p_kbps": 5000},
-                                user=True) for i in ids}
+    return {i: prof_mod.Profile(id=i, data={"bitrate_1080p_kbps": 5000})
+            for i in ids}
 
 
 def test_profiles_ne_laisse_jamais_un_fichier_a_moitie_ecrit(tmp_path, monkeypatch):
@@ -414,7 +414,8 @@ def test_profiles_ecrit_bien_ce_quon_lui_donne(tmp_path, monkeypatch):
 
     relus = prof_mod.load_all()
     assert relus["a"].data["bitrate_1080p_kbps"] == 5000
-    assert relus["b"].user is True
+    # Le fichier fait foi : ce qu'on a écrit, et rien d'autre.
+    assert list(relus) == ["a", "b"]
 
 
 def test_profiles_est_serialise_entre_threads(tmp_path, monkeypatch):

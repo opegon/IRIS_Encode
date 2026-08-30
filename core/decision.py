@@ -24,6 +24,7 @@ class VideoAction(Enum):
     ENCODE_HEVC = auto()   # CAS 1 ou CAS 2
     ENCODE_H264 = auto()   # CAS 3
     ENCODE_AV1  = auto()   # Manuel uniquement (très gourmand CPU)
+    ENCODE_DV   = auto()   # Réencodage vidéo, Dolby Vision préservé (RPU réinjecté)
     STRIP_DV    = auto()   # Retrait du RPU seul — remux, aucun réencodage
     SKIP        = auto()
 
@@ -63,6 +64,39 @@ class DVAction(Enum):
     SDR    = auto()   # DV → SDR (tone map P5, CPU, lent)
 
 
+def video_recopiee(action: "VideoAction", dv_action: "DVAction") -> bool:
+    """Le flux vidéo sort-il tel quel, malgré une action d'encodage ?
+
+    Conserver le Dolby Vision impose `-c:v copy` : le débit et la résolution
+    demandés par le profil restent alors lettre morte. L'interface annonçait
+    pourtant « → HEVC → DV » et nommait la sortie `_[hevc]`, pour un fichier
+    dont l'image n'avait pas bougé d'un bit — un débit de 60 Mb/s ressortait
+    à 60 Mb/s sous un nom qui promettait l'inverse.
+    """
+    return dv_action == DVAction.DV and action in (
+        VideoAction.ENCODE_HEVC, VideoAction.ENCODE_H264, VideoAction.ENCODE_AV1,
+    )
+
+
+def peut_reencoder_en_dv(info: "VideoInfo", target_w: int, target_h: int) -> bool:
+    """Le Dolby Vision peut-il survivre à un réencodage de cette source ?
+
+    Trois conditions, toutes nécessaires :
+
+    - **Une couche de base HDR10** — `can_strip_dv` répond exactement à ça.
+      Le profil 5 (base IPT-PQ) et le 8.4 (base HLG) en sont dépourvus :
+      réinjecter leur RPU dans un flux HDR10 donnerait des couleurs fausses.
+      Le profil 7 est éligible, son RPU étant converti en 8.1 au passage.
+    - **Aucun changement de résolution** — le RPU est indexé image par image
+      et décrit un cadrage ; redimensionner le rend faux.
+    - **dovi_tool et mkvmerge présents**, comme pour le retrait du RPU.
+    """
+    return (_STRIP_DV_AVAILABLE
+            and info.can_strip_dv
+            and target_w == info.width
+            and target_h == info.height)
+
+
 @dataclass
 class VideoDecision:
     action:          VideoAction
@@ -78,7 +112,10 @@ class VideoDecision:
             return "← SKIP"
         if self.action == VideoAction.STRIP_DV:
             return "→ HDR10"
-        codec = "HEVC" if self.action == VideoAction.ENCODE_HEVC else "H264"
+        if video_recopiee(self.action, self.dv_action):
+            return "→ DV (copie)"
+        codec = ("HEVC" if self.action in (VideoAction.ENCODE_HEVC,
+                                           VideoAction.ENCODE_DV) else "H264")
         dv = ""
         if self.dv_action == DVAction.HDR10: dv = " → HDR10"
         if self.dv_action == DVAction.DV:    dv = " → DV"
@@ -103,6 +140,9 @@ def emphase_video(action: "VideoAction",
     if action == VideoAction.SKIP:
         return Emphase.INACTION
     if action == VideoAction.STRIP_DV:
+        return Emphase.SANS_PERTE
+    # Vidéo recopiée : rien n'est recalculé, comme un remux.
+    if dv_action is not None and video_recopiee(action, dv_action):
         return Emphase.SANS_PERTE
     # Le tone mapping détruit la plage dynamique, l'AV1 coûte des heures :
     # ce sont les deux seuls choix vidéo qui méritent d'alerter.
@@ -194,9 +234,15 @@ def cycle_index(action: "VideoAction") -> int:
     réencodage. Il se range avec SKIP, les deux voulant dire « ne pas
     réencoder ». Sans ce repli, `.index()` levait un ValueError et l'écran
     Pistes plantait sur la touche codec.
+
+    ENCODE_DV n'est pas non plus un choix — la décision le propose quand le
+    RPU peut être réinjecté — mais c'est bien un réencodage HEVC : il se range
+    avec HEVC, et surtout pas avec SKIP.
     """
     if action in ACTION_CYCLE:
         return ACTION_CYCLE.index(action)
+    if action == VideoAction.ENCODE_DV:
+        return ACTION_CYCLE.index(VideoAction.ENCODE_HEVC)
     return ACTION_CYCLE.index(VideoAction.SKIP)
 
 
@@ -207,10 +253,16 @@ def same_intent(choisie: "VideoAction", decidee: "VideoAction") -> bool:
     demander de ne pas réencoder — ce que le retrait du RPU fait déjà, en
     mieux. On lève alors la surcharge au lieu d'imposer un SKIP sec, qui
     laisserait le Dolby Vision en place sans que rien ne l'explique.
+
+    De même, choisir « HEVC » sur une décision ENCODE_DV demande le réencodage
+    que celle-ci fait déjà — en préservant le Dolby Vision par-dessus le
+    marché. Imposer la surcharge le ferait perdre sans raison.
     """
     if choisie == decidee:
         return True
-    return choisie == VideoAction.SKIP and decidee == VideoAction.STRIP_DV
+    if choisie == VideoAction.SKIP and decidee == VideoAction.STRIP_DV:
+        return True
+    return choisie == VideoAction.ENCODE_HEVC and decidee == VideoAction.ENCODE_DV
 
 
 BITRATE_OPTS_KBPS:     list[int] = [500, 800, 1000, 1500, 2000, 2200, 2500, 3000, 3500, 5000, 8000, 12000]
@@ -231,10 +283,18 @@ def _needs_mkv_codec(codec: str) -> bool:
     return any(frag in low for frag in _MKV_ONLY_CODECS)
 
 
+# Les deux sorties qui conservent le Dolby Vision — le réencodage avec RPU
+# réinjecté, et la copie de repli quand ce réencodage n'est pas possible —
+# portent le même suffixe : du point de vue de l'utilisateur, l'une comme
+# l'autre rendent un fichier Dolby Vision. Ce qui les sépare est le débit, que
+# la raison affichée explicite.
+SUFFIX_DV_COPIE = "_[dv]"
+
 SUFFIX_BY_ACTION: dict["VideoAction", str] = {
     VideoAction.ENCODE_HEVC: "_[hevc]",
     VideoAction.ENCODE_H264: "_[H264]",
     VideoAction.ENCODE_AV1:  "_[av1]",
+    VideoAction.ENCODE_DV:   SUFFIX_DV_COPIE,
     VideoAction.STRIP_DV:    "_[hdr10]",
     VideoAction.SKIP:        "",
 }
@@ -353,6 +413,15 @@ class FileDecision:
         """
         voulu = self.profile.get("container", "auto")
         if voulu == "mkv":
+            return True
+
+        # Un réencodage qui préserve le Dolby Vision sort d'un flux Annex-B
+        # recomposé par mkvmerge, qui n'écrit que du Matroska. Le RPU vit dans
+        # le flux, pas dans le conteneur : le porter en MP4 demanderait de
+        # réécrire les en-têtes, et un `container = "mp4"` produirait sans ça
+        # un fichier sans Dolby Vision — exactement ce que l'opération cherche
+        # à éviter. Le profil ne peut donc pas forcer le MP4 ici.
+        if self.video.action == VideoAction.ENCODE_DV:
             return True
 
         # Le retrait du RPU passe par mkvmerge en MKV, par ffmpeg en MP4 :
@@ -492,11 +561,32 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     action    = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
     suffix    = "_[H264]"              if sub_1080 else "_[hevc]"
 
+    # Conserver le Dolby Vision impose de recopier le flux — sauf si le RPU
+    # peut être sorti avant l'encodage puis réinjecté après, ce que tranche
+    # `peut_reencoder_en_dv`. Dans ce cas seulement, le débit cible s'applique
+    # vraiment ; sinon ni lui ni la résolution limite n'auront d'effet, et la
+    # raison affichée doit le dire — c'est la seule occasion qu'a l'utilisateur
+    # de comprendre pourquoi son fichier de 60 Mb/s en fait toujours 60.
+    if (dv_action == DVAction.DV
+            and action == VideoAction.ENCODE_HEVC
+            and peut_reencoder_en_dv(info, limit_w, limit_h)):
+        action = VideoAction.ENCODE_DV
+        suffix = SUFFIX_BY_ACTION[action]
+    copiee = video_recopiee(action, dv_action)
+    if copiee:
+        suffix = SUFFIX_DV_COPIE
+    reencode_dv = (action == VideoAction.ENCODE_DV)
+
+    def _raison(base: str) -> str:
+        if reencode_dv:
+            return f"{base} · DV préservé, RPU réinjecté"
+        return f"{base} · DV conservé → vidéo copiée" if copiee else base
+
     # CAS 1 — Bitrate source ≥ seuil cible
     if info.bitrate >= target_bps:
         return VideoDecision(
             action=action,
-            reason=f"Débit {info.kbps}k ≥ {target_bps // 1000}k cible",
+            reason=_raison(f"Débit {info.kbps}k ≥ {target_bps // 1000}k cible"),
             target_bitrate=target_bps,
             target_width=limit_w,
             target_height=limit_h,
@@ -508,7 +598,7 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     if info.width > limit_w or info.height > limit_h:
         return VideoDecision(
             action=action,
-            reason=f"Résolution {info.width}x{info.height} > {limit_w}x{limit_h}",
+            reason=_raison(f"Résolution {info.width}x{info.height} > {limit_w}x{limit_h}"),
             target_bitrate=info.bitrate,
             target_width=limit_w,
             target_height=limit_h,
@@ -520,7 +610,7 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     if info.codec.lower() not in CODECS_LISIBLES:
         return VideoDecision(
             action=action,
-            reason=f"Codec {info.codec} non lu par la chaîne",
+            reason=_raison(f"Codec {info.codec} non lu par la chaîne"),
             target_bitrate=info.bitrate,
             target_width=limit_w,
             target_height=limit_h,

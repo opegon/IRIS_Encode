@@ -40,8 +40,8 @@ def suffixes_produits() -> frozenset[str]:
 
     Import différé : `decision` importe `scanner`, l'inverse ferait un cycle.
     """
-    from .decision import SUFFIX_BY_ACTION
-    return frozenset(s for s in SUFFIX_BY_ACTION.values() if s)
+    from .decision import SUFFIX_BY_ACTION, SUFFIX_DV_COPIE
+    return frozenset(s for s in (*SUFFIX_BY_ACTION.values(), SUFFIX_DV_COPIE) if s)
 
 
 def deja_produit(stem: str) -> bool:

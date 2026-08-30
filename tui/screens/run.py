@@ -297,6 +297,12 @@ class RunScreen(TableNavMixin, Screen):
             self._strip_dv(next_idx, dec)
             return
 
+        # Réencodage préservant le Dolby Vision : le RPU sort avant, revient
+        # après. build_command ne sait pas faire — il produirait un `-c:v copy`.
+        if dec.video.action == VideoAction.ENCODE_DV:
+            self._encode_dv(next_idx, dec)
+            return
+
         # Une piste étirée ne peut pas être absorbée par ffmpeg : mkvmerge la
         # greffe d'abord, ffmpeg encode l'intermédiaire. Transparent pour
         # l'utilisateur, et payé seulement quand c'est nécessaire.
@@ -690,6 +696,208 @@ class RunScreen(TableNavMixin, Screen):
             # Les deux flux bruts pèsent chacun le poids du film : les laisser
             # traîner remplirait le disque, que l'opération ait abouti ou non.
             for tmp in (brut, nodv, mka):
+                try:
+                    if tmp.exists():
+                        tmp.unlink()
+                except OSError:
+                    pass
+            self._encode_next()
+
+    def _encode_dv(self, index: int, dec: FileDecision) -> None:
+        """Réencode la vidéo en préservant le Dolby Vision, puis passe au suivant.
+
+        Le RPU — les métadonnées DV, image par image — vit *à l'intérieur* du
+        flux HEVC, entre les tranches. Ce n'est pas une piste qu'un `-map`
+        laisse passer : tout réencodage le détruit. On le sort donc avant, on
+        encode, on le remet, on remuxe.
+
+        1. `dovi_tool extract-rpu`, branché sur ffmpeg en tuyau — rien sur le
+           disque, là où passer par un fichier aurait coûté une recopie du film
+           entier pour en tirer quelques kilo-octets.
+        2. le profil 7 devient 8.1 : sa couche d'amélioration ne survivrait pas.
+        3. l'encodage vidéo seul, en Annex-B brut, sans le moindre filtre — le
+           nombre d'images doit correspondre au RPU.
+        4. `dovi_tool inject-rpu`, qui exige de vrais fichiers : il relit son
+           entrée une première fois pour reconstituer l'ordre des images.
+        5. les pistes audio finales si la décision en transcode une, puis le
+           remux par mkvmerge.
+        """
+        from core import dovi
+        from core.encoder import build_dv_video_command
+
+        s      = self._statuses[index]
+        source = dec.info.path
+        sortie = dec.output_path
+
+        def echouer(resume: str, detail: str) -> None:
+            s.state, s.error_msg, s.last_line = FileState.ERROR, resume[:60], detail
+            self.app.call_from_thread(self._update_row, index)
+
+        dovi_path = getattr(self.app, "dovi_path", None)
+        if dovi_path is None or not getattr(self.app, "mkvmerge_available", False):
+            echouer("dovi_tool + mkvmerge requis",
+                    "Préserver le Dolby Vision à travers un réencodage demande "
+                    "dovi_tool et mkvmerge. Relancez le preflight pour les "
+                    "installer.")
+            self._encode_next()
+            return
+
+        ffmpeg_path = getattr(self.app, "ffmpeg_path", "ffmpeg")
+        # Comme pour le retrait du RPU : les intermédiaires pèsent le poids de
+        # la vidéo encodée, ils vont à côté de la source et non dans le temp du
+        # système. Il y en a deux à la fois — `inject-rpu` ne travaille pas en
+        # place — soit environ deux fois la taille de la sortie.
+        rpu = source.with_name(f"{source.stem}.iris.rpu")
+        p8  = source.with_name(f"{source.stem}.iris_p8.rpu")
+        enc = source.with_name(f"{source.stem}.iris_enc.hevc")
+        inj = source.with_name(f"{source.stem}.iris_dv.hevc")
+        mka = source.with_name(f"{source.stem}.iris_audio.mka")
+
+        passe_audio = audio_pass_needed(dec.audio)
+        n_etapes    = 5 if passe_audio else 4
+        if dec.info.dv_profile == 7:
+            n_etapes += 1
+        etape     = 0
+        s.percent = -1
+
+        def annoncer(texte: str, commande: str = "") -> None:
+            nonlocal etape
+            etape += 1
+            if commande:
+                self.app.call_from_thread(self._update_cmd_lines, commande)
+            self.app.call_from_thread(
+                self._update_ffmpeg_line, f"▶ {etape}/{n_etapes} {texte}")
+            s.percent = -1
+            self.app.call_from_thread(self._update_row, index)
+
+        try:
+            # 1 — le RPU, en tuyau
+            annoncer("Extraction des métadonnées Dolby Vision…",
+                     f"{dovi_path.name} extract-rpu - -o {rpu.name}")
+            if not dovi.extract_rpu_depuis_source(source, rpu, dovi_path, ffmpeg_path):
+                echouer("extraction du RPU échouée",
+                        "dovi_tool n'a pas pu extraire les métadonnées Dolby "
+                        "Vision de la source. Le réencodage les aurait "
+                        "détruites : on s'arrête plutôt que de rendre un "
+                        "fichier sans Dolby Vision.")
+                return
+            if s.state == FileState.SKIPPED:
+                return
+
+            # 2 — profil 7 → 8.1
+            if dec.info.dv_profile == 7:
+                annoncer("Conversion du RPU en profil 8.1…",
+                         f"{dovi_path.name} convert -m 2 -i {rpu.name}")
+                if not dovi.convert_p7_to_p8(rpu, p8, dovi_path):
+                    echouer("conversion RPU 7 → 8.1 échouée",
+                            "dovi_tool n'a pas pu convertir le RPU du profil 7 "
+                            "vers le profil 8.1.")
+                    return
+                p8.replace(rpu)
+
+            # 3 — l'encodage vidéo, seul
+            cmd = build_dv_video_command(dec, self._platform, enc, ffmpeg_path)
+            annoncer("Encodage de la vidéo…", " ".join(cmd))
+            proc = EncoderProcess(cmd, dec.info.duration)
+            self._process = proc
+            proc.start()
+            for ligne, progress in proc.iter_progress():
+                s.last_line = ligne
+                if progress:
+                    s.percent = progress.percent
+                    self.app.call_from_thread(self._update_row, index)
+                    self.app.call_from_thread(self._update_header)
+            code = proc.wait()
+            self._process = None
+            if s.state == FileState.SKIPPED:
+                return
+            if code != 0 or not enc.exists():
+                echouer(f"encodage vidéo : code {code}",
+                        f"L'encodage de la vidéo a échoué (code {code}).")
+                return
+
+            # 4 — le RPU revient
+            annoncer("Réinjection du Dolby Vision…",
+                     f"{dovi_path.name} inject-rpu -i {enc.name} --rpu-in {rpu.name}")
+            if not dovi.inject_rpu(enc, rpu, inj, dovi_path):
+                echouer("réinjection du RPU échouée",
+                        "dovi_tool n'a pas pu réinjecter le RPU. La cause la "
+                        "plus courante est un nombre d'images différent entre "
+                        "la source et l'encodage.")
+                return
+            if s.state == FileState.SKIPPED:
+                return
+
+            # 5 — pistes audio finales, quand la décision en transcode une
+            if passe_audio:
+                cmd = build_audio_command(source, mka, dec.audio, ffmpeg_path)
+                annoncer("Transcodage des pistes audio…", " ".join(cmd))
+                proc = EncoderProcess(cmd, dec.info.duration)
+                self._process = proc
+                proc.start()
+                for ligne, progress in proc.iter_progress():
+                    s.last_line = ligne
+                    if progress:
+                        s.percent = progress.percent
+                        self.app.call_from_thread(self._update_row, index)
+                code = proc.wait()
+                self._process = None
+                if s.state == FileState.SKIPPED:
+                    return
+                if code != 0 or not mka.exists():
+                    echouer(f"transcodage audio : code {code}",
+                            f"Le transcodage des pistes audio a échoué (code {code}).")
+                    return
+
+            # N — remux par mkvmerge. Le conteneur est forcément du Matroska :
+            # la décision l'impose dès qu'elle retient ENCODE_DV.
+            exclues = [ad for ad in dec.audio if ad.action == AudioAction.EXCLUDE]
+            cmd = build_strip_command(
+                inj, source, sortie,
+                fps=dec.info.frame_rate,
+                tracks=dec.external_tracks,
+                audio_source=mka if passe_audio else None,
+                audio_indices=([ad.track.index for ad in dec.audio
+                                if ad.action != AudioAction.EXCLUDE]
+                               if exclues and not passe_audio else None),
+                sous_titres=[st.index for st in dec.subtitles_finales])
+            annoncer("Remux des pistes par mkvmerge…", " ".join(cmd))
+            mux = MuxProcess(cmd)
+            mux.start()
+            for ligne, pourcent in mux.iter_progress():
+                if pourcent is not None:
+                    s.percent = pourcent / 100.0
+                    self.app.call_from_thread(self._update_row, index)
+                elif ligne:
+                    self.app.call_from_thread(self._update_ffmpeg_line, ligne)
+            code = mux.wait()
+            if code != 0 or not sortie.exists():
+                detail = mux.errors[-1] if mux.errors else f"code {code}"
+                echouer(f"remux : {detail}", f"Remux échoué — {detail}")
+                return
+
+            should_delete = (
+                dec.delete_source_override
+                if dec.delete_source_override is not None
+                else dec.profile.get("delete_source", False)
+            )
+            if should_delete:
+                try:
+                    source.unlink()
+                except OSError:
+                    pass
+
+            if s.state != FileState.SKIPPED:
+                s.state   = FileState.SUCCESS
+                s.percent = 1.0
+            self.app.call_from_thread(self._update_row, index)
+            self.app.call_from_thread(self._update_header)
+
+        finally:
+            self._process = None
+            # Deux flux bruts de la taille de la vidéo encodée : les laisser
+            # traîner remplirait le disque, que l'opération ait abouti ou non.
+            for tmp in (rpu, p8, enc, inj, mka):
                 try:
                     if tmp.exists():
                         tmp.unlink()

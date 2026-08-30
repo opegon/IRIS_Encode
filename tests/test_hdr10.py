@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import pytest
 
+from core.profiles import Profile
 from core.scanner import _fraction, _hdr10_metadata
 
 
@@ -93,7 +94,6 @@ def test_un_fichier_absent_ne_leve_pas():
 # ─── La commande d'encodage porte enfin les métadonnées ───────────────────────
 
 def test_le_mode_quality_injecte_master_display_et_max_cll():
-    from core import profiles as pm
     from core.decision import decide, force_skip_to_encode
     from core.encoder import build_command
     from core.platform import GPU, OS, PlatformProfile
@@ -105,7 +105,17 @@ def test_le_mode_quality_injecte_master_display_et_max_cll():
     plat = PlatformProfile(os=OS.WINDOWS, gpu=GPU.NVIDIA, hwaccel="cuda",
                            encoder_hevc="hevc_nvenc", encoder_h264="h264_nvenc",
                            encoder_av1="av1_nvenc")
-    dec = force_skip_to_encode(decide(info, pm.load_all()["cinema_4k_quality"]))
+    # Le profil est bâti ici, non lu dans profiles.toml : ce fichier appartient
+    # à l'utilisateur et rien ne garantit qu'il décrive encore tel ou tel nom.
+    profil = Profile(id="test", data={
+        "bitrate_4k_kbps":   12000,
+        "keep_4k":           True,
+        "preset_encoder":    "slow",
+        "dolby_vision":      "hdr10",
+        "hdr10_quality":     "quality",
+        "preserve_hd_audio": True,
+    })
+    dec = force_skip_to_encode(decide(info, profil))
     params = build_command(dec, plat)[
         build_command(dec, plat).index("-x265-params") + 1]
 

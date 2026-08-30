@@ -25,6 +25,7 @@ from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
     AudioAction, FileDecision, VideoAction, decide, force_skip_to_encode,
+    video_recopiee,
 )
 from core.scanner import scan, scan_directory_recursive
 from ..common import (
@@ -92,8 +93,12 @@ def _estimate_output_bytes(dec: FileDecision) -> int:
     if dec.video.action == VideoAction.SKIP:
         return 0
     # Un remux ne recalcule aucune image : la sortie pèse ce que pèse la
-    # source, au RPU près — quelques mégaoctets sur un film.
-    if dec.video.action == VideoAction.STRIP_DV:
+    # source, au RPU près — quelques mégaoctets sur un film. Une source Dolby
+    # Vision dont le RPU ne peut pas être réinjecté est dans le même cas : sa
+    # vidéo est recopiée, et l'estimer au débit cible annonçait une réduction
+    # qui n'aura pas lieu.
+    if (dec.video.action == VideoAction.STRIP_DV
+            or video_recopiee(dec.video.action, dec.video.dv_action)):
         try:
             return dec.info.path.stat().st_size
         except OSError:

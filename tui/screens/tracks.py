@@ -85,6 +85,7 @@ _ACTION_SHORT: dict[VideoAction, str] = {
     VideoAction.ENCODE_HEVC: "HEVC",
     VideoAction.ENCODE_H264: "H264",
     VideoAction.ENCODE_AV1:  "AV1 ⚠",
+    VideoAction.ENCODE_DV:   "HEVC DV",  # réencodage, RPU réinjecté après
     VideoAction.STRIP_DV:    "HDR10",   # retrait du RPU, sans réencodage
     VideoAction.SKIP:        "SKIP",
 }

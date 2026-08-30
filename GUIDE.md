@@ -1,7 +1,7 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.7.1
-**Date** : 2026-08-29
+**Version** : 0.8.8.0
+**Date** : 2026-08-30
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
 
@@ -286,9 +286,12 @@ sont approximatives aux premières passes.
 
 ### 2.7 Profils (`F5`)
 
-`N` crée, `E` édite, `D` supprime, `↵` active. Les profils intégrés sont
-protégés en suppression. Un profil marqué `⚠ suppr.` efface le fichier source
-après un encodage réussi — à vérifier avant de lancer un lot.
+`N` crée, `E` édite, `D` supprime, `↵` active. La liste est exactement celle
+de `profiles.toml`, dans l'ordre du fichier : vous pouvez l'éditer à la main,
+l'application ne rajoute ni ne réordonne rien. Tous les profils s'effacent,
+sauf le dernier de la liste. Renommer un profil se fait dans le fichier : le
+champ **Nom** du formulaire ne se saisit qu'à la création. Un profil marqué `⚠ suppr.` efface le fichier
+source après un encodage réussi — à vérifier avant de lancer un lot.
 
 ---
 
@@ -366,7 +369,45 @@ DV que le profil n'a aucune raison de réencoder sort en `_[hdr10].mkv` :
 La colonne **Décision** affiche `→ HDR10` sur ces fichiers. C'est le cas le plus
 rentable de l'application : beaucoup gagné, presque rien dépensé.
 
-### 3.4 Ne garder que certaines langues
+### 3.4 Alléger un Dolby Vision sans le perdre
+
+Un profil réglé sur `dolby_vision = dv` (`F5`, champ **DV**) garde le Dolby
+Vision. Jusqu'à la v0.8.8.0 il gardait aussi le débit : la vidéo était recopiée
+telle quelle, et un film de 60 Mb/s ressortait à 60 Mb/s. Désormais
+l'application sort les métadonnées DV avant l'encodage et les remet après.
+
+La colonne **Décision** distingue les deux cas :
+
+| Ce qui s'affiche | Ce qui se passe |
+|---|---|
+| `→ HEVC → DV` | la vidéo est réencodée au débit du profil, le Dolby Vision est conservé |
+| `→ DV (copie)` | la vidéo est recopiée — le débit du profil ne s'applique pas |
+
+Quand vous voyez `→ DV (copie)`, la colonne **Raison** dit pourquoi. Trois
+causes possibles :
+
+- **le profil demande un downscale** (`keep_4k` décoché sur une source 4K). Les
+  métadonnées DV décrivent le cadrage image par image : redimensionner les rend
+  fausses. Cochez `keep_4k` pour que le réencodage soit possible.
+- **la source est en Dolby Vision profil 5 ou 8.4.** Leur couche de base n'est
+  pas du HDR10 ; il n'y a rien à quoi rattacher les métadonnées. Rien à faire —
+  sinon passer le profil en `hdr10` ou `sdr` si la taille prime.
+- **dovi_tool ou mkvmerge manquent.** Relancez le preflight.
+
+À savoir avant de lancer un lot :
+
+- **la sortie est toujours un `.mkv`**, même si le profil demande du MP4 — le
+  MP4 ne porte pas ces métadonnées sans réécriture ;
+- **comptez deux fois la taille de la vidéo encodée en espace disque
+  temporaire**, à côté du fichier source. Les fichiers sont effacés à la fin,
+  que l'encodage réussisse ou non ;
+- **l'encodage est plus long** qu'un encodage ordinaire : trois passes sur le
+  flux s'ajoutent à l'encodage lui-même.
+
+> Le premier fichier produit mérite un contrôle sur votre téléviseur : la chaîne
+> est vérifiée sur des extraits courts, pas encore sur un film entier.
+
+### 3.5 Ne garder que certaines langues
 
 Un rip streaming embarque couramment deux pistes audio et **quarante
 sous-titres**. Le profil décide ce qui traverse.
@@ -387,7 +428,7 @@ la piste d'origine, et la perdre serait perdre le film.
 Pour un contrôle piste par piste sur un seul fichier, `T` puis `Espace` — le
 profil ne décide que du cas général.
 
-### 3.5 Recaler un sous-titre trouvé sur internet
+### 3.6 Recaler un sous-titre trouvé sur internet
 
 Un `.srt` téléchargé n'est presque jamais synchronisé sur votre fichier.
 

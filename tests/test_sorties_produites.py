@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from core.decision import SUFFIX_BY_ACTION, VideoAction
+from core.decision import SUFFIX_BY_ACTION, SUFFIX_DV_COPIE, VideoAction
 from core.muxer import MUX_SUFFIX
 from core.scanner import deja_produit, suffixes_produits
 
@@ -32,11 +32,21 @@ from core.scanner import deja_produit, suffixes_produits
 
 def test_tous_les_suffixes_d_encodage_sont_couverts():
     """La question à laquelle la paire en dur ne savait pas répondre."""
-    attendus = {s for s in SUFFIX_BY_ACTION.values() if s}
+    attendus = {s for s in SUFFIX_BY_ACTION.values() if s} | {SUFFIX_DV_COPIE}
     assert suffixes_produits() == attendus
     # Et nommément, pour que l'échec dise lequel manque
-    for suffixe in ("_[hevc]", "_[H264]", "_[av1]", "_[hdr10]"):
+    for suffixe in ("_[hevc]", "_[H264]", "_[av1]", "_[hdr10]", "_[dv]"):
         assert suffixe in suffixes_produits(), suffixe
+
+
+def test_la_sortie_d_une_source_dv_conservee_n_est_pas_reproposee():
+    """`_[dv]` ne vient pas de `SUFFIX_BY_ACTION` : il faut l'y ajouter à part.
+
+    Oublié, le fichier produit par une source DV conservée serait vu comme une
+    source neuve au scan suivant — et un profil `delete_source` effacerait
+    l'original pour le remplacer par lui-même.
+    """
+    assert deja_produit(f"Film{SUFFIX_DV_COPIE}")
 
 
 @pytest.mark.parametrize("action", [a for a in VideoAction

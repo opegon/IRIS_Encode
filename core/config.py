@@ -20,6 +20,9 @@ CONFIG_PATH = APP_DIR / "config.toml"
 _DEFAULTS: dict[str, Any] = {
     "app": {
         "language": "fr",
+        # Profil sélectionné au dernier lancement. Vide = jamais choisi, on
+        # prend alors le premier de profiles.toml.
+        "active_profile": "",
     },
     "ffmpeg": {
         "fetch_url":    "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
@@ -130,6 +133,31 @@ def save(cfg: dict[str, Any]) -> None:
         except BaseException:
             provisoire.unlink(missing_ok=True)
             raise
+
+
+def get_active_profile(cfg: dict[str, Any], profile_ids) -> str:
+    """Le profil actif à retenir au démarrage, garanti présent dans la liste.
+
+    Le choix du profil est un état de session, pas une propriété du fichier de
+    profils : l'application rouvre sur celui qu'on utilisait la dernière fois.
+    À défaut — premier lancement, ou profil disparu depuis, renommé ou effacé à
+    la main dans profiles.toml — on retombe sur le premier du fichier.
+
+    Sans cette mémoire, l'actif était le premier du fichier à chaque lancement.
+    Un profil `delete_source = true` posé en tête devenait donc actif au
+    démarrage, et effaçait les sources d'un lot lancé sans regarder.
+    """
+    ids = list(profile_ids)
+    if not ids:
+        raise ValueError("aucun profil à activer")
+    retenu = cfg.get("app", {}).get("active_profile", "")
+    return retenu if retenu in ids else ids[0]
+
+
+def set_active_profile(cfg: dict[str, Any], profile_id: str) -> None:
+    """Mémorise le profil actif et écrit config.toml."""
+    cfg.setdefault("app", {})["active_profile"] = profile_id
+    save(cfg)
 
 
 def get_bin_dir(cfg: dict[str, Any]) -> Path:

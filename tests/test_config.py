@@ -79,3 +79,34 @@ def test_a_config_without_the_tui_section_survives_a_reset():
     cfg_mod.reset_browser_columns(cfg)
     assert "columns" in cfg_mod._DEFAULTS["tui"]["browser"]
     assert cfg_mod.get_column_widths(cfg)["fichier"] == 50
+
+
+# ─── Le profil actif est un état de session, pas une propriété du fichier ────
+#
+# Sans mémoire, l'actif au démarrage était le premier de profiles.toml. Un
+# profil `delete_source = true` posé en tête devenait donc actif au lancement,
+# et effaçait les sources d'un lot lancé sans regarder.
+
+def test_le_profil_actif_par_defaut_est_le_premier_du_fichier():
+    """Rien de mémorisé : on prend le premier, pas un nom codé en dur."""
+    cfg = cfg_mod._deep_merge({}, cfg_mod._DEFAULTS)
+    assert cfg_mod.get_active_profile(cfg, ["b", "a", "c"]) == "b"
+
+
+def test_le_profil_memorise_l_emporte_sur_l_ordre_du_fichier():
+    cfg = cfg_mod._deep_merge(cfg_mod._DEFAULTS, {"app": {"active_profile": "c"}})
+    assert cfg_mod.get_active_profile(cfg, ["b", "a", "c"]) == "c"
+
+
+def test_un_profil_memorise_disparu_retombe_sur_le_premier():
+    """Effacé ou renommé à la main dans profiles.toml : on ne plante pas."""
+    cfg = cfg_mod._deep_merge(cfg_mod._DEFAULTS,
+                              {"app": {"active_profile": "envole"}})
+    assert cfg_mod.get_active_profile(cfg, ["b", "a"]) == "b"
+
+
+def test_memoriser_le_profil_actif_ecrit_config_toml(tmp_path, monkeypatch):
+    monkeypatch.setattr(cfg_mod, "CONFIG_PATH", tmp_path / "config.toml")
+    cfg = cfg_mod._deep_merge({}, cfg_mod._DEFAULTS)
+    cfg_mod.set_active_profile(cfg, "film_hdr")
+    assert cfg_mod.load()["app"]["active_profile"] == "film_hdr"

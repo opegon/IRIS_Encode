@@ -373,6 +373,51 @@ def audio_args(included_audio: list) -> list[str]:
     return args
 
 
+def build_dv_video_command(decision, platform, sortie_hevc: Path,
+                           ffmpeg_path: str | None = None) -> list[str]:
+    """Encode la seule vidéo, en Annex-B brut, pour un réencodage DV.
+
+    Le RPU sera réinjecté ensuite entre les tranches d'image : cette passe doit
+    donc rendre **exactement autant d'images que la source en compte**. D'où
+    l'absence de tout `-vf` — pas même un `scale` aux dimensions d'origine, qui
+    serait un no-op mais ouvrirait la porte à un filtre ajouté plus tard sans
+    voir la contrainte. `decision.peut_reencoder_en_dv` a déjà garanti que la
+    résolution ne change pas.
+
+    Les métadonnées HDR10 statiques — primaires BT.2020, courbe PQ, master
+    display, MaxCLL — n'ont pas à être reposées : ffmpeg les recopie de la
+    source vers la sortie en SEI, y compris à travers NVENC. Mesuré, pas
+    supposé (voir CHANGELOG v0.8.7.5).
+    """
+    info    = decision.info
+    vid     = decision.video
+    profile = decision.profile
+
+    cmd = [ffmpeg_path or _ffmpeg_path, "-y"]
+    if platform.hwaccel:
+        cmd += ["-hwaccel", platform.hwaccel]
+    cmd += ["-i", str(decision.encode_source or info.path)]
+
+    # Le Dolby Vision est du 10 bits par construction : la couche de base d'un
+    # profil 8.1 est du HDR10, et un encodage 8 bits la trahirait.
+    maxrate   = vid.target_bitrate * 3 // 2
+    bufsize_k = max(maxrate * 2 // 1000, 1)
+    cmd += [
+        "-map",       "0:v:0",
+        "-c:v",       platform.encoder_hevc,
+        "-pix_fmt",   "p010le" if "nvenc" in platform.encoder_hevc else "yuv420p10le",
+        "-b:v",       str(vid.target_bitrate),
+        "-maxrate",   str(maxrate),
+        "-bufsize",   f"{bufsize_k}k",
+        "-rc",        "vbr",
+        "-preset",    profile.get("preset_encoder", "medium"),
+        "-profile:v", "main10",
+        "-f",         "hevc",
+        str(sortie_hevc),
+    ]
+    return cmd
+
+
 def build_command(
     decision: FileDecision,
     platform: PlatformProfile,

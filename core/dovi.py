@@ -161,6 +161,74 @@ def extract_rpu(hevc_path: Path, rpu_path: Path, dovi_path: Path) -> bool:
         return False
 
 
+def extract_rpu_depuis_source(source: Path, rpu_path: Path, dovi_path: Path,
+                              ffmpeg_path: str = "ffmpeg",
+                              timeout: Optional[int] = 3600) -> bool:
+    """Extrait le RPU directement depuis un fichier muxé, sans intermédiaire.
+
+    `extract_rpu` veut un flux Annex-B déjà sur le disque : l'obtenir coûtait
+    une recopie du poids du film — trente gigaoctets pour en tirer sept kilos
+    de métadonnées. `dovi_tool extract-rpu` accepte `-` en entrée, et ffmpeg
+    sait écrire sur sa sortie standard : les deux se branchent l'un sur
+    l'autre et rien ne touche le disque.
+
+    L'injection, elle, ne peut pas en faire autant : elle relit son entrée une
+    première fois pour reconstituer l'ordre des images, et refuse un tuyau.
+    """
+    cmd_ff = build_extract_hevc_command(source, Path("-"), ffmpeg_path)
+    cmd_dt = [str(dovi_path), "extract-rpu", "-", "-o", str(rpu_path)]
+    ff = dt = None
+    try:
+        ff = subprocess.Popen(cmd_ff, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        dt = subprocess.Popen(cmd_dt, stdin=ff.stdout,
+                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        # Sans ça, ffmpeg ne reçoit jamais le SIGPIPE si dovi_tool s'arrête.
+        ff.stdout.close()
+        _, err = dt.communicate(timeout=timeout)
+        ff.wait(timeout=30)
+        if dt.returncode != 0:
+            _log.warning("extract-rpu (tuyau) a échoué : %s",
+                         err.decode("utf-8", "replace")[:200])
+            return False
+        # Un fichier vide est un succès pour dovi_tool — la source n'avait
+        # simplement aucun RPU. Pour nous c'est un échec : il n'y a rien à
+        # réinjecter, et poursuivre produirait une sortie sans Dolby Vision.
+        return rpu_path.exists() and rpu_path.stat().st_size > 0
+    except Exception as e:
+        _log.warning("extract_rpu_depuis_source failed: %s", e)
+        return False
+    finally:
+        for proc in (dt, ff):
+            if proc is not None and proc.poll() is None:
+                proc.kill()
+
+
+def inject_rpu(hevc_in: Path, rpu_in: Path, hevc_out: Path,
+               dovi_path: Path, timeout: Optional[int] = 7200) -> bool:
+    """Réinterjette le RPU entre les tranches d'un flux HEVC fraîchement encodé.
+
+    Le RPU est indexé image par image : l'encodage doit avoir rendu exactement
+    autant d'images que la source en comptait. Tout filtre, tout
+    redimensionnement rompt cette correspondance — c'est la raison pour
+    laquelle la décision refuse le réencodage DV dès qu'une limite de
+    résolution s'applique.
+    """
+    cmd = [str(dovi_path), "inject-rpu", "-i", str(hevc_in),
+           "--rpu-in", str(rpu_in), "-o", str(hevc_out)]
+    try:
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL,
+                           capture_output=True, timeout=timeout)
+        if r.returncode != 0:
+            _log.warning("inject_rpu a échoué : %s",
+                         r.stderr.decode("utf-8", "replace")[:200])
+            return False
+        return hevc_out.exists()
+    except Exception as e:
+        _log.warning("inject_rpu failed: %s", e)
+        return False
+
+
 def remove_dv(hevc_in: Path, hevc_out: Path, dovi_path: Path) -> bool:
     """
     Retire le RPU — et la couche d'amélioration d'un profil 7 — d'un flux HEVC.

@@ -73,7 +73,12 @@ class IrisEncodeApp(App):
         self.start_path        = (start_path or Path.cwd()).resolve()
         self.cfg               = cfg_mod.load()
         self.profiles          = prof_mod.load_all()
-        self.active_profile_id = "serie_basic"
+        # Le profil retenu au dernier lancement, ou le premier du fichier.
+        # On écrit l'attribut privé : passer par la propriété réécrirait
+        # config.toml à chaque démarrage pour y remettre la même valeur.
+        self._active_profile_id = cfg_mod.get_active_profile(
+            self.cfg, self.profiles
+        )
         self.platform:         PlatformProfile = detect_platform()
         # Câble dovi_tool dans le scanner (enrichissement DV au scan)
         from core import dovi, scanner
@@ -122,6 +127,24 @@ class IrisEncodeApp(App):
         # Câble mpv pour le contrôle du recalage à l'œil (optionnel)
         from core import preview as preview_mod
         preview_mod.set_mpv_path(get_tool_path("mpv", bin_dir))
+
+    # ── Profil actif ──────────────────────────────────────────────────────────
+    #
+    # Trois écrans le changent : le sélecteur (`F4`), l'activation depuis la
+    # liste des profils, et l'enregistrement d'un profil. Une propriété tient
+    # la persistance en un seul endroit — sinon chacun devrait penser à écrire
+    # config.toml, et celui qu'on oublie est celui qui perd le réglage.
+
+    @property
+    def active_profile_id(self) -> str:
+        return self._active_profile_id
+
+    @active_profile_id.setter
+    def active_profile_id(self, profile_id: str) -> None:
+        if profile_id == self._active_profile_id:
+            return                      # rien à écrire
+        self._active_profile_id = profile_id
+        cfg_mod.set_active_profile(self.cfg, profile_id)
 
     def on_mount(self) -> None:
         from tui.screens.browser import BrowserScreen

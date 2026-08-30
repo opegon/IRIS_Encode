@@ -184,7 +184,6 @@ class ProfileForm(Widget):
         super().__init__(name=name, id=id, classes=classes, disabled=disabled)
         self._profile_id = ""
         self._is_new     = True
-        self._is_builtin = False
 
     # ── Composition ───────────────────────────────────────────────────────────
 
@@ -445,10 +444,9 @@ class ProfileForm(Widget):
     # ── Chargement / Dump ─────────────────────────────────────────────────────
 
     def load(self, profile_id: str, data: dict[str, Any],
-             is_new: bool = False, is_builtin: bool = False) -> None:
+             is_new: bool = False) -> None:
         self._profile_id = profile_id
         self._is_new     = is_new
-        self._is_builtin = is_builtin
 
         def _set_sel(wid: str, val: Any) -> None:
             try:
@@ -490,8 +488,10 @@ class ProfileForm(Widget):
             str(data.get("audio_hd_codec", "none"))))
         _set_chk("#field-copy-compat",data.get("audio_copy_compatible", True))
 
-        id_field = self.query_one("#field-id", Input)
-        id_field.disabled = is_builtin and not is_new
+        # Le nom n'est saisissable qu'à la création : `_on_key` réenregistre un
+        # profil existant sous `self._profile_id`, jamais sous le contenu du
+        # champ. Laisser saisir ici ferait perdre la frappe sans le dire.
+        self.query_one("#field-id", Input).disabled = not is_new
 
         # Les conséquences décrivent les valeurs chargées, pas les précédentes.
         self.refresh_consequences()

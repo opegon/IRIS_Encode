@@ -17,16 +17,33 @@ Restent, entre le plancher et `film_basic`, les débits (1500/2200/5000 contre
 2000/3000/3000), la stéréo à 192 kb/s au lieu de 320, et le `hdr10_quality`
 que le plancher n'a pas.
 
-**Le repli de `_decide_dv` n'a pas bougé** : un profil qui n'a pas la clé
-`dolby_vision` est toujours traité en `"hdr10"`. C'est le comportement
-historique des profils déjà écrits sur le disque, pas le défaut d'une
-installation neuve — les déplacer ensemble aurait changé, sans le dire, ce que
-font les profils existants d'un utilisateur.
+### Un profil sans la clé se rabat sur SDR, lui aussi
 
-Aucun `profiles.toml` déjà présent n'est touché : le plancher ne s'écrit que
-lorsqu'il n'y a pas de fichier.
+Cinq sites lisaient `dolby_vision` avec `"hdr10"` en défaut : la décision
+(`core/decision.py`), le résumé et les colonnes de l'écran Config
+(`core/profiles.py`), la pré-sélection et la lecture du formulaire de profil
+(`tui/widgets/profile_form.py`). Ils passent tous à `"sdr"`.
 
-861 tests.
+Les déplacer ensemble n'est pas un excès de zèle : laisser l'affichage sur
+`"hdr10"` pendant que la décision traite le fichier en SDR aurait écrit dans la
+liste des profils une valeur que l'encodage contredit.
+
+Une valeur *présente mais inconnue* — une faute de frappe dans le TOML — reste
+traitée en `hdr10`. C'est un cas distinct d'une clé absente, et il n'était pas
+dans la demande.
+
+Trois tests du chemin HDR10 s'appuyaient sur l'ancien défaut implicite
+(`test_x265_debit`, `test_capacites`, `test_revue_code`) : ils portent
+désormais `dolby_vision = "hdr10"` en clair, ce qui dit mieux ce qu'ils
+vérifient.
+
+### Ce qui n'est pas touché
+
+Aucun `profiles.toml` déjà présent n'est réécrit : le plancher ne s'écrit que
+lorsqu'il n'y a pas de fichier. Un profil qui porte `dolby_vision = "hdr10"`
+en clair garde son comportement — seul le silence change de sens.
+
+861 tests, smoke vert.
 
 ## [v0.8.8.1] — 2026-08-30
 

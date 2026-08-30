@@ -908,7 +908,9 @@ def _commande_hdr10(tmp_path, mode: str) -> list[str]:
         "bitrate_720p_kbps": 2000, "bitrate_1080p_kbps": 5000,
         "bitrate_4k_kbps": 8000, "audio_languages": ["fre"], "keep_4k": True,
         "audio_copy_compatible": True, "preserve_hd_audio": False,
-        "hdr10_quality": mode})
+        # Explicite : le repli d'un profil sans la cle est "sdr" (v0.8.8.2),
+        # et c'est bien le chemin HDR10 que ces tests exercent.
+        "dolby_vision": "hdr10", "hdr10_quality": mode})
     plat = PlatformProfile(os=OS.WINDOWS, gpu=GPU.NVIDIA, hwaccel="cuda",
                            encoder_hevc="hevc_nvenc", encoder_h264="h264_nvenc",
                            encoder_av1="av1_nvenc")

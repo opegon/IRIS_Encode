@@ -89,7 +89,7 @@ class Profile:
 
     def summary_line(self) -> str:
         """Une ligne résumant les paramètres clés (pour l'écran Config)."""
-        dv   = self.data.get("dolby_vision", "hdr10")
+        dv   = self.data.get("dolby_vision", "sdr")
         p1   = self.data.get("bitrate_1080p_kbps", "?")
         pre  = self.data.get("preset_encoder", "?")
         hd   = "oui" if self.data.get("preserve_hd_audio") else "non"
@@ -100,7 +100,7 @@ class Profile:
         k4   = self.data.get("keep_4k", False)
         del_ = self.data.get("delete_source", False)
         return {
-            "dv":       self.data.get("dolby_vision", "hdr10"),
+            "dv":       self.data.get("dolby_vision", "sdr"),
             "1080p":    f'{self.data.get("bitrate_1080p_kbps", "?")}k',
             "4k":       f'{self.data.get("bitrate_4k_kbps", "?")}k' + (" ✓" if k4 else ""),
             "preset":   self.data.get("preset_encoder", "?"),

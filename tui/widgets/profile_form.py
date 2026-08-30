@@ -470,7 +470,7 @@ class ProfileForm(Widget):
         _set_sel("#field-720p",   data.get("bitrate_720p_kbps",       1500))
         _set_sel("#field-1080p",  data.get("bitrate_1080p_kbps",      2500))
         _set_sel("#field-4k",     data.get("bitrate_4k_kbps",         5000))
-        _set_sel("#field-dv",     data.get("dolby_vision",        "hdr10"))
+        _set_sel("#field-dv",     data.get("dolby_vision",          "sdr"))
         _set_sel("#field-preset", data.get("preset_encoder",    "medium"))
         _set_sel("#field-hdr10q", data.get("hdr10_quality",     "compat"))
         _set_chk("#field-keep4k", data.get("keep_4k",                False))
@@ -529,7 +529,7 @@ class ProfileForm(Widget):
             "bitrate_720p_kbps":       _g_sel("#field-720p",   1500),
             "bitrate_1080p_kbps":      _g_sel("#field-1080p",  2500),
             "bitrate_4k_kbps":         _g_sel("#field-4k",     5000),
-            "dolby_vision":            _g_sel("#field-dv",  "hdr10"),
+            "dolby_vision":            _g_sel("#field-dv",    "sdr"),
             "preset_encoder":          _g_sel("#field-preset","medium"),
             "hdr10_quality":           _g_sel("#field-hdr10q","compat"),
             "keep_4k":                 _g_chk("#field-keep4k"),

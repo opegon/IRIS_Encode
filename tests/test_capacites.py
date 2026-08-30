@@ -176,7 +176,9 @@ def test_le_mode_hdr10_quality_choisit_un_encodeur_sonde(tmp_path):
         "bitrate_720p_kbps": 2000, "bitrate_1080p_kbps": 5000,
         "bitrate_4k_kbps": 8000, "audio_languages": ["fre"], "keep_4k": True,
         "audio_copy_compatible": True, "preserve_hd_audio": False,
-        "hdr10_quality": "quality"})
+        # Explicite : le repli d'un profil sans la cle est "sdr" (v0.8.8.2),
+        # et c'est bien le chemin HDR10 que ce test exerce.
+        "dolby_vision": "hdr10", "hdr10_quality": "quality"})
     cmd = build_command(decide(info, profil), _PLAT)
     assert encodeur_de(cmd) == "libx265", "ce n'est pas le mode quality"
     assert encodeur_de(cmd) in encodeurs_a_sonder(_PLAT)

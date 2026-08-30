@@ -538,7 +538,11 @@ def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, int, s
 def _decide_dv(info: VideoInfo, profile: Profile) -> DVAction:
     if info.dv_profile is None:
         return DVAction.NONE
-    opt = profile.get("dolby_vision", "hdr10").lower()
+    # Profil sans la clé : "sdr", comme le profil plancher. C'est le seul
+    # repli qui rend un fichier lisible partout — un HDR10 sort délavé sur
+    # un téléviseur qui ne le gère pas, et un profil muet ne dit rien de ce
+    # que sait faire l'écran de destination.
+    opt = profile.get("dolby_vision", "sdr").lower()
     if opt == "dv":
         return DVAction.DV
     if opt == "sdr":

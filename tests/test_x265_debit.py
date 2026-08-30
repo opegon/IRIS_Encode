@@ -47,10 +47,13 @@ def _plat() -> PlatformProfile:
 
 
 def _profile(**over) -> Profile:
+    # `dolby_vision` explicite : ces tests portent sur l'encodage HDR10, et le
+    # repli d'un profil sans la cle est "sdr" depuis la v0.8.8.2.
     data = {"bitrate_720p_kbps": 2000, "bitrate_1080p_kbps": 5000,
             "bitrate_4k_kbps": 8000, "audio_languages": ["fre", "eng"],
             "audio_copy_compatible": True, "preserve_hd_audio": False,
-            "preset_encoder": "slow", "keep_4k": True}
+            "preset_encoder": "slow", "keep_4k": True,
+            "dolby_vision": "hdr10"}
     data.update(over)
     return Profile(id="test", data=data)
 

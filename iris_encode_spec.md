@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.8.1 — document de référence courant
+**Version** : 0.8.8.2 — document de référence courant
 **Date** : 2026-08-30
 **Statut** : stable
 
@@ -354,7 +354,11 @@ explicite. Les sources sans DV sont encodées normalement par ce même profil.
 tant que `profiles.toml` en décrit d'autres. Il sert dans deux cas : semer le
 fichier au premier lancement, et tenir la session si le TOML devient illisible.
 Ses réglages recopient l'ancien profil livré `serie_basic` (2200k en 1080p,
-5000k en 4K, preset `medium`, `hdr10`, sans audio HD).
+5000k en 4K, preset `medium`, sans audio HD), à une exception près :
+`dolby_vision = "sdr"` et non `"hdr10"`. Le plancher est ce que reçoit une
+installation neuve, et ce sur quoi retombe une session dont le TOML est
+illisible — il doit rendre un fichier qui se lit partout, pas un HDR10 délavé
+sur un téléviseur qui ne le gère pas.
 
 Le profil actif est **mémorisé dans `config.toml`** (`[app] active_profile`) :
 l'application rouvre sur celui qu'on utilisait la dernière fois. À défaut —
@@ -2127,6 +2131,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.8.2 | 2026-08-30 | **Le profil plancher ramène le Dolby Vision en SDR** (`dolby_vision = "sdr"`, § 6) : `_default_` recopiait `serie_basic` jusque dans son `"hdr10"`, si bien qu'une installation neuve — et toute session retombée sur le plancher faute d'un TOML lisible — sortait du HDR10, délavé sur un téléviseur qui ne le gère pas. Le plancher s'aligne sur `film_basic`, seul réglage qui l'en écarte désormais avec les débits · le repli de `_decide_dv` pour un profil sans la clé reste `"hdr10"` : c'est le comportement historique des profils existants, pas le défaut d'une installation neuve |
 | 0.8.8.1 | 2026-08-30 | **Le smoke test ne dépendait plus du poste de développement** : `tests/smoke_tui.py` échouait sur l'archive publiée à l'étape [5] — une installation neuve n'a pas de `profiles.toml` et l'app en génère un seul, or `ConfigScreen` refuse à raison d'effacer le dernier profil, si bien qu'aucune confirmation ne s'ouvrait. Le dépôt en portant dix, le scénario passait en local et le garde-fou était inopérant là où il sert · `_profils_isoles()` donne au smoke son propre fichier, semé de deux profils, et cesse au passage d'écrire dans la bibliothèque de l'utilisateur · assertion explicite sur le nombre de profils avant la touche `d` |
 | 0.8.8.0 | 2026-08-30 | **Réencoder sans perdre le Dolby Vision** (`VideoAction.ENCODE_DV`, § 6 et § 7.4) : le RPU vit entre les tranches d'image du flux HEVC, tout réencodage le détruisait — conserver le DV imposait `-c:v copy`, et le débit cible d'un profil `dolby_vision = "dv"` restait lettre morte · `dovi_tool extract-rpu` en tuyau sur ffmpeg (aucun intermédiaire), encodage vidéo seul en Annex-B sans filtre, `inject-rpu`, remux mkvmerge · RPU du profil 7 converti en 8.1 au passage · garde-fous : couche de base HDR10 obligatoire (5 et 8.4 exclus), résolution inchangée, outils présents — à défaut la copie reprend, annoncée comme telle · Matroska forcé, un MP4 perdrait le RPU · métadonnées HDR10 statiques préservées par NVENC sans drapeau, mesuré · `tests/test_dv_reencodage.py` |
 | 0.8.7.4 | 2026-08-30 | **La décision ne promet plus un encodage qu'elle ne fait pas** (§ 6) : conserver le Dolby Vision impose `-c:v copy`, mais l'écran annonçait « → HEVC → DV » et nommait la sortie `_[hevc]` — un fichier de 60 Mb/s ressortait à 60 Mb/s sous un nom qui promettait l'inverse · libellé « → DV (copie) », suffixe `_[dv]`, mention « DV conservé → vidéo copiée » accolée à la raison, emphase verte comme un remux · `scanner.suffixes_produits` connaît `_[dv]`, sans quoi la sortie serait reproposée au scan suivant et un profil `delete_source` effacerait l'original · `tests/test_dv_copie.py` |

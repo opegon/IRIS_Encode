@@ -1,5 +1,33 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.8.2] — 2026-08-30
+
+### Le profil plancher ramène le Dolby Vision en SDR
+
+`_default_` — le seul profil codé en dur, celui qui sème `profiles.toml` au
+premier lancement et qui tient la session si le TOML devient illisible —
+recopiait l'ancien `serie_basic` jusque dans son `dolby_vision = "hdr10"`.
+
+Une installation neuve sortait donc du HDR10 par défaut. Sur un téléviseur qui ne
+le gère pas, c'est un fichier délavé ; et c'est exactement le fichier que reçoit
+quelqu'un qui n'a encore rien réglé, ou dont la session vient de retomber sur le
+plancher. Le plancher passe à `"sdr"`, comme `film_basic`.
+
+Restent, entre le plancher et `film_basic`, les débits (1500/2200/5000 contre
+2000/3000/3000), la stéréo à 192 kb/s au lieu de 320, et le `hdr10_quality`
+que le plancher n'a pas.
+
+**Le repli de `_decide_dv` n'a pas bougé** : un profil qui n'a pas la clé
+`dolby_vision` est toujours traité en `"hdr10"`. C'est le comportement
+historique des profils déjà écrits sur le disque, pas le défaut d'une
+installation neuve — les déplacer ensemble aurait changé, sans le dire, ce que
+font les profils existants d'un utilisateur.
+
+Aucun `profiles.toml` déjà présent n'est touché : le plancher ne s'écrit que
+lorsqu'il n'y a pas de fichier.
+
+861 tests.
+
 ## [v0.8.8.1] — 2026-08-30
 
 ### Le smoke test ne tournait pas là où il sert

@@ -23,7 +23,8 @@ APP_DIR       = Path(__file__).resolve().parent.parent
 PROFILES_PATH = APP_DIR / "profiles.toml"
 
 # Le profil plancher. Ses réglages recopient l'ancien `serie_basic`, qui était
-# déjà le point de départ d'un nouveau profil et le profil actif au démarrage.
+# déjà le point de départ d'un nouveau profil et le profil actif au démarrage —
+# à une exception près, `dolby_vision`, qui vaut "sdr" et non "hdr10".
 PROFIL_DEFAUT_ID = "_default_"
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,32}$")
@@ -55,7 +56,12 @@ _PROFIL_DEFAUT: dict[str, Any] = {
     "keep_4k":            False,
     "delete_source":      False,
     "preset_encoder":     "medium",
-    "dolby_vision":       "hdr10",
+    # "sdr" : le Dolby Vision est ramené en SDR, comme sur `film_basic`. Le
+    # plancher est ce que reçoit une installation neuve, et ce sur quoi retombe
+    # une session dont le TOML est illisible — il doit produire un fichier qui
+    # se lit partout, pas un HDR10 que le téléviseur rendra délavé s'il ne le
+    # gère pas.
+    "dolby_vision":       "sdr",
     "preserve_hd_audio":  False,
     **_BASE_AUDIO,
 }

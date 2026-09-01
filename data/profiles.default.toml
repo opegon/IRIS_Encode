@@ -1,0 +1,242 @@
+[serie_basic]
+bitrate_720p_kbps = 1500
+bitrate_1080p_kbps = 2200
+bitrate_4k_kbps = 3500
+keep_4k = false
+delete_source = false
+preset_encoder = "medium"
+dolby_vision = "sdr"
+preserve_hd_audio = false
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 448
+audio_surround_7_1_kbps = 640
+audio_copy_compatible = true
+audio_hd_codec = "none"
+container = "auto"
+
+[serie_anime]
+bitrate_720p_kbps = 1500
+bitrate_1080p_kbps = 2000
+bitrate_4k_kbps = 3500
+keep_4k = false
+delete_source = false
+preset_encoder = "fast"
+dolby_vision = "sdr"
+preserve_hd_audio = false
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 448
+audio_surround_7_1_kbps = 640
+audio_copy_compatible = true
+audio_hd_codec = "none"
+container = "auto"
+
+[serie_hdr]
+bitrate_720p_kbps = 2000
+bitrate_1080p_kbps = 2500
+bitrate_4k_kbps = 5000
+keep_4k = false
+delete_source = false
+preset_encoder = "medium"
+dolby_vision = "hdr10"
+preserve_hd_audio = false
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 448
+audio_surround_7_1_kbps = 640
+audio_copy_compatible = true
+audio_hd_codec = "none"
+container = "auto"
+
+[serie_4k_hdr]
+bitrate_720p_kbps = 2000
+bitrate_1080p_kbps = 2500
+bitrate_4k_kbps = 5000
+dolby_vision = "hdr10"
+preset_encoder = "medium"
+hdr10_quality = "compat"
+keep_4k = true
+delete_source = false
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 448
+audio_surround_7_1_kbps = 640
+preserve_hd_audio = false
+
+
+[film_basic]
+bitrate_720p_kbps = 2000
+bitrate_1080p_kbps = 3000
+bitrate_4k_kbps = 5000
+keep_4k = false
+delete_source = false
+preset_encoder = "medium"
+dolby_vision = "sdr"
+preserve_hd_audio = false
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 320
+audio_surround_kbps = 448
+audio_surround_7_1_kbps = 640
+audio_copy_compatible = true
+audio_hd_codec = "none"
+container = "auto"
+hdr10_quality = "compat"
+
+[film_hdr]
+bitrate_720p_kbps = 3000
+bitrate_1080p_kbps = 5000
+bitrate_4k_kbps = 5000
+keep_4k = false
+delete_source = false
+preset_encoder = "slow"
+dolby_vision = "hdr10"
+preserve_hd_audio = true
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 640
+audio_surround_7_1_kbps = 768
+audio_copy_compatible = true
+audio_hd_codec = "eac3"
+container = "auto"
+
+[cinema_4k_hdr_basic]
+bitrate_720p_kbps = 3000
+bitrate_1080p_kbps = 5000
+bitrate_4k_kbps = 8000
+keep_4k = true
+delete_source = false
+preset_encoder = "slow"
+dolby_vision = "hdr10"
+preserve_hd_audio = false
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 640
+audio_surround_7_1_kbps = 768
+audio_copy_compatible = true
+audio_hd_codec = "eac3"
+container = "auto"
+hdr10_quality = "compat"
+
+[cinema_4k_hdr_high]
+bitrate_720p_kbps = 3000
+bitrate_1080p_kbps = 5000
+bitrate_4k_kbps = 12000
+keep_4k = true
+delete_source = false
+preset_encoder = "slow"
+dolby_vision = "hdr10"
+preserve_hd_audio = true
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 640
+audio_surround_7_1_kbps = 768
+audio_copy_compatible = true
+audio_hd_codec = "eac3"
+container = "auto"
+hdr10_quality = "compat"
+
+[cinema_4k_dv_quality]
+bitrate_720p_kbps = 3000
+bitrate_1080p_kbps = 5000
+bitrate_4k_kbps = 12000
+keep_4k = true
+delete_source = false
+preset_encoder = "slow"
+dolby_vision = "dv"
+hdr10_quality = "quality"
+preserve_hd_audio = true
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 640
+audio_surround_7_1_kbps = 768
+audio_copy_compatible = true
+audio_hd_codec = "none"
+container = "auto"
+
+[video_basic_delete]
+bitrate_720p_kbps = 1500
+bitrate_1080p_kbps = 2000
+bitrate_4k_kbps = 2000
+keep_4k = false
+delete_source = true
+preset_encoder = "fast"
+dolby_vision = "sdr"
+preserve_hd_audio = false
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 448
+audio_surround_7_1_kbps = 640
+audio_copy_compatible = true
+audio_hd_codec = "none"
+container = "auto"

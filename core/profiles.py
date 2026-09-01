@@ -2,10 +2,21 @@
 core/profiles.py — Lecture/écriture profiles.toml.
 
 `profiles.toml` fait foi : les profils, et leur ordre, viennent de lui seul.
-Le code n'en garde qu'un en dur, `_default_`, qui sert de plancher — il sème
-le fichier au premier lancement et tient lieu de secours si le TOML devient
-illisible. Tous les profils sont modifiables et supprimables, à ceci près
-qu'on refuse de vider la liste entièrement.
+Tous sont modifiables et supprimables, à ceci près qu'on refuse de vider la
+liste entièrement.
+
+Trois niveaux, du plus légitime au plus dégradé :
+
+1. `profiles.toml` — le fichier de l'utilisateur ;
+2. `data/profiles.default.toml` — les profils **livrés** avec l'application,
+   sème le fichier au premier lancement et tient la session si le TOML de
+   l'utilisateur devient illisible ;
+3. `_default_` — le seul profil codé en dur, plancher de dernier recours, pour
+   le cas où l'installation aurait perdu son fichier livré.
+
+Le niveau 2 est arrivé en v0.8.8.4. Jusque-là le plancher semait seul : une
+installation neuve ouvrait sur un sélecteur d'un seul élément, sans rien qui
+montre ce qu'un profil règle ni ce que change le fait d'en changer.
 """
 from __future__ import annotations
 
@@ -21,6 +32,10 @@ import tomli_w
 
 APP_DIR       = Path(__file__).resolve().parent.parent
 PROFILES_PATH = APP_DIR / "profiles.toml"
+# Les profils livrés. Versionné, donc présent dans l'archive d'une release —
+# `profiles.toml`, lui, est ignoré par git : c'est le fichier de travail de
+# chaque poste, il n'a rien à faire dans le dépôt.
+PROFILS_LIVRES_PATH = APP_DIR / "data" / "profiles.default.toml"
 
 # Le profil plancher. Ses réglages recopient l'ancien `serie_basic`, qui était
 # déjà le point de départ d'un nouveau profil et le profil actif au démarrage —
@@ -115,8 +130,33 @@ class Profile:
 # ─── Chargement ───────────────────────────────────────────────────────────────
 
 def _plancher() -> dict[str, "Profile"]:
-    """Le profil livré, seul — semence du premier lancement, secours d'un TOML cassé."""
+    """Le profil codé en dur, seul — dernier recours quand tout le reste manque.
+
+    Il ne sème plus le premier lancement depuis la v0.8.8.4 : ce rôle revient
+    aux profils livrés. Il ne sert que si `data/profiles.default.toml` est
+    absent ou illisible — une installation abîmée, pas une installation neuve.
+    """
     return {PROFIL_DEFAUT_ID: Profile(id=PROFIL_DEFAUT_ID, data=dict(_PROFIL_DEFAUT))}
+
+
+def _profils_livres() -> dict[str, "Profile"] | None:
+    """Les profils livrés avec l'application, ou None si le fichier manque.
+
+    Lu, jamais présumé : une archive amputée, un fichier corrompu au transfert,
+    et l'application doit encore démarrer. On rend None plutôt que de lever —
+    l'appelant retombe alors sur le plancher.
+    """
+    try:
+        with PROFILS_LIVRES_PATH.open("rb") as f:
+            raw: dict[str, Any] = tomllib.load(f)
+    except Exception:
+        return None
+    livres = {
+        nom: Profile(id=nom, data=dict(data))
+        for nom, data in raw.items()
+        if isinstance(data, dict)
+    }
+    return livres or None
 
 
 def load_all() -> dict[str, "Profile"]:
@@ -130,6 +170,10 @@ def load_all() -> dict[str, "Profile"]:
     profils livrés en voyait seize là où son fichier en décrivait dix.
     """
     if not PROFILES_PATH.exists():
+        livres = _profils_livres()
+        if livres is not None:
+            save_all(livres)
+            return livres
         _write_defaults()
         return _plancher()
 
@@ -137,8 +181,15 @@ def load_all() -> dict[str, "Profile"]:
         with PROFILES_PATH.open("rb") as f:
             raw: dict[str, Any] = tomllib.load(f)
     except Exception as e:
-        # Syntaxe invalide — on ne réécrit rien, le fichier reste réparable à
-        # la main, et on tient la session sur le seul profil plancher.
+        # Syntaxe invalide — on ne réécrit **rien** : le fichier de
+        # l'utilisateur reste réparable à la main, c'est sa bibliothèque. La
+        # session tient sur les profils livrés, chargés en mémoire seulement.
+        livres = _profils_livres()
+        if livres is not None:
+            print(f"⚠  profiles.toml illisible ({e}). "
+                  f"Session tenue sur les {len(livres)} profils livrés — "
+                  f"votre fichier n'a pas été touché.")
+            return livres
         print(
             f"⚠  profiles.toml illisible ({e}). "
             f"Chargement du profil [{PROFIL_DEFAUT_ID}] intégré."

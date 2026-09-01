@@ -42,13 +42,19 @@ def _styles_du_footer(pied) -> str:
 
 @contextlib.contextmanager
 def _profils_isoles():
-    """Un `profiles.toml` propre au smoke, portant les deux profils qu'il exige.
+    """Un `profiles.toml` propre au smoke, seme comme sur une installation neuve.
 
     Le scenario de suppression a besoin d'un second profil : `ConfigScreen`
     refuse d'effacer le dernier, a raison. Lu sur le fichier de la machine, le
     smoke passait au poste de developpement — qui en porte dix — et echouait sur
-    l'archive publiee, ou une installation neuve n'en genere qu'un seul. Le
+    l'archive publiee, ou une installation neuve n'en generait qu'un seul. Le
     garde-fou etait donc inoperant la ou il sert (IE-60, v0.8.8.1).
+
+    Depuis la v0.8.8.4, `load_all` seme les profils **livres**
+    (`data/profiles.default.toml`) : le scenario n'a plus de second profil a
+    fabriquer, et ce qu'il exerce est exactement ce que recoit un nouvel
+    utilisateur. Le fichier livre etant versionne, le resultat ne depend
+    d'aucune machine — ce qui etait tout l'objet d'IE-60.
 
     Isoler le fichier evite au passage d'ecrire dans la bibliotheque de profils
     de l'utilisateur pour faire tourner un test.
@@ -56,13 +62,8 @@ def _profils_isoles():
     origine = prof_mod.PROFILES_PATH
     with tempfile.TemporaryDirectory() as td:
         prof_mod.PROFILES_PATH = Path(td) / "profiles.toml"
-        # `load_all` seme le fichier avec le profil plancher : on le duplique
-        # plutot que de recopier ici des reglages qui deriveraient du code.
         profs = prof_mod.load_all()
-        base  = next(iter(profs.values()))
-        profs["smoke_second"] = prof_mod.Profile(id="smoke_second",
-                                                 data=dict(base.data))
-        prof_mod.save_all(profs)
+        assert len(profs) >= 2,             f"profils livres introuvables ({prof_mod.PROFILS_LIVRES_PATH}) : {list(profs)}"
         try:
             yield
         finally:

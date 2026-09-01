@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.8.3 — document de référence courant
+**Version** : 0.8.8.4 — document de référence courant
 **Date** : 2026-09-01
 **Statut** : stable
 
@@ -350,17 +350,43 @@ Les deux sorties portent le suffixe `_[dv]` — l'une comme l'autre rendent un
 fichier Dolby Vision ; ce qui les sépare est le débit, que la raison affichée
 explicite. Les sources sans DV sont encodées normalement par ce même profil.
 
+**Trois niveaux, du plus légitime au plus dégradé.**
+
+| | Source | Rôle |
+|---|---|---|
+| 1 | `profiles.toml` | le fichier de l'utilisateur — il fait foi |
+| 2 | `data/profiles.default.toml` | les **profils livrés** : sèment le fichier au premier lancement, tiennent la session si le TOML de l'utilisateur devient illisible |
+| 3 | `_default_` | plancher codé en dur, dernier recours si le fichier livré manque |
+
+**Les profils livrés** (v0.8.8.4) sont dix, versionnés avec le code et donc
+présents dans l'archive d'une release — `profiles.toml`, lui, est ignoré par
+git : c'est le fichier de travail de chaque poste. Jusque-là le plancher semait
+seul, et le sélecteur d'une installation neuve s'ouvrait sur une liste d'un
+élément : rien qui montre ce qu'un profil règle, ni ce que change le fait d'en
+changer.
+
+Le premier du fichier livré est `serie_basic`, et il porte
+`delete_source = false` : c'est lui que `get_active_profile` retient au premier
+lancement, tant que rien n'a été choisi. Le seul profil livré à
+`delete_source = true`, `video_basic_delete`, est **dernier** — il n'est jamais
+actif par accident, et l'écran Config le signale « ⚠ oui ».
+
+Le fichier livré est une donnée, éditable à la main, que rien d'autre ne relit :
+`tests/test_profils_livres.py` en contrôle la forme (champs connus, types,
+domaines) et deux cohérences de fond — débits audio et vidéo croissants. Un
+plafond 1080p supérieur au plafond 4K réencoderait des 1080p en épargnant des
+4K plus lourdes.
+
 **Profil plancher `_default_`** : le seul profil codé en dur. Il n'apparaît pas
-tant que `profiles.toml` en décrit d'autres. Il sert dans deux cas : semer le
-fichier au premier lancement, et tenir la session si le TOML devient illisible.
-Ses réglages recopient l'ancien profil livré `serie_basic` (2200k en 1080p,
-5000k en 4K, preset `medium`, sans audio HD), à une exception près :
-`dolby_vision = "sdr"` et non `"hdr10"`. Le plancher est ce que reçoit une
-installation neuve, et ce sur quoi retombe une session dont le TOML est
-illisible — il doit rendre un fichier qui se lit partout, pas un HDR10 délavé
-sur un téléviseur qui ne le gère pas. **Un profil qui n'a pas la clé
-`dolby_vision` se rabat sur `"sdr"`** pour la même raison ; une valeur présente
-mais inconnue, elle, reste traitée en `hdr10`.
+tant qu'un autre niveau répond. Depuis la v0.8.8.4 il ne sème plus le premier
+lancement — il ne sert que si `data/profiles.default.toml` est absent ou
+illisible, c'est-à-dire sur une installation abîmée, pas sur une installation
+neuve. Ses réglages recopient l'ancien profil livré `serie_basic` (2200k en
+1080p, 5000k en 4K, preset `medium`, sans audio HD), à une exception près :
+`dolby_vision = "sdr"` et non `"hdr10"` — il doit rendre un fichier qui se lit
+partout, pas un HDR10 délavé sur un téléviseur qui ne le gère pas. **Un profil
+qui n'a pas la clé `dolby_vision` se rabat sur `"sdr"`** pour la même raison ;
+une valeur présente mais inconnue, elle, reste traitée en `hdr10`.
 
 Le profil actif est **mémorisé dans `config.toml`** (`[app] active_profile`) :
 l'application rouvre sur celui qu'on utilisait la dernière fois. À défaut —
@@ -391,16 +417,22 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 
 | Cas | Ce que fait l'application |
 |---|---|
-| `profiles.toml` absent | écrit `[_default_]` dans un fichier neuf, et le charge |
-| TOML invalide | **ne réécrit rien** — le fichier reste réparable à la main — et tient la session sur `_default_` |
+| `profiles.toml` absent | écrit les **profils livrés** dans un fichier neuf, et les charge |
+| `profiles.toml` absent **et** fichier livré absent | écrit `[_default_]` dans un fichier neuf, et le charge |
+| TOML invalide | **ne réécrit rien** — le fichier de l'utilisateur est sa bibliothèque, il reste réparable à la main — et tient la session sur les profils livrés, chargés en mémoire seulement |
+| TOML invalide **et** fichier livré absent | ne réécrit rien, tient la session sur `_default_` |
 | fichier vide, ou sans table nommée | charge `_default_` |
 
 **Comportement sur erreur de syntaxe :**
 
 ```
 ⚠ profiles.toml illisible (erreur syntaxe ligne 12).
-  Chargement du profil [_default_] intégré.
+  Session tenue sur les 10 profils livrés — votre fichier n'a pas été touché.
 ```
+
+L'écriture du fichier semé passe par `save_all`, donc par l'écriture atomique de
+`_ecrire` (§ 6) : une coupure pendant le premier lancement ne laisse pas un TOML
+tronqué derrière elle.
 
 ---
 
@@ -2210,6 +2242,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.8.4 | 2026-09-01 | **Dix profils livrés au lieu d'un** (§ 6) : `data/profiles.default.toml`, versionné donc présent dans l'archive d'une release, sème `profiles.toml` au premier lancement. Une installation neuve ouvrait jusqu'ici sur un sélecteur d'un seul élément — le besoin d'origine, ne pas rester bloqué faute de fichier, était couvert au minimum vital · **trois niveaux** : fichier de l'utilisateur, profils livrés, plancher `_default_` codé en dur si l'installation a perdu son fichier livré · un TOML illisible tient désormais la session sur les dix profils livrés, en mémoire seulement — le fichier de l'utilisateur n'est toujours pas réécrit · `serie_basic` en tête (`delete_source = false`) est l'actif du premier lancement ; `video_basic_delete`, seul à effacer la source, est dernier · le fichier livré est une donnée que rien d'autre ne relit : `tests/test_profils_livres.py` en contrôle champs, types, domaines et la croissance des débits audio et vidéo · `smoke_tui._profils_isoles` n'a plus de second profil à fabriquer (IE-60) et exerce ce que reçoit vraiment un nouvel utilisateur |
 | 0.8.8.3 | 2026-09-01 | **Les sorties de l'application restent visibles** (§ 14.1) : `deja_produit()` les écartait de la vue depuis IE-49, si bien qu'un film encodé la veille disparaissait de l'écran et que rien ne distinguait « déjà produit » de « jamais existé ». La ligne est là, grisée d'un bloc, décision réelle en clair, sélectionnable et encodable — seul `A` l'ignore. Le filtre reste entier dans le scanner, qui alimente le scan récursif et les lots automatiques (§ 15.2) · **le suffixe d'encodage se remplace au lieu de s'empiler** (§ 8.7) : `Film_[av1]` réencodé en HEVC donne `Film_[hevc]`, plus `Film_[av1]_[hevc]` ; les deux collisions que l'empilement masquait — cible égale à la source, cible existante — se numérotent en `(2)`, et le nom est figé une fois par `resoudre_sorties()` parce que l'écran d'encodage relit `output_path` après coup pour nettoyer une sortie partielle · **la colonne Estim. passe à un dégradé continu vert → orange**, borné à −50 % et +25 %, exception assumée à la table d'emphases ; une vidéo recopiée en reste dehors, son écart nul l'aurait placée en plein jaune · `tests/test_sorties_visibles.py`, smoke [20] à [20c] |
 | 0.8.8.2 | 2026-08-30 | **Le profil plancher ramène le Dolby Vision en SDR** (`dolby_vision = "sdr"`, § 6) : `_default_` recopiait `serie_basic` jusque dans son `"hdr10"`, si bien qu'une installation neuve — et toute session retombée sur le plancher faute d'un TOML lisible — sortait du HDR10, délavé sur un téléviseur qui ne le gère pas. Le plancher s'aligne sur `film_basic`, seul réglage qui l'en écarte désormais avec les débits · **le repli d'un profil sans la clé passe lui aussi à `"sdr"`** — cinq sites lisaient `dolby_vision` avec `"hdr10"` en défaut (décision, résumé et colonnes de l'écran Config, pré-sélection et lecture du formulaire) ; les laisser désaccordés aurait affiché « hdr10 » sur un profil que la décision traite en SDR · trois tests du chemin HDR10 s'appuyaient sur ce défaut implicite : ils portent désormais `dolby_vision = "hdr10"` en clair · une valeur *inconnue* reste traitée en HDR10, cas distinct d'une clé absente |
 | 0.8.8.1 | 2026-08-30 | **Le smoke test ne dépendait plus du poste de développement** : `tests/smoke_tui.py` échouait sur l'archive publiée à l'étape [5] — une installation neuve n'a pas de `profiles.toml` et l'app en génère un seul, or `ConfigScreen` refuse à raison d'effacer le dernier profil, si bien qu'aucune confirmation ne s'ouvrait. Le dépôt en portant dix, le scénario passait en local et le garde-fou était inopérant là où il sert · `_profils_isoles()` donne au smoke son propre fichier, semé de deux profils, et cesse au passage d'écrire dans la bibliothèque de l'utilisateur · assertion explicite sur le nombre de profils avant la touche `d` |

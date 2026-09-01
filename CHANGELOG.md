@@ -1,5 +1,75 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.8.4] — 2026-09-01
+
+### Dix profils livrés au lieu d'un
+
+Le besoin d'origine était de ne pas rester bloqué au lancement si `profiles.toml`
+manquait. Il était couvert, mais au minimum vital : le seul profil codé en dur,
+`_default_`, semait le fichier. Une installation neuve ouvrait donc son sélecteur
+(`F4`) sur une liste d'un seul élément — rien qui montre ce qu'un profil règle,
+ni ce que change le fait d'en changer.
+
+`data/profiles.default.toml` porte désormais les dix profils. Il est versionné,
+donc présent dans l'archive d'une release ; `profiles.toml`, lui, reste ignoré
+par git — c'est le fichier de travail de chaque poste, il n'a rien à faire dans
+le dépôt.
+
+### Trois niveaux
+
+| | Source | Rôle |
+|---|---|---|
+| 1 | `profiles.toml` | le fichier de l'utilisateur — il fait foi |
+| 2 | `data/profiles.default.toml` | sème le premier lancement, tient la session sur un TOML illisible |
+| 3 | `_default_` | plancher codé en dur, si l'installation a perdu son fichier livré |
+
+Le niveau 3 ne disparaît pas, il recule : il ne sert plus sur une installation
+neuve mais sur une installation abîmée — archive amputée, fichier corrompu au
+transfert. L'application doit encore démarrer.
+
+Un TOML illisible tient maintenant la session sur les dix profils livrés au lieu
+d'un seul. Ce qui ne change pas : **le fichier de l'utilisateur n'est pas
+réécrit**. C'est sa bibliothèque, elle reste réparable à la main, et les profils
+livrés ne sont chargés qu'en mémoire.
+
+L'écriture du fichier semé passe par `save_all`, donc par l'écriture atomique
+posée en v0.8.5.1 : une coupure pendant le premier lancement ne laisse pas un
+TOML tronqué derrière elle.
+
+### Ce que reçoit une installation neuve
+
+Les dix profils sont livrés tels qu'ils sont, sans retouche.
+
+`serie_basic` est en tête, et porte `delete_source = false` : c'est lui que
+`get_active_profile` retient tant que rien n'a été choisi. `video_basic_delete`,
+le seul à effacer la source, est **dernier** — il n'est jamais actif par
+accident, et l'écran Config le signale « ⚠ oui ».
+
+### Un fichier livré est une donnée, et rien d'autre ne la relit
+
+`tests/test_profils_livres.py` en contrôle la forme — champs connus, types,
+domaines — et deux cohérences de fond. Une clé inconnue est silencieuse : elle
+ne fait rien, ne dit rien, et se propagerait à chaque installation neuve. Une
+valeur hors domaine ne lève pas : elle retombe sur un défaut, et le profil fait
+autre chose que ce qu'il annonce.
+
+Les débits doivent croître. Un 5.1 moins bien servi qu'une stéréo est une faute
+de frappe, pas un choix. Et le débit vidéo cible est un **plafond** — au-dessous,
+la source est laissée telle quelle : un plafond 1080p supérieur au plafond 4K
+réencoderait des 1080p en épargnant des 4K plus lourdes.
+
+### Le smoke test n'a plus de second profil à fabriquer
+
+`_profils_isoles()` dupliquait le plancher faute d'un second profil de référence
+— la rustine d'IE-60. Il sème désormais comme une installation neuve, et exerce
+donc exactement ce que reçoit un nouvel utilisateur. Le fichier livré étant
+versionné, le résultat ne dépend d'aucune machine, ce qui était tout l'objet
+d'IE-60. Son absence fait échouer le smoke en le disant.
+
+### Vérification
+
+943 tests dont 56 nouveaux, smoke `[1]` à `[20c]`.
+
 ## [v0.8.8.3] — 2026-09-01
 
 ### Les sorties de l'application restent visibles, en grisé

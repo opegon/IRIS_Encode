@@ -1,5 +1,95 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.8.3] — 2026-09-01
+
+### Les sorties de l'application restent visibles, en grisé
+
+Depuis IE-49, `deja_produit()` écartait du scan tout fichier portant un suffixe
+que l'application écrit. Le dossier de travail mentait donc sur son contenu : un
+film encodé la veille n'y figurait plus du tout, et rien ne distinguait « déjà
+produit » de « jamais existé ».
+
+`FileNavigator.list_videos()` ne filtre plus. La ligne est là, grisée d'un bloc,
+avec toutes ses colonnes renseignées — la case à cocher garde sa teinte, sinon
+on ne verrait plus si la ligne est prise dans le lot.
+
+La colonne Décision garde la **vraie** décision, `→ HEVC` ou `← SKIP`. La ligne
+part à l'encodage comme n'importe quelle autre : un libellé « déjà traité »
+mentirait sur le contenu du lot. Seul le gris dit « ceci vient d'ici ».
+
+`Espace` la coche, `F1`/`F2` l'encodent. Seul `A` l'ignore : il coche « tout ce
+qu'il y a à faire ici », et une sortie n'en est pas.
+
+**Le garde-fou d'IE-49 n'a pas bougé.** `scan_directory` et
+`scan_directory_recursive` gardent leur filtre : ce sont eux qui alimentent le
+scan récursif et les lots que l'utilisateur ne compose pas lui-même. Ce qui
+change est qu'un réencodage de sortie demande désormais deux gestes explicites,
+là où l'application le proposait d'elle-même. `delete_source` reste actif sur ce
+chemin — cocher un `_[av1]` et lancer sur un profil qui efface la source détruit
+la sortie précédente, et rien ne le dit avant de valider.
+
+Le prix : le ffprobe tourne aussi sur ces fichiers, donc un temps d'analyse
+doublé sur un dossier entièrement traité. Le scan est parallélisé et son
+avancement s'affiche.
+
+### Le suffixe d'encodage se remplace au lieu de s'empiler
+
+Réencoder un `Film_[av1].mkv` en HEVC donnait `Film_[av1]_[hevc].mkv`, puis
+`Film_[av1]_[hevc]_[hevc].mkv` au passage suivant. Le nom disait par combien
+d'états le fichier était passé, pas ce qu'il est. `stem_sans_suffixe_produit()`
+retire le suffixe porté avant que le nouveau soit posé — dérivé de
+`suffixes_produits()`, jamais recopié. `_[mux]`, `_[join]` et `_[extrait]` n'en
+font pas partie : ils disent d'où vient le fichier, pas comment il a été encodé.
+
+### Deux collisions apparaissent, et se numérotent
+
+Remplacer découvre ce que l'empilement masquait.
+
+| Source | Cible | Sortie |
+|---|---|---|
+| `Film_[av1].mkv` → HEVC | `Film_[hevc].mkv` libre | `Film_[hevc].mkv` |
+| `Film_[av1].mkv` → HEVC | `Film_[hevc].mkv` déjà produit | `Film_[hevc](2).mkv` |
+| `Film_[hevc].mkv` → HEVC | la cible **est** la source | `Film_[hevc](2).mkv` |
+
+Le troisième cas est le plus courant — rebaisser le débit d'une sortie — et
+c'est celui que le remplacement seul aurait cassé : le garde-fou de l'encodeur
+refuse un chemin de sortie identique à la source. La numérotation le rend
+possible, et rien n'est jamais écrasé. Le compteur repart avec le suffixe au
+passage suivant, sans quoi l'empilement serait revenu par la porte que la
+numérotation venait d'ouvrir.
+
+**Le nom est figé une fois.** `resoudre_sorties()` est appelé à la construction
+de `RunScreen`, dernier moment avant l'écriture, et résout les collisions
+internes au lot dans la même passe. `output_path` ne consulte jamais le disque
+de lui-même : l'écran d'encodage le relit *après* coup pour vérifier la sortie
+et pour effacer un fichier partiel après un abandon, et une valeur qui
+deviendrait `(3)` une fois `(2)` écrit aurait fait effacer un fichier étranger.
+L'assistant appelle la même fonction avant d'annoncer un nom de sortie.
+
+### La colonne Estim. passe à un dégradé continu
+
+Elle n'avait que deux états : orange au-dessus de zéro, rien en dessous. Elle va
+désormais du vert franc (gain de −50 % et au-delà) au jaune (autour de zéro)
+puis à l'orange des alertes (perte de +25 % et au-delà), l'intensité disant
+l'ampleur de l'écart et non son seul signe. L'échelle est bornée : l'œil ne
+distingue pas −60 % de −80 %, et sans borne le gros du corpus deviendrait
+indiscernable.
+
+C'est une entorse assumée à la table d'emphases : le vert y dit « traité sans
+réencodage », il dit ici « la sortie est plus petite », et les deux se croisent
+sur une même ligne. L'exception vit dans une seule fonction.
+
+Une vidéo **recopiée** — remux, retrait de RPU, Dolby Vision conservé — reste
+hors du dégradé. Sa sortie pèse la taille de la source, son écart vaut zéro, et
+l'échelle l'aurait placée en plein jaune, la teinte la plus voyante, pour un cas
+où rien n'est recalculé.
+
+### Vérification
+
+885 tests dont 26 nouveaux (`tests/test_sorties_visibles.py`), smoke `[1]` à
+`[20c]` — trois étapes ajoutées, qui montent l'écran réel sur un dossier mêlant
+une source et une sortie.
+
 ## [v0.8.8.2] — 2026-08-30
 
 ### Le profil plancher ramène le Dolby Vision en SDR

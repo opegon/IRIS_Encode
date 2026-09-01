@@ -1031,6 +1031,47 @@ async def scenario_collage() -> None:
             print("[19e] Le fichier colle revient a l'accueil, decide comme les autres")
 
 
+async def scenario_sorties_visibles() -> None:
+    """IE-62 — une sortie de l'application reste visible, mais hors de Ctrl+A."""
+    with tempfile.TemporaryDirectory() as td_str:
+        td = Path(td_str)
+        if not _make_test_videos(td, 2):
+            print("[20] SKIP : ffmpeg introuvable")
+            return
+        # Ce que l'application ecrit elle-meme : jusqu'a la v0.8.8.3, ce
+        # fichier disparaissait de l'ecran.
+        (td / "clip0.mkv").replace(td / "Deja_[hevc].mkv")
+
+        app = IrisEncodeApp(start_path=td)
+        async with app.run_test(size=(140, 40)) as pilot:
+            await pilot.pause(0.5)
+            from tui.screens.browser import BrowserScreen
+            app.push_screen(BrowserScreen(td, start_virtual=False))
+            await pilot.pause(4.0)
+            scr   = app.screen
+            table = scr.query_one(DataTable)
+            noms  = {p.name for p in scr._decisions}
+            assert noms == {"clip1.mkv", "Deja_[hevc].mkv"}, noms
+            assert table.row_count == 2, table.row_count
+            produit = td / "Deja_[hevc].mkv"
+            assert scr._produits == {produit}, scr._produits
+            print("[20] La sortie deja produite est listee, marquee comme telle")
+
+            await pilot.press("a")
+            await pilot.pause(0.3)
+            assert scr._selected == {td / "clip1.mkv"}, scr._selected
+            print("[20b] Ctrl+A (touche A) ne prend pas la sortie produite")
+
+            # Curseur sur la ligne grisee, puis espace : elle se coche.
+            ligne = scr._rows.index(("file", produit))
+            table.move_cursor(row=ligne)
+            await pilot.pause(0.2)
+            await pilot.press("space")
+            await pilot.pause(0.3)
+            assert produit in scr._selected, scr._selected
+            print("[20c] L'espace coche la sortie produite : elle reste encodable")
+
+
 async def main() -> None:
     with _profils_isoles():
         await scenario_navigation()
@@ -1040,6 +1081,7 @@ async def main() -> None:
         await scenario_wizard()
         await scenario_accueil()
         await scenario_collage()
+        await scenario_sorties_visibles()
     print("SMOKE OK")
 
 

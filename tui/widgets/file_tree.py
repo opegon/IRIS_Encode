@@ -11,7 +11,7 @@ import sys
 import string
 from pathlib import Path
 
-from core.scanner import SUPPORTED_EXTENSIONS, deja_produit
+from core.scanner import SUPPORTED_EXTENSIONS
 
 
 # ─── Détection des volumes ─────────────────────────────────────────────────────
@@ -95,6 +95,15 @@ class FileNavigator:
             return []
 
     def list_videos(self) -> list[Path]:
+        """Tout ce que le dossier contient de lisible, sorties comprises.
+
+        Le filtre `deja_produit` a vécu ici jusqu'à la v0.8.8.3 : un film
+        encodé la veille disparaissait de l'écran, et rien ne distinguait
+        « déjà produit » de « jamais existé ». La vue le montre désormais,
+        grisé. Le filtre reste en place là où il protège vraiment —
+        `scanner.scan_directory` et `scan_directory_recursive`, qui alimentent
+        le scan récursif et les lots automatiques.
+        """
         if self._virtual:
             return []
         try:
@@ -102,7 +111,6 @@ class FileNavigator:
                 p for p in self._current.iterdir()
                 if p.is_file()
                 and p.suffix.lower() in SUPPORTED_EXTENSIONS
-                and not deja_produit(p.stem)
             )
         except (PermissionError, OSError):
             return []

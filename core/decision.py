@@ -15,7 +15,7 @@ from typing import Optional
 from .muxer import MUX_SUFFIX, ExternalTrack
 from .profiles import Profile
 from .scanner import (AudioTrack, VideoInfo, channel_layout_label,
-                      normalize_language)
+                      normalize_language, stem_sans_suffixe_produit)
 
 
 # ─── Décision vidéo ───────────────────────────────────────────────────────────
@@ -343,6 +343,10 @@ class FileDecision:
     # elles sont dans l'intermédiaire, et tout ce qui en dépend (mapping,
     # conteneur) doit continuer à les voir.
     premuxed_tracks:   list["ExternalTrack"] = field(default_factory=list)
+    # Nom de sortie figé par `resoudre_sorties()`. Tant qu'il est None,
+    # `output_path` recalcule un nom déterministe ; une fois posé, il ne bouge
+    # plus — y compris après que le fichier a été écrit. Voir `resoudre_sorties`.
+    output_override:   Path | None = None
 
     @property
     def kept_subtitles(self) -> list:
@@ -438,12 +442,26 @@ class FileDecision:
 
     @property
     def output_path(self) -> Path:
+        """Où le résultat sera écrit.
+
+        Déterministe et sans accès disque tant que `resoudre_sorties()` n'a
+        pas figé de nom : deux lectures rendent la même chose, avant comme
+        après l'encodage. C'est ce que supposent le nettoyage d'une sortie
+        partielle et le contrôle d'existence de l'écran d'encodage.
+        """
+        if self.output_override is not None:
+            return self.output_override
         stem   = self.info.path.stem
         suffix = self.video.output_suffix
         ext    = self.output_container
-        # SKIP + pistes externes : pas de suffixe de codec, donc rien ne
-        # distinguerait la sortie de la source. On mux sous _[mux].
-        if not suffix and self.external_tracks:
+        if suffix:
+            # Le suffixe se remplace, il ne s'empile pas : réencoder un
+            # `Film_[av1]` en HEVC donne `Film_[hevc]`, pas
+            # `Film_[av1]_[hevc]`. Le nom dit ce que le fichier est.
+            stem = stem_sans_suffixe_produit(stem)
+        elif self.external_tracks:
+            # SKIP + pistes externes : pas de suffixe de codec, donc rien ne
+            # distinguerait la sortie de la source. On mux sous _[mux].
             suffix = MUX_SUFFIX
         return self.info.path.parent / f"{stem}{suffix}{ext}"
 
@@ -858,6 +876,52 @@ def decide_audio(
 
 
 # ─── Point d'entrée ───────────────────────────────────────────────────────────
+
+def resoudre_sorties(decisions: list[FileDecision]) -> None:
+    """Fige le nom de sortie de chaque décision du lot, en évitant toute
+    collision — avec la source, avec le disque, et entre décisions du lot.
+
+    Remplacer le suffixe plutôt que l'empiler fait apparaître deux collisions
+    que l'empilement masquait :
+
+    - la cible **est** la source — `Film_[hevc].mkv` réencodé en HEVC. C'est le
+      geste le plus courant, rebaisser le débit d'une sortie, et le garde-fou
+      de l'encodeur le refuserait ;
+    - la cible existe déjà — `Film_[av1].mkv` réencodé en HEVC alors qu'un
+      `Film_[hevc].mkv` a été produit hier. Ce fichier-là n'est la source de
+      personne : rien ne l'aurait protégé d'un écrasement silencieux.
+
+    Dans les deux cas on numérote : `Film_[hevc](2).mkv`. Rien n'est jamais
+    écrasé, et rien n'est refusé.
+
+    **Le nom est posé une fois.** Une propriété qui interrogerait le disque à
+    chaque lecture rendrait `(3)` une fois `(2)` écrit — et l'écran d'encodage,
+    qui relit `output_path` *après* coup pour vérifier la sortie et pour
+    effacer un fichier partiel après un abandon, effacerait un fichier qui
+    n'est pas le sien. Une décision déjà résolue n'est donc jamais recalculée :
+    l'appel est idempotent, et le lot peut traverser plusieurs écrans.
+
+    Une décision qui n'écrit rien — SKIP sans piste externe — est laissée
+    telle quelle : sa sortie nominale est sa propre source, la numéroter
+    fabriquerait un nom qui ne servira jamais.
+    """
+    reserves = {d.output_override for d in decisions if d.output_override}
+    for dec in decisions:
+        if dec.output_override is not None:
+            continue
+        if dec.video.action == VideoAction.SKIP and not dec.external_tracks:
+            continue
+        vise     = dec.output_path
+        candidat = vise
+        n        = 1
+        while (candidat == dec.info.path
+               or candidat in reserves
+               or candidat.exists()):
+            n += 1
+            candidat = vise.with_name(f"{vise.stem}({n}){vise.suffix}")
+        dec.output_override = candidat
+        reserves.add(candidat)
+
 
 def force_skip_to_encode(dec: FileDecision) -> FileDecision:
     """Force un fichier SKIP en encodage (HEVC ou H264 si < 1080p).

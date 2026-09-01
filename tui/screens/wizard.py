@@ -38,7 +38,7 @@ from textual.widgets import DataTable, Label, ProgressBar, Static
 
 from core.decision import (ACTION_CYCLE, SUFFIX_BY_ACTION, AudioAction,
                            DVAction, FileDecision, VideoAction, cycle_index,
-                           decide_audio)
+                           decide_audio, resoudre_sorties)
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import measure_external_track
 
@@ -180,6 +180,12 @@ class WizardScreen(TableNavMixin, Screen):
             pass
 
     def _afficher(self) -> None:
+        # L'assistant annonce le nom de sortie à trois étapes. Le résoudre ici
+        # lui évite d'annoncer `Film_[hevc].mkv` pour un encodage qui écrira
+        # `Film_[hevc](2).mkv`. Déjà résolu, il n'est pas recalculé — c'est ce
+        # qui permet de rappeler `_afficher()` après l'encodage sans que le nom
+        # dérive.
+        resoudre_sorties([self._dec])
         titre = self.query_one("#wiz-titre", Static)
         corps = self.query_one("#wiz-corps", Static)
         table = self.query_one(DataTable)
@@ -432,6 +438,9 @@ class WizardScreen(TableNavMixin, Screen):
                 v, action=action, dv_action=dv,
                 output_suffix=SUFFIX_BY_ACTION.get(action, v.output_suffix),
                 reason="Choisi dans l'assistant")
+            # Le suffixe vient de changer : le nom de sortie déjà résolu ne
+            # vaut plus. Il sera reposé à l'affichage.
+            self._dec.output_override = None
             self._afficher()
 
         self.app.push_screen(

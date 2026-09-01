@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.8.2 — document de référence courant
-**Date** : 2026-08-30
+**Version** : 0.8.8.3 — document de référence courant
+**Date** : 2026-09-01
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -799,6 +799,36 @@ n'affiche rien de tel.
 | Remux mkvmerge | `nom_[mux].mkv` |
 | Extrait de contrôle | `nom_[extrait].mkv` |
 
+**Le suffixe d'encodage se remplace, il ne s'empile pas.** Réencoder un
+`Film_[av1].mkv` en HEVC donne `Film_[hevc].mkv`, pas `Film_[av1]_[hevc].mkv`.
+`scanner.stem_sans_suffixe_produit()` retire du nom le suffixe qu'il porte —
+dérivé de `suffixes_produits()`, donc de `SUFFIX_BY_ACTION`, jamais recopié —
+avant que le nouveau soit posé. `_[mux]`, `_[join]` et `_[extrait]` n'en font
+pas partie : ils disent d'où vient le fichier, pas comment il a été encodé.
+
+**Deux collisions, une numérotation.** Remplacer fait apparaître ce que
+l'empilement masquait : la cible peut être la source elle-même
+(`Film_[hevc].mkv` réencodé en HEVC — le geste courant, rebaisser un débit), ou
+un fichier déjà présent (`Film_[av1].mkv` réencodé en HEVC quand un
+`Film_[hevc].mkv` existe). Dans les deux cas, `decision.resoudre_sorties()`
+numérote : `Film_[hevc](2).mkv`. Rien n'est écrasé, rien n'est refusé. Le
+compteur repart avec le suffixe au passage suivant — `Film_[hevc](2)` réencodé
+redonne une base `Film`, sans quoi l'empilement reviendrait par cette porte.
+
+**Le nom est figé une fois.** `resoudre_sorties()` est appelé à la construction
+de `RunScreen` — dernier moment avant l'écriture — et pose `output_override` sur
+chaque décision du lot ; les collisions internes au lot se résolvent dans la
+même passe. L'appel est idempotent. `FileDecision.output_path` ne consulte
+jamais le disque de lui-même : l'écran d'encodage le relit *après* coup pour
+vérifier la sortie et pour effacer un fichier partiel après un abandon, et une
+valeur qui deviendrait `(3)` une fois `(2)` écrit ferait effacer un fichier
+étranger. L'assistant, qui annonce le nom de sortie à trois étapes, appelle la
+même fonction pour ne pas annoncer autre chose que ce qui sera écrit.
+
+Le garde-fou « chemin de sortie identique à la source » (§ 12.4) reste en place :
+la numérotation le rend inatteignable sur ce chemin, il couvre toujours le cas
+d'un suffixe vide avec conteneur identique.
+
 ---
 
 ## 9. Pistes externes — `core/muxer.py`
@@ -1546,7 +1576,7 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 |---|---|---|
 | `↑` `↓` `PgUp` `PgDn` `Home` `End` | — | Navigation |
 | `Espace` | fichier | Sélection unitaire |
-| `A` / `N` | — | Tout / aucun |
+| `A` / `N` | — | Tout / aucun — `A` saute les sorties de l'application |
 | `↵` | dossier | Entrer |
 | `↵` | fichier | Ouvre `TracksScreen` |
 | `⌫` | — | Remonter au parent |
@@ -1583,8 +1613,47 @@ volumes disponibles (icône 💾), pas un chemin fixe.
 | ETA | `temps_estim` | durée d'encodage estimée |
 | Audio | `audio` | résumé des pistes conservées |
 
-Code couleur décision : HEVC → magenta · H264 → cyan · SDR → jaune · SKIP → gris dim.
-Delta d'estimation : vert si réduction, `dark_orange` si gonflement.
+Code couleur décision : table unique `core.decision.Emphase` (§ 8.3) — le cas
+ordinaire ne porte aucune couleur, le vert dit « sans réencodage », le
+`dark_orange` gras est réservé aux alertes.
+
+**La colonne Estim. porte un dégradé continu**, du vert franc (gain de −50 % et
+au-delà) au jaune (autour de zéro) puis à l'orange des alertes (perte de +25 %
+et au-delà), interpolé en RGB entre ces trois teintes. L'échelle est bornée :
+l'œil ne distingue pas −60 % de −80 %, et sans borne le gros du corpus — entre
+−20 % et −50 % — deviendrait indiscernable. Une sortie plus grosse que sa source
+garde le gras des alertes, que le seul virage de teinte ne rendrait pas.
+
+C'est une **exception assumée** à la table d'emphases : le vert y dit « traité
+sans réencodage », et il dit ici « la sortie est plus petite ». Sur une même
+ligne, le vert de la colonne Décision et celui d'Estim ne parlent donc pas de la
+même chose. L'exception vit dans une seule fonction, `_teinte_estimation()` ;
+aucune autre couleur n'est écrite en dur dans cet écran.
+
+Une ligne dont la vidéo est **recopiée** — remux, retrait de RPU, Dolby Vision
+conservé — reste hors du dégradé : sa sortie pèsera la taille de la source,
+l'écart vaut zéro, et la poser sur l'échelle la placerait en plein jaune, la
+teinte la plus voyante, pour un cas où rien n'est recalculé. Le prédicat
+`_sortie_recopiee()` sert à la fois l'estimation et la couleur.
+
+#### Les sorties de l'application restent visibles
+
+Jusqu'à la v0.8.8.3, `deja_produit()` écartait de la vue tout fichier portant un
+suffixe d'encodage : un film encodé la veille disparaissait de l'écran, et rien
+ne distinguait « déjà produit » de « jamais existé ». `FileNavigator.list_videos()`
+ne filtre plus — la ligne est là, **grisée d'un bloc**, toutes ses colonnes
+renseignées comme les autres (le ffprobe est fait ; le prix est un temps
+d'analyse doublé sur un dossier entièrement traité).
+
+La colonne Décision garde la **vraie** décision, `→ HEVC` ou `← SKIP` : la ligne
+part à l'encodage comme n'importe quelle autre, et un libellé « déjà traité »
+mentirait sur le contenu du lot. Seul le gris dit « ceci vient d'ici ». La case
+à cocher n'est pas grisée — sinon on ne verrait plus si la ligne est prise.
+
+`Espace` la coche, `F1`/`F2` l'encodent. Seul `A` (tout sélectionner) l'ignore :
+il coche « tout ce qu'il y a à faire ici », et une sortie n'en est pas. Le
+filtre reste entier dans `core/scanner.py`, qui alimente le scan récursif et les
+lots automatiques — c'est là qu'il protégeait vraiment (§ 15.2).
 
 #### Suppression d'un fichier (`Ctrl+D`)
 
@@ -1984,6 +2053,14 @@ rendrait impossible — le fichier ne serait même pas visible.
 collé n'existe **que** pour être encodé ensuite (§ 9bis). L'écarter du scan viderait la
 fonction de son objet.
 
+**L'exclusion ne vaut que pour le scan, plus pour la vue.** Depuis la v0.8.8.3,
+`FileNavigator.list_videos()` liste aussi les sorties de l'application, grisées
+(§ 14.1). Les deux fonctions ci-dessus gardent leur filtre : ce sont elles qui
+alimentent le scan récursif et les lots que l'utilisateur ne compose pas
+lui-même, et c'est là que le garde-fou porte. Cocher soi-même une sortie pour la
+réencoder demande deux gestes explicites ; `delete_source` reste actif sur ce
+chemin.
+
 ### 15.3 Enrichissement DV au scan
 
 Si `dovi_tool` est disponible (câblé dans `app.py` via `scanner.set_dovi_path()`), chaque
@@ -2133,6 +2210,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.8.3 | 2026-09-01 | **Les sorties de l'application restent visibles** (§ 14.1) : `deja_produit()` les écartait de la vue depuis IE-49, si bien qu'un film encodé la veille disparaissait de l'écran et que rien ne distinguait « déjà produit » de « jamais existé ». La ligne est là, grisée d'un bloc, décision réelle en clair, sélectionnable et encodable — seul `A` l'ignore. Le filtre reste entier dans le scanner, qui alimente le scan récursif et les lots automatiques (§ 15.2) · **le suffixe d'encodage se remplace au lieu de s'empiler** (§ 8.7) : `Film_[av1]` réencodé en HEVC donne `Film_[hevc]`, plus `Film_[av1]_[hevc]` ; les deux collisions que l'empilement masquait — cible égale à la source, cible existante — se numérotent en `(2)`, et le nom est figé une fois par `resoudre_sorties()` parce que l'écran d'encodage relit `output_path` après coup pour nettoyer une sortie partielle · **la colonne Estim. passe à un dégradé continu vert → orange**, borné à −50 % et +25 %, exception assumée à la table d'emphases ; une vidéo recopiée en reste dehors, son écart nul l'aurait placée en plein jaune · `tests/test_sorties_visibles.py`, smoke [20] à [20c] |
 | 0.8.8.2 | 2026-08-30 | **Le profil plancher ramène le Dolby Vision en SDR** (`dolby_vision = "sdr"`, § 6) : `_default_` recopiait `serie_basic` jusque dans son `"hdr10"`, si bien qu'une installation neuve — et toute session retombée sur le plancher faute d'un TOML lisible — sortait du HDR10, délavé sur un téléviseur qui ne le gère pas. Le plancher s'aligne sur `film_basic`, seul réglage qui l'en écarte désormais avec les débits · **le repli d'un profil sans la clé passe lui aussi à `"sdr"`** — cinq sites lisaient `dolby_vision` avec `"hdr10"` en défaut (décision, résumé et colonnes de l'écran Config, pré-sélection et lecture du formulaire) ; les laisser désaccordés aurait affiché « hdr10 » sur un profil que la décision traite en SDR · trois tests du chemin HDR10 s'appuyaient sur ce défaut implicite : ils portent désormais `dolby_vision = "hdr10"` en clair · une valeur *inconnue* reste traitée en HDR10, cas distinct d'une clé absente |
 | 0.8.8.1 | 2026-08-30 | **Le smoke test ne dépendait plus du poste de développement** : `tests/smoke_tui.py` échouait sur l'archive publiée à l'étape [5] — une installation neuve n'a pas de `profiles.toml` et l'app en génère un seul, or `ConfigScreen` refuse à raison d'effacer le dernier profil, si bien qu'aucune confirmation ne s'ouvrait. Le dépôt en portant dix, le scénario passait en local et le garde-fou était inopérant là où il sert · `_profils_isoles()` donne au smoke son propre fichier, semé de deux profils, et cesse au passage d'écrire dans la bibliothèque de l'utilisateur · assertion explicite sur le nombre de profils avant la touche `d` |
 | 0.8.8.0 | 2026-08-30 | **Réencoder sans perdre le Dolby Vision** (`VideoAction.ENCODE_DV`, § 6 et § 7.4) : le RPU vit entre les tranches d'image du flux HEVC, tout réencodage le détruisait — conserver le DV imposait `-c:v copy`, et le débit cible d'un profil `dolby_vision = "dv"` restait lettre morte · `dovi_tool extract-rpu` en tuyau sur ffmpeg (aucun intermédiaire), encodage vidéo seul en Annex-B sans filtre, `inject-rpu`, remux mkvmerge · RPU du profil 7 converti en 8.1 au passage · garde-fous : couche de base HDR10 obligatoire (5 et 8.4 exclus), résolution inchangée, outils présents — à défaut la copie reprend, annoncée comme telle · Matroska forcé, un MP4 perdrait le RPU · métadonnées HDR10 statiques préservées par NVENC sans drapeau, mesuré · `tests/test_dv_reencodage.py` |

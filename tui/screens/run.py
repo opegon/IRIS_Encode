@@ -15,7 +15,8 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
-from core.decision import AudioAction, FileDecision, VideoAction
+from core.decision import (AudioAction, FileDecision, VideoAction,
+                           resoudre_sorties)
 from core.encoder import (
     EncoderProcess, audio_pass_needed, audio_prepass_needed,
     build_audio_command, build_command, diagnostiquer, encodeur_de,
@@ -118,6 +119,10 @@ class RunScreen(TableNavMixin, Screen):
         platform:  PlatformProfile,
     ) -> None:
         super().__init__()
+        # Dernier moment avant l'écriture : les noms de sortie se figent ici,
+        # une fois pour tout le lot. Au-delà, `output_path` ne bougera plus —
+        # le nettoyage d'une sortie partielle en dépend.
+        resoudre_sorties(decisions)
         self._platform  = platform
         self._statuses  = [
             FileRunStatus(decision=dec) for dec in decisions

@@ -27,7 +27,7 @@ from core.decision import (
     AudioAction, FileDecision, VideoAction, decide, force_skip_to_encode,
     video_recopiee,
 )
-from core.scanner import scan, scan_directory_recursive
+from core.scanner import deja_produit, scan, scan_directory_recursive
 from ..common import (
     touche,
     cellule,
@@ -87,18 +87,65 @@ def _cellules_volume(volume: Path) -> tuple[Text, Text, Text]:
     )
 
 
+def _sortie_recopiee(dec: FileDecision) -> bool:
+    """La sortie pèsera-t-elle exactement ce que pèse la source ?
+
+    Un remux ne recalcule aucune image : la sortie pèse ce que pèse la source,
+    au RPU près — quelques mégaoctets sur un film. Une source Dolby Vision dont
+    le RPU ne peut pas être réinjecté est dans le même cas : sa vidéo est
+    recopiée, et l'estimer au débit cible annoncerait une réduction qui n'aura
+    pas lieu.
+
+    L'estimation et le dégradé lisent le même prédicat : une ligne dont la
+    taille ne bouge pas ne doit pas non plus prendre de couleur.
+    """
+    return (dec.video.action == VideoAction.STRIP_DV
+            or video_recopiee(dec.video.action, dec.video.dv_action))
+
+
+# Bornes du dégradé de la colonne Estim, en pourcentage d'écart à la source.
+# Au-delà, la teinte ne bouge plus : l'œil ne distingue pas −60 % de −80 %, et
+# une échelle non bornée rendrait le gros du corpus — qui vit entre −20 % et
+# −50 % — indiscernable.
+_DEGRADE_GAIN  = -50.0
+_DEGRADE_PERTE =  25.0
+# Vert franc → jaune → orange. L'orange est celui des alertes (#ff8700), pour
+# qu'une sortie plus grosse que sa source se lise dans la même famille que le
+# reste des avertissements de l'application.
+_TEINTE_GAIN   = (  0, 175,   0)
+_TEINTE_NEUTRE = (215, 175,   0)
+_TEINTE_PERTE  = (255, 135,   0)
+
+
+def _teinte_estimation(delta_pct: float) -> str:
+    """Style Rich d'un écart de taille, du vert au orange.
+
+    **Exception assumée à la table d'emphases** (`core.decision.Emphase`). Le
+    vert y dit « traité sans réencodage » et cette colonne lui fait dire « la
+    sortie est plus petite » ; sur une même ligne, le vert de la colonne
+    Décision et celui d'Estim ne parlent donc pas de la même chose. C'est le
+    prix d'une échelle continue, et il se paie ici seul : la table reste la
+    seule autorité partout ailleurs, et aucune autre couleur n'est écrite en
+    dur dans cet écran.
+    """
+    def _melange(a, b, k: float) -> str:
+        k = max(0.0, min(1.0, k))
+        r, v, bl = (round(x + (y - x) * k) for x, y in zip(a, b))
+        return f"rgb({r},{v},{bl})"
+
+    if delta_pct < 0:
+        return _melange(_TEINTE_GAIN, _TEINTE_NEUTRE, 1 - delta_pct / _DEGRADE_GAIN)
+    # Une sortie plus grosse que sa source est une anomalie : elle garde le
+    # gras des alertes, que le seul virage de teinte ne rendrait pas.
+    return f"bold {_melange(_TEINTE_NEUTRE, _TEINTE_PERTE, delta_pct / _DEGRADE_PERTE)}"
+
+
 def _estimate_output_bytes(dec: FileDecision) -> int:
     """Taille estimée de sortie (vidéo + audio conservé).
     Retourne 0 si action=SKIP ou durée inconnue."""
     if dec.video.action == VideoAction.SKIP:
         return 0
-    # Un remux ne recalcule aucune image : la sortie pèse ce que pèse la
-    # source, au RPU près — quelques mégaoctets sur un film. Une source Dolby
-    # Vision dont le RPU ne peut pas être réinjecté est dans le même cas : sa
-    # vidéo est recopiée, et l'estimer au débit cible annonçait une réduction
-    # qui n'aura pas lieu.
-    if (dec.video.action == VideoAction.STRIP_DV
-            or video_recopiee(dec.video.action, dec.video.dv_action)):
+    if _sortie_recopiee(dec):
         try:
             return dec.info.path.stat().st_size
         except OSError:
@@ -189,6 +236,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._decisions:  dict[Path, FileDecision] = {}
         self._selected:   set[Path] = set()
         self._rows:       list[tuple[str, Path | None]] = []
+        # Les lignes qui sont des sorties de l'application : grisées, hors de
+        # `Ctrl+A`, mais sélectionnables et encodables comme les autres.
+        self._produits:   set[Path] = set()
         # Override audio par fichier (TUI tracks)
         self._audio_overrides:    dict[Path, list[int]] = {}
         self._subtitle_overrides: dict[Path, list[int]] = {}
@@ -425,6 +475,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         table = self.query_one(DataTable)
         table.clear()
         self._rows = []
+        self._produits = set()
 
         # ── Volumes, ou sous-répertoires ──────────────────────────────────────
         is_virtual = self._nav.is_virtual
@@ -450,9 +501,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self._decisions[dec.info.path] = dec
             row_key = str(dec.info.path)
             check   = self._check_str(dec.info.path)
+            produit = deja_produit(dec.info.path.stem)
+            if produit:
+                self._produits.add(dec.info.path)
             self._rows.append((_ROW_TYPE_FILE, dec.info.path))
             table.add_row(
-                *self._row_cells(dec, check),
+                *self._row_cells(dec, check, produit),
                 key=row_key,
             )
 
@@ -471,7 +525,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self.query_one("#scan-notice", Static).update("")
         self._update_status()
 
-    def _row_cells(self, dec: FileDecision, check: Text) -> tuple:
+    def _row_cells(self, dec: FileDecision, check: Text,
+                   produit: bool = False) -> tuple:
         info = dec.info
         vid  = dec.video
 
@@ -496,16 +551,16 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
         if est_bytes == 0:
             estim_txt = cellule("—", style="dim")
+        elif _sortie_recopiee(dec):
+            # La sortie pèsera la taille de la source : l'écart vaut zéro, et
+            # le poser sur le dégradé placerait la ligne en plein jaune — la
+            # teinte la plus voyante — pour un cas où rien n'est recalculé.
+            estim_txt = cellule(fmt_bytes(est_bytes), style="dim")
         elif src_bytes > 0:
             delta_pct = (est_bytes - src_bytes) * 100 / src_bytes
             sign      = "+" if delta_pct > 0 else ""
-            # Une sortie plus grosse que la source est une anomalie ; une
-            # sortie plus petite est le résultat attendu, elle n'a rien à
-            # signaler. Le vert reste réservé au « sans réencodage ».
-            color     = STYLE_PAR_EMPHASE[
-                Emphase.ALERTE if delta_pct > 0 else Emphase.ORDINAIRE]
-            estim_txt = cellule(
-                f"{fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)", style=color)
+            estim_txt = cellule(f"{fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)",
+                                style=_teinte_estimation(delta_pct))
         else:
             estim_txt = cellule(fmt_bytes(est_bytes))
 
@@ -522,7 +577,17 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
         audio_txt = cellule(dec.audio_summary)
 
-        return (check, name_txt, size_txt, res_txt, dur_txt, kbps_txt, codec_txt, dv_txt, dec_txt, estim_txt, temps_txt, audio_txt)
+        cells = (name_txt, size_txt, res_txt, dur_txt, kbps_txt, codec_txt,
+                 dv_txt, dec_txt, estim_txt, temps_txt, audio_txt)
+        if produit:
+            # Une sortie de l'application : la ligne s'efface d'un bloc, ce qui
+            # dit « ceci vient d'ici » sans rien retirer de ce qu'elle porte.
+            # Elle reste sélectionnable et encodable — seul `Ctrl+A` l'ignore.
+            # La case à cocher garde sa teinte : grisée, on ne verrait plus si
+            # la ligne est prise dans le lot.
+            cells = tuple(Text(c.plain, style="dim", no_wrap=True,
+                               overflow="ellipsis") for c in cells)
+        return (check, *cells)
 
     def _check_str(self, path: Path) -> Text:
         # Text() évite l'interprétation des crochets comme balises Rich markup
@@ -752,8 +817,15 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._update_status()
 
     def action_select_all(self) -> None:
+        """Coche tout ce qu'il y a à faire ici — donc pas nos propres sorties.
+
+        Elles restent atteignables à l'`espace` : réencoder une sortie est un
+        geste légitime, mais c'en est un qui se demande, pas un que « tout
+        sélectionner » emporte sans qu'on le voie.
+        """
         for row_type, path in self._rows:
-            if row_type == _ROW_TYPE_FILE and path is not None:
+            if (row_type == _ROW_TYPE_FILE and path is not None
+                    and path not in self._produits):
                 self._selected.add(path)
                 self._update_row_check(path)
         self._update_status()

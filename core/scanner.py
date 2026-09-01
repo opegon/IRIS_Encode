@@ -9,6 +9,7 @@ from __future__ import annotations
 import functools
 import json
 import logging
+import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -47,6 +48,39 @@ def suffixes_produits() -> frozenset[str]:
 def deja_produit(stem: str) -> bool:
     """Ce nom de fichier est-il celui d'une sortie de l'application ?"""
     return any(suffixe in stem for suffixe in suffixes_produits())
+
+
+def stem_sans_suffixe_produit(stem: str) -> str:
+    """Le stem débarrassé du suffixe d'encodage qu'il porte, s'il en porte un.
+
+    Réencoder une sortie de l'application empilait les marques :
+    `Film_[av1]` devenait `Film_[av1]_[hevc]`, puis
+    `Film_[av1]_[hevc]_[hevc]` au passage suivant. Le suffixe se remplace
+    désormais — le nom dit ce que le fichier est, pas par combien d'états il
+    est passé.
+
+    Le suffixe est cherché en **fin** de stem : `Film_[hevc] (copie)` n'est pas
+    une sortie que nous venons d'écrire, et lui retirer sa marque au milieu du
+    nom fabriquerait un nom qui n'a jamais existé.
+
+    La numérotation de collision part avec lui. Elle se pose après le suffixe
+    — `Film_[hevc](2)` — et sans cela un `Film_[hevc](2)` réencodé redonnerait
+    `Film_[hevc](2)_[hevc]` : l'empilement reviendrait par la porte que la
+    numérotation vient d'ouvrir. Retirer les deux rend la base stable d'une
+    génération à l'autre.
+
+    `Film (2)` — la copie que fait Windows — n'est pas touché : le compteur ne
+    compte que s'il suit immédiatement un suffixe produit.
+
+    `_[mux]` et `_[join]` n'en font pas partie (ils ne sont pas dans
+    `suffixes_produits()`) : ils disent d'où vient le fichier, pas comment il a
+    été encodé, et l'encodage ne les efface pas.
+    """
+    sans_compteur = re.sub(r"\(\d+\)$", "", stem)
+    for suffixe in suffixes_produits():
+        if sans_compteur.endswith(suffixe):
+            return sans_compteur[: -len(suffixe)]
+    return stem
 
 
 _LOSSLESS_CODECS = frozenset({"truehd", "dts-hd ma", "dtshd", "mlp"})

@@ -323,6 +323,8 @@ def _encode_decision(ext: list[ExternalTrack], *, subs=None):
 
     info = mock.Mock()
     info.path            = Path("/films/film.mkv")
+    info.width           = 1920
+    info.height          = 1080
     info.has_image_subs  = False
     info.subtitle_tracks = subs if subs is not None else []
     info.duration        = 100.0
@@ -522,6 +524,8 @@ def test_skip_with_external_track_gets_a_distinct_name():
 
     info = mock.Mock()
     info.path            = Path("/films/Film.mp4")
+    info.width           = 1920
+    info.height          = 1080
     info.has_image_subs  = False
     info.subtitle_tracks = []
 

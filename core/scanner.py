@@ -83,6 +83,139 @@ def stem_sans_suffixe_produit(stem: str) -> str:
     return stem
 
 
+# ─── Ce que le nom du fichier produit annonce ────────────────────────────────
+#
+# Un nom de release décrit la source : sa définition, son codec, son HDR, son
+# audio. Le fichier produit n'a plus forcément ces propriétés, et c'est le nom
+# — pas le conteneur — que l'utilisateur lit pour choisir. Les fonctions qui
+# suivent réécrivent ces marques une à une (§ 8.7).
+
+
+def _motif_marque(jeton: str) -> str:
+    """Le motif d'une marque telle qu'un nom de fichier l'écrit.
+
+    Un nom de release remplace les espaces d'un format par le séparateur qu'il
+    s'est choisi : « DTS-HD MA » s'y écrit `DTS-HD.MA`, `DTS-HD-MA` ou
+    `DTS HD MA`. Les espaces et tirets du jeton acceptent donc n'importe quel
+    séparateur, ou aucun.
+    """
+    return r"[ ._-]?".join(re.escape(p) for p in re.split(r"[ -]", jeton))
+
+
+@functools.cache
+def _re_marques(jetons: tuple[str, ...]) -> re.Pattern:
+    """Le motif qui reconnaît l'une de ces marques dans un stem.
+
+    Trois précautions, chacune payée par un nom cassé :
+
+    - **le plus long d'abord** — sans quoi `DTS` l'emporterait sur `DTS-HD MA`
+      et laisserait un `.MA` orphelin ;
+    - **mot entier** — le `AV1` de `AV1ator`, le `DD` de `ADD` n'annoncent
+      rien. Un `+` compte comme la fin d'une marque, sinon `HDR10+` perdrait
+      son `HDR10` et garderait son `+` ;
+    - **la paire de crochets ou de parenthèses part avec la marque**, sans
+      quoi retirer le `hevc` de `Film_[hevc]` laisserait un `_[]` vide.
+
+    La ponctuation qui entoure la marque est capturée avec elle : elle doit se
+    recoller quand la marque disparaît.
+    """
+    alt = "|".join(_motif_marque(j) for j in sorted(jetons, key=len, reverse=True))
+    return re.compile(
+        rf"(?P<avant>[ ._-]*)"
+        rf"(?:(?P<ouvre>[\[(])(?:{alt})[\])]"
+        rf"|(?<![0-9A-Za-z])(?:{alt})(?![0-9A-Za-z+]))"
+        rf"(?P<apres>[ ._-]*)",
+        re.IGNORECASE,
+    )
+
+
+def stem_marques_retirees(stem: str, jetons: tuple[str, ...]) -> str:
+    """Le stem privé de ces marques, ponctuation recollée.
+
+    `Film.1080p.x265-GROUP` doit donner `Film.1080p-GROUP`, pas
+    `Film.1080p.-GROUP`, et une marque en tête ne doit pas laisser un
+    séparateur devant le titre.
+
+    Un nom qui ne serait fait que de marques est rendu tel quel : mieux vaut
+    un nom redondant qu'un fichier nommé par son seul suffixe.
+    """
+    sans = _re_marques(jetons).sub(
+        lambda m: m.group("apres") if m.group("avant") else "", stem)
+    if sans == stem:
+        return stem
+    # Deux marques en fin de nom laissent le séparateur de la première, qui
+    # attendait le texte que la seconde vient d'emporter : `Film.DV.HDR10`
+    # rendait `Film.` — un nom que rien ne finit.
+    sans = sans.strip(" ._-")
+    return sans or stem
+
+
+def stem_marques_remplacees(stem: str, jetons: tuple[str, ...],
+                            remplacement: str) -> str:
+    """Le stem dont ces marques annoncent la sortie, non la source.
+
+    La ponctuation et les crochets éventuels sont conservés — la marque
+    change, pas la structure du nom. Deux marques voisines qui deviennent la
+    même sont fondues en une : `DV.HDR10` ramené en HDR10 donne `HDR10`, pas
+    `HDR10.HDR10`.
+    """
+    def _sub(m: re.Match) -> str:
+        if m.group("ouvre"):
+            ferme = "]" if m.group("ouvre") == "[" else ")"
+            return f"{m['avant']}{m['ouvre']}{remplacement}{ferme}{m['apres']}"
+        return f"{m['avant']}{remplacement}{m['apres']}"
+
+    ecrit = _re_marques(jetons).sub(_sub, stem)
+    double = re.escape(remplacement)
+    return re.sub(rf"{double}(?:[ ._-]+{double})+", remplacement, ecrit,
+                  flags=re.IGNORECASE)
+
+
+# Les marques d'une source 4K. `Light` suit le `4K` avec ou sans séparateur
+# selon les releases — c'est la marque entière qui part. `UHD` en est une
+# aussi : `2160p.UHD.BluRay` disait deux fois la définition, et n'en corriger
+# qu'une laissait le nom à moitié faux.
+JETONS_RESOLUTION_4K = ("2160p", "4k light", "4k", "uhd")
+
+# Les marques de codec vidéo. `H.264` s'écrit avec ou sans point selon les
+# conventions ; `_[hevc]` est celle que nous écrivons nous-mêmes.
+JETONS_CODEC_VIDEO = ("x264", "x265", "h.264", "h264", "h.265", "h265",
+                      "hevc", "av1", "vp9")
+
+
+def stem_resolution_ramenee(stem: str, cible: str) -> str:
+    """Le stem dont la marque de résolution annonce la sortie, non la source.
+
+    Un `Film.2160p.BluRay` réencodé en 1080p gardait `2160p` dans son nom : le
+    fichier promettait une définition qu'il n'a plus, et deux fichiers de
+    définitions différentes se lisaient pareil dans une médiathèque.
+
+    Ne sont reconnues que les marques d'une source 4K — `2160p`, `4K`,
+    `4KLight`, `UHD` — et seulement prises comme mot entier : le `4K` de `H4K`
+    ou le `2160` de `3840x2160` ne disent pas une résolution de release.
+
+    Un nom qui en porte deux à la suite n'en garde qu'une : `2160p.UHD.BluRay`
+    donne `1080p.BluRay`, la fusion des marques voisines devenues identiques
+    étant faite par `stem_marques_remplacees()`.
+    """
+    return stem_marques_remplacees(stem, JETONS_RESOLUTION_4K, cible)
+
+
+def stem_sans_marque_codec(stem: str) -> str:
+    """Le stem débarrassé des marques de codec vidéo qu'il porte.
+
+    Un `Film.1080p.x264` réencodé en HEVC ressortait `Film.1080p.x264_[hevc]` :
+    le nom annonçait deux codecs, dont un que le fichier n'a plus. C'est le
+    suffixe produit qui dit le codec de sortie ; les marques de la source n'ont
+    plus rien à annoncer, y compris quand elles tombent juste — un `x265` gardé
+    à côté de `_[hevc]` répète la même chose deux fois.
+
+    Sont reconnues `x264`, `x265`, `H264`, `H265` (avec ou sans point), `HEVC`,
+    `AV1` et `VP9`.
+    """
+    return stem_marques_retirees(stem, JETONS_CODEC_VIDEO)
+
+
 _LOSSLESS_CODECS = frozenset({"truehd", "dts-hd ma", "dtshd", "mlp"})
 # ffprobe nomme toutes les variantes DTS « dts » et met la famille dans
 # `profile` : « DTS », « DTS-ES », « DTS-HD HR », « DTS-HD MA ». Sans lire le

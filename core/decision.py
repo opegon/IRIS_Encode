@@ -15,7 +15,9 @@ from typing import Optional
 from .muxer import MUX_SUFFIX, ExternalTrack
 from .profiles import Profile
 from .scanner import (AudioTrack, VideoInfo, channel_layout_label,
-                      normalize_language, stem_sans_suffixe_produit)
+                      normalize_language, stem_marques_remplacees,
+                      stem_marques_retirees, stem_resolution_ramenee,
+                      stem_sans_marque_codec, stem_sans_suffixe_produit)
 
 
 # ─── Décision vidéo ───────────────────────────────────────────────────────────
@@ -299,6 +301,53 @@ SUFFIX_BY_ACTION: dict["VideoAction", str] = {
     VideoAction.SKIP:        "",
 }
 
+# Les actions dont le suffixe nomme le codec du fichier produit — les seules
+# qui autorisent le nom à perdre les marques de codec de la source (§ 8.7).
+# `_[dv]` et `_[hdr10]` disent le traitement du Dolby Vision, pas le codec, et
+# STRIP_DV ne réencode rien : le flux sort dans le codec que le nom annonce.
+ACTIONS_CODEC_NOMME = frozenset({
+    VideoAction.ENCODE_HEVC, VideoAction.ENCODE_H264, VideoAction.ENCODE_AV1,
+})
+
+# Les marques de Dolby Vision et de HDR qu'un nom de release porte (§ 8.7).
+# `HDR10+` n'est pas dans le jeu du passage en HDR10 : le retrait du RPU le
+# laisse intact, et l'écraser en `HDR10` effacerait une métadonnée présente.
+# Il n'est faux qu'en sortie SDR, où il part avec le reste.
+JETONS_DV       = ("dolby vision", "dolby video", "dovi", "dv")
+JETONS_HDR      = ("hdr10", "hdr")
+JETONS_HDR_PLUS = ("hdr10+",)
+
+# La profondeur, fausse en sortie SDR seulement. Le tone mapping finit sur
+# `format=yuv420p` (`_SDR_TONEMAP_FILTER`) : le fichier ressort en 8 bits. En
+# sortie HDR10 elle reste vraie — `yuv420p10le`, sans quoi la courbe PQ
+# étalerait ses dégradés sur 256 niveaux.
+JETONS_10_BITS = ("10 bits", "10 bit")
+
+# Les marques audio qu'un nom porte, par famille de codec source. Le nom d'un
+# fichier ne cite qu'un format — celui qui a motivé la release — et c'est la
+# famille qu'il écrit, pas la variante exacte que déclare ffprobe.
+JETONS_AUDIO: dict[str, tuple[str, ...]] = {
+    "truehd": ("truehd", "true-hd", "mlp"),
+    "dts":    ("dts-hd ma", "dts-hd hr", "dts-hd", "dtshd", "dts:x", "dts-x",
+               "dts-es", "dts"),
+    "eac3":   ("e-ac3", "eac3", "ddp", "dd+"),
+    "ac3":    ("ac3", "dd"),
+    "flac":   ("flac",),
+    "pcm":    ("lpcm", "pcm"),
+    "aac":    ("aac",),
+}
+
+
+def famille_audio(codec: str) -> str:
+    """La famille de marques d'un codec lu par ffprobe.
+
+    Les variantes DTS sortent toutes de ffprobe sous « dts », mais le PCM
+    porte une douzaine de noms (`pcm_s16le`, `pcm_bluray`…) qu'aucun nom de
+    fichier n'écrit tels quels.
+    """
+    c = codec.lower()
+    return "pcm" if c.startswith("pcm") else c
+
 
 # ─── Décision globale ─────────────────────────────────────────────────────────
 
@@ -463,17 +512,112 @@ class FileDecision:
             # SKIP + pistes externes : pas de suffixe de codec, donc rien ne
             # distinguerait la sortie de la source. On mux sous _[mux].
             suffix = MUX_SUFFIX
-        return self.info.path.parent / f"{stem}{suffix}{ext}"
+        return self.info.path.parent / f"{self._stem_a_jour(stem)}{suffix}{ext}"
+
+    def _stem_a_jour(self, stem: str) -> str:
+        """Le stem dont les marques disent le fichier produit, pas la source.
+
+        Quatre réécritures indépendantes, chacune ne jouant que si la
+        propriété qu'elle décrit change vraiment (§ 8.7). Aucune ne touche la
+        source : c'est le nom du fichier écrit qui se corrige.
+
+        SKIP est écarté d'un bloc : la seule sortie qu'il produit est une
+        greffe de pistes (`_[mux]`), que mkvmerge recopie sans rien convertir.
+        Le fichier y garde jusqu'à son RPU Dolby Vision — quand `dovi_tool`
+        manque, la décision retombe sur SKIP en gardant `dv_action`.
+        """
+        if self.video.action == VideoAction.SKIP:
+            return stem
+        if self._codec_dit_par_le_suffixe:
+            # Le suffixe dit le codec de sortie : les marques que le nom
+            # portait pour la source n'ont plus rien à annoncer.
+            stem = stem_sans_marque_codec(stem)
+        if self.video.dv_action == DVAction.HDR10:
+            # Le RPU part, la couche de base reste : le fichier est un HDR10,
+            # et son nom l'annonce à la place du Dolby Vision.
+            stem = stem_marques_remplacees(stem, JETONS_DV + JETONS_HDR,
+                                           "HDR10")
+        elif self.video.dv_action == DVAction.SDR:
+            # Une sortie SDR ne s'annonce pas : les marques partent, aucune ne
+            # la remplace. La profondeur va avec — le tone mapping ramène
+            # l'image en 8 bits, un `10bits` dans le nom serait faux.
+            stem = stem_marques_retirees(
+                stem, JETONS_DV + JETONS_HDR + JETONS_HDR_PLUS + JETONS_10_BITS)
+        stem = self._stem_audio_a_jour(stem)
+        if self._definition_abaissee:
+            # Le nom dit ce que le fichier est : un `Film.2160p` sorti en
+            # 1080p ne garde pas la marque de sa source.
+            stem = stem_resolution_ramenee(stem, f"{self.video.target_height}p")
+        return stem
+
+    def _stem_audio_a_jour(self, stem: str) -> str:
+        """Le stem dont la marque audio annonce le format écrit.
+
+        Un `Film.TrueHD.7.1` dont la piste sort en E-AC3 5.1 annonçait un
+        format absent du fichier — le même mensonge que `retitle()` corrige
+        dans le titre des pistes, à ceci près que le nom du fichier est ce
+        qu'on lit en premier.
+
+        Une famille qu'une piste conserve n'est pas touchée : sur un fichier
+        dont le DTS est recopié et le TrueHD transcodé, `DTS` reste vrai. Et
+        la disposition comme la mention Atmos ne bougent qu'avec le codec —
+        les objets sonores ne survivent pas à une conversion vers AC3 ou
+        E-AC3, mais un nom qui ne dit rien du format n'a jamais menti.
+        """
+        gardees = {famille_audio(ad.track.codec) for ad in self.audio
+                   if ad.action == AudioAction.COPY}
+        for ad in self.audio:
+            if ad.action != AudioAction.TRANSCODE:
+                continue
+            jetons = JETONS_AUDIO.get(famille_audio(ad.track.codec))
+            if not jetons or famille_audio(ad.track.codec) in gardees:
+                continue
+            label  = _CODEC_LABELS.get(ad.output_codec, ad.output_codec.upper())
+            ecrit  = stem_marques_remplacees(stem, jetons, label)
+            if ecrit == stem:
+                continue
+            stem = stem_marques_retirees(ecrit, ("atmos",))
+            if ad.output_channels and ad.output_channels != ad.track.channels:
+                stem = stem_marques_remplacees(
+                    stem, (channel_layout_label(ad.track.channels),),
+                    channel_layout_label(ad.output_channels))
+        return stem
+
+    @property
+    def _codec_dit_par_le_suffixe(self) -> bool:
+        """Le suffixe produit annonce-t-il le codec du fichier écrit ?
+
+        Seul un vrai réencodage vers un codec nommé le fait. Une vidéo
+        recopiée (DV conservé, `-c:v copy`) sort dans le codec de la source :
+        la marque du nom reste vraie, et l'effacer perdrait l'information au
+        profit d'un `_[dv]` qui ne la porte pas.
+        """
+        return (self.video.action in ACTIONS_CODEC_NOMME
+                and not video_recopiee(self.video.action, self.video.dv_action))
+
+    @property
+    def _definition_abaissee(self) -> bool:
+        """La sortie sera-t-elle moins définie que la source ?
+
+        Une vidéo recopiée sort à la définition d'origine quoi qu'annoncent
+        `target_width/height` — conserver le Dolby Vision impose `-c:v copy`,
+        et la résolution du profil y reste lettre morte (voir
+        `video_recopiee`). Renommer sur la seule cible mentirait.
+        """
+        return (self.video.target_height < self.info.height
+                and not video_recopiee(self.video.action, self.video.dv_action))
 
     @property
     def audio_summary(self) -> str:
-        """Résumé des pistes conservées pour la colonne Audio du browser."""
-        # Un remux recopie le fichier tel quel : toutes les pistes passent,
-        # aucune n'est transcodée. Afficher la sélection du profil mentirait.
-        if self.video.action == VideoAction.STRIP_DV:
-            kept_all = [t.display() for t in self.info.audio_tracks]
-            return "  ".join(kept_all) if kept_all else "—"
+        """Résumé des pistes conservées pour la colonne Audio du browser.
 
+        Le retrait du RPU faisait exception ici : il recopiait l'audio en bloc,
+        et afficher la sélection du profil aurait menti. Il applique la
+        décision depuis la v0.8.8.0 — les pistes transcodées passent par un
+        Matroska audio produit à part, les exclues par `--audio-tracks` — et
+        c'est l'exception qui mentait, en promettant des pistes que le fichier
+        n'aurait pas.
+        """
         kept = [
             ad.track.display()
             for ad in self.audio

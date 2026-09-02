@@ -15,7 +15,7 @@ import pytest
 
 from core import decision as decision_mod
 from core import dovi, muxer
-from core.decision import DVAction, VideoAction, decide
+from core.decision import AudioAction, DVAction, VideoAction, decide
 from core.platform import GPU, OS, PlatformProfile
 from core.profiles import Profile
 from core.scanner import AudioTrack, VideoInfo
@@ -133,9 +133,23 @@ def test_le_conteneur_du_retrait_suit_le_profil(tmp_path, conteneur, attendu):
     assert dec.output_container == attendu
 
 
-def test_resume_audio_montre_toutes_les_pistes(tmp_path):
-    """Un remux recopie tout : afficher une sélection mentirait."""
-    dec = decide(_info(tmp_path), _profile(audio_languages=["jpn"]))
+def test_resume_audio_montre_les_pistes_du_fichier_produit(tmp_path):
+    """Le retrait applique la décision audio : le résumé la montre.
+
+    Il recopiait l'audio en bloc jusqu'à la v0.8.8.0, et le résumé faisait
+    exception pour le dire. Les pistes transcodées passent depuis par un
+    Matroska produit à part, les exclues par `--audio-tracks` : c'est
+    l'exception qui promettait des pistes que le fichier n'a pas.
+    """
+    info = _info(tmp_path)
+    info.audio_tracks.append(AudioTrack(index=1, codec="eac3", channels=6,
+                                        language="jpn", title="VO",
+                                        bitrate=640_000))
+    dec = decide(info, _profile(audio_languages=["fre"]))
+
+    exclue = next(ad for ad in dec.audio if ad.track.language == "jpn")
+    assert exclue.action == AudioAction.EXCLUDE
+    assert "jpn" not in dec.audio_summary
     assert "fre" in dec.audio_summary
 
 

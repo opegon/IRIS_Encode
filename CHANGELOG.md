@@ -1,5 +1,171 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.8.10] — 2026-09-02
+
+### La colonne Audio d'un retrait de RPU dit ce que le fichier contiendra
+
+`audio_summary` faisait une exception pour `STRIP_DV` : elle affichait
+**toutes** les pistes de la source, commentaire à l'appui — « un remux
+recopie le fichier tel quel, aucune n'est transcodée ».
+
+C'était vrai jusqu'à la v0.8.8.0, où le retrait a appris à appliquer la
+décision audio : les pistes transcodées passent par un Matroska produit à
+part, les exclues par `--audio-tracks`. Depuis, c'est l'exception qui mentait
+— elle promettait des pistes que le fichier n'aurait pas. Le commentaire
+affirmait l'inverse du code, ce qui rendait l'écart durable.
+
+L'exception disparaît, la branche générale s'appliquant à tout le monde.
+`tests/test_strip_dv.py` verrouille désormais le sens neuf : une piste
+écartée par la langue n'apparaît plus dans le résumé.
+
+`core/decision.py` (`FileDecision.audio_summary`), `tests/test_strip_dv.py`.
+
+## [v0.8.8.9] — 2026-09-02
+
+### Une sortie SDR perd aussi sa profondeur
+
+Les marques HDR partaient déjà en sortie SDR ; celle de la profondeur
+restait. Or le tone mapping finit sur `format=yuv420p` — le fichier ressort
+en **8 bits**, et un `10bits` dans son nom promet une précision qu'il n'a
+plus. `10bit`, `10bits`, `10 bits`, `10-bit` partent donc avec le reste.
+
+En sortie HDR10 elle reste vraie et n'est pas touchée : `yuv420p10le`, sans
+quoi la courbe PQ étalerait ses dégradés sur 256 niveaux.
+
+`Dolby Video` rejoint par ailleurs les marques Dolby Vision reconnues — un
+nom qui l'écrit ainsi ne dit rien d'autre.
+
+`core/decision.py` (`JETONS_10_BITS`), `tests/test_hdr_audio_nom.py`,
+§ 8.7 de la spec.
+
+## [v0.8.8.8] — 2026-09-02
+
+### `UHD` est une marque de définition comme les autres
+
+Relevé sur un vrai nom de release :
+`Blade.Runner.2049.2160p.UHD.BluRay…` rabattu en 1080p ressortait
+`Blade.Runner.2049.1080p.UHD.BluRay…` — une moitié du nom corrigée, l'autre
+toujours fausse, ce qui est pire qu'un nom entièrement faux : il a l'air
+juste.
+
+`UHD` rejoint donc `JETONS_RESOLUTION_4K`. La fusion des marques voisines
+devenues identiques, écrite pour le Dolby Vision à l'incrément précédent,
+rend ici `1080p.BluRay` là où deux substitutions auraient écrit
+`1080p.1080p.BluRay`.
+
+`core/scanner.py`, `tests/test_resolution_nom.py`, § 8.7 de la spec.
+
+## [v0.8.8.7] — 2026-09-02
+
+### Le nom de sortie dit le HDR et l'audio de sortie
+
+Les deux dernières promesses d'un nom de release. Un `Film.2160p.DV` ramené
+en HDR10 n'est plus du Dolby Vision ; un `Film.TrueHD.7.1` dont la piste sort
+en E-AC3 5.1 annonce un format absent du fichier — le mensonge que
+`retitle()` corrige déjà dans le titre des pistes, à ceci près que le nom du
+fichier est ce qu'on lit en premier.
+
+**Dolby Vision.** `dv_action` décide : ramené en HDR10, les marques `DV`,
+`DoVi`, `Dolby Vision`, `HDR` et `HDR10` deviennent `HDR10` — un
+`Film.DV.HDR10` ne ressort pas `Film.HDR10.HDR10`, deux marques voisines
+devenues la même sont fondues. Ramené en SDR, elles partent toutes, `HDR10+`
+compris, et rien ne les remplace : une sortie SDR ne s'annonce pas.
+`HDR10+` survit en revanche au passage en HDR10 — le retrait du RPU le laisse
+intact, l'écraser effacerait une métadonnée présente. DV conservé : rien ne
+bouge.
+
+**Audio.** La marque de la famille transcodée devient celle du codec écrit —
+`TrueHD`, `True-HD`, `MLP`, `DTS-HD MA`, `DTS-X`, `DTS`, `FLAC`, `LPCM`… →
+`E-AC3` ou `AC3`, avec les mêmes jetons que les titres de pistes. Suivent ce
+que la conversion emporte vraiment : la disposition si elle se replie
+(`7.1` → `5.1`, les encodeurs AC3 et E-AC3 s'arrêtant au 5.1) et la mention
+`Atmos`, les objets sonores ne survivant pas à la conversion. Une famille
+qu'une piste conserve n'est pas touchée : sur un fichier dont l'AC3 est
+recopié et le TrueHD transcodé, `AC3` reste vrai.
+
+**SKIP est écarté d'un bloc.** La seule sortie qu'il produit est une greffe
+de pistes (`_[mux]`), que mkvmerge recopie sans rien convertir — le fichier y
+garde jusqu'à son RPU quand `dovi_tool` manque et que la décision retombe sur
+SKIP en gardant son `dv_action`.
+
+Les quatre réécritures — définition, codec, HDR, audio — se composent dans
+`FileDecision._stem_a_jour()` : `Film.2160p.DV.HDR10.x265.TrueHD.7.1-GROUP`
+ressort `Film.1080p.HDR10.E-AC3.5.1-GROUP_[hevc]`.
+
+Elles partagent désormais une seule machinerie de marques dans le scanner —
+`stem_marques_retirees()` et `stem_marques_remplacees()`, sur laquelle les
+trois fonctions nommées se reposent. Trois expressions régulières presque
+identiques dans un même fichier étaient le début d'une divergence. Elle porte
+les précautions une fois pour toutes : le jeton le plus long d'abord (sans
+quoi `DTS` l'emporterait sur `DTS-HD MA` en laissant un `.MA` orphelin), les
+séparateurs interchangeables (`DTS-HD.MA`, `DTS-HD-MA`, `DTS HD MA`), le mot
+entier, `HDR10+` qui ne perd pas son `HDR10`, la paire de crochets qui part
+avec la marque, et le nom qui ne finit pas sur un séparateur nu.
+
+`core/scanner.py`, `core/decision.py` (`JETONS_DV`, `JETONS_AUDIO`,
+`famille_audio`, `_stem_a_jour`, `_stem_audio_a_jour`),
+`tests/test_hdr_audio_nom.py`, § 8.7 de la spec.
+
+## [v0.8.8.6] — 2026-09-02
+
+### Le nom de sortie dit le codec de sortie
+
+Suite du correctif précédent, sur l'autre chose qu'un nom de release
+annonce. Un `Film.1080p.x264` réencodé en HEVC ressortait
+`Film.1080p.x264_[hevc]` : le nom portait deux codecs, dont un que le fichier
+n'a plus.
+
+C'est le suffixe produit qui dit le codec. Les marques de la source —
+`x264`, `x265`, `H264`, `H265` (avec ou sans point), `HEVC`, `AV1`, `VP9` —
+partent donc du nom écrit, y compris quand elles tombent juste : un `x265`
+gardé à côté de `_[hevc]` répète la même chose deux fois. Elles sont prises
+comme mot entier — le `AV1` d'`AV1ator`, le `VP9` de `MVP9` ne bougent pas —
+avec leur paire de crochets ou de parenthèses s'ils en ont une, et la
+ponctuation du nom se recolle : `Film.1080p.x265-GROUP` donne
+`Film.1080p-GROUP_[hevc]`, pas `Film.1080p.-GROUP_[hevc]`.
+
+Les mêmes réserves que pour la définition, et pour la même raison :
+
+- seul le **nom du fichier produit** change, jamais la source ;
+- le retrait ne joue que si le suffixe nomme vraiment le codec écrit —
+  `ENCODE_HEVC`, `ENCODE_H264`, `ENCODE_AV1`. Une vidéo recopiée (DV
+  conservé, `-c:v copy`) et un remux HDR10 sortent dans le codec de la
+  source : leur marque reste vraie, et `_[dv]` ou `_[hdr10]` ne la porte pas.
+
+Un nom qui ne serait fait que de marques est rendu tel quel — mieux vaut un
+nom redondant qu'un fichier nommé par son seul suffixe.
+
+`core/scanner.py` (`stem_sans_marque_codec`), `core/decision.py`
+(`ACTIONS_CODEC_NOMME`, `FileDecision.output_path`),
+`tests/test_codec_nom.py`, § 8.7 de la spec.
+
+## [v0.8.8.5] — 2026-09-02
+
+### Le nom de sortie dit la définition de sortie
+
+Un `Film.2160p.BluRay.mkv` rabattu en 1080p ressortait
+`Film.2160p.BluRay_[hevc].mkv` : le nom promettait une définition que le
+fichier n'a plus. Dans une médiathèque, c'est le nom — pas le conteneur — que
+regarde l'utilisateur pour choisir, et deux fichiers de définitions
+différentes s'y lisaient pareil.
+
+La marque de la source est désormais remplacée par celle de la sortie :
+`2160p`, `4K`, `4KLight` (avec ou sans séparateur) → `1080p`. Elle est prise
+comme mot entier — le `4K` de `H4K`, le `2160` de `3840x2160` et le `24K` d'un
+titre ne bougent pas — et rien n'est ajouté à un nom qui n'en porte aucune.
+
+Deux réserves, qui sont le sens même du correctif :
+
+- la substitution ne touche que le **nom du fichier produit**. La source n'est
+  jamais renommée, et aucune autre décision ne change ;
+- elle ne joue que si la définition baisse vraiment. `keep_4k` la laisse
+  tranquille, et une vidéo recopiée — Dolby Vision conservé, `-c:v copy` —
+  sort en 2160p quoi qu'annonce la cible du profil : y écrire `1080p` serait
+  exactement le mensonge que ce renommage supprime.
+
+`core/scanner.py` (`stem_resolution_ramenee`), `core/decision.py`
+(`FileDecision.output_path`), `tests/test_resolution_nom.py`, § 8.7 de la spec.
+
 ## [v0.8.8.4] — 2026-09-01
 
 ### Dix profils livrés au lieu d'un

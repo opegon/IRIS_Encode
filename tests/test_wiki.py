@@ -17,7 +17,9 @@ import pytest
 WIKI = Path(__file__).resolve().parent.parent / "wiki"
 
 _LIEN = re.compile(r"\[\[([^\]|#]+)(?:#([^\]|]+))?(?:\|[^\]]+)?\]\]")
-_TYPES = {"index", "log", "source", "entite", "concept", "synthese"}
+_TYPES = {"index", "log", "schema", "source", "entite", "concept", "synthese"}
+# Les pages de service : citées par le schéma ou l'index, pas par le contenu.
+_SERVICE = {"index", "log", "SCHEMA"}
 # Les pages dont le contenu vient de sources et doit dire lesquelles.
 _TYPES_SOURCES = {"entite", "concept", "synthese"}
 
@@ -72,18 +74,18 @@ def test_aucune_page_orpheline():
     pages = _pages()
     citees: set[str] = set()
     for nom, chemin in pages.items():
-        if nom in ("index", "log"):
+        if nom in _SERVICE:
             continue
         citees |= {c.strip() for c, _ in _LIEN.findall(_lire(chemin))
                    if c.strip() != nom}
-    orphelines = set(pages) - citees - {"index", "log"}
+    orphelines = set(pages) - citees - _SERVICE
     assert not orphelines, orphelines
 
 
 def test_l_index_catalogue_toutes_les_pages():
     index = _lire(WIKI / "index.md")
     catalogue = {c.strip() for c, _ in _LIEN.findall(index)}
-    absentes = set(_pages()) - catalogue - {"index", "log"}
+    absentes = set(_pages()) - catalogue - {"index"}
     assert not absentes, absentes
 
 

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.8.17 — document de référence courant
+**Version** : 0.8.9.0 — document de référence courant
 **Date** : 2026-09-24
 **Statut** : stable
 
@@ -2408,6 +2408,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.0 | 2026-09-24 | **Release** — rassemble 0.8.8.11 à 0.8.8.17 : sorties signées `.<caractéristique>.IRIS` en minuscules, OpenSubtitles.com depuis F9, dégradé Estim., **retrait du Dolby Vision en MP4 réparé** (§ 7.3), wiki du projet · le schéma du wiki passe dans `wiki/SCHEMA.md`, versionné |
 | 0.8.8.17 | 2026-09-24 | **Wiki sur le modèle « LLM Wiki » de Karpathy** : couches `raw/` (immuable), `sources/`, `entites/`, `concepts/`, `syntheses/` ; `index.md` et `log.md` ; frontmatter YAML, liens `[[…]]` ; schéma et opérations ingest / query / lint dans `CLAUDE.md` · `tests/test_wiki.py` : liens, orphelins, index, frontmatter, journal · aucun changement de code applicatif |
 | 0.8.8.16 | 2026-09-24 | **Wiki du projet** (`wiki/`) : base de connaissance rangée par sujet — chaîne de diffusion, codecs vidéo, HDR et Dolby Vision, audio, sous-titres, conteneurs, outils, synchronisation, noms de release, pièges et leçons, questions ouvertes — chaque fait avec son niveau de preuve · `CLAUDE.md` en fait la référence à consulter et à enrichir · aucun changement de code |
 | 0.8.8.15 | 2026-09-24 | **Retrait du DV en MP4 : son sans image, puis plantage sur téléviseur** (§ 7.3) : le MP4 était recomposé à partir du flux brut de `dovi_tool remove`, sans horodatage, et ffmpeg y écrivait PTS = DTS sur chaque image. Il passe maintenant en une passe ffmpeg depuis la source avec `-bsf:v dovi_rpu=strip=1` (`build_strip_mp4`, remplace `build_strip_remux_mp4`), et les horodatages de la source sont conservés · le profil 7 reste en MKV · un ffmpeg sans filtre `dovi_rpu` échoue avec un message (`strip_bsf_disponible`) · le MKV, vérifié sain, est inchangé |

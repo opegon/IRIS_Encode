@@ -51,3 +51,9 @@ concepts, synthèses ; [[index]] et journal ; frontmatter YAML ; liens
 [[jellyfin]], [[lg-oled-g3]] et [[opensubtitles]] reçoivent leur page. Les
 conventions passent dans le schéma (`CLAUDE.md`). Contrôle automatique :
 `tests/test_wiki.py` (liens, orphelins, index, frontmatter, journal).
+
+## [2026-09-24] lint | Le schéma rejoint le wiki
+
+Les conventions et les opérations quittent le `CLAUDE.md` du projet, exclu du
+dépôt, pour [[SCHEMA]] : un clone du dépôt a désormais le wiki et son mode
+d'emploi. `CLAUDE.md` n'en garde qu'un renvoi.

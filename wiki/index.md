@@ -6,8 +6,7 @@ maj: 2026-09-24
 # Index du wiki IRIS ENCODE
 
 Catalogue de toutes les pages, une ligne chacune. Tenu à jour à chaque
-ingestion. Conventions et opérations : section « Base de connaissance » du
-`CLAUDE.md` du projet. Historique : [[log]].
+ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 
 ## Synthèses
 

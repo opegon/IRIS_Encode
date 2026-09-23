@@ -1,5 +1,33 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.0] — 2026-09-24
+
+**Release.** Rassemble les sept incréments 0.8.8.11 à 0.8.8.17.
+
+### Bump de MINOR
+
+Sur instruction explicite (règle 5.1). La série change ce que l'application
+écrit sur le disque : le nom de chaque sortie, et le fichier produit par un
+retrait du Dolby Vision en MP4.
+
+- **0.8.8.11** — les sorties se nomment comme des releases et signent `.IRIS`.
+- **0.8.8.12** — le dégradé de la colonne Estim. part du gris.
+- **0.8.8.13** — un sous-titre OpenSubtitles.com se greffe depuis F9.
+- **0.8.8.14** — la caractéristique du suffixe s'écrit en minuscules
+  (`.hevc.IRIS`, `.dv.IRIS`) ; seule la marque `IRIS` est en capitales.
+- **0.8.8.15** — **retrait du Dolby Vision en MP4 réparé** : le téléviseur
+  jouait le son sans l'image, puis plantait. Les MP4 produits par un retrait
+  avant cette version sont à refaire depuis leur source.
+- **0.8.8.16** — un wiki rassemble ce que le projet a appris.
+- **0.8.8.17** — le wiki suit le modèle « LLM Wiki » de Karpathy.
+
+### Le schéma du wiki est versionné
+
+Les conventions et les opérations du wiki vivaient dans le `CLAUDE.md` du
+projet, qui est exclu du dépôt : un clone avait le wiki sans son mode
+d'emploi. Elles passent dans **`wiki/SCHEMA.md`** ; `CLAUDE.md` n'en garde
+qu'un renvoi. `tests/test_wiki.py` connaît le type `schema`.
+
 ## [v0.8.8.17] — 2026-09-24
 
 ### Le wiki suit le modèle « LLM Wiki » de Karpathy

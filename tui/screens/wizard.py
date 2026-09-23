@@ -181,8 +181,8 @@ class WizardScreen(TableNavMixin, Screen):
 
     def _afficher(self) -> None:
         # L'assistant annonce le nom de sortie à trois étapes. Le résoudre ici
-        # lui évite d'annoncer `Film_[hevc].mkv` pour un encodage qui écrira
-        # `Film_[hevc](2).mkv`. Déjà résolu, il n'est pas recalculé — c'est ce
+        # lui évite d'annoncer `Film.hevc.IRIS.mkv` pour un encodage qui écrira
+        # `Film.hevc.IRIS(2).mkv`. Déjà résolu, il n'est pas recalculé — c'est ce
         # qui permet de rappeler `_afficher()` après l'encodage sans que le nom
         # dérive.
         resoudre_sorties([self._dec])

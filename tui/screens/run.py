@@ -540,56 +540,67 @@ class RunScreen(TableNavMixin, Screen):
         # mkvmerge ne sait que recopier : sans ce fichier, le TrueHD annoncé
         # « → E-AC3 » sortait en TrueHD.
         mka  = source.with_name(f"{source.stem}.iris_audio.mka")
-        # Le MP4 est recomposé par ffmpeg, qui transcode dans la même passe.
-        passe_audio = (dec.output_container != ".mp4"
-                       and audio_pass_needed(dec.audio))
-        n_etapes = 4 if passe_audio else 3
+        # Le MP4 est recomposé par ffmpeg en une passe depuis la source : le
+        # filtre `dovi_rpu` retire le RPU, l'audio se transcode au passage.
+        mp4 = dec.output_container == ".mp4"
+        ffmpeg_path = getattr(self.app, "ffmpeg_path", "ffmpeg")
+        if mp4 and not dovi.strip_bsf_disponible(ffmpeg_path):
+            echouer("ffmpeg 7.1+ requis (filtre dovi_rpu)",
+                    "Le retrait du Dolby Vision vers du MP4 demande le filtre "
+                    "dovi_rpu, apparu avec ffmpeg 7.1. Mettez ffmpeg à jour "
+                    "depuis le preflight.")
+            self._encode_next()
+            return
+        passe_audio = not mp4 and audio_pass_needed(dec.audio)
+        n_etapes = 1 if mp4 else (4 if passe_audio else 3)
         s.percent = -1
 
         try:
-            # 1/N — extraction du flux HEVC (copie)
-            cmd = dovi.build_extract_hevc_command(
-                source, brut, getattr(self.app, "ffmpeg_path", "ffmpeg"),
-                quiet=False)
-            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
-            self.app.call_from_thread(
-                self._update_ffmpeg_line,
-                f"▶ 1/{n_etapes} Extraction du flux HEVC — copie, sans réencodage…")
-            self.app.call_from_thread(self._update_row, index)
+            # Le MP4 n'a pas d'intermédiaire : sa passe unique est la dernière.
+            if not mp4:
+                # 1/N — extraction du flux HEVC (copie)
+                cmd = dovi.build_extract_hevc_command(
+                    source, brut, getattr(self.app, "ffmpeg_path", "ffmpeg"),
+                    quiet=False)
+                self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+                self.app.call_from_thread(
+                    self._update_ffmpeg_line,
+                    f"▶ 1/{n_etapes} Extraction du flux HEVC — copie, sans réencodage…")
+                self.app.call_from_thread(self._update_row, index)
 
-            proc = EncoderProcess(cmd, dec.info.duration)
-            self._process = proc
-            proc.start()
-            for ligne, progress in proc.iter_progress():
-                s.last_line = ligne
-                if progress:
-                    s.percent = progress.percent
-                    self.app.call_from_thread(self._update_row, index)
-                    self.app.call_from_thread(self._update_header)
-            code = proc.wait()
-            self._process = None
+                proc = EncoderProcess(cmd, dec.info.duration)
+                self._process = proc
+                proc.start()
+                for ligne, progress in proc.iter_progress():
+                    s.last_line = ligne
+                    if progress:
+                        s.percent = progress.percent
+                        self.app.call_from_thread(self._update_row, index)
+                        self.app.call_from_thread(self._update_header)
+                code = proc.wait()
+                self._process = None
 
-            if s.state == FileState.SKIPPED:
-                return
-            if code != 0 or not brut.exists():
-                echouer(f"extraction HEVC : code {code}",
-                        f"L'extraction du flux HEVC a échoué (code {code}).")
-                return
+                if s.state == FileState.SKIPPED:
+                    return
+                if code != 0 or not brut.exists():
+                    echouer(f"extraction HEVC : code {code}",
+                            f"L'extraction du flux HEVC a échoué (code {code}).")
+                    return
 
-            # 2/N — retrait du RPU
-            self.app.call_from_thread(
-                self._update_cmd_lines,
-                f"{dovi_path} remove -i {brut.name} -o {nodv.name}")
-            self.app.call_from_thread(
-                self._update_ffmpeg_line,
-                f"▶ 2/{n_etapes} Retrait du RPU Dolby Vision par dovi_tool…")
-            s.percent = -1
-            self.app.call_from_thread(self._update_row, index)
+                # 2/N — retrait du RPU
+                self.app.call_from_thread(
+                    self._update_cmd_lines,
+                    f"{dovi_path} remove -i {brut.name} -o {nodv.name}")
+                self.app.call_from_thread(
+                    self._update_ffmpeg_line,
+                    f"▶ 2/{n_etapes} Retrait du RPU Dolby Vision par dovi_tool…")
+                s.percent = -1
+                self.app.call_from_thread(self._update_row, index)
 
-            if not dovi.remove_dv(brut, nodv, dovi_path):
-                echouer("dovi_tool remove a échoué",
-                        "dovi_tool n'a pas pu retirer le RPU du flux.")
-                return
+                if not dovi.remove_dv(brut, nodv, dovi_path):
+                    echouer("dovi_tool remove a échoué",
+                            "dovi_tool n'a pas pu retirer le RPU du flux.")
+                    return
 
             # 3/4 — pistes audio finales, quand la décision en transcode une.
             if passe_audio:
@@ -623,18 +634,18 @@ class RunScreen(TableNavMixin, Screen):
 
             # N/N — remux avec les pistes de la source. mkvmerge ne sait
             # écrire que du Matroska : quand le profil demande du MP4, c'est
-            # ffmpeg qui recompose.
-            if dec.output_container == ".mp4":
-                cmd = dovi.build_strip_remux_mp4(
-                    nodv, source, sortie,
-                    fps=dec.info.frame_rate,
+            # ffmpeg qui recompose, depuis la source.
+            if mp4:
+                cmd = dovi.build_strip_mp4(
+                    source, sortie,
                     sous_titres=[st.index for st in dec.subtitles_finales],
-                    ffmpeg_path=getattr(self.app, "ffmpeg_path", "ffmpeg"),
+                    ffmpeg_path=ffmpeg_path,
                     audio=dec.audio)
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
-                    f"▶ {n_etapes}/{n_etapes} Remux des pistes par ffmpeg…")
+                    "▶ 1/1 Retrait du RPU et remux par ffmpeg — copie, "
+                    "sans réencodage…")
                 proc = EncoderProcess(cmd, dec.info.duration)
                 self._process = proc
                 proc.start()

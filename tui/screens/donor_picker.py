@@ -2,7 +2,8 @@
 tui/screens/donor_picker.py — Choix d'un fichier donneur puis de ses pistes.
 
 Deux modales enchaînées :
-  DonorFileScreen  → navigation simple, retourne le fichier choisi
+  DonorFileScreen  → navigation simple, retourne le fichier choisi — ou,
+                     par `O`, un sous-titre téléchargé sur OpenSubtitles.com
   DonorTrackScreen → pistes du fichier via mkvmerge -J, sélection multiple
 
 Les tid retournés sont ceux de mkvmerge (numérotation globale), jamais les
@@ -69,8 +70,9 @@ def pick_external_tracks(screen, decision, on_added) -> None:
         chosen_donor = donor
         screen.app.push_screen(DonorTrackScreen(donor), _on_tracks)
 
+    langues = decision.profile.get("subtitle_languages", None) or ["fre", "eng"]
     screen.app.push_screen(
-        DonorFileScreen(source.parent, exclude=source), _on_donor)
+        DonorFileScreen(source.parent, exclude=source, langues=langues), _on_donor)
 
 
 class DonorFileScreen(ModalScreen["Path | None"]):
@@ -93,13 +95,17 @@ class DonorFileScreen(ModalScreen["Path | None"]):
 
     BINDINGS = [
         Binding("enter",     "select", "Ouvrir / Choisir", show=True, priority=True),
+        Binding("o",         "opensubtitles", "OpenSubtitles", show=True),
         Binding("escape",    "cancel", "Annuler",          show=True, priority=True),
         Binding("backspace", "cancel", "Retour",           show=False, priority=True),
     ]
 
-    def __init__(self, start_dir: Path, exclude: Path | None = None) -> None:
+    def __init__(self, start_dir: Path, exclude: Path | None = None,
+                 langues: list[str] | None = None) -> None:
         super().__init__()
         self._dir     = start_dir
+        self._video   = exclude
+        self._langues = langues or ["fre", "eng"]
         self._exclude = exclude.resolve() if exclude else None
         self._entries: list[Path | None] = []   # None = remonter d'un niveau
 
@@ -110,6 +116,7 @@ class DonorFileScreen(ModalScreen["Path | None"]):
             yield DataTable(id="donor-table", cursor_type="row",
                             show_header=False, zebra_stripes=True)
             yield Static(raccourcis([("enter", "Ouvrir / Choisir"),
+                                     ("o", "OpenSubtitles"),
                                      ("escape", "Annuler")]), id="donor-hint")
 
     def on_mount(self) -> None:
@@ -162,6 +169,18 @@ class DonorFileScreen(ModalScreen["Path | None"]):
             self._populate()
         else:
             self.dismiss(entry)
+
+    def action_opensubtitles(self) -> None:
+        """Le sous-titre téléchargé revient ici comme un fichier choisi."""
+        if self._video is None:
+            return
+        from .opensubtitles import OpenSubtitlesScreen
+
+        def _recu(chemin) -> None:
+            if chemin is not None:
+                self.dismiss(chemin)
+
+        self.app.push_screen(OpenSubtitlesScreen(self._video, self._langues), _recu)
 
     def action_cancel(self) -> None:
         self.dismiss(None)

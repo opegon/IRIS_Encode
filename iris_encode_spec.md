@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.8.10 — document de référence courant
-**Date** : 2026-09-02
+**Version** : 0.8.8.17 — document de référence courant
+**Date** : 2026-09-24
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -55,7 +55,8 @@ iris_encode/
 │   ├── joiner.py                 ← collage bout à bout de plusieurs parties
 │   ├── sync.py                   ← mesure de décalage par corrélation croisée
 │   ├── preview.py                ← lancement mpv (visualisation)
-│   └── meta.py                   ← recherche métadonnées IMDB / AlloCiné
+│   ├── meta.py                   ← recherche métadonnées IMDB / AlloCiné
+│   └── opensubtitles.py          ← sous-titres OpenSubtitles.com (API REST v1)
 ├── tui/
 │   ├── app.py                    ← application Textual principale
 │   ├── common.py                 ← formatage, styles DV, groupes de footer
@@ -64,6 +65,7 @@ iris_encode/
 │   │   ├── browser.py            ← navigation fichiers + sélection
 │   │   ├── tracks.py             ← sélection pistes + édition décision vidéo
 │   │   ├── donor_picker.py       ← choix du fichier donneur + de ses pistes
+│   │   ├── opensubtitles.py      ← résultats OpenSubtitles, touche O du donneur
 │   │   ├── sync.py               ← recalage des pistes externes
 │   │   ├── mux_run.py            ← exécution mkvmerge + progression
 │   │   ├── join.py               ← ordre des parties + collage + progression
@@ -346,7 +348,7 @@ passer, et tout réencodage le détruit. Deux issues, tranchées par
 | RPU réinjectable | `ENCODE_DV` | `→ HEVC → DV` | **appliqué** |
 | sinon | `ENCODE_HEVC` + `-c:v copy` | `→ DV (copie)` | sans effet |
 
-Les deux sorties portent le suffixe `_[dv]` — l'une comme l'autre rendent un
+Les deux sorties portent le suffixe `.dv.IRIS` (§ 8.7) — l'une comme l'autre rendent un
 fichier Dolby Vision ; ce qui les sépare est le débit, que la raison affichée
 explicite. Les sources sans DV sont encodées normalement par ce même profil.
 
@@ -457,6 +459,8 @@ Module wrapper autour de `dovi_tool`, utilisé en trois phases :
 | `extract_rpu(…)` | Extrait le RPU depuis un `.hevc` brut |
 | `build_extract_hevc_command(…)` | Commande ffmpeg de l'extraction (progression côté TUI) |
 | `remove_dv(hevc_in, hevc_out, dovi_path)` | `dovi_tool remove` : retire RPU et couche d'amélioration |
+| `build_strip_mp4(source, output, …)` | Retrait vers du MP4 : une passe ffmpeg depuis la source, filtre `dovi_rpu=strip=1` |
+| `strip_bsf_disponible(ffmpeg_path)` | ffmpeg connaît-il le filtre `dovi_rpu` (7.1+) ? |
 | `convert_p7_to_p8(…)` | Convertit RPU profil 7 → profil 8 (mode `-m 2`) |
 | `rpu_info(…)` | `{dv_subprofile, master_display, max_cll}` |
 | `make_x265_hdr_params(…)` | Liste de tokens `-x265-params` HDR10 |
@@ -480,12 +484,39 @@ lui aussi une couche de base HDR10, doublée d'une couche d'amélioration. Dans 
 deux cas, retirer le RPU suffit à obtenir un HDR10 valide — aucune image n'est
 recalculée, et le HDR10+ éventuel survit, ce qu'aucun réencodage ne permet.
 
+En Matroska :
+
 ```
 1. ffmpeg    : extrait le flux HEVC brut     (source     → *.iris_bl.hevc)
 2. dovi_tool : remove                        (*.iris_bl  → *.iris_nodv.hevc)
 3. ffmpeg    : pistes audio finales          (source     → *.iris_audio.mka)
-4. mkvmerge  : remux                         (→ <nom>_[hdr10].mkv)
+4. mkvmerge  : remux                         (→ <nom>.hdr10.IRIS.mkv)
 ```
+
+En MP4, une seule passe, depuis la source :
+
+```
+1. ffmpeg -c copy -bsf:v dovi_rpu=strip=1   (source → <nom>.hdr10.IRIS.mp4)
+```
+
+**Pourquoi deux chemins.** mkvmerge n'écrit que du Matroska. Jusqu'à la
+v0.8.8.14, le MP4 était recomposé par ffmpeg **à partir du flux brut** de
+l'étape 2. Or un flux Annex-B ne porte aucun horodatage : ffmpeg écrivait
+PTS = DTS sur chaque image (« pts has no value »), ce qui donne un ordre
+d'affichage faux dès qu'il y a des images B. Sur téléviseur, la lecture
+démarrait sur le son seul, sans image, puis plantait. mkvmerge, lui,
+reconstitue les horodatages d'un flux brut ; le MKV n'a jamais eu ce défaut
+(vérifié : paquets identiques à la source, seuls les NAL 62 en moins). Le MP4
+lit maintenant la source, dont il garde les horodatages, et le filtre
+`dovi_rpu` de ffmpeg (7.1+) retire le RPU et l'enregistrement de configuration
+DV. Un ffmpeg plus ancien fait échouer le fichier avec un message explicite
+(`strip_bsf_disponible`).
+
+**Le profil 7 reste en MKV** (`needs_mkv`) : le filtre ffmpeg ne retire que le
+RPU, et seul `dovi_tool remove` enlève aussi la couche d'amélioration.
+
+Avec `container = "auto"`, le retrait ne sort en MKV que si l'audio ou les
+sous-titres l'imposent (§ 8.6) : une source WEB-DL en E-AC3 + SubRip sort en MP4.
 
 **La décision audio s'applique ici aussi.** Ce chemin ne portait que la vidéo :
 mkvmerge recopiait les pistes de la source en bloc, quoi qu'ait annoncé l'écran
@@ -561,7 +592,7 @@ soit exactement ce que l'opération cherche à éviter.
 3. ffmpeg -c:v <encodeur> -f hevc                           →  enc.hevc
 4. dovi_tool inject-rpu -i enc.hevc --rpu-in film.rpu       →  dv.hevc
 5. (si transcodage audio) build_audio_command               →  audio.mka
-6. mkvmerge dv.hevc + pistes de la source                   →  sortie_[dv].mkv
+6. mkvmerge dv.hevc + pistes de la source                   →  sortie.dv.IRIS.mkv
 ```
 
 L'étape 1 est un tuyau : `dovi_tool extract-rpu` accepte `-` en entrée, ce qui
@@ -671,7 +702,8 @@ est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans
 standard. Dès qu'un des cas 1 à 3 s'applique, c'est l'encodage qui l'emporte :
 il supprime le RPU de lui-même, et stripper d'abord réécrirait le film pour
 rien. Une source 8.1 ou 7 qui n'a rien à réencoder sort donc en
-`<nom>_[hdr10].mkv`, toutes pistes conservées.
+`<nom>.hdr10.IRIS.mkv` ou `.mp4` selon le conteneur retenu (§ 7.3), toutes
+pistes conservées.
 
 **Mode HDR10 quality (`hdr10_quality = "quality"`)** — activé par
 `cinema_4k_quality`. Utilise `libx265` CPU + `-x265-params` avec `master-display`
@@ -802,11 +834,10 @@ se déduit pas du seul contenu : certains lecteurs digèrent mal le Matroska.
 liste au lieu de `0:s?`, et le dry-run affiche `MP4 −3 st` en style « modifié ».
 
 **Retrait de Dolby Vision en MP4.** mkvmerge ne sait écrire que du Matroska :
-quand la décision demande du MP4, le remux passe par
-`dovi.build_strip_remux_mp4()`. Un flux HEVC brut n'a pas d'horodatage, d'où la
-cadence donnée avant l'entrée ; et ses premières images portent des DTS
-négatifs que le muxeur MP4 **jetait** — deux images perdues sur 2270, mesurées.
-`-avoid_negative_ts make_zero` décale la base au lieu de rogner.
+quand la décision demande du MP4, ffmpeg produit le fichier en une passe depuis
+la source, avec `dovi.build_strip_mp4()` (§ 7.3). Il ne lit plus le flux brut
+sans horodatage, et le correctif de cadence (`-r`) et de DTS négatifs
+(`-avoid_negative_ts`) que ce flux exigeait n'a plus d'objet.
 
 **Conteneur de sortie** — `output_container` suit les pistes réellement conservées :
 écarter les sous-titres image libère le MP4 ; `mov_text` n'est jamais proposé en
@@ -823,23 +854,53 @@ n'affiche rien de tel.
 
 ### 8.7 Nommage des sorties
 
+Depuis la v0.8.8.11, le nom suit l'usage des noms de release : les marques
+sont séparées par des **points**, et toute sortie finit par **`.IRIS`**,
+précédée de la caractéristique qui dit ce que le traitement a fait.
+
 | Opération | Sortie |
 |---|---|
-| Réencodage HEVC | `nom_[hevc].mp4` / `.mkv` |
-| Réencodage H264 | `nom_[H264].mp4` / `.mkv` |
-| Réencodage AV1 | `nom_[av1].mp4` / `.mkv` |
-| Remux mkvmerge | `nom_[mux].mkv` |
-| Extrait de contrôle | `nom_[extrait].mkv` |
+| Réencodage HEVC | `nom.hevc.IRIS.mp4` / `.mkv` |
+| Réencodage H264 | `nom.h264.IRIS.mp4` / `.mkv` |
+| Réencodage AV1 | `nom.av1.IRIS.mp4` / `.mkv` |
+| Dolby Vision conservé (copie ou RPU réinjecté) | `nom.dv.IRIS.mkv` |
+| Retrait du RPU (remux HDR10) | `nom.hdr10.IRIS.mkv` |
+| Greffe de pistes (mkvmerge) | `nom.mux.IRIS.mkv` |
+| Collage de parties (§ 9bis) | `nom.join.IRIS.mkv` |
+| Extrait de contrôle (dossier temporaire) | `nom_[extrait].mkv` |
 
-**Le suffixe d'encodage se remplace, il ne s'empile pas.** Réencoder un
-`Film_[av1].mkv` en HEVC donne `Film_[hevc].mkv`, pas `Film_[av1]_[hevc].mkv`.
-`scanner.stem_sans_suffixe_produit()` retire du nom le suffixe qu'il porte —
-dérivé de `suffixes_produits()`, donc de `SUFFIX_BY_ACTION`, jamais recopié —
-avant que le nouveau soit posé. `_[mux]`, `_[join]` et `_[extrait]` n'en font
-pas partie : ils disent d'où vient le fichier, pas comment il a été encodé.
+`SUFFIX_BY_ACTION` porte les suffixes d'encodage, `MUX_SUFFIX` et
+`JOIN_SUFFIX` les deux autres ; tous dérivent de `scanner.MARQUE_IRIS`. Depuis
+la v0.8.8.14, la caractéristique ajoutée s'écrit **en minuscules** — seule la
+marque `IRIS` est en capitales. Les marques de la source gardent leur casse :
+un `DV` réécrit en `HDR10` reste une marque de release, pas un suffixe. La
+casse de `IRIS` compte : c'est ce qui distingue une sortie d'un titre qui
+finirait par `.Iris`. Celle de `mux` / `join` ne compte pas, pour que les
+sorties écrites en capitales avant la v0.8.8.14 restent des entrées.
+
+**Une caractéristique que le nom annonce déjà n'est pas répétée**
+(`decision.suffixe_sans_redite()`) : `Film.2160p.DV` dont le Dolby Vision est
+conservé sort `Film.2160p.DV.IRIS`, pas `…DV.dv.IRIS` ; ramené en HDR10, son
+`DV` devient `HDR10` (voir plus bas) et le suffixe se réduit à `.IRIS`. Un nom
+muet la reçoit : `Film.2160p` → `Film.2160p.hdr10.IRIS`. `HDR10+` vaut
+annonce du HDR10. La caractéristique reste quand la retirer ferait passer une
+sortie d'encodage pour un collage ou une greffe (`Film.DV.join` → `.dv.IRIS`).
+
+**La marque se remplace, elle ne s'empile pas.** Réencoder un
+`Film.av1.IRIS.mkv` en HEVC donne `Film.hevc.IRIS.mkv`, pas
+`Film.av1.IRIS.hevc.IRIS.mkv`. `scanner.stem_sans_suffixe_produit()` retire la
+marque `.IRIS` finale (et son compteur de collision) ; la caractéristique qui
+la précède est une marque comme une autre, que les réécritures ci-dessous
+effacent si elle est devenue fausse — `AV1` part avec les marques de codec.
+`mux` et `join` restent : ils disent d'où vient le fichier
+(`Film.join.IRIS` → `Film.join.hevc.IRIS`).
+
+Les noms de l'ancien schéma (`_[hevc]`, `_[av1]`…) ne sont plus reconnus comme
+sorties : ils redeviennent des sources. Leur `[hevc]` reste une marque de
+codec, qu'un réencodage efface comme un `x265`.
 
 **La marque de résolution suit la définition de sortie.** Un `Film.2160p.mkv`
-rabattu en 1080p sortait `Film.2160p_[hevc].mkv` : le nom promettait une
+rabattu en 1080p sortait `Film.2160p.hevc.IRIS.mkv` : le nom promettait une
 définition que le fichier n'a plus, et deux fichiers de définitions
 différentes se lisaient pareil dans une médiathèque.
 `scanner.stem_resolution_ramenee()` remplace la marque de la source par celle
@@ -857,18 +918,18 @@ mensonge que ce renommage supprime. La source n'est jamais renommée.
 
 **La marque de codec s'efface derrière le suffixe.** Même raison, autre
 promesse du nom : un `Film.1080p.x264` réencodé en HEVC sortait
-`Film.1080p.x264_[hevc]`, deux codecs annoncés dont un faux.
+`Film.1080p.x264.hevc.IRIS`, deux codecs annoncés dont un faux.
 `scanner.stem_sans_marque_codec()` retire du nom écrit les marques `x264`,
 `x265`, `H264`, `H265` (avec ou sans point), `HEVC`, `AV1` et `VP9` — prises
 comme mot entier, avec leur paire de crochets ou de parenthèses s'ils en ont
 une, la ponctuation du nom se recollant derrière (`Film.1080p.x265-GROUP` →
 `Film.1080p-GROUP`). Une marque qui tombe juste part aussi : à côté de
-`_[hevc]`, un `x265` répète la même chose deux fois.
+`.hevc.IRIS`, un `x265` répète la même chose deux fois.
 
 Le retrait ne joue que pour les actions de `ACTIONS_CODEC_NOMME` —
 `ENCODE_HEVC`, `ENCODE_H264`, `ENCODE_AV1` — et hors vidéo recopiée : un
-remux HDR10 (`_[hdr10]`, aucun réencodage) et une vidéo copiée pour conserver
-le Dolby Vision (`_[dv]`) sortent dans le codec de la source, que le suffixe
+remux HDR10 (`.hdr10.IRIS`, aucun réencodage) et une vidéo copiée pour conserver
+le Dolby Vision (`.dv.IRIS`) sortent dans le codec de la source, que le suffixe
 ne nomme pas. Un nom fait des seules marques est rendu tel quel.
 
 **La marque HDR suit le sort du Dolby Vision.** `dv_action` décide seul :
@@ -893,13 +954,13 @@ AC3 ou E-AC3. Une famille qu'une autre piste conserve n'est pas touchée — un
 AC3 recopié à côté d'un TrueHD transcodé garde sa marque.
 
 **SKIP est écarté d'un bloc.** La seule sortie qu'il produit est une greffe
-de pistes (`_[mux]`, § 10.4), que mkvmerge recopie sans rien convertir : le
+de pistes (`.mux.IRIS`, § 10.4), que mkvmerge recopie sans rien convertir : le
 fichier y garde jusqu'à son RPU quand `dovi_tool` manque et que la décision
 retombe sur SKIP en gardant son `dv_action`.
 
 Les quatre réécritures se composent dans `FileDecision._stem_a_jour()` :
 `Film.2160p.DV.HDR10.x265.TrueHD.7.1-GROUP` ressort
-`Film.1080p.HDR10.E-AC3.5.1-GROUP_[hevc]`. Elles s'appuient sur une seule
+`Film.1080p.HDR10.E-AC3.5.1-GROUP.hevc.IRIS`. Elles s'appuient sur une seule
 machinerie dans le scanner — `stem_marques_retirees()` et
 `stem_marques_remplacees()` — qui porte les précautions une fois pour
 toutes : jeton le plus long d'abord (sans quoi `DTS` l'emporterait sur
@@ -910,12 +971,12 @@ jamais sur un séparateur nu.
 
 **Deux collisions, une numérotation.** Remplacer fait apparaître ce que
 l'empilement masquait : la cible peut être la source elle-même
-(`Film_[hevc].mkv` réencodé en HEVC — le geste courant, rebaisser un débit), ou
-un fichier déjà présent (`Film_[av1].mkv` réencodé en HEVC quand un
-`Film_[hevc].mkv` existe). Dans les deux cas, `decision.resoudre_sorties()`
-numérote : `Film_[hevc](2).mkv`. Rien n'est écrasé, rien n'est refusé. Le
-compteur repart avec le suffixe au passage suivant — `Film_[hevc](2)` réencodé
-redonne une base `Film`, sans quoi l'empilement reviendrait par cette porte.
+(`Film.hevc.IRIS.mkv` réencodé en HEVC — le geste courant, rebaisser un débit), ou
+un fichier déjà présent (`Film.av1.IRIS.mkv` réencodé en HEVC quand un
+`Film.hevc.IRIS.mkv` existe). Dans les deux cas, `decision.resoudre_sorties()`
+numérote : `Film.hevc.IRIS(2).mkv`. Rien n'est écrasé, rien n'est refusé. Le
+compteur repart avec la marque au passage suivant — `Film.hevc.IRIS(2)` réencodé
+redonne `Film.hevc.IRIS`, sans quoi l'empilement reviendrait par cette porte.
 
 **Le nom est figé une fois.** `resoudre_sorties()` est appelé à la construction
 de `RunScreen` — dernier moment avant l'écriture — et pose `output_override` sur
@@ -1033,9 +1094,40 @@ d'étirement passe obligatoirement par mkvmerge.
 
 ### 9.7 Après un mux
 
-Le fichier produit (`nom_[mux].mkv`) **devient le fichier de travail** : la décision est
+Le fichier produit (`nom.mux.IRIS.mkv`) **devient le fichier de travail** : la décision est
 réindexée dessus côté browser, et les sélections de pistes faites sur l'ancien fichier
 ne s'appliquent plus.
+
+### 9.8 Sous-titres OpenSubtitles.com — `core/opensubtitles.py`
+
+`O` dans le choix du donneur (`DonorFileScreen`, donc depuis les pistes, le
+recalage et l'assistant) ouvre `OpenSubtitlesScreen`. Le `.srt` téléchargé est
+rendu au donneur **comme un fichier choisi sur le disque** : pistes, langue,
+recalage suivent sans rien savoir de sa provenance.
+
+| Décision | Raison |
+|---|---|
+| **Deux recherches fusionnées** | Par empreinte (`moviehash`) : sous-titres déposés pour cette release exacte, donc synchronisés — marqués `≡`, classés en tête. Par nom (`meta.parse_title`, plus `season_number`/`episode_number` sur un `SxxEyy`, sinon `year`) : rattrape un fichier réencodé, dont l'empreinte n'est plus celle de sa release. Fusion par `file_id`. Tri : release exacte, puis langue dans l'ordre du profil, puis téléchargements. |
+| **Pages lues jusqu'à 5** | L'API rend 50 résultats par page ; la première seule perdait des sous-titres français derrière des anglais plus téléchargés (Inception : 44 résultats lus sur 72, contre 64 après). Au-delà de 250, la liste ne se lit plus. |
+| **Langues du profil** | `subtitle_languages` (ISO 639-2) traduites au format de l'API ; `fre`/`eng` si le profil n'en dit rien. Paramètres triés : l'API redirige une requête qui ne l'est pas. |
+| **Dossier temporaire** | `<tmp>/iris_opensubtitles/<stem>.<file_id>.<code>.srt`. Le fichier ne sert qu'à la greffe : rien ne s'ajoute à la médiathèque, aucun lecteur ne l'affichera en double. La langue en dernier fragment est lue par `muxer.guess_language`. |
+| **Sous-titres en plusieurs CD écartés** | Ils ne se greffent pas sur un fichier unique. |
+
+Empreinte : taille du fichier + somme des mots 64 bits little-endian des 64
+premiers et 64 derniers Kio, modulo 2⁶⁴, sur 16 chiffres hexadécimaux ; aucune
+sous 128 Kio (algorithme de l'extension Kodi officielle).
+
+Configuration, section `[opensubtitles]` de `config.toml` (non suivi par git) :
+`api_key` (clé d'application, opensubtitles.com/consumers — exigée à chaque
+appel), `username` et `password` (exigés au téléchargement seulement ; 20 par
+jour en compte gratuit). `User-Agent` : `IRIS Encode v<version>`. Le jeton de
+connexion vit le temps de l'écran ; un compte VIP est servi par l'hôte que
+`login` annonce (`base_url`).
+
+Les refus se lisent en français, sans trace Python : clé absente ou compte
+manquant avant tout appel, 401 (identifiants), 406 (quota du jour, heure de
+remise), 429 (`Retry-After`), réseau injoignable. Le quota restant est notifié
+après chaque téléchargement.
 
 ---
 
@@ -1053,7 +1145,7 @@ que le `1bis` du `GUIDE.md`.
 | Choix | Raison |
 |---|---|
 | **mkvmerge en mode `append`** (`fichier1 + fichier2`) | Sans réencodage : il recale les horodatages de chaque partie sur la fin de la précédente. Le démultiplexeur `concat` de ffmpeg exige des paramètres de flux strictement identiques et gère mal les pistes multiples. |
-| **Suffixe `_[join]`, absent de `SUFFIX_BY_ACTION`** | Le fichier collé est une *entrée* de travail, pas une sortie d'encodage : le scan doit continuer à le voir (§ 15.2). L'écarter comme `_[hevc]` rendrait le collage inutile. |
+| **Suffixe `.join.IRIS`, absent de `SUFFIX_BY_ACTION`** | Le fichier collé est une *entrée* de travail, pas une sortie d'encodage : le scan doit continuer à le voir (`ENTREES_IRIS`, § 15.2). L'écarter comme un `.hevc.IRIS` rendrait le collage inutile. |
 | **Contrôle avant lancement** | mkvmerge refuse d'apparier des pistes qui ne se correspondent pas. L'apprendre au bout d'une copie de 30 Go n'est pas une option. |
 | **Ordre montré et corrigeable** | Deux parties inversées donnent un fichier de la **bonne durée**, donc faux sans que rien ne le signale. C'est la seule chose que le collage ne peut pas deviner sans risque. |
 | **Les parties sont conservées** | Le collage n'efface rien. `Ctrl+D` reste le seul geste qui supprime. |
@@ -1064,7 +1156,7 @@ que le `1bis` du `GUIDE.md`.
 |---|---|
 | `ordre_naturel(parts)` | Tri où les nombres comptent comme des nombres : `part1 < part2 < part10`. Clé faite de tuples homogènes, jamais un `int` face à une `str`. |
 | `nom_commun(parts)` | Nom du tout, déduit du préfixe commun, marqueur de numérotation retiré (`part`, `CD`, `pt`, `disque`, `vol`, `tome`…). `Film part1` + `Film part2` → `Film`. |
-| `join_output_path(parts)` | `<nom commun>_[join].mkv`, dans le dossier des parties. |
+| `join_output_path(parts)` | `<nom commun>.join.IRIS.mkv`, dans le dossier des parties. |
 | `controler(infos)` | Rend un `Controle(blocages, avertissements)` — voir 9bis.3. |
 | `build_join_command(parts, out)` | La commande mkvmerge. Lève `ValueError` sur moins de deux parties, une partie en double, ou une sortie qui écrase une partie. |
 | `duree_attendue(infos)` | Somme des durées des parties. |
@@ -1090,7 +1182,7 @@ codecs, sa définition et son jeu de pistes.
 ### 9bis.4 Commande type
 
 ```
-mkvmerge --gui-mode -o "D:/films/Film_[join].mkv"
+mkvmerge --gui-mode -o "D:/films/Film.join.IRIS.mkv"
          "D:/films/Film part1.mkv" + "D:/films/Film part2.mkv"
 ```
 
@@ -1324,7 +1416,7 @@ l'opération est refusée en amont plutôt que d'échouer en cours d'encodage.
 
 | Mode | Condition | Encodeur | Notes |
 |---|---|---|---|
-| **Retrait DV** | `action == STRIP_DV` | aucun — dovi_tool + mkvmerge | `build_command` retourne `[]`, ffmpeg n'est pas appelé (§ 7.3) |
+| **Retrait DV** | `action == STRIP_DV` | aucun — dovi_tool + mkvmerge (MKV), filtre `dovi_rpu` de ffmpeg (MP4) | `build_command` retourne `[]` ; le chemin est dans `RunScreen._strip_dv` (§ 7.3) |
 | **Réencodage DV** | `action == ENCODE_DV` | nvenc / libx265 | Passe vidéo seule en Annex-B, sans filtre ; RPU réinjecté après (§ 7.4) |
 | **DV copy** | `dv_action == DV`, RPU non réinjectable | `-c:v copy` | Pas de réencodage, pas de hwaccel |
 | **HDR10 quality** | `dv_action == HDR10` + `hdr10_quality == "quality"` | `libx265` CPU | Métadonnées via `-x265-params`, `pix_fmt yuv420p10le` |
@@ -1568,8 +1660,9 @@ Conventions transverses :
   produire une valeur plausible et fausse (`3:17:2`).
 - **Un afficheur qui montre un nom se construit en `markup=False`.** `Static`
   interprète par défaut ce qui ressemble à une balise entre crochets, et la
-  convention de nommage du projet — `_[mux]`, `_[hevc]`, `_[av1]`, `_[hdr10]`,
-  `_[extrait]`, `_[premux]` — est faite de cette syntaxe. Un nom affiché sans
+  convention de nommage du projet jusqu'à la v0.8.8.10 — `_[mux]`, `_[hevc]`,
+  `_[av1]`, `_[hdr10]` — et ses fichiers temporaires `_[extrait]`, `_[premux]`
+  sont faits de cette syntaxe. Un nom affiché sans
   précaution y perd son suffixe, et un identifiant de profil écrit
   `[serie_basic]` disparaît en entier. Le piège est irrégulier : `_[H264]`
   survit, Rich ne consommant que ce qui ressemble à un nom de style valide.
@@ -1719,12 +1812,14 @@ Code couleur décision : table unique `core.decision.Emphase` (§ 8.3) — le ca
 ordinaire ne porte aucune couleur, le vert dit « sans réencodage », le
 `dark_orange` gras est réservé aux alertes.
 
-**La colonne Estim. porte un dégradé continu**, du vert franc (gain de −50 % et
-au-delà) au jaune (autour de zéro) puis à l'orange des alertes (perte de +25 %
-et au-delà), interpolé en RGB entre ces trois teintes. L'échelle est bornée :
-l'œil ne distingue pas −60 % de −80 %, et sans borne le gros du corpus — entre
-−20 % et −50 % — deviendrait indiscernable. Une sortie plus grosse que sa source
-garde le gras des alertes, que le seul virage de teinte ne rendrait pas.
+**La colonne Estim. porte un dégradé continu** centré sur le gris : un écart
+nul est gris (`rgb(138,138,138)`) ; un gain part linéairement vers le vert
+profond (`rgb(0,120,0)`), atteint à −100 % ; une sortie plus grosse que sa
+source va du jaune (`rgb(215,175,0)`) à l'orange des alertes (`rgb(255,135,0)`),
+atteint à +100 % et conservé au-delà. La perte part du jaune et non du gris :
+un gris-orange pâle ne se distinguerait pas d'un écart nul. Le gris vaut dès
+que la cellule affiche « 0% » (écart arrondi nul), pour qu'un `+0%` ne soit
+jamais coloré. Interpolation RGB, bornes `_DEGRADE_GAIN` / `_DEGRADE_PERTE`.
 
 C'est une **exception assumée** à la table d'emphases : le vert y dit « traité
 sans réencodage », et il dit ici « la sortie est plus petite ». Sur une même
@@ -1734,8 +1829,8 @@ aucune autre couleur n'est écrite en dur dans cet écran.
 
 Une ligne dont la vidéo est **recopiée** — remux, retrait de RPU, Dolby Vision
 conservé — reste hors du dégradé : sa sortie pèsera la taille de la source,
-l'écart vaut zéro, et la poser sur l'échelle la placerait en plein jaune, la
-teinte la plus voyante, pour un cas où rien n'est recalculé. Le prédicat
+l'écart vaut zéro ; elle s'affiche en `dim`, sans pourcentage, pour un cas où
+rien n'est recalculé. Le prédicat
 `_sortie_recopiee()` sert à la fois l'estimation et la couleur.
 
 #### Les sorties de l'application restent visibles
@@ -1935,14 +2030,14 @@ rescanne rien : les `VideoInfo` sont déjà en mémoire côté browser.
 
 ```
 ┌─ IRIS ENCODE ────────────────────────────────── 14:22 ─┐
-│ Collage — 3 parties ── Film_[join].mkv                  │
+│ Collage — 3 parties ── Film.join.IRIS.mkv               │
 ├─ # ─┬─ Fichier ──────────┬─ Durée ─┬─ Pistes ─┬─ Collage ──────┤
 │  1  │ Film part1.mkv     │ 1:04:12 │ V+2A+1S  │ référence      │
 │  2  │ Film part2.mkv     │ 0:58:47 │ V+2A+1S  │ ✓              │
 │  3  │ Film part10.mkv    │ 0:41:03 │ V+2A+0S  │ ✓ avec réserve │
 ├─────────────────────────────────────────────────────────────────┤
 │ Durée attendue du tout : 2:44:02                                │
-│ Sortie : Film_[join].mkv                                        │
+│ Sortie : Film.join.IRIS.mkv                                     │
 │ Collage  ███████████████████████░░░░░░░░░░░░  62%               │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -2139,19 +2234,20 @@ class VideoInfo:
 triés par chemin. Mêmes filtres que `scan_directory` : extensions supportées, exclusion
 de ce que l'application a elle-même encodé.
 
-**Cette exclusion est dérivée, jamais recopiée.** `scanner.suffixes_produits()` la
-construit depuis `SUFFIX_BY_ACTION` — donc `_[hevc]`, `_[H264]`, `_[av1]` et `_[hdr10]`,
-et tout suffixe qu'une action vidéo apprendrait à écrire. La paire en dur qui la
-précédait ne connaissait que les deux premiers, à quatre endroits distincts : une sortie
+**Cette exclusion tient à une seule marque.** `scanner.deja_produit()` écarte tout
+nom qui finit par `.IRIS` (compteur de collision `(n)` admis) — donc toute
+sortie d'encodage, quelle que soit sa caractéristique, et tout suffixe qu'une action
+vidéo apprendrait à écrire. Jusqu'à la v0.8.8.10 elle était dérivée de la liste des
+suffixes `_[…]` ; la paire en dur qui la précédait encore ne connaissait que les deux premiers, à quatre endroits distincts : une sortie
 AV1 reparaissait au scan, `av1` n'est pas dans `CODECS_LISIBLES`, et la décision tombait
 en CAS 3 pour proposer de la réencoder en HEVC — sur `basic_delete`, qui a
 `delete_source = true`, en effaçant l'original au passage.
 
-`MUX_SUFFIX` en est **volontairement absent** : un `_[mux]` n'est pas un encodage mais
+`.mux.IRIS` en est **volontairement excepté** (`ENTREES_IRIS`) : une greffe n'est pas un encodage mais
 une greffe de pistes, et l'encoder ensuite est un geste légitime que l'écarter du scan
 rendrait impossible — le fichier ne serait même pas visible.
 
-`JOIN_SUFFIX` (`_[join]`) en est absent pour la même raison, en plus forte : un fichier
+`.join.IRIS` en est excepté pour la même raison, en plus forte : un fichier
 collé n'existe **que** pour être encodé ensuite (§ 9bis). L'écarter du scan viderait la
 fonction de son objet.
 
@@ -2312,6 +2408,13 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.8.17 | 2026-09-24 | **Wiki sur le modèle « LLM Wiki » de Karpathy** : couches `raw/` (immuable), `sources/`, `entites/`, `concepts/`, `syntheses/` ; `index.md` et `log.md` ; frontmatter YAML, liens `[[…]]` ; schéma et opérations ingest / query / lint dans `CLAUDE.md` · `tests/test_wiki.py` : liens, orphelins, index, frontmatter, journal · aucun changement de code applicatif |
+| 0.8.8.16 | 2026-09-24 | **Wiki du projet** (`wiki/`) : base de connaissance rangée par sujet — chaîne de diffusion, codecs vidéo, HDR et Dolby Vision, audio, sous-titres, conteneurs, outils, synchronisation, noms de release, pièges et leçons, questions ouvertes — chaque fait avec son niveau de preuve · `CLAUDE.md` en fait la référence à consulter et à enrichir · aucun changement de code |
+| 0.8.8.15 | 2026-09-24 | **Retrait du DV en MP4 : son sans image, puis plantage sur téléviseur** (§ 7.3) : le MP4 était recomposé à partir du flux brut de `dovi_tool remove`, sans horodatage, et ffmpeg y écrivait PTS = DTS sur chaque image. Il passe maintenant en une passe ffmpeg depuis la source avec `-bsf:v dovi_rpu=strip=1` (`build_strip_mp4`, remplace `build_strip_remux_mp4`), et les horodatages de la source sont conservés · le profil 7 reste en MKV · un ffmpeg sans filtre `dovi_rpu` échoue avec un message (`strip_bsf_disponible`) · le MKV, vérifié sain, est inchangé |
+| 0.8.8.14 | 2026-09-23 | **Caractéristiques du suffixe en minuscules** (§ 8.7) : `.hevc.IRIS`, `.h264.IRIS`, `.av1.IRIS`, `.dv.IRIS`, `.hdr10.IRIS`, `.mux.IRIS`, `.join.IRIS` — seule la marque reste en capitales · `mux` / `join` reconnus sans casse, les greffes et collages écrits en capitales restent des entrées |
+| 0.8.8.13 | 2026-09-23 | **Sous-titres OpenSubtitles.com depuis F9** (§ 9.8) : `O` dans le choix du donneur cherche par empreinte puis par nom dans les langues du profil, les sous-titres de la release exacte en tête (`≡`) ; `↵` télécharge dans le dossier temporaire et le `.srt` reprend le chemin ordinaire du donneur — pistes, langue déduite du nom, recalage · section `[opensubtitles]` de `config.toml` (`api_key`, `username`, `password`) · refus de l'API lus en français · `tests/test_opensubtitles.py`, smoke [21] et [21b] |
+| 0.8.8.12 | 2026-09-23 | **Le dégradé de la colonne Estim. part du gris** (§ 14.1) : 0 % gris (écart arrondi nul), gain → vert profond atteint à −100 %, perte → du jaune à l'orange des alertes, atteint à +100 % et conservé au-delà. Remplace l'échelle vert → jaune → orange bornée à −50 % / +25 %, qui mettait le jaune — la teinte la plus voyante — sur les écarts nuls, et saturait le vert dès −50 % · plus de gras sur les pertes · `tests/test_sorties_visibles.py` |
+| 0.8.8.11 | 2026-09-23 | **Nommage des sorties à la manière des releases** (§ 8.7, § 15.2) : les marques se séparent par des points et toute sortie finit par `.IRIS`, précédée de sa caractéristique — `.HEVC.IRIS`, `.H264.IRIS`, `.AV1.IRIS`, `.DV.IRIS`, `.HDR10.IRIS`, et `.MUX.IRIS` / `.JOIN.IRIS` pour la greffe et le collage · une caractéristique que le nom annonce déjà n'est pas répétée (`suffixe_sans_redite`) · le filtre ne regarde plus que la marque `.IRIS` finale, `MUX` et `JOIN` exceptés ; les noms `_[…]` ne sont plus reconnus · `scanner.suffixes_produits` disparaît · `tests/test_nom_iris.py` |
 | 0.8.8.10 | 2026-09-02 | **La colonne Audio d'un retrait de RPU dit ce que le fichier contiendra** : `audio_summary` faisait une exception pour `STRIP_DV` et affichait toutes les pistes de la source — vrai jusqu'à la v0.8.8.0, où le retrait a appris à appliquer la décision audio (Matroska produit à part pour les transcodées, `--audio-tracks` pour les exclues). Depuis, c'est l'exception qui promettait des pistes que le fichier n'aurait pas, avec un commentaire affirmant l'inverse du code · `tests/test_strip_dv.py` verrouille le sens neuf |
 | 0.8.8.9 | 2026-09-02 | **Une sortie SDR perd aussi sa profondeur** (§ 8.7) : les marques HDR partaient déjà, celle de la profondeur restait — or le tone mapping finit sur `format=yuv420p`, le fichier ressort en 8 bits et un `10bits` dans son nom promet une précision qu'il n'a plus. `10bit`, `10bits`, `10 bits`, `10-bit` partent avec le reste ; en sortie HDR10 la profondeur reste vraie (`yuv420p10le`) et n'est pas touchée · `Dolby Video` rejoint les marques Dolby Vision reconnues |
 | 0.8.8.8 | 2026-09-02 | **`UHD` est une marque de définition comme les autres** (§ 8.7) : `Blade.Runner.2049.2160p.UHD.BluRay` rabattu en 1080p ressortait `1080p.UHD.BluRay` — une moitié corrigée, l'autre toujours fausse. `UHD` rejoint `JETONS_RESOLUTION_4K`, et la fusion des marques voisines devenues identiques rend `1080p.BluRay` là où deux substitutions auraient écrit `1080p.1080p.BluRay` |

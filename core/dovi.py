@@ -11,9 +11,10 @@ Fonctions principales :
   - make_x265_hdr_params() : forge la chaîne -x265-params pour HDR10
 
 Retrait pur du DV (orchestré par tui/screens/run.py), sans réencodage :
-  1. ffmpeg     : extract HEVC brut          (input.mkv  → temp.hevc)
-  2. dovi_tool  : remove                     (temp.hevc  → temp.nodv.hevc)
-  3. mkvmerge   : remux avec les pistes      (→ sortie_[hdr10].mkv)
+  MKV : 1. ffmpeg     : extract HEVC brut     (input.mkv  → temp.hevc)
+        2. dovi_tool  : remove                (temp.hevc  → temp.nodv.hevc)
+        3. mkvmerge   : remux avec les pistes (→ sortie.hdr10.IRIS.mkv)
+  MP4 : 1. ffmpeg -bsf:v dovi_rpu=strip=1     (input → sortie.hdr10.IRIS.mp4)
 
 Pipeline DV→HDR10 par réencodage (orchestré par encoder.py) :
   1. ffmpeg     : extract HEVC brut          (input.mkv → temp.hevc)
@@ -103,51 +104,63 @@ def build_extract_hevc_command(input_path: Path, output_hevc: Path,
     return cmd
 
 
-def build_strip_remux_mp4(video: Path, source: Path, output: Path,
-                          fps: str, sous_titres: list[int],
-                          ffmpeg_path: str = "ffmpeg",
-                          audio: list | None = None) -> list[str]:
-    """Remux du flux dépouillé et des pistes de la source, vers du MP4.
+def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
+                    ffmpeg_path: str = "ffmpeg",
+                    audio: list | None = None) -> list[str]:
+    """Retrait du RPU vers du MP4, en une passe ffmpeg depuis la source.
 
     mkvmerge ne sait écrire que du Matroska : quand le profil demande du MP4,
-    c'est ffmpeg qui recompose. Un flux HEVC brut ne porte aucun horodatage,
-    d'où la cadence donnée avant l'entrée.
+    c'est ffmpeg qui recompose, et le filtre `dovi_rpu=strip=1` (ffmpeg 7.1+)
+    retire les NAL du RPU et l'enregistrement de configuration DV au passage.
+
+    Ce chemin passait par le flux Annex-B que produit `dovi_tool remove`. Un
+    flux brut ne porte aucun horodatage : ffmpeg écrivait PTS = DTS sur chaque
+    image (« pts has no value »), un ordre d'affichage faux pour un flux à
+    images B. Le téléviseur jouait le son sans jamais afficher l'image, puis
+    plantait. Lire la source garde ses horodatages tels quels.
+
+    Le profil 7 n'arrive pas ici (`needs_mkv`) : sa couche d'amélioration,
+    que `dovi_tool remove` retire, n'est pas du ressort de ce filtre.
 
     Les sous-titres SubRip deviennent du `mov_text` ; les sous-titres image
     n'entrent pas dans un MP4 et sont exclus en amont par la décision — s'ils
     étaient les seuls, c'est le conteneur qui aurait cédé.
 
     `audio` porte la décision piste par piste. Absente, l'audio de la source
-    est recopiée en bloc — ce que ce chemin faisait toujours, quoi qu'ait
-    annoncé l'écran. Ici ffmpeg recompose déjà le fichier : appliquer la
-    décision ne coûte aucune étape de plus.
+    est recopiée en bloc.
     """
     from .decision import AudioAction
     from .encoder import audio_args
-    cmd = [ffmpeg_path, "-y", "-loglevel", "error"]
-    if fps:
-        cmd += ["-r", fps]
-    cmd += ["-i", str(video), "-i", str(source), "-map", "0:v:0"]
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error",
+           "-i", str(source), "-map", "0:v:0"]
     gardees = [ad for ad in (audio or []) if ad.action != AudioAction.EXCLUDE]
     if audio is None:
-        cmd += ["-map", "1:a?"]
+        cmd += ["-map", "0:a?"]
     else:
         for ad in gardees:
-            cmd += ["-map", f"1:a:{ad.track.index}"]
+            cmd += ["-map", f"0:a:{ad.track.index}"]
     for index in sous_titres:
-        cmd += ["-map", f"1:s:{index}"]
-    cmd += ["-c", "copy"]
+        cmd += ["-map", f"0:s:{index}"]
+    cmd += ["-c", "copy", "-bsf:v", "dovi_rpu=strip=1"]
     # `-c copy` vaut pour tout ; les options par piste, plus précises, gagnent.
     cmd += audio_args(gardees)
     if sous_titres:
         cmd += ["-c:s", "mov_text"]
-    # Un flux HEVC brut réordonné donne des DTS négatifs sur ses premières
-    # images ; le muxeur MP4, qui les refuse, les jetait. Mesuré : deux images
-    # perdues sur un extrait de 2270. `make_zero` décale la base au lieu de
-    # rogner.
-    cmd += ["-avoid_negative_ts", "make_zero",
-            "-movflags", "+faststart", str(output)]
+    cmd += ["-movflags", "+faststart", str(output)]
     return cmd
+
+
+def strip_bsf_disponible(ffmpeg_path: str = "ffmpeg") -> bool:
+    """ffmpeg connaît-il le filtre `dovi_rpu` (7.1+) ? Un ffmpeg plus ancien
+    échouerait sur « Unknown bitstream filter », que l'écran rendrait mal."""
+    try:
+        r = subprocess.run([ffmpeg_path, "-hide_banner", "-h", "bsf=dovi_rpu"],
+                           stdin=subprocess.DEVNULL, capture_output=True,
+                           encoding="utf-8", errors="replace", timeout=15)
+        return "strip" in r.stdout
+    except Exception as e:
+        _log.warning("strip_bsf_disponible failed: %s", e)
+        return False
 
 
 def extract_rpu(hevc_path: Path, rpu_path: Path, dovi_path: Path) -> bool:

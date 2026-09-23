@@ -5,7 +5,7 @@ Conserver le Dolby Vision impose `-c:v copy` : le RPU vit *à l'intérieur* du
 flux HEVC, entre les tranches d'image, et tout réencodage le détruit. Le débit
 cible et la résolution limite du profil restent donc lettre morte.
 
-L'interface annonçait pourtant « → HEVC → DV » et nommait la sortie `_[hevc]`.
+L'interface annonçait pourtant « → HEVC → DV » et nommait la sortie `.hevc.IRIS`.
 Un fichier de 60 Mb/s ressortait à 60 Mb/s sous un nom qui promettait l'inverse,
 et rien à l'écran ne permettait de comprendre pourquoi.
 """
@@ -85,7 +85,7 @@ def test_la_copie_se_montre_comme_un_traitement_sans_perte():
 def test_le_nom_de_sortie_ne_promet_pas_du_hevc_frais():
     d = decide(_source(60_000_000), _PROFIL_DV)
     assert d.output_path.name == f"Film{SUFFIX_DV_COPIE}.mkv"
-    assert "_[hevc]" not in d.output_path.name
+    assert ".hevc.IRIS" not in d.output_path.name
 
 
 def test_la_sortie_n_est_pas_reproposee_au_scan_suivant():
@@ -112,7 +112,7 @@ def test_une_source_sans_dv_encode_normalement():
     """Le profil `dv` ne bride que les sources Dolby Vision."""
     d = decide(_source(60_000_000, dv=None), _PROFIL_DV)
     assert d.video.label() == "→ HEVC"
-    assert d.output_path.name == "Film_[hevc].mkv"
+    assert d.output_path.name == "Film.hevc.IRIS.mkv"
     cmd = build_command(d, _PLAT)
     assert cmd[cmd.index("-c:v") + 1] == "hevc_nvenc"
     assert "12000000" in cmd

@@ -16,6 +16,11 @@ irréversible sur un fichier que personne n'a demandé à retoucher.
 `_[mux]` reste **volontairement** hors du filtre : ce n'est pas un encodage
 mais une greffe de pistes, et encoder le résultat ensuite est un geste
 légitime. L'écarter du scan rendrait le fichier invisible dans le navigateur.
+
+v0.8.8.11 : les suffixes deviennent `.<caractéristique>.IRIS`, et le filtre ne
+regarde plus que la marque `.IRIS` en fin de nom — une seule chose à suivre
+au lieu d'une liste. `.mux.IRIS` et `.join.IRIS` en sont exceptés. Les noms
+de l'ancien schéma ne sont plus reconnus, à la demande.
 """
 from __future__ import annotations
 
@@ -24,30 +29,12 @@ from pathlib import Path
 import pytest
 
 from core.decision import SUFFIX_BY_ACTION, SUFFIX_DV_COPIE, VideoAction
+from core.joiner import JOIN_SUFFIX
 from core.muxer import MUX_SUFFIX
-from core.scanner import deja_produit, suffixes_produits
+from core.scanner import deja_produit, stem_sans_suffixe_produit
 
 
-# ─── Le prédicat dérive, il ne recopie pas ───────────────────────────────────
-
-def test_tous_les_suffixes_d_encodage_sont_couverts():
-    """La question à laquelle la paire en dur ne savait pas répondre."""
-    attendus = {s for s in SUFFIX_BY_ACTION.values() if s} | {SUFFIX_DV_COPIE}
-    assert suffixes_produits() == attendus
-    # Et nommément, pour que l'échec dise lequel manque
-    for suffixe in ("_[hevc]", "_[H264]", "_[av1]", "_[hdr10]", "_[dv]"):
-        assert suffixe in suffixes_produits(), suffixe
-
-
-def test_la_sortie_d_une_source_dv_conservee_n_est_pas_reproposee():
-    """`_[dv]` ne vient pas de `SUFFIX_BY_ACTION` : il faut l'y ajouter à part.
-
-    Oublié, le fichier produit par une source DV conservée serait vu comme une
-    source neuve au scan suivant — et un profil `delete_source` effacerait
-    l'original pour le remplacer par lui-même.
-    """
-    assert deja_produit(f"Film{SUFFIX_DV_COPIE}")
-
+# ─── Toute sortie d'encodage porte la marque ─────────────────────────────────
 
 @pytest.mark.parametrize("action", [a for a in VideoAction
                                     if SUFFIX_BY_ACTION.get(a)])
@@ -56,32 +43,50 @@ def test_chaque_action_qui_ecrit_un_suffixe_est_filtree(action):
     assert deja_produit(f"Film{SUFFIX_BY_ACTION[action]}")
 
 
-def test_l_av1_ne_revient_pas_au_scan():
-    """Le cas signalé — et le plus coûteux, `av1` n'étant pas un codec lu."""
-    assert deja_produit("Film_[av1]")
+def test_la_sortie_d_une_source_dv_conservee_n_est_pas_reproposee():
+    assert deja_produit(f"Film{SUFFIX_DV_COPIE}")
 
 
-def test_le_hdr10_ne_revient_pas_au_scan():
-    assert deja_produit("Film_[hdr10]")
+@pytest.mark.parametrize("stem", ["Film.av1.IRIS", "Film.HDR10.IRIS",
+                                  "Film.2160p.DV.IRIS", "Film.hevc.IRIS(2)"])
+def test_les_sorties_ne_reviennent_pas_au_scan(stem):
+    """Le suffixe peut se réduire à `.IRIS` (caractéristique déjà dans le nom),
+    et la numérotation de collision le suit."""
+    assert deja_produit(stem)
 
 
-def test_le_mux_reste_visible():
-    """Un remux n'est pas un encodage : on doit pouvoir l'encoder ensuite."""
-    assert not deja_produit(f"Film{MUX_SUFFIX}")
-    assert MUX_SUFFIX not in suffixes_produits()
+@pytest.mark.parametrize("suffixe", [MUX_SUFFIX, JOIN_SUFFIX])
+def test_le_mux_et_le_collage_restent_visibles(suffixe):
+    """Ce ne sont pas des encodages : on doit pouvoir les encoder ensuite."""
+    assert not deja_produit(f"Film{suffixe}")
+    assert not deja_produit(f"Film{suffixe}(2)")
 
 
-def test_un_fichier_ordinaire_passe():
-    assert not deja_produit("Le Nom du film (2017)")
+@pytest.mark.parametrize("stem", [
+    "Le Nom du film (2017)",
+    "Hotel.Iris.2021",          # la casse compte
+    "Hotel.Iris",
+    "Film.hevc.IRIS (copie)",   # la marque doit finir le nom
+    "Film.IRIS.1080p",
+    "Film_[hevc]",              # ancien schéma : plus reconnu
+    "Film_[av1]",
+])
+def test_un_fichier_ordinaire_passe(stem):
+    assert not deja_produit(stem)
 
 
-def test_le_suffixe_vide_de_skip_ne_filtre_pas_tout():
-    """`SUFFIX_BY_ACTION[SKIP]` vaut `""`, et `"" in stem` est toujours vrai."""
-    assert "" not in suffixes_produits()
-    assert not deja_produit("n'importe quoi")
+@pytest.mark.parametrize("stem, attendu", [
+    ("Film.hevc.IRIS",     "Film.hevc"),
+    ("Film.hevc.IRIS(3)",  "Film.hevc"),
+    ("Film.join.IRIS",     "Film.join"),
+    ("Film (2)",           "Film (2)"),
+    ("Film.hevc.IRIS (copie)", "Film.hevc.IRIS (copie)"),
+])
+def test_seule_la_marque_finale_part(stem, attendu):
+    assert stem_sans_suffixe_produit(stem) == attendu
 
 
-# ─── Les quatre usages passent par lui ───────────────────────────────────────
+# ─── Les filtres passent par lui ─────────────────────────────────────────────
 
 def _sources() -> list[Path]:
     racine = Path(__file__).resolve().parent.parent
@@ -90,15 +95,11 @@ def _sources() -> list[Path]:
 
 
 def test_plus_aucun_litteral_de_suffixe_dans_les_filtres():
-    """Le défaut n'était pas la valeur, c'était les quatre copies.
-
-    Une seule oubliée et le filtre redevient faux à un endroit — ce qui est
-    exactement ce qui s'est produit trois fois de suite.
-    """
+    """Le défaut n'était pas la valeur, c'était les quatre copies."""
     fautifs = {}
     for f in _sources():
         lignes = [n for n, l in enumerate(f.read_text(encoding="utf-8").splitlines(), 1)
-                  if '"_[hevc]"' in l or '"_[H264]"' in l]
+                  if '".hevc.IRIS"' in l or '".h264.IRIS"' in l]
         if lignes:
             fautifs[f.name] = lignes
     assert not fautifs, f"suffixes encore écrits en dur : {fautifs}"
@@ -112,9 +113,9 @@ def test_la_propriete_de_videoinfo_suit_le_meme_predicat(tmp_path):
                          bitrate=8_000_000, codec="hevc", duration=1.0,
                          frame_count=0, dv_profile=None)
 
-    assert _info("Film_[av1]").is_already_encoded
-    assert _info("Film_[hdr10]").is_already_encoded
-    assert not _info("Film_[mux]").is_already_encoded
+    assert _info("Film.av1.IRIS").is_already_encoded
+    assert _info("Film.HDR10.IRIS").is_already_encoded
+    assert not _info("Film.mux.IRIS").is_already_encoded
     assert not _info("Film").is_already_encoded
 
 
@@ -122,15 +123,16 @@ def test_le_scan_ecarte_ce_qu_il_a_produit(tmp_path, monkeypatch):
     """Bout à bout : le fichier n'est pas seulement non proposé, il n'est pas lu."""
     from core import scanner
 
-    for nom in ("Film.mkv", "Film_[av1].mkv", "Film_[hdr10].mkv",
-                "Film_[mux].mkv", "Film_[hevc].mkv"):
+    for nom in ("Film.mkv", "Film.av1.IRIS.mkv", "Film.hdr10.IRIS.mkv",
+                "Film.mux.IRIS.mkv", "Film.join.IRIS.mkv", "Film.hevc.IRIS.mkv"):
         (tmp_path / nom).write_bytes(b"")
 
     scannes: list[str] = []
     monkeypatch.setattr(scanner, "scan",
                         lambda p: scannes.append(p.name) or _FAUX_INFO(p))
     scanner.scan_directory(tmp_path)
-    assert sorted(scannes) == ["Film.mkv", "Film_[mux].mkv"], scannes
+    assert sorted(scannes) == ["Film.join.IRIS.mkv", "Film.mkv",
+                               "Film.mux.IRIS.mkv"], scannes
 
 
 def _FAUX_INFO(p: Path):

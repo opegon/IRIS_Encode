@@ -23,64 +23,55 @@ SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
     ".flv", ".webm", ".m4v", ".3gp",
 })
 
-@functools.cache
-def suffixes_produits() -> frozenset[str]:
-    """Les suffixes qu'un encodage de cette application écrit dans un nom.
+# La marque que toute sortie de l'application porte en dernier, précédée de la
+# caractéristique qui dit ce que le traitement a fait (`.hevc.IRIS`,
+# `.hdr10.IRIS`…). Le point sépare, comme dans un nom de release (§ 8.7).
+#
+# La casse compte, à dessein : un titre qui finirait par `.Iris` — `Hotel.Iris`
+# — n'est pas une sortie, et le filtre le masquerait sans un mot.
+MARQUE_IRIS = ".IRIS"
 
-    Dérivés de `SUFFIX_BY_ACTION`, jamais recopiés. La paire en dur ne
-    connaissait que `_[hevc]` et `_[H264]` ; l'application a depuis appris à
-    écrire `_[av1]` et `_[hdr10]`, et reproposait donc ses propres sorties.
-    Le cas coûteux est l'AV1 : ce codec n'est pas dans `CODECS_LISIBLES`, la
-    décision tombe en CAS 3 — « codec non lu par la chaîne » — et propose de
-    réencoder en HEVC une sortie que l'application venait de produire. Sur un
-    profil à `delete_source`, l'AV1 est effacé au passage.
+# Les sorties qui restent des **entrées** : un collage ou une greffe de pistes
+# ne sont pas des encodages, et on les encode ensuite. Le filtre ne doit pas
+# les masquer, sans quoi le navigateur les rendrait inutiles.
+ENTREES_IRIS = ("mux", "join")
 
-    `MUX_SUFFIX` n'en fait **pas** partie, à dessein : un `_[mux]` n'est pas
-    un encodage mais une greffe de pistes, et l'encoder ensuite est un geste
-    légitime. L'écarter du scan le rendrait invisible dans le navigateur.
-
-    Import différé : `decision` importe `scanner`, l'inverse ferait un cycle.
-    """
-    from .decision import SUFFIX_BY_ACTION, SUFFIX_DV_COPIE
-    return frozenset(s for s in (*SUFFIX_BY_ACTION.values(), SUFFIX_DV_COPIE) if s)
+# `(n)` : la numérotation de collision, posée après la marque (`resoudre_sorties`).
+_RE_MARQUE_IRIS = re.compile(rf"{re.escape(MARQUE_IRIS)}(?:\(\d+\))?$")
+# La caractéristique, elle, se lit sans casse : un `.MUX.IRIS` écrit avant
+# le passage aux minuscules reste une entrée.
+_RE_ENTREE_IRIS = re.compile(
+    rf"\.(?i:{'|'.join(ENTREES_IRIS)}){re.escape(MARQUE_IRIS)}(?:\(\d+\))?$")
 
 
 def deja_produit(stem: str) -> bool:
-    """Ce nom de fichier est-il celui d'une sortie de l'application ?"""
-    return any(suffixe in stem for suffixe in suffixes_produits())
+    """Ce nom de fichier est-il celui d'une sortie d'encodage de l'application ?
+
+    La marque est cherchée en **fin** de stem : `Film.hevc.IRIS (copie)` n'est
+    pas une sortie que nous venons d'écrire. Les noms de l'ancien schéma
+    (`_[hevc]`, `_[av1]`…) ne sont plus reconnus — ils redeviennent des sources.
+    """
+    return bool(_RE_MARQUE_IRIS.search(stem)) and not _RE_ENTREE_IRIS.search(stem)
 
 
 def stem_sans_suffixe_produit(stem: str) -> str:
-    """Le stem débarrassé du suffixe d'encodage qu'il porte, s'il en porte un.
+    """Le stem débarrassé de la marque `.IRIS` qu'il porte, s'il en porte une.
 
-    Réencoder une sortie de l'application empilait les marques :
-    `Film_[av1]` devenait `Film_[av1]_[hevc]`, puis
-    `Film_[av1]_[hevc]_[hevc]` au passage suivant. Le suffixe se remplace
-    désormais — le nom dit ce que le fichier est, pas par combien d'états il
-    est passé.
+    Réencoder une sortie ne doit pas empiler les marques : `Film.av1.IRIS`
+    réencodé en HEVC donne `Film.hevc.IRIS`, pas `Film.av1.IRIS.hevc.IRIS`.
+    Seule la marque part ici ; la caractéristique qui la précède est une marque
+    comme une autre, que `FileDecision._stem_a_jour` réécrit si elle a changé
+    (le `AV1` part avec les marques de codec) ou laisse si elle reste vraie.
 
-    Le suffixe est cherché en **fin** de stem : `Film_[hevc] (copie)` n'est pas
-    une sortie que nous venons d'écrire, et lui retirer sa marque au milieu du
-    nom fabriquerait un nom qui n'a jamais existé.
+    La numérotation de collision part avec elle — sans cela un
+    `Film.hevc.IRIS(2)` réencodé redonnerait `Film.hevc.IRIS(2).hevc.IRIS`.
+    `Film (2)`, la copie que fait Windows, n'est pas touché : le compteur ne
+    compte que s'il suit immédiatement la marque.
 
-    La numérotation de collision part avec lui. Elle se pose après le suffixe
-    — `Film_[hevc](2)` — et sans cela un `Film_[hevc](2)` réencodé redonnerait
-    `Film_[hevc](2)_[hevc]` : l'empilement reviendrait par la porte que la
-    numérotation vient d'ouvrir. Retirer les deux rend la base stable d'une
-    génération à l'autre.
-
-    `Film (2)` — la copie que fait Windows — n'est pas touché : le compteur ne
-    compte que s'il suit immédiatement un suffixe produit.
-
-    `_[mux]` et `_[join]` n'en font pas partie (ils ne sont pas dans
-    `suffixes_produits()`) : ils disent d'où vient le fichier, pas comment il a
-    été encodé, et l'encodage ne les efface pas.
+    Un `.mux.IRIS` ou un `.join.IRIS` perd aussi sa marque mais garde `mux` ou
+    `join` : ils disent d'où vient le fichier, et l'encodage ne l'efface pas.
     """
-    sans_compteur = re.sub(r"\(\d+\)$", "", stem)
-    for suffixe in suffixes_produits():
-        if sans_compteur.endswith(suffixe):
-            return sans_compteur[: -len(suffixe)]
-    return stem
+    return _RE_MARQUE_IRIS.sub("", stem)
 
 
 # ─── Ce que le nom du fichier produit annonce ────────────────────────────────
@@ -114,7 +105,7 @@ def _re_marques(jetons: tuple[str, ...]) -> re.Pattern:
       rien. Un `+` compte comme la fin d'une marque, sinon `HDR10+` perdrait
       son `HDR10` et garderait son `+` ;
     - **la paire de crochets ou de parenthèses part avec la marque**, sans
-      quoi retirer le `hevc` de `Film_[hevc]` laisserait un `_[]` vide.
+      quoi retirer le `hevc` de `Film [hevc]` laisserait un `[]` vide.
 
     La ponctuation qui entoure la marque est capturée avec elle : elle doit se
     recoller quand la marque disparaît.
@@ -127,6 +118,11 @@ def _re_marques(jetons: tuple[str, ...]) -> re.Pattern:
         rf"(?P<apres>[ ._-]*)",
         re.IGNORECASE,
     )
+
+
+def porte_marque(stem: str, jetons: tuple[str, ...]) -> bool:
+    """Le stem porte-t-il l'une de ces marques, prise comme mot entier ?"""
+    return bool(_re_marques(jetons).search(stem))
 
 
 def stem_marques_retirees(stem: str, jetons: tuple[str, ...]) -> str:
@@ -178,7 +174,7 @@ def stem_marques_remplacees(stem: str, jetons: tuple[str, ...],
 JETONS_RESOLUTION_4K = ("2160p", "4k light", "4k", "uhd")
 
 # Les marques de codec vidéo. `H.264` s'écrit avec ou sans point selon les
-# conventions ; `_[hevc]` est celle que nous écrivons nous-mêmes.
+# conventions ; `HEVC` est celle que nous écrivons nous-mêmes.
 JETONS_CODEC_VIDEO = ("x264", "x265", "h.264", "h264", "h.265", "h265",
                       "hevc", "av1", "vp9")
 
@@ -204,11 +200,11 @@ def stem_resolution_ramenee(stem: str, cible: str) -> str:
 def stem_sans_marque_codec(stem: str) -> str:
     """Le stem débarrassé des marques de codec vidéo qu'il porte.
 
-    Un `Film.1080p.x264` réencodé en HEVC ressortait `Film.1080p.x264_[hevc]` :
+    Un `Film.1080p.x264` réencodé en HEVC ressortait `Film.1080p.x264.hevc.IRIS` :
     le nom annonçait deux codecs, dont un que le fichier n'a plus. C'est le
     suffixe produit qui dit le codec de sortie ; les marques de la source n'ont
     plus rien à annoncer, y compris quand elles tombent juste — un `x265` gardé
-    à côté de `_[hevc]` répète la même chose deux fois.
+    à côté de `.hevc.IRIS` répète la même chose deux fois.
 
     Sont reconnues `x264`, `x265`, `H264`, `H265` (avec ou sans point), `HEVC`,
     `AV1` et `VP9`.
@@ -371,7 +367,7 @@ class VideoInfo:
 
     @property
     def is_already_encoded(self) -> bool:
-        """Vrai si le fichier porte un suffixe produit par l'application."""
+        """Vrai si le fichier porte la marque `.IRIS` d'une sortie d'encodage."""
         return deja_produit(self.path.stem)
 
     @property
@@ -717,7 +713,7 @@ def scan(path: Path) -> VideoInfo:
 def scan_directory(directory: Path) -> list[VideoInfo]:
     """
     Scanne tous les fichiers vidéo supportés dans un répertoire (non récursif).
-    Ignore ce que l'application a elle-même produit (`suffixes_produits`).
+    Ignore ce que l'application a elle-même produit (`deja_produit`).
     Les erreurs de scan sont silencieuses (fichier ignoré).
     """
     results: list[VideoInfo] = []

@@ -14,8 +14,9 @@ from typing import Optional
 
 from .muxer import MUX_SUFFIX, ExternalTrack
 from .profiles import Profile
-from .scanner import (AudioTrack, VideoInfo, channel_layout_label,
-                      normalize_language, stem_marques_remplacees,
+from .scanner import (MARQUE_IRIS, AudioTrack, VideoInfo, channel_layout_label,
+                      deja_produit, normalize_language, porte_marque,
+                      stem_marques_remplacees,
                       stem_marques_retirees, stem_resolution_ramenee,
                       stem_sans_marque_codec, stem_sans_suffixe_produit)
 
@@ -71,7 +72,7 @@ def video_recopiee(action: "VideoAction", dv_action: "DVAction") -> bool:
 
     Conserver le Dolby Vision impose `-c:v copy` : le débit et la résolution
     demandés par le profil restent alors lettre morte. L'interface annonçait
-    pourtant « → HEVC → DV » et nommait la sortie `_[hevc]`, pour un fichier
+    pourtant « → HEVC → DV » et nommait la sortie `.hevc.IRIS`, pour un fichier
     dont l'image n'avait pas bougé d'un bit — un débit de 60 Mb/s ressortait
     à 60 Mb/s sous un nom qui promettait l'inverse.
     """
@@ -107,7 +108,7 @@ class VideoDecision:
     target_width:    int
     target_height:   int
     dv_action:       DVAction
-    output_suffix:   str    # "_[hevc]" | "_[H264]" | ""
+    output_suffix:   str    # ".hevc.IRIS" | ".h264.IRIS" | … | "" (SKIP)
 
     def label(self) -> str:
         if self.action == VideoAction.SKIP:
@@ -290,20 +291,22 @@ def _needs_mkv_codec(codec: str) -> bool:
 # portent le même suffixe : du point de vue de l'utilisateur, l'une comme
 # l'autre rendent un fichier Dolby Vision. Ce qui les sépare est le débit, que
 # la raison affichée explicite.
-SUFFIX_DV_COPIE = "_[dv]"
+#
+# Chaque suffixe est une caractéristique suivie de la marque `.IRIS` (§ 8.7).
+SUFFIX_DV_COPIE = f".dv{MARQUE_IRIS}"
 
 SUFFIX_BY_ACTION: dict["VideoAction", str] = {
-    VideoAction.ENCODE_HEVC: "_[hevc]",
-    VideoAction.ENCODE_H264: "_[H264]",
-    VideoAction.ENCODE_AV1:  "_[av1]",
+    VideoAction.ENCODE_HEVC: f".hevc{MARQUE_IRIS}",
+    VideoAction.ENCODE_H264: f".h264{MARQUE_IRIS}",
+    VideoAction.ENCODE_AV1:  f".av1{MARQUE_IRIS}",
     VideoAction.ENCODE_DV:   SUFFIX_DV_COPIE,
-    VideoAction.STRIP_DV:    "_[hdr10]",
+    VideoAction.STRIP_DV:    f".hdr10{MARQUE_IRIS}",
     VideoAction.SKIP:        "",
 }
 
 # Les actions dont le suffixe nomme le codec du fichier produit — les seules
 # qui autorisent le nom à perdre les marques de codec de la source (§ 8.7).
-# `_[dv]` et `_[hdr10]` disent le traitement du Dolby Vision, pas le codec, et
+# `DV` et `HDR10` disent le traitement du Dolby Vision, pas le codec, et
 # STRIP_DV ne réencode rien : le flux sort dans le codec que le nom annonce.
 ACTIONS_CODEC_NOMME = frozenset({
     VideoAction.ENCODE_HEVC, VideoAction.ENCODE_H264, VideoAction.ENCODE_AV1,
@@ -322,6 +325,36 @@ JETONS_HDR_PLUS = ("hdr10+",)
 # sortie HDR10 elle reste vraie — `yuv420p10le`, sans quoi la courbe PQ
 # étalerait ses dégradés sur 256 niveaux.
 JETONS_10_BITS = ("10 bits", "10 bit")
+
+# Les marques qui disent déjà la caractéristique d'un suffixe, quand elle en a
+# d'autres que son propre nom. Un `HDR10+` vaut annonce du HDR10 : la couche de
+# base y est.
+_JETONS_CARACTERISTIQUE: dict[str, tuple[str, ...]] = {
+    "dv":    JETONS_DV,
+    "hdr10": JETONS_HDR_PLUS + ("hdr10",),
+}
+
+
+def suffixe_sans_redite(stem: str, suffix: str) -> str:
+    """Le suffixe privé de sa caractéristique si le stem l'annonce déjà.
+
+    `Film.2160p.DV` dont le Dolby Vision est conservé sort `Film.2160p.dv.IRIS`,
+    pas `Film.2160p.DV.dv.IRIS` ; ramené en HDR10, son `DV` devient `HDR10`
+    (`_stem_a_jour`) et le suffixe n'a plus à le redire. Un nom qui ne
+    l'annonçait pas la reçoit : `Film.2160p` → `Film.2160p.hdr10.IRIS`.
+
+    La caractéristique reste quand la retirer changerait la nature du nom :
+    un `Film.DV.join` dont le DV est conservé sortirait `Film.DV.join.IRIS`,
+    que le filtre prendrait pour un collage à encoder (`ENTREES_IRIS`).
+    """
+    if not suffix.endswith(MARQUE_IRIS):
+        return suffix
+    caracteristique = suffix[1: -len(MARQUE_IRIS)]
+    jetons = _JETONS_CARACTERISTIQUE.get(caracteristique, (caracteristique,))
+    if (porte_marque(stem, jetons)
+            and deja_produit(stem + MARQUE_IRIS) == deja_produit(stem + suffix)):
+        return MARQUE_IRIS
+    return suffix
 
 # Les marques audio qu'un nom porte, par famille de codec source. Le nom d'un
 # fichier ne cite qu'un format — celui qui a motivé la release — et c'est la
@@ -477,8 +510,14 @@ class FileDecision:
         if self.video.action == VideoAction.ENCODE_DV:
             return True
 
-        # Le retrait du RPU passe par mkvmerge en MKV, par ffmpeg en MP4 :
-        # les deux sont possibles, le conteneur ne le contraint pas.
+        # Le retrait du RPU passe par mkvmerge en MKV, par le filtre
+        # `dovi_rpu` de ffmpeg en MP4. Ce filtre ne retire que le RPU : la
+        # couche d'amélioration d'un profil 7 resterait dans le flux, et seul
+        # `dovi_tool remove`, donc le chemin MKV, l'enlève.
+        if (self.video.action == VideoAction.STRIP_DV
+                and self.info.dv_profile == 7):
+            return True
+
         if self._mkv_impose_par_l_audio():
             return True
 
@@ -503,16 +542,17 @@ class FileDecision:
         stem   = self.info.path.stem
         suffix = self.video.output_suffix
         ext    = self.output_container
-        if suffix:
-            # Le suffixe se remplace, il ne s'empile pas : réencoder un
-            # `Film_[av1]` en HEVC donne `Film_[hevc]`, pas
-            # `Film_[av1]_[hevc]`. Le nom dit ce que le fichier est.
-            stem = stem_sans_suffixe_produit(stem)
-        elif self.external_tracks:
+        if not suffix and self.external_tracks:
             # SKIP + pistes externes : pas de suffixe de codec, donc rien ne
-            # distinguerait la sortie de la source. On mux sous _[mux].
+            # distinguerait la sortie de la source. On mux sous `.mux.IRIS`.
             suffix = MUX_SUFFIX
-        return self.info.path.parent / f"{self._stem_a_jour(stem)}{suffix}{ext}"
+        if suffix:
+            # La marque se remplace, elle ne s'empile pas : réencoder un
+            # `Film.av1.IRIS` en HEVC donne `Film.hevc.IRIS`, pas
+            # `Film.av1.IRIS.hevc.IRIS`. Le nom dit ce que le fichier est.
+            stem = stem_sans_suffixe_produit(stem)
+        stem = self._stem_a_jour(stem)
+        return self.info.path.parent / f"{stem}{suffixe_sans_redite(stem, suffix)}{ext}"
 
     def _stem_a_jour(self, stem: str) -> str:
         """Le stem dont les marques disent le fichier produit, pas la source.
@@ -522,7 +562,7 @@ class FileDecision:
         source : c'est le nom du fichier écrit qui se corrige.
 
         SKIP est écarté d'un bloc : la seule sortie qu'il produit est une
-        greffe de pistes (`_[mux]`), que mkvmerge recopie sans rien convertir.
+        greffe de pistes (`.mux.IRIS`), que mkvmerge recopie sans rien convertir.
         Le fichier y garde jusqu'à son RPU Dolby Vision — quand `dovi_tool`
         manque, la décision retombe sur SKIP en gardant `dv_action`.
         """
@@ -590,7 +630,7 @@ class FileDecision:
         Seul un vrai réencodage vers un codec nommé le fait. Une vidéo
         recopiée (DV conservé, `-c:v copy`) sort dans le codec de la source :
         la marque du nom reste vraie, et l'effacer perdrait l'information au
-        profit d'un `_[dv]` qui ne la porte pas.
+        profit d'un `.dv.IRIS` qui ne la porte pas.
         """
         return (self.video.action in ACTIONS_CODEC_NOMME
                 and not video_recopiee(self.video.action, self.video.dv_action))
@@ -725,7 +765,7 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     # Pour les cibles < 1080p, H264 compresse mieux que HEVC
     sub_1080  = bucket_h < 1080
     action    = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
-    suffix    = "_[H264]"              if sub_1080 else "_[hevc]"
+    suffix    = SUFFIX_BY_ACTION[action]
 
     # Conserver le Dolby Vision impose de recopier le flux — sauf si le RPU
     # peut être sorti avant l'encodage puis réinjecté après, ce que tranche
@@ -1028,14 +1068,14 @@ def resoudre_sorties(decisions: list[FileDecision]) -> None:
     Remplacer le suffixe plutôt que l'empiler fait apparaître deux collisions
     que l'empilement masquait :
 
-    - la cible **est** la source — `Film_[hevc].mkv` réencodé en HEVC. C'est le
+    - la cible **est** la source — `Film.hevc.IRIS.mkv` réencodé en HEVC. C'est le
       geste le plus courant, rebaisser le débit d'une sortie, et le garde-fou
       de l'encodeur le refuserait ;
-    - la cible existe déjà — `Film_[av1].mkv` réencodé en HEVC alors qu'un
-      `Film_[hevc].mkv` a été produit hier. Ce fichier-là n'est la source de
+    - la cible existe déjà — `Film.av1.IRIS.mkv` réencodé en HEVC alors qu'un
+      `Film.hevc.IRIS.mkv` a été produit hier. Ce fichier-là n'est la source de
       personne : rien ne l'aurait protégé d'un écrasement silencieux.
 
-    Dans les deux cas on numérote : `Film_[hevc](2).mkv`. Rien n'est jamais
+    Dans les deux cas on numérote : `Film.hevc.IRIS(2).mkv`. Rien n'est jamais
     écrasé, et rien n'est refusé.
 
     **Le nom est posé une fois.** Une propriété qui interrogerait le disque à
@@ -1087,7 +1127,7 @@ def force_skip_to_encode(dec: FileDecision) -> FileDecision:
         dec.video,
         action        = forced_act,
         target_bitrate= dec.info.bitrate,
-        output_suffix = "_[H264]" if sub_1080 else "_[hevc]",
+        output_suffix = SUFFIX_BY_ACTION[forced_act],
         dv_action     = forced_dv,
         reason        = ("Forcé manuellement (était SKIP)"
                          if dec.video.action == VideoAction.SKIP

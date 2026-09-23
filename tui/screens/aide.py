@@ -89,7 +89,7 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                                "seul, sans réencoder — un film livré en part1 / "
                                "part2. L'ordre proposé vient des noms et se "
                                "corrige avant de lancer. Le fichier produit "
-                               "porte « _[join] » et s'encode ensuite comme "
+                               "porte « .join.IRIS » et s'encode ensuite comme "
                                "n'importe quel autre.",
         "open_allocine":       "Cherche la fiche AlloCiné du fichier.",
         "open_imdb":           "Cherche la fiche IMDB du fichier.",

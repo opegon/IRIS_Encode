@@ -2,8 +2,10 @@
 tests/test_markup.py — Les afficheurs de noms n'interprètent pas le markup Rich.
 
 `Static.update()` interprète par défaut ce qui ressemble à une balise entre
-crochets. Or la convention de nommage du projet est faite de cette syntaxe :
-`_[mux]`, `_[hevc]`, `_[av1]`, `_[hdr10]`, `_[extrait]`, `_[premux]`. Un nom de
+crochets. Or la convention de nommage du projet était faite de cette syntaxe
+jusqu'à la v0.8.8.10 — `_[mux]`, `_[hevc]`, `_[av1]`, `_[hdr10]` — et ses
+fichiers temporaires le sont encore (`_[extrait]`, `_[premux]`), comme bien des
+noms de release (`Film [1080p]`, `[GROUPE] Série`). Un nom de
 fichier affiché tel quel y perd son suffixe, et un identifiant de profil écrit
 `[serie_basic]` disparaît en entier.
 

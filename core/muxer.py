@@ -19,9 +19,12 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
+from .scanner import MARQUE_IRIS, stem_sans_suffixe_produit
+
 # Suffixe appliqué quand on mux sans réencoder : le nom de sortie doit différer
-# de la source, qu'on ne réécrit jamais en place.
-MUX_SUFFIX = "_[mux]"
+# de la source, qu'on ne réécrit jamais en place. `mux` est dans
+# `scanner.ENTREES_IRIS` : la greffe reste visible dans le navigateur.
+MUX_SUFFIX = f".mux{MARQUE_IRIS}"
 
 # ── Chemin mkvmerge (singleton, settable par l'app au démarrage) ─────────────
 _mkvmerge_path: str = "mkvmerge"
@@ -501,7 +504,7 @@ def sample_output_path(source: Path) -> Path:
 
 def mux_output_path(source: Path) -> Path:
     """Chemin de sortie d'un mux sans réencodage (toujours MKV, jamais la source)."""
-    return source.parent / f"{source.stem}{MUX_SUFFIX}.mkv"
+    return source.parent / f"{stem_sans_suffixe_produit(source.stem)}{MUX_SUFFIX}.mkv"
 
 
 # ─── Mux préalable à un encodage ──────────────────────────────────────────────

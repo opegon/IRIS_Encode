@@ -3,9 +3,9 @@ core/joiner.py — Collage bout à bout de plusieurs parties en un fichier uniqu
 
 Un film livré en `part1` / `part2` n'est encodable qu'une fois recousu : chaque
 partie prise seule donnerait sa propre sortie, et le profil déciderait deux fois
-au lieu d'une. Le collage produit un `_[join].mkv` que le navigateur reproposera
+au lieu d'une. Le collage produit un `.join.IRIS.mkv` que le navigateur reproposera
 comme n'importe quel autre fichier — c'est tout l'objet du suffixe (voir
-`scanner.suffixes_produits`, qui l'écarte de la liste des sorties d'encodage).
+`scanner.ENTREES_IRIS`, qui l'écarte de la liste des sorties d'encodage).
 
 mkvmerge en mode `append` (`fichier1 + fichier2`) fait le travail sans réencoder :
 il recale les horodatages de chaque partie sur la fin de la précédente. Le prix à
@@ -23,11 +23,12 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .scanner import VideoInfo
+from .scanner import MARQUE_IRIS, VideoInfo
 
 # Suffixe du fichier recousu. Absent de `SUFFIX_BY_ACTION` à dessein : ce n'est
-# pas une sortie d'encodage mais une entrée de travail, et le scan doit la voir.
-JOIN_SUFFIX = "_[join]"
+# pas une sortie d'encodage mais une entrée de travail, et le scan doit la voir
+# (`join` est dans `scanner.ENTREES_IRIS`).
+JOIN_SUFFIX = f".join{MARQUE_IRIS}"
 
 # Il faut au moins deux parties pour qu'il y ait quelque chose à coller.
 MIN_PARTIES = 2

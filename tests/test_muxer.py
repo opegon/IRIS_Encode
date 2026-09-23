@@ -49,7 +49,7 @@ def subs(tmp_path: Path) -> ExternalTrack:
 
 def test_command_starts_with_output_then_source(tmp_path: Path, vf: ExternalTrack):
     src = tmp_path / "Film.mkv"
-    out = tmp_path / "Film_[mux].mkv"
+    out = tmp_path / "Film.mux.IRIS.mkv"
     cmd = muxer.build_mux_command(src, [vf], out)
 
     assert cmd[0] == "mkvmerge"
@@ -166,7 +166,7 @@ def test_mux_output_path_never_equals_source(tmp_path: Path):
     src = tmp_path / "Film.mkv"
     out = muxer.mux_output_path(src)
     assert out != src
-    assert out.name == "Film_[mux].mkv"
+    assert out.name == "Film.mux.IRIS.mkv"
 
 
 # ─── identify() ───────────────────────────────────────────────────────────────
@@ -334,7 +334,7 @@ def _encode_decision(ext: list[ExternalTrack], *, subs=None):
     video = VideoDecision(
         action=VideoAction.ENCODE_HEVC, reason="test", target_bitrate=2_000_000,
         target_width=1920, target_height=1080,
-        dv_action=DVAction.NONE, output_suffix="_[hevc]",
+        dv_action=DVAction.NONE, output_suffix=".hevc.IRIS",
     )
     return FileDecision(info=info, profile={}, video=video, audio=[],
                         subtitle_indices=[], external_tracks=ext)
@@ -518,7 +518,7 @@ def test_deselected_image_subs_do_not_force_copy():
 # ─── Intégration avec FileDecision ────────────────────────────────────────────
 
 def test_skip_with_external_track_gets_a_distinct_name():
-    """SKIP n'a pas de suffixe de codec : sans _[mux], la sortie écraserait
+    """SKIP n'a pas de suffixe de codec : sans .mux.IRIS, la sortie écraserait
     la source quand le conteneur ne change pas."""
     from core.decision import FileDecision, VideoAction, VideoDecision
 
@@ -542,7 +542,7 @@ def test_skip_with_external_track_gets_a_distinct_name():
 
     # Un SubRip ne force pas le MKV : même extension que la source
     assert dec.output_container == ".mp4"
-    assert dec.output_path.name == "Film_[mux].mp4"
+    assert dec.output_path.name == "Film.mux.IRIS.mp4"
     assert dec.output_path != info.path
 
 

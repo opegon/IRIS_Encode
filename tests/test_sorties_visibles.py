@@ -30,7 +30,7 @@ from rich.text import Text
 from core.decision import (DVAction, FileDecision, VideoAction, VideoDecision,
                            resoudre_sorties)
 from core.scanner import (SubtitleTrack, VideoInfo,
-                          stem_sans_suffixe_produit, suffixes_produits)
+                          stem_sans_suffixe_produit)
 from tui.screens.browser import (_DEGRADE_GAIN, _DEGRADE_PERTE,
                                  _teinte_estimation)
 from tui.widgets.file_tree import FileNavigator
@@ -42,7 +42,7 @@ def _info(path: Path) -> VideoInfo:
     """Un 4K avec sous-titres image — donc une sortie Matroska.
 
     Le conteneur compte ici : une collision de noms n'existe qu'à extension
-    égale. Un `Film_[hevc].mkv` dont la sortie tomberait en `.mp4` ne se
+    égale. Un `Film.hevc.IRIS.mkv` dont la sortie tomberait en `.mp4` ne se
     heurterait pas à lui-même.
     """
     return VideoInfo(path=path, width=3840, height=2160, bitrate=8_000_000,
@@ -53,7 +53,7 @@ def _info(path: Path) -> VideoInfo:
                                                     language="fre")])
 
 
-def _dec(path: Path, *, suffixe: str = "_[hevc]",
+def _dec(path: Path, *, suffixe: str = ".hevc.IRIS",
          action: VideoAction = VideoAction.ENCODE_HEVC) -> FileDecision:
     return FileDecision(
         info=_info(path), profile={},
@@ -65,10 +65,10 @@ def _dec(path: Path, *, suffixe: str = "_[hevc]",
 # ─── La vue montre les sorties, le scanner continue de les écarter ────────────
 
 def test_la_vue_liste_les_sorties_de_l_application(tmp_path):
-    for nom in ("Film.mkv", "Film_[hevc].mkv", "Serie_[av1].mkv"):
+    for nom in ("Film.mkv", "Film.hevc.IRIS.mkv", "Serie.av1.IRIS.mkv"):
         (tmp_path / nom).touch()
     noms = {p.name for p in FileNavigator(tmp_path).list_videos()}
-    assert noms == {"Film.mkv", "Film_[hevc].mkv", "Serie_[av1].mkv"}
+    assert noms == {"Film.mkv", "Film.hevc.IRIS.mkv", "Serie.av1.IRIS.mkv"}
 
 
 def test_le_scan_automatique_les_ecarte_toujours(tmp_path, monkeypatch):
@@ -76,7 +76,7 @@ def test_le_scan_automatique_les_ecarte_toujours(tmp_path, monkeypatch):
     qui alimente le scan récursif et les lots que l'utilisateur ne compose pas
     lui-même."""
     from core import scanner
-    for nom in ("Film.mkv", "Film_[av1].mkv"):
+    for nom in ("Film.mkv", "Film.av1.IRIS.mkv"):
         (tmp_path / nom).touch()
     monkeypatch.setattr(scanner, "scan", _info)
     vus = {i.path.name for i in scanner.scan_directory(tmp_path)}
@@ -111,7 +111,7 @@ class _FauxEcran:
 
 def test_ctrl_a_ne_prend_pas_nos_propres_sorties(tmp_path):
     source  = tmp_path / "Film.mkv"
-    produit = tmp_path / "Film_[hevc].mkv"
+    produit = tmp_path / "Film.hevc.IRIS.mkv"
     ecran = _FauxEcran([("file", source), ("file", produit)], {produit})
     ecran.action_select_all()
     assert ecran._selected == {source}, \
@@ -119,7 +119,7 @@ def test_ctrl_a_ne_prend_pas_nos_propres_sorties(tmp_path):
 
 
 def test_l_espace_coche_une_sortie(tmp_path):
-    produit = tmp_path / "Film_[hevc].mkv"
+    produit = tmp_path / "Film.hevc.IRIS.mkv"
     ecran = _FauxEcran([("file", produit)], {produit}, curseur=produit)
     ecran.action_toggle_select()
     assert ecran._selected == {produit}, \
@@ -142,7 +142,7 @@ class _FauxEcranCellules:
 
 
 def _styles(tmp_path, *, produit: bool):
-    fichier = tmp_path / "Film_[hevc].mkv"
+    fichier = tmp_path / "Film.hevc.IRIS.mkv"
     fichier.write_bytes(b"x" * 1024)
     return [c.style for c in _FauxEcranCellules()._row_cells(
         _dec(fichier), Text("[ ]"), produit)]
@@ -162,62 +162,56 @@ def test_une_ligne_ordinaire_garde_ses_couleurs(tmp_path):
 # ─── Le suffixe se remplace ───────────────────────────────────────────────────
 
 @pytest.mark.parametrize("stem, attendu", [
-    ("Film",                "Film"),
-    ("Film_[hevc]",         "Film"),
-    ("Film_[av1]",          "Film"),
-    # Le compteur de collision part avec le suffixe : sans cela, un
-    # `Film_[hevc](2)` réencodé redonnerait `Film_[hevc](2)_[hevc]` et
-    # l'empilement reviendrait par la porte que la numérotation vient d'ouvrir.
-    ("Film_[hevc](2)",      "Film"),
-    ("Film_[hevc](12)",     "Film"),
-    # `_[mux]` et `_[join]` disent d'où vient le fichier, pas comment il a été
-    # encodé : l'encodage ne les efface pas.
-    ("Film_[mux]",          "Film_[mux]"),
-    ("Film_[join]",         "Film_[join]"),
-    # La copie que fait Windows n'a pas de suffixe produit devant son compteur.
-    ("Film (2)",            "Film (2)"),
-    # Le suffixe se cherche en fin de nom : au milieu, ce n'est pas une sortie
+    ("Film",                   "Film"),
+    # Seule la marque part : la caractéristique qui la précède est une marque
+    # comme une autre, que `_stem_a_jour` réécrit si elle a changé.
+    ("Film.hevc.IRIS",         "Film.hevc"),
+    ("Film.av1.IRIS",          "Film.av1"),
+    # Le compteur de collision part avec la marque : sans cela, un
+    # `Film.hevc.IRIS(2)` réencodé redonnerait `Film.hevc.IRIS(2).hevc.IRIS`.
+    ("Film.hevc.IRIS(2)",      "Film.hevc"),
+    ("Film.hevc.IRIS(12)",     "Film.hevc"),
+    # `MUX` et `JOIN` disent d'où vient le fichier : l'encodage ne les efface pas.
+    ("Film.mux.IRIS",          "Film.mux"),
+    ("Film.join.IRIS",         "Film.join"),
+    # La copie que fait Windows n'a pas de marque devant son compteur.
+    ("Film (2)",               "Film (2)"),
+    # La marque se cherche en fin de nom : au milieu, ce n'est pas une sortie
     # que nous venons d'écrire, et la retirer fabriquerait un nom inédit.
-    ("Film_[hevc] (copie)", "Film_[hevc] (copie)"),
+    ("Film.hevc.IRIS (copie)", "Film.hevc.IRIS (copie)"),
 ])
 def test_retrait_du_suffixe_produit(stem, attendu):
     assert stem_sans_suffixe_produit(stem) == attendu
 
 
-def test_le_retrait_derive_de_la_table_des_suffixes():
-    """IE-49 : aucun littéral en dur. Tout suffixe produit doit se retirer."""
-    for suffixe in suffixes_produits():
-        assert stem_sans_suffixe_produit(f"Film{suffixe}") == "Film"
-
-
 def test_le_suffixe_ne_s_empile_plus(tmp_path):
-    dec = _dec(tmp_path / "Film_[av1].mkv")
-    assert dec.output_path.stem == "Film_[hevc]"
+    dec = _dec(tmp_path / "Film.av1.IRIS.mkv")
+    assert dec.output_path.stem == "Film.hevc.IRIS"
 
 
 # ─── La numérotation des collisions ───────────────────────────────────────────
 
 def test_la_cible_est_la_source(tmp_path):
     """Le geste le plus courant : rebaisser le débit d'une sortie HEVC."""
-    src = tmp_path / "Film_[hevc].mkv"
+    src = tmp_path / "Film.hevc.IRIS.mkv"
     src.touch()
     dec = _dec(src)
     resoudre_sorties([dec])
-    assert dec.output_path.stem == "Film_[hevc](2)"
+    assert dec.output_path.stem == "Film.hevc.IRIS(2)"
     assert dec.output_path != src
 
 
 def test_la_cible_existe_deja(tmp_path):
     """Ce fichier-là n'est la source de personne : rien ne l'aurait protégé."""
-    (tmp_path / "Film_[hevc].mkv").touch()
-    dec = _dec(tmp_path / "Film_[av1].mkv")
+    (tmp_path / "Film.hevc.IRIS.mkv").touch()
+    dec = _dec(tmp_path / "Film.av1.IRIS.mkv")
     resoudre_sorties([dec])
-    assert dec.output_path.stem == "Film_[hevc](2)"
+    assert dec.output_path.stem == "Film.hevc.IRIS(2)"
 
 
 def test_deux_decisions_d_un_lot_ne_visent_pas_le_meme_nom(tmp_path):
-    a = _dec(tmp_path / "Film_[av1].mkv")
-    b = _dec(tmp_path / "Film_[H264].mkv")
+    a = _dec(tmp_path / "Film.av1.IRIS.mkv")
+    b = _dec(tmp_path / "Film.h264.IRIS.mkv")
     resoudre_sorties([a, b])
     assert a.output_path != b.output_path
 
@@ -227,7 +221,7 @@ def test_le_nom_ne_derive_pas_une_fois_le_fichier_ecrit(tmp_path):
     vérifier la sortie, et pour effacer un fichier partiel après un abandon.
     Une résolution qui interrogerait le disque à chaque lecture rendrait `(3)`
     une fois `(2)` écrit, et le nettoyage effacerait un fichier étranger."""
-    src = tmp_path / "Film_[hevc].mkv"
+    src = tmp_path / "Film.hevc.IRIS.mkv"
     src.touch()
     dec = _dec(src)
     resoudre_sorties([dec])
@@ -256,27 +250,38 @@ def _canaux(style: str) -> tuple[int, int, int]:
     return tuple(int(n) for n in nombres)   # type: ignore[return-value]
 
 
-def test_un_gain_est_vert_une_perte_est_orange():
-    rouge_gain,  vert_gain,  _ = _canaux(_teinte_estimation(-60))
-    rouge_perte, vert_perte, _ = _canaux(_teinte_estimation(60))
-    assert vert_gain > rouge_gain,   "un gain de taille tire vers le vert"
-    assert rouge_perte > vert_perte, "une sortie plus grosse tire vers l'orange"
+
+def test_zero_est_gris():
+    """Gris dès que la cellule affiche « 0% », dans un sens comme dans l'autre."""
+    for d in (0, 0.4, -0.4):
+        r, v, b = _canaux(_teinte_estimation(d))
+        assert r == v == b, d
 
 
-def test_l_echelle_est_monotone():
-    """L'intensité doit dire l'ampleur, pas seulement le signe."""
-    rouges = [_canaux(_teinte_estimation(d))[0]
-              for d in (-60, -50, -30, -10, 0, 10, 25, 60)]
-    assert rouges == sorted(rouges)
+def test_un_gain_est_vert_une_perte_va_du_jaune_a_l_orange():
+    r, v, b = _canaux(_teinte_estimation(-60))
+    assert v > r and v > b, "un gain tire vers le vert"
+    assert _teinte_estimation(1)   == "rgb(215,175,0)"   # jaune dès +1 %
+    assert _teinte_estimation(100) == "rgb(255,135,0)"   # orange des alertes
 
 
-def test_l_echelle_est_bornee():
-    """Au-delà, l'œil ne distingue plus rien, et le corpus courant — entre
-    −20 % et −50 % — deviendrait indiscernable."""
-    assert _teinte_estimation(_DEGRADE_GAIN) == _teinte_estimation(-200)
+def test_l_intensite_croit_avec_l_ampleur():
+    """Gain : on s'éloigne du gris vers le vert. Perte : le vert du jaune
+    baisse vers l'orange. Strictement, pour que l'ampleur se lise."""
+    verts_gain  = [_canaux(_teinte_estimation(-d))[1] for d in (0, 10, 30, 60, 100)]
+    verts_perte = [_canaux(_teinte_estimation(d))[1] for d in (1, 10, 30, 60, 100)]
+    assert verts_gain  == sorted(verts_gain,  reverse=True) and len(set(verts_gain))  == 5
+    assert verts_perte == sorted(verts_perte, reverse=True) and len(set(verts_perte)) == 5
+
+
+def test_aucun_rouge():
+    """Le rouge a été écarté : la perte culmine à l'orange."""
+    for d in (1, 50, 100, 500):
+        r, v, _ = _canaux(_teinte_estimation(d))
+        assert v >= 135, d
+
+
+def test_la_teinte_pleine_est_atteinte_a_100_puis_ne_bouge_plus():
+    assert _teinte_estimation(-100) == "rgb(0,120,0)"
+    assert _teinte_estimation(_DEGRADE_GAIN)  == _teinte_estimation(-200)
     assert _teinte_estimation(_DEGRADE_PERTE) == _teinte_estimation(500)
-
-
-def test_une_sortie_plus_grosse_garde_le_gras_des_alertes():
-    assert _teinte_estimation(10).startswith("bold ")
-    assert not _teinte_estimation(-10).startswith("bold ")

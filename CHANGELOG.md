@@ -1,5 +1,210 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.8.17] — 2026-09-24
+
+### Le wiki suit le modèle « LLM Wiki » de Karpathy
+
+Le wiki de la v0.8.8.16 rangeait bien le savoir par sujet, mais il lui
+manquait ce qui le fait durer. Il est réorganisé sur le modèle publié par
+Andrej Karpathy (gist « LLM Wiki », avril 2026) :
+
+- **Trois couches.** `wiki/raw/` garde les relevés bruts et les citations de
+  l'utilisateur, immuables. Les pages du wiki en sont compilées. Le schéma
+  (conventions et opérations) vit dans `CLAUDE.md`.
+- **Une page par source ingérée** (`wiki/sources/`) : spec, CHANGELOG, GUIDE,
+  README, relevés du diagnostic du 2026-09-24, déclarations de l'utilisateur.
+- **Des pages d'entités** (`wiki/entites/`), où les faits s'accumulent :
+  ffmpeg, ffprobe, mkvmerge, dovi_tool, mpv, Jellyfin, LG OLED G3,
+  OpenSubtitles. La page « Outils » est éclatée entre elles et un concept,
+  `sous-processus`.
+- **`index.md`**, catalogue de toutes les pages, et **`log.md`**, journal en
+  ajout seul au format `## [AAAA-MM-JJ] ingest|query|lint | titre`.
+- **Frontmatter YAML** (`type`, `maj`, `sources`) et liens **`[[…]]`**,
+  lisibles dans Obsidian (graphe, Dataview).
+- **Trois opérations** décrites dans `CLAUDE.md` : ingérer une source, verser
+  une réponse, passer le lint.
+
+**Le lint est un test** : `tests/test_wiki.py` refuse un lien cassé (page ou
+section), une page orpheline, une page absente de l'index, un frontmatter
+manquant, des sources non déclarées, un journal hors format ou hors
+chronologie. Vérifié en y injectant une page fautive : quatre échecs.
+
+Aucun changement de code applicatif.
+
+## [v0.8.8.16] — 2026-09-24
+
+### Un wiki rassemble ce que le projet a appris
+
+Ce que le projet savait était dispersé entre la spec, le guide, le README et
+trois mille lignes de CHANGELOG : les plafonds des encodeurs audio, le piège
+`fra`/`fre`, les horodatages d'un flux brut, les profils Dolby Vision, ce que
+refuse le client LG. Le dossier **`wiki/`** le range par sujet :
+
+| Page | Sujet |
+|---|---|
+| `chaine-de-diffusion.md` | Jellyfin sans transcodage matériel, LG OLED G3, diagnostic d'une lecture qui échoue |
+| `codecs-video.md` | codecs lisibles, encodeurs, 10 bits, contrôle de débit |
+| `hdr-dolby-vision.md` | HDR10, HDR10+, profils DV, RPU, retrait, réencodage |
+| `audio.md` | formats acceptés, plafonds AC3/E-AC3, repli 7.1, pièges ffmpeg |
+| `sous-titres.md` | texte contre image, drapeaux, langues ISO 639-2, OpenSubtitles |
+| `conteneurs.md` | MP4 contre MKV, horodatages, chapitres, `hev1` |
+| `outils.md` | ffmpeg, ffprobe, mkvmerge, dovi_tool, mpv |
+| `synchronisation.md` | décalage, dérive PAL, montages différents |
+| `noms-de-release.md` | marques d'un nom de fichier |
+| `pieges-et-lecons.md` | défauts silencieux rencontrés, règles qui en sont sorties |
+| `questions-ouvertes.md` | ce qui reste à vérifier |
+
+Chaque fait porte son niveau de preuve (mesuré, observé, documenté, supposé)
+et sa source. Le wiki dit comment les formats et les outils se comportent ; la
+spec reste la référence de ce que fait le code.
+
+`CLAUDE.md` en fait la base à consulter pour chaque question, et à enrichir
+dès qu'on apprend quelque chose. Aucun changement de code.
+
+## [v0.8.8.15] — 2026-09-24
+
+### Retrait du Dolby Vision en MP4 : le téléviseur jouait le son sans l'image
+
+Un fichier ramené en HDR10 et sorti en MP4 démarrait sur le son seul, sans
+image, et le téléviseur plantait quelques dizaines de secondes plus tard.
+
+La cause : le MP4 était recomposé par ffmpeg à partir du flux brut que
+produit `dovi_tool remove`. Un flux Annex-B ne porte aucun horodatage, et
+ffmpeg écrivait PTS = DTS sur **chaque** image (« pts has no value », 1444
+fois sur une minute d'Avatar). Pour un flux à images B, c'est un ordre
+d'affichage faux et une cadence irrégulière. Avec `container = "auto"`, ce
+chemin était le cas courant : une source WEB-DL en E-AC3 + SubRip sort en
+MP4.
+
+Le MP4 passe maintenant en **une seule passe ffmpeg depuis la source**, avec
+le filtre `dovi_rpu=strip=1` (ffmpeg 7.1+). Mesuré sur Kingdom of the Planet
+of the Apes (P8.1, HDR10+) : horodatages identiques à ceux de la source, 2157
+images sur 2157, plus aucun NAL de RPU, configuration DV retirée, SEI HDR10 et
+HDR10+ conservés, décodage complet sans erreur. Le chemin n'écrit plus
+d'intermédiaire : il gagne deux recopies du film.
+
+- Le **profil 7** reste en MKV : le filtre ffmpeg ne retire pas sa couche
+  d'amélioration, `dovi_tool remove` si.
+- Un ffmpeg sans filtre `dovi_rpu` fait échouer le fichier avec un message
+  explicite, au lieu d'une erreur ffmpeg.
+- Le chemin **MKV** (dovi_tool + mkvmerge) est inchangé. Vérifié sur une
+  sortie existante : paquets identiques à la source, seuls les NAL du RPU en
+  moins.
+
+Les fichiers MP4 déjà produits par un retrait sont à refaire depuis leur source.
+
+`core/dovi.py` (`build_strip_mp4`, `strip_bsf_disponible` ; retire
+`build_strip_remux_mp4`), `tui/screens/run.py` (`_strip_dv`),
+`core/decision.py` (`needs_mkv`), `tests/test_conteneur.py`,
+`tests/test_strip_audio.py`, `tests/test_strip_dv.py`, § 7.3 et § 8.6 de la
+spec. En-tête de GUIDE.md remis à la version.
+
+## [v0.8.8.14] — 2026-09-23
+
+### Le suffixe s'écrit en minuscules, sauf `IRIS`
+
+Ce que le traitement a fait se lit désormais en minuscules devant la marque :
+`Film.2160p.hevc.IRIS`, `.h264.IRIS`, `.av1.IRIS`, `.dv.IRIS`, `.hdr10.IRIS`,
+`.mux.IRIS`, `.join.IRIS`. Seule la marque reste en capitales — c'est elle
+qui signe le fichier.
+
+Les marques de la source gardent leur casse : un `Film.2160p.DV` dont le DV
+est conservé sort toujours `Film.2160p.DV.IRIS`, et un `DV` réécrit en
+`HDR10` reste une marque de release. `mux` et `join` se reconnaissent sans
+casse : un `.MUX.IRIS` ou un `.JOIN.IRIS` produit depuis la v0.8.8.11 reste
+proposé comme entrée.
+
+`core/decision.py` (`SUFFIX_*`, `_JETONS_CARACTERISTIQUE`),
+`core/scanner.py` (`ENTREES_IRIS`, `_RE_ENTREE_IRIS`), `core/joiner.py`,
+`core/muxer.py`, tests de nommage, § 8.7 de la spec, GUIDE.
+
+## [v0.8.8.13] — 2026-09-23
+
+### Un sous-titre OpenSubtitles.com se greffe depuis F9
+
+Dans le choix du donneur, **`O`** cherche sur OpenSubtitles.com les
+sous-titres du film, dans les langues de sous-titres du profil. Deux
+recherches fusionnées :
+
+- **par empreinte** du fichier — les sous-titres déposés pour cette release
+  exacte, donc déjà synchronisés. Marqués `≡`, classés en tête ;
+- **par nom** — le titre tiré du nom de fichier, avec saison et épisode pour
+  une série. Elle rattrape un fichier réencodé, dont l'empreinte n'est plus
+  celle de sa release.
+
+Les résultats se classent par release exacte, puis dans l'ordre des langues
+du profil (le français avant l'anglais pour `fre, eng`), puis par nombre de
+téléchargements ; jusqu'à cinq pages de l'API sont lues.
+
+`↵` télécharge la ligne dans le dossier temporaire, et le `.srt` revient au
+donneur comme un fichier choisi sur le disque : piste présélectionnée, langue
+lue dans le nom, puis l'écran de recalage. Rien n'est écrit à côté du film.
+
+La clé d'application et le compte se renseignent dans `config.toml`, section
+`[opensubtitles]` (`api_key`, `username`, `password`). Leur absence, un refus
+d'identifiants, le quota du jour épuisé ou un réseau coupé se lisent en
+français dans l'écran, sans trace Python ; le quota restant est notifié après
+chaque téléchargement.
+
+`core/opensubtitles.py`, `tui/screens/opensubtitles.py`,
+`tui/screens/donor_picker.py`, `core/config.py`,
+`tests/test_opensubtitles.py`, smoke [21] et [21b], § 9.8 de la spec,
+GUIDE § 2.3.
+
+## [v0.8.8.12] — 2026-09-23
+
+### Le dégradé de la colonne Estim. part du gris
+
+L'échelle allait du vert au orange en passant par le jaune, bornée à −50 %
+et +25 %. Un écart nul tombait donc en plein jaune, la teinte la plus
+voyante, et tous les gains au-delà de −50 % se confondaient.
+
+Elle part désormais du **gris à 0 %** — dès que la cellule affiche « 0% ».
+Un gain glisse vers le **vert profond**, atteint à −100 %. Une sortie plus
+grosse que sa source va du **jaune à l'orange** des alertes, atteint à +100 %
+et gardé au-delà. Un rouge a été essayé puis écarté. Les pertes perdent le
+gras.
+
+`tui/screens/browser.py` (`_teinte_estimation`, `_DEGRADE_*`, `_TEINTE_*`),
+`tests/test_sorties_visibles.py`, § 14.1 de la spec.
+
+## [v0.8.8.11] — 2026-09-23
+
+### Les sorties se nomment comme des releases, et signent `.IRIS`
+
+Le `_[hevc]` accolé au nom détonnait dans une médiathèque où tout se sépare
+par des points, et ne disait pas qui avait produit le fichier. Toute sortie
+finit désormais par `.IRIS`, précédée de ce que le traitement a fait :
+
+| Traitement | Avant | Après |
+|---|---|---|
+| Réencodage HEVC / H264 / AV1 | `_[hevc]` `_[H264]` `_[av1]` | `.HEVC.IRIS` `.H264.IRIS` `.AV1.IRIS` |
+| Dolby Vision conservé | `_[dv]` | `.DV.IRIS` |
+| Retrait du RPU | `_[hdr10]` | `.HDR10.IRIS` |
+| Greffe de pistes | `_[mux]` | `.MUX.IRIS` |
+| Collage de parties | `_[join]` | `.JOIN.IRIS` |
+
+Une caractéristique que le nom annonce déjà n'est pas répétée :
+`Film.2160p.DV` dont le DV est conservé sort `Film.2160p.DV.IRIS` ; ramené en
+HDR10, son `DV` devient `HDR10` et le suffixe se réduit à `.IRIS`. `HDR10+`
+vaut annonce du HDR10.
+
+**Le filtre ne regarde plus qu'une marque.** `deja_produit` écarte tout nom
+qui finit par `.IRIS` — compteur `(n)` admis, casse exigée pour qu'un
+`Hotel.Iris` reste un film —, `.MUX.IRIS` et `.JOIN.IRIS` exceptés : on les
+encode ensuite. Réencoder une sortie remplace sa marque au lieu de l'empiler
+(`Film.AV1.IRIS` → `Film.HEVC.IRIS`, `Film.JOIN.IRIS` → `Film.JOIN.HEVC.IRIS`).
+
+**Les anciens noms ne sont plus reconnus**, à dessein : un `Film_[hevc].mkv`
+déjà sur le disque redevient une source ordinaire. Réencodé, son `[hevc]`
+part comme toute marque de codec.
+
+`core/scanner.py` (`MARQUE_IRIS`, `ENTREES_IRIS`, `deja_produit`,
+`stem_sans_suffixe_produit`, `porte_marque` ; `suffixes_produits` disparaît),
+`core/decision.py` (`SUFFIX_BY_ACTION`, `suffixe_sans_redite`),
+`core/muxer.py`, `core/joiner.py`, `tests/test_nom_iris.py`, § 8.7 et § 15.2
+de la spec, GUIDE § 2.1.
+
 ## [v0.8.8.10] — 2026-09-02
 
 ### La colonne Audio d'un retrait de RPU dit ce que le fichier contiendra

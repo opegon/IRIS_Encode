@@ -126,23 +126,22 @@ def test_l_encodage_ne_mappe_pas_les_sous_titres_ecartes(tmp_path):
 
 # ─── Le remux MP4 du retrait de Dolby Vision ──────────────────────────────────
 
-def test_le_remux_mp4_pose_la_cadence_et_le_correctif_de_base(tmp_path):
-    """Un flux HEVC brut n'a pas d'horodatage, et ses premières images ont des
-    DTS négatifs que le muxeur MP4 jetait — deux images perdues sur 2270."""
-    from core.dovi import build_strip_remux_mp4
+def test_le_mp4_du_retrait_lit_la_source_et_filtre_le_rpu(tmp_path):
+    """Le flux brut de `dovi_tool remove` n'a pas d'horodatage : ffmpeg y
+    écrivait PTS = DTS, et le téléviseur jouait le son sans l'image. Le MP4
+    part donc de la source, dont il garde les horodatages."""
+    from core.dovi import build_strip_mp4
 
-    cmd = build_strip_remux_mp4(tmp_path / "n.hevc", tmp_path / "s.mkv",
-                                tmp_path / "o.mp4", "24000/1001", [0, 2])
-    assert cmd[cmd.index("-r") + 1] == "24000/1001"
-    assert cmd.index("-r") < cmd.index("-i"), "la cadence doit précéder l'entrée"
-    assert cmd[cmd.index("-avoid_negative_ts") + 1] == "make_zero"
-    assert "1:s:0" in cmd and "1:s:2" in cmd
+    cmd = build_strip_mp4(tmp_path / "s.mkv", tmp_path / "o.mp4", [0, 2])
+    assert cmd.count("-i") == 1 and cmd[cmd.index("-i") + 1] == str(tmp_path / "s.mkv")
+    assert cmd[cmd.index("-bsf:v") + 1] == "dovi_rpu=strip=1"
+    assert "-r" not in cmd, "la cadence de la source fait foi"
+    assert "0:s:0" in cmd and "0:s:2" in cmd
     assert cmd[cmd.index("-c:s") + 1] == "mov_text"
 
 
 def test_le_remux_mp4_sans_sous_titre_ne_declare_pas_de_codec():
-    from core.dovi import build_strip_remux_mp4
+    from core.dovi import build_strip_mp4
 
-    cmd = build_strip_remux_mp4(Path("n.hevc"), Path("s.mkv"), Path("o.mp4"),
-                                "24/1", [])
+    cmd = build_strip_mp4(Path("s.mkv"), Path("o.mp4"), [])
     assert "-c:s" not in cmd

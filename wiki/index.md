@@ -1,0 +1,62 @@
+---
+type: index
+maj: 2026-09-24
+---
+
+# Index du wiki IRIS ENCODE
+
+Catalogue de toutes les pages, une ligne chacune. Tenu à jour à chaque
+ingestion. Conventions et opérations : section « Base de connaissance » du
+`CLAUDE.md` du projet. Historique : [[log]].
+
+## Synthèses
+
+| Page | Résumé |
+|---|---|
+| [[chaine-de-diffusion]] | Jellyfin sans transcodage matériel → LG G3 : le seul jeu de formats accepté partout, ce qui fait transcoder, diagnostic d'une lecture qui échoue |
+| [[pieges-et-lecons]] | Défauts silencieux rencontrés, règles qui en sont sorties, hypothèses infirmées |
+| [[questions-ouvertes]] | Ce qui reste à vérifier, et comment le trancher |
+
+## Concepts
+
+| Page | Résumé |
+|---|---|
+| [[codecs-video]] | Codecs lus sans transcodage, encodeurs, 10 bits, contrôle de débit NVENC et x265 |
+| [[hdr-dolby-vision]] | HDR10, HDR10+, profils DV, RPU et couche d'amélioration ; retrait, réencodage, SDR |
+| [[audio]] | Formats acceptés, plafonds AC3/E-AC3, repli 7.1, Atmos, pièges ffmpeg |
+| [[sous-titres]] | Texte contre image, incrustation, drapeaux, codes de langue `fra`/`fre` |
+| [[conteneurs]] | MP4 contre MKV, horodatages, chapitres, `hev1`, collage |
+| [[synchronisation]] | Décalage, dérive PAL, montages différents, recalage par plages |
+| [[noms-de-release]] | Marques d'un nom de fichier, pièges d'analyse, ce qu'une conversion rend faux |
+| [[sous-processus]] | Règles pour lancer un outil externe : chemin, `stdin`, UTF-8, tubes, codes retour |
+
+## Entités
+
+| Page | Résumé |
+|---|---|
+| [[ffmpeg]] | Encodage et remux ; filtres `dovi_rpu` et `hevc_mp4toannexb`, pièges d'horodatage et de spécificateurs |
+| [[ffprobe]] | Analyse ; débit vidéo réel, sous-profil DV, paquets, comptage des NAL |
+| [[mkvmerge]] | Remux Matroska ; `--gui-mode`, ID global des pistes, drapeau par défaut, collage |
+| [[dovi-tool]] | Dolby Vision ; `extract-rpu`, `remove`, `inject-rpu`, `info` en JSON |
+| [[mpv]] | Lecteur de contrôle ; délais audio et sous-titres, tolérance trompeuse |
+| [[jellyfin]] | Serveur de l'utilisateur ; méthodes de lecture, causes de transcodage, diagnostic |
+| [[lg-oled-g3]] | Téléviseur de l'utilisateur ; formats acceptés, symptômes constatés |
+| [[opensubtitles]] | Service de sous-titres ; empreinte, pagination, quotas |
+
+## Sources
+
+| Page | Résumé |
+|---|---|
+| [[source-spec]] | `iris_encode_spec.md` : ce que fait le code, mesures de développement |
+| [[source-changelog]] | `CHANGELOG.md` : pourquoi chaque chose a changé, défauts silencieux |
+| [[source-guide]] | `GUIDE.md` : procédures et cas rencontrés |
+| [[source-readme]] | `README.md` : chaîne de diffusion de référence, prérequis |
+| [[source-2026-09-24-diagnostic]] | Relevés du diagnostic « son sans image » sur le retrait DV |
+| [[source-2026-09-24-utilisateur]] | Déclarations de l'utilisateur : G3, Jellyfin sans transcodage matériel |
+
+## Brut (`raw/`, immuable)
+
+| Fichier | Contenu |
+|---|---|
+| [[2026-09-24-diagnostic-retrait-dv]] | Commandes et sorties du diagnostic, telles quelles |
+| [[2026-09-24-declarations-utilisateur]] | Citations de l'utilisateur |

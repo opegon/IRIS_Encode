@@ -35,6 +35,14 @@ _DEFAULTS: dict[str, Any] = {
     "meta": {
         "omdb_api_key": "",
     },
+    # Sous-titres téléchargés depuis l'écran F9 (core/opensubtitles.py). La
+    # clé se crée sur opensubtitles.com/consumers ; le compte sert au
+    # téléchargement. config.toml n'est pas suivi par git.
+    "opensubtitles": {
+        "api_key":  "",
+        "username": "",
+        "password": "",
+    },
     "decision": {
         "near_1080p_min_width":  1600,
         "near_1080p_min_height":  850,

@@ -359,7 +359,7 @@ def audio_args(included_audio: list) -> list[str]:
         if ad.output_codec == "aac":
             # `-ar:a:{i}`, pas `-ar:{i}` : un spécificateur nu désigne le flux
             # de sortie n° i **tous types confondus**. Comme `build_command` et
-            # `build_strip_remux_mp4` mappent la vidéo en premier, `-ar:0`
+            # `build_strip_mp4` mappent la vidéo en premier, `-ar:0`
             # visait la vidéo — ignoré — et `-ar:1` la première piste audio,
             # alors qu'il était écrit pour la seconde. Le forçage à 48 kHz
             # tombait donc systématiquement d'un cran, sans rien signaler.

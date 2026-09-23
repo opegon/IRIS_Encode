@@ -1,9 +1,10 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.8.10 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.8.17 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
-> au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`.
+> au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`. Ce que
+> le projet a appris sur les formats, les outils et la chaîne de lecture : `wiki/`.
 
 ---
 
@@ -359,6 +360,11 @@ decision     = 12     # largeur de la colonne décision
 
 [meta]
 omdb_api_key = ""     # clé gratuite sur omdbapi.com (données IMDB complètes)
+
+[opensubtitles]       # sous-titres depuis F9, touche O (voir GUIDE § 2.3)
+api_key  = ""         # clé d'application : opensubtitles.com/consumers
+username = ""         # compte, exigé pour télécharger (20 / jour gratuit)
+password = ""
 ```
 
 **`profiles.toml`** — profils d'encodage (bitrate, résolution, audio, Dolby Vision) :

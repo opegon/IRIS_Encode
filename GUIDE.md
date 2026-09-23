@@ -1,7 +1,7 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.8.10
-**Date** : 2026-08-30
+**Version** : 0.8.8.17
+**Date** : 2026-09-24
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
 
@@ -112,17 +112,23 @@ La colonne **Décision** dit ce qui sera fait : `HEVC`, `H264`, `AV1` ou `SKIP`.
 Un fichier `SKIP` est déjà assez compressé — le cocher quand même le force à
 l'encodage au débit de la source.
 
-**Ce que l'application a encodé n'apparaît pas dans la liste.** Les sorties
-portant `_[hevc]`, `_[H264]`, `_[av1]` ou `_[hdr10]` sont écartées du scan :
-les reproposer reviendrait à offrir de réencoder par-dessus un fichier déjà
-traité, avec la perte de génération que cela implique. Si un fichier que vous
-venez de produire « manque » dans le navigateur, c'est cela — il est bien là,
-sur le disque.
+**Ce que l'application a encodé se reconnaît à son nom.** Toute sortie finit
+par `.IRIS`, précédée de ce que le traitement a fait : `Film.2160p.hevc.IRIS.mkv`,
+`Film.720p.h264.IRIS.mp4`, `Film.av1.IRIS.mkv`, `Film.dv.IRIS.mkv` (Dolby Vision
+conservé), `Film.hdr10.IRIS.mkv` (RPU retiré). Une caractéristique que le nom
+porte déjà n'est pas répétée — `Film.2160p.DV` sort `Film.2160p.DV.IRIS`. Ces
+fichiers sont grisés dans la liste et écartés du scan récursif et de `A` : les
+reproposer reviendrait à offrir de réencoder par-dessus un fichier déjà traité,
+avec la perte de génération que cela implique.
 
-Un `_[mux]` fait exception et **reste visible** : ce n'est pas un encodage mais
-une greffe de pistes, et l'encoder ensuite est un enchaînement normal. Un
-`_[join]` aussi, et pour une raison plus forte encore : un fichier collé
+Un `.mux.IRIS` fait exception et **reste proposé** : ce n'est pas un encodage
+mais une greffe de pistes, et l'encoder ensuite est un enchaînement normal. Un
+`.join.IRIS` aussi, et pour une raison plus forte encore : un fichier collé
 n'existe que pour être encodé ensuite (§ 2.1bis).
+
+> Depuis la v0.8.8.11, les anciens noms (`_[hevc]`, `_[av1]`…) ne sont plus
+> reconnus : ils se traitent comme des sources ordinaires. Réencodé, un
+> `Film_[hevc]` sort `Film.hevc.IRIS`.
 
 > Avant la v0.8.5.1, seuls `_[hevc]` et `_[H264]` étaient reconnus. Une sortie
 > AV1 reparaissait donc dans la liste, et comme l'AV1 n'est pas un codec que la
@@ -171,8 +177,8 @@ place.
 
 **Rien n'est effacé.** Les parties sont conservées ; `Ctrl+D` sur l'accueil
 reste le seul geste qui supprime. Le fichier produit s'appelle
-`<nom commun>_[join].mkv` — `Film part1.mkv` + `Film part2.mkv` donnent
-`Film_[join].mkv` — et le collage refuse d'écraser un fichier existant.
+`<nom commun>.join.IRIS.mkv` — `Film part1.mkv` + `Film part2.mkv` donnent
+`Film.join.IRIS.mkv` — et le collage refuse d'écraser un fichier existant.
 
 À la fin, l'écran compare la durée obtenue à la somme des parties. Un écart
 est annoncé plutôt que passé sous silence : un mkvmerge interrompu laisse un
@@ -209,6 +215,26 @@ ses pistes dans ce fichier. Le fichier de travail est exclu de la liste.
 `↵` choisit le fichier, puis `Espace` coche les pistes à greffer et `↵` valide.
 `Esc` annule. Une piste seule est présélectionnée. Plusieurs donneurs
 s'enchaînent sans quitter l'écran suivant.
+
+**Pas de sous-titre sur le disque ? `O` le cherche sur OpenSubtitles.com**,
+dans les langues de sous-titres du profil. Les lignes marquées `≡` ont été
+déposées pour cette release exacte : elles sont déjà synchronisées, prenez-les
+en priorité. `SME` signale un sous-titre pour sourds et malentendants. `↵`
+télécharge la ligne ; le fichier revient ici comme si vous l'aviez choisi, et
+la suite est la même — piste présélectionnée, langue déduite, recalage.
+
+Il faut une clé d'application et un compte (gratuits, 20 téléchargements par
+jour), à renseigner une fois dans `config.toml` :
+
+```toml
+[opensubtitles]
+api_key  = "…"   # opensubtitles.com/consumers
+username = "…"
+password = "…"
+```
+
+Sans eux, l'écran dit ce qui manque. Le `.srt` est écrit dans le dossier
+temporaire, pas à côté du film : il n'existe que pour la greffe.
 
 **Lisez la colonne Nom jusqu'au bout.** Un rip livre couramment six pistes
 françaises : France et Canada, chacune en normal, `(forced)` et `(SDH)`. Elles
@@ -360,7 +386,8 @@ Dolby Vision profil 8 et basculent en transcodage, avec des coupures de son.
 Retirer le DV **améliore** la lecture, contrairement à ce qu'on croirait.
 
 Avec un profil réglé sur `dolby_vision = hdr10` (`F5`, champ **DV**), une source
-DV que le profil n'a aucune raison de réencoder sort en `_[hdr10].mkv` :
+DV que le profil n'a aucune raison de réencoder sort en `.hdr10.IRIS.mkv` ou
+`.hdr10.IRIS.mp4`, selon ce que ses pistes permettent :
 
 - le RPU est retiré, **aucune image n'est recalculée** ;
 - le HDR10+ éventuel survit, ce qu'aucun réencodage ne permet ;
@@ -599,8 +626,13 @@ En 8.1, la couche de base *est* déjà du HDR10 : il suffit d'en retirer les
 métadonnées Dolby Vision. L'image ressort **identique au bit près**, le HDR10+
 éventuel est conservé, et un film 4K de 5,7 Go y passe en un peu plus de deux
 minutes — contre plusieurs heures pour un réencodage, qui abîmerait l'image et
-perdrait le HDR10+. La sortie est un `<nom>_[hdr10].mkv` portant toutes les
-pistes de la source.
+perdrait le HDR10+. La sortie est un `<nom>.hdr10.IRIS.mkv` ou `.mp4` portant
+les pistes retenues de la source ; un profil 7 sort toujours en MKV.
+
+> **MP4 produits avant la v0.8.8.15 : à refaire.** Leur vidéo avait perdu ses
+> horodatages. Sur téléviseur, la lecture démarrait sur le son seul, sans
+> image, puis plantait. Relancez le retrait depuis la source ; les `.mkv` ne
+> sont pas concernés.
 
 Pour réencoder quand même, `F6` sur la ligne force le codec : la décision
 repart du débit source.

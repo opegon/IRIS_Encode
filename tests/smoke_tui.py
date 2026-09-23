@@ -520,7 +520,7 @@ async def scenario_external_tracks() -> None:
             assert app.screen._done, "mux non termine"
             assert app.screen._ok, "mux en echec"
 
-            out = td / "film_[mux].mkv"
+            out = td / "film.mux.IRIS.mkv"
             assert out.exists(), "fichier muxe absent"
             from core import muxer
             produced = muxer.identify(out)
@@ -529,12 +529,14 @@ async def scenario_external_tracks() -> None:
             print(f"[12] Mux : {out.name} produit, "
                   f"{len(produced)} pistes dont 2 en 'fre'")
 
-            # Le markup Rich mangeait « _[mux] » : l'ecran annoncait film_.mkv.
+            # Le markup Rich mangeait l'ancien suffixe « _[mux] » : l'ecran
+            # annoncait film_.mkv. Le suffixe n'a plus de crochets, mais le
+            # nom affiche doit rester entier.
             # On lit ce qui est reellement rendu, pas ce qu'on a demande.
             for wid in ("#mux-out", "#mux-state"):
                 rendu = str(app.screen.query_one(wid, Static).render())
-                assert "_[mux]" in rendu, f"{wid} : suffixe mange -> {rendu!r}"
-            print("[12b] Ecran de mux : le suffixe _[mux] survit a l'affichage")
+                assert ".mux.IRIS" in rendu, f"{wid} : suffixe mange -> {rendu!r}"
+            print("[12b] Ecran de mux : le suffixe .mux.IRIS survit a l'affichage")
 
             # Apres le mux, c'est le fichier MUXE qui devient le fichier de
             # travail : sans ca, un encodage viserait l'original et la greffe
@@ -981,7 +983,7 @@ async def scenario_collage() -> None:
             noms = [i.path.name for i in join._infos]
             assert noms == ["Film part1.mkv", "Film part2.mkv",
                             "Film part10.mkv"], noms
-            assert join._output.name == "Film_[join].mkv", join._output.name
+            assert join._output.name == "Film.join.IRIS.mkv", join._output.name
             # La colonne du nom suit celle de l'accueil : une largeur figee
             # plus etroite tronquait des noms lisibles la-bas.
             from core import config as cfg_mod
@@ -1028,7 +1030,7 @@ async def scenario_collage() -> None:
             assert type(app.screen).__name__ == "BrowserScreen", \
                 type(app.screen).__name__
             noms_vus = {p.name for p in app.screen._decisions}
-            assert "Film_[join].mkv" in noms_vus, noms_vus
+            assert "Film.join.IRIS.mkv" in noms_vus, noms_vus
             print("[19e] Le fichier colle revient a l'accueil, decide comme les autres")
 
 
@@ -1041,7 +1043,7 @@ async def scenario_sorties_visibles() -> None:
             return
         # Ce que l'application ecrit elle-meme : jusqu'a la v0.8.8.3, ce
         # fichier disparaissait de l'ecran.
-        (td / "clip0.mkv").replace(td / "Deja_[hevc].mkv")
+        (td / "clip0.mkv").replace(td / "Deja.hevc.IRIS.mkv")
 
         app = IrisEncodeApp(start_path=td)
         async with app.run_test(size=(140, 40)) as pilot:
@@ -1052,9 +1054,9 @@ async def scenario_sorties_visibles() -> None:
             scr   = app.screen
             table = scr.query_one(DataTable)
             noms  = {p.name for p in scr._decisions}
-            assert noms == {"clip1.mkv", "Deja_[hevc].mkv"}, noms
+            assert noms == {"clip1.mkv", "Deja.hevc.IRIS.mkv"}, noms
             assert table.row_count == 2, table.row_count
-            produit = td / "Deja_[hevc].mkv"
+            produit = td / "Deja.hevc.IRIS.mkv"
             assert scr._produits == {produit}, scr._produits
             print("[20] La sortie deja produite est listee, marquee comme telle")
 
@@ -1073,6 +1075,84 @@ async def scenario_sorties_visibles() -> None:
             print("[20c] L'espace coche la sortie produite : elle reste encodable")
 
 
+async def scenario_opensubtitles() -> None:
+    """F9 -> O : un sous-titre OpenSubtitles entre dans la greffe comme un fichier.
+
+    Le reseau est remplace : ce qu'on eprouve est le parcours d'ecrans, pas l'API
+    (tests/test_opensubtitles.py s'en charge).
+    """
+    from core.opensubtitles import Client, Resultat
+    with tempfile.TemporaryDirectory() as td_str:
+        td = Path(td_str)
+        if not _make_test_videos(td, 1):
+            print("[21] SKIP : ffmpeg introuvable")
+            return
+        app = IrisEncodeApp(start_path=td)
+        if not app.mkvmerge_available:
+            print("[21] SKIP : mkvmerge introuvable, greffe non testee")
+            return
+
+        telecharge = td / "clip0.42.fr.srt"
+        vus = {}
+
+        def chercher(self, video, langues):
+            vus["langues"] = langues
+            return [Resultat(42, "fre", "Clip.1080p.WEB", 120, True, False),
+                    Resultat(43, "eng", "Clip.720p", 900, False, True)]
+
+        def telecharger(self, resultat, video):
+            vus["file_id"] = resultat.file_id
+            telecharge.write_text(_SRT, encoding="utf-8")
+            return telecharge, 19
+
+        origine = (Client.chercher, Client.telecharger)
+        Client.chercher, Client.telecharger = chercher, telecharger
+        try:
+            async with app.run_test(size=(160, 45)) as pilot:
+                await pilot.pause(0.5)
+                from tui.screens.browser import BrowserScreen
+                app.push_screen(BrowserScreen(td, start_virtual=False))
+                await pilot.pause(4.0)
+                app.wizard_mode = False
+                await pilot.press("t")
+                await pilot.pause(0.8)
+                await pilot.press("f9")
+                await pilot.pause(0.6)
+                assert type(app.screen).__name__ == "DonorFileScreen", type(app.screen).__name__
+
+                # Sans cle : l'ecran le dit, au lieu d'appeler l'API pour rien.
+                app.cfg["opensubtitles"] = {"api_key": "", "username": "", "password": ""}
+                await pilot.press("o")
+                await pilot.pause(0.6)
+                assert type(app.screen).__name__ == "OpenSubtitlesScreen", type(app.screen).__name__
+                etat = str(app.screen.query_one("#os-state", Static).render())
+                assert "api_key" in etat, etat
+                await pilot.press("escape")
+                await pilot.pause(0.4)
+                assert type(app.screen).__name__ == "DonorFileScreen", type(app.screen).__name__
+                print("[21] OpenSubtitles sans cle : message, retour au donneur")
+
+                app.cfg["opensubtitles"] = {"api_key": "K", "username": "u", "password": "p"}
+                await pilot.press("o")
+                await pilot.pause(0.8)
+                scr = app.screen
+                assert scr.query_one(DataTable).row_count == 2
+                assert vus["langues"], "langues du profil non transmises"
+                await pilot.press("enter")          # la ligne exacte, en tete
+                await pilot.pause(1.0)
+                assert vus["file_id"] == 42, vus
+                assert type(app.screen).__name__ == "DonorTrackScreen", type(app.screen).__name__
+                await pilot.press("enter")          # piste unique, presélectionnee
+                await pilot.pause(0.8)
+                assert type(app.screen).__name__ == "SyncScreen", type(app.screen).__name__
+                piste = app.screen._tracks[-1]
+                assert piste.source_path == telecharge, piste.source_path
+                assert piste.language == "fre", piste.language
+                print("[21b] OpenSubtitles : telecharge -> pistes -> recalage, langue 'fre'")
+        finally:
+            Client.chercher, Client.telecharger = origine
+
+
 async def main() -> None:
     with _profils_isoles():
         await scenario_navigation()
@@ -1083,6 +1163,7 @@ async def main() -> None:
         await scenario_accueil()
         await scenario_collage()
         await scenario_sorties_visibles()
+        await scenario_opensubtitles()
     print("SMOKE OK")
 
 

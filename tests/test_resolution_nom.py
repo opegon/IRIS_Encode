@@ -2,7 +2,7 @@
 tests/test_resolution_nom.py — Le nom de sortie dit la définition de sortie.
 
 Un `Film.2160p.BluRay.mkv` rabattu en 1080p ressortait
-`Film.2160p.BluRay_[hevc].mkv` : le nom promettait une définition que le
+`Film.2160p.BluRay.hevc.IRIS.mkv` : le nom promettait une définition que le
 fichier n'a plus. Dans une médiathèque, deux fichiers de définitions
 différentes se lisaient pareil, et c'est le nom — pas le conteneur — que
 regarde l'utilisateur pour choisir.
@@ -129,10 +129,10 @@ def test_un_1080p_est_laisse_tel_quel(tmp_path):
     info = _source(tmp_path, "Film.1080p.WEB-DL", largeur=1920, hauteur=1080,
                    bitrate=12_000_000)
     dec  = decide(info, _profile())
-    assert dec.output_path.stem == "Film.1080p.WEB-DL_[hevc]"
+    assert dec.output_path.stem == "Film.1080p.WEB-DL.hevc.IRIS"
 
 
 def test_un_nom_sans_marque_de_resolution_ne_gagne_rien(tmp_path):
     """On remplace une marque existante, on n'en ajoute pas."""
     dec = decide(_source(tmp_path, "Le Nom du film (2017)"), _profile())
-    assert dec.output_path.stem == "Le Nom du film (2017)_[hevc]"
+    assert dec.output_path.stem == "Le Nom du film (2017).hevc.IRIS"

@@ -103,22 +103,22 @@ def _sortie_recopiee(dec: FileDecision) -> bool:
             or video_recopiee(dec.video.action, dec.video.dv_action))
 
 
-# Bornes du dégradé de la colonne Estim, en pourcentage d'écart à la source.
-# Au-delà, la teinte ne bouge plus : l'œil ne distingue pas −60 % de −80 %, et
-# une échelle non bornée rendrait le gros du corpus — qui vit entre −20 % et
-# −50 % — indiscernable.
-_DEGRADE_GAIN  = -50.0
-_DEGRADE_PERTE =  25.0
-# Vert franc → jaune → orange. L'orange est celui des alertes (#ff8700), pour
-# qu'une sortie plus grosse que sa source se lise dans la même famille que le
-# reste des avertissements de l'application.
-_TEINTE_GAIN   = (  0, 175,   0)
-_TEINTE_NEUTRE = (215, 175,   0)
-_TEINTE_PERTE  = (255, 135,   0)
+# Bornes du dégradé de la colonne Estim, en pourcentage d'écart à la source :
+# gris à 0 %, teinte pleine à ±100 %, et au-delà la teinte ne bouge plus.
+# Un gain ne dépasse jamais 100 % ; une perte peut, et reste orange.
+_DEGRADE_GAIN  = -100.0
+_DEGRADE_PERTE =  100.0
+_TEINTE_GAIN   = (  0, 120,   0)   # vert profond
+_TEINTE_NEUTRE = (138, 138, 138)   # gris
+# Une perte ne part pas du gris mais du jaune : un gris-orange pâle ne se
+# distinguerait pas d'un écart nul. L'orange est celui des alertes (#ff8700).
+_TEINTE_PERTE_MIN = (215, 175,   0)   # jaune
+_TEINTE_PERTE     = (255, 135,   0)   # orange
 
 
 def _teinte_estimation(delta_pct: float) -> str:
-    """Style Rich d'un écart de taille, du vert au orange.
+    """Style Rich d'un écart de taille : vert si la sortie maigrit, du jaune à
+    l'orange si elle grossit, gris quand l'écart affiché est nul.
 
     **Exception assumée à la table d'emphases** (`core.decision.Emphase`). Le
     vert y dit « traité sans réencodage » et cette colonne lui fait dire « la
@@ -133,11 +133,12 @@ def _teinte_estimation(delta_pct: float) -> str:
         r, v, bl = (round(x + (y - x) * k) for x, y in zip(a, b))
         return f"rgb({r},{v},{bl})"
 
+    # Gris dès que la cellule affiche « 0% » : un `+0%` jaune se contredirait.
+    if round(delta_pct) == 0:
+        return _melange(_TEINTE_NEUTRE, _TEINTE_NEUTRE, 0)
     if delta_pct < 0:
-        return _melange(_TEINTE_GAIN, _TEINTE_NEUTRE, 1 - delta_pct / _DEGRADE_GAIN)
-    # Une sortie plus grosse que sa source est une anomalie : elle garde le
-    # gras des alertes, que le seul virage de teinte ne rendrait pas.
-    return f"bold {_melange(_TEINTE_NEUTRE, _TEINTE_PERTE, delta_pct / _DEGRADE_PERTE)}"
+        return _melange(_TEINTE_NEUTRE, _TEINTE_GAIN, delta_pct / _DEGRADE_GAIN)
+    return _melange(_TEINTE_PERTE_MIN, _TEINTE_PERTE, delta_pct / _DEGRADE_PERTE)
 
 
 def _estimate_output_bytes(dec: FileDecision) -> int:

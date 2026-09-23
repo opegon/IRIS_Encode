@@ -138,20 +138,19 @@ def test_sans_decision_le_comportement_ne_change_pas(tmp_path):
 # ─── Le remux MP4 ─────────────────────────────────────────────────────────────
 
 def test_le_mp4_transcode_dans_la_meme_passe(tmp_path):
-    cmd = dovi.build_strip_remux_mp4(
-        tmp_path / "v.hevc", tmp_path / "src.mkv", tmp_path / "out.mp4",
-        fps="24/1", sous_titres=[], audio=[_copy(0), _exclue(1), _transcode(2)])
+    cmd = dovi.build_strip_mp4(
+        tmp_path / "src.mkv", tmp_path / "out.mp4",
+        sous_titres=[], audio=[_copy(0), _exclue(1), _transcode(2)])
     maps = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-map"]
-    assert maps == ["0:v:0", "1:a:0", "1:a:2"]
+    assert maps == ["0:v:0", "0:a:0", "0:a:2"]
     assert cmd[cmd.index("-c:a:1") + 1] == "eac3"
     assert "-metadata:s:a:1" in cmd
 
 
 def test_le_mp4_sans_decision_recopie_tout(tmp_path):
-    cmd = dovi.build_strip_remux_mp4(
-        tmp_path / "v.hevc", tmp_path / "src.mkv", tmp_path / "out.mp4",
-        fps="24/1", sous_titres=[])
-    assert "1:a?" in cmd
+    cmd = dovi.build_strip_mp4(
+        tmp_path / "src.mkv", tmp_path / "out.mp4", sous_titres=[])
+    assert "0:a?" in cmd
 
 
 # ─── IE-48 — le forçage à 48 kHz visait le mauvais flux ──────────────────────
@@ -160,7 +159,7 @@ def test_le_mp4_sans_decision_recopie_tout(tmp_path):
 # de sortie n° i tous types confondus, là où toutes les options voisines
 # (`-c:a:{i}`, `-b:a:{i}`, `-ac:a:{i}`) désignent la i-ème piste audio.
 #
-# `build_command` et `build_strip_remux_mp4` mappent la vidéo en premier : le
+# `build_command` et `build_strip_mp4` mappent la vidéo en premier : le
 # flux 0 est donc la vidéo. `-ar:0` tombait dessus et était ignoré, `-ar:1`
 # tombait sur la première piste audio alors qu'il était écrit pour la seconde.
 # Le réglage glissait d'un cran, silencieusement, et la piste AAC pour laquelle
@@ -227,10 +226,10 @@ def test_le_forcage_48k_vise_la_bonne_piste_a_l_encodage(tmp_path):
 
 
 def test_le_mp4_du_retrait_dv_vise_aussi_la_bonne_piste(tmp_path):
-    """Même disposition, même défaut : `build_strip_remux_mp4` mappe la vidéo en tête."""
-    cmd = dovi.build_strip_remux_mp4(
-        tmp_path / "nodv.hevc", tmp_path / "src.mkv", tmp_path / "out.mp4",
-        fps="24/1", sous_titres=[], audio=[_copy(0), _aac(1)])
+    """Même disposition, même défaut : `build_strip_mp4` mappe la vidéo en tête."""
+    cmd = dovi.build_strip_mp4(
+        tmp_path / "src.mkv", tmp_path / "out.mp4",
+        sous_titres=[], audio=[_copy(0), _aac(1)])
     assert _valeur_de(cmd, "-ar:a:1") == "48000"
     assert "-ar:1" not in cmd, cmd
 

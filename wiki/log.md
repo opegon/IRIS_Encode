@@ -57,3 +57,12 @@ conventions passent dans le schéma (`CLAUDE.md`). Contrôle automatique :
 Les conventions et les opérations quittent le `CLAUDE.md` du projet, exclu du
 dépôt, pour [[SCHEMA]] : un clone du dépôt a désormais le wiki et son mode
 d'emploi. `CLAUDE.md` n'en garde qu'un renvoi.
+
+## [2026-09-24] ingest | Mise à jour de l'application
+
+Relevés d'`updater.py` (v0.8.9.1) : cmd.exe reprend un `.bat` remplacé à
+l'ancienne position, un bloc `( … )` protège la relance ; essai réel contre
+l'API des releases GitHub, empreinte `digest` conforme. Source :
+[[source-2026-09-24-mise-a-jour]]. Pages touchées : [[github]] (créée),
+[[sous-processus]], [[pieges-et-lecons]].
+

@@ -31,6 +31,9 @@ _DEFAULTS: dict[str, Any] = {
     },
     "updates": {
         "check_on_startup": True,
+        # Mise à jour d'IRIS ENCODE elle-même, par updater.py avant le
+        # lancement : "ask" (demander, « O » présélectionné), "auto", "off".
+        "app": "ask",
     },
     "meta": {
         "omdb_api_key": "",

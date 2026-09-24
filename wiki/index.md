@@ -27,7 +27,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[conteneurs]] | MP4 contre MKV, horodatages, chapitres, `hev1`, collage |
 | [[synchronisation]] | Décalage, dérive PAL, montages différents, recalage par plages |
 | [[noms-de-release]] | Marques d'un nom de fichier, pièges d'analyse, ce qu'une conversion rend faux |
-| [[sous-processus]] | Règles pour lancer un outil externe : chemin, `stdin`, UTF-8, tubes, codes retour |
+| [[sous-processus]] | Règles pour lancer un outil externe : chemin, `stdin`, UTF-8, tubes, codes retour ; `.bat` réécrit en cours d'exécution |
 
 ## Entités
 
@@ -41,6 +41,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[jellyfin]] | Serveur de l'utilisateur ; méthodes de lecture, causes de transcodage, diagnostic |
 | [[lg-oled-g3]] | Téléviseur de l'utilisateur ; formats acceptés, symptômes constatés |
 | [[opensubtitles]] | Service de sous-titres ; empreinte, pagination, quotas |
+| [[github]] | Releases : API « Latest », empreinte `digest`, 60 appels par heure, archives d'IRIS |
 
 ## Sources
 
@@ -52,6 +53,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-readme]] | `README.md` : chaîne de diffusion de référence, prérequis |
 | [[source-2026-09-24-diagnostic]] | Relevés du diagnostic « son sans image » sur le retrait DV |
 | [[source-2026-09-24-utilisateur]] | Déclarations de l'utilisateur : G3, Jellyfin sans transcodage matériel |
+| [[source-2026-09-24-mise-a-jour]] | Relevés d'`updater.py` : cmd.exe et les `.bat` réécrits, essai réel contre GitHub |
 
 ## Brut (`raw/`, immuable)
 
@@ -59,3 +61,4 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 |---|---|
 | [[2026-09-24-diagnostic-retrait-dv]] | Commandes et sorties du diagnostic, telles quelles |
 | [[2026-09-24-declarations-utilisateur]] | Citations de l'utilisateur |
+| [[2026-09-24-mise-a-jour-application]] | Expérience cmd.exe, sortie de la mise à jour réelle |

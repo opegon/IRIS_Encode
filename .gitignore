@@ -73,3 +73,7 @@ _*.py
 # Instructions de projet pour Claude Code : aide-memoire local, pas un
 # document du produit. Retire du depot et de son historique le 2026-08-29.
 CLAUDE.md
+
+# Mise à jour de l'application (updater.py) : cache de la release, archive
+# téléchargée, sauvegarde de la version remplacée, manifeste des fichiers livrés.
+.iris_update/

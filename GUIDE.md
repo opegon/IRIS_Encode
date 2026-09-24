@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.0
+**Version** : 0.8.9.1
 **Date** : 2026-09-24
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -20,6 +20,21 @@ Détail et alternative sans exécutable au **README § 5.1**.
 
 À défaut, `launch.bat` fonctionne — de préférence lancé *depuis* Windows
 Terminal plutôt qu'au double-clic.
+
+**Quand une nouvelle version est publiée**, le lancement le dit avant d'ouvrir
+l'application :
+
+```
+  Mise à jour disponible : v0.8.9.1 → v0.9.0.0
+  Installer maintenant ? [O/n]
+```
+
+`Entrée` installe, puis l'application redémarre sur la version neuve ; `n`
+remet à plus tard (la question revient au lancement suivant). Vos réglages,
+vos profils et les outils de `bin/` ne sont jamais touchés. Hors ligne, rien ne
+s'affiche. Pour installer sans question ou ne plus rien vérifier : `app =
+"auto"` ou `app = "off"` sous `[updates]` dans `config.toml`. Détail au
+**README § 5.2**.
 
 ---
 

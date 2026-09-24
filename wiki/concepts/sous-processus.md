@@ -4,6 +4,7 @@ maj: 2026-09-24
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
+  - "[[source-2026-09-24-mise-a-jour]]"
 ---
 
 # Lancer les outils externes
@@ -43,3 +44,18 @@ bloquer le lancement.
   sortie partielle qui passe pour un film court. *(mesuré, IE-41)*
 - Tuer le processus si la boucle de lecture sort en erreur : un ffmpeg oublié
   décode un film entier pour personne.
+
+## Scripts .bat réécrits pendant leur exécution
+
+cmd.exe lit un `.bat` **au fil de l'exécution, par position dans le fichier**.
+Si le fichier est remplacé pendant qu'il tourne (par une mise à jour, par
+exemple), la suite est lue dans le nouveau fichier à l'ancienne position : un
+fragment de ligne est exécuté comme une commande. *(mesuré, Windows 11)*
+
+Parade : placer ce qui peut remplacer le fichier **et tout ce qui suit** dans
+un bloc `( … )`, qui se termine par la relance ou `exit /b`. cmd lit un bloc en
+entier avant de l'exécuter. *(mesuré, voir [[2026-09-24-mise-a-jour-application]])*
+
+## Voir aussi
+
+[[ffmpeg]] · [[ffprobe]] · [[mkvmerge]] · [[dovi-tool]] · [[mpv]] · [[github]] · [[pieges-et-lecons]]

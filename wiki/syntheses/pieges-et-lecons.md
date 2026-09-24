@@ -2,6 +2,7 @@
 type: synthese
 maj: 2026-09-24
 sources:
+  - "[[source-2026-09-24-mise-a-jour]]"
   - "[[source-changelog]]"
   - "[[source-spec]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -61,6 +62,7 @@ une ligne de moins dans une liste.
 | L'interface perd des frappes | sous-processus héritant du `stdin` du terminal | [[sous-processus]] |
 | Barre de progression figée | deux tubes, un seul lu | [[sous-processus]] |
 | Sortie AV1 reproposée, source effacée | filtre des sorties d'IRIS incomplet | spec § 15.2 |
+| Fragment de ligne exécuté comme une commande | `.bat` remplacé pendant son exécution | [[sous-processus#Scripts .bat réécrits pendant leur exécution]] |
 | Débit « trop gros » : réencodage inutile | débit du conteneur comparé au seuil vidéo | [[codecs-video#Mesurer le débit vidéo|Codecs vidéo]] |
 
 ## Hypothèses infirmées

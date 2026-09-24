@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.0 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.1 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`. Ce que
@@ -278,6 +278,8 @@ launch.bat
 ```
 
 Le lanceur vérifie, et installe ce qui manque :
+- une version plus récente d'IRIS ENCODE, publiée sur GitHub — il propose de
+  l'installer (§ 5.2) ;
 - un Python 3.11+ utilisable — sinon il en installe un (chapitre 1) ;
 - les dépendances Python listées dans `requirements.txt` ;
 - ffmpeg / ffprobe, téléchargés dans `bin/` au premier besoin ;
@@ -319,6 +321,41 @@ foi. Après une mise à jour du lanceur, relancer `launcher\build.bat` suffit.
 > (icône au choix via *Propriétés* → *Changer d'icône* →
 > `launcher\iris.ico`, présent après un passage de `build.bat`).
 
+### 5.2 Mises à jour
+
+À chaque lancement — au plus une interrogation de GitHub par jour — le lanceur
+compare votre version à la **dernière release publiée** (celle marquée
+« Latest »), jamais à un état intermédiaire du code. Si elle est plus récente :
+
+```
+  Mise à jour disponible : v0.8.9.1 → v0.9.0.0
+  Installer maintenant ? [O/n]
+```
+
+`Entrée` (ou `O`) télécharge l'archive, vérifie son empreinte SHA256, remplace
+les fichiers de l'application et relance IRIS ENCODE sur la version neuve.
+`n` remet à plus tard. Un échec (réseau, archive refusée) n'empêche jamais le
+démarrage : la version en place s'ouvre, et la précédente est restaurée si le
+remplacement avait commencé.
+
+**Ce qui n'est jamais touché** : `config.toml`, `profiles.toml`, `bin/`,
+`.venv/`. La version remplacée est gardée dans `.iris_update/sauvegarde/`
+jusqu'à la mise à jour suivante.
+
+| `config.toml`, `[updates] app =` | Effet |
+|---|---|
+| `"ask"` (défaut) | demander, `O` présélectionné |
+| `"auto"` | installer sans demander |
+| `"off"` | ne rien vérifier, aucun appel réseau |
+
+Un dossier cloné avec git (présence de `.git/`) n'est jamais mis à jour de
+cette façon : `git pull` s'en charge. Si le lanceur Bureau a changé, relancez
+`launcher\build.bat` comme indiqué à l'écran.
+
+> **Depuis une version antérieure à la v0.8.9.1**, la mise à jour se fait une
+> dernière fois à la main : téléchargez l'archive de la release et extrayez-la
+> par-dessus le dossier. Les suivantes se font seules.
+
 ---
 
 ## 6. Structure des fichiers
@@ -328,12 +365,14 @@ iris_encode/
 ├── launch.bat          ← Point d'entrée Windows (double-clic)
 ├── IRIS_Encode.exe     ← Lanceur Bureau, compilé par launcher\build.bat (auto)
 ├── bootstrap.ps1       ← Installe Python et ses dépendances, sans droits admin
+├── updater.py          ← Mise à jour depuis la release GitHub (appelé par launch.bat)
 ├── main.py             ← Point d'entrée Python
 ├── config.toml         ← Configuration générale (éditable)
 ├── profiles.toml       ← Profils d'encodage (éditable)
 ├── requirements.txt    ← Dépendances Python
 ├── version.py          ← Version de l'application (source unique)
 ├── .venv/              ← Environnement Python local (auto)
+├── .iris_update/       ← Cache, sauvegarde et manifeste des mises à jour (auto)
 ├── bin/                ← uv / python / ffmpeg / ffprobe / dovi_tool / mkvmerge / mpv (auto)
 ├── data/               ← Sources de téléchargement (embarquées)
 ├── launcher/           ← Lanceur Bureau : source C#, icône, build.bat

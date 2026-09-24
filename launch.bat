@@ -96,6 +96,25 @@ if errorlevel 1 (
     echo.
 )
 
+REM --- Mise à jour d'IRIS ENCODE, depuis la release GitHub « Latest » ---
+REM updater.py demande confirmation (réglage [updates] app de config.toml) et
+REM rend 10 s'il a remplacé les fichiers : on se relance alors sur la version
+REM neuve, dépendances revérifiées. Hors ligne ou en échec, il rend 0.
+REM
+REM Tout tient dans UN SEUL bloc. cmd lit un .bat au fil de l'exécution, par
+REM position dans le fichier : si la mise à jour remplace ce fichier-ci, la
+REM suite serait lue dans le nouveau à l'ancienne position — un fragment de
+REM ligne exécuté comme une commande (mesuré). Un bloc ( ) est lu en entier
+REM avant de s'exécuter : la relance part de là, sans rien relire.
+(
+    "%PY%" "%~dp0updater.py"
+    if errorlevel 10 if not errorlevel 11 (
+        endlocal
+        "%~f0" %*
+        exit /b
+    )
+)
+
 REM --- Bandeau, une fois l'interpréteur connu ---
 REM Version lue dans version.py : la coder en dur ici la dupliquerait, et les
 REM deux finiraient par diverger. main.py affiche la même source.

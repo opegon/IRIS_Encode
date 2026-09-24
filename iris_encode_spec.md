@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.0 — document de référence courant
+**Version** : 0.8.9.1 — document de référence courant
 **Date** : 2026-09-24
 **Statut** : stable
 
@@ -122,6 +122,8 @@ de bibliothèques soient connues. Un Python système qui convient est *utilisé*
 jamais remplacé — mais si `pip` échoue dessus (poste verrouillé, dépôt interne,
 permissions), le lanceur bascule sur `bootstrap.ps1` plutôt que de s'arrêter.
 
+- Propose la mise à jour de l'application avant tout (§ 3.1.2), puis se
+  relance sur la version neuve si elle a été installée
 - Délègue à `main.py` en passant les arguments (`%*`)
 - Utilise `%~dp0` pour garantir la portabilité du chemin
 - Lit la version depuis `version.py` (aucune version en dur), avec
@@ -184,6 +186,53 @@ principe que `encoder.pistes_audio_vides`.
 
 **Encodage** : le fichier porte une BOM UTF-8. Sans elle, Windows PowerShell 5.1
 lit les accents en ANSI et le script ne se parse plus.
+
+### 3.1.2 `updater.py` — mise à jour de l'application
+
+Appelé par `launch.bat` une fois Python choisi et les dépendances vérifiées,
+avant le bandeau et `main.py`. Il ne lit **que la release GitHub marquée
+« Latest »** (`/repos/opegon/IRIS_Encode/releases/latest`), jamais l'état de
+`main` : ce qui s'installe est exactement ce qui a été publié et vérifié.
+
+```
+1. [updates] app = "off"          → rien, aucun appel réseau
+2. dossier .git présent           → rien : un clone ne s'écrase pas par une archive
+3. release « Latest »             → cache .iris_update/release.json, 24 h, délai 8 s
+4. tag ≤ version.py               → rien
+5. "ask" : « Installer maintenant ? [O/n] », Entrée vaut oui ; "auto" : sans question
+6. archive iris_encode_v….zip     → SHA256 comparé au `digest` publié par GitHub
+7. contrôle de l'archive          → chemins, fichiers personnels, REQUIS, version
+8. sauvegarde, remplacement, retrait de ce qui n'est plus livré (manifeste)
+9. code 10                        → launch.bat se relance sur la version neuve
+```
+
+| Règle | Pourquoi |
+|---|---|
+| **Bibliothèque standard seulement** | il remplace les modules de l'application : il ne peut en importer aucun, ni une dépendance que la mise à jour changerait (`tests/test_updater.py` le vérifie) |
+| **Jamais bloquant** | hors ligne, API en erreur, archive refusée : message, code 0, l'application démarre dans sa version actuelle |
+| **Sans console, aucune installation** en mode `ask` | un « O » présélectionné n'est pas un consentement quand personne ne peut répondre ; Ctrl+C vaut non |
+| **Empreinte obligatoire** | une release sans `digest` SHA256 n'est pas installée |
+| **Fichiers personnels intouchables** | `config.toml`, `profiles.toml`, `CLAUDE.md`, et les dossiers `.venv`, `bin`, `.git`, `.iris_update`, `resources_files`, `_shots` : une archive qui voudrait y écrire est refusée en bloc |
+| **`REQUIS`** : `version.py`, `main.py`, `launch.bat`, `updater.py` | une archive qui en manque n'est pas la nôtre, ou retirerait le mécanisme de mise à jour lui-même. La v0.8.9.0, antérieure à `updater.py`, est ainsi refusée (vérifié contre GitHub) |
+| **Sauvegarde puis restauration** | tout fichier touché est copié dans `.iris_update/sauvegarde/` ; au moindre échec, il est remis et les fichiers créés sont retirés |
+| **Manifeste** (`.iris_update/manifeste.txt`) | liste des fichiers livrés : ce que la version précédente livrait et que la nouvelle ne livre plus est retiré. Sans manifeste (première mise à jour), rien n'est retiré |
+| **L'archive ne reste pas** | acceptée ou refusée, elle est supprimée |
+
+**Le bloc de relance.** cmd.exe lit un `.bat` au fil de l'exécution, par
+position dans le fichier. Remplacé pendant qu'il tourne, la suite serait lue
+dans le nouveau fichier à l'ancienne position : un fragment de ligne exécuté
+comme une commande (mesuré : `'xxx…' n'est pas reconnu en tant que commande`).
+L'appel à `updater.py` et la relance (`"%~f0" %*`) tiennent donc dans **un seul
+bloc `( )`**, que cmd lit en entier avant de l'exécuter. Vérifié sur un
+`launch.bat` réel qu'un faux updater remplace : la nouvelle version s'exécute,
+l'ancien `main.py` n'est jamais lancé.
+
+**Le lanceur compilé** (`IRIS_Encode.exe`) n'est pas dans l'archive : si
+`launcher/IrisEncodeLauncher.cs` change, l'utilisateur est invité à relancer
+`launcher\build.bat`.
+
+**Amorçage** : une installation antérieure à la v0.8.9.1 n'a pas `updater.py`.
+Elle se met à jour une dernière fois à la main ; les suivantes se font seules.
 
 ### 3.2 Via `main.py` (direct)
 
@@ -279,7 +328,8 @@ auto_install = true
 bin_dir = "./bin"
 
 [updates]
-check_on_startup = true
+check_on_startup = true   # fraîcheur des outils externes (§ 4.4)
+app = "ask"               # mise à jour d'IRIS elle-même (§ 3.1.2) : ask / auto / off
 
 [meta]
 omdb_api_key = ""       # clé gratuite sur omdbapi.com — active note + synopsis IMDB
@@ -2408,6 +2458,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.1 | 2026-09-24 | **Mise à jour de l'application depuis la release GitHub « Latest »** (§ 3.1.2) : `updater.py` (bibliothèque standard seule), appelé par `launch.bat` avant `main.py` ; confirmation `[O/n]` par défaut, réglable par `[updates] app` (`ask`/`auto`/`off`) ; empreinte SHA256 exigée, fichiers personnels intouchables, sauvegarde et restauration, manifeste ; relance depuis un bloc `( )` unique, cmd relisant un `.bat` réécrit à l'ancienne position (mesuré) · `tests/test_updater.py` |
 | 0.8.9.0 | 2026-09-24 | **Release** — rassemble 0.8.8.11 à 0.8.8.17 : sorties signées `.<caractéristique>.IRIS` en minuscules, OpenSubtitles.com depuis F9, dégradé Estim., **retrait du Dolby Vision en MP4 réparé** (§ 7.3), wiki du projet · le schéma du wiki passe dans `wiki/SCHEMA.md`, versionné |
 | 0.8.8.17 | 2026-09-24 | **Wiki sur le modèle « LLM Wiki » de Karpathy** : couches `raw/` (immuable), `sources/`, `entites/`, `concepts/`, `syntheses/` ; `index.md` et `log.md` ; frontmatter YAML, liens `[[…]]` ; schéma et opérations ingest / query / lint dans `CLAUDE.md` · `tests/test_wiki.py` : liens, orphelins, index, frontmatter, journal · aucun changement de code applicatif |
 | 0.8.8.16 | 2026-09-24 | **Wiki du projet** (`wiki/`) : base de connaissance rangée par sujet — chaîne de diffusion, codecs vidéo, HDR et Dolby Vision, audio, sous-titres, conteneurs, outils, synchronisation, noms de release, pièges et leçons, questions ouvertes — chaque fait avec son niveau de preuve · `CLAUDE.md` en fait la référence à consulter et à enrichir · aucun changement de code |

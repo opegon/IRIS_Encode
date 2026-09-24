@@ -1,5 +1,62 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.1] — 2026-09-24
+
+### IRIS ENCODE se met à jour depuis sa dernière release
+
+Au lancement, avant d'ouvrir l'application, `launch.bat` demande à GitHub la
+dernière release publiée (celle marquée « Latest », jamais un état
+intermédiaire de `main`). Si elle est plus récente que la version installée :
+
+```
+  Mise à jour disponible : v0.8.9.1 → v0.9.0.0
+  Installer maintenant ? [O/n]
+```
+
+`Entrée` installe, puis le lanceur se relance sur la version neuve, ses
+dépendances revérifiées. Réglage dans `config.toml` :
+
+| `[updates] app =` | Effet |
+|---|---|
+| `"ask"` (défaut) | demander, `O` présélectionné |
+| `"auto"` | installer sans demander |
+| `"off"` | ne rien vérifier, aucun appel réseau |
+
+**Ce qui protège l'installation**
+
+- L'archive est vérifiée contre l'**empreinte SHA256** que GitHub publie avec
+  chaque fichier de release. Une release sans empreinte n'est pas installée.
+- `config.toml`, `profiles.toml`, `bin/`, `.venv/` ne sont **jamais** touchés :
+  une archive qui voudrait y écrire est refusée en bloc, comme une archive qui
+  sortirait du dossier ou dont la version ne serait pas celle annoncée.
+- Tout fichier remplacé est d'abord **sauvegardé** dans `.iris_update/` ; au
+  moindre échec, la version précédente est restaurée.
+- Un **manifeste** des fichiers livrés permet de retirer, à la mise à jour
+  suivante, ce qu'une version ne livre plus.
+- **Rien n'empêche le démarrage** : hors ligne, API en erreur, archive
+  refusée, l'application s'ouvre dans sa version actuelle.
+- Un dossier **cloné avec git** n'est jamais mis à jour ainsi.
+- GitHub n'est interrogé qu'**une fois par jour** (60 appels par heure sans jeton).
+
+**La relance tient dans un seul bloc.** cmd.exe lit un `.bat` au fil de
+l'exécution, par position : remplacé pendant qu'il tourne, la suite est lue
+dans le nouveau fichier à l'ancienne position, et un fragment de ligne s'exécute
+comme une commande. Mesuré, puis évité : l'appel et la relance vivent dans un
+bloc `( )`, que cmd lit en entier avant de l'exécuter.
+
+**Vérifié contre GitHub** : une installation qui se croyait en 0.8.8.0 a lu la
+release v0.8.9.0, l'a téléchargée, a validé son empreinte, puis l'a
+**refusée** : elle ne contient pas encore `updater.py`, et l'installer aurait
+retiré le mécanisme de mise à jour. Fichiers personnels intacts.
+
+> **Depuis la v0.8.9.0 ou avant**, cette version s'installe une dernière fois à
+> la main (archive extraite par-dessus le dossier). Les suivantes se font seules.
+
+`updater.py`, `launch.bat`, `core/config.py` (`[updates] app`), `.gitignore`
+(`.iris_update/`), `tests/test_updater.py` (41 tests), § 3.1.2 de la spec,
+README § 5.2, GUIDE § 0. Wiki : entité `github`, piège des `.bat` dans
+`sous-processus`.
+
 ## [v0.8.9.0] — 2026-09-24
 
 **Release.** Rassemble les sept incréments 0.8.8.11 à 0.8.8.17.

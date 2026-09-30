@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.37 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.38 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`. Ce que
@@ -323,7 +323,7 @@ foi. Après une mise à jour du lanceur, relancer `launcher\build.bat` suffit.
 
 ### 5.2 Mises à jour
 
-À chaque lancement — au plus une interrogation de GitHub par jour — le lanceur
+À chaque lancement — au plus une interrogation de GitHub par heure — le lanceur
 compare votre version à la **dernière release publiée** (celle marquée
 « Latest »), jamais à un état intermédiaire du code. Si elle est plus récente :
 

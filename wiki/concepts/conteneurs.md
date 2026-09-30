@@ -1,8 +1,9 @@
 ---
 type: concept
-maj: 2026-09-24
+maj: 2026-09-30
 sources:
   - "[[source-spec]]"
+  - "[[source-2026-09-30-hev1-hvc1]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-diagnostic]]"
 ---
@@ -64,9 +65,9 @@ ffmpeg écrit **`hev1`** par défaut pour du HEVC en MP4 (paramètres VPS/SPS/PP
 dans le flux). Les sources WEB-DL MP4 le portent aussi (Avatar). *(mesuré)*
 
 `hvc1` (paramètres dans l'en-tête seulement) est exigé par les lecteurs
-Apple. Le client LG lit les sorties HEVC MP4 d'IRIS, qui portent `hev1`.
-*(observé indirectement ; non isolé)* Voir
-[[questions-ouvertes|Questions ouvertes]].
+Apple. Sur le [[lg-oled-g3|G3]] via Jellyfin, les deux passent en **lecture
+directe**, sauts quasi instantanés : même fichier, seule l'étiquette changée,
+en SDR comme en HDR10. *(observé, 2026-09-30)*
 
 ## Réécrire un MKV
 

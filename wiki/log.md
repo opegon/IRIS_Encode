@@ -108,3 +108,11 @@ Textual, la navigation dans un autre ; basculer suspend sans démonter, ffmpeg
 continue. Deux pièges : Textual ne revient pas au mode `_default`, et `F11`
 est captée par Windows Terminal — la bascule prend `F12`. Pages touchées :
 [[pieges-et-lecons]].
+
+
+## [2026-09-30] ingest | `hev1` contre `hvc1` sur le G3
+
+IE-74 : deux paires (Seven Nation Army SDR, Project Hail Mary HDR10 8 bits),
+original `hev1` et copie `hvc1` ; les quatre en lecture directe via Jellyfin,
+sauts quasi instantanés. Question retirée. Pages touchées : [[conteneurs]],
+[[lg-oled-g3]], [[questions-ouvertes]].

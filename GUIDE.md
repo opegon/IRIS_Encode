@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.37
+**Version** : 0.8.9.38
 **Date** : 2026-09-29
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.

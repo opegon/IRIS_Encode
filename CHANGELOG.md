@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.38] — 2026-09-30
+
+### Une release publiée se voit dans l'heure
+
+La réponse de GitHub était gardée 24 h : une installation qui venait de
+vérifier ne voyait pas une release publiée peu après — une v0.8.9.33 ne
+proposait pas la v0.8.9.37 sortie trois heures plus tard.
+
+- le cache `.iris_update/release.json` dure **1 h** au lieu de 24 h — un appel
+  par heure au plus, loin des 60 que GitHub accorde par IP sans jeton ;
+- il retient la version installée qui l'a écrit, et n'est pas cru par une
+  autre : une installation mise à jour ou remplacée réinterroge aussitôt.
+
+Les installations antérieures gardent leur ancien updater jusqu'à leur mise à
+jour : pour forcer la vérification, supprimer `.iris_updateelease.json`.
+
+`updater.py`, `tests/test_updater.py`, spec § mises à jour, README § 5.2.
+
 ## [v0.8.9.37] — 2026-09-30
 
 ### Les clés d'API se saisissent dans l'application

@@ -1,9 +1,10 @@
 ---
 type: entite
 categorie: materiel
-maj: 2026-09-24
+maj: 2026-09-30
 sources:
   - "[[source-2026-09-24-utilisateur]]"
+  - "[[source-2026-09-30-hev1-hvc1]]"
   - "[[source-readme]]"
 ---
 
@@ -24,7 +25,8 @@ principale des fichiers produits. Place dans la chaîne : [[chaine-de-diffusion]
 | TrueHD, DTS-HD MA | **refusés** | observé (README) |
 | DTS | **gèle au saut** (modèles 2023) | observé (README) |
 | Matroska | « capricieux » | observé (README) |
-| MP4 HEVC `hev1` | les sorties HEVC d'IRIS en `hev1` passent | observé indirectement |
+| MP4 HEVC `hev1` et `hvc1` | lecture directe via Jellyfin, sauts quasi instantanés ([[conteneurs#Tag HEVC en MP4 : `hev1` ou `hvc1`]]) | observé (2026-09-30) |
+| HDR10 en 8 bits (`yuv420p`) | lecture directe, HDR10 reconnu | observé (2026-09-30) |
 
 ## Symptômes constatés
 

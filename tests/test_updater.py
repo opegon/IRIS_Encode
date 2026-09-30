@@ -321,15 +321,34 @@ def test_un_echec_en_cours_restaure_la_version_precedente(tmp_path, monkeypatch)
 
 # ─── Cache ────────────────────────────────────────────────────────────────────
 
-def test_github_n_est_interroge_qu_une_fois_par_jour(tmp_path):
+def test_github_n_est_interroge_qu_une_fois_par_ttl(tmp_path):
     racine = _installation(tmp_path / "iris")
     archive = _archive(tmp_path / "iris_encode_v0.8.9.1.zip", "0.8.9.1")
     appels: list = []
     ouvrir = _reseau(_release_pour(archive, "v0.8.9.1"), appels=appels)
     updater.derniere_release(racine, maintenant=1000.0, ouvrir=ouvrir)
-    updater.derniere_release(racine, maintenant=1000.0 + 3600, ouvrir=ouvrir)
+    updater.derniere_release(racine, maintenant=1000.0 + updater.TTL - 1, ouvrir=ouvrir)
     assert appels.count(updater.API) == 1
     updater.derniere_release(racine, maintenant=1000.0 + updater.TTL + 1, ouvrir=ouvrir)
+    assert appels.count(updater.API) == 2
+
+
+def test_le_ttl_reste_sous_la_limite_de_github():
+    """60 appels par heure et par IP sans jeton : une installation en fait au plus un."""
+    assert updater.TTL >= 3600
+
+
+def test_une_autre_version_installee_ne_croit_pas_le_cache(tmp_path):
+    """Le cache écrit par la v0.8.9.0 ne doit pas cacher une release plus récente
+    à la version qui lui succède — ni l'inverse."""
+    racine = _installation(tmp_path / "iris")
+    archive = _archive(tmp_path / "iris_encode_v0.8.9.1.zip", "0.8.9.1")
+    appels: list = []
+    ouvrir = _reseau(_release_pour(archive, "v0.8.9.1"), appels=appels)
+    updater.derniere_release(racine, maintenant=1000.0, ouvrir=ouvrir, installee="0.8.9.0")
+    updater.derniere_release(racine, maintenant=1001.0, ouvrir=ouvrir, installee="0.8.9.0")
+    assert appels.count(updater.API) == 1
+    updater.derniere_release(racine, maintenant=1002.0, ouvrir=ouvrir, installee="0.8.9.1")
     assert appels.count(updater.API) == 2
 
 

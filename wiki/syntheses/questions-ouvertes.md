@@ -6,6 +6,7 @@ sources:
   - "[[source-2026-09-24-diagnostic]]"
   - "[[source-2026-09-24-utilisateur]]"
   - "[[source-2026-09-26-nvenc-pilote]]"
+  - "[[source-2026-09-30-hev1-hvc1]]"
 ---
 
 # Questions ouvertes
@@ -19,7 +20,6 @@ reporter la réponse dans la page du sujet.
 |---|---|---|
 | Les fichiers qui plantaient (son sans image) étaient-ils des MP4 issus d'un retrait DV, ou des MKV ? | refaire un fichier en v0.8.8.15, le lire, relever la méthode et la **raison de transcodage** dans le tableau de bord Jellyfin | 2026-09-24 |
 | Jellyfin incruste-t-il un PGS marqué forcé quand un SRT forcé de même langue existe ? | lire un fichier comme Starship Troopers et regarder la méthode de lecture | 2026-09-24 |
-| Le client webOS lit-il tous les HEVC MP4 en `hev1`, ou faut-il `hvc1` ? | comparer deux copies d'un même fichier, l'une retaguée `-tag:v hvc1` | 2026-09-24 |
 | Le Dolby Vision 8.1 en **MP4** passe-t-il en lecture directe sur le client webOS, là où le MKV part en remux HLS ? | un fichier DV en MP4 contre le même en MKV | 2026-09-24 |
 | Quelle limite de débit le client webOS applique-t-il ? | réglages de lecture du client | 2026-09-24 |
 

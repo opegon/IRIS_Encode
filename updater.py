@@ -5,7 +5,7 @@ Appelé par launch.bat avant main.py. Script autonome, **bibliothèque standard
 seulement** : il remplace les fichiers de l'application, y compris les modules
 que main.py importerait, et ne peut donc dépendre d'aucun d'eux.
 
-Déroulé : dernière release publiée (au plus une interrogation par jour), version
+Déroulé : dernière release publiée (au plus une interrogation par heure), version
 comparée à version.py, confirmation, archive téléchargée puis vérifiée contre
 l'empreinte SHA256 que GitHub publie, fichiers remplacés avec sauvegarde, et
 restauration de la sauvegarde au moindre échec.
@@ -39,7 +39,7 @@ from typing import Callable
 
 DEPOT   = "opegon/IRIS_Encode"
 API     = f"https://api.github.com/repos/{DEPOT}/releases/latest"
-TTL     = 24 * 3600          # l'API GitHub n'accorde que 60 appels par heure sans jeton
+TTL     = 3600               # l'API GitHub n'accorde que 60 appels par heure et par IP sans jeton
 TIMEOUT = 8                  # hors ligne, le lancement ne doit pas attendre
 
 CODE_MIS_A_JOUR = 10
@@ -117,8 +117,12 @@ def _extraire(release: dict) -> dict | None:
 
 
 def derniere_release(racine: Path, maintenant: float | None = None,
-                     ouvrir: Callable = urllib.request.urlopen) -> dict | None:
-    """La release « Latest » de GitHub, mise en cache une journée.
+                     ouvrir: Callable = urllib.request.urlopen,
+                     installee: str = "") -> dict | None:
+    """La release « Latest » de GitHub, mise en cache une heure.
+
+    Le cache n'est pas cru s'il a été écrit par une autre version installée :
+    celle qui vient d'être mise à jour, ou remplacée à la main, réinterroge.
 
     Réseau absent ou API en erreur : le cache, même périmé, ou None. Jamais
     d'exception : l'application démarre de toute façon.
@@ -128,7 +132,8 @@ def derniere_release(racine: Path, maintenant: float | None = None,
     connu = None
     try:
         connu = json.loads(cache.read_text(encoding="utf-8"))
-        if maintenant - connu.get("verifie", 0) < TTL:
+        if (maintenant - connu.get("verifie", 0) < TTL
+                and connu.get("installee", "") == installee):
             return connu.get("release")
     except (OSError, ValueError):
         pass
@@ -138,7 +143,8 @@ def derniere_release(racine: Path, maintenant: float | None = None,
         return connu.get("release") if connu else None
     try:
         cache.parent.mkdir(exist_ok=True)
-        cache.write_text(json.dumps({"verifie": maintenant, "release": release}),
+        cache.write_text(json.dumps({"verifie": maintenant, "installee": installee,
+                                     "release": release}),
                          encoding="utf-8")
     except OSError:
         pass
@@ -281,7 +287,7 @@ def main(racine: Path | None = None,
         return 0
     try:
         installee = version_locale(racine)
-        release = derniere_release(racine, ouvrir=ouvrir)
+        release = derniere_release(racine, ouvrir=ouvrir, installee=installee)
         if not release or not release.get("tag"):
             return 0
         if version_tuple(release["tag"]) <= version_tuple(installee):

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.37 — document de référence courant
+**Version** : 0.8.9.38 — document de référence courant
 **Date** : 2026-09-30
 **Statut** : stable
 
@@ -197,7 +197,7 @@ avant le bandeau et `main.py`. Il ne lit **que la release GitHub marquée
 ```
 1. [updates] app = "off"          → rien, aucun appel réseau
 2. dossier .git présent           → rien : un clone ne s'écrase pas par une archive
-3. release « Latest »             → cache .iris_update/release.json, 24 h, délai 8 s
+3. release « Latest »             → cache .iris_update/release.json, 1 h, invalidé si version.py a changé ; délai 8 s
 4. tag ≤ version.py               → rien
 5. "ask" : « Installer maintenant ? [O/n] », Entrée vaut oui ; "auto" : sans question
 6. archive iris_encode_v….zip     → SHA256 comparé au `digest` publié par GitHub

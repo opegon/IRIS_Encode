@@ -1,5 +1,54 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.36] — 2026-09-30
+
+### La file se réordonne
+
+Dans la vue des encodages, `Ctrl+↑` / `Ctrl+↓` avancent ou reculent d'un rang
+le fichier en attente sous le curseur, `Suppr` le retire de la file (IE-100).
+Le fichier en cours et ceux qui sont finis ne bougent pas : un message le dit.
+
+`tui/screens/run.py` (`_deplacer`, `action_retirer`), `tui/screens/aide.py`,
+`tests/test_arret_encodage.py`, GUIDE § 2.6.
+
+## [v0.8.9.35] — 2026-09-30
+
+### L'en-tête annonce la file
+
+Tant qu'un lot d'encodage existe, l'en-tête porte au centre, sur tous les
+écrans, l'état de la file et la touche pour y aller (IE-100) : « F12
+Encodages en cours · 1/3 · 42 % », puis « F12 Lot terminé » ; depuis la vue
+des encodages, « F12 Fichiers ». Rafraîchi chaque seconde, comme l'horloge.
+
+`tui/widgets/entete.py` (`format_title`), `tui/app.py` (`etat_file`),
+`tui/screens/run.py` (`avancement`), `tests/test_arret_encodage.py`.
+
+## [v0.8.9.34] — 2026-09-30
+
+### Une file d'encodage : la navigation reste libre
+
+Un encodage bloquait l'application jusqu'à sa fin (IE-100). `F2` — accueil,
+aperçu, pistes, recalage, assistant — met désormais les fichiers dans **une
+file** qui démarre dès sa première entrée et les traite dans l'ordre. Pendant
+qu'elle tourne, on revient aux fichiers et `F2` ajoute à la suite ; `F12`
+bascule entre les fichiers et la file (`F11` est prise par Windows Terminal).
+
+- Le lot vit dans son propre mode Textual : quitter sa vue le suspend sans le
+  démonter, ffmpeg continue. `⌫`, `Esc` et `Ctrl+Home` rendent la navigation
+  sans rien arrêter ; **`X` arrête tout**, après confirmation.
+- Doublon refusé avec un message ; décision copiée à l'ajout, ses réglages
+  figés ; fichiers confiés décochés sur l'accueil.
+- Le bilan d'un lot fini attend d'être vu, puis s'efface en quittant la vue ;
+  hors de la vue, une notification annonce la fin.
+- `Ctrl+D` refuse un fichier en file ; `F10` annonce les fichiers en attente.
+- L'en-tête de la vue ne cite plus le profil actif : les fichiers d'un lot
+  peuvent venir de profils différents.
+
+`tui/app.py` (`encoder`, `action_encodages`, modes), `tui/screens/run.py`
+(`ajouter`, verrou, `X`), `tui/common.py` (`confier_a_la_file`),
+`tui/screens/browser.py`, `dryrun.py`, `tracks.py`, `sync.py`, `mux_run.py`,
+`wizard.py`, `aide.py`, `tests/test_arret_encodage.py`, GUIDE § 2.6.
+
 ## [v0.8.9.33] — 2026-09-30
 
 ### Le profil sans crochets sur l'écran des pistes

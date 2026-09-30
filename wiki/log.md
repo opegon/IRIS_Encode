@@ -99,3 +99,12 @@ UX-21 (v0.8.9.28) : un `.vtt` muxé par mkvmerge 102 dans un MKV sort
 `codec_name=unknown` sous ffprobe 8.1.2 ; mkvmerge le nomme « WebVTT ». Le nom
 affiché passe par `nom_codec()` (« ? »). La copie par ffmpeg reste à
 vérifier. Pages touchées : [[questions-ouvertes]].
+
+
+## [2026-09-30] ingest | File d'encodage et modes Textual
+
+IE-100 (v0.8.9.34 à v0.8.9.36) : le lot d'encodage vit dans son propre mode
+Textual, la navigation dans un autre ; basculer suspend sans démonter, ffmpeg
+continue. Deux pièges : Textual ne revient pas au mode `_default`, et `F11`
+est captée par Windows Terminal — la bascule prend `F12`. Pages touchées :
+[[pieges-et-lecons]].

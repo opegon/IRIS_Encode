@@ -47,7 +47,7 @@ def test_aucune_explication_ne_survit_a_son_action(nom):
 
 
 def test_les_explications_communes_correspondent_a_des_actions_reelles():
-    reelles = {"aide", "request_quit"}          # portées par l'application
+    reelles = {"aide", "request_quit", "encodages"}   # portées par l'application
     for classe in aide.classes_documentees().values():
         reelles |= {a for _, a, _ in aide.touches_de(classe)}
     assert not set(aide._COMMUNES) - reelles
@@ -152,6 +152,10 @@ def _touches_reelles(module: str, classe: str) -> set[str]:
         for b in getattr(base, "BINDINGS", []):
             brut = b.key if hasattr(b, "key") else b[0]
             touches |= {k.strip().lower() for k in str(brut).split(",")}
+    # Les liaisons prioritaires de l'application répondent sur tous les
+    # écrans : `F10`, et `F12` qui bascule vers la file (IE-100).
+    from tui.app import IrisEncodeApp
+    touches |= {b.key for b in IrisEncodeApp.BINDINGS if b.priority}
     return touches
 
 

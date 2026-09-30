@@ -19,7 +19,7 @@ from core.texte import pluriel
 from core.decision import FileDecision, force_skip_to_encode
 from core.muxer import MuxProcess, build_mux_command, mux_output_path
 
-from ..common import barre_etat, actions_ecran, footer_line2, retour_accueil
+from ..common import confier_a_la_file, barre_etat, actions_ecran, footer_line2, retour_accueil
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 
@@ -209,11 +209,7 @@ class MuxScreen(Screen[bool]):
     def action_encode(self) -> None:
         if not self._ready():
             return
-        from .run import RunScreen
-        self.app.push_screen(
-            RunScreen([force_skip_to_encode(self._decision)],
-                      self.app.platform)  # type: ignore[attr-defined]
-        )
+        confier_a_la_file(self.app, [force_skip_to_encode(self._decision)])
 
     def action_dryrun(self) -> None:
         if not self._ready():

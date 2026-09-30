@@ -1,6 +1,6 @@
 ---
 type: synthese
-maj: 2026-09-29
+maj: 2026-09-30
 sources:
   - "[[source-2026-09-26-nvenc-pilote]]"
   - "[[source-2026-09-24-mise-a-jour]]"
@@ -68,6 +68,8 @@ une ligne de moins dans une liste.
 | Débit « trop gros » : réencodage inutile | débit du conteneur comparé au seuil vidéo | [[codecs-video#Mesurer le débit vidéo|Codecs vidéo]] |
 | « Select.NULLk » dans le formulaire de profil | Textual 8 : la valeur vide est `Select.NULL`, `Select.BLANK` ne vaut plus que `False` ; une valeur hors liste laisse le champ vide *(mesuré, UX-03)* | spec § 14.8 |
 | ffmpeg continue après la sortie de l'écran | quitter un écran ne tue pas ses processus *(mesuré, UX-01)* | [[sous-processus]] |
+| `F11` ne répond pas dans l'application | Windows Terminal la lie au plein écran (`toggleFullscreen`, réglage par défaut) ; elle n'arrive jamais au programme *(vérifié dans ses réglages, IE-100)* | spec § 14.7 |
+| `UnknownModeError: '_default'` | Textual 8 ne sait pas **revenir** au mode de départ, qu'il ne déclare pas, et `add_mode` refuse ce nom : la navigation doit être un mode nommé *(mesuré, IE-100)* | spec § 14.7 |
 
 ## Hypothèses infirmées
 

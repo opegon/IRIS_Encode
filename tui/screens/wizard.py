@@ -43,7 +43,7 @@ from core.decision import (ACTION_CYCLE, SUFFIX_BY_ACTION, AudioAction,
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import measure_external_track
 
-from ..common import (langue_affichee, nom_codec, bitrate_picker_config, codec_picker_opts, fmt_duration,
+from ..common import (confier_a_la_file, langue_affichee, nom_codec, bitrate_picker_config, codec_picker_opts, fmt_duration,
                       footer_line2, retour_accueil, tronquer_milieu,
                       ECARTEE, actions_ecran, cellule, largeur_entete)
 from ..mixins import TableNavMixin
@@ -600,6 +600,6 @@ class WizardScreen(TableNavMixin, Screen):
             from .mux_run import MuxScreen
             self.app.push_screen(MuxScreen(self._dec), _apres)
         else:
-            from .run import RunScreen
-            self.app.push_screen(
-                RunScreen([self._dec], self.app.platform), _apres)  # type: ignore[attr-defined]
+            # La file d'encodage prend le relais (IE-100) : l'assistant
+            # rend la liste des fichiers, où l'on choisit le suivant.
+            confier_a_la_file(self.app, [self._dec])

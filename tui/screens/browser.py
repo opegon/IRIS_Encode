@@ -324,7 +324,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if not lots:
             return
         self._selected -= sources_reussies(lots)
-        lots.clear()
+        # Un lot encore en cours produira d'autres réussites : on ne le lâche
+        # qu'une fois fini (IE-100).
+        lot = self._app.lot
+        lots[:] = [l for l in lots
+                   if lot is not None and l is lot.statuts and not lot.termine]
         if not self._nav.is_virtual:
             self._refresh_view()
 
@@ -838,6 +842,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         row_type, path = self._current_row_info()
         if row_type != _ROW_TYPE_FILE or path is None:
             return
+        # Un fichier en file ou en cours d'encodage se lit encore (IE-100).
+        if path in self._app.sources_en_file():
+            self.notify(f"{path.name} est dans la file d'encodage : il ne peut "
+                        f"pas être supprimé maintenant.", severity="warning",
+                        timeout=5)
+            return
 
         def _on_confirm(ok: bool | None) -> None:
             if ok:
@@ -1044,10 +1054,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 from .dryrun import DryrunScreen
                 self.app.push_screen(DryrunScreen([dec]))
             elif result.launch_mode == "run":
-                from .run import RunScreen
-                self.app.push_screen(
-                    RunScreen([dec], self.app.platform)  # type: ignore[attr-defined]
-                )
+                self._confier([dec])
         self.app.push_screen(TracksScreen(dec), _on_tracks_return)
 
     def _refus_sans_selection(self, action: str) -> None:
@@ -1084,8 +1091,20 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if not decisions:
             self._refus_sans_selection("Encoder")
             return
-        from .run import RunScreen
-        self.app.push_screen(RunScreen(decisions, self._app.platform))
+        self._confier(decisions)
+
+    def _confier(self, decisions: list[FileDecision]) -> None:
+        """À la file d'encodage ; les fichiers confiés se décochent (IE-100).
+
+        Rester cochés, ils partiraient une seconde fois au prochain `F2` — que
+        la file refuserait, mais avec un message pour rien.
+        """
+        confies = {d.info.path for d in decisions}
+        self._app.encoder(decisions)
+        for path in confies & self._selected:
+            self._selected.discard(path)
+            self._update_row_check(path)
+        self._update_status()
 
     # ─── Collage de parties (J) ───────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.33 — document de référence courant
+**Version** : 0.8.9.36 — document de référence courant
 **Date** : 2026-09-30
 **Statut** : stable
 
@@ -2215,8 +2215,35 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
 - `⏸ Pause` suspend le processus (multiplateforme)
 - Suppression source après succès selon `delete_source` (ou override par fichier)
 - En cas d'erreur : fichier marqué ✗, les suivants continuent, source conservée
-- **Quitter un lot en cours se confirme** (v0.8.9.5) : `⌫`, `Esc` et `Ctrl+Home`
-  ouvrent une `ConfirmModal` (« Arrêter » / « Continuer », focus sur Continuer).
+- **La file d'encodage** (v0.8.9.34, IE-100). L'écran **est** la file, et il
+  vit dans son propre mode Textual (`MODE_ENCODAGES`) ; la navigation a le
+  sien (`MODE_FICHIERS`, où l'application démarre — Textual ne sait pas
+  revenir au mode `_default`). Changer de mode suspend un écran sans le
+  démonter : le worker et ffmpeg continuent. `F12` (liaison de l'application)
+  bascule — `F11` est prise par Windows Terminal. Toute demande d'encodage
+  passe par `IrisEncodeApp.encoder()` : doublon de source refusé, décision
+  **copiée** (réglages figés à l'ajout), puis `RunScreen.ajouter()` si un lot
+  tourne, sinon un nouveau lot qui s'affiche. Hors accueil,
+  `confier_a_la_file()` ramène d'abord la navigation à la liste des fichiers.
+  L'ajout et le choix du fichier suivant se font sous un verrou : sans lui, un
+  ajout tombé entre « plus rien » et « lot fini » serait perdu. Aucun appel au
+  fil principal sous verrou. `⌫`, `Esc` et `Ctrl+Home` rendent la navigation
+  **sans rien arrêter** ; `X` arrête tout après confirmation. Le bilan d'un lot
+  fini reste jusqu'à ce qu'il ait été vu, puis le mode est retiré à la sortie
+  de la vue (`_liberer_lot`). `Ctrl+D` refuse un fichier en file ; `F10`
+  annonce les fichiers en attente et arrête le lot, même hors de la pile
+  affichée.
+- **Réordonner la file** (v0.8.9.36) : `Ctrl+↑/↓` échange deux fichiers **en
+  attente**, `Suppr` en retire un ; le fichier en cours et les fichiers finis
+  ne bougent pas (message). Sous le même verrou que le choix du suivant : le
+  worker prend toujours `_current_idx + 1`, et seules des lignes au-delà
+  changent de place.
+- **Le bandeau de la file** (v0.8.9.35) : `Entete.format_title` ajoute au
+  titre centré l'état rendu par `IrisEncodeApp.etat_file()`, rafraîchi chaque
+  seconde — « F12 Encodages en cours · 1/3 · 42 % », « F12 Lot terminé », et
+  « F12 Fichiers » depuis la vue des encodages. Vide sans lot.
+- **Arrêter se confirme** (v0.8.9.5, par `X` depuis la v0.8.9.34) : une
+  `ConfirmModal` (« Arrêter » / « Continuer », focus sur Continuer).
   Confirmer lève `_abandon` et arrête le processus en cours, ffmpeg ou
   mkvmerge. Tout démarrage passe par `_demarrer()`, qui publie le processus
   **après** l'avoir lancé et relit le drapeau ensuite : un arrêt survenu entre
@@ -2552,6 +2579,9 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.36 | 2026-09-30 | **La file se réordonne** (§ 14.7, IE-100) : `Ctrl+↑/↓` déplace, `Suppr` retire un fichier en attente · `tests/test_arret_encodage.py` |
+| 0.8.9.35 | 2026-09-30 | **L'en-tête annonce la file** (§ 14.7, IE-100) : « F12 Encodages en cours · n/N · % », « F12 Lot terminé », « F12 Fichiers » · `tests/test_arret_encodage.py` |
+| 0.8.9.34 | 2026-09-30 | **Une file d'encodage, la navigation reste libre** (§ 14.7, IE-100) : `F2` ajoute à la file, `F12` bascule, `⌫` ne stoppe plus, `X` arrête tout ; doublons refusés, réglages figés, `Ctrl+D` et `F10` gardés · `tests/test_arret_encodage.py` |
 | 0.8.9.33 | 2026-09-30 | Écran des pistes : « Profil : serie_basic » sans crochets, comme ailleurs depuis UX-13 · captures `shots_tui.py` : le donneur se cherche sans son icône |
 | 0.8.9.32 | 2026-09-30 | **La fiche AlloCiné désigne le bon film** (§ 14, UX-24) : appariement sur le titre français et original puis l'année (`choisir_allocine`), séries reconnues (`series`), confiance affichée · `tests/test_revue_code.py` |
 | 0.8.9.31 | 2026-09-30 | **La commande du mux est repliée** (§ 14, UX-26) : noms de fichier au lieu des chemins, quatre lignes au plus · `tests/test_muxer.py` |

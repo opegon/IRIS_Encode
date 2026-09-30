@@ -415,6 +415,23 @@ def footer_line2(
     return line
 
 
+def confier_a_la_file(app, decisions: list) -> None:
+    """Met des décisions en file d'encodage depuis un écran de travail.
+
+    La navigation revient d'abord à la liste des fichiers — c'est là qu'on
+    choisit le suivant (IE-100) ; l'aperçu, les pistes ou le recalage d'un
+    fichier déjà confié n'ont plus rien à offrir. Dépiler **avant** : un
+    premier lot bascule l'affichage sur le mode des encodages, et la pile à
+    dépiler serait alors la sienne.
+    """
+    from .screens.browser import BrowserScreen
+
+    if any(isinstance(e, BrowserScreen) for e in app.screen_stack):
+        while len(app.screen_stack) > 1 and not isinstance(app.screen, BrowserScreen):
+            app.pop_screen()
+    app.encoder(decisions)
+
+
 def retour_accueil(app) -> None:
     """Dépile les écrans jusqu'à l'accueil, le browser, et l'amène aux volumes.
 

@@ -27,7 +27,7 @@ from core.decision import (
     AudioAction, DVAction, FileDecision, VideoAction,
     video_recopiee,
 )
-from ..common import (langue_affichee, barre_etat, 
+from ..common import (confier_a_la_file, langue_affichee, barre_etat, 
     actions_ecran,
     touche,
     cellule,
@@ -432,8 +432,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 f"le codec d'une ligne SKIP.",
                 severity="warning", timeout=4)
             return
-        from .run import RunScreen
-        self.app.push_screen(RunScreen(to_encode, self.app.platform))  # type: ignore[attr-defined]
+        confier_a_la_file(self.app, to_encode)
 
     def action_accueil(self) -> None:
         """Retour au choix du fichier, sans repasser par les écrans intermédiaires."""

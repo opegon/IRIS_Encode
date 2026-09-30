@@ -2,10 +2,16 @@
 tui/screens/run.py — Écran d'encodage avec progression live.
 
 Zone commande ffmpeg + ligne de retour live (non scrollable).
+
+Depuis IE-100, l'écran **est** la file d'encodage : il vit dans son propre mode
+Textual, reçoit les ajouts faits pendant qu'il tourne (`ajouter`), et `⌫`
+rend la navigation sans rien arrêter.
 """
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
+from pathlib import Path
 from enum import Enum, auto
 
 from rich.text import Text
@@ -64,8 +70,16 @@ class RunScreen(TableNavMixin, Screen):
     BINDINGS = [
         Binding("p",         "pause_resume", "Pause / Reprendre",  show=True),
         Binding("s",         "skip_current", "Passer le fichier",  show=True),
-        Binding("backspace", "go_back",      "Retour",             show=True),
-        Binding("escape",    "go_back",      "Retour",             show=False, priority=True),
+        Binding("x",         "arreter_tout", "Arrêter tout",       show=True),
+        # La file se réordonne tant qu'un fichier attend (IE-100). `priority` :
+        # le DataTable prendrait Ctrl+↑/↓ pour lui — comme sur la jonction.
+        Binding("ctrl+up",   "monter",       "Monter",             show=True, priority=True),
+        Binding("ctrl+down", "descendre",    "Descendre",          show=True, priority=True),
+        Binding("delete",    "retirer",      "Retirer",            show=True),
+        # Retour à la navigation : l'encodage continue (IE-100). Arrêter est
+        # une décision à part, `X`, qui demande confirmation.
+        Binding("backspace", "go_back",      "Fichiers",           show=True),
+        Binding("escape",    "go_back",      "Fichiers",           show=False, priority=True),
         # `priority` : un DataTable etouffe la touche avant les bindings —
         # meme avertissement qu'en tete de tui/mixins.py.
         Binding("ctrl+home", "accueil",   "Accueil",       show=True,
@@ -136,6 +150,44 @@ class RunScreen(TableNavMixin, Screen):
         self._abandon      = False
         self._started      = False
         self._done         = False
+        # Le worker lit la file pendant que la navigation y ajoute : le choix du
+        # fichier suivant et l'ajout ne doivent pas se croiser, sinon un ajout
+        # tombé juste après « plus rien à faire » serait perdu.
+        self._verrou       = threading.Lock()
+        # Le bilan d'un lot fini reste jusqu'à ce qu'on l'ait vu.
+        self._vu           = False
+
+    # ─── File (IE-100) ────────────────────────────────────────────────────────
+
+    @property
+    def termine(self) -> bool:
+        return self._done
+
+    @property
+    def statuts(self) -> list[FileRunStatus]:
+        return self._statuses
+
+    def sources_en_file(self) -> set[Path]:
+        return {s.decision.info.path for s in self._statuses
+                if s.state in (FileState.PENDING, FileState.RUNNING)}
+
+    def en_attente(self) -> int:
+        return sum(1 for s in self._statuses
+                   if s.state == FileState.PENDING
+                   and s.decision.video.action != VideoAction.SKIP)
+
+    def ajouter(self, decisions: list[FileDecision]) -> bool:
+        """Met des décisions en fin de file. Faux si le lot est déjà fini."""
+        with self._verrou:
+            if self._done or self._abandon:
+                return False
+            # Les noms déjà figés sont réservés : un ajout ne peut pas viser la
+            # sortie d'un fichier qui attend encore.
+            resoudre_sorties([s.decision for s in self._statuses] + decisions)
+            self._statuses.extend(FileRunStatus(decision=d) for d in decisions)
+        self._reconstruire_table()
+        self._update_header()
+        return True
 
     def compose(self) -> ComposeResult:
         yield Entete()
@@ -151,7 +203,7 @@ class RunScreen(TableNavMixin, Screen):
             yield Static("", id="cmd-lines", markup=False)
         yield KeyFooter(
             actions=actions_ecran(self),
-            nav=footer_line2(back=True, nav=True, accueil=True),
+            nav=footer_line2(nav=True, accueil=True, extra=(("backspace", "Fichiers"),)),
         )
 
     def on_mount(self) -> None:
@@ -160,6 +212,30 @@ class RunScreen(TableNavMixin, Screen):
         self._build_table()
         self._update_header()
         self.action_start()
+
+    def on_screen_resume(self) -> None:
+        if self._done:
+            self._vu = True
+
+    def on_screen_suspend(self) -> None:
+        # Quitté après avoir montré son bilan : le lot peut partir. Une modale
+        # ouverte par-dessus suspend aussi l'écran — l'application vérifie
+        # qu'on a bien changé de mode avant de le retirer.
+        if self._done and self._vu:
+            self.app.call_later(self.app._liberer_lot)  # type: ignore[attr-defined]
+
+    def _reconstruire_table(self) -> None:
+        try:
+            table  = self.query_one(DataTable)
+        except Exception:
+            return
+        curseur = table.cursor_row
+        table.clear(columns=True)
+        self._build_table()
+        for i in range(len(self._statuses)):
+            self._update_row(i)
+        if table.row_count:
+            table.move_cursor(row=min(curseur, table.row_count - 1))
 
     # ─── Table ────────────────────────────────────────────────────────────────
 
@@ -242,23 +318,25 @@ class RunScreen(TableNavMixin, Screen):
         à l'écran, dont le plus visible était le faux.
         """
         try:
-            finis   = {FileState.SUCCESS, FileState.ERROR, FileState.SKIPPED}
-            total   = len(self._statuses)
-            done    = sum(1 for s in self._statuses if s.state in finis)
-            # `percent` vaut -1 tant que ffmpeg n'a pas rendu de durée : une
-            # progression inconnue compte pour rien, jamais pour du négatif.
-            encours = sum(min(1.0, max(0.0, s.percent))
-                          for s in self._statuses
-                          if s.state not in finis)
-            profile = self.app.active_profile_id  # type: ignore[attr-defined]
-            bar_pct = int((done + encours) / total * 100) if total else 0
+            done, total, bar_pct = self.avancement()
             self.query_one("#run-header-bar", Static).update(barre_etat(
-                "Encodage", pluriel(total, "fichier"), f"Profil : {profile}",
+                "Encodage", pluriel(total, "fichier"),
                 f"{done}/{total} {accorde(done, 'terminé')}", f"Global : {bar_pct}%",
             ))
             self.query_one("#global-bar", ProgressBar).progress = bar_pct
         except Exception:
             pass
+
+    def avancement(self) -> tuple[int, int, int]:
+        """(terminés, total, pourcentage global) — l'écran et l'en-tête."""
+        finis   = {FileState.SUCCESS, FileState.ERROR, FileState.SKIPPED}
+        total   = len(self._statuses)
+        done    = sum(1 for s in self._statuses if s.state in finis)
+        # `percent` vaut -1 tant que ffmpeg n'a pas rendu de durée : une
+        # progression inconnue compte pour rien, jamais pour du négatif.
+        encours = sum(min(1.0, max(0.0, s.percent))
+                      for s in self._statuses if s.state not in finis)
+        return done, total, int((done + encours) / total * 100) if total else 0
 
     def _update_cmd_lines(self, text: str) -> None:
         try:
@@ -286,26 +364,32 @@ class RunScreen(TableNavMixin, Screen):
         if self._abandon:
             return
 
-        # Cherche le prochain fichier à encoder
-        next_idx = self._current_idx + 1
-        while next_idx < len(self._statuses):
-            s   = self._statuses[next_idx]
-            dec = s.decision
-            if dec.video.action == VideoAction.SKIP:
-                s.state = FileState.SKIPPED
-                self.app.call_from_thread(self._update_row, next_idx)
-                next_idx += 1
-                continue
-            break
-        else:
-            # Tout terminé
-            self._done = True
+        # Cherche le prochain fichier à encoder. Sous verrou : un ajout ne doit
+        # pas tomber entre « plus rien » et « lot fini ». Aucun appel au fil
+        # principal sous verrou — il peut attendre ce même verrou dans `ajouter`.
+        ignores: list[int] = []
+        with self._verrou:
+            next_idx = self._current_idx + 1
+            while next_idx < len(self._statuses):
+                s   = self._statuses[next_idx]
+                dec = s.decision
+                if dec.video.action == VideoAction.SKIP:
+                    s.state = FileState.SKIPPED
+                    ignores.append(next_idx)
+                    next_idx += 1
+                    continue
+                break
+            else:
+                self._done = True
+            if not self._done:
+                self._current_idx = next_idx
+                s = self._statuses[next_idx]
+                s.state = FileState.RUNNING
+        for i in ignores:
+            self.app.call_from_thread(self._update_row, i)
+        if self._done:
             self.app.call_from_thread(self._on_all_done)
             return
-
-        self._current_idx = next_idx
-        s = self._statuses[next_idx]
-        s.state = FileState.RUNNING
         self.app.call_from_thread(self._update_row, next_idx)
 
         # Retrait du Dolby Vision seul : aucun réencodage, donc aucun appel à
@@ -1013,6 +1097,13 @@ class RunScreen(TableNavMixin, Screen):
         return "\n".join(lignes)
 
     def _on_all_done(self) -> None:
+        from ..common import touche
+        app = self.app
+        if app.current_mode == app.MODE_ENCODAGES:  # type: ignore[attr-defined]
+            self._vu = True
+        else:
+            app.notify(f"Lot d'encodage terminé — {touche('f12')} pour le bilan.",
+                       timeout=8)
         try:
             self._update_header()
             self.query_one("#cmd-lines",   Static).update(self._resume())
@@ -1022,6 +1113,54 @@ class RunScreen(TableNavMixin, Screen):
             self.query_one(KeyFooter).update_line(1, [])
         except Exception:
             pass
+
+    # ─── Réordonner la file (IE-100) ─────────────────────────────────────────
+
+    def _en_attente_a(self, i: int) -> bool:
+        return (0 <= i < len(self._statuses)
+                and self._statuses[i].state == FileState.PENDING)
+
+    def _refus_file(self) -> None:
+        self.notify("Seul un fichier en attente se déplace ou se retire — "
+                    "celui qui tourne et ceux qui sont finis restent.",
+                    severity="warning", timeout=4)
+
+    def _deplacer(self, sens: int) -> None:
+        i = self.query_one(DataTable).cursor_row
+        j = i + sens
+        with self._verrou:
+            # Les deux lignes doivent attendre : un fichier ne passe pas devant
+            # celui qui tourne, ni derrière le bout de la file.
+            ok = self._en_attente_a(i) and self._en_attente_a(j)
+            if ok:
+                self._statuses[i], self._statuses[j] = (self._statuses[j],
+                                                        self._statuses[i])
+        if not ok:
+            if self._en_attente_a(i) and 0 <= j < len(self._statuses):
+                return                    # déjà en tête des attentes : rien à dire
+            self._refus_file()
+            return
+        self._reconstruire_table()
+        self.query_one(DataTable).move_cursor(row=j)
+
+    def action_monter(self) -> None:
+        self._deplacer(-1)
+
+    def action_descendre(self) -> None:
+        self._deplacer(+1)
+
+    def action_retirer(self) -> None:
+        i = self.query_one(DataTable).cursor_row
+        with self._verrou:
+            ok = self._en_attente_a(i)
+            retire = self._statuses.pop(i) if ok else None
+        if retire is None:
+            self._refus_file()
+            return
+        self._reconstruire_table()
+        self._update_header()
+        self.notify(f"{retire.decision.info.path.name} retiré de la file.",
+                    timeout=3)
 
     # ─── Pause/Resume ─────────────────────────────────────────────────────────
 
@@ -1097,39 +1236,44 @@ class RunScreen(TableNavMixin, Screen):
             if proc is not None:
                 self._arreter(proc)
 
-    def _confirmer_arret(self, apres) -> None:
-        """Arrête le lot après confirmation, puis appelle `apres`.
+    def action_go_back(self) -> None:
+        """La navigation, sans rien arrêter : le lot continue (IE-100)."""
+        self.app.switch_mode(self.app.MODE_FICHIERS)  # type: ignore[attr-defined]
 
-        Un encodage se compte en heures, `⌫` ou `Ctrl+Home` en une frappe :
-        comme les pistes et le recalage, l'écran demande avant de jeter.
-        Lot fini, rien à perdre, rien à demander.
-        """
+    def action_accueil(self) -> None:
+        """La liste des volumes, côté navigation ; le lot continue."""
+        self.app.switch_mode(self.app.MODE_FICHIERS)  # type: ignore[attr-defined]
+        retour_accueil(self.app)
+
+    def action_arreter_tout(self) -> None:
+        """Arrête le fichier en cours et tout ce qui attend, après confirmation."""
         if self._done:
-            apres()
             return
         from .confirm import ConfirmModal
 
         def _reponse(ok) -> None:
-            if ok:
-                self._interrompre()
-                apres()
+            if not ok:
+                return
+            # L'état se pose **avant** l'arrêt : le worker, en voyant ffmpeg
+            # sortir, garde un SKIPPED au lieu d'écrire un échec.
+            with self._verrou:
+                for s in self._statuses:
+                    if s.state in (FileState.PENDING, FileState.RUNNING):
+                        s.state     = FileState.SKIPPED
+                        s.last_line = "Arrêté"
+                self._done = True
+            self._interrompre()
+            for i in range(len(self._statuses)):
+                self._update_row(i)
+            self._on_all_done()
 
-        restants = sum(1 for s in self._statuses
-                       if s.state == FileState.PENDING
-                       and s.decision.video.action != VideoAction.SKIP)
+        restants = self.en_attente()
         corps = "Le fichier en cours est abandonné, sa sortie partielle effacée."
         if restants:
-            corps += (f"\nLes {restants} fichiers restants ne seront pas encodés."
+            corps += (f"\nLes {restants} fichiers en attente ne seront pas encodés."
                       if restants > 1 else
-                      "\nLe fichier suivant ne sera pas encodé.")
+                      "\nLe fichier en attente ne sera pas encodé.")
         self.app.push_screen(ConfirmModal(
-            "Arrêter l'encodage ?", corps,
+            "Arrêter tous les encodages ?", corps,
             confirm_label="Arrêter", cancel_label="Continuer", danger=True),
             _reponse)
-
-    def action_go_back(self) -> None:
-        self._confirmer_arret(self.app.pop_screen)
-
-    def action_accueil(self) -> None:
-        """Retour au choix du fichier, sans repasser par les écrans intermédiaires."""
-        self._confirmer_arret(lambda: retour_accueil(self.app))

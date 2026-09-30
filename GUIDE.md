@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.33
+**Version** : 0.8.9.36
 **Date** : 2026-09-29
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -324,17 +324,38 @@ reposent sur une moyenne
 mobile de vitesse relevée à chaque encodage : elles s'affinent à l'usage et
 sont approximatives aux premières passes.
 
-### 2.6 Encodage
+### 2.6 Encodage — la file
+
+**L'encodage ne bloque plus la navigation.** `F2` — depuis l'accueil, l'aperçu,
+les pistes, le recalage ou l'assistant — met les fichiers dans **une file**, qui
+démarre dès qu'elle a une entrée et les traite dans l'ordre. Pendant qu'elle
+tourne, revenez aux fichiers (`⌫` ou `F12`), choisissez-en d'autres et `F2` :
+ils s'ajoutent à la suite. `F12` bascule entre les fichiers et la file. Tant
+qu'un lot existe, l'en-tête l'annonce au centre, sur tous les écrans :
+« F12 Encodages en cours · 1/3 · 42 % », puis « F12 Lot terminé » ; depuis la
+file, « F12 Fichiers ».
+
+- Un fichier déjà dans la file est refusé, avec un message.
+- Chaque fichier garde les réglages qu'il avait au moment de l'ajout : changer
+  de profil ensuite ne le touche pas.
+- Les fichiers confiés se décochent sur l'accueil.
+- Un fichier en file ou en cours ne peut pas être supprimé (`Ctrl+D`).
+- Quitter (`F10`) dit combien de fichiers attendent encore.
 
 | Touche | Action |
 |---|---|
 | `P` | Pause / reprendre |
 | `S` | Passer le fichier en cours, sans annuler le reste |
-| `⌫` / `Esc` | Arrêter et revenir — **confirmation demandée** tant que le lot tourne |
+| `Ctrl+↑` / `Ctrl+↓` | Avancer / reculer d'un rang le fichier en attente sous le curseur |
+| `Suppr` | Retirer de la file le fichier en attente sous le curseur |
+| `X` | **Arrêter tout** — le fichier en cours et la file ; confirmation demandée |
+| `⌫` / `Esc` / `F12` | Revenir aux fichiers — **l'encodage continue** |
 
 Une fois le lot fini, le pied de page ne garde que la navigation, et la zone du
 bas fait le bilan : réussis, en échec, ignorés, puis le chemin de chaque
-fichier produit.
+fichier produit. Si vous étiez dans les fichiers, une notification l'annonce ;
+le bilan attend que vous l'ayez vu (`F12`), puis s'efface quand vous quittez la
+vue. Un nouvel ajout démarre un nouveau lot.
 
 ### 2.7 Profils (`F5`)
 

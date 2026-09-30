@@ -57,6 +57,9 @@ _COMMUNES: dict[str, str] = {
                        "un travail est en cours.",
     "aide":            "Ouvre ce guide.",
     "request_quit":    "Quitte l'application, après confirmation.",
+    "encodages":       "Passe des fichiers à la file d'encodage, et retour. "
+                       "L'encodage continue pendant qu'on navigue ; l'en-tête "
+                       "l'annonce.",
 }
 
 _PAR_ECRAN: dict[str, dict[str, str]] = {
@@ -80,7 +83,8 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                                "confirmation.",
         "open_dryrun":         "Aperçu : montre ce qui serait fait, sans rien "
                                "faire.",
-        "open_run":            "Lance l'encodage des fichiers cochés.",
+        "open_run":            "Ajoute les fichiers cochés à la file d'encodage, "
+                               "qui démarre si elle était vide.",
         "recursive_run":       "Encode toute l'arborescence sous le dossier "
                                "courant, selon le profil actif.",
         "open_profile_picker": "Change le profil actif.",
@@ -105,7 +109,7 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "enter_action":   "Ouvre la liste des valeurs possibles pour le champ "
                           "actif.",
         "dryrun":         "Dry-run sur ce seul fichier.",
-        "run":            "Lance l'encodage de ce fichier.",
+        "run":            "Ajoute ce fichier à la file d'encodage.",
         "change_profile": "Change le profil, ce qui recalcule la décision.",
         "open_codec":     "Choisit le codec de sortie.",
         "open_bitrate":   "Choisit le débit vidéo cible.",
@@ -156,7 +160,8 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                            "une piste audio, il n'y a aucun texte à proposer.",
         "remove_track":    "Retire la piste de la liste des greffes.",
         "dryrun":          "Dry-run sur le fichier cible.",
-        "run":             "Encode le fichier avec les pistes greffées.",
+        "run":             "Ajoute le fichier, pistes greffées, à la file "
+                           "d'encodage.",
         "run_mux":         "Muxe sans réencoder : bien plus rapide, quand la vidéo "
                            "n'a pas besoin d'être retouchée.",
         "add_track":       "Ajoute une autre piste externe.",
@@ -164,7 +169,7 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
     },
     "DryrunScreen": {
         "toggle_select": "Coche ou décoche une ligne.",
-        "run":           "Lance l'encodage des lignes cochées.",
+        "run":           "Ajoute les lignes cochées à la file d'encodage.",
         "open_codec":    "Change le codec de la ligne sous le curseur.",
         "open_bitrate":  "Change son débit cible.",
         "go_back":       "Revient à l'écran précédent.",
@@ -172,11 +177,17 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
     "RunScreen": {
         "pause_resume": "Suspend ou reprend l'encodage en cours.",
         "skip_current": "Abandonne le fichier en cours et passe au suivant.",
-        "go_back":      "Quitte l'écran d'encodage.",
+        "monter":       "Avance d'un rang le fichier en attente sous le curseur.",
+        "descendre":    "Recule d'un rang le fichier en attente sous le curseur.",
+        "retirer":      "Retire de la file le fichier en attente sous le curseur.",
+        "arreter_tout": "Arrête le fichier en cours et vide la file, après "
+                        "confirmation. La sortie partielle est effacée.",
+        "go_back":      "Revient aux fichiers sans rien arrêter : l'encodage "
+                        "continue, F12 le rouvre.",
     },
     "MuxScreen": {
-        "dryrun":  "Dry-run sur le fichier produit par le mux.",
-        "encode":  "Encode le fichier produit par le mux.",
+        "dryrun":  "Aperçu de l'encodage du fichier produit par le mux.",
+        "encode":  "Ajoute le fichier produit par le mux à la file d'encodage.",
         "go_back": "Revient à l'écran précédent.",
     },
     "JoinScreen": {
@@ -342,7 +353,7 @@ class AideScreen(Screen):
         t.append("PARTOUT\n", style="bold")
         t.append("Ces touches répondent sur tous les écrans.\n\n", style="dim")
         for cle, action in (("h", "aide"), ("ctrl+home", "accueil"),
-                            ("f10", "request_quit")):
+                            ("f12", "encodages"), ("f10", "request_quit")):
             self._ligne(t, touche(cle), _COMMUNES[action])
         t.append("\n")
         t.append("Dans un tableau\n", style="bold")

@@ -55,10 +55,34 @@ class AideEtHeure(Widget):
 
 
 class Entete(Header):
-    """L'en-tête de tous les écrans : icône, titre, rappel de l'aide, heure."""
+    """L'en-tête de tous les écrans : icône, titre, rappel de l'aide, heure.
+
+    Tant qu'un lot d'encodage existe, le titre porte au centre l'état de la
+    file et la touche pour y aller (IE-100) : la file tourne pendant qu'on
+    navigue, c'est le seul endroit visible de partout.
+    """
 
     def __init__(self, **kwargs) -> None:
         super().__init__(show_clock=False, **kwargs)
+
+    def on_mount(self) -> None:
+        self.set_interval(1, self._rafraichir_titre, name="etat de la file")
+
+    def _rafraichir_titre(self) -> None:
+        try:
+            self.query_one(HeaderTitle).update(self.format_title())
+        except Exception:
+            pass
+
+    def format_title(self):
+        base = super().format_title()
+        etat = getattr(self.app, "etat_file", lambda: "")()
+        if not etat:
+            return base
+        t = Text(str(base), no_wrap=True, overflow="ellipsis")
+        t.append("     ")
+        t.append(f" {etat} ", style="bold reverse")
+        return t
 
     def compose(self) -> ComposeResult:
         yield HeaderIcon().data_bind(Header.icon)

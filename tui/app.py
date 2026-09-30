@@ -65,7 +65,17 @@ class IrisEncodeApp(App):
         # plus d'agir quand une saisie a le focus — ceinture et bretelles, le
         # coût d'une erreur étant un texte corrompu sans message.
         Binding("h",      "aide",         "Aide",        show=False),
+        # La file d'encodage tourne pendant qu'on navigue ; F12 passe de l'une
+        # à l'autre (IE-100). F11 est prise par Windows Terminal (plein écran).
+        Binding("f12",    "encodages",    "Encodages",   show=False, priority=True),
     ]
+
+    # Deux modes Textual, chacun sa pile d'écrans : la navigation et le lot
+    # d'encodage. Basculer de mode suspend l'écran sans le démonter — le worker
+    # et ffmpeg continuent. La navigation a son nom : Textual ne permet pas de
+    # revenir au mode `_default`, qu'il ne déclare pas.
+    MODE_FICHIERS  = "fichiers"
+    MODE_ENCODAGES = "encodages"
 
     def __init__(self, start_path: Path | None = None) -> None:
         super().__init__()
@@ -83,6 +93,9 @@ class IrisEncodeApp(App):
         # Les lots passés par l'écran d'encodage, que l'accueil n'a pas encore
         # pris en compte : il les relit à son retour au premier plan (UX-04).
         self.lots_encodes:     list[list] = []
+        # Le lot d'encodage courant (un `RunScreen`), ou None. Il vit dans le
+        # mode « encodages » jusqu'à ce que son bilan ait été vu.
+        self._lot = None
         # Câble dovi_tool dans le scanner (enrichissement DV au scan)
         from core import dovi, scanner
         bin_dir   = cfg_mod.get_bin_dir(self.cfg)
@@ -132,7 +145,7 @@ class IrisEncodeApp(App):
         decision_mod.set_strip_dv_available(
             dovi_path is not None and mkvmerge_p is not None)
         # L'assistant est le mode d'entrée : un fichier, une suite d'étapes.
-        # Le parcours libre reste à une touche (F12), et le choix tient pour
+        # Le parcours libre reste à une touche (W), et le choix tient pour
         # la session — on ne le repose pas à chaque fichier.
         self.wizard_mode = True
         # Câble mpv pour le contrôle du recalage à l'œil (optionnel)
@@ -159,10 +172,104 @@ class IrisEncodeApp(App):
 
     def on_mount(self) -> None:
         from tui.screens.browser import BrowserScreen
-        self.push_screen(BrowserScreen(self.start_path, start_virtual=True))
+        self.add_mode(self.MODE_FICHIERS,
+                      lambda: BrowserScreen(self.start_path, start_virtual=True))
+        self.switch_mode(self.MODE_FICHIERS)
         if self.platform.alerte_nvenc:
             self.notify(self.platform.alerte_nvenc, title="Carte graphique",
                         severity="warning", timeout=30)
+
+    # ── File d'encodage (IE-100) ──────────────────────────────────────────────
+
+    @property
+    def lot(self):
+        """Le lot d'encodage courant, terminé ou non, ou None."""
+        return self._lot
+
+    def sources_en_file(self) -> set[Path]:
+        """Les sources en attente ou en cours d'encodage."""
+        return self._lot.sources_en_file() if self._lot is not None else set()
+
+    def encoder(self, decisions: list) -> None:
+        """Confie des décisions à la file d'encodage — seule porte d'entrée.
+
+        Chaque décision est **copiée** : les réglages sont figés au moment de
+        l'ajout, un changement de profil ou de piste ensuite ne la touche pas.
+        Une source déjà en file est refusée. S'il n'y a pas de lot en cours,
+        un nouveau démarre et s'affiche ; sinon les fichiers s'ajoutent à la
+        suite et la navigation reste où elle est.
+        """
+        from copy import deepcopy
+        from core.texte import pluriel
+        from tui.common import touche
+
+        vues      = self.sources_en_file()
+        refusees  = []
+        nouvelles = []
+        for dec in decisions:
+            if dec.info.path in vues:
+                refusees.append(dec.info.path.name)
+                continue
+            vues.add(dec.info.path)
+            nouvelles.append(deepcopy(dec))
+        if refusees:
+            self.notify(f"Déjà dans la file : {', '.join(refusees)}",
+                        severity="warning", timeout=5)
+        if not nouvelles:
+            return
+        if self._lot is not None and self._lot.ajouter(nouvelles):
+            self.notify(f"{pluriel(len(nouvelles), 'fichier ajouté')} à la file"
+                        f" — {touche('f12')} pour la suivre.", timeout=4)
+            return
+        self._nouveau_lot(nouvelles)
+
+    def _nouveau_lot(self, decisions: list) -> None:
+        from tui.screens.run import RunScreen
+        if self._lot is not None:
+            self._liberer_lot(force=True)
+        lot = RunScreen(decisions, self.platform)
+        self._lot = lot
+        self.add_mode(self.MODE_ENCODAGES, lambda: lot)
+        self.switch_mode(self.MODE_ENCODAGES)
+
+    def _liberer_lot(self, force: bool = False) -> None:
+        """Oublie un lot terminé : son bilan a été vu, ou un autre commence."""
+        lot = self._lot
+        if lot is None or not (lot.termine or force):
+            return
+        if self.current_mode == self.MODE_ENCODAGES:
+            return                        # on ne retire pas le mode affiché
+        self._lot = None
+        try:
+            self.remove_mode(self.MODE_ENCODAGES)
+        except Exception:
+            pass
+
+    def etat_file(self) -> str:
+        """Le bandeau central de l'en-tête : où en est la file, et F12.
+
+        Vide sans lot. Depuis la vue des encodages, il dit le chemin inverse.
+        """
+        from tui.common import touche
+        lot = self._lot
+        if lot is None:
+            return ""
+        f12 = touche("f12")
+        if self.current_mode == self.MODE_ENCODAGES:
+            return f"{f12} Fichiers"
+        if lot.termine:
+            return f"{f12} Lot terminé"
+        done, total, pct = lot.avancement()
+        return f"{f12} Encodages en cours · {done}/{total} · {pct} %"
+
+    def action_encodages(self) -> None:
+        """F12 : de la navigation au lot d'encodage, et retour."""
+        if self.current_mode == self.MODE_ENCODAGES:
+            self.switch_mode(self.MODE_FICHIERS)
+        elif self._lot is not None:
+            self.switch_mode(self.MODE_ENCODAGES)
+        else:
+            self.notify("Aucun encodage en cours.", timeout=3)
 
     def action_aide(self) -> None:
         """Ouvre le guide des touches, sauf si on est en train d'écrire."""
@@ -194,6 +301,14 @@ class IrisEncodeApp(App):
             texte = self._TRAVAUX.get(w.name or "")
             if w.is_running and texte and texte not in phrases:
                 phrases.append(texte)
+        # Ce qui attend dans la file n'a pas de worker à soi : il faut le dire.
+        if self._lot is not None and not self._lot.termine:
+            from core.texte import pluriel
+            attente = self._lot.en_attente()
+            if attente:
+                phrases.append(f"{pluriel(attente, 'fichier')} en attente ne "
+                               f"{'seront' if attente > 1 else 'sera'} pas encodé"
+                               f"{'s' if attente > 1 else ''}.")
         return phrases
 
     def action_request_quit(self) -> None:
@@ -210,6 +325,9 @@ class IrisEncodeApp(App):
                 arreter = getattr(ecran, "_interrompre", None)
                 if arreter is not None:
                     arreter()
+            # Le lot vit dans un autre mode : il n'est pas dans la pile affichée.
+            if self._lot is not None and self._lot not in self.screen_stack:
+                self._lot._interrompre()
             self.exit()
 
     # Surcharge de l'action native Textual (Ctrl+C système)

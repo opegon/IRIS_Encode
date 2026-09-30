@@ -41,7 +41,7 @@ from core.sync import (
     measure_with_anchor, read_cues, reperes_proposables,
 )
 
-from ..common import (langue_affichee, barre_etat, actions_ecran, footer_line2, largeur_entete, raccourcis, touche,
+from ..common import (confier_a_la_file, langue_affichee, barre_etat, actions_ecran, footer_line2, largeur_entete, raccourcis, touche,
                       tronquer_milieu, retour_accueil)
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
@@ -1162,9 +1162,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     def action_run(self) -> None:
         if not self._encode_ready():
             return
-        from .run import RunScreen
-        self._launch(
-            lambda dec: RunScreen([dec], self.app.platform))  # type: ignore[attr-defined]
+        from core.decision import force_skip_to_encode
+        confier_a_la_file(self.app, [force_skip_to_encode(self._decision)])
 
     def action_go_back(self) -> None:
         """Rend les pistes à l'écran appelant — mais pas pendant une mesure.

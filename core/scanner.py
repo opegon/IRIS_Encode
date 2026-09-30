@@ -326,10 +326,18 @@ class SubtitleTrack:
     # « Français (France) », « (forced) », « (SDH) », « (Canada) »… ne se
     # distinguent que par lui, et l'application ne savait pas le dire.
     title:    str = ""
+    # Drapeau « forced » du conteneur. Beaucoup de rips ne le posent pas et
+    # l'écrivent dans le titre (« FR Forced ») : les deux valent.
+    forced:   bool = False
 
     @property
     def is_image_based(self) -> bool:
         return self.codec.lower() in _IMAGE_SUB_CODECS
+
+    @property
+    def is_forced(self) -> bool:
+        titre = self.title.lower()
+        return self.forced or "forced" in titre or "forcé" in titre
 
 
 @dataclass
@@ -670,6 +678,7 @@ def scan(path: Path) -> VideoInfo:
             codec=s.get("codec_name", "unknown"),
             language=tags.get("language", ""),
             title=tags.get("title", "") or "",
+            forced=bool((s.get("disposition") or {}).get("forced")),
         ))
 
     # ── Dolby Vision ──────────────────────────────────────────────────────────

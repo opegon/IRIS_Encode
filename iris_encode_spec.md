@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.39 — document de référence courant
+**Version** : 0.8.9.40 — document de référence courant
 **Date** : 2026-09-30
 **Statut** : stable
 
@@ -862,6 +862,12 @@ passait pour un DTS ordinaire et échappait à `preserve_hd_audio`.
 - SRT (texte) → MP4 possible, `-c:s mov_text`
 - ASS / SSA → MKV : le style ne survit pas à `mov_text`
 - Sélection par piste depuis `TracksScreen` (par défaut : toutes conservées)
+- **PGS forcé doublé** : sans sélection manuelle, un sous-titre image forcé
+  est écarté quand un sous-titre texte forcé de même langue est retenu
+  (`decision._pgs_forces_doubles`). Jellyfin incruste un sous-titre image, donc
+  transcode ; le SRT dit la même chose. Seul forcé de sa langue, il reste.
+  Forcé = `disposition.forced` ou « forced » / « forcé » dans le titre
+  (`SubtitleTrack.is_forced`).
 
 **La clé `container`** exprime une politique de profil, parce que le choix ne
 se déduit pas du seul contenu : certains lecteurs digèrent mal le Matroska.
@@ -2603,6 +2609,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.40 | 2026-09-30 | **PGS forcé doublé écarté** (§ 8.6, IE-73) : sans sélection manuelle, un sous-titre image forcé doublé par un sous-titre texte forcé de même langue ne passe plus dans la sortie ; seul forcé de sa langue, il reste · `SubtitleTrack.forced` lu depuis `disposition` · `tests/test_langues.py` |
 | 0.8.9.39 | 2026-09-30 | **Le HEVC en MP4 est étiqueté `hvc1`** (§ 8.6, IE-74) : `-tag:v hvc1` sur toute sortie MP4 dont la vidéo est du HEVC (`_sortie_hevc`) et sur le retrait DV en MP4 ; le G3 lit `hev1` et `hvc1` en lecture directe, les lecteurs Apple exigent `hvc1` · `tests/test_conteneur.py` |
 | 0.8.9.38 | 2026-09-30 | **Une release publiée se voit dans l'heure** : cache de `updater.py` ramené de 24 h à 1 h, et invalidé quand la version installée a changé · `tests/test_updater.py` |
 | 0.8.9.37 | 2026-09-30 | **Les clés d'API se saisissent dans l'application** (§ 14.8, IE-101) : fenêtre au lancement si une clé manque et depuis `F5` → `K`, lien vers la page du service, vérification avant enregistrement, « Ne plus demander » · `tests/test_cles.py` |

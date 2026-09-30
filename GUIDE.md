@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.39
+**Version** : 0.8.9.40
 **Date** : 2026-09-29
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -228,6 +228,10 @@ ligne vidéo en tête.
 
 Écarter tous les sous-titres image (PGS, VobSub) libère le conteneur MP4 ;
 en garder un impose le MKV.
+
+Un PGS forcé qu'un SRT forcé de même langue double arrive **décoché** : Jellyfin
+l'incrusterait, donc transcoderait, pour afficher ce que le SRT dit déjà. Seul
+forcé de sa langue, il reste coché. Le recocher à la main suffit à le garder.
 
 ### 2.3 Choix du donneur
 

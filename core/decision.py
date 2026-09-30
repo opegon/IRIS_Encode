@@ -1144,16 +1144,35 @@ def decide_subtitles(
 
     Le profil filtrait l'audio par langue mais jamais les sous-titres : un rip
     streaming en embarque quarante, et les quarante traversaient la chaîne. La
-    clé `subtitle_languages` pose la règle ; absente, rien ne change.
+    clé `subtitle_languages` pose la règle ; absente, rien ne change. Dans les
+    deux cas, un PGS forcé doublé par un SRT forcé part (`_pgs_forces_doubles`).
     """
     if override is not None:
         return override
     langues = profile.get("subtitle_languages", None)
-    if not langues:
+    retenues = info.subtitle_tracks
+    if langues:
+        voulues = {normalize_language(l) for l in langues}
+        retenues = [st for st in retenues
+                    if normalize_language(st.language) in voulues]
+    doublons = _pgs_forces_doubles(retenues)
+    if not langues and not doublons:
         return None
-    voulues = {normalize_language(l) for l in langues}
-    return [st.index for st in info.subtitle_tracks
-            if normalize_language(st.language) in voulues]
+    return [st.index for st in retenues if st not in doublons]
+
+
+def _pgs_forces_doubles(pistes: list) -> list:
+    """Sous-titres image forcés qu'un sous-titre texte forcé de même langue double.
+
+    Jellyfin incruste un sous-titre image à la lecture, donc transcode la
+    vidéo : un PGS forcé ne doit pas lui être proposé quand un SRT forcé dit
+    la même chose. Seul forcé de sa langue, il reste (IE-73).
+    """
+    textes = {normalize_language(st.language) for st in pistes
+              if st.is_forced and not st.is_image_based}
+    return [st for st in pistes
+            if st.is_forced and st.is_image_based
+            and normalize_language(st.language) in textes]
 
 
 def decide(

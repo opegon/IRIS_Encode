@@ -122,3 +122,12 @@ sauts quasi instantanés. Question retirée. Pages touchées : [[conteneurs]],
 
 v0.8.9.39 : `-tag:v hvc1` sur toutes les sorties HEVC en MP4, suite d'IE-74.
 Pages touchées : [[conteneurs]], [[ffmpeg]].
+
+
+## [2026-09-30] ingest | PGS forcé écarté, débit du client webOS
+
+IE-73 tranché en politique : un PGS forcé doublé par un SRT forcé de même
+langue est écarté (v0.8.9.40) ; seul forcé de sa langue, il reste. IE-76 :
+client en « Auto », manuel de 8 à 120 Mb/s ; la question se resserre sur ce
+qu'« Auto » laisse passer. Pages touchées : [[sous-titres]], [[jellyfin]],
+[[questions-ouvertes]].

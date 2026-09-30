@@ -1,10 +1,11 @@
 ---
 type: concept
-maj: 2026-09-24
+maj: 2026-09-30
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-diagnostic]]"
+  - "[[source-2026-09-30-lecture]]"
 ---
 
 # Sous-titres
@@ -57,8 +58,11 @@ sous-titres, donc la sortie reste en MKV.
   l'utilisateur. Poser `--default-track-flag TID:0` explicitement.
   *(mesuré, spec § 9.5 piège 4)*
 - Un PGS marqué forcé ou par défaut peut être sélectionné automatiquement par
-  Jellyfin, ce qui déclenche l'incrustation. *(supposé : le cas n'est pas
-  encore observé ici, voir [[questions-ouvertes|Questions ouvertes]])*
+  Jellyfin, ce qui déclenche l'incrustation. *(supposé, jamais observé)*
+  **Politique retenue** (v0.8.9.40) : un PGS forcé doublé par un SRT forcé de
+  même langue est écarté de la sortie ; seul forcé de sa langue, il reste.
+  Forcé = drapeau du conteneur **ou** « forced » / « forcé » dans le titre.
+  Une sélection manuelle n'est pas touchée.
 
 ## Langues
 

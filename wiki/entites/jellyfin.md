@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: materiel
-maj: 2026-09-24
+maj: 2026-09-30
 sources:
+  - "[[source-2026-09-30-lecture]]"
   - "[[source-2026-09-24-utilisateur]]"
   - "[[source-readme]]"
 ---
@@ -32,7 +33,8 @@ Tout format que le client ne déclare pas lisible déclenche un transcodage,
 - débit au-dessus de la limite du client.
 
 Qu'un PGS marqué forcé soit choisi d'office à côté d'un SRT forcé de même
-langue est **supposé**, pas observé ([[questions-ouvertes]]).
+langue est **supposé**, pas observé : IRIS ne lui en laisse plus l'occasion
+([[sous-titres#Drapeaux par défaut et forcé|Sous-titres]]).
 
 ## Diagnostiquer
 

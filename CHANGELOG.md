@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.40] — 2026-09-30
+
+### Un PGS forcé doublé par un SRT forcé n'est plus gardé
+
+Les rips Blu-ray MULTi portent souvent le même sous-titre forcé deux fois, en
+SRT et en PGS (Starship Troopers, Watchmen). Jellyfin incruste un sous-titre
+image, donc transcode la vidéo, et peut choisir le PGS d'office à cause de son
+drapeau. Décision de l'utilisateur (IE-73) : on ne le lui laisse pas.
+
+- Sans sélection manuelle, un sous-titre image forcé est écarté quand un
+  sous-titre texte forcé de même langue est retenu, avec ou sans
+  `subtitle_languages` dans le profil.
+- Seul forcé de sa langue, il reste, même si d'autres sous-titres existent.
+- Forcé = drapeau `forced` du conteneur, désormais lu au scan, ou « forced » /
+  « forcé » dans le titre (beaucoup de rips ne posent pas le drapeau).
+- Une sélection faite à la main dans l'écran des pistes n'est pas touchée.
+
+`core/scanner.py` (`SubtitleTrack.forced`, `is_forced`), `core/decision.py`
+(`decide_subtitles`, `_pgs_forces_doubles`), `tests/test_langues.py`, spec
+§ 8.6, wiki `sous-titres`.
+
 ## [v0.8.9.39] — 2026-09-30
 
 ### Le HEVC en MP4 est étiqueté `hvc1`
@@ -35,7 +56,8 @@ proposait pas la v0.8.9.37 sortie trois heures plus tard.
   autre : une installation mise à jour ou remplacée réinterroge aussitôt.
 
 Les installations antérieures gardent leur ancien updater jusqu'à leur mise à
-jour : pour forcer la vérification, supprimer `.iris_updateelease.json`.
+jour : pour forcer la vérification, supprimer `.iris_update
+elease.json`.
 
 `updater.py`, `tests/test_updater.py`, spec § mises à jour, README § 5.2.
 

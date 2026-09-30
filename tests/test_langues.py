@@ -118,3 +118,40 @@ def test_la_selection_manuelle_prime_sur_le_filtre(tmp_path):
     info = _info(tmp_path, sous_titres=[_st(0, "eng"), _st(1, "jpn")])
     assert decide_subtitles(info, _profile(subtitle_languages=["fre"]),
                             override=[1]) == [1]
+
+
+# ── IE-73 : un PGS forcé doublé par un SRT forcé n'est pas proposé à Jellyfin ─
+
+def _force(index, langue, codec="subrip", titre="FR Forced", drapeau=False):
+    return SubtitleTrack(index=index, codec=codec, language=langue,
+                         title=titre, forced=drapeau)
+
+
+def test_pgs_force_double_par_un_srt_force_est_ecarte(tmp_path):
+    """Starship Troopers : SRT « FR Forced » et PGS « FR Forced »."""
+    info = _info(tmp_path, sous_titres=[
+        _force(0, "fre"), _force(1, "fre", codec="hdmv_pgs_subtitle"),
+        _st(2, "fre")])
+    assert decide_subtitles(info, _profile()) == [0, 2]
+    assert decide_subtitles(info, _profile(subtitle_languages=["fre"])) == [0, 2]
+
+
+def test_pgs_force_seul_de_sa_langue_reste(tmp_path):
+    """Seul forcé de sa langue, le PGS reste, même si d'autres sous-titres existent."""
+    info = _info(tmp_path, sous_titres=[
+        _force(0, "fre", codec="hdmv_pgs_subtitle"), _st(1, "fre"),
+        _force(2, "eng")])
+    assert decide_subtitles(info, _profile()) is None
+
+
+def test_le_drapeau_du_conteneur_suffit(tmp_path):
+    info = _info(tmp_path, sous_titres=[
+        _force(0, "eng", titre="", drapeau=True),
+        _force(1, "eng", codec="hdmv_pgs_subtitle", titre="", drapeau=True)])
+    assert decide_subtitles(info, _profile()) == [0]
+
+
+def test_la_selection_manuelle_garde_le_pgs_force(tmp_path):
+    info = _info(tmp_path, sous_titres=[
+        _force(0, "fre"), _force(1, "fre", codec="hdmv_pgs_subtitle")])
+    assert decide_subtitles(info, _profile(), override=[0, 1]) == [0, 1]

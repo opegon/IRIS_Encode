@@ -15,6 +15,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
+from core.texte import accorde, pluriel
 from core.decision import (AudioAction, FileDecision, VideoAction,
                            resoudre_sorties)
 from core.encoder import (
@@ -27,7 +28,8 @@ from core.muxer import (
     premux_output_path,
 )
 from core.platform import PlatformProfile
-from ..common import (actions_ecran, footer_line2, record_measured_speed,
+from ..common import (barre_etat, actions_ecran, footer_line2, largeur_entete,
+                      record_measured_speed,
                       retour_accueil)
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
@@ -129,7 +131,9 @@ class RunScreen(TableNavMixin, Screen):
         ]
         self._current_idx  = -1
         self._process:     EncoderProcess | None = None
+        self._mux:         MuxProcess | None     = None
         self._paused       = False
+        self._abandon      = False
         self._started      = False
         self._done         = False
 
@@ -151,6 +155,8 @@ class RunScreen(TableNavMixin, Screen):
         )
 
     def on_mount(self) -> None:
+        # L'accueil rafraîchit sa vue et décoche ce qui a réussi à son retour.
+        self.app.lots_encodes.append(self._statuses)  # type: ignore[attr-defined]
         self._build_table()
         self._update_header()
         self.action_start()
@@ -169,7 +175,7 @@ class RunScreen(TableNavMixin, Screen):
         table.add_column("",        width=3,                              key="icon")
         table.add_column("Fichier", width=max(20, _cw("Fichier", names)), key="file")
         table.add_column("Action",  width=_cw("Action", actions),         key="action")
-        table.add_column("État",    width=50,                             key="state")
+        table.add_column("État",    width=largeur_entete("État", 50),     key="state")
 
         for i, s in enumerate(self._statuses):
             dec   = s.decision
@@ -215,8 +221,10 @@ class RunScreen(TableNavMixin, Screen):
             else:
                 state_txt = {
                     FileState.PENDING:  Text("en attente",      style="dim"),
-                    FileState.SUCCESS:  Text("✓ SUCCÈS",         style="bold green"),
-                    FileState.ERROR:    Text(f"✗ ERREUR : {s.error_msg[:30]}", style="bold dark_orange"),
+                    # Le symbole est déjà dans la colonne d'icône (UX-16).
+                    # Minuscules, comme « en attente » et « ignoré » (UX-09).
+                    FileState.SUCCESS:  Text("terminé",          style="bold green"),
+                    FileState.ERROR:    Text(f"échec : {s.error_msg[:30]}", style="bold dark_orange"),
                     FileState.SKIPPED:  Text("ignoré",           style="dim"),
                 }[s.state]
             table.update_cell(str(index), "icon",  self._icon(s),  update_width=False)
@@ -244,10 +252,10 @@ class RunScreen(TableNavMixin, Screen):
                           if s.state not in finis)
             profile = self.app.active_profile_id  # type: ignore[attr-defined]
             bar_pct = int((done + encours) / total * 100) if total else 0
-            self.query_one("#run-header-bar", Static).update(
-                f" Encodage — {total} fichiers · Profil : {profile}"
-                f" ── {done}/{total} terminés ── Global : {bar_pct}%"
-            )
+            self.query_one("#run-header-bar", Static).update(barre_etat(
+                "Encodage", pluriel(total, "fichier"), f"Profil : {profile}",
+                f"{done}/{total} {accorde(done, 'terminé')}", f"Global : {bar_pct}%",
+            ))
             self.query_one("#global-bar", ProgressBar).progress = bar_pct
         except Exception:
             pass
@@ -274,6 +282,10 @@ class RunScreen(TableNavMixin, Screen):
 
     @work(thread=True, name="encoder")
     def _encode_next(self) -> None:
+        # Lot abandonné (⌫, Ctrl+Home) : rien ne démarre plus.
+        if self._abandon:
+            return
+
         # Cherche le prochain fichier à encoder
         next_idx = self._current_idx + 1
         while next_idx < len(self._statuses):
@@ -346,17 +358,19 @@ class RunScreen(TableNavMixin, Screen):
         if choisi and self._platform.peut_encoder(choisi) is False:
             s.state     = FileState.ERROR
             s.error_msg = f"{choisi} indisponible ici"[:60]
-            s.last_line = (
-                f"Cette machine ne sait pas encoder avec « {choisi} » — sondé "
-                f"au lancement. L'AV1 par NVENC demande une RTX 40 ou plus "
-                f"récente ; le HEVC et le H264 restent disponibles.")
+            if "nvenc" in choisi and self._platform.alerte_nvenc:
+                s.last_line = self._platform.alerte_nvenc
+            else:
+                s.last_line = (
+                    f"Cette machine ne sait pas encoder avec « {choisi} » — sondé "
+                    f"au lancement. L'AV1 par NVENC demande une RTX 40 ou plus "
+                    f"récente ; le HEVC et le H264 restent disponibles.")
             self.app.call_from_thread(self._update_row, next_idx)
             self._encode_next()
             return
 
         proc = EncoderProcess(cmd, dec.info.duration)
-        self._process = proc
-        proc.start()
+        self._demarrer(proc)
 
         # Affiche "Encodage lancé" jusqu'à première ligne
         self.app.call_from_thread(
@@ -485,8 +499,7 @@ class RunScreen(TableNavMixin, Screen):
         self.app.call_from_thread(self._update_row, index)
 
         proc = EncoderProcess(cmd, dec.info.duration)
-        self._process = proc
-        proc.start()
+        self._demarrer(proc)
         for ligne, progress in proc.iter_progress():
             s.last_line = ligne
             if progress:
@@ -569,8 +582,7 @@ class RunScreen(TableNavMixin, Screen):
                 self.app.call_from_thread(self._update_row, index)
 
                 proc = EncoderProcess(cmd, dec.info.duration)
-                self._process = proc
-                proc.start()
+                self._demarrer(proc)
                 for ligne, progress in proc.iter_progress():
                     s.last_line = ligne
                     if progress:
@@ -615,8 +627,7 @@ class RunScreen(TableNavMixin, Screen):
                 self.app.call_from_thread(self._update_row, index)
 
                 proc = EncoderProcess(cmd, dec.info.duration)
-                self._process = proc
-                proc.start()
+                self._demarrer(proc)
                 for ligne, progress in proc.iter_progress():
                     s.last_line = ligne
                     if progress:
@@ -647,8 +658,7 @@ class RunScreen(TableNavMixin, Screen):
                     "▶ 1/1 Retrait du RPU et remux par ffmpeg — copie, "
                     "sans réencodage…")
                 proc = EncoderProcess(cmd, dec.info.duration)
-                self._process = proc
-                proc.start()
+                self._demarrer(proc)
                 for ligne, progress in proc.iter_progress():
                     s.last_line = ligne
                     if progress:
@@ -675,7 +685,7 @@ class RunScreen(TableNavMixin, Screen):
                     f"▶ {n_etapes}/{n_etapes} Remux des pistes par mkvmerge…")
 
                 mux = MuxProcess(cmd)
-                mux.start()
+                self._demarrer(mux)
                 for ligne, pourcent in mux.iter_progress():
                     if pourcent is not None:
                         s.percent = pourcent / 100.0
@@ -683,6 +693,7 @@ class RunScreen(TableNavMixin, Screen):
                     elif ligne:
                         self.app.call_from_thread(self._update_ffmpeg_line, ligne)
                 code = mux.wait()
+                self._mux = None
                 erreurs = mux.errors
 
             if code != 0 or not sortie.exists():
@@ -815,8 +826,7 @@ class RunScreen(TableNavMixin, Screen):
             cmd = build_dv_video_command(dec, self._platform, enc, ffmpeg_path)
             annoncer("Encodage de la vidéo…", " ".join(cmd))
             proc = EncoderProcess(cmd, dec.info.duration)
-            self._process = proc
-            proc.start()
+            self._demarrer(proc)
             for ligne, progress in proc.iter_progress():
                 s.last_line = ligne
                 if progress:
@@ -849,8 +859,7 @@ class RunScreen(TableNavMixin, Screen):
                 cmd = build_audio_command(source, mka, dec.audio, ffmpeg_path)
                 annoncer("Transcodage des pistes audio…", " ".join(cmd))
                 proc = EncoderProcess(cmd, dec.info.duration)
-                self._process = proc
-                proc.start()
+                self._demarrer(proc)
                 for ligne, progress in proc.iter_progress():
                     s.last_line = ligne
                     if progress:
@@ -879,7 +888,7 @@ class RunScreen(TableNavMixin, Screen):
                 sous_titres=[st.index for st in dec.subtitles_finales])
             annoncer("Remux des pistes par mkvmerge…", " ".join(cmd))
             mux = MuxProcess(cmd)
-            mux.start()
+            self._demarrer(mux)
             for ligne, pourcent in mux.iter_progress():
                 if pourcent is not None:
                     s.percent = pourcent / 100.0
@@ -887,6 +896,7 @@ class RunScreen(TableNavMixin, Screen):
                 elif ligne:
                     self.app.call_from_thread(self._update_ffmpeg_line, ligne)
             code = mux.wait()
+            self._mux = None
             if code != 0 or not sortie.exists():
                 detail = mux.errors[-1] if mux.errors else f"code {code}"
                 echouer(f"remux : {detail}", f"Remux échoué — {detail}")
@@ -952,7 +962,7 @@ class RunScreen(TableNavMixin, Screen):
             "▶ Greffe des pistes par mkvmerge (étirement) avant encodage…")
 
         proc = MuxProcess(cmd)
-        proc.start()
+        self._demarrer(proc)
         for ligne, pourcent in proc.iter_progress():
             if pourcent is not None:
                 s.percent = pourcent
@@ -960,8 +970,11 @@ class RunScreen(TableNavMixin, Screen):
             elif ligne:
                 self.app.call_from_thread(self._update_ffmpeg_line, ligne)
         code = proc.wait()
+        self._mux = None
 
         if code != 0 or not sortie.exists():
+            # Interrompu ou échoué, l'intermédiaire pèse le poids du film.
+            sortie.unlink(missing_ok=True)
             detail = proc.errors[-1] if proc.errors else f"code {code}"
             s.state, s.error_msg = FileState.ERROR, f"mux : {detail}"[:60]
             s.last_line = f"Mux préalable échoué — {detail}"
@@ -980,11 +993,33 @@ class RunScreen(TableNavMixin, Screen):
         self.app.call_from_thread(self._update_row, index)
         return True
 
+    # Au-delà, la zone de commande déborderait : le reste se compte.
+    _SORTIES_LISTEES = 6
+
+    def _resume(self) -> str:
+        """Le bilan du lot, et où trouver ce qu'il a produit (UX-16)."""
+        compte = {etat: sum(1 for s in self._statuses if s.state == etat)
+                  for etat in (FileState.SUCCESS, FileState.ERROR,
+                               FileState.SKIPPED)}
+        lignes = [f"Terminé — réussis : {compte[FileState.SUCCESS]}"
+                  f" · en échec : {compte[FileState.ERROR]}"
+                  f" · ignorés : {compte[FileState.SKIPPED]}"]
+        sorties = [s.decision.output_path for s in self._statuses
+                   if s.state == FileState.SUCCESS]
+        lignes += [f"→ {p}" for p in sorties[:self._SORTIES_LISTEES]]
+        reste = len(sorties) - self._SORTIES_LISTEES
+        if reste > 0:
+            lignes.append(f"   … et {reste} autres")
+        return "\n".join(lignes)
+
     def _on_all_done(self) -> None:
         try:
             self._update_header()
-            self.query_one("#cmd-lines",   Static).update("Terminé.")
+            self.query_one("#cmd-lines",   Static).update(self._resume())
             self.query_one("#ffmpeg-line", Static).update("")
+            # Pause et « Passer le fichier » n'ont plus d'objet : le pied ne
+            # garde que la navigation, Retour et Accueil.
+            self.query_one(KeyFooter).update_line(1, [])
         except Exception:
             pass
 
@@ -1014,20 +1049,87 @@ class RunScreen(TableNavMixin, Screen):
         self._process.terminate()
         self._paused = False
 
+    # ─── Sortie ───────────────────────────────────────────────────────────────
+
+    def _demarrer(self, proc: EncoderProcess | MuxProcess) -> None:
+        """Démarre un processus du lot et le rend interruptible.
+
+        Démarré *avant* d'être publié, et le drapeau relu *après* : un abandon
+        survenu entre deux étapes trouve soit le processus (et l'arrête), soit
+        le drapeau déjà levé ici — jamais ni l'un ni l'autre.
+        """
+        proc.start()
+        if isinstance(proc, MuxProcess):
+            self._mux = proc          # hors de `_process` : il ne sait pas se suspendre
+        else:
+            self._process = proc
+        if self._abandon:
+            self._arreter(proc)
+
+    def _arreter(self, proc: EncoderProcess | MuxProcess) -> None:
+        """Termine `proc` et, s'il n'a pas fini de lui-même, efface la sortie
+        du fichier en cours — une fois le processus sorti, qui la tenait.
+
+        Ici plutôt qu'en fin de boucle : la boucle enchaîne par un nouveau
+        worker, et celui d'un écran déjà dépilé ne démarre pas toujours.
+        """
+        if isinstance(proc, EncoderProcess) and self._paused:
+            proc.resume()
+        proc.terminate()
+        if proc.wait() == 0:
+            return                    # fini juste avant l'arrêt : on garde
+        if 0 <= self._current_idx < len(self._statuses):
+            try:
+                self._statuses[self._current_idx].decision.output_path.unlink(
+                    missing_ok=True)
+            except OSError:
+                pass
+
+    def _interrompre(self) -> None:
+        """Abandonne le lot : le processus en cours, et tout ce qui l'aurait suivi.
+
+        Le drapeau empêche la boucle d'encodage d'enchaîner sur l'étape ou le
+        fichier suivant ; on ne compte pas sur l'annulation des workers d'un
+        écran dépilé.
+        """
+        self._abandon = True
+        for proc in (self._process, self._mux):
+            if proc is not None:
+                self._arreter(proc)
+
+    def _confirmer_arret(self, apres) -> None:
+        """Arrête le lot après confirmation, puis appelle `apres`.
+
+        Un encodage se compte en heures, `⌫` ou `Ctrl+Home` en une frappe :
+        comme les pistes et le recalage, l'écran demande avant de jeter.
+        Lot fini, rien à perdre, rien à demander.
+        """
+        if self._done:
+            apres()
+            return
+        from .confirm import ConfirmModal
+
+        def _reponse(ok) -> None:
+            if ok:
+                self._interrompre()
+                apres()
+
+        restants = sum(1 for s in self._statuses
+                       if s.state == FileState.PENDING
+                       and s.decision.video.action != VideoAction.SKIP)
+        corps = "Le fichier en cours est abandonné, sa sortie partielle effacée."
+        if restants:
+            corps += (f"\nLes {restants} fichiers restants ne seront pas encodés."
+                      if restants > 1 else
+                      "\nLe fichier suivant ne sera pas encodé.")
+        self.app.push_screen(ConfirmModal(
+            "Arrêter l'encodage ?", corps,
+            confirm_label="Arrêter", cancel_label="Continuer", danger=True),
+            _reponse)
+
     def action_go_back(self) -> None:
-        if self._process and not self._done:
-            output_path = None
-            if 0 <= self._current_idx < len(self._statuses):
-                output_path = self._statuses[self._current_idx].decision.output_path
-            self._process.terminate()
-            self._process.wait()  # attend la libération du fichier par ffmpeg
-            if output_path is not None:
-                try:
-                    output_path.unlink(missing_ok=True)
-                except Exception:
-                    pass
-        self.app.pop_screen()
+        self._confirmer_arret(self.app.pop_screen)
 
     def action_accueil(self) -> None:
         """Retour au choix du fichier, sans repasser par les écrans intermédiaires."""
-        retour_accueil(self.app)
+        self._confirmer_arret(lambda: retour_accueil(self.app))

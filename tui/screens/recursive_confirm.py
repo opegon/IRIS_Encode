@@ -17,11 +17,11 @@ class RecursiveConfirmModal(ConfirmModal):
             f"Profil actif : [bold]{escape(profile_id)}[/bold]\n\n"
             "Tous les fichiers vidéo de ce répertoire et de ses "
             "sous-répertoires (illimités) seront analysés et soumis "
-            "au dry-run avec le profil actif.\n"
+            "à l'aperçu avec le profil actif.\n"
             "Aucune sélection de pistes manuelle — décisions automatiques."
         )
         super().__init__(
-            title="F3 — Run récursif",
+            title="R — Encoder le dossier",
             body=body,
             confirm_label="Lancer l'analyse",
             cancel_label="Annuler",

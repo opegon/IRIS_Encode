@@ -915,3 +915,44 @@ def _commande_hdr10(tmp_path, mode: str) -> list[str]:
                            encoder_hevc="hevc_nvenc", encoder_h264="h264_nvenc",
                            encoder_av1="av1_nvenc")
     return build_command(decide(info, profil), plat)
+
+
+# ── UX-24 : l'appariement AlloCiné ────────────────────────────────────────────
+#
+# Réponse réelle d'autocomplétion relevée le 2026-09-30 pour « Avatar Fire and
+# Ash » : AlloCiné place en tête un film mis en avant, et l'année n'est jamais
+# dans le libellé.
+
+_AVATAR = [
+    {"entity_type": "movie", "entity_id": 1, "label": "L'île des souvenirs",
+     "original_label": "Forgotten Island", "data": {"year": 2026}},
+    {"entity_type": "movie", "entity_id": 2, "label": "Avatar : de Feu et de Cendres",
+     "original_label": "Avatar: Fire and Ash", "data": {"year": 2025}},
+]
+
+
+def test_le_titre_original_designe_la_fiche():
+    best, confiance = meta_mod.choisir_allocine(_AVATAR, "Avatar Fire and Ash", 2025)
+    assert best["entity_id"] == 2
+    assert confiance == "titre et année"
+
+
+def test_lannee_departage_deux_titres_identiques():
+    res = [{"entity_type": "movie", "entity_id": 1, "label": "Dune",
+            "original_label": "Dune", "data": {"year": 1984}},
+           {"entity_type": "movie", "entity_id": 2, "label": "Dune",
+            "original_label": "Dune", "data": {"year": 2021}}]
+    assert meta_mod.choisir_allocine(res, "Dune", 2021)[0]["entity_id"] == 2
+
+
+def test_une_serie_est_retenue():
+    """AlloCiné rend `series` ; seul `tvseries` était accepté."""
+    res = [{"entity_type": "series", "entity_id": 7, "label": "Fondation",
+            "original_label": "Foundation", "data": {"year": 2021}}]
+    assert meta_mod.choisir_allocine(res, "Foundation", 2021)[0]["entity_id"] == 7
+
+
+def test_un_resultat_sans_rapport_est_dit_incertain():
+    best, confiance = meta_mod.choisir_allocine(_AVATAR[:1], "Avatar Fire and Ash", 2025)
+    assert best["entity_id"] == 1
+    assert confiance.startswith("incertaine")

@@ -161,7 +161,6 @@ def test_laccueil_annonce_ses_touches_malgre_sa_liste_explicite():
     pied = ({k for k, _ in BrowserScreen._RACCOURCIS_FICHIERS}
             | {k for k, _ in footer_line2(
                 nav=False, resize=True,
-                extra=(("f1", ""), ("f2", ""), ("f3", ""), ("f4", ""),
-                       ("f5", ""), ("f6", ""), ("f7", ""), ("f8", "")))})
+                extra=(("f1", ""), ("f2", ""), ("f4", ""), ("f5", "")))})
     manquantes = _declarees(BrowserScreen) - pied
     assert not manquantes, f"touches visibles absentes du pied de page : {manquantes}"

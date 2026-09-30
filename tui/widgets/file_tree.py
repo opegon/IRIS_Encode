@@ -59,7 +59,9 @@ class FileNavigator:
 
     def enter(self, subdir: Path) -> None:
         if self._virtual:
-            self._history.append(self._current)
+            # Les volumes sont la racine : rien au-dessus à mémoriser. Garder
+            # le dossier d'avant ferait remonter `⌫` vers lui, pas vers eux.
+            self._history.clear()
             self._current = subdir.resolve()
             self._virtual = False
         else:
@@ -83,6 +85,11 @@ class FileNavigator:
         # Racine du volume (parent == self) → bascule vers l'écran virtuel
         self._virtual = True
         return True
+
+    def aller_aux_volumes(self) -> None:
+        """La racine : la liste des volumes que propose le système."""
+        self._history.clear()
+        self._virtual = True
 
     # ── Listage ───────────────────────────────────────────────────────────────
 

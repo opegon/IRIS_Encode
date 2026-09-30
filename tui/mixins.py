@@ -8,6 +8,7 @@ ColumnResizeMixin: sélection (Tab/Shift+Tab) + resize (</>) de colonnes,
 """
 from __future__ import annotations
 
+from rich.text import Text
 from textual.binding import Binding
 from textual.events import Key
 from textual.widgets import DataTable
@@ -122,9 +123,15 @@ class ColumnResizeMixin:
     RESIZE_STEP:        int            = 2
     RESIZE_MIN_DEFAULT: int            = 6
     # Largeur des colonnes que l'écran ajoute hors du cycle de redimensionnement
-    # (la case à cocher, le numéro de piste), plus les séparateurs. Elle compte
-    # dans le total, donc dans le plafond.
+    # (la case à cocher, le numéro de piste) avec leurs marges, plus la barre de
+    # défilement verticale. Elle compte dans le total, donc dans le plafond.
     RESIZE_FIXE:        int            = 0
+    # Marge d'une cellule de DataTable : un caractère de chaque côté
+    # (`cell_padding=1`). Mesuré sur l'accueil : 164 colonnes déclarées
+    # occupaient 188 caractères (UX-19).
+    MARGE_CELLULE:      int            = 2
+    # Barre de défilement verticale d'un DataTable, à compter dans RESIZE_FIXE.
+    BARRE_DEFILEMENT:   int            = 2
 
     BINDINGS = [
         Binding("shift+tab", "col_prev",   "Col préc.", show=True, priority=True),
@@ -172,10 +179,30 @@ class ColumnResizeMixin:
     def resize_col_label(self) -> str:
         return self.RESIZE_LABELS[self.resize_col_key]
 
-    def resize_header(self, key: str) -> str:
-        """En-tête de colonne, marqueur ◄► sur la colonne active."""
+    def resize_header(self, key: str) -> Text:
+        """En-tête de colonne, en vidéo inverse sur la colonne active.
+
+        Le repère « ◄► » ajoutait trois caractères que chaque colonne devait
+        réserver, faute de quoi il était rogné : neuf colonnes de moins pour
+        le nom de fichier sur l'accueil (UX-19). Un style ne coûte rien.
+        """
         label = self.RESIZE_LABELS[key]
-        return f"{label} ◄►" if key == self.resize_col_key else label
+        return Text(label, style="reverse" if key == self.resize_col_key else "")
+
+    def resize_plancher(self, key: str) -> int:
+        """Largeur sous laquelle la colonne ne descend pas.
+
+        Le plancher de contenu (`RESIZE_MIN`) ne voyait pas l'en-tête : Textual
+        rogne un en-tête trop long sans ellipse, et la coupe ne se voit pas
+        (UX-27). Calculé depuis le libellé à l'exécution, il tient dans toute
+        langue.
+        """
+        return max(self.RESIZE_MIN.get(key, self.RESIZE_MIN_DEFAULT),
+                   len(self.RESIZE_LABELS[key]))
+
+    def resize_largeur(self, key: str, largeur: int) -> int:
+        """`largeur` relevée au plancher — pour construire la table."""
+        return max(largeur, self.resize_plancher(key))
 
     # ── Actions ───────────────────────────────────────────────────────────────
 
@@ -201,13 +228,30 @@ class ColumnResizeMixin:
             return 0
 
     def _total_largeurs(self, widths: dict[str, int]) -> int:
-        return sum(widths.get(k, 0) for k in self.RESIZE_COLS) + self.RESIZE_FIXE
+        return (sum(widths.get(k, 0) + self.MARGE_CELLULE for k in self.RESIZE_COLS)
+                + self.RESIZE_FIXE)
+
+    def resize_remplissage(self, key: str, widths: dict[str, int],
+                           defaut: int) -> int:
+        """Largeur de `key` qui occupe la place que les autres colonnes laissent.
+
+        `defaut` sert tant que l'écran n'est pas monté. Jamais sous le
+        plancher : sur un terminal trop étroit, les dernières colonnes
+        sortent, comme avant.
+        """
+        place = self._place_disponible()
+        if not place:
+            return self.resize_largeur(key, defaut)
+        autres = {k: self.resize_largeur(k, widths.get(k, 0))
+                  for k in self.RESIZE_COLS if k != key}
+        reste  = place - self._total_largeurs({**autres, key: 0})
+        return self.resize_largeur(key, reste)
 
     def _apply_resize(self, delta: int) -> None:
         key     = self.resize_col_key
         widths  = self._resize_widths()
-        current = widths.get(key, 12)
-        floor   = self.RESIZE_MIN.get(key, self.RESIZE_MIN_DEFAULT)
+        current = self.resize_largeur(key, widths.get(key, 12))
+        floor   = self.resize_plancher(key)
         new_w   = max(floor, current + delta)
         if new_w == current:
             return

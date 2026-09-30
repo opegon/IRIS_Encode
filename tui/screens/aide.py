@@ -25,7 +25,7 @@ from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Static
 
-from ..common import footer_line2, touche_longue
+from ..common import footer_line2, touche
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 
@@ -45,16 +45,16 @@ _COMMUNES: dict[str, str] = {
     "table_page_up":   "Recule d'un écran de lignes.",
     "table_page_down": "Avance d'un écran de lignes.",
     "col_prev":        "Sélectionne la colonne précédente pour la redimensionner.",
-    "col_next":        "Sélectionne la colonne suivante. La colonne active porte "
-                       "le repère ◄► dans son en-tête.",
+    "col_next":        "Sélectionne la colonne suivante. L'en-tête de la colonne "
+                       "active est surligné.",
     "col_shrink":      "Rétrécit la colonne active de deux caractères. Un plancher "
                        "l'empêche de descendre sous ce que son contenu exige.",
     "col_grow":        "Élargit la colonne active. S'arrête à la largeur du "
                        "terminal : au-delà, les dernières colonnes sortiraient de "
                        "l'écran sans que rien ne le dise.",
-    "accueil":         "Retourne directement à l'écran d'accueil, sans remonter "
-                       "les écrans un par un. Demande confirmation si un travail "
-                       "est en cours.",
+    "accueil":         "Retourne directement à la liste des volumes, sans "
+                       "remonter les écrans un par un. Demande confirmation si "
+                       "un travail est en cours.",
     "aide":            "Ouvre ce guide.",
     "request_quit":    "Quitte l'application, après confirmation.",
 }
@@ -62,7 +62,7 @@ _COMMUNES: dict[str, str] = {
 _PAR_ECRAN: dict[str, dict[str, str]] = {
     "BrowserScreen": {
         "toggle_select":       "Coche ou décoche le fichier sous le curseur. Seuls "
-                               "les fichiers cochés partent en dry-run ou en "
+                               "les fichiers cochés partent en aperçu ou en "
                                "encodage.",
         "select_all":          "Coche tous les fichiers du dossier.",
         "select_none":         "Décoche tout.",
@@ -78,21 +78,21 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "play":                "Lit le fichier dans mpv, si mpv est installé.",
         "delete_file":         "Supprime le fichier sous le curseur, après "
                                "confirmation.",
-        "open_dryrun":         "Dry-run : montre ce qui serait fait, sans rien "
+        "open_dryrun":         "Aperçu : montre ce qui serait fait, sans rien "
                                "faire.",
         "open_run":            "Lance l'encodage des fichiers cochés.",
         "recursive_run":       "Encode toute l'arborescence sous le dossier "
                                "courant, selon le profil actif.",
         "open_profile_picker": "Change le profil actif.",
         "open_config":         "Gère les profils : créer, éditer, supprimer.",
-        "join_parts":          "Colle les fichiers cochés bout à bout en un "
+        "join_parts":          "Joint les fichiers cochés bout à bout en un "
                                "seul, sans réencoder — un film livré en part1 / "
                                "part2. L'ordre proposé vient des noms et se "
                                "corrige avant de lancer. Le fichier produit "
                                "porte « .join.IRIS » et s'encode ensuite comme "
                                "n'importe quel autre.",
-        "open_allocine":       "Cherche la fiche AlloCiné du fichier.",
-        "open_imdb":           "Cherche la fiche IMDB du fichier.",
+        "open_fiche":          "Ouvre la fiche du film : AlloCiné, puis IMDB "
+                               "avec Tab.",
     },
     "TracksScreen": {
         "toggle_row":     "Garde ou écarte la piste sous le curseur. Une piste "
@@ -181,14 +181,14 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
     },
     "JoinScreen": {
         "monter":    "Fait monter d'un rang la partie sous le curseur. C'est "
-                     "l'ordre du tableau qui sera collé — le vérifier avant de "
+                     "l'ordre du tableau qui sera joint — le vérifier avant de "
                      "lancer : deux parties inversées donnent un fichier de la "
                      "bonne durée, et faux.",
         "descendre": "Fait descendre d'un rang la partie sous le curseur.",
-        "coller":    "Lance le collage. Refusé si les parties ne s'apparient "
+        "coller":    "Lance la jonction. Refusée si les parties ne s'apparient "
                      "pas — codec vidéo, définition ou format audio "
                      "différents — ou si le fichier de sortie existe déjà.",
-        "go_back":   "Revient à l'accueil. Un collage en cours est interrompu "
+        "go_back":   "Revient à l'accueil. Une jonction en cours est interrompue "
                      "et son fichier partiel effacé.",
     },
     "ConfigScreen": {
@@ -225,13 +225,13 @@ _ORDRE: list[tuple[str, str, str]] = [
      "Ce que deviendra chaque piste du fichier."),
     ("SyncScreen", "Recalage",
      "Greffer une piste venue d'ailleurs, et la remettre à l'heure."),
-    ("DryrunScreen", "Dry-run",
+    ("DryrunScreen", "Aperçu",
      "Ce qui serait fait, sans rien faire."),
     ("RunScreen", "Encodage",
      "L'encodage en cours."),
     ("MuxScreen", "Mux",
      "Le mux en cours, et ce qu'on peut en faire ensuite."),
-    ("JoinScreen", "Collage",
+    ("JoinScreen", "Jonction",
      "Recoudre les parties d'un même film en un seul fichier."),
     ("ConfigScreen", "Profils",
      "Créer et régler les profils d'encodage."),
@@ -260,11 +260,11 @@ def _lisible(touches: str) -> str:
     Les alias existent pour les dispositions de clavier, pas pour être lus : la
     première touche est celle qu'on écrit dans le guide.
 
-    Et on l'écrit **en toutes lettres**, pas avec le glyphe du pied de page :
-    « ⇧Tab » se devine, « Shift+Tab » se lit. Un glyphe se cherche sur le
-    clavier, un nom s'y trouve — et le guide existe pour ceux qui cherchent.
+    Même notation que le pied de page (`touche`) : le guide nommait les
+    touches en toutes lettres (« SHIFT+TAB », « ESPACE »), une quatrième
+    notation à côté des trois autres (UX-10).
     """
-    return touche_longue(touches.split(",")[0].strip())
+    return touche(touches.split(",")[0].strip())
 
 
 def touches_de(classe: type) -> list[tuple[str, str, str]]:
@@ -343,19 +343,19 @@ class AideScreen(Screen):
         t.append("Ces touches répondent sur tous les écrans.\n\n", style="dim")
         for cle, action in (("h", "aide"), ("ctrl+home", "accueil"),
                             ("f10", "request_quit")):
-            self._ligne(t, touche_longue(cle), _COMMUNES[action])
+            self._ligne(t, touche(cle), _COMMUNES[action])
         t.append("\n")
         t.append("Dans un tableau\n", style="bold")
         for cle, action in (("home", "table_home"), ("end", "table_end"),
                             ("pageup", "table_page_up"),
                             ("pagedown", "table_page_down")):
-            self._ligne(t, touche_longue(cle), _COMMUNES[action])
+            self._ligne(t, touche(cle), _COMMUNES[action])
         t.append("\n")
-        t.append("Colonnes redimensionnables — accueil, pistes, dry-run\n",
+        t.append("Colonnes redimensionnables — accueil, pistes, aperçu\n",
                  style="bold")
         for cle, action in (("tab", "col_next"), ("shift+tab", "col_prev"),
                             (">", "col_grow"), ("<", "col_shrink")):
-            self._ligne(t, touche_longue(cle), _COMMUNES[action])
+            self._ligne(t, touche(cle), _COMMUNES[action])
         t.append("\n")
 
         deja = set(_COMMUNES)
@@ -370,8 +370,8 @@ class AideScreen(Screen):
             t.append("─" * 74 + "\n", style="dim")
             t.append(f"{titre.upper()}\n", style="bold")
             t.append(f"{resume}\n\n", style="dim")
-            for touche, action, libelle in lignes:
-                self._ligne(t, touche, explication(nom, action) or libelle)
+            for nom_touche, action, libelle in lignes:
+                self._ligne(t, nom_touche, explication(nom, action) or libelle)
             t.append("\n")
         return t
 

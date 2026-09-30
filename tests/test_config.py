@@ -110,3 +110,32 @@ def test_memoriser_le_profil_actif_ecrit_config_toml(tmp_path, monkeypatch):
     cfg = cfg_mod._deep_merge({}, cfg_mod._DEFAULTS)
     cfg_mod.set_active_profile(cfg, "film_hdr")
     assert cfg_mod.load()["app"]["active_profile"] == "film_hdr"
+
+
+def test_lalerte_suppression_lit_le_profil_pas_le_libelle():
+    """UX-29 : `"oui" in libellé` ne survivrait pas à la traduction."""
+    from core.profiles import Profile
+    from tui.common import cellules_profil
+
+    sup = Profile.__new__(Profile); sup.data = {"delete_source": True}
+    gar = Profile.__new__(Profile); gar.data = {"delete_source": False}
+    assert "dark_orange" in str(cellules_profil("a", sup, False)[-1].style)
+    assert "dark_orange" not in str(cellules_profil("b", gar, False)[-1].style)
+
+
+def test_choix_et_gestion_des_profils_ont_une_seule_presentation():
+    """UX-13 : mêmes en-têtes, même 4K, même nom, des deux côtés."""
+    import inspect
+    from core.profiles import Profile
+    from tui.common import PROFIL_COLONNES, cellules_profil, largeurs_colonnes
+    from tui.screens import config, profile_picker
+    for mod in (config, profile_picker):
+        src = inspect.getsource(mod)
+        assert "PROFIL_COLONNES" in src and "cellules_profil" in src, mod.__name__
+    p = Profile.__new__(Profile)
+    p.data = {"keep_4k": False, "bitrate_4k_kbps": 3500, "delete_source": True}
+    cellules = cellules_profil("serie_basic", p, True)
+    assert cellules[0].plain == "serie_basic ✓"          # ni crochets ni capitales
+    assert cellules[2].plain == "→ 1080p"
+    assert cellules[-1].plain == "⚠ suppr."
+    assert largeurs_colonnes(PROFIL_COLONNES, [cellules])[-1] >= cellules[-1].cell_len

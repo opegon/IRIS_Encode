@@ -140,9 +140,9 @@ async def context_real() -> None:
             i = next(k for k, (_t, p) in enumerate(scr._rows)
                      if p is not None and p.suffix.lower() in (".mkv", ".mp4"))
             await _goto(pilot, table, i)
-            await pilot.press("f7")
+            await pilot.press("i")
             await pilot.pause(6.0)
-            await shot(app, "17-meta", "Fiche AlloCiné (F7)", "MetaPopup")
+            await shot(app, "17-meta", "Fiche AlloCiné (I)", "MetaPopup")
             await pilot.press("escape")
             await pilot.pause(0.5)
         except Exception as exc:
@@ -320,18 +320,18 @@ async def context_temp() -> None:
             try:
                 d = _dir_index(scr)
                 if d is None:
-                    skipped("06-recursif", "Parcours récursif (F3)",
+                    skipped("06-recursif", "Parcours récursif (R)",
                             "aucun sous-dossier listé")
                 else:
                     await _goto(pilot, table, d)
-                    await pilot.press("f3")
+                    await pilot.press("r")
                     await pilot.pause(0.8)
-                    await shot(app, "06-recursif", "Parcours récursif (F3)",
+                    await shot(app, "06-recursif", "Parcours récursif (R)",
                                "RecursiveConfirmModal")
                     await pilot.press("escape")     # ne JAMAIS confirmer
                     await pilot.pause(0.5)
             except Exception as exc:
-                failed("06-recursif", "Parcours récursif (F3)", exc)
+                failed("06-recursif", "Parcours récursif (R)", exc)
 
             try:
                 # Ctrl+D n'ouvre la modale que sur un fichier : les .srt ne
@@ -360,7 +360,9 @@ async def context_temp() -> None:
                 await pilot.press("f9")            # donneur
                 await pilot.pause(1.0)
                 dtab = app.screen.query_one(DataTable)
-                noms = [str(dtab.get_row_at(k)[0]) for k in range(dtab.row_count)]
+                # « 📄 nom » : l'icône précède le nom (UX-22)
+                noms = [str(dtab.get_row_at(k)[0]).split(" ", 1)[-1]
+                        for k in range(dtab.row_count)]
                 dtab.move_cursor(row=noms.index("film.VF.mka"))
                 await pilot.press("enter")
                 await pilot.pause(1.0)
@@ -454,7 +456,7 @@ async def _measure_run(td: Path, slug: str, label: str,
                     "la mesure a conclu à un palier unique : aucune plage à "
                     "montrer (l'écran n'existe qu'en cas de montage différent)")
             return
-        await pilot.press("s")
+        await pilot.press("g")
         await pilot.pause(1.0)
         await shot(app, slug, label, "SegmentsScreen")
         await pilot.press("escape")

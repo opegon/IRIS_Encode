@@ -249,7 +249,7 @@ class SyncResult:
             paliers = " · ".join(f"{s.delay_ms:+d}" for s in self.segments)
             return (f"✗ Mesure refusée — {self.reason}\n"
                     f"{mesures}\n"
-                    f"plages (ms) : {paliers}   —   's' pour le détail")
+                    f"plages (ms) : {paliers}   —   G pour le détail")
         return f"✗ Mesure refusée — {self.reason}\n{mesures} · {candidat}"
 
     def diagnosis(self) -> str:

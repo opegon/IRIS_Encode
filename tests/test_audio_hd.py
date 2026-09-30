@@ -127,6 +127,8 @@ def test_preserve_hd_audio_garde_la_priorite(tmp_path):
     """Copier sans perte prime sur transcoder au débit source."""
     d = _only(tmp_path, _track(), audio_hd_codec="eac3", preserve_hd_audio=True)
     assert d.action == AudioAction.COPY
+    # UX-09 : « → copie », comme les sous-titres ; plus « → copy »
+    assert d.display() == "→ copie"
 
 
 # ─── Canaux ───────────────────────────────────────────────────────────────────

@@ -59,3 +59,75 @@ def test_aller_retour_stable():
         d = _hd_audio_cles(branche)
         relu = _hd_audio_depuis_cles(d["preserve_hd_audio"], d["audio_hd_codec"])
         assert relu == branche
+
+
+# ─── UX-03 : une valeur hors liste ne vide plus le champ ─────────────────────
+
+from textual.widgets import Select
+
+from tui.widgets.profile_form import _BITRATE_4K, _avec_valeur, _est_vide
+
+
+def test_la_sentinelle_vide_est_reconnue():
+    assert _est_vide(getattr(Select, "NULL", Select.BLANK))
+    assert not _est_vide(3500)
+
+
+def test_une_valeur_hors_liste_s_ajoute_a_sa_place():
+    opts = _avec_valeur(_BITRATE_4K, 3500)
+    assert [v for _, v in opts] == [3000, 3500, 5000, 8000, 12000]
+    assert ("3500k", 3500) in opts
+    assert _avec_valeur(_BITRATE_4K, 5000) == _BITRATE_4K
+
+
+def test_le_formulaire_garde_la_valeur_du_profil():
+    """`serie_basic` : 3500k en 4K, absent de la liste."""
+    import asyncio
+
+    from textual.app import App
+    from textual.widgets import Static
+
+    from tui.widgets.profile_form import ProfileForm
+
+    class _App(App):
+        def compose(self):
+            yield ProfileForm()
+
+    async def _run():
+        app = _App()
+        async with app.run_test(size=(160, 50)) as pilot:
+            form = app.query_one(ProfileForm)
+            form.load("serie_basic", {"bitrate_4k_kbps": 3500,
+                                      "bitrate_1080p_kbps": 1800})
+            await pilot.pause(0.2)
+            cons = str(app.query_one("#cons-seuils", Static).render())
+            return form.dump(), cons
+
+    data, cons = asyncio.run(_run())
+    assert data["bitrate_4k_kbps"] == 3500
+    assert data["bitrate_1080p_kbps"] == 1800
+    assert "NULL" not in cons and "3500k en 4K" in cons
+
+
+def test_les_libelles_du_formulaire_ont_une_casse():
+    """
+    UX-23 : « id », « preset », « traitement » en minuscules sous des titres
+    en capitales, sauf « Identifiant » ; « Edition » sans accent. Titres en
+    capitales, libellés en casse de phrase.
+    """
+    import ast
+    from pathlib import Path
+    arbre = ast.parse(Path("tui/widgets/profile_form.py").read_text(encoding="utf-8"))
+    for n in ast.walk(arbre):
+        if not (isinstance(n, ast.Call) and getattr(n.func, "id", "") in ("Label", "Static")
+                and n.args and isinstance(n.args[0], ast.Constant)
+                and isinstance(n.args[0].value, str) and n.args[0].value):
+            continue
+        texte = n.args[0].value
+        classes = next((k.value.value for k in n.keywords if k.arg == "classes"), "")
+        if classes == "section-hdr":
+            titre = texte.split("(")[0]      # les marques gardent leur casse
+            assert titre == titre.upper(), texte
+        elif classes == "form-lbl":
+            assert texte[0] == texte[0].upper(), texte
+    assert "Edition" not in Path("tui/screens/config.py").read_text(encoding="utf-8")

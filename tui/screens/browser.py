@@ -6,6 +6,7 @@ Navigation fichiers avec DataTable, sélection par case, colonnes redimensionnab
 from __future__ import annotations
 
 import logging
+import math
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import shutil
@@ -21,6 +22,7 @@ from textual.widgets import DataTable, Static
 
 from core import config as cfg_mod
 from core import preview
+from core.texte import accorde, pluriel
 from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
@@ -28,14 +30,13 @@ from core.decision import (
     video_recopiee,
 )
 from core.scanner import deja_produit, scan, scan_directory_recursive
-from ..common import (
+from ..common import (barre_etat, 
     touche,
     cellule,
     DV_VALUE_STYLES,
     estimate_encoding_duration,
     fmt_bytes,
     fmt_duration,
-    fmt_size,
     footer_line2,
     get_measured_speed,
 )
@@ -87,6 +88,13 @@ def _cellules_volume(volume: Path) -> tuple[Text, Text, Text]:
     )
 
 
+def sources_reussies(lots: list) -> set[Path]:
+    """Les sources encodées avec succès, tous lots confondus (UX-04)."""
+    from .run import FileState
+    return {s.decision.info.path for lot in lots for s in lot
+            if s.state == FileState.SUCCESS}
+
+
 def _sortie_recopiee(dec: FileDecision) -> bool:
     """La sortie pèsera-t-elle exactement ce que pèse la source ?
 
@@ -104,21 +112,27 @@ def _sortie_recopiee(dec: FileDecision) -> bool:
 
 
 # Bornes du dégradé de la colonne Estim, en pourcentage d'écart à la source :
-# gris à 0 %, teinte pleine à ±100 %, et au-delà la teinte ne bouge plus.
-# Un gain ne dépasse jamais 100 % ; une perte peut, et reste orange.
+# gris tant que l'écart affiché reste dans ±5 %, teinte pleine à ±100 %, et
+# au-delà la teinte ne bouge plus. Un gain ne dépasse jamais 100 % ; une perte
+# peut, et reste orange.
+_SEUIL_NEUTRE  =    5.0
 _DEGRADE_GAIN  = -100.0
 _DEGRADE_PERTE =  100.0
-_TEINTE_GAIN   = (  0, 120,   0)   # vert profond
+# Courbe logarithmique : la teinte avance vite sur les petits écarts, puis se
+# tasse. Plus `_COURBURE` est grand, plus le début est raide.
+_COURBURE      =   20.0
 _TEINTE_NEUTRE = (138, 138, 138)   # gris
-# Une perte ne part pas du gris mais du jaune : un gris-orange pâle ne se
-# distinguerait pas d'un écart nul. L'orange est celui des alertes (#ff8700).
-_TEINTE_PERTE_MIN = (215, 175,   0)   # jaune
-_TEINTE_PERTE     = (255, 135,   0)   # orange
+# Ni le gain ni la perte ne partent du gris : dès la sortie de la zone neutre,
+# la teinte doit se lire. L'orange final est celui des alertes (#ff8700).
+_TEINTE_GAIN_MIN  = (120, 200, 120)   # vert clair
+_TEINTE_GAIN      = (  0, 230,  60)   # vert vif
+_TEINTE_PERTE_MIN = (255, 190,  90)   # orange clair
+_TEINTE_PERTE     = (255, 135,   0)   # orange sombre
 
 
 def _teinte_estimation(delta_pct: float) -> str:
-    """Style Rich d'un écart de taille : vert si la sortie maigrit, du jaune à
-    l'orange si elle grossit, gris quand l'écart affiché est nul.
+    """Style Rich d'un écart de taille : vert si la sortie maigrit, orange si
+    elle grossit, gris quand l'écart affiché reste dans ±5 %.
 
     **Exception assumée à la table d'emphases** (`core.decision.Emphase`). Le
     vert y dit « traité sans réencodage » et cette colonne lui fait dire « la
@@ -133,20 +147,32 @@ def _teinte_estimation(delta_pct: float) -> str:
         r, v, bl = (round(x + (y - x) * k) for x, y in zip(a, b))
         return f"rgb({r},{v},{bl})"
 
-    # Gris dès que la cellule affiche « 0% » : un `+0%` jaune se contredirait.
-    if round(delta_pct) == 0:
+    # Seuil lu sur la valeur arrondie : la cellule qui affiche « 5% » est grise.
+    if abs(round(delta_pct)) <= _SEUIL_NEUTRE:
         return _melange(_TEINTE_NEUTRE, _TEINTE_NEUTRE, 0)
+
+    def _progression(borne: float) -> float:
+        x = (abs(delta_pct) - _SEUIL_NEUTRE) / (abs(borne) - _SEUIL_NEUTRE)
+        x = max(0.0, min(1.0, x))
+        return math.log1p(_COURBURE * x) / math.log1p(_COURBURE)
+
     if delta_pct < 0:
-        return _melange(_TEINTE_NEUTRE, _TEINTE_GAIN, delta_pct / _DEGRADE_GAIN)
-    return _melange(_TEINTE_PERTE_MIN, _TEINTE_PERTE, delta_pct / _DEGRADE_PERTE)
+        return _melange(_TEINTE_GAIN_MIN, _TEINTE_GAIN, _progression(_DEGRADE_GAIN))
+    return _melange(_TEINTE_PERTE_MIN, _TEINTE_PERTE, _progression(_DEGRADE_PERTE))
 
 
-def _estimate_output_bytes(dec: FileDecision) -> int:
+def _estimate_output_bytes(dec: FileDecision,
+                           taille_source: int | None = None) -> int:
     """Taille estimée de sortie (vidéo + audio conservé).
-    Retourne 0 si action=SKIP ou durée inconnue."""
+    Retourne 0 si action=SKIP ou durée inconnue.
+
+    `taille_source`, si l'appelant la connaît déjà, évite de relire le disque.
+    """
     if dec.video.action == VideoAction.SKIP:
         return 0
     if _sortie_recopiee(dec):
+        if taille_source is not None:
+            return taille_source
         try:
             return dec.info.path.stat().st_size
         except OSError:
@@ -181,18 +207,22 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("n",         "select_none",        "Aucun",    show=True),
         Binding("enter",     "enter_dir",          "Ouvrir",   show=True, priority=True),
         Binding("backspace", "go_up",              "Remonter", show=True),
-        Binding("t",         "open_tracks",        "Pistes",   show=False),
+        Binding("ctrl+home", "accueil",            "Accueil",  show=True,
+                priority=True),
+        # Visible : en mode assistant, c'est le seul accès aux pistes (UX-25).
+        Binding("t",         "open_tracks",        "Pistes",   show=True),
         Binding("w",         "toggle_wizard",      "Mode",     show=True),
         Binding("v",         "play",               "Visualiser", show=True),
+        # Les touches de fonction ont un seul sens dans toute l'application
+        # (UX-07) ; ce qui n'existe qu'ici passe sur des lettres.
+        Binding("r",         "recursive_run",      "Encoder le dossier", show=True),
+        Binding("j",         "join_parts",         "Joindre",  show=True),
+        Binding("i",         "open_fiche",         "Fiche",    show=True),
         Binding("ctrl+d",    "delete_file",        "Supprimer", show=True),
-        Binding("f1",        "open_dryrun",        "Dry-run",  show=True),
-        Binding("f2",        "open_run",           "Run",      show=True),
-        Binding("f3",        "recursive_run",      "Récursif", show=True),
+        Binding("f1",        "open_dryrun",        "Aperçu",   show=True),
+        Binding("f2",        "open_run",           "Encoder",  show=True),
         Binding("f4",        "open_profile_picker","Profil",   show=True),
         Binding("f5",        "open_config",        "Gérer", show=True),
-        Binding("f6",        "join_parts",         "Coller",   show=True),
-        Binding("f7",        "open_allocine",      "AlloCiné", show=True),
-        Binding("f8",        "open_imdb",          "IMDB",     show=True),
     ]
 
     # Colonnes redimensionnables (ColumnResizeMixin) — fichier en premier pour accès au focus
@@ -204,8 +234,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                      "temps_estim": "ETA", "audio": "Audio"}
     # Les planchers imposés par le contenu viennent de core.config, seule
     # source de vérité : ils valent aussi à la lecture d'une largeur persistée.
-    RESIZE_MIN    = {"fichier": 30, "audio": 10, **cfg_mod.COLUMN_MIN_WIDTHS}
-    RESIZE_FIXE   = 3   # case à cocher
+    # Fichier à 20 : à 160 colonnes, les autres ne lui en laissent que 29.
+    RESIZE_MIN    = {"fichier": 20, "audio": 10, **cfg_mod.COLUMN_MIN_WIDTHS}
+    RESIZE_FIXE   = 3 + 2 + 2   # case à cocher, sa marge, barre de défilement
 
     DEFAULT_CSS = """
     BrowserScreen {
@@ -243,6 +274,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # Override audio par fichier (TUI tracks)
         self._audio_overrides:    dict[Path, list[int]] = {}
         self._subtitle_overrides: dict[Path, list[int]] = {}
+        # Taille de chaque fichier, relevée par le worker de scan. Chaque touche
+        # `<`/`>` reconstruit la table : sur un partage réseau, relire la taille
+        # de chaque ligne à chaque frappe coûtait plusieurs secondes.
+        self._tailles:    dict[Path, int | None] = {}
         self._scan_epoch: int = 0
 
     # ─── Accesseurs app ───────────────────────────────────────────────────────
@@ -268,18 +303,30 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             nav=footer_line2(
                 nav=False,
                 resize=True,
+                accueil=True,
                 extra=(
-                    ("f1", "Dry-run"),
-                    ("f2", "Run"),
-                    ("f3", "Récursif"),
+                    ("f1", "Aperçu"),
+                    ("f2", "Encoder"),
                     ("f4", "Profil"),
                     ("f5", "Gérer"),
-                    ("f6", "Coller"),
-                    ("f7", "AlloCiné"),
-                    ("f8", "IMDB"),
                 ),
             ),
         )
+
+    def on_screen_resume(self) -> None:
+        """Retour d'un encodage : la vue et la sélection suivent le disque.
+
+        Sans cela les sorties produites n'apparaissaient pas, et `F2`
+        relançait le même lot (UX-04). Seuls les fichiers réussis se
+        décochent : un fichier en échec ou interrompu reste prêt à relancer.
+        """
+        lots = self._app.lots_encodes
+        if not lots:
+            return
+        self._selected -= sources_reussies(lots)
+        lots.clear()
+        if not self._nav.is_virtual:
+            self._refresh_view()
 
     def on_mount(self) -> None:
         # L'accueil repart des largeurs par défaut : on veut retrouver la même
@@ -315,17 +362,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
 
         table.add_column("",                                width=3,    key="check")
-        # Colonne fichier : 50% de la largeur de l'écran (ou largeur sauvegardée)
-        if "fichier" in widths:
-            fichier_width = widths["fichier"]
-        else:
-            # 50% de la largeur disponible (moins la colonne check et marges)
-            terminal_width = self.size.width if hasattr(self, 'size') else 120
-            fichier_width = max(self.RESIZE_MIN["fichier"], (terminal_width - 8) // 2)
+        # Fichier prend la place que les autres laissent, sauf largeur réglée
+        # dans la session. À 50 fixes, l'accueil faisait 188 caractères : en
+        # 160 colonnes, Audio sortait de l'écran (UX-19).
+        fichier_width = self._largeur_fichier(widths)
         table.add_column(self.resize_header("fichier"), width=fichier_width, key="fichier")
 
         for col in self.RESIZE_COLS[1:]:  # Skip fichier, déjà ajoutée
-            table.add_column(self.resize_header(col), width=widths[col], key=col)
+            table.add_column(self.resize_header(col), width=self.resize_largeur(col, widths[col]), key=col)
 
     # Ce qu'on peut faire d'un volume : l'ouvrir. Sélectionner, encoder,
     # interroger AlloCiné ou redimensionner des colonnes n'a pas de sens tant
@@ -338,7 +382,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         ("n",         "Aucun"),
         ("enter",     "Ouvrir"),
         ("w",         "Mode"),
+        ("t",         "Pistes"),
         ("v",         "Visualiser"),
+        ("r",         "Encoder le dossier"),
+        ("j",         "Joindre"),
+        ("i",         "Fiche"),
         ("ctrl+d",    "Supprimer"),
         ("backspace", "Remonter"),
         ("home",      "Début"),
@@ -374,10 +422,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         else:
             pied.update_line(1, self._raccourcis_fichiers())
             pied.update_line(2, footer_line2(
-                nav=False, resize=True,
-                extra=(("f1", "Dry-run"), ("f2", "Run"), ("f3", "Récursif"),
-                       ("f4", "Profil"), ("f5", "Gérer"), ("f6", "Coller"),
-                       ("f7", "AlloCiné"), ("f8", "IMDB"))))
+                nav=False, resize=True, accueil=True,
+                extra=(("f1", "Aperçu"), ("f2", "Encoder"),
+                       ("f4", "Profil"), ("f5", "Gérer"))))
 
     def _refresh_view(self) -> None:
         """Reconstruit la vue complète (dirs + fichiers)."""
@@ -399,16 +446,16 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             # redimensionnent pas : annoncer l'un ou l'autre serait faux.
             n = sum(1 for t, _ in self._rows if t == _ROW_TYPE_DIR)
             self.query_one("#status-bar", Static).update(
-                f" Choisir un volume    {n} volume(s)"
+                barre_etat("Choisir un volume", pluriel(n, "volume"))
             )
             return
         sel_count   = len(self._selected)
         total_files = sum(1 for t, _ in self._rows if t == _ROW_TYPE_FILE)
-        self.query_one("#status-bar", Static).update(
-            f" {self._nav.breadcrumb()}    "
-            f"{sel_count}/{total_files} sélectionné(s)"
-            f"  ·  Col : {self.resize_col_label} [</>]"
-        )
+        self.query_one("#status-bar", Static).update(barre_etat(
+            "", self._nav.breadcrumb(),
+            f"{sel_count}/{total_files} {accorde(sel_count, 'sélectionné')}",
+            f"Col : {self.resize_col_label}  </>",
+        ))
 
     def _update_profile_bar(self) -> None:
         if self._nav.is_virtual:
@@ -432,14 +479,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # Le mode change ce que fait ↵ sur un fichier : il doit se lire sans
         # avoir à l'essayer.
         assistant = getattr(self._app, "wizard_mode", True)
-        line1.append("[W] ", style="dim")
+        line1.append(f"{touche('w')} ", style="dim")
         line1.append("Assistant" if assistant else "Manuel",
                      style="bold cyan" if assistant else "bold")
         line1.append("  │  ", style="dim")
-        line1.append("[F4] ", style="dim")
+        line1.append(f"{touche('f4')} ", style="dim")
         if prof.data.get("delete_source", False):
             line1.append("⚠ ", style="bold dark_orange")
-        line1.append(f"🎬 {pid.upper()} 🎬 ", style="bold yellow")
+        line1.append(f"🎬 {pid} 🎬 ", style="bold yellow")
         line1.append(" • ", style="dim")
         line1.append("1080p ", style="dim"); line1.append(f["1080p"], style="bold")
         line1.append("  ·  ")
@@ -526,29 +573,41 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self.query_one("#scan-notice", Static).update("")
         self._update_status()
 
+    # Une ligne cochée que F1/F2 réencoderont malgré la décision automatique.
+    _FORCABLES = (VideoAction.SKIP, VideoAction.STRIP_DV)
+
+    def _est_forcee(self, dec: FileDecision) -> bool:
+        return dec.info.path in self._selected and dec.video.action in self._FORCABLES
+
     def _row_cells(self, dec: FileDecision, check: Text,
                    produit: bool = False) -> tuple:
+        # Cochée, une ligne SKIP ou « retrait DV » part en réencodage
+        # (`force_skip_to_encode`). La colonne le montre dès la coche, en
+        # alerte : ce n'est plus la décision automatique (UX-18).
+        forcee = self._est_forcee(dec)
+        if forcee:
+            dec = force_skip_to_encode(dec)
         info = dec.info
         vid  = dec.video
 
         # Toute cellule passe par `cellule()` : ce qui déborde se voit déborder.
         # `→ HEVC → HDR10` rendu `→ HEVC →` se lisait comme une décision
         # complète — voir tests/test_troncature.py.
+        taille    = self._tailles.get(info.path)
         name_txt  = cellule(f"{_FILE_ICON} {info.path.name}")
-        size_txt  = cellule(fmt_size(info.path), style="dim")
+        size_txt  = cellule("—" if taille is None else fmt_bytes(taille),
+                            style="dim")
         res_txt   = cellule(f"{info.width}x{info.height}")
         dur_txt   = cellule(fmt_duration(info.duration), style="dim")
         kbps_txt  = cellule(f"{info.kbps}k")
         codec_txt = cellule(info.codec)
         dv_txt    = cellule(info.dv_label)
-        dec_txt   = cellule(vid.label(), style=vid.style())
+        dec_txt   = cellule(vid.label(),
+                            style="bold dark_orange" if forcee else vid.style())
 
         # Estimation taille de sortie
-        try:
-            src_bytes = info.path.stat().st_size
-        except OSError:
-            src_bytes = 0
-        est_bytes = _estimate_output_bytes(dec)
+        src_bytes = taille or 0
+        est_bytes = _estimate_output_bytes(dec, src_bytes)
 
         if est_bytes == 0:
             estim_txt = cellule("—", style="dim")
@@ -595,13 +654,37 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         return Text("[x]", no_wrap=True) if path in self._selected else Text("[ ]", no_wrap=True)
 
     def _update_row_check(self, path: Path) -> None:
-        """Met à jour uniquement la cellule de case à cocher."""
+        """Met à jour la case à cocher — et la ligne entière si la coche
+        change la décision appliquée (ligne SKIP ou retrait DV forcée)."""
         table   = self.query_one(DataTable)
         row_key = str(path)
+        dec     = self._decisions.get(path)
         try:
-            table.update_cell(row_key, "check", self._check_str(path), update_width=False)
+            if dec is None or dec.video.action not in self._FORCABLES:
+                table.update_cell(row_key, "check", self._check_str(path),
+                                  update_width=False)
+                return
+            cells = self._row_cells(dec, self._check_str(path),
+                                    path in self._produits)
+            for col, cell in zip(["check", *self.RESIZE_COLS], cells):
+                table.update_cell(row_key, col, cell, update_width=False)
         except Exception:
             pass
+
+    def _annoncer_forcees(self, paths: list[Path]) -> None:
+        """Dire, à la coche, qu'une décision automatique est outrepassée."""
+        forcees = [p for p in paths
+                   if p in self._decisions and self._est_forcee(self._decisions[p])]
+        if not forcees:
+            return
+        if len(forcees) == 1:
+            dec = force_skip_to_encode(self._decisions[forcees[0]])
+            texte = (f"{forcees[0].name} n'était pas à réencoder : cochée, elle "
+                     f"sera encodée ({dec.video.label()}, débit de la source).")
+        else:
+            texte = (f"Lignes non réencodées d'office cochées : {len(forcees)}. "
+                     f"Elles seront encodées au débit de leur source.")
+        self.notify(texte, severity="warning", timeout=5)
 
     # ─── Worker de scan ───────────────────────────────────────────────────────
 
@@ -631,6 +714,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             if self._scan_epoch != epoch:
                 return None                 # navigation entre-temps : abandon anticipé
             dec: FileDecision | None = None
+            try:
+                self._tailles[vpath] = vpath.stat().st_size
+            except OSError:
+                self._tailles[vpath] = None
             try:
                 info = scan(vpath)
                 dec  = decide(
@@ -674,15 +761,32 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     # ─── Resize colonnes (ColumnResizeMixin) ──────────────────────────────────
 
+    def _largeur_fichier(self, widths: dict[str, int]) -> int:
+        reglee = (self._app.cfg.get("tui", {}).get("browser", {})
+                  .get("columns", {}).get("fichier"))
+        if reglee:
+            return self.resize_largeur("fichier", reglee)
+        return self.resize_remplissage("fichier", widths, widths["fichier"])
+
     def _resize_widths(self) -> dict[str, int]:
-        return cfg_mod.get_column_widths(self._app.cfg)
+        # La largeur de Fichier est celle qu'on voit, pas le défaut de config :
+        # c'est d'elle que partent `<` et `>`.
+        widths = cfg_mod.get_column_widths(self._app.cfg)
+        return {**widths, "fichier": self._largeur_fichier(widths)}
 
     def _resize_persist(self, key: str, width: int) -> None:
+        if self._nav.is_virtual:
+            return
         cfg_mod.set_column_width(self._app.cfg, key, width)
         cfg_mod.save(self._app.cfg)
 
     def _resize_rebuild(self) -> None:
         """Reconstruit colonnes + données après resize. Conserve curseur + sélection."""
+        # Les colonnes des volumes ne se redimensionnent pas. Reconstruire ici,
+        # avant que la liste soit chargée, posait la ligne « dossier vide » des
+        # fichiers dans une table de quatre colonnes : l'application tombait.
+        if self._nav.is_virtual:
+            return
         table      = self.query_one(DataTable)
         cursor_row = table.cursor_row
         subdirs    = [p for t, p in self._rows if t == _ROW_TYPE_DIR  and p is not None]
@@ -798,6 +902,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             else:
                 self.action_open_tracks()
 
+    def action_accueil(self) -> None:
+        """La racine : les volumes du système, pas le dossier de travail."""
+        if self._nav.is_virtual:
+            return
+        self._nav.aller_aux_volumes()
+        self._selected.clear()
+        self._refresh_view()
+
     def action_go_up(self) -> None:
         changed = self._nav.go_up()
         if changed:
@@ -814,6 +926,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self._selected.discard(path)
         else:
             self._selected.add(path)
+            self._annoncer_forcees([path])
         self._update_row_check(path)
         self._update_status()
 
@@ -829,6 +942,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                     and path not in self._produits):
                 self._selected.add(path)
                 self._update_row_check(path)
+        self._annoncer_forcees(list(self._selected))
         self._update_status()
 
     def action_select_none(self) -> None:
@@ -936,6 +1050,19 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 )
         self.app.push_screen(TracksScreen(dec), _on_tracks_return)
 
+    def _refus_sans_selection(self, action: str) -> None:
+        """F1/F2 sans rien de coché : le dire, plutôt que ne rien faire (UX-17).
+
+        Une touche sans effet et sans message se lit comme une touche cassée.
+        """
+        if self._nav.is_virtual:
+            texte = (f"{action} : entrez d'abord dans un volume, puis cochez "
+                     f"des fichiers ({touche('space')}).")
+        else:
+            texte = (f"{action} : aucun fichier coché — {touche('space')} coche "
+                     f"la ligne, {touche('a')} coche tout.")
+        self.notify(texte, severity="warning", timeout=4)
+
     def action_open_dryrun(self) -> None:
         decisions = [
             force_skip_to_encode(self._decisions[p])
@@ -943,6 +1070,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             if p in self._decisions
         ]
         if not decisions:
+            self._refus_sans_selection("Aperçu")
             return
         from .dryrun import DryrunScreen
         self.app.push_screen(DryrunScreen(decisions))
@@ -954,11 +1082,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             if p in self._decisions
         ]
         if not decisions:
+            self._refus_sans_selection("Encoder")
             return
         from .run import RunScreen
         self.app.push_screen(RunScreen(decisions, self._app.platform))
 
-    # ─── Collage de parties (F6) ──────────────────────────────────────────────
+    # ─── Collage de parties (J) ───────────────────────────────────────────────
 
     def action_join_parts(self) -> None:
         """Recoud les fichiers cochés en un seul, à encoder ensuite normalement.
@@ -973,7 +1102,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if len(infos) < MIN_PARTIES:
             self.app.bell()
             self._flash_status(
-                f"Collage : cocher au moins {MIN_PARTIES} parties (ESPACE).")
+                f"Joindre : cocher au moins {MIN_PARTIES} parties ({touche('space')}).")
             return
 
         from .join import JoinScreen
@@ -997,7 +1126,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 self._refresh_view()
         self.app.push_screen(ConfigScreen(), _on_config_return)
 
-    # ─── Run récursif (F3) ────────────────────────────────────────────────────
+    # ─── Run récursif (R) ─────────────────────────────────────────────────────
 
     def action_recursive_run(self) -> None:
         row_type, path = self._current_row_info()
@@ -1042,10 +1171,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         from .meta_popup import MetaPopup
         self.app.push_screen(MetaPopup(path, source))
 
-    def action_open_imdb(self) -> None:
-        self._open_meta("imdb")
-
-    def action_open_allocine(self) -> None:
+    def action_open_fiche(self) -> None:
+        """AlloCiné d'abord ; `Tab` dans la fiche passe à IMDB."""
         self._open_meta("allocine")
 
     # ─── Survol : chemin complet dans la zone notice ──────────────────────────

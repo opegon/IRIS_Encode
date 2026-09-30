@@ -299,7 +299,8 @@ async def _add_donor(pilot, app, filename: str) -> None:
     await pilot.press("f9")
     await pilot.pause(0.6)
     table = app.screen.query_one(DataTable)
-    noms  = [str(table.get_row_at(i)[0]) for i in range(table.row_count)]
+    # « 🎬 nom » : l'icône précède le nom, comme sur l'accueil
+    noms  = [str(table.get_row_at(i)[0]).split(" ", 1)[-1] for i in range(table.row_count)]
     table.move_cursor(row=noms.index(filename))
     await pilot.press("enter")
     await pilot.pause(0.6)
@@ -363,7 +364,8 @@ async def scenario_external_tracks() -> None:
             await pilot.pause(0.6)
             assert type(app.screen).__name__ == "DonorFileScreen", type(app.screen).__name__
             dtab = app.screen.query_one(DataTable)
-            noms = [str(dtab.get_row_at(i)[0]) for i in range(dtab.row_count)]
+            noms = [str(dtab.get_row_at(i)[0]).split(" ", 1)[-1]
+                    for i in range(dtab.row_count)]
             assert "film.mkv" not in noms, f"source proposee comme donneur : {noms}"
             await pilot.press("escape")
             await pilot.pause(0.4)
@@ -768,8 +770,10 @@ async def scenario_wizard() -> None:
             assert wiz._etape.name == "PISTES", wiz._etape
             await pilot.press("enter"); await pilot.pause(0.4)
             assert wiz._etape.name == "LANCER", wiz._etape
-            aide = str(wiz.query_one("#wiz-hint", Static).render())
+            # Le pied de page porte seul les touches (UX-11)
+            aide = str(wiz.query_one("#footer-body", Static).render())
             assert "Muxer" in aide and "Encoder" in aide, aide
+            assert "Lancer le recommandé" in aide, aide
             print("[15d] Etape 4 : mux et encodage tous deux offerts")
 
             # Le fichier traite est rappele sur chaque etape, pas seulement
@@ -786,13 +790,13 @@ async def scenario_wizard() -> None:
             await pilot.pause(0.2)
             print("[15d2] Le fichier traite est rappele sur les cinq etapes")
 
-            # M sans piste externe : refus explicite, on ne lance rien
-            await pilot.press("m")
+            # F3 sans piste externe : refus explicite, on ne lance rien
+            await pilot.press("f3")
             await pilot.pause(0.5)
             assert type(app.screen).__name__ == "WizardScreen", type(app.screen).__name__
             assert "Rien a muxer" in str(
                 wiz.query_one("#wiz-hint", Static).render()).replace("à", "a")
-            print("[15e] M sans piste externe : refus explicite")
+            print("[15e] F3 sans piste externe : refus explicite")
 
             # ⌫ remonte les etapes, puis rend la main a l'accueil
             for _ in range(4):
@@ -857,9 +861,18 @@ async def scenario_accueil() -> None:
             await pilot.press("ctrl+home")
             await pilot.pause(0.6)
             assert type(app.screen).__name__ == "BrowserScreen", type(app.screen).__name__
-            print("[17] Ctrl+Home depuis le dry-run : retour direct a l'accueil")
+            assert app.screen._nav.is_virtual, "Ctrl+Home est reste dans le dossier"
+            print("[17] Ctrl+Home depuis le dry-run : retour direct aux volumes")
+
+            async def _retour_dossier() -> None:
+                app.screen._nav.enter(td)
+                app.screen._refresh_view()
+                await pilot.pause(3.0)
+                await pilot.press("a")      # la selection ne survit pas aux volumes
+                await pilot.pause(0.3)
 
             # Depuis les pistes : confirmation, et « Rester » ne bouge pas.
+            await _retour_dossier()
             await pilot.press("t")
             await pilot.pause(0.8)
             assert type(app.screen).__name__ == "TracksScreen", type(app.screen).__name__
@@ -882,12 +895,15 @@ async def scenario_accueil() -> None:
             assert type(app.screen).__name__ == "BrowserScreen", type(app.screen).__name__
             print("[17c] Confirmation acceptee : retour a l'accueil")
 
-            # Depuis l'accueil, la touche ne doit rien casser.
+            # L'accueil est la racine : la liste des volumes, pas le dossier.
+            assert app.screen._nav.is_virtual, "Ctrl+Home est reste dans le dossier"
             await pilot.press("ctrl+home")
             await pilot.pause(0.4)
             assert type(app.screen).__name__ == "BrowserScreen"
+            assert app.screen._nav.is_virtual
             assert app.is_running
-            print("[17d] Ctrl+Home depuis l'accueil : sans effet")
+            print("[17d] Ctrl+Home depuis les volumes : y reste")
+            await _retour_dossier()
 
             # ── [18] Le guide embarque ────────────────────────────────────
             # La question n'est pas que la liaison existe, c'est qu'elle
@@ -966,16 +982,16 @@ async def scenario_collage() -> None:
             app.push_screen(BrowserScreen(td, start_virtual=False))
             await pilot.pause(4.0)
 
-            # F6 sans parties cochees : refus, sans quitter l'accueil.
-            await pilot.press("f6")
+            # J sans parties cochees : refus, sans quitter l'accueil.
+            await pilot.press("j")
             await pilot.pause(0.4)
             assert type(app.screen).__name__ == "BrowserScreen", \
                 type(app.screen).__name__
-            print("[19] F6 sans parties cochees : refus, on reste a l'accueil")
+            print("[19] J sans parties cochees : refus, on reste a l'accueil")
 
             await pilot.press("a")           # coche les trois
             await pilot.pause(0.3)
-            await pilot.press("f6")
+            await pilot.press("j")
             await pilot.pause(0.8)
             assert type(app.screen).__name__ == "JoinScreen", \
                 type(app.screen).__name__

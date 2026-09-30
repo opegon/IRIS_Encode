@@ -105,3 +105,68 @@ def test_toutes_les_modales_portent_le_trait_fin(rendus):
     for nom, svg in rendus.items():
         assert any(c in svg for c in "┌└┐┘"), f"{nom} : pas de trait fin"
         assert not any(c in svg for c in "▀▄"), f"{nom} : demi-blocs restants"
+
+
+# ── La fiche : une touche, deux sources (UX-07) ──────────────────────────────
+
+def test_la_fiche_bascule_dallocine_a_imdb(monkeypatch):
+    """`I` ouvre AlloCiné ; `Tab` passe à IMDB, puis revient."""
+    from pathlib import Path
+    from textual.app import App
+    from textual.widgets import Static
+    from core.meta import MovieMeta
+    import tui.screens.meta_popup as mp
+
+    def _fiche(source):
+        return lambda title, year, **_: MovieMeta(
+            source=source, title=f"{title} {source}", year=year, kind="Film",
+            rating=None, rating_max=10.0)
+    monkeypatch.setattr(mp, "fetch_allocine", _fiche("allocine"))
+    monkeypatch.setattr(mp, "fetch_imdb", _fiche("imdb"))
+
+    async def _scenario():
+        app = App()
+        entetes = []
+        async with app.run_test(size=(100, 40)) as pilot:
+            app.push_screen(mp.MetaPopup(Path("Heat.1995.mkv"), "allocine"))
+            for _ in range(3):
+                await pilot.pause(0.5)
+                entetes.append(str(app.screen.query_one("#meta-header", Static).render()))
+                await pilot.press("tab")
+        return entetes
+
+    entetes = asyncio.run(_scenario())
+    assert entetes[0].startswith("AlloCiné") and "allocine" in entetes[0]
+    assert entetes[1].startswith("IMDB") and "imdb" in entetes[1]
+    assert entetes[2].startswith("AlloCiné")
+
+
+# ── L'explorateur du donneur ressemble à l'accueil (UX-22) ───────────────────
+
+def test_lexplorateur_du_donneur_ressemble_a_laccueil(tmp_path):
+    from textual.app import App
+    from textual.widgets import DataTable
+    from tui.screens.donor_picker import DonorFileScreen
+
+    (tmp_path / "Saison 1").mkdir()
+    (tmp_path / "film.fr.srt").write_text("1\n", encoding="utf-8")
+    (tmp_path / "vf.mkv").write_bytes(b"\0" * 2048)
+
+    async def _scenario():
+        app = App()
+        async with app.run_test(size=(120, 40)) as pilot:
+            ecran = DonorFileScreen(tmp_path / "Saison 1")
+            app.push_screen(ecran)
+            await pilot.pause(0.3)
+            await pilot.press("backspace")          # ⌫ remonte
+            await pilot.pause(0.3)
+            t = ecran.query_one(DataTable)
+            return ecran._dir, [(str(t.get_row_at(i)[0]), str(t.get_row_at(i)[1]))
+                                for i in range(t.row_count)]
+
+    dossier, lignes = asyncio.run(_scenario())
+    assert dossier == tmp_path
+    assert ("📁 Saison 1", "") in lignes
+    assert all(not n.startswith("..") for n, _ in lignes)
+    assert any(n == "🎬 vf.mkv" and taille.endswith("Ko") for n, taille in lignes)
+    assert any(n == "📄 film.fr.srt" for n, _ in lignes)

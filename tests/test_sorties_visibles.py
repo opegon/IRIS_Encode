@@ -105,6 +105,9 @@ class _FauxEcran:
     def _update_row_check(self, path):
         pass
 
+    def _annoncer_forcees(self, paths):
+        pass
+
     def _update_status(self):
         pass
 
@@ -129,9 +132,14 @@ def test_l_espace_coche_une_sortie(tmp_path):
 # ─── La ligne d'une sortie s'efface, sauf sa case ─────────────────────────────
 
 class _FauxEcranCellules:
-    """`_row_cells` ne lit du reste de l'écran que le profil et la config."""
+    """`_row_cells` ne lit du reste de l'écran que le profil, la config et les
+    tailles relevées par le scan."""
     from tui.screens.browser import BrowserScreen as _B
     _row_cells = _B._row_cells
+    _tailles: dict = {}
+
+    def _est_forcee(self, dec):
+        return False              # rien de coché ici
 
     def _active_profile(self):
         return SimpleNamespace(data={"preset_encoder": "medium"})
@@ -251,27 +259,43 @@ def _canaux(style: str) -> tuple[int, int, int]:
 
 
 
-def test_zero_est_gris():
-    """Gris dès que la cellule affiche « 0% », dans un sens comme dans l'autre."""
-    for d in (0, 0.4, -0.4):
+def test_gris_entre_moins_5_et_plus_5():
+    """Gris tant que la cellule affiche un écart de 5 % au plus, dans un sens
+    comme dans l'autre ; coloré dès 6 %."""
+    for d in (0, 0.4, -0.4, 3, -3, 5, -5, 5.4, -5.4):
         r, v, b = _canaux(_teinte_estimation(d))
         assert r == v == b, d
+    for d in (6, -6):
+        r, v, b = _canaux(_teinte_estimation(d))
+        assert not r == v == b, d
 
 
-def test_un_gain_est_vert_une_perte_va_du_jaune_a_l_orange():
-    r, v, b = _canaux(_teinte_estimation(-60))
-    assert v > r and v > b, "un gain tire vers le vert"
-    assert _teinte_estimation(1)   == "rgb(215,175,0)"   # jaune dès +1 %
-    assert _teinte_estimation(100) == "rgb(255,135,0)"   # orange des alertes
+def test_un_gain_est_vert_une_perte_est_orange():
+    for d in (-6, -60):
+        r, v, b = _canaux(_teinte_estimation(d))
+        assert v > r and v > b, "un gain tire vers le vert"
+    r, v, b = _canaux(_teinte_estimation(-6))
+    assert v - max(r, b) >= 80, "le vert se lit dès −6 %"
+    r, v, b = _canaux(_teinte_estimation(6))
+    assert r == 255 and r - b >= 150, "l'orange se lit dès +6 %"
+    assert _teinte_estimation(100) == "rgb(255,135,0)"    # orange des alertes
 
 
 def test_l_intensite_croit_avec_l_ampleur():
-    """Gain : on s'éloigne du gris vers le vert. Perte : le vert du jaune
-    baisse vers l'orange. Strictement, pour que l'ampleur se lise."""
-    verts_gain  = [_canaux(_teinte_estimation(-d))[1] for d in (0, 10, 30, 60, 100)]
-    verts_perte = [_canaux(_teinte_estimation(d))[1] for d in (1, 10, 30, 60, 100)]
-    assert verts_gain  == sorted(verts_gain,  reverse=True) and len(set(verts_gain))  == 5
+    """Gain : le rouge baisse du vert clair vers le vert vif. Perte : le vert
+    baisse de l'orange clair vers l'orange sombre. Strictement, pour que
+    l'ampleur se lise."""
+    rouges_gain = [_canaux(_teinte_estimation(-d))[0] for d in (6, 10, 30, 60, 100)]
+    verts_perte = [_canaux(_teinte_estimation(d))[1] for d in (6, 10, 30, 60, 100)]
+    assert rouges_gain == sorted(rouges_gain, reverse=True) and len(set(rouges_gain)) == 5
     assert verts_perte == sorted(verts_perte, reverse=True) and len(set(verts_perte)) == 5
+
+
+def test_l_echelle_est_logarithmique():
+    """Plus de la moitié du chemin est faite avant le milieu de l'échelle."""
+    r_min, r_max = 120, 0
+    r_30 = _canaux(_teinte_estimation(-30))[0]
+    assert (r_min - r_30) / (r_min - r_max) > 0.5
 
 
 def test_aucun_rouge():
@@ -282,6 +306,6 @@ def test_aucun_rouge():
 
 
 def test_la_teinte_pleine_est_atteinte_a_100_puis_ne_bouge_plus():
-    assert _teinte_estimation(-100) == "rgb(0,120,0)"
+    assert _teinte_estimation(-100) == "rgb(0,230,60)"
     assert _teinte_estimation(_DEGRADE_GAIN)  == _teinte_estimation(-200)
     assert _teinte_estimation(_DEGRADE_PERTE) == _teinte_estimation(500)

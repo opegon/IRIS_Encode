@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.1 — document de référence courant
-**Date** : 2026-09-24
+**Version** : 0.8.9.33 — document de référence courant
+**Date** : 2026-09-30
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -78,7 +78,7 @@ iris_encode/
 │   │   ├── segments.py           ← plages de décalage détectées (lecture seule)
 │   │   ├── confirm.py            ← ConfirmModal générique
 │   │   ├── delete_confirm.py     ← confirmation suppression fichier
-│   │   ├── recursive_confirm.py  ← confirmation run récursif
+│   │   ├── recursive_confirm.py  ← confirmation « Encoder le dossier »
 │   │   └── quit.py               ← confirmation quitter
 │   └── widgets/
 │       ├── file_tree.py          ← FileNavigator (navigation virtuelle + répertoires)
@@ -916,7 +916,7 @@ précédée de la caractéristique qui dit ce que le traitement a fait.
 | Dolby Vision conservé (copie ou RPU réinjecté) | `nom.dv.IRIS.mkv` |
 | Retrait du RPU (remux HDR10) | `nom.hdr10.IRIS.mkv` |
 | Greffe de pistes (mkvmerge) | `nom.mux.IRIS.mkv` |
-| Collage de parties (§ 9bis) | `nom.join.IRIS.mkv` |
+| Jonction de parties (§ 9bis) | `nom.join.IRIS.mkv` |
 | Extrait de contrôle (dossier temporaire) | `nom_[extrait].mkv` |
 
 `SUFFIX_BY_ACTION` porte les suffixes d'encodage, `MUX_SUFFIX` et
@@ -1181,7 +1181,7 @@ après chaque téléchargement.
 
 ---
 
-## 9bis. Collage de parties — `core/joiner.py`
+## 9bis. Jonction de parties — `core/joiner.py`
 
 Un film livré en `part1` / `part2` n'est pas encodable tel quel : chaque partie prise
 seule produirait sa propre sortie, et le profil déciderait deux fois au lieu d'une. Le
@@ -1627,6 +1627,14 @@ class MovieMeta:
 
 Framework : **Textual**.
 
+**Vocabulaire affiché** (v0.8.9.20, UX-08). L'action d'encoder s'appelle
+**Encoder** partout (`F2`), son écran **Encodage** (`RunScreen`) ;
+l'encodage d'une arborescence, **Encoder le dossier** (`R`). Le dry-run
+s'affiche **Aperçu** (`DryrunScreen`, `F1`). Le collage des parties d'un
+film s'affiche **Joindre** / **Jonction** (`JoinScreen`, `core/joiner.py`).
+Les noms internes — classes, actions, `dry-run` dans cette spec — ne
+changent pas.
+
 Conventions transverses :
 
 - **Les capacités d'encodage sont mesurées, jamais supposées.** `detect()`
@@ -1639,6 +1647,11 @@ Conventions transverses :
   Le choix n'est jamais retiré du picker — une carte se remplace, un pilote se
   met à jour — mais il est annoté « ✗ indisponible ici », et le lancement
   refuse en nommant la cause plutôt que de laisser ffmpeg échouer.
+  La sonde garde la sortie d'erreur des refus (`refus=`) : si ffmpeg y dit que
+  le pilote est trop ancien pour son API NVENC, `alerte_pilote_nvenc()` en tire
+  un message (pilote exigé, API exigée et fournie), rangé dans
+  `PlatformProfile.alerte_nvenc`, notifié au lancement et repris au refus d'un
+  fichier NVENC. Tout NVENC tombe dans ce cas, pas seulement l'AV1.
 - **Un échec d'encodage nomme sa cause.** ffmpeg annonce la cause puis constate
   l'échec ; l'écran ne gardait que la dernière ligne, la seule qui n'apprend
   rien. `encoder.diagnostiquer()` cherche des signatures connues dans les
@@ -1701,13 +1714,35 @@ Conventions transverses :
 - **Une colonne ne descend pas sous ce que son contenu exige.**
   `core.config.COLUMN_MIN_WIDTHS` porte les planchers imposés par le contenu —
   `duree` et `temps_estim` à 7, parce que `fmt_duration` rend sept caractères
-  dès qu'il y a des heures. Ils s'appliquent **à la lecture** autant qu'au
+  dès qu'il y a des heures ; `taille` à 8, pour « 999.9 Go » (v0.8.9.15). Ils s'appliquent **à la lecture** autant qu'au
   redimensionnement : une largeur trop courte a pu être persistée avant que le
   plancher existe, et corriger le seul défaut ne répare pas ces
   configurations. Les écrans reprennent cette table dans leur `RESIZE_MIN`
   plutôt que d'en tenir une seconde. Toute cellule numérique porte en outre
   `overflow="ellipsis"` : une coupe résiduelle se voit (`3:17:…`) au lieu de
   produire une valeur plausible et fausse (`3:17:2`).
+- **Une colonne redimensionnable tient son en-tête** (v0.8.9.13, UX-27).
+  Textual rogne un en-tête trop long, sans ellipse. Le plancher effectif
+  (`ColumnResizeMixin.resize_plancher`) est le plus grand de `RESIZE_MIN` et
+  de `len(libellé)`. Calculé depuis le libellé à l'exécution, il vaut pour
+  toute langue ; il s'applique à la construction de la table
+  (`resize_largeur`) comme au rétrécissement. La colonne active se repère à
+  son en-tête **en vidéo inverse** (v0.8.9.14) : le repère « ◄► » ajoutait
+  trois caractères que chaque colonne devait réserver.
+- **Une barre d'état a une forme** (v0.8.9.22, UX-14) : « Titre — élément ·
+  élément », construite par `tui.common.barre_etat`. `tests/test_barres.py`
+  refuse le séparateur « ── » dans un texte affiché.
+- **Une colonne fixe tient aussi son en-tête** (v0.8.9.16, UX-28). Toute
+  colonne nommée à largeur figée passe par `tui.common.largeur_entete`
+  (`max(largeur, len(libellé))`) : « Langue » en 7 ne tiendrait pas
+  « Language ». `tests/test_troncature.py` refuse une largeur littérale.
+- **La table tient dans le terminal** (v0.8.9.14, UX-19). Le total compte la
+  marge de chaque cellule (`MARGE_CELLULE`, un caractère de chaque côté) et,
+  dans `RESIZE_FIXE`, les colonnes hors cycle avec leurs marges et la barre de
+  défilement verticale : 164 colonnes déclarées en occupaient 188. Sur
+  l'accueil et le dry-run, **Fichier prend la place que les autres laissent**
+  (`resize_remplissage`), plancher 20, sauf largeur réglée au clavier dans la
+  session ; à 160 colonnes, la table en occupe 158.
 - **Un afficheur qui montre un nom se construit en `markup=False`.** `Static`
   interprète par défaut ce qui ressemble à une balise entre crochets, et la
   convention de nommage du projet jusqu'à la v0.8.8.10 — `_[mux]`, `_[hevc]`,
@@ -1746,7 +1781,7 @@ selon la largeur disponible, pour que sa fin survive (voir
 `common.tronquer_milieu`).
 
 **Le mode se lit à trois endroits**, parce qu'il commande ce que fait une touche
-aussi banale que `↵` : la barre de profil (`[W] Assistant` / `[W] Manuel`), le
+aussi banale que `↵` : la barre de profil (`W Assistant` / `W Manuel`), le
 libellé de la touche `W` dans le footer, et **la couleur du footer**. Le manuel
 garde le code couleur par défaut (`$primary-darken-2`) ; l'assistant prend
 l'accent du thème (`KeyFooter.assistant`), sur l'accueil comme sur ses propres
@@ -1760,7 +1795,7 @@ demande aucune attention.
 | 1 — Fichier | Le nom du fichier, ses caractéristiques, le profil actif | `↵` |
 | 2 — Décision | Codec, débit et pistes conservées, sur un seul écran | `Espace` `F6` `F7` `↵` |
 | 3 — Pistes externes | Présenter un donneur ; la mesure suit aussitôt | `F9` `D` `↵` |
-| 4 — Lancer | Muxer ou encoder — **les deux toujours offerts** | `M` `E` `↵` |
+| 4 — Lancer | Muxer ou encoder — **les deux toujours offerts** | `F3` `F2` `↵` |
 | 5 — Terminé | Le résultat, puis retour à l'accueil | `↵` |
 
 **La mesure passe par `sync.measure_external_track`**, seul point d'entrée pour
@@ -1778,7 +1813,7 @@ refusée laisse le décalage à zéro et le dit, plutôt que d'appliquer un cand
 non confirmé.
 
 **Les deux lancements sont toujours proposés.** `↵` prend le recommandé — mux si
-rien n'est à réencoder mais qu'il y a à greffer, encodage sinon — et `M` / `E`
+rien n'est à réencoder mais qu'il y a à greffer, encodage sinon — et `F3` / `F2`
 forcent l'autre. Un mux sans piste externe est refusé avec sa raison, pas
 exécuté à vide.
 
@@ -1799,9 +1834,9 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 
 ```
 ┌─ IRIS ENCODE ────────────────────────────────── 14:22 ─┐
-│ D:\Videos    2/4 sélectionné(s)  ·  Col : Résol. [</>] │
+│ D:\Videos  ·  2/4 sélectionnés  ·  Col : Résol.  </>   │
 │                                                         │
-│ [F4] 🎬 SERIE_BASIC 🎬  • 1080p 2200k  ·  4K→1080p     │
+│ F4 🎬 serie_basic 🎬    • 1080p 2200k  ·  4K→1080p     │
 │      HD audio non                                       │
 │ ⏳ Analyse en cours… 2 / 4                              │
 ├─ ──┬─ Fichier ──────┬─ Taille ─┬─ Résol. ──┬─ Durée ─┬─ Débit ─┬─ Codec ─┬─ Dolby V. ─┬─ Décision ─┬─ Estim. (Δ%) ─┬─ ETA ─┬─ Audio ─────┤
@@ -1810,8 +1845,8 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 │[ ] │ 🎬 film2.mp4   │   1,1 Go │  720x480  │ 1:32:00 │   900k  │  h264   │  —         │  ← SKIP    │       —       │        —       │ AAC 2.0     │
 │[x] │ 🎬 film3.avi   │   2,3 Go │ 1280x720  │ 0:52:00 │  3200k  │  vp9    │  —         │  → H264    │ 1,2 Go (−48%) │     0:04:51    │ AC3 5.1     │
 ├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Space Sélect  a Tout  n Aucun  Enter Ouvrir  v Visualiser  Ctrl+D Supprimer  Back Remonter  Home Début  End Fin  PgUp/PgDn                        │
-│ F1 Dry-run  F2 Run  F3 Récursif  F4 Profil  F5 Gérer  F6 Coller  F7 AlloCiné  F8 IMDB  Sh+Tab/Tab Col  < Rétrécir  > Élargir  F10 Quitter         │
+│ Space Sélect  a Tout  n Aucun  Enter Ouvrir  w Mode  t Pistes  v Visualiser  r Encoder le dossier  j Joindre  i Fiche  Ctrl+D Supprimer            │
+│ Back Remonter  Home/End/PgUp/PgDn  F1 Aperçu  F2 Encoder  F4 Profil  F5 Gérer  Sh+Tab/Tab Col  < Rétrécir  > Élargir  F10 Quitter                  │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1827,14 +1862,39 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 | `⌫` | — | Remonter au parent |
 | `V` | fichier | Visualiser dans mpv |
 | `Ctrl+D` | fichier | **Supprimer le fichier**, après confirmation |
-| `F1` | sélection | Dry-run |
-| `F2` | sélection | Run |
-| `F3` | dossier | Run récursif |
+| `F1` | sélection | Aperçu |
+| `F2` | sélection | Encoder |
+| `R` | dossier | Encoder le dossier (récursif) |
 | `F4` | — | Choisir le profil actif |
 | `F5` | — | Gérer les profils |
-| `F6` | sélection | **Coller les parties cochées** en un fichier unique (§ 9bis) |
-| `F7` / `F8` | fichier | AlloCiné / IMDB |
+| `J` | sélection | **Joindre les parties cochées** en un fichier unique (§ 9bis) |
+| `I` | fichier | Fiche du film : AlloCiné, `Tab` bascule sur IMDB |
 | `F10` | — | Quitter |
+
+**Une touche de fonction, un seul sens** (v0.8.9.18, UX-07). Sur tous les
+écrans : `F1` dry-run, `F2` action principale (encoder ; joindre sur l'écran
+de collage, valider un ancrage), `F3` muxer, `F4` profil, `F5` gérer les
+profils, `F6` codec, `F7` débit, `F8` suppression de la source, `F9` piste
+externe, `F10` quitter. Une action propre à un écran prend une lettre —
+l'accueil `R`, `J`, `I`. `tests/test_touches.py` tient la table.
+Les lettres `M` (Mesurer), `S` (Passer le fichier), `A` (Tout), `F`
+(Forcer), `G` (Plages) et `O` (OpenSubtitles) n'ont qu'un sens dans toute
+l'application (v0.8.9.19, UX-12).
+
+`F1`/`F2` sans rien de coché : notification d'avertissement, qui dit comment
+cocher (v0.8.9.11). Même chose pour `F2` du dry-run quand aucune ligne retenue
+n'est à réencoder.
+
+**Ligne forcée** (v0.8.9.12) — une ligne `SKIP` ou `STRIP_DV` cochée part en
+réencodage par `force_skip_to_encode()`. `_row_cells()` rend alors la décision
+forcée, en `bold dark_orange`, avec l'estimation et l'ETA qui vont avec ;
+`_update_row_check()` redessine la ligne entière pour ces deux actions, et la
+coche (`Espace`, `A`) le notifie.
+
+**Retour d'un encodage** (v0.8.9.8) — `RunScreen` inscrit ses statuts dans
+`app.lots_encodes` au montage. `BrowserScreen.on_screen_resume()` les consomme :
+les sources réussies quittent la sélection (`sources_reussies()`), la vue est
+relue. Un fichier en échec ou interrompu reste coché.
 
 #### Démarrage virtuel
 
@@ -1862,14 +1922,16 @@ Code couleur décision : table unique `core.decision.Emphase` (§ 8.3) — le ca
 ordinaire ne porte aucune couleur, le vert dit « sans réencodage », le
 `dark_orange` gras est réservé aux alertes.
 
-**La colonne Estim. porte un dégradé continu** centré sur le gris : un écart
-nul est gris (`rgb(138,138,138)`) ; un gain part linéairement vers le vert
-profond (`rgb(0,120,0)`), atteint à −100 % ; une sortie plus grosse que sa
-source va du jaune (`rgb(215,175,0)`) à l'orange des alertes (`rgb(255,135,0)`),
-atteint à +100 % et conservé au-delà. La perte part du jaune et non du gris :
-un gris-orange pâle ne se distinguerait pas d'un écart nul. Le gris vaut dès
-que la cellule affiche « 0% » (écart arrondi nul), pour qu'un `+0%` ne soit
-jamais coloré. Interpolation RGB, bornes `_DEGRADE_GAIN` / `_DEGRADE_PERTE`.
+**La colonne Estim. porte un dégradé continu** centré sur le gris : tant que
+la cellule affiche un écart de 5 % au plus (valeur arrondie, `_SEUIL_NEUTRE`),
+elle est grise (`rgb(138,138,138)`). Au-delà, la teinte se lit d'emblée : un
+gain part du vert clair (`rgb(120,200,120)`) vers le vert vif
+(`rgb(0,230,60)`), atteint à −100 % ; une sortie plus grosse que sa source part
+de l'orange clair (`rgb(255,190,90)`) vers l'orange sombre des alertes
+(`rgb(255,135,0)`), atteint à +100 % et conservé au-delà. La progression entre
+le seuil et la borne est **logarithmique** (`log1p(20·x) / log1p(20)`,
+`_COURBURE`) : un écart de −30 % fait déjà plus de la moitié du chemin.
+Interpolation RGB, bornes `_DEGRADE_GAIN` / `_DEGRADE_PERTE`.
 
 C'est une **exception assumée** à la table d'emphases : le vert y dit « traité
 sans réencodage », et il dit ici « la sortie est plus petite ». Sur une même
@@ -1930,10 +1992,10 @@ affiche `⏳ Analyse en cours… 3 / 12`. Un compteur d'époque invalide les ré
 scan devenu obsolète si l'utilisateur navigue entre-temps. Une fois terminé, la notice
 affiche le chemin du fichier survolé.
 
-#### Run récursif (F3)
+#### Encoder le dossier (`R`)
 
 Disponible uniquement sur un **dossier**. `RecursiveConfirmModal` affiche le répertoire
-et le profil actif, puis lance un scan récursif illimité et un dry-run sur les fichiers à
+et le profil actif, puis lance un scan récursif illimité et un aperçu sur les fichiers à
 encoder (SKIP exclus). Décisions automatiques, aucune sélection de pistes.
 
 ### 14.2 Écran Tracks — pistes et décision vidéo
@@ -1945,16 +2007,16 @@ Un `DataTable` à quatre sections : **VIDÉO**, **AUDIO**, **SOUS-TITRES**, **EX
 │ ── VIDÉO ──────────────────────────────────────────────────────────────────────  │
 │ ✎ HEVC  0:v:0  hevc  3840x2160  DV:P8.1   ◄→ HEVC► · ◄12000 kbps► · ◄HDR10►     │
 │ ── AUDIO ──────────────────────────────────────────────────────────────────────  │
-│ [x]  0:a:0 ⚑   truehd  7.1  fre  défaut          → copy                          │
-│ [x]  0:a:1     ac3     5.1  fre  sélectionné     → copy                          │
+│ [x]  0:a:0 ⚑   truehd  7.1  fre  défaut          → copie                         │
+│ [x]  0:a:1     ac3     5.1  fre  sélectionné     → copie                         │
 │ [ ]  0:a:2     dts     5.1  deu  exclu           —                               │
 │ ── SOUS-TITRES ────────────────────────────────────────────────────────────────  │
-│ [x]  0:s:0   hdmv_pgs  image  fre  défaut        → MKV copy                      │
+│ [x]  0:s:0   hdmv_pgs  image  fre  défaut        → copie MKV                     │
 │ ── EXTERNES ───────────────────────────────────────────────────────────────────  │
 │ [x]  film.VF.mka  ac3  5.1  fre  « VF »          −2450 ms (mesuré)               │
 │ [ ✓ ] Valider la sélection                                                        │
 ├──────────────────────────────────────────────────────────────────────────────────┤
-│ Space Sélect  Enter Valider  F1 Dry-run  F2 Run  F4 Profil  F6 Codec  F7 Débit   │
+│ Space Sélect  Enter Valider  F1 Aperçu  F2 Encoder  F4 Profil  F6 Codec F7 Débit │
 │ F8 Suppr./garder source   F9 Piste externe   Back Retour   F10 Quitter           │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1987,8 +2049,8 @@ sous-profil DV connu. ⚠ si HDR10 quality demandé sans `dovi_tool`.
 #### Pistes AUDIO / SOUS-TITRES
 
 `Espace` bascule la sélection (piste audio 0 verrouillée — ⚑). Décision affichée par
-piste : `→ copy` / `→ aac 192k` / `—`. Sous-titres : `image` → `MKV copy`,
-`texte` → `MP4 copy`. Toutes sélectionnées par défaut.
+piste : `→ copie` / `→ aac 192k` / `—`. Sous-titres : `image` → `→ copie MKV`,
+`texte` → `→ copie MP4`. Toutes sélectionnées par défaut.
 
 #### `F9` — ajouter une piste externe
 
@@ -2030,15 +2092,15 @@ leurs valeurs — y annoncer un pas en millisecondes serait faux.
 | `Shift+↑` / `Shift+↓` | ±1 s |
 | `↵` | Ouvre la liste des valeurs du champ courant |
 | `M` | **Mesure automatique** (§ 10) |
-| `A` | Applique le candidat mesuré |
+| `F` | Applique le candidat mesuré |
 | `R` | **Point de repère** — mesure guidée par une réplique, quand la mesure libre ne conclut pas |
-| `S` | **Plages détectées** (§ 10.4) — lecture seule |
+| `G` | **Plages détectées** (§ 10.4) — lecture seule |
 | `P` | **Applique les plages** à la piste sous le curseur — `.srt` réécrit (§ 10.5) ou piste audio rallongée et réencodée (§ 10.6). Le fichier produit devient la source, avec un décalage nul |
 | `V` | **Visualiser dans mpv**, piste greffée et décalage appliqué |
 | `K` | **Extrait de contrôle** réellement muxé |
 | `C` | Copie le décalage d'une autre piste externe → `sync_origin = COPIED` |
 | `D` | Retire la piste |
-| `F1` | Dry-run |
+| `F1` | Aperçu |
 | `F2` | Encoder (ffmpeg absorbe les pistes, § 9.6) |
 | `F3` | **Muxer** (mkvmerge) |
 | `F9` | Ajouter une autre piste |
@@ -2080,15 +2142,15 @@ rescanne rien : les `VideoInfo` sont déjà en mémoire côté browser.
 
 ```
 ┌─ IRIS ENCODE ────────────────────────────────── 14:22 ─┐
-│ Collage — 3 parties ── Film.join.IRIS.mkv               │
-├─ # ─┬─ Fichier ──────────┬─ Durée ─┬─ Pistes ─┬─ Collage ──────┤
+│ Jonction — 3 parties ── Film.join.IRIS.mkv              │
+├─ # ─┬─ Fichier ──────────┬─ Durée ─┬─ Pistes ─┬─ Jonction ─────┤
 │  1  │ Film part1.mkv     │ 1:04:12 │ V+2A+1S  │ référence      │
 │  2  │ Film part2.mkv     │ 0:58:47 │ V+2A+1S  │ ✓              │
 │  3  │ Film part10.mkv    │ 0:41:03 │ V+2A+0S  │ ✓ avec réserve │
 ├─────────────────────────────────────────────────────────────────┤
 │ Durée attendue du tout : 2:44:02                                │
 │ Sortie : Film.join.IRIS.mkv                                     │
-│ Collage  ███████████████████████░░░░░░░░░░░░  62%               │
+│ Jonction ███████████████████████░░░░░░░░░░░░  62%               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -2097,12 +2159,12 @@ rescanne rien : les `VideoInfo` sont déjà en mémoire côté browser.
 | Touche | Action |
 |---|---|
 | `Ctrl+↑` / `Ctrl+↓` | Déplace la partie sous le curseur d'un rang |
-| `F2` | Lance le collage |
-| `⌫` / `Esc` | Retour. Un collage en cours est interrompu, son fichier partiel effacé |
+| `F2` | Joindre — lance la jonction |
+| `⌫` / `Esc` | Retour. Une jonction en cours est interrompue, son fichier partiel effacé |
 | `Ctrl+Début` | Accueil |
 
-L'ordre proposé vient de `ordre_naturel()` ; le tableau est ce qui sera collé. La colonne
-**Collage** dit, partie par partie, si elle s'apparie sur la référence — le détail du
+L'ordre proposé vient de `ordre_naturel()` ; le tableau est ce qui sera joint. La colonne
+**Jonction** dit, partie par partie, si elle s'apparie sur la référence — le détail du
 refus ou de la réserve s'affiche sous le tableau.
 
 **La colonne du nom reprend la largeur réglée sur l'accueil** (`get_column_widths()`,
@@ -2113,7 +2175,7 @@ colonnes portent des libellés bornés et gardent une largeur fixe.
 `F2` est refusé sur un blocage (§ 9bis.3) ou si le fichier de sortie existe déjà : le
 collage n'écrase jamais rien.
 
-### 14.6 Écran Dry-run
+### 14.6 Écran Aperçu (`DryrunScreen`)
 
 Prévisualise les décisions de tous les fichiers sélectionnés, sans écriture disque.
 
@@ -2128,9 +2190,10 @@ Débit cible · Résolution · Audio
 ```
 
 `Espace` désélectionne un fichier, `F6`/`F7` éditent codec et débit avant lancement,
-`F2` ou `↵` passe à l'écran Run (SKIP exclus).
+`F2` passe à l'écran Encodage (SKIP exclus). `↵` n'y est pas liée (v0.8.9.6) :
+partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirmation.
 
-### 14.7 Écran Run — encodage
+### 14.7 Écran Encodage (`RunScreen`)
 
 ```
 ┌─ Encodage — 5 fichiers · Profil : cinema_4k_basic ──────────── Global : 42% ─┐
@@ -2152,6 +2215,21 @@ Débit cible · Résolution · Audio
 - `⏸ Pause` suspend le processus (multiplateforme)
 - Suppression source après succès selon `delete_source` (ou override par fichier)
 - En cas d'erreur : fichier marqué ✗, les suivants continuent, source conservée
+- **Quitter un lot en cours se confirme** (v0.8.9.5) : `⌫`, `Esc` et `Ctrl+Home`
+  ouvrent une `ConfirmModal` (« Arrêter » / « Continuer », focus sur Continuer).
+  Confirmer lève `_abandon` et arrête le processus en cours, ffmpeg ou
+  mkvmerge. Tout démarrage passe par `_demarrer()`, qui publie le processus
+  **après** l'avoir lancé et relit le drapeau ensuite : un arrêt survenu entre
+  deux étapes coupe l'étape suivante dès son départ, et `_encode_next()` ne
+  démarre plus rien. `_arreter()` attend la sortie du processus puis efface la
+  sortie du fichier en cours, sauf code 0 (fini juste avant l'arrêt) — pas en
+  fin de boucle : le worker suivant d'un écran dépilé ne démarre pas toujours.
+  Lot terminé : aucune confirmation.
+- **Fin du lot** (v0.8.9.10) : le pied ne garde que la navigation (Pause et
+  Passer n'ont plus d'objet), la zone de commande fait le bilan — réussis, en
+  échec, ignorés, puis le chemin des sorties (six au plus, le reste compté).
+  L'état d'une ligne n'a plus de symbole (« terminé », « échec : … ») : il est
+  déjà dans la colonne d'icône.
 
 ### 14.8 Écran Config — gestion des profils
 
@@ -2161,6 +2239,13 @@ exception : le dernier de la liste, dont la suppression est refusée par un
 message explicite. Un nouveau profil part des réglages du profil actif. Le
 champ **Nom** n'est saisissable qu'à la création : renommer se fait dans
 `profiles.toml`.
+
+**Valeur hors liste** (v0.8.9.7) — un débit que la liste ne propose pas
+(`serie_basic` : 3500k en 4K) s'y ajoute à sa place (`_avec_valeur()`), au lieu
+de laisser le champ vide. La sentinelle « rien de choisi » est `Select.NULL`
+sous Textual 8 (`Select.BLANK` n'y vaut que `False`) : `_est_vide()` teste les
+deux. Sans cela, le formulaire affichait « Select.NULLk » et `dump()` rendait
+`Select.NULL`, enregistré dans le profil en mémoire.
 
 Le formulaire `ProfileForm` est organisé en **six sections**, chacune suivie
 d'une ligne qui énonce **la conséquence des valeurs choisies** — recalculée à
@@ -2205,7 +2290,16 @@ et TracksScreen (F4).
 
 Traiter plusieurs fichiers d'affilée revenait à remonter les écrans un par un.
 `Ctrl+Home` dépile jusqu'au browser, depuis les sept écrans non modaux :
-dry-run, run, mux, assistant, config, pistes et recalage.
+dry-run, run, mux, assistant, config, pistes et recalage. Pistes, recalage
+et run tant qu'un encodage tourne confirment d'abord (§ 14.7).
+
+**L'accueil, c'est la liste des volumes** (v0.8.9.3) — la racine, pas le
+dossier de travail. Après le dépilage, `retour_accueil()` appelle
+`BrowserScreen.action_accueil()`, qui passe par
+`FileNavigator.aller_aux_volumes()` et vide la sélection. Le browser porte
+lui-même le binding : `Ctrl+Home` y ramène aussi aux volumes. Entrer dans un
+volume depuis cette liste n'empile pas le dossier précédent — `⌫` à la racine
+du volume retombe sur les volumes.
 
 **Pourquoi pas `Home`** — elle appartient à la navigation dans les tables
 (`TableNavMixin`, `FOOTER_NAV`), et le mixin l'intercepte en `on_key` avant que
@@ -2228,9 +2322,9 @@ rien faire que de vider la pile jusqu'à l'écran par défaut.
 
 | Modale | Déclencheur | Focus initial |
 |---|---|---|
-| `QuitConfirmScreen` | `F10` / `Ctrl+C` | Annuler |
+| `QuitConfirmScreen` | `F10` / `Ctrl+C` | Annuler — le corps liste ce qui tourne, que quitter arrête (v0.8.9.9) |
 | `DeleteConfirmModal` | `Ctrl+D` (browser) | Annuler |
-| `RecursiveConfirmModal` | `F3` (browser, dossier) | Confirmer |
+| `RecursiveConfirmModal` | `R` (browser, dossier) | Confirmer |
 | Suppression de profil | `D` (config) | Annuler |
 
 Toutes dérivent de `ConfirmModal`. Le focus initial part sur *Annuler* dès que
@@ -2458,6 +2552,38 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.33 | 2026-09-30 | Écran des pistes : « Profil : serie_basic » sans crochets, comme ailleurs depuis UX-13 · captures `shots_tui.py` : le donneur se cherche sans son icône |
+| 0.8.9.32 | 2026-09-30 | **La fiche AlloCiné désigne le bon film** (§ 14, UX-24) : appariement sur le titre français et original puis l'année (`choisir_allocine`), séries reconnues (`series`), confiance affichée · `tests/test_revue_code.py` |
+| 0.8.9.31 | 2026-09-30 | **La commande du mux est repliée** (§ 14, UX-26) : noms de fichier au lieu des chemins, quatre lignes au plus · `tests/test_muxer.py` |
+| 0.8.9.30 | 2026-09-30 | **L'explorateur du donneur ressemble à l'accueil** (§ 14, UX-22) : icônes, colonne Taille, `⌫` remonte, plus de ligne « .. » · `tests/test_modales.py` |
+| 0.8.9.29 | 2026-09-30 | **Le formulaire de profil a une casse** (§ 14, UX-23) : titres en capitales, libellés en casse de phrase avec unité, « Édition » · `tests/test_profile_form.py` |
+| 0.8.9.28 | 2026-09-30 | **Une donnée, une forme** (§ 14, UX-21) : noms de codec ramenés à ceux de ffprobe (`nom_codec`), langue inconnue « ? » (`langue_affichee`), résolution « 1920x1080 » partout · WebVTT muxé par mkvmerge illisible par ffprobe 8.1.2, à vérifier · `tests/test_barres.py` |
+| 0.8.9.27 | 2026-09-30 | **Les profils ont une seule présentation** (§ 14, UX-13) : `F4` et `F5` partagent colonnes et cellules (`cellules_profil`), nom sans crochets ni capitales, écran « Gérer les profils » · `tests/test_config.py` |
+| 0.8.9.26 | 2026-09-30 | **Les nombres s'accordent** (§ 14, UX-15) : `core/texte.py` (`accorde`, `pluriel`) remplace les « (s) » ; « (s) » refusé par test · `tests/test_barres.py` |
+| 0.8.9.25 | 2026-09-30 | **Les décisions de piste parlent une seule langue** (§ 14, UX-09) : « → copie », « → copie MKV/MP4 », états « terminé » / « échec » ; « ← SKIP » conservé · `tests/test_audio_hd.py` |
+| 0.8.9.24 | 2026-09-30 | **L'assistant ne dit ses touches qu'une fois** (§ 14, UX-11) : libellés du pied de page propres à chaque étape, ligne d'aide réservée aux notes de mesure · `tests/test_touches.py` |
+| 0.8.9.23 | 2026-09-30 | **Une seule notation de touches** (§ 14, UX-10) : le guide `H` écrit les touches comme le pied de page (`touche()`), plus de crochets ni d'apostrophes dans les messages · `tests/test_touches.py` |
+| 0.8.9.22 | 2026-09-30 | **Une seule forme de barre d'état** : « Titre — élément · élément » (`barre_etat`, § 14, UX-14) · `R` s'annonce « Encoder le dossier » · `tests/test_barres.py` |
+| 0.8.9.21 | 2026-09-30 | **`T` Pistes figure dans le pied de page de l'accueil** (§ 14.1, UX-25) — seul accès aux pistes en mode assistant |
+| 0.8.9.20 | 2026-09-30 | **Un nom par action** (§ 14, UX-08) : Encoder partout (Run, Lancer), Aperçu (Dry-run), Encoder le dossier (Run récursif), Joindre / Jonction (Coller / Collage) · `tests/test_collage.py`, `tests/test_volumes.py` |
+| 0.8.9.19 | 2026-09-30 | **Une lettre, un sens entre écrans voisins** (§ 14, UX-12) : l'assistant muxe par `F3` et encode par `F2` (étaient `M`, `E`) ; le recalage montre les plages par `G` et force le candidat par `F` (étaient `S`, `A`) · `tests/test_touches.py` |
+| 0.8.9.18 | 2026-09-30 | **Une touche de fonction, un seul sens** (§ 14.1, UX-07) : l'accueil passe Récursif sur `R`, le collage sur `J` (« Joindre »), AlloCiné et IMDB sur `I` — une fiche, `Tab` bascule · `tests/test_touches.py`, `tests/test_modales.py` |
+| 0.8.9.17 | 2026-09-30 | **L'alerte « Suppr. » de la gestion des profils lit le booléen du profil**, plus le libellé « oui » (UX-29) · `tests/test_config.py` |
+| 0.8.9.16 | 2026-09-30 | **Les colonnes à largeur fixe tiennent leur en-tête** (`largeur_entete`, § 14, UX-28) — donneur, OpenSubtitles, encodage, recalage, pistes, assistant ; largeur littérale refusée par test · `tests/test_troncature.py` |
+| 0.8.9.15 | 2026-09-30 | **La colonne Taille tient « 999.9 Go »** : plancher de contenu à 8, accueil et dry-run, largeurs persistées comprises (§ 14, UX-20) · `tests/test_troncature.py` |
+| 0.8.9.14 | 2026-09-30 | **L'accueil tient en 160 colonnes** (§ 14, UX-19) : Fichier prend la place restante, le plafond compte les marges des cellules et la barre de défilement, la colonne active se repère en vidéo inverse au lieu de « ◄► » · `tests/test_troncature.py` |
+| 0.8.9.13 | 2026-09-30 | **Une colonne redimensionnable tient son en-tête**, marqueur « ◄► » compris (§ 14, UX-27) — accueil, dry-run, pistes · `tests/test_troncature.py` |
+| 0.8.9.12 | 2026-09-29 | **Une ligne SKIP cochée montre la décision forcée** (§ 14.1, UX-18), en orange, retrait DV compris ; la coche le notifie · `tests/test_arret_encodage.py` |
+| 0.8.9.11 | 2026-09-29 | **`F1`/`F2` sans sélection, `F2` du dry-run sans rien à encoder le disent** (§ 14.1, UX-17) · `tests/test_arret_encodage.py` |
+| 0.8.9.10 | 2026-09-29 | **Fin d'encodage** (§ 14.7, UX-16) : pied réduit à la navigation, bilan et chemins des sorties ; plus de « ✓ » en double sur la ligne · `tests/test_arret_encodage.py` |
+| 0.8.9.9 | 2026-09-29 | **Quitter dit ce qui tourne** (§ 14.10, UX-06) : message tiré des workers en cours, « Aucun traitement en cours » sinon ; encodage, mux et collage arrêtés, sortie partielle effacée · `tests/test_arret_encodage.py` |
+| 0.8.9.8 | 2026-09-29 | **L'accueil suit un encodage** (§ 14.1, UX-04) : vue relue, sources réussies décochées · `tests/test_arret_encodage.py` |
+| 0.8.9.7 | 2026-09-29 | **Formulaire de profil : valeur hors liste conservée** (§ 14.8, UX-03) : « Select.NULLk » et `Select.NULL` enregistré en mémoire · `tests/test_profile_form.py` |
+| 0.8.9.6 | 2026-09-29 | **`↵` ne lance plus l'encodage depuis le dry-run** (§ 14.6, UX-05) : seule `F2` lance · `tests/test_arret_encodage.py` |
+| 0.8.9.5 | 2026-09-29 | **Quitter un encodage en cours se confirme** (§ 14.7, UX-01, UX-02) : `⌫`/`Esc` arrêtaient et effaçaient la sortie sans rien demander, `Ctrl+Home` dépilait en laissant ffmpeg tourner · drapeau `_abandon` et `_demarrer()` : rien ne démarre après l'arrêt, mkvmerge compris · l'intermédiaire d'un mux préalable échoué ou interrompu est effacé · `tests/test_arret_encodage.py` |
+| 0.8.9.4 | 2026-09-28 | **Dégradé Estim. plus lisible** (§ 14.1) : gris dans ±5 %, puis vert clair → vert vif et orange clair → orange sombre, progression logarithmique ; remplace le vert profond et le départ jaune, trop sombres · `tests/test_sorties_visibles.py` |
+| 0.8.9.3 | 2026-09-28 | **Redimensionner les colonnes de l'accueil ne relit plus le disque** : la taille des fichiers est relevée par le worker de scan (`BrowserScreen._tailles`), plusieurs secondes par frappe sur un partage réseau auparavant · **`Ctrl+Home` ramène aux volumes** (§ 14.11), y compris depuis l'accueil · `Tab` sur l'écran des volumes ne fait plus tomber l'application · `tests/test_accueil.py` |
+| 0.8.9.2 | 2026-09-26 | **NVENC refusé par le pilote, dit au lancement** (§ 14) : la sonde garde la sortie d'erreur, `alerte_pilote_nvenc()` reconnaît « required nvenc API version » et nomme le pilote exigé ; notification au lancement, message au refus d'un fichier, cause ajoutée à `diagnostiquer()` avant « could not open encoder » |
 | 0.8.9.1 | 2026-09-24 | **Mise à jour de l'application depuis la release GitHub « Latest »** (§ 3.1.2) : `updater.py` (bibliothèque standard seule), appelé par `launch.bat` avant `main.py` ; confirmation `[O/n]` par défaut, réglable par `[updates] app` (`ask`/`auto`/`off`) ; empreinte SHA256 exigée, fichiers personnels intouchables, sauvegarde et restauration, manifeste ; relance depuis un bloc `( )` unique, cmd relisant un `.bat` réécrit à l'ancienne position (mesuré) · `tests/test_updater.py` |
 | 0.8.9.0 | 2026-09-24 | **Release** — rassemble 0.8.8.11 à 0.8.8.17 : sorties signées `.<caractéristique>.IRIS` en minuscules, OpenSubtitles.com depuis F9, dégradé Estim., **retrait du Dolby Vision en MP4 réparé** (§ 7.3), wiki du projet · le schéma du wiki passe dans `wiki/SCHEMA.md`, versionné |
 | 0.8.8.17 | 2026-09-24 | **Wiki sur le modèle « LLM Wiki » de Karpathy** : couches `raw/` (immuable), `sources/`, `entites/`, `concepts/`, `syntheses/` ; `index.md` et `log.md` ; frontmatter YAML, liens `[[…]]` ; schéma et opérations ingest / query / lint dans `CLAUDE.md` · `tests/test_wiki.py` : liens, orphelins, index, frontmatter, journal · aucun changement de code applicatif |

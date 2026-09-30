@@ -37,6 +37,9 @@ class PlatformProfile:
     # Encodeurs réellement utilisables sur cette machine, mesurés au lancement.
     # None tant que le sondage n'a pas eu lieu : on ne préjuge alors de rien.
     encodeurs_ok: frozenset[str] | None = None
+    # Pourquoi NVENC est refusé, quand c'est le pilote : dit au lancement et au
+    # refus d'un fichier. None si NVENC passe ou si la cause est autre.
+    alerte_nvenc: str | None = None
 
     def peut_encoder(self, encodeur: str) -> bool | None:
         """True / False si le sondage a eu lieu, None sinon."""
@@ -69,7 +72,7 @@ def encodeurs_a_sonder(profil: "PlatformProfile") -> list[str]:
 
 
 def sonder_encodeurs(encodeurs: list[str], ffmpeg_path: str = "ffmpeg",
-                     ) -> frozenset[str]:
+                     refus: dict[str, str] | None = None) -> frozenset[str]:
     """Ceux de `encodeurs` que cette machine sait réellement ouvrir.
 
     La détection par le modèle de carte ne suffit pas : NVENC n'encode l'AV1
@@ -77,24 +80,57 @@ def sonder_encodeurs(encodeurs: list[str], ffmpeg_path: str = "ffmpeg",
     found » — après avoir laissé croire que l'encodeur existait. On demande
     donc à ffmpeg d'ouvrir chacun sur une image, ce qui coûte environ 0,3 s ;
     les sondages tournent en parallèle pour que le lancement n'en pâtisse pas.
+
+    `refus`, s'il est fourni, reçoit la sortie d'erreur de chaque encodeur
+    refusé : c'est là que ffmpeg dit pourquoi (voir `alerte_pilote_nvenc`).
     """
     import concurrent.futures
     import subprocess
 
-    def essai(nom: str) -> tuple[str, bool]:
+    def essai(nom: str) -> tuple[str, bool, str]:
         try:
             r = subprocess.run(
                 [ffmpeg_path, "-v", "error",
                  "-f", "lavfi", "-i", "nullsrc=s=256x144:d=0.05:r=25",
                  "-c:v", nom, "-frames:v", "1", "-f", "null", "-"],
                 stdin=subprocess.DEVNULL, capture_output=True, timeout=20)
-            return nom, r.returncode == 0
-        except Exception:
-            return nom, False
+            return nom, r.returncode == 0, r.stderr.decode("utf-8", "replace")
+        except Exception as e:
+            return nom, False, str(e)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         resultats = list(pool.map(essai, encodeurs))
-    return frozenset(nom for nom, ok in resultats if ok)
+    if refus is not None:
+        refus.update({nom: err for nom, ok, err in resultats if not ok})
+    return frozenset(nom for nom, ok, _ in resultats if ok)
+
+
+def alerte_pilote_nvenc(sortie: str) -> str | None:
+    """Message lisible si ffmpeg refuse NVENC parce que le pilote est trop ancien.
+
+    Chaque build de ffmpeg est compilé contre une version de l'API NVENC, qui
+    fixe un pilote minimal ; en dessous, **tous** les encodeurs NVENC sont
+    refusés. Le numéro de ffmpeg n'en dit rien : gyan.dev 8.1.2 exige le
+    pilote 610, BtbN n8.1.3 se contente du 597. ffmpeg l'annonce ainsi :
+
+        Driver does not support the required nvenc API version. Required: 13.1 Found: 13.0
+        The minimum required Nvidia driver for nvenc is 610.00 or newer
+    """
+    import re
+
+    api = re.search(r"required nvenc api version\.\s*Required:\s*(\S+)\s*Found:\s*(\S+)",
+                    sortie, re.IGNORECASE)
+    if not api:
+        return None
+    pilote = re.search(r"minimum required Nvidia driver for nvenc is (\S+)",
+                       sortie, re.IGNORECASE)
+    exige = f"le pilote NVIDIA {pilote.group(1)} ou plus récent" if pilote \
+        else "un pilote NVIDIA plus récent"
+    return (f"NVENC refusé : ce ffmpeg exige {exige} (API NVENC "
+            f"{api.group(1)}, le pilote installé fournit la {api.group(2)}). "
+            f"Mettre à jour le pilote, ou prendre un ffmpeg compilé pour une "
+            f"API plus ancienne. D'ici là, les encodages par la carte "
+            f"graphique sont refusés.")
 
 
 def _detect_os() -> OS:

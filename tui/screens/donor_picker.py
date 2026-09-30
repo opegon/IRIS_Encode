@@ -19,13 +19,21 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
-from ..common import raccourcis
+from ..common import (cellule, fmt_size, langue_affichee, nom_codec,
+                      largeur_entete, raccourcis)
 
 from core.muxer import (
     ExternalTrack, IdentifiedTrack, TrackKind, guess_language, identify,
 )
 
 # Conteneurs pouvant porter une piste audio ou des sous-titres
+# Mêmes icônes que l'accueil : un dossier, une vidéo ; une piste isolée
+# (.srt, .ac3…) n'est pas une vidéo (UX-22).
+_ICONE_DOSSIER = "📁"
+_ICONE_VIDEO   = "🎬"
+_ICONE_PISTE   = "📄"
+_VIDEO_EXTS    = frozenset({".mkv", ".mp4", ".m4v", ".avi", ".mov", ".webm", ".ts"})
+
 DONOR_EXTS = frozenset({
     ".mkv", ".mp4", ".m4v", ".avi", ".mov", ".webm", ".ts",
     ".mka", ".ac3", ".eac3", ".dts", ".flac", ".aac", ".mp3", ".opus",
@@ -93,11 +101,12 @@ class DonorFileScreen(ModalScreen["Path | None"]):
     #donor-hint  { color: $text-muted; width: 100%; text-align: center; margin-top: 1; }
     """
 
+    # ⌫ remonte, comme sur l'accueil ; Esc annule (UX-22).
     BINDINGS = [
-        Binding("enter",     "select", "Ouvrir / Choisir", show=True, priority=True),
+        Binding("enter",     "select", "Ouvrir",           show=True, priority=True),
+        Binding("backspace", "go_up",  "Remonter",         show=True, priority=True),
         Binding("o",         "opensubtitles", "OpenSubtitles", show=True),
         Binding("escape",    "cancel", "Annuler",          show=True, priority=True),
-        Binding("backspace", "cancel", "Retour",           show=False, priority=True),
     ]
 
     def __init__(self, start_dir: Path, exclude: Path | None = None,
@@ -107,21 +116,23 @@ class DonorFileScreen(ModalScreen["Path | None"]):
         self._video   = exclude
         self._langues = langues or ["fre", "eng"]
         self._exclude = exclude.resolve() if exclude else None
-        self._entries: list[Path | None] = []   # None = remonter d'un niveau
+        self._entries: list[Path] = []
 
     def compose(self) -> ComposeResult:
         with Static(id="donor-box"):
             yield Label("Fichier donneur", id="donor-title")
             yield Static("", id="donor-path", markup=False)
             yield DataTable(id="donor-table", cursor_type="row",
-                            show_header=False, zebra_stripes=True)
-            yield Static(raccourcis([("enter", "Ouvrir / Choisir"),
+                            show_header=True, zebra_stripes=True)
+            yield Static(raccourcis([("enter", "Ouvrir"),
+                                     ("backspace", "Remonter"),
                                      ("o", "OpenSubtitles"),
                                      ("escape", "Annuler")]), id="donor-hint")
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
-        table.add_column("", width=None, key="name")
+        table.add_column("Fichier", width=None, key="name")
+        table.add_column("Taille",  width=largeur_entete("Taille", 8), key="taille")
         self._populate()
         table.focus()
 
@@ -130,10 +141,6 @@ class DonorFileScreen(ModalScreen["Path | None"]):
         table.clear()
         self._entries = []
         self.query_one("#donor-path", Static).update(str(self._dir))
-
-        if self._dir.parent != self._dir:
-            table.add_row(Text("..", style="bold"), key="up")
-            self._entries.append(None)
 
         try:
             children = sorted(
@@ -145,12 +152,15 @@ class DonorFileScreen(ModalScreen["Path | None"]):
 
         for p in children:
             if p.is_dir():
-                table.add_row(Text(f"{p.name}/", style="bold cyan"), key=str(p))
+                table.add_row(cellule(f"{_ICONE_DOSSIER} {p.name}", style="bold cyan"),
+                              Text(""), key=str(p))
                 self._entries.append(p)
             elif p.suffix.lower() in DONOR_EXTS:
                 if self._exclude and p.resolve() == self._exclude:
                     continue   # jamais le fichier sur lequel on travaille
-                table.add_row(Text(p.name, no_wrap=True, overflow="ellipsis"), key=str(p))
+                icone = _ICONE_VIDEO if p.suffix.lower() in _VIDEO_EXTS else _ICONE_PISTE
+                table.add_row(cellule(f"{icone} {p.name}"),
+                              Text(fmt_size(p), justify="right"), key=str(p))
                 self._entries.append(p)
 
         if table.row_count:
@@ -161,14 +171,17 @@ class DonorFileScreen(ModalScreen["Path | None"]):
         if not (0 <= row < len(self._entries)):
             return
         entry = self._entries[row]
-        if entry is None:
-            self._dir = self._dir.parent
-            self._populate()
-        elif entry.is_dir():
+        if entry.is_dir():
             self._dir = entry
             self._populate()
         else:
             self.dismiss(entry)
+
+    def action_go_up(self) -> None:
+        """Le dossier parent ; à la racine, rien à remonter."""
+        if self._dir.parent != self._dir:
+            self._dir = self._dir.parent
+            self._populate()
 
     def action_opensubtitles(self) -> None:
         """Le sous-titre téléchargé revient ici comme un fichier choisi."""
@@ -233,10 +246,10 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
         # place, le codec la rend — « SubRip » n'a jamais eu besoin de 22
         # colonnes.
         table.add_column("",       width=5,  key="check")
-        table.add_column("Piste",  width=6,  key="tid")
-        table.add_column("Type",   width=11, key="kind")
-        table.add_column("Codec",  width=14, key="codec")
-        table.add_column("Langue", width=8,  key="lang")
+        table.add_column("Piste",  width=largeur_entete("Piste", 6),  key="tid")
+        table.add_column("Type",   width=largeur_entete("Type", 11), key="kind")
+        table.add_column("Codec",  width=largeur_entete("Codec", 14), key="codec")
+        table.add_column("Langue", width=largeur_entete("Langue", 8),  key="lang")
         table.add_column("Nom",    width=None, key="name")
 
         if not self._tracks:
@@ -257,8 +270,8 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
             Text("  ✓  " if sel else "  ·  ", style="bold green" if sel else "dim"),
             Text(str(t.tid), style=style),
             Text("audio" if t.kind == TrackKind.AUDIO else "sous-titre", style=style),
-            Text(t.codec, no_wrap=True, overflow="ellipsis", style=style),
-            Text(t.language or "?", style=style),
+            Text(nom_codec(t.codec), no_wrap=True, overflow="ellipsis", style=style),
+            Text(langue_affichee(t.language), style=style),
             Text(t.track_name or "—", no_wrap=True, style=style),
         )
 

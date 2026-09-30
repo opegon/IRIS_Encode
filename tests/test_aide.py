@@ -69,42 +69,20 @@ def test_les_touches_du_cadre_textual_sont_ecartees():
 def test_une_touche_a_alias_se_lit_par_sa_premiere_forme():
     """« +,plus,equals_sign,kp_plus » se lit « + », pas la liste entière."""
     assert aide._lisible("+,plus,equals_sign,kp_plus") == "+"
-    assert aide._lisible("ctrl+up,ctrl+plus") == "CTRL+HAUT"
+    assert aide._lisible("ctrl+up,ctrl+plus") == "Ctrl+↑"
 
 
-def test_le_guide_nomme_les_touches_en_toutes_lettres():
+def test_le_guide_ecrit_les_touches_comme_le_pied_de_page():
     """
-    Le pied de page abrège, le guide nomme.
-
-    Un glyphe tient en une colonne, ce qui décide sur un pied de page de trois
-    lignes. Le guide n'a pas cette contrainte et a le devoir inverse : « ⇧Tab »
-    se devine, « Shift+Tab » se lit. Un glyphe se cherche sur le clavier, un
-    nom s'y trouve — et on ouvre le guide justement parce qu'on cherche.
+    UX-10 : le guide nommait les touches en toutes lettres (« SHIFT+TAB »,
+    « ESPACE »), le pied de page en glyphes (« ⇧Tab », « ␣ ») — deux
+    notations pour une même touche, sur deux écrans qu'on consulte ensemble.
+    Une seule désormais, celle de `touche()`.
     """
-    assert aide._lisible("enter")     == "ENTER"
-    assert aide._lisible("backspace") == "BACKSPACE"
-    assert aide._lisible("space")     == "ESPACE"
-    assert aide._lisible("shift+tab") == "SHIFT+TAB"
-    assert aide._lisible("left")      == "GAUCHE"
-
-
-def test_les_touches_du_guide_sont_en_capitales():
-    """Les capitales suivent `raccourcis()`, et détachent le nom de son explication."""
-    for classe in aide.classes_documentees().values():
-        for touche, _, _ in aide.touches_de(classe):
-            assert touche == touche.upper(), touche
-
-
-def test_aucun_glyphe_dans_la_colonne_des_touches():
-    """La règle porte sur le rendu, pas seulement sur la fonction qui le nourrit.
-
-    Le contrôle se limite à la colonne de gauche : « ◄► » et « ← écartée »
-    appartiennent aux explications, où ils citent ce que l'écran affiche.
-    """
-    texte = aide.AideScreen()._contenu().plain
-    fautifs = [l for l in texte.splitlines()
-               if any(g in l[:14] for g in "↵⌫␣⇧←→↑↓")]
-    assert not fautifs, fautifs
+    from tui.common import touche
+    for nom in ("enter", "backspace", "space", "shift+tab", "left", "w", "f4"):
+        assert aide._lisible(nom) == touche(nom)
+    assert aide._lisible("shift+tab") == "⇧Tab"
 
 
 def test_le_contenu_nomme_chaque_ecran_et_reste_lisible():

@@ -53,8 +53,9 @@ def test_plancher_de_redimensionnement(ecran, colonne):
 
 def test_le_retrecissement_s_arrete_au_plancher():
     class Faux(ColumnResizeMixin):
-        RESIZE_COLS = ["duree"]
-        RESIZE_MIN  = {"duree": 7}
+        RESIZE_COLS   = ["duree"]
+        RESIZE_LABELS = {"duree": "D"}     # en-tête court : le contenu décide
+        RESIZE_MIN    = {"duree": 7}
         def __init__(self):
             self.largeurs = {"duree": 8}
             self.ecrit    = []

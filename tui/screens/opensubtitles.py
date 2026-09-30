@@ -19,8 +19,9 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
-from ..common import raccourcis
+from ..common import largeur_entete, raccourcis
 
+from core.texte import pluriel
 from core.opensubtitles import Client, ErreurOpenSubtitles, Resultat
 
 
@@ -76,9 +77,9 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
         table = self.query_one(DataTable)
         # ≡ : déposé pour cette release exacte, donc déjà synchronisé.
         table.add_column("",        width=3,  key="hash")
-        table.add_column("Langue",  width=7,  key="lang")
-        table.add_column("Téléch.", width=8,  key="count")
-        table.add_column("SME",     width=4,  key="hi")
+        table.add_column("Langue",  width=largeur_entete("Langue", 7),  key="lang")
+        table.add_column("Téléch.", width=largeur_entete("Téléch.", 8),  key="count")
+        table.add_column("SME",     width=largeur_entete("SME", 4),  key="hi")
         table.add_column("Release", width=None, key="release")
         self._etat(f"Recherche pour {self._video.name}…")
         self._chercher()
@@ -116,7 +117,7 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
         if not resultats:
             self._etat("Aucun sous-titre trouvé dans les langues du profil.")
         else:
-            self._etat(f"{len(resultats)} résultat(s), dont {exacts} pour cette "
+            self._etat(f"{pluriel(len(resultats), 'résultat')}, dont {exacts} pour cette "
                        f"release exacte (≡, déjà synchronisés).")
 
     def _echec(self, message: str) -> None:
@@ -143,7 +144,7 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
 
     def _fini(self, chemin: Path, restant) -> None:
         if restant is not None:
-            self.app.notify(f"Sous-titre téléchargé — {restant} restant(s) aujourd'hui.")
+            self.app.notify(f"Sous-titre téléchargé — {pluriel(restant, 'restant')} aujourd'hui.")
         self.dismiss(chemin)
 
     def action_cancel(self) -> None:

@@ -91,3 +91,93 @@ def test_les_glyphes_tiennent_en_une_colonne():
     """L'argument du choix : un footer de trois lignes compte ses colonnes."""
     for nom in ("enter", "backspace", "space", "left", "right", "up", "down"):
         assert len(touche(nom)) == 1, f"{nom} → {touche(nom)!r}"
+
+
+# ── Une touche de fonction, un seul sens (UX-07) ─────────────────────────────
+
+# La table réservée, tranchée le 2026-09-30. F2 est « l'action principale » :
+# encoder, ou ce qui en tient lieu sur un écran qui n'encode pas (joindre,
+# valider un ancrage). Un écran qui a besoin d'une touche à lui prend une
+# lettre, comme l'accueil pour R, J et I.
+_TABLE_RESERVEE: dict[str, set[str]] = {
+    "f1": {"open_dryrun", "dryrun"},
+    "f2": {"open_run", "run", "encode", "coller", "valider", "encoder"},
+    "f3": {"run_mux", "mux", "muxer"},
+    "f4": {"open_profile_picker", "change_profile"},
+    "f5": {"open_config"},
+    "f6": {"open_codec", "codec"},
+    "f7": {"open_bitrate", "debit"},
+    "f8": {"toggle_delete"},
+    "f9": {"add_track", "add_external", "donneur"},
+}
+
+
+def test_une_touche_de_fonction_garde_son_sens_partout():
+    import importlib, inspect, pkgutil
+    import tui.screens as ecrans
+    fautes = []
+    for m in pkgutil.iter_modules(ecrans.__path__):
+        mod = importlib.import_module(f"tui.screens.{m.name}")
+        for nom, cls in inspect.getmembers(mod, inspect.isclass):
+            if cls.__module__ != mod.__name__:
+                continue
+            for b in getattr(cls, "BINDINGS", []):
+                cle, action = (b.key, b.action) if not isinstance(b, tuple) else b[:2]
+                for k in cle.split(","):
+                    if k in _TABLE_RESERVEE and action not in _TABLE_RESERVEE[k]:
+                        fautes.append(f"{nom} : {k} → {action}")
+    assert not fautes, fautes
+
+
+def test_les_lettres_tranchees_nont_quun_sens():
+    """
+    UX-12 : `M` voulait dire Mesurer sur le recalage et Muxer dans
+    l'assistant ; `S` Plages ou Passer le fichier ; `A` Tout ou Forcer.
+    Tranché le 2026-09-30 : chacune de ces lettres n'a plus qu'une action.
+    """
+    import collections, importlib, inspect, pkgutil
+    import tui.screens as ecrans
+    sens = collections.defaultdict(set)
+    for m in pkgutil.iter_modules(ecrans.__path__):
+        mod = importlib.import_module(f"tui.screens.{m.name}")
+        for nom, cls in inspect.getmembers(mod, inspect.isclass):
+            if cls.__module__ != mod.__name__:
+                continue
+            for b in getattr(cls, "BINDINGS", []):
+                cle, action = (b.key, b.action) if not isinstance(b, tuple) else b[:2]
+                for k in cle.split(","):
+                    sens[k].add(action)
+    for lettre in "msafgo":
+        assert len(sens[lettre]) <= 1, (lettre, sens[lettre])
+
+
+def test_aucune_touche_entre_crochets_ni_entre_apostrophes():
+    """
+    UX-10 : le bandeau d'accueil écrivait « [W] » et « [F4] », le recalage
+    « 's' », « 'm' ». Une touche citée dans un texte passe par `touche()`.
+    """
+    import ast
+    import re
+    from pathlib import Path
+    motif = re.compile(r"\[(?:[A-Z]|F\d+|</>)\]|(?<![\w'])'[a-z]'(?![\w'])")
+    fautes = []
+    for f in sorted(Path("tui").rglob("*.py")):
+        arbre = ast.parse(f.read_text(encoding="utf-8"))
+        docs = {id(n.body[0].value) for n in ast.walk(arbre)
+                if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef))
+                and n.body and isinstance(n.body[0], ast.Expr)}
+        for n in ast.walk(arbre):
+            if isinstance(n, ast.Constant) and isinstance(n.value, str) \
+                    and id(n) not in docs and motif.search(n.value):
+                fautes.append(f"{f}:{n.lineno} {n.value!r}")
+    assert not fautes, fautes
+
+
+def test_lassistant_nomme_les_touches_selon_letape():
+    """UX-11 : le pied porte le sens de l'étape, la ligne d'aide ne le redit plus."""
+    from tui.screens.wizard import Etape, WizardScreen, _actions_etape
+    lancer = dict(_actions_etape(WizardScreen, Etape.LANCER))
+    assert lancer["enter"] == "Lancer le recommandé"
+    assert lancer["f2"] == "Encoder" and lancer["f3"] == "Muxer"
+    assert dict(_actions_etape(WizardScreen, Etape.DECISION))["space"] == "Garder / écarter"
+    assert dict(_actions_etape(WizardScreen, Etape.FICHIER))["enter"] == "Continuer"

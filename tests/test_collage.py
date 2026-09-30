@@ -203,7 +203,7 @@ def test_build_join_command_refuse_une_partie_en_double():
 
 def test_build_join_command_refuse_d_ecraser_une_partie():
     parts = [Path("D:/films/p1.mkv"), Path("D:/films/p2.mkv")]
-    with pytest.raises(ValueError, match="Collage refusé"):
+    with pytest.raises(ValueError, match="Jonction refusée"):
         build_join_command(parts, parts[1])
 
 

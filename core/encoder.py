@@ -172,6 +172,10 @@ _CAUSES: tuple[tuple[str, str], ...] = (
      "Cette carte graphique ne sait pas encoder ce format. L'AV1 par NVENC "
      "demande une RTX 40 ou plus récente ; le HEVC et le H264 restent "
      "disponibles."),
+    ("required nvenc api version",
+     "NVENC refusé : ce ffmpeg exige un pilote NVIDIA plus récent que celui "
+     "installé. Mettre à jour le pilote, ou prendre un ffmpeg compilé pour une "
+     "API NVENC plus ancienne."),
     ("could not open encoder",
      "L'encodeur n'a pas pu s'ouvrir sur cette machine. Si c'est de l'AV1 : "
      "NVENC ne l'encode qu'à partir des RTX 40."),

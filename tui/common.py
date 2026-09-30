@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from rich.cells import cell_len
 from rich.text import Text
 
 from core import config as cfg_mod
@@ -68,47 +69,14 @@ TOUCHES: dict[str, str] = {
     "right":     "→",
     "up":        "↑",
     "down":      "↓",
+    "shift+up":   "⇧↑",
+    "shift+down": "⇧↓",
+    "ctrl+up":    "Ctrl+↑",
+    "ctrl+down":  "Ctrl+↓",
     "ctrl+s":    "Ctrl+S",
     "ctrl+c":    "Ctrl+C",
     "ctrl+d":    "Ctrl+D",
 }
-
-# Le guide (`H`) nomme les touches en toutes lettres. Le pied de page ne le peut
-# pas — il tient en trois lignes, et un glyphe y vaut une colonne ; le guide, lui,
-# a de la place et le devoir inverse : « ⇧Tab » se devine, « Shift+Tab » se lit.
-# Un glyphe se cherche sur le clavier, un nom s'y trouve.
-#
-# Seules les touches dont la forme courte est un symbole figurent ici. Les
-# autres — Tab, Home, F1, Ctrl+D — sont déjà écrites, et `touche_longue`
-# retombe sur `TOUCHES`.
-TOUCHES_LONGUES: dict[str, str] = {
-    "enter":      "Enter",
-    "backspace":  "Backspace",
-    "space":      "Espace",
-    "escape":     "Échap",
-    "shift+tab":  "Shift+Tab",
-    "left":       "Gauche",
-    "right":      "Droite",
-    "up":         "Haut",
-    "down":       "Bas",
-    "shift+up":   "Shift+Haut",
-    "shift+down": "Shift+Bas",
-    "ctrl+up":    "Ctrl+Haut",
-    "ctrl+down":  "Ctrl+Bas",
-}
-
-
-def touche_longue(nom: str) -> str:
-    """Le nom d'une touche écrit en toutes lettres et en capitales, pour le guide.
-
-    Les capitales suivent `raccourcis()`, qui les impose déjà dans les
-    bandeaux : une touche s'écrit partout de la même façon. Elles détachent
-    aussi le nom de l'explication qui le suit, ce qui compte dans une colonne
-    de quarante lignes.
-    """
-    brut = TOUCHES_LONGUES.get(nom) or TOUCHES.get(nom) or nom
-    return brut.upper()
-
 
 # Espacement, lui aussi commun : deux blancs entre la touche et son libellé,
 # cinq entre deux raccourcis. Le footer resserre à trois pour tenir en largeur.
@@ -123,13 +91,26 @@ def touche(nom: str) -> str:
 
 def raccourci(nom: str, libelle: str) -> str:
     """Un raccourci rendu. `nom` peut être une touche Textual (« enter ») ou
-    une notation déjà composée (« +/- », « Shift+↑/↓ »)."""
+    une notation déjà composée (« +/- », « ⇧↑/↓ »)."""
     return f"{touche(nom)}{SEP_TOUCHE}{libelle}"
 
 
 def raccourcis(paires: list[tuple[str, str]]) -> str:
     """Une ligne d'aide complète, pour les pieds de modale et les bandeaux."""
     return SEP_ENTREE.join(raccourci(n, l) for n, l in paires)
+
+
+# Barres d'état : « Titre — élément · élément ». Trois séparateurs coexistaient
+# — « · », « ── », des blancs doublés (UX-14).
+SEP_ETAT: str = "  ·  "
+
+
+def barre_etat(titre: str, *elements: str) -> str:
+    """Une barre d'état. `titre` vide : les éléments seuls. Éléments vides omis."""
+    corps = SEP_ETAT.join(e for e in elements if e)
+    if not titre:
+        return f" {corps}"
+    return f" {titre} — {corps}" if corps else f" {titre}"
 
 
 # ─── Styles partagés ──────────────────────────────────────────────────────────
@@ -173,6 +154,17 @@ def tronquer_milieu(texte: str, largeur: int) -> str:
 # ne rend pas la valeur, mais elle dit qu'il en manque, et c'est la différence
 # entre une lecture prudente et une lecture confiante.
 #
+def largeur_entete(libelle: str, largeur: int) -> int:
+    """Largeur fixe d'une colonne, relevée pour tenir son en-tête.
+
+    Textual rogne un en-tête trop long sans ellipse. « Langue » en 7 ne
+    tiendra pas « Language » (UX-28) : calculée sur le libellé à l'exécution,
+    la largeur suit la langue affichée. `tests/test_troncature.py` interdit
+    une largeur littérale pour une colonne nommée.
+    """
+    return max(largeur, len(libelle))
+
+
 # Toute cellule de table passe par ici. `tests/test_troncature.py` le vérifie.
 def cellule(texte: str, *, style: str = "", largeur: int | None = None) -> Text:
     """Une cellule de table : coupée à vue, jamais en silence.
@@ -424,10 +416,10 @@ def footer_line2(
 
 
 def retour_accueil(app) -> None:
-    """Dépile les écrans jusqu'à l'accueil, le browser.
+    """Dépile les écrans jusqu'à l'accueil, le browser, et l'amène aux volumes.
 
     Traiter plusieurs fichiers d'affilée revenait à remonter les écrans un par
-    un ; le raccourci saute au choix du fichier suivant.
+    un ; le raccourci saute à la racine, la liste des volumes du système.
 
     Les écrans dépilés ne rendent aucun résultat — leurs rappels ne sont pas
     appelés. C'est sans conséquence pour ceux qui n'ont rien à rendre. Les deux
@@ -440,7 +432,83 @@ def retour_accueil(app) -> None:
     """
     from .screens.browser import BrowserScreen
 
-    if not any(isinstance(e, BrowserScreen) for e in app.screen_stack):
+    accueil = next((e for e in reversed(app.screen_stack)
+                    if isinstance(e, BrowserScreen)), None)
+    if accueil is None:
         return
     while len(app.screen_stack) > 1 and not isinstance(app.screen, BrowserScreen):
         app.pop_screen()
+    accueil.action_accueil()
+
+
+# ─── Présentation d'un profil ─────────────────────────────────────────────────
+#
+# Le choix (`F4`) et la gestion (`F5`) montraient les mêmes profils sous deux
+# formes : « DV » / « Dolby V. », « HD audio » / « HD Audio », « Source » /
+# « Suppr. », la 4K lue « → 1080p » d'un côté et « 3500k » de l'autre, le nom
+# entre crochets d'un seul côté (UX-13). Une définition, deux écrans.
+
+PROFIL_COLONNES: list[str] = ["Profil", "1080p", "4K", "Dolby V.", "Preset",
+                              "HD audio", "Source"]
+
+
+def cellules_profil(nom: str, prof, actif: bool) -> list[Text]:
+    """Les cellules d'un profil, dans l'ordre de `PROFIL_COLONNES`."""
+    f      = prof.summary_fields()
+    garde  = prof.data.get("keep_4k", False)
+    suppr  = prof.data.get("delete_source", False)
+    return [
+        Text(f"{nom} ✓" if actif else nom,
+             style="bold green" if actif else "bold", no_wrap=True),
+        Text(f["1080p"], no_wrap=True),
+        # La 4K n'a de débit que si elle est gardée ; sinon elle est ramenée.
+        (Text(f'{prof.data.get("bitrate_4k_kbps", "?")}k', style="green", no_wrap=True)
+         if garde else Text("→ 1080p", style="dim", no_wrap=True)),
+        Text(f["dv"], style=DV_VALUE_STYLES.get(f["dv"], ""), no_wrap=True),
+        Text(f["preset"], no_wrap=True),
+        Text(f["hd_audio"], style="" if f["hd_audio"] == "oui" else "dim",
+             no_wrap=True),
+        # Lu sur le booléen du profil, pas sur un libellé (UX-29).
+        (Text("⚠ suppr.", style="bold dark_orange", no_wrap=True) if suppr
+         else Text("garder", style="dim", no_wrap=True)),
+    ]
+
+
+def largeurs_colonnes(entetes: list[str], lignes: list[list[Text]]) -> list[int]:
+    """Largeur de chaque colonne : le plus large de l'en-tête et du contenu,
+    mesuré en cellules d'écran (`cell_len`) plutôt qu'en caractères."""
+    return [max(cell_len(e), max((l[i].cell_len for l in lignes), default=0))
+            for i, e in enumerate(entetes)]
+
+
+# ─── Une donnée, une forme ────────────────────────────────────────────────────
+#
+# Les pistes arrivent de deux outils : ffprobe (« subrip », « ac3 ») pour les
+# fichiers scannés, mkvmerge (« SubRip/SRT », « AC-3 ») pour les donneurs. Le
+# même codec s'affichait sous deux noms d'un écran à l'autre, la langue
+# inconnue « — » ici et « ? » là (UX-21). On affiche les noms de ffprobe.
+
+_CODECS_MKVMERGE: dict[str, str] = {
+    "subrip/srt": "subrip", "webvtt": "webvtt", "substationalpha": "ass",
+    "hdmv pgs": "hdmv_pgs", "vobsub": "dvd_subtitle", "ac-3": "ac3",
+    "e-ac-3": "eac3", "dts": "dts", "truehd": "truehd", "aac": "aac",
+    "flac": "flac", "opus": "opus", "mp3": "mp3", "pcm": "pcm",
+    "avc/h.264/mpeg-4p10": "h264", "hevc/h.265/mpeg-h": "hevc",
+}
+
+
+def nom_codec(codec: str) -> str:
+    """Le nom affiché d'un codec, quelle que soit l'outil qui l'a lu.
+
+    « unknown » est ce que rend ffprobe pour un flux qu'il ne sait pas lire —
+    un WebVTT muxé par mkvmerge, par exemple : « ? », comme une langue
+    inconnue.
+    """
+    if not codec or codec in ("unknown", "?"):
+        return "?"
+    return _CODECS_MKVMERGE.get(codec.lower(), codec)
+
+
+def langue_affichee(code: str) -> str:
+    """Code de langue, ou « ? » quand la piste n'en déclare pas."""
+    return code or "?"

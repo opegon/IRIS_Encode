@@ -190,3 +190,55 @@ def test_une_machine_ou_libx265_repond_ne_refuse_plus_le_profil():
 
     plat = replace(_PLAT, encodeurs_ok=frozenset(encodeurs_a_sonder(_PLAT)))
     assert plat.peut_encoder("libx265") is True
+
+
+# ─── Un ffmpeg plus récent que le pilote perd tout NVENC ──────────────────────
+#
+# Chaque build est compilé contre une version de l'API NVENC, qui fixe un
+# pilote minimal. Sous le pilote 597.16 (API 13.0), gyan.dev 8.1.2 et le
+# ffmpeg git du 2026-09-25 (API 13.1) refusaient HEVC, H264 et AV1 ; la sonde
+# ne gardait que libx265, sans rien dire. Sorties relevées le 2026-09-26.
+
+_SORTIE_PILOTE = (
+    "[hevc_nvenc @ 0000026ee9ff2f40] Driver does not support the required "
+    "nvenc API version. Required: 13.1 Found: 13.0\n"
+    "[hevc_nvenc @ 0000026ee9ff2f40] The minimum required Nvidia driver for "
+    "nvenc is 610.00 or newer\n"
+    "[vost#0:0/hevc_nvenc] Could not open encoder before EOF\n")
+
+
+def test_l_alerte_nomme_le_pilote_exige_et_les_deux_api():
+    from core.platform import alerte_pilote_nvenc
+
+    alerte = alerte_pilote_nvenc(_SORTIE_PILOTE)
+    assert alerte and "610.00" in alerte
+    assert "13.1" in alerte and "13.0" in alerte
+
+
+def test_pas_d_alerte_pilote_pour_une_autre_cause():
+    """L'AV1 sur Ampere est refusé aussi, mais le pilote n'y est pour rien."""
+    from core.platform import alerte_pilote_nvenc
+
+    assert alerte_pilote_nvenc("[av1_nvenc @ 0x1] No capable devices found") is None
+    assert alerte_pilote_nvenc("") is None
+
+
+def test_le_diagnostic_d_encodage_prefere_la_cause_pilote():
+    """« Could not open encoder » figure aussi dans la sortie : la cause
+    pilote, plus précise, doit passer avant."""
+    message = diagnostiquer(_SORTIE_PILOTE.splitlines())
+    assert message and "pilote NVIDIA" in message
+
+
+def test_la_sonde_rend_la_sortie_des_refus():
+    from pathlib import Path
+
+    from core.platform import sonder_encodeurs
+
+    ffmpeg = Path(__file__).resolve().parent.parent / "bin" / "ffmpeg.exe"
+    if not ffmpeg.exists():
+        pytest.skip("ffmpeg absent de bin/")
+    refus: dict[str, str] = {}
+    ok = sonder_encodeurs(["encodeur_inexistant"], str(ffmpeg), refus)
+    assert "encodeur_inexistant" not in ok
+    assert refus.get("encodeur_inexistant"), "la sortie d'erreur doit être gardée"

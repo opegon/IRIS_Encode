@@ -1,5 +1,564 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.33] — 2026-09-30
+
+### Le profil sans crochets sur l'écran des pistes
+
+La barre d'état des pistes écrivait encore « Profil : [serie_basic] », oubli
+d'UX-13. Le script de captures cherchait le fichier donneur sans son icône
+(UX-22) : les prises du mux et de l'encodage échouaient.
+
+`tui/screens/tracks.py`, `tests/shots_tui.py`.
+
+## [v0.8.9.32] — 2026-09-30
+
+### La fiche AlloCiné désigne le bon film
+
+« Avatar.Fire.and.Ash.2025… » ouvrait « L'île des souvenirs (2025) », une
+fiche réduite au titre (UX-24). Le choix parmi les résultats d'autocomplétion
+gardait le premier, sauf si l'année figurait dans le libellé — elle n'y figure
+jamais, elle est dans `data.year` —, et AlloCiné place en tête un film mis en
+avant. Les séries n'étaient jamais retenues : AlloCiné les rend en `series`,
+le code n'acceptait que `tvseries`.
+
+- `choisir_allocine()` compare le titre au libellé français **et** au titre
+  original (sans accents ni ponctuation), l'année départage.
+- La fiche dit sur quoi repose le choix — « titre et année », « titre », ou
+  « incertaine » en orange — et garde son lien en bas pour vérifier.
+
+Éprouvé contre AlloCiné : Avatar : de Feu et de Cendres (2025), Heat (1995),
+Bienvenue au Gondwana (2016), fiches complètes.
+
+`core/meta.py` (`choisir_allocine`, `MovieMeta.confiance`),
+`tui/screens/meta_popup.py`, `tests/test_revue_code.py`.
+
+## [v0.8.9.31] — 2026-09-30
+
+### La commande du mux ne prend plus l'écran
+
+La commande mkvmerge brute occupait tout le bas de l'écran de mux (UX-26). Elle
+est repliée : chemins absolus réduits à leur nom de fichier — le dossier est
+celui de la source —, zone limitée à quatre lignes. Aucun journal fichier
+n'étant branché sur cet écran, la commande complète n'est pas renvoyée
+ailleurs.
+
+`tui/screens/mux_run.py` (`commande_courte`), `tests/test_muxer.py`.
+
+## [v0.8.9.30] — 2026-09-30
+
+### L'explorateur du donneur ressemble à l'accueil
+
+Le choix du fichier donneur n'avait ni icônes ni tailles, remontait par une
+ligne « .. », et appelait `↵` « Ouvrir / Choisir » (UX-22). Il prend les
+conventions de l'accueil : 📁 dossier, 🎬 vidéo, 📄 piste isolée (`.srt`,
+`.ac3`…), colonne Taille, `⌫` pour remonter, `↵` « Ouvrir ». `Esc` annule.
+
+`tui/screens/donor_picker.py`, `tests/test_modales.py`, `tests/smoke_tui.py`.
+
+## [v0.8.9.29] — 2026-09-30
+
+### Le formulaire de profil a une casse
+
+Le formulaire écrivait ses libellés techniques en minuscules — `id`,
+`preset`, `traitement`, « 720p kbps » — sous des titres de section en
+capitales, sauf « Identifiant » ; l'en-tête disait « Edition » sans accent
+(UX-23). Titres de section en capitales, « IDENTIFIANT » compris ; libellés en
+casse de phrase, unité entre parenthèses : « Identifiant », « Débit 1080p
+(kbps) », « Preset », « Traitement », « Mode HDR10 », « Conteneur »,
+« Stéréo (kbps) ». L'en-tête dit « Édition — serie_basic ».
+
+`tui/widgets/profile_form.py`, `tui/screens/config.py`,
+`tests/test_profile_form.py`.
+
+## [v0.8.9.28] — 2026-09-30
+
+### Une donnée, une forme
+
+Les mêmes données s'affichaient sous des formes différentes (UX-21) :
+« 1920x1080 » sur l'accueil, « 1920×1080 » dans l'assistant ; une langue
+inconnue « — » au recalage, « ? » ailleurs ; « subrip » (ffprobe) ou
+« SubRip/SRT » (mkvmerge) selon l'outil qui avait lu la piste ; un WebVTT
+« unknown ».
+
+- `nom_codec()` ramène les noms de mkvmerge à ceux de ffprobe, et « unknown »
+  à « ? » ; `langue_affichee()` rend « ? » pour une langue absente. Pistes,
+  donneur, assistant, recalage, aperçu les utilisent.
+- Les résolutions s'écrivent « 1920x1080 » partout, messages de jonction
+  compris.
+
+Constat au passage : ffprobe 8.1.2 ne lit pas un WebVTT muxé par mkvmerge 102
+(`codec_name=unknown`). L'affichage le dit « ? » ; la copie par ffmpeg reste à
+vérifier (wiki, questions ouvertes).
+
+`tui/common.py` (`nom_codec`, `langue_affichee`), `tui/screens/donor_picker.py`,
+`tracks.py`, `wizard.py`, `sync.py`, `dryrun.py`, `core/joiner.py`,
+`tests/test_barres.py`, wiki.
+
+## [v0.8.9.27] — 2026-09-30
+
+### Les profils ont une seule présentation
+
+Le choix du profil (`F4`) et leur gestion (`F5`) montraient les mêmes profils
+sous deux formes (UX-13) : « DV » / « Dolby V. », « HD audio » / « HD Audio »,
+« Source » / « Suppr. », la 4K lue « → 1080p » d'un côté et « 3500k » de
+l'autre, le nom entre crochets d'un seul côté ; le bandeau d'accueil l'écrivait
+en capitales (`SERIE_BASIC`), et `F5` « Gérer » ouvrait « Configuration —
+Profils d'encodage ».
+
+- Une définition commune (`PROFIL_COLONNES`, `cellules_profil`,
+  `largeurs_colonnes`) sert aux deux écrans : Profil, 1080p, 4K (« → 1080p »
+  quand elle est ramenée, son débit quand elle est gardée), Dolby V., Preset,
+  HD audio, Source (« garder » / « ⚠ suppr. »).
+- Le nom s'écrit comme il se choisit, sans crochets ni capitales, bandeau
+  d'accueil compris.
+- L'écran de `F5` s'intitule « Gérer les profils ».
+
+`tui/common.py`, `tui/screens/profile_picker.py`, `config.py`, `browser.py`,
+`tests/test_config.py`.
+
+## [v0.8.9.26] — 2026-09-30
+
+### Les nombres s'accordent
+
+« 1 fichiers », « 1/1 terminés », et « (s) » partout (UX-15). `core/texte.py`
+porte l'accord — `accorde()` pour la forme, `pluriel()` pour « nombre + forme »
+— et toutes les barres et messages qui comptaient passent par lui : accueil,
+aperçu, mux, recalage, assistant, encodage, OpenSubtitles, jonction. Un test
+refuse le retour d'un « (s) » dans un texte affiché. Au passage, les messages
+de la jonction disaient encore « parties à coller » et « fichier collé ».
+
+`core/texte.py`, `core/joiner.py`, `tui/screens/browser.py`, `dryrun.py`,
+`mux_run.py`, `opensubtitles.py`, `run.py`, `sync.py`, `wizard.py`,
+`tests/test_barres.py`, `tests/test_volumes.py`.
+
+## [v0.8.9.25] — 2026-09-30
+
+### Les décisions de piste parlent une seule langue
+
+Sur l'écran de l'assistant, l'audio disait « → copy » et les sous-titres
+« copie » ; les pistes disaient « → MKV copy » ; l'encodage « SUCCÈS » et
+« ERREUR » en capitales, à côté de « en attente » et « ignoré » (UX-09).
+
+- Audio : « → copie » ; sous-titres de l'assistant : « → copie » ; écran des
+  pistes : « → copie MKV » / « → copie MP4 ».
+- États d'encodage : « terminé » et « échec : … », en minuscules.
+
+« ← SKIP » reste tel quel, par décision : terme court et connu.
+
+`core/decision.py`, `tui/screens/tracks.py`, `wizard.py`, `run.py`,
+`tests/test_audio_hd.py`.
+
+## [v0.8.9.24] — 2026-09-30
+
+### L'assistant ne dit ses touches qu'une fois
+
+Sous chaque étape, une ligne d'aide redisait le pied de page avec d'autres mots
+— « Espace garde ou écarte » face à « ␣ Garder », « F9 Présenter un fichier »
+face à « F9 Ajouter », « ↵ Lancer le choix recommandé » face à « ↵ Continuer »
+(UX-11). Le pied de page porte seul les touches, avec le libellé propre à
+l'étape : « Garder / écarter » (décision), « Présenter un fichier » et
+« Retirer la dernière » (pistes), « Lancer le recommandé » (lancer), « Retour à
+la liste » (terminé). La ligne d'aide ne sert plus qu'aux notes de mesure.
+
+`tui/screens/wizard.py` (`_LIBELLES_ETAPE`, `_actions_etape`),
+`tests/test_touches.py`, `tests/smoke_tui.py`.
+
+## [v0.8.9.23] — 2026-09-30
+
+### Une seule notation de touches
+
+Quatre notations coexistaient (UX-10) : le pied de page en glyphes (« ⇧Tab »,
+« ↵ », « ␣ »), le guide `H` en toutes lettres (« SHIFT+TAB », « ENTER »,
+« ESPACE »), le recalage en « Shift+↑/↓ » et « 's' », le bandeau d'accueil en
+crochets (« [W] », « [F4] », « [</>] »). Tout passe par `touche()` :
+
+- le guide `H` écrit les touches comme le pied de page (`touche_longue` et sa
+  table sont retirées) ;
+- `touche()` connaît `⇧↑`, `⇧↓`, `Ctrl+↑`, `Ctrl+↓` ;
+- les messages du recalage citent `F`, `G`, `C`, `M`, `V`, `K` sans
+  apostrophes ; le bandeau d'accueil écrit `W` et `F4`, les barres d'état
+  « Col : Fichier  </> ».
+
+Un test refuse une touche entre crochets ou entre apostrophes dans un texte
+affiché.
+
+`tui/common.py`, `tui/screens/aide.py`, `browser.py`, `dryrun.py`, `tracks.py`,
+`sync.py`, `core/sync.py`, `tests/test_touches.py`, `tests/test_aide.py`,
+`tests/test_sync.py`.
+
+## [v0.8.9.22] — 2026-09-30
+
+### Une seule forme de barre d'état
+
+Trois séparateurs coexistaient dans les barres d'état : « · » sur l'accueil et
+l'aperçu, « ── » sur le recalage, le mux et l'encodage, des blancs doublés sur
+les pistes (UX-14). Toutes passent par `barre_etat()` : « Titre — élément ·
+élément ». Un test refuse le retour de « ── » dans un texte affiché.
+
+Au passage, `R` s'annonce « Encoder le dossier » dans le pied de l'accueil,
+comme tranché en UX-08 (il restait « Récursif »).
+
+`tui/common.py` (`barre_etat`), `tui/screens/browser.py`, `dryrun.py`,
+`mux_run.py`, `run.py`, `sync.py`, `tracks.py`, `join.py`, `config.py`,
+`tests/test_barres.py`.
+
+## [v0.8.9.21] — 2026-09-30
+
+### `T` Pistes s'annonce sur l'accueil
+
+`T` ouvre l'écran des pistes quel que soit le mode, et c'est le seul accès aux
+pistes en mode assistant, où `↵` ouvre l'assistant — mais la touche était
+cachée du pied de page (UX-25). Elle y figure désormais, après `W`.
+
+`tui/screens/browser.py`.
+
+## [v0.8.9.20] — 2026-09-30
+
+### Un nom par action
+
+L'action d'encoder avait cinq noms — Run, Lancer, Encoder, Run récursif,
+Encodage — et « Dry-run » restait en anglais (UX-08). Tranché :
+
+- **Encoder** partout : `F2` de l'accueil, des pistes et de l'aperçu ; l'écran
+  de progression s'appelle **Encodage** ;
+- **Encoder le dossier** pour l'encodage récursif (`R`) ;
+- **Aperçu** au lieu de « Dry-run » (`F1`, titre et bandeau de l'écran) ;
+- **Joindre** / **Jonction** au lieu de « Coller » / « Collage » : touche,
+  écran, colonne, messages de refus et d'avancement.
+
+Les noms internes (classes, actions, `.join.IRIS`) ne changent pas. Ces
+termes serviront de base au glossaire français → anglais (IE-85).
+
+`tui/screens/browser.py`, `dryrun.py`, `tracks.py`, `sync.py`, `mux_run.py`,
+`join.py`, `recursive_confirm.py`, `aide.py`, `tui/app.py`, `core/joiner.py`,
+GUIDE, README, spec § 9bis et 14.
+
+## [v0.8.9.19] — 2026-09-30
+
+### Une lettre, un sens
+
+Des écrans voisins donnaient à la même lettre des sens opposés (UX-12) : `M`
+mesurait sur le recalage et muxait dans l'assistant, `S` montrait les plages
+ou passait le fichier en cours d'encodage, `A` forçait un candidat ou cochait
+tout.
+
+- Assistant, étape Lancer : `F3` muxe, `F2` encode — comme sur le recalage
+  (étaient `M` et `E`).
+- Recalage : `G` montre les plages (était `S`), `F` force le meilleur
+  candidat d'une mesure refusée (était `A`). `O` a été écarté : il ouvre
+  OpenSubtitles sur l'écran du fichier donneur, voisin du recalage.
+
+Un test vérifie que `M`, `S`, `A`, `F`, `G` et `O` n'ont qu'une action dans
+toute l'application.
+
+`tui/screens/wizard.py`, `tui/screens/sync.py`, `core/sync.py`,
+`tests/test_touches.py`, `tests/test_sync.py`, GUIDE § 2, 4.
+
+## [v0.8.9.18] — 2026-09-30
+
+### Une touche de fonction, un seul sens
+
+`F6` voulait dire Coller sur l'accueil et Codec partout ailleurs ; `F7`
+AlloCiné ou Débit, `F8` IMDB ou Suppr. source, `F3` Récursif ou Muxer (UX-07).
+Les touches de fonction suivent désormais une table unique : `F1` dry-run,
+`F2` action principale, `F3` muxer, `F4` profil, `F5` gérer, `F6` codec, `F7`
+débit, `F8` suppression de la source, `F9` piste externe, `F10` quitter.
+
+Ce qui n'existait que sur l'accueil passe sur des lettres :
+
+- `R` — encoder récursivement le dossier sous le curseur (était `F3`) ;
+- `J` — **joindre** les parties cochées (était `F6`, « Coller ») ;
+- `I` — la fiche du film, qui s'ouvre sur AlloCiné ; `Tab` bascule sur IMDB
+  et revient (étaient `F7` et `F8`).
+
+Un test tient la table : une touche de fonction qui prendrait un autre sens
+sur un écran le fait échouer.
+
+`tui/screens/browser.py`, `tui/screens/meta_popup.py`, `tui/screens/join.py`,
+`tui/screens/recursive_confirm.py`, `tui/screens/aide.py`,
+`tests/test_touches.py`, `tests/test_modales.py`, GUIDE § 2.1, 2.1bis, 3.2.
+
+## [v0.8.9.17] — 2026-09-30
+
+### L'alerte de suppression ne dépend plus du mot « oui »
+
+La gestion des profils (`F5`) mettait la colonne Suppr. en orange en testant
+`"oui" in libellé` (UX-29) : traduit, le libellé ne déclencherait plus
+l'alerte. Le style se lit sur `delete_source` du profil (`style_suppr`).
+Aucun changement visible.
+
+`tui/screens/config.py`, `tests/test_config.py`.
+
+## [v0.8.9.16] — 2026-09-30
+
+### Les colonnes fixes tiennent leur en-tête
+
+Les tables non redimensionnables fixaient leurs largeurs au caractère près :
+« Langue » en 7 sur l'écran OpenSubtitles ne tiendra pas « Language », et
+Textual rogne l'en-tête sans ellipse (UX-28). Toute colonne nommée à largeur
+figée passe par `largeur_entete()`, qui la relève à la longueur de son libellé
+à l'exécution. Un test refuse désormais toute largeur écrite en dur pour une
+colonne nommée. Aucun changement visible en français.
+
+`tui/common.py` (`largeur_entete`), `tui/screens/donor_picker.py`,
+`opensubtitles.py`, `run.py`, `sync.py`, `tracks.py`, `wizard.py`,
+`tests/test_troncature.py`.
+
+## [v0.8.9.15] — 2026-09-30
+
+### La colonne Taille tient la taille d'un film
+
+Le dry-run affichait « 34.6 … » (UX-20) : sa colonne Taille n'avait pas de
+plancher de contenu, et une largeur de six avait été persistée. `taille` entre
+dans `COLUMN_MIN_WIDTHS` à 8 — « 999.9 Go » —, pour l'accueil comme pour le
+dry-run, et vaut à la relecture d'une largeur déjà enregistrée.
+
+`core/config.py`, `tests/test_troncature.py`.
+
+## [v0.8.9.14] — 2026-09-30
+
+### L'accueil tient dans l'écran
+
+En 160 colonnes, Audio sortait de l'écran (UX-19) : mesurée en rendu réel, la
+table occupait 188 caractères quelle que soit la largeur du terminal. Fichier
+était fixé à 50, et le calcul ignorait la marge d'un caractère de chaque côté
+de chaque cellule — le plafond d'élargissement d'IE-29 aussi, qui laissait
+passer 24 colonnes de trop.
+
+- Fichier prend la place que les autres colonnes laissent, sur l'accueil comme
+  sur le dry-run, sauf largeur réglée au clavier dans la session. À 160
+  colonnes, la table occupe 158 caractères, barre de défilement comprise.
+- Le total compte les marges des cellules, les colonnes hors cycle et la barre
+  de défilement ; le plafond de `>` en tient compte.
+- La colonne active se repère à son en-tête **en vidéo inverse**. Le repère
+  « ◄► » coûtait trois caractères à chaque colonne depuis la v0.8.9.13.
+
+`tui/mixins.py` (`resize_header`, `resize_remplissage`, `MARGE_CELLULE`),
+`tui/screens/browser.py`, `tui/screens/dryrun.py`, `tui/screens/tracks.py`,
+`tui/screens/aide.py`, `tests/test_troncature.py`, `tests/test_colonnes.py`.
+
+## [v0.8.9.13] — 2026-09-30
+
+### Une colonne tient son en-tête
+
+Les planchers de largeur ne tenaient compte que du contenu ; Textual rogne un
+en-tête trop long sans ellipse, et le marqueur « ◄► » de la colonne active
+ajoute trois caractères (UX-27). Sur l'accueil, « Dolby V. ◄► » tenait en 8,
+« Débit ◄► » et « Codec ◄► » en 6. Le plancher vaut désormais au moins
+`len(en-tête) + 3`, calculé depuis le libellé à l'exécution — il tiendra dans
+toute langue. Il s'applique à la construction des tables de l'accueil, du
+dry-run et des pistes, et au rétrécissement au clavier. L'accueil y gagne neuf
+colonnes (Taille, Durée, Débit, Codec, Dolby V.), à reprendre sur le nom de
+fichier : c'est UX-19.
+
+`tui/mixins.py` (`resize_plancher`, `resize_largeur`), `tui/screens/browser.py`,
+`tui/screens/dryrun.py`, `tui/screens/tracks.py`, `tests/test_troncature.py`.
+
+## [v0.8.9.12] — 2026-09-29
+
+### Une ligne SKIP cochée montre ce qui sera fait
+
+Cocher une ligne `← SKIP` puis `F2` l'encodait (`force_skip_to_encode`), sans
+que la colonne Décision le montre (UX-18). Dès la coche, la ligne affiche la
+décision forcée — `→ HEVC`, `→ H264` —, en orange d'alerte, avec l'estimation
+et l'ETA correspondantes, et une notification le dit. Même traitement pour une
+ligne `→ HDR10` (retrait du Dolby Vision), que la coche fait aussi réencoder.
+Décocher rend la décision automatique.
+
+`tui/screens/browser.py` (`_est_forcee`, `_row_cells`, `_update_row_check`,
+`_annoncer_forcees`), `tests/test_arret_encodage.py`, § 14.1 de la spec.
+
+## [v0.8.9.11] — 2026-09-29
+
+### Les touches sans effet le disent
+
+`F1`/`F2` sans rien de coché, `F2` du dry-run sans ligne à réencoder ne
+faisaient rien, sans un mot (UX-17). Une notification dit pourquoi, et comment
+cocher.
+
+`tui/screens/browser.py` (`_refus_sans_selection`), `tui/screens/dryrun.py`,
+`tests/test_arret_encodage.py`.
+
+## [v0.8.9.10] — 2026-09-29
+
+### La fin d'un encodage dit la suite
+
+Lot fini, le pied proposait encore Pause et « Passer le fichier », et la zone
+du bas disait seulement « Terminé. » (UX-16). Le pied ne garde que la
+navigation ; la zone fait le bilan — réussis, en échec, ignorés — puis donne le
+chemin de chaque sortie. L'état d'une ligne perd son « ✓ »/« ✗ », déjà dans la
+colonne d'icône.
+
+`tui/screens/run.py` (`_resume`, `_on_all_done`), `tests/test_arret_encodage.py`.
+
+## [v0.8.9.9] — 2026-09-29
+
+### Quitter dit ce qui tourne vraiment
+
+La confirmation annonçait « L'encodage en cours sera interrompu » même sans
+encodage, et taisait une mesure ou un mux (UX-06). Elle liste désormais ce qui
+tourne — encodage, mux, collage, mesure, recalage — d'après les workers actifs,
+ou « Aucun traitement en cours ». Et elle tient parole : quitter arrête
+l'encodage, le mux ou le collage et efface sa sortie partielle ; ffmpeg ou
+mkvmerge ne survivent plus à l'application.
+
+`tui/app.py` (`travaux_en_cours`, `_on_quit_answer`), `tui/screens/quit.py`,
+`_interrompre()` extrait dans `mux_run.py` et `join.py`,
+`tests/test_arret_encodage.py`.
+
+## [v0.8.9.8] — 2026-09-29
+
+### L'accueil suit un encodage
+
+Revenu d'un encodage, l'accueil n'était ni relu ni décoché (UX-04) : les
+sorties n'apparaissaient pas, et `F2` relançait le même lot. L'écran d'encodage
+inscrit son lot dans `app.lots_encodes` ; l'accueil, revenu au premier plan,
+décoche les fichiers réussis et relit le dossier. Un fichier en échec ou
+interrompu reste coché. Vérifié sur l'application réelle : accueil → `F2` →
+encodage → `⌫`, la sortie apparaît et la sélection est vide.
+
+`tui/app.py`, `tui/screens/run.py`, `tui/screens/browser.py`
+(`on_screen_resume`, `sources_reussies`), `tests/test_arret_encodage.py`.
+
+## [v0.8.9.7] — 2026-09-29
+
+### Formulaire de profil : un débit hors liste n'est plus perdu
+
+`serie_basic` et `serie_anime` règlent leur 4K à 3500k, que la liste ne
+propose pas (UX-03). Le champ restait vide, la conséquence affichait « ramené à
+Select.NULLk en 4K », et `dump()` rendait `Select.NULL`. `Ctrl+S` le plaçait
+dans le profil **en mémoire** ; l'écriture de `profiles.toml` échouait alors,
+`tomli_w` refusant cette valeur, et le fichier gardait 3500 — le « chemin non
+identifié » de la revue. La garde testait `Select.BLANK`, qui ne vaut plus que
+`False` sous Textual 8.
+
+- Une valeur hors liste s'ajoute à la liste, à sa place (`_avec_valeur`).
+- `_est_vide()` reconnaît `Select.NULL` et `Select.BLANK`.
+
+`tui/widgets/profile_form.py`, `tests/test_profile_form.py`, § 14.8 de la spec.
+
+## [v0.8.9.6] — 2026-09-29
+
+### `↵` ne lance plus l'encodage depuis le dry-run
+
+Partout ailleurs, `↵` ouvre ou valide ; dans le dry-run, elle lançait des
+heures d'encodage sans rien demander (UX-05). La touche n'y est plus liée :
+seule `F2`, affichée dans le pied de page, lance.
+
+`tui/screens/dryrun.py`, `tests/test_arret_encodage.py`, § 14.6 de la spec.
+
+## [v0.8.9.5] — 2026-09-29
+
+### Quitter un encodage en cours se confirme
+
+Une frappe pouvait jeter des heures de travail (UX-01, UX-02) :
+
+- `⌫`/`Esc` arrêtaient ffmpeg et effaçaient la sortie partielle **sans
+  confirmation** ;
+- `Ctrl+Home` dépilait l'écran et **laissait ffmpeg tourner**, invisible.
+
+Les trois touches ouvrent désormais la même confirmation (« Arrêter » /
+« Continuer », focus sur Continuer), qui dit combien de fichiers du lot ne
+seront pas encodés. Confirmer arrête **le lot entier** :
+
+- le processus en cours, ffmpeg **ou mkvmerge** (le mux préalable et le remux
+  DV n'étaient jusqu'ici arrêtables par aucune touche) ;
+- tout ce qui aurait suivi : chaque démarrage passe par `_demarrer()`, qui
+  relit le drapeau `_abandon` après avoir lancé le processus. Un arrêt entre
+  deux étapes coupe la suivante dès son départ ;
+- la sortie du fichier interrompu est effacée une fois le processus sorti —
+  jamais celle d'un fichier qui a fini juste avant l'arrêt (code 0). Pas en
+  fin de boucle : la boucle enchaîne par un nouveau worker, et celui d'un
+  écran déjà dépilé ne démarre pas toujours — le test l'a montré.
+
+Lot terminé, `⌫` et `Ctrl+Home` repartent sans rien demander.
+
+Au passage, l'intermédiaire d'un mux préalable échoué ou interrompu est effacé :
+il pèse le poids du film et restait sur le disque.
+
+`tui/screens/run.py` (`_demarrer`, `_arreter`, `_interrompre`, `_confirmer_arret`),
+`tests/test_arret_encodage.py`, § 14.7 et § 14.11 de la spec, GUIDE § 2.6 et § 5.
+
+## [v0.8.9.4] — 2026-09-28
+
+### Le dégradé de la colonne Estim. se lit plus tôt
+
+Le vert profond était sombre, et l'échelle linéaire laissait les écarts
+modestes près du gris.
+
+- **Zone grise élargie à ±5 %** (écart affiché) : un écart de cet ordre tient
+  de l'incertitude de l'estimation.
+- **Teintes éclaircies**, et colorées dès la sortie de la zone grise : un gain
+  va du vert clair au vert vif, une perte de l'orange clair à l'orange sombre
+  des alertes. Le jaune disparaît.
+- **Progression logarithmique** entre le seuil et ±100 % : −30 % fait déjà
+  plus de la moitié du chemin vers la teinte pleine.
+
+`tui/screens/browser.py` (`_teinte_estimation`, `_SEUIL_NEUTRE`, `_COURBURE`,
+`_TEINTE_*`), `tests/test_sorties_visibles.py`, § 14.1 de la spec.
+
+## [v0.8.9.3] — 2026-09-28
+
+### Redimensionner les colonnes ne relit plus le disque
+
+Sur un partage réseau, chaque `<` ou `>` de l'accueil mettait plusieurs
+secondes à s'afficher. Le redimensionnement reconstruit la table, et chaque
+ligne relisait la taille de son fichier — deux `stat()` par fichier et par
+frappe, un aller-retour SMB chacun. Mesuré : 30 lectures pour 3 fichiers et
+5 frappes.
+
+- La taille est relevée une fois, par le worker de scan (hors du fil de
+  l'interface), et gardée par l'écran (`BrowserScreen._tailles`).
+- `_estimate_output_bytes(dec, taille_source)` la reçoit au lieu de relire.
+
+### `Ctrl+Home` ramène aux volumes
+
+Il ramenait au dossier de travail ; il ramène à la vraie racine, la liste des
+volumes du système — depuis n'importe quel écran, **et depuis l'accueil
+lui-même**, où la touche ne faisait rien. La sélection est vidée.
+
+- `FileNavigator.aller_aux_volumes()` ; `retour_accueil()` l'appelle après
+  le dépilage.
+- Entrer dans un volume depuis la liste n'empile plus le dossier d'avant :
+  `⌫` à la racine du volume retombe sur les volumes, et non sur le dossier
+  ouvert au lancement.
+
+### `Tab` sur l'écran des volumes faisait tomber l'application
+
+Pressé avant que la liste soit chargée, il reconstruisait la table et posait
+la ligne « dossier vide » des fichiers, dix cellules, dans une table de quatre
+colonnes. Les colonnes des volumes ne se redimensionnent plus. Le smoke test
+échouait déjà là (étape 7).
+
+- `tests/test_accueil.py` : six tests, dont le comptage des `stat()`.
+
+## [v0.8.9.2] — 2026-09-26
+
+### Un pilote NVIDIA trop ancien pour ffmpeg est nommé au lancement
+
+Sur un poste réinstallé (RTX A4500, pilote 597.16), `hevc_nvenc` avait disparu
+sans explication : le picker disait « ✗ indisponible ici », et le refus d'un
+fichier parlait d'AV1 et de RTX 40. La vraie cause était dans la sortie de la
+sonde, jetée :
+
+```
+Driver does not support the required nvenc API version. Required: 13.1 Found: 13.0
+The minimum required Nvidia driver for nvenc is 610.00 or newer
+```
+
+Chaque build de ffmpeg embarque une version de l'API NVENC ; en dessous du
+pilote qu'elle exige, **tout** NVENC est refusé. Mesuré : ffmpeg git du
+2026-09-25, gyan.dev 8.1.2 et BtbN n9.0 refusent ; BtbN n8.1.3 passe.
+
+- `sonder_encodeurs(..., refus=)` garde la sortie d'erreur des encodeurs refusés.
+- `alerte_pilote_nvenc()` en tire le pilote exigé et les deux versions d'API ;
+  le message est notifié au lancement (« Carte graphique ») et repris au refus
+  d'un fichier NVENC.
+- `diagnostiquer()` reconnaît la même cause pendant un encodage, avant le
+  générique « could not open encoder ».
+- GUIDE § 4.13 : le symptôme et les deux sorties (pilote ou ffmpeg).
+- `tests/test_capacites.py` : quatre tests, sur les sorties relevées.
+
 ## [v0.8.9.1] — 2026-09-24
 
 ### IRIS ENCODE se met à jour depuis sa dernière release

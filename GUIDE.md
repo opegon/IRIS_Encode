@@ -1,7 +1,7 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.1
-**Date** : 2026-09-24
+**Version** : 0.8.9.33
+**Date** : 2026-09-29
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
 
@@ -41,12 +41,12 @@ s'affiche. Pour installer sans question ou ne plus rien vérifier : `app =
 ## 1. Le parcours en trois temps
 
 ```
-Browser  ──F1──>  Dry-run  ──F2──>  Run
+Browser  ──F1──>  Aperçu  ──F2──>  Encodage
    │                                  
    └──T──>  Pistes  ──F9──>  Recalage  ──F3──>  Mux
 ```
 
-**Toujours passer par le dry-run.** Il montre ce qui *va* se produire — codec,
+**Toujours passer par l'aperçu.** Il montre ce qui *va* se produire — codec,
 débit, conteneur, taille estimée, durée d'encodage — avant d'y consacrer des
 heures. C'est là qu'on repère un conteneur inattendu ou un fichier qui n'aurait
 pas dû être sélectionné.
@@ -82,7 +82,7 @@ Dans la liste, `↵` sur un fichier ouvre le parcours :
 | 1 — Fichier | Vérifier le fichier et le profil actif |
 | 2 — Décision | Codec (`F6`), débit (`F7`), pistes à garder (`Espace`) — tout sur le même écran, et le nom du fichier qui sortira |
 | 3 — Pistes externes | `F9` présente un fichier portant une VF ou des sous-titres, `D` retire la dernière |
-| 4 — Lancer | `↵` prend le choix recommandé ; `M` force le mux, `E` force l'encodage |
+| 4 — Lancer | `↵` prend le choix recommandé ; `F3` force le mux, `F2` force l'encodage |
 | 5 — Terminé | Le résultat, `↵` ramène à la liste |
 
 **La mesure du décalage est automatique.** Dès qu'une piste est ajoutée, elle
@@ -91,7 +91,7 @@ venus du même fichier. Vous n'avez rien à lancer.
 
 Si la mesure échoue — montage différent, piste trop courte — le décalage reste à
 zéro et l'assistant le dit. Passez alors par le parcours libre (`W`), où l'écran
-de recalage offre `S`, `P`, `C` (§ 4.5) et le point de repère `R` (§ 4.5bis).
+de recalage offre `G`, `P`, `C` (§ 4.5) et le point de repère `R` (§ 4.5bis).
 
 **En mode manuel**, `↵` sur un fichier ouvre l'écran des pistes, et le parcours
 reste celui décrit ci-dessous.
@@ -115,17 +115,24 @@ d'après le profil actif.
 | `T` | Écran des pistes du fichier sous le curseur, quel que soit le mode |
 | `V` | Ouvrir dans mpv |
 | `Ctrl+D` | **Supprimer définitivement** le fichier (confirmation, pas de corbeille) |
-| `F1` / `F2` | Dry-run / Encoder la sélection |
-| `F3` | Encoder récursivement le dossier sous le curseur |
+| `F1` / `F2` | Aperçu / Encoder la sélection |
+| `R` | Encoder récursivement le dossier sous le curseur |
 | `F4` / `F5` | Choisir un profil / gérer les profils |
-| `F6` | **Coller** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
-| `F7` / `F8` | Fiche AlloCiné / IMDB |
+| `J` | **Joindre** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
+| `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |
 | `Tab` / `Maj+Tab` | Colonne suivante / précédente |
 | `<` / `>` | Rétrécir / élargir la colonne choisie (largeurs mémorisées) |
 
 La colonne **Décision** dit ce qui sera fait : `HEVC`, `H264`, `AV1` ou `SKIP`.
 Un fichier `SKIP` est déjà assez compressé — le cocher quand même le force à
-l'encodage au débit de la source.
+l'encodage au débit de la source. **La colonne le montre dès la coche** : la
+décision forcée remplace `← SKIP`, en orange, et un message le rappelle. Même
+chose pour une ligne `→ HDR10` (retrait du Dolby Vision) : cochée, elle est
+réencodée. `F1` et `F2` sans rien de coché le disent au lieu de ne rien faire.
+
+**Au retour d'un encodage**, la liste est relue — les sorties apparaissent — et
+les fichiers réussis sont décochés. Un fichier en échec ou interrompu reste
+coché, prêt à relancer.
 
 **Ce que l'application a encodé se reconnaît à son nom.** Toute sortie finit
 par `.IRIS`, précédée de ce que le traitement a fait : `Film.2160p.hevc.IRIS.mkv`,
@@ -150,20 +157,20 @@ n'existe que pour être encodé ensuite (§ 2.1bis).
 > chaîne sait relire, elle était classée « à réencoder en HEVC » — avec, sur un
 > profil `⚠ suppr.`, l'effacement de l'AV1 d'origine.
 
-### 2.1bis Collage — recoudre un film livré en parties
+### 2.1bis Jonction — recoudre un film livré en parties
 
 Un film en `part1` / `part2` ne s'encode pas tel quel : chaque partie prise
 seule sortirait de son côté, et vous auriez deux fichiers là où il en faut un.
-`F6`, sur l'accueil, recoud d'abord — ensuite le fichier se travaille comme
+`J`, sur l'accueil, recoud d'abord — ensuite le fichier se travaille comme
 n'importe quel autre.
 
-**Cocher les parties avec `Espace`** (deux au minimum), puis `F6`.
+**Cocher les parties avec `Espace`** (deux au minimum), puis `J`.
 
 | Touche | Action |
 |---|---|
 | `Ctrl+↑` / `Ctrl+↓` | Déplacer d'un rang la partie sous le curseur |
-| `F2` | Lancer le collage |
-| `⌫` | Retour à l'accueil — un collage en cours est interrompu et son fichier partiel effacé |
+| `F2` | Joindre — lancer la jonction |
+| `⌫` | Retour à l'accueil — une jonction en cours est interrompue et son fichier partiel effacé |
 
 **L'ordre est la seule chose à vérifier.** Il est déduit des noms, et les
 nombres y comptent comme des nombres : `part10` arrive bien après `part2`, là
@@ -172,7 +179,7 @@ ce qui sera collé — s'il est faux, `Ctrl+↑/↓` le corrigent. Deux parties
 inversées produisent un fichier de la **bonne durée**, donc faux sans que rien
 ne vous le signale.
 
-La colonne **Collage** dit, ligne par ligne, si la partie s'apparie sur la
+La colonne **Jonction** dit, ligne par ligne, si la partie s'apparie sur la
 première :
 
 | Ce qui s'affiche | Ce que ça veut dire |
@@ -183,9 +190,9 @@ première :
 | **✗ incompatible** | Codec vidéo, définition ou format audio différents — `F2` est refusé |
 
 La colonne du nom de fichier est aussi large que celle de l'accueil : si vous
-l'y avez élargie (`Tab` puis `>`), le collage en profite.
+l'y avez élargie (`Tab` puis `>`), l'écran de jonction en profite.
 
-Le collage **ne réencode rien** : mkvmerge recale les horodatages de chaque
+La jonction **ne réencode rien** : mkvmerge recale les horodatages de chaque
 partie sur la fin de la précédente. C'est une copie disque — comptez le temps
 d'écrire la somme des parties, et prévoyez la place, les originaux restant en
 place.
@@ -193,11 +200,11 @@ place.
 **Rien n'est effacé.** Les parties sont conservées ; `Ctrl+D` sur l'accueil
 reste le seul geste qui supprime. Le fichier produit s'appelle
 `<nom commun>.join.IRIS.mkv` — `Film part1.mkv` + `Film part2.mkv` donnent
-`Film.join.IRIS.mkv` — et le collage refuse d'écraser un fichier existant.
+`Film.join.IRIS.mkv` — et la jonction refuse d'écraser un fichier existant.
 
 À la fin, l'écran compare la durée obtenue à la somme des parties. Un écart
 est annoncé plutôt que passé sous silence : un mkvmerge interrompu laisse un
-fichier lisible et **court**, qui passerait sinon pour un collage réussi.
+fichier lisible et **court**, qui passerait sinon pour une jonction réussie.
 
 `⌫` ramène à l'accueil, où le fichier collé apparaît avec sa décision — à
 partir de là, `F1`, `F2`, `T` et le reste valent pour lui comme pour les
@@ -217,7 +224,7 @@ ligne vidéo en tête.
 | `F8` | Supprimer ou garder le fichier source après encodage |
 | `F9` | **Greffer une piste externe** — mène au choix du donneur |
 | `F4` | Changer de profil |
-| `F1` / `F2` | Dry-run / Encoder ce seul fichier, sans repasser par la liste |
+| `F1` / `F2` | Aperçu / Encoder ce seul fichier, sans repasser par la liste |
 
 Écarter tous les sous-titres image (PGS, VobSub) libère le conteneur MP4 ;
 en garder un impose le MKV.
@@ -279,8 +286,8 @@ décalage a trois pas, les autres champs font défiler leurs valeurs.
 | `Maj+↑/↓` | ±1 s sur le décalage |
 | `↵` | Liste de valeurs du champ courant |
 | `M` | **Mesurer** le décalage automatiquement |
-| `A` | Forcer le candidat d'une mesure refusée |
-| `S` | Détail des **plages** détectées |
+| `F` | Forcer le candidat d'une mesure refusée |
+| `G` | Détail des **plages** détectées |
 | `P` | **Appliquer les plages** à la piste sous le curseur |
 | `C` | Reprendre le décalage d'une autre piste |
 | `R` | **Point de repère** — quand la mesure ne conclut pas (§ 4.5bis) |
@@ -288,7 +295,7 @@ décalage a trois pas, les autres champs font défiler leurs valeurs.
 | `K` | Extrait de contrôle réellement muxé |
 | `D` | Retirer la piste |
 | `F9` | Ajouter une autre piste |
-| `F1` `F2` `F3` | Dry-run / Encoder / Muxer |
+| `F1` `F2` `F3` | Aperçu / Encoder / Muxer |
 
 **La langue est obligatoire.** Sans elle, la piste sortirait en « und » dans
 tous les lecteurs, et le mux est refusé. L'écran ouvre directement sur ce champ
@@ -304,26 +311,30 @@ Deux pistes ne suivent jamais : celles d'un **autre fichier**, et celles que
 vous avez déjà mesurées ou réglées à la main — une décision prise ne s'écrase
 pas. `C` sert pour ces cas-là.
 
-### 2.5 Dry-run — la prévisualisation
+### 2.5 Aperçu — ce qui sera fait
 
 | Touche | Action |
 |---|---|
 | `Espace` | Inclure / exclure la ligne |
 | `F6` / `F7` | Changer codec / débit **de cette ligne seulement** |
-| `F2` ou `↵` | Lancer l'encodage |
+| `F2` | Lancer l'encodage — `↵` ne lance rien, par sécurité |
 
 Les colonnes **Estim. (Δ%)** et **ETA** — la durée d'encodage prévue —
 reposent sur une moyenne
 mobile de vitesse relevée à chaque encodage : elles s'affinent à l'usage et
 sont approximatives aux premières passes.
 
-### 2.6 Run — l'encodage
+### 2.6 Encodage
 
 | Touche | Action |
 |---|---|
 | `P` | Pause / reprendre |
 | `S` | Passer le fichier en cours, sans annuler le reste |
-| `⌫` | Retour (l'encodage continue) |
+| `⌫` / `Esc` | Arrêter et revenir — **confirmation demandée** tant que le lot tourne |
+
+Une fois le lot fini, le pied de page ne garde que la navigation, et la zone du
+bas fait le bilan : réussis, en échec, ignorés, puis le chemin de chaque
+fichier produit.
 
 ### 2.7 Profils (`F5`)
 
@@ -374,17 +385,17 @@ pistes (`T`) les liste toutes.
 
 Pour une saison entière, ou une bibliothèque rangée en sous-dossiers.
 
-1. Placez le curseur **sur un dossier** — `F3` ne fait rien sur un fichier.
-2. `F3`, puis confirmez. Tous les fichiers vidéo du dossier **et de ses
+1. Placez le curseur **sur un dossier** — `R` ne fait rien sur un fichier.
+2. `R`, puis confirmez. Tous les fichiers vidéo du dossier **et de ses
    sous-dossiers**, sans limite de profondeur, sont analysés avec le profil
    actif.
-3. Le dry-run s'ouvre sur le résultat. `Espace` retire une ligne, `F6` et `F7`
+3. L'aperçu s'ouvre sur le résultat. `Espace` retire une ligne, `F6` et `F7`
    changent le codec ou le débit **de cette ligne seulement**.
 4. `F2` lance.
 
 Deux choses à savoir avant de lancer :
 
-- **Les fichiers déjà assez compressés sont écartés** de la liste. Le dry-run ne
+- **Les fichiers déjà assez compressés sont écartés** de la liste. L'aperçu ne
   montre que ce qui sera réellement encodé — si un fichier manque, c'est qu'il
   n'avait rien à gagner.
 - **Aucune sélection manuelle de pistes.** Les décisions viennent du profil, y
@@ -546,7 +557,7 @@ qui suit, face à un rip streaming.
 
 **Procédure :**
 
-1. `S` pour voir les plages. Des paliers réguliers (par exemple cinq fois
+1. `G` pour voir les plages. Des paliers réguliers (par exemple cinq fois
    +2 000 ms) confirment le diagnostic ; des valeurs erratiques signifient
    plutôt que les fichiers n'ont rien à voir.
 2. Curseur sur la piste **audio**, `P`. Le recalage prend quelques minutes —
@@ -713,7 +724,25 @@ Si le message persiste, c'est que votre ffmpeg est réellement construit sans
 libx265 : `ffmpeg -encoders | findstr x265` le confirme. Utilisez alors
 `cinema_4k_hd`, qui passe par la carte.
 
-### 4.13 Un outil optionnel manque
+### 4.13 « NVENC refusé : ce ffmpeg exige le pilote NVIDIA … »
+
+Au lancement, une alerte « Carte graphique » annonce que HEVC, H264 et AV1 par
+la carte sont tous indisponibles. Chaque ffmpeg est compilé pour une version de
+l'interface NVENC, qui exige un pilote minimal : un ffmpeg plus récent que le
+pilote refuse toute la carte. Le numéro de ffmpeg ne suffit pas à le prévoir
+(8.1.2 de gyan.dev exige le pilote 610, 8.1.3 de BtbN se contente du 597).
+
+Deux sorties : mettre à jour le pilote NVIDIA à la version indiquée, ou
+installer un ffmpeg plus ancien. L'application prend le ffmpeg du `PATH` avant
+celui de `bin/`. Pour tester un ffmpeg :
+
+```
+ffmpeg -v error -f lavfi -i testsrc2=d=1 -c:v hevc_nvenc -f null -
+```
+
+Aucune sortie : il fonctionne.
+
+### 4.14 Un outil optionnel manque
 
 `dovi_tool`, `mkvmerge` et `mpv` sont optionnels : leur absence désactive une
 fonction sans bloquer le lancement. Le preflight propose de les installer à
@@ -724,14 +753,18 @@ chaque démarrage ; répondez `o`, ou placez les binaires dans `bin/`.
 ## 5. Conventions communes à tous les écrans
 
 - `⌫` ou `Esc` reviennent en arrière, partout.
-- `Ctrl+Home` **ramène à la liste des fichiers** depuis n'importe quel écran —
-  dry-run, encodage, mux, assistant, profils, pistes, recalage. C'est ce qui
-  permet d'enchaîner plusieurs fichiers sans remonter la pile un écran à la
-  fois. Depuis les **pistes** et le **recalage**, une confirmation est demandée :
+- `Ctrl+Home` **ramène à la liste des volumes** — la racine — depuis
+  n'importe quel écran : aperçu, encodage, mux, assistant, profils, pistes,
+  recalage, et l'accueil lui-même. C'est ce qui permet d'enchaîner plusieurs
+  fichiers sans remonter la pile un écran à la fois. La sélection est vidée. Depuis les **pistes** et le **recalage**, une confirmation est demandée :
   ces deux écrans portent un travail que le retour ne conserve pas — une
-  sélection, une greffe, une mesure. `Home` seule garde son rôle, aller à la
+  sélection, une greffe, une mesure. Depuis l'**encodage** en cours aussi :
+  confirmer arrête le lot entier et efface la sortie partielle. `Home` seule garde son rôle, aller à la
   première ligne de la table.
-- `F10` quitte, toujours en dernier dans le pied de page.
+- `F10` quitte, toujours en dernier dans le pied de page. La confirmation dit
+  ce qui tourne — encodage, mux, jonction, mesure — et ce que quitter lui fait,
+  ou « Aucun traitement en cours ». Un encodage, un mux ou une jonction est
+  arrêté et sa sortie partielle effacée.
 - `Début` `Fin` `Page ↑` `Page ↓` naviguent dans les tables.
 - Le pied de page range les raccourcis par rôle, du haut vers le bas :
   **propres à l'écran**, puis **globaux** (navigation, retour), puis les

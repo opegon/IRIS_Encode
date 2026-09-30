@@ -93,6 +93,29 @@ def _opts(pairs):
     return [(label, val) for label, val in pairs]
 
 
+# La valeur « rien de choisi » : `Select.NULL` depuis Textual 8, où
+# `Select.BLANK` ne subsiste que sous la forme de `False`. Tester `BLANK` seul
+# laissait passer la sentinelle : « ramené à Select.NULLk en 4K », et un
+# `Select.NULL` enregistré dans le profil en mémoire (UX-03).
+_VIDE = getattr(Select, "NULL", Select.BLANK)
+
+
+def _est_vide(v: Any) -> bool:
+    return v is _VIDE or v is Select.BLANK
+
+
+def _avec_valeur(pairs: list, val: Any) -> list:
+    """Les options du champ, plus `val` si le profil en porte une hors liste.
+
+    `serie_basic` règle sa 4K à 3500k, que la liste ne propose pas : le champ
+    restait vide. La valeur du profil s'ajoute à sa place dans l'ordre, sans
+    rien retirer de la liste.
+    """
+    if any(v == val for _, v in pairs) or not isinstance(val, int):
+        return list(pairs)
+    return sorted([*pairs, (f"{val}k", val)], key=lambda p: p[1])
+
+
 # ─── Widget formulaire ────────────────────────────────────────────────────────
 
 class ProfileForm(Widget):
@@ -184,15 +207,17 @@ class ProfileForm(Widget):
         super().__init__(name=name, id=id, classes=classes, disabled=disabled)
         self._profile_id = ""
         self._is_new     = True
+        # Options effectives de chaque liste, valeur du profil comprise.
+        self._opts_champ: dict[str, list] = dict(self._SELECT_OPTS)
 
     # ── Composition ───────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
         # ── Identifiant ───────────────────────────────────────────────────────
-        yield Static("── Identifiant", classes="section-hdr")
+        yield Static("── IDENTIFIANT", classes="section-hdr")
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("id",          classes="form-lbl")
+                yield Label("Identifiant", classes="form-lbl")
                 yield Input(placeholder="mon_profil", id="field-id",
                             classes="form-ctrl")
             with Widget(classes="form-cell"):
@@ -203,15 +228,15 @@ class ProfileForm(Widget):
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("720p kbps",   classes="form-lbl")
+                yield Label("Débit 720p (kbps)", classes="form-lbl")
                 yield Select(_opts(_BITRATE_720P),  id="field-720p",   classes="form-ctrl")
             with Widget(classes="form-cell"):
-                yield Label("1080p kbps",  classes="form-lbl")
+                yield Label("Débit 1080p (kbps)", classes="form-lbl")
                 yield Select(_opts(_BITRATE_1080P), id="field-1080p",  classes="form-ctrl")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("4K kbps",     classes="form-lbl")
+                yield Label("Débit 4K (kbps)", classes="form-lbl")
                 yield Select(_opts(_BITRATE_4K),    id="field-4k",     classes="form-ctrl")
             with Widget(classes="form-cell"):
                 yield Checkbox("garder la 4K (sinon → 1080p)", id="field-keep4k")
@@ -223,7 +248,7 @@ class ProfileForm(Widget):
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("preset",      classes="form-lbl")
+                yield Label("Preset",      classes="form-lbl")
                 yield Select(_opts(_PRESET),        id="field-preset", classes="form-ctrl")
             with Widget(classes="form-cell"):
                 pass
@@ -235,10 +260,10 @@ class ProfileForm(Widget):
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("traitement",  classes="form-lbl")
+                yield Label("Traitement",  classes="form-lbl")
                 yield Select(_opts(_DV_OPTIONS),    id="field-dv",     classes="form-ctrl")
             with Widget(classes="form-cell"):
-                yield Label("mode HDR10",  classes="form-lbl")
+                yield Label("Mode HDR10",  classes="form-lbl")
                 yield Select(_opts(_HDR10_QUALITY), id="field-hdr10q", classes="form-ctrl")
 
         yield Static("", id="cons-dv", classes="consequence")
@@ -248,7 +273,7 @@ class ProfileForm(Widget):
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("traitement",  classes="form-lbl")
+                yield Label("Traitement",  classes="form-lbl")
                 yield Select(_opts(_HD_AUDIO), id="field-hdaudio", classes="form-ctrl")
             with Widget(classes="form-cell"):
                 pass
@@ -260,7 +285,7 @@ class ProfileForm(Widget):
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("conteneur",   classes="form-lbl")
+                yield Label("Conteneur",   classes="form-lbl")
                 yield Select(_opts(_CONTENEUR), id="field-conteneur",
                              classes="form-ctrl")
             with Widget(classes="form-cell"):
@@ -292,15 +317,15 @@ class ProfileForm(Widget):
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Stéréo kbps", classes="form-lbl")
+                yield Label("Stéréo (kbps)", classes="form-lbl")
                 yield Select(_opts(_BR_STEREO),  id="field-stereo", classes="form-ctrl")
             with Widget(classes="form-cell"):
-                yield Label("5.1 kbps",    classes="form-lbl")
+                yield Label("5.1 (kbps)",  classes="form-lbl")
                 yield Select(_opts(_BR_SURROUND),id="field-51",     classes="form-ctrl")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("7.1 kbps",    classes="form-lbl")
+                yield Label("7.1 (kbps)",  classes="form-lbl")
                 yield Select(_opts(_BR_71),      id="field-71",     classes="form-ctrl")
             with Widget(classes="form-cell"):
                 pass
@@ -359,7 +384,7 @@ class ProfileForm(Widget):
     def _txt(self, wid: str, defaut=None):
         try:
             v = self.query_one(wid, Select).value
-            return defaut if v is Select.BLANK else v
+            return defaut if _est_vide(v) else v
         except Exception:
             return defaut
 
@@ -450,7 +475,13 @@ class ProfileForm(Widget):
 
         def _set_sel(wid: str, val: Any) -> None:
             try:
-                self.query_one(wid, Select).value = val
+                sel = self.query_one(wid, Select)
+                if wid in self._SELECT_OPTS:
+                    opts = _avec_valeur(self._SELECT_OPTS[wid], val)
+                    if opts != self._opts_champ[wid]:
+                        self._opts_champ[wid] = opts
+                        sel.set_options(_opts(opts))
+                sel.value = val
             except Exception:
                 pass
 
@@ -500,7 +531,7 @@ class ProfileForm(Widget):
         def _g_sel(wid: str, default: Any) -> Any:
             try:
                 v = self.query_one(wid, Select).value
-                return v if v is not Select.BLANK else default
+                return default if _est_vide(v) else v
             except Exception:
                 return default
 
@@ -578,7 +609,7 @@ class ProfileForm(Widget):
         focused = self.app.focused
         if not isinstance(focused, Select):
             return False
-        for field_id, opts in self._SELECT_OPTS.items():
+        for field_id, opts in self._opts_champ.items():
             try:
                 widget = self.query_one(field_id, Select)
             except Exception:

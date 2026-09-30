@@ -1,9 +1,10 @@
 ---
 type: concept
-maj: 2026-09-24
+maj: 2026-09-26
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
+  - "[[source-2026-09-26-nvenc-pilote]]"
 ---
 
 # Codecs vidéo
@@ -44,6 +45,9 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
   le dit qu'au moment d'échouer : « No capable devices found ». Les encodeurs
   sont donc **sondés au lancement** (ouverts sur une image, ~0,7 s) plutôt que
   déduits du modèle de carte. *(mesuré : RTX A4500, `av1_nvenc` absent)*
+- **Un ffmpeg trop récent pour le pilote perd tout NVENC** (HEVC, H264, AV1) :
+  la sonde ne garde alors que `libx265`. Voir [[ffmpeg#NVENC et version du pilote]].
+  *(mesuré, pilote 597.16)*
 - **`av1_nvenc` n'a pas d'option `-profile`.** La passer fait refuser la
   commande avant même d'interroger la carte. *(mesuré, v0.8.1.22)*
 - **libx265 en 4K : 0,78 image/s**, soit ~70 h pour un long métrage.

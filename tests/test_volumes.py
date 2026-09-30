@@ -98,11 +98,11 @@ def test_les_colonnes_parlent_de_volumes(modes):
 
 def test_ni_selection_ni_profil_sur_les_volumes(modes):
     assert "sélectionné" not in modes["volumes"]["etat"]
-    assert "volume(s)" in modes["volumes"]["etat"]
+    assert "volume" in modes["volumes"]["etat"]
     assert modes["volumes"]["profil"].strip() == "", "le bandeau de profil s'affiche"
 
 
-@pytest.mark.parametrize("interdit", ["Sélect", "Dry-run", "AlloCiné", "Rétrécir"])
+@pytest.mark.parametrize("interdit", ["Sélect", "Aperçu", "Fiche", "Rétrécir"])
 def test_le_pied_ne_propose_rien_d_inapplicable(modes, interdit):
     assert interdit not in modes["volumes"]["svg"], (
         f"« {interdit} » proposé alors qu'aucun fichier n'est en vue"
@@ -116,5 +116,5 @@ def test_entrer_dans_un_volume_rend_les_colonnes_de_fichiers(modes):
 
 
 def test_entrer_dans_un_volume_rend_les_raccourcis_de_fichiers(modes):
-    for attendu in ("Sélect", "Dry-run"):
+    for attendu in ("Sélect", "Aperçu"):
         assert attendu in modes["fichiers"]["svg"], f"« {attendu} » non restauré"

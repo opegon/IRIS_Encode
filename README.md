@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.1 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.33 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`. Ce que
@@ -228,7 +228,7 @@ désactive une fonction, elle ne bloque jamais le lancement.
 | Outil | Nécessaire pour | Taille |
 |---|---|---|
 | `dovi_tool` | contenus **Dolby Vision** (probe RPU, métadonnées HDR10) | ~2 Mo |
-| `mkvmerge` | **greffe de pistes externes** (VF, sous-titres), **collage de parties** (`F6`) et extraits de contrôle | ~22 Mo |
+| `mkvmerge` | **greffe de pistes externes** (VF, sous-titres), **jonction de parties** (`J`) et extraits de contrôle | ~22 Mo |
 | `mpv` | **visualisation** d'un fichier ou d'un recalage | ~50 Mo |
 
 ### Option A — Installation automatique (recommandée)
@@ -425,14 +425,13 @@ dolby_vision       = "hdr"
 | `Enter` | Entrer dans un dossier |
 | `Backspace` | Remonter d'un niveau |
 | `T` | Sélection manuelle des pistes (audio, sous-titres) |
-| `F1` | Dry-run (prévisualisation) |
-| `F2` | Lancer l'encodage |
-| `F3` | Run récursif (dossier sélectionné + tous ses sous-dossiers) |
+| `F1` | Aperçu — ce qui sera fait, sans rien faire |
+| `F2` | Encoder la sélection |
+| `R` | Encoder le dossier sélectionné et tous ses sous-dossiers |
 | `F4` | Changer de profil d'encodage |
 | `F5` | Gérer les profils (créer `N`, éditer `E`, supprimer `D`) |
-| `F6` | Coller les fichiers sélectionnés bout à bout en un seul (`part1` + `part2`) |
-| `F7` | Recherche AlloCiné (métadonnées film/série) |
-| `F8` | Recherche IMDB (métadonnées film/série) |
+| `J` | Joindre les fichiers sélectionnés bout à bout en un seul (`part1` + `part2`) |
+| `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |
 | `Tab` / `Shift+Tab` | Colonne suivante / précédente (redimensionnement) |
 | `<` / `>` | Rétrécir / élargir la colonne active |
 | `F10` | Quitter |

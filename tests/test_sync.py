@@ -420,10 +420,10 @@ def test_segments_explain_the_refusal():
     assert not res.ok
     assert "2 plages" in res.reason
     assert "montage" in res.reason
-    # Le compte rendu tient dans les 3 lignes du bandeau et renvoie vers 's'
+    # Le compte rendu tient dans les 3 lignes du bandeau et renvoie vers G
     rapport = res.report()
     assert len(rapport.splitlines()) == 3
-    assert "+2000" in rapport and "'s'" in rapport
+    assert "+2000" in rapport and "G pour le détail" in rapport
 
 
 def test_no_segments_keeps_the_previous_diagnosis():

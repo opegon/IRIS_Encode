@@ -66,3 +66,36 @@ l'API des releases GitHub, empreinte `digest` conforme. Source :
 [[source-2026-09-24-mise-a-jour]]. Pages touchées : [[github]] (créée),
 [[sous-processus]], [[pieges-et-lecons]].
 
+
+## [2026-09-26] ingest | NVENC refusé après réinstallation du poste
+
+Poste Shadow réinstallé, pilote 597.16 (API NVENC 13.0) : le ffmpeg git master,
+gyan.dev 8.1.2 et BtbN n9.0 exigent l'API 13.1 (pilote ≥ 610) et refusent tout
+NVENC ; BtbN n8.1.3 passe, 8 et 10 bits. Hypothèse « une release 8.1 suffit »
+infirmée. Source : [[source-2026-09-26-nvenc-pilote]]. Pages touchées :
+[[ffmpeg]], [[codecs-video]], [[pieges-et-lecons]], [[questions-ouvertes]].
+
+
+## [2026-09-29] ingest | Arrêter un encodage en cours
+
+UX-01/UX-02 (v0.8.9.5) : quitter l'écran d'encodage ne tuait pas ffmpeg,
+et rien n'empêchait l'étape suivante de démarrer après un arrêt. Règle
+ajoutée à [[sous-processus]]. Constat annexe, non généralisé : un worker
+Textual relancé depuis un écran déjà dépilé ne démarre pas toujours (test
+intermittent) — ne pas y placer un nettoyage.
+
+
+## [2026-09-29] ingest | Formulaire de profil sous Textual 8
+
+UX-03 (v0.8.9.7) : `Select.BLANK` ne vaut plus que `False`, la valeur vide
+est `Select.NULL` ; un débit hors liste (3500k de `serie_basic`) laissait le
+champ vide, et `tomli_w` refusait d'écrire la sentinelle. Pages touchées :
+[[pieges-et-lecons]].
+
+
+## [2026-09-30] ingest | WebVTT illisible par ffprobe dans un MKV
+
+UX-21 (v0.8.9.28) : un `.vtt` muxé par mkvmerge 102 dans un MKV sort
+`codec_name=unknown` sous ffprobe 8.1.2 ; mkvmerge le nomme « WebVTT ». Le nom
+affiché passe par `nom_codec()` (« ? »). La copie par ffmpeg reste à
+vérifier. Pages touchées : [[questions-ouvertes]].

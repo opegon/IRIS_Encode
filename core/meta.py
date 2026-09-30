@@ -64,6 +64,9 @@ class MovieMeta:
     cast:       list[str]        = field(default_factory=list)
     synopsis:   str              = ""
     url:        str              = ""
+    # Ce qui a fait choisir cette fiche parmi les résultats, quand le choix
+    # n'est pas évident — vide si la source a répondu d'un seul résultat sûr.
+    confiance:  str              = ""
 
 
 # ─── IMDB : OMDb API (clé config) + suggestions API (fallback) ───────────────
@@ -187,6 +190,51 @@ _HEADERS = {
 }
 
 
+def _norme(texte: str) -> str:
+    """Minuscules, sans accents ni ponctuation — ce que compare l'appariement."""
+    import unicodedata
+    t = unicodedata.normalize("NFKD", texte)
+    t = "".join(c for c in t if not unicodedata.combining(c)).lower()
+    return " ".join(re.findall(r"[a-z0-9]+", t))
+
+
+# Sous ce seuil de ressemblance, le titre ne désigne pas ce résultat.
+_RESSEMBLANCE_MIN = 0.8
+
+
+def choisir_allocine(results: list[dict], title: str,
+                     year: Optional[int]) -> tuple[Optional[dict], str]:
+    """Le résultat d'autocomplétion qui correspond au fichier, et pourquoi.
+
+    L'ancien choix gardait le premier résultat, sauf si l'année figurait dans
+    le libellé — elle n'y figure jamais, elle est dans `data.year`. AlloCiné
+    place en tête un film mis en avant : « Avatar Fire and Ash » ouvrait
+    « L'île des souvenirs » (UX-24). On compare le titre au libellé français
+    **et** au titre original, puis l'année départage.
+
+    Les séries arrivent en `series` ; `tvseries` n'est gardé que par prudence.
+    """
+    from difflib import SequenceMatcher
+
+    cible = _norme(title)
+    meilleur, score_max, sim_max, annee_ok = None, -1.0, 0.0, False
+    for res in results[:8]:
+        if res.get("entity_type") not in ("movie", "series", "tvseries"):
+            continue
+        sim = max(SequenceMatcher(None, cible, _norme(res.get(k) or "")).ratio()
+                  for k in ("label", "original_label"))
+        annee = (res.get("data") or {}).get("year")
+        meme_annee = bool(year and annee and int(annee) == year)
+        score = sim + (0.2 if meme_annee else 0.0)
+        if score > score_max:
+            meilleur, score_max, sim_max, annee_ok = res, score, sim, meme_annee
+    if meilleur is None:
+        return None, ""
+    if sim_max >= _RESSEMBLANCE_MIN:
+        return meilleur, "titre et année" if annee_ok else "titre"
+    return meilleur, "incertaine — le titre ne correspond pas"
+
+
 def fetch_allocine(title: str, year: Optional[int] = None) -> MovieMeta:
     """Scrape AlloCiné via l'autocomplete JSON + JSON-LD de la fiche."""
     import json
@@ -200,21 +248,12 @@ def fetch_allocine(title: str, year: Optional[int] = None) -> MovieMeta:
     r.raise_for_status()
     results = r.json().get("results", [])
 
-    # Préférer le résultat dont le label correspond le mieux (et l'année si dispo)
-    best = None
-    for res in results[:8]:
-        if res.get("entity_type") not in ("movie", "tvseries"):
-            continue
-        if best is None:
-            best = res
-        if year and str(year) in res.get("label", ""):
-            best = res
-            break
+    best, confiance = choisir_allocine(results, title, year)
     if best is None:
         raise RuntimeError(f"Aucun résultat AlloCiné pour « {title} »")
 
     entity_id   = best["entity_id"]
-    is_serie    = best["entity_type"] == "tvseries"
+    is_serie    = best["entity_type"] in ("series", "tvseries")
     if is_serie:
         fiche_url = f"https://www.allocine.fr/series/ficheserie_gen_cserie={entity_id}.html"
     else:
@@ -288,4 +327,5 @@ def fetch_allocine(title: str, year: Optional[int] = None) -> MovieMeta:
         cast       = cast,
         synopsis   = data.get("description", ""),
         url        = fiche_url,
+        confiance  = confiance,
     )

@@ -25,7 +25,7 @@ from core.joiner import (build_join_command, controler, derive_duree,
 from core.muxer import MuxProcess
 from core.scanner import VideoInfo
 
-from ..common import actions_ecran, cellule, fmt_duration, footer_line2, retour_accueil
+from ..common import barre_etat, actions_ecran, cellule, fmt_duration, footer_line2, retour_accueil
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
@@ -34,7 +34,7 @@ from ..widgets.footer import KeyFooter
 # lit sur l'accueil au montage (voir `_largeur_fichier`). Les autres colonnes
 # portent des libellés bornés, le nom est le seul qui déborde vraiment.
 _COLUMNS: list[tuple[str, int | None]] = [
-    ("#", 3), ("Fichier", None), ("Durée", 9), ("Pistes", 12), ("Collage", 22),
+    ("#", 3), ("Fichier", None), ("Durée", 9), ("Pistes", 12), ("Jonction", 22),
 ]
 
 
@@ -53,7 +53,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         # focalisé étouffe les touches avant le système de bindings.
         Binding("ctrl+up",   "monter",    "Monter",    show=True, priority=True),
         Binding("ctrl+down", "descendre", "Descendre", show=True, priority=True),
-        Binding("f2",        "coller",    "Coller",    show=True),
+        Binding("f2",        "coller",    "Joindre",   show=True),
         Binding("backspace", "go_back",   "Retour",    show=True),
         Binding("escape",    "go_back",   "Retour",    show=False, priority=True),
         Binding("ctrl+home", "accueil",   "Accueil",   show=True, priority=True),
@@ -102,7 +102,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             yield Static("", id="join-total", markup=False)
             yield Static("", id="join-out", markup=False)
             with Static(id="join-bar-row"):
-                yield Label("Collage", id="join-label")
+                yield Label("Jonction", id="join-label")
                 yield ProgressBar(total=100, show_eta=False, id="join-bar")
             yield Static("", id="join-state", markup=False)
         yield KeyFooter(
@@ -178,8 +178,8 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             pass
 
     def _maj_bandeaux(self) -> None:
-        self._set("#status-bar",
-                  f" Collage — {len(self._infos)} parties ── {self._output.name}")
+        self._set("#status-bar", barre_etat(
+            "Jonction", f"{len(self._infos)} parties", self._output.name))
         self._set("#join-total",
                   f"Durée attendue du tout : "
                   f"{fmt_duration(duree_attendue(self._infos))}")
@@ -191,16 +191,16 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         ctrl = controler(self._infos)
         if ctrl.blocages:
             self._set("#join-state",
-                      "✗ Collage impossible en l'état :\n  · "
+                      "✗ Jonction impossible en l'état :\n  · "
                       + "\n  · ".join(ctrl.blocages[:2]))
         elif ctrl.avertissements:
             self._set("#join-state",
-                      "⚠ Collage possible, avec réserve :\n  · "
+                      "⚠ Jonction possible, avec réserve :\n  · "
                       + "\n  · ".join(ctrl.avertissements[:2]))
         else:
             self._set("#join-state",
                       "Ordre à vérifier — Ctrl+↑/↓ déplacent la partie "
-                      "sous le curseur.\nF2 lance le collage.")
+                      "sous le curseur.\nF2 lance la jonction.")
 
     def _set_progress(self, pct: int) -> None:
         try:
@@ -238,15 +238,15 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         if self._lance:
             self.app.bell()
             self._set("#join-state",
-                      "Collage déjà terminé." if self._done
-                      else "Collage en cours…")
+                      "Jonction déjà terminée." if self._done
+                      else "Jonction en cours…")
             return
 
         ctrl = controler(self._infos)
         if not ctrl.collable:
             self.app.bell()
             self._set("#join-state",
-                      "✗ Collage refusé — les parties ne s'apparient pas :\n  · "
+                      "✗ Jonction refusée — les parties ne s'apparient pas :\n  · "
                       + "\n  · ".join(ctrl.blocages[:2]))
             return
 
@@ -254,7 +254,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             self.app.bell()
             self._set("#join-state",
                       f"✗ {self._output.name} existe déjà. "
-                      f"Le renommer ou l'effacer (Ctrl+D) avant de recoller.")
+                      f"Le renommer ou l'effacer (Ctrl+D) avant de rejoindre.")
             return
 
         self._lance = True
@@ -272,7 +272,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
 
         self.app.call_from_thread(
             self._set, "#join-state",
-            f"▶ Collage lancé — {len(parts)} parties, copie du conteneur en cours…")
+            f"▶ Jonction lancée — {len(parts)} parties, copie du conteneur en cours…")
 
         proc = MuxProcess(cmd)
         self._process = proc
@@ -282,7 +282,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             if pct is not None:
                 self.app.call_from_thread(self._set_progress, pct)
                 self.app.call_from_thread(
-                    self._set, "#join-state", f"▶ Collage — {pct}%")
+                    self._set, "#join-state", f"▶ Jonction — {pct}%")
 
         rc            = proc.wait()
         self._ok      = rc == 0
@@ -292,7 +292,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         if not self._ok:
             detail = proc.errors[0] if proc.errors else f"code {rc}"
             self.app.call_from_thread(
-                self._set, "#join-state", f"✗ Échec du collage : {detail}")
+                self._set, "#join-state", f"✗ Échec de la jonction : {detail}")
             return
 
         self.app.call_from_thread(self._set_progress, 100)
@@ -311,14 +311,14 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         try:
             obtenue = scanner.scan(self._output).duration
         except Exception as e:
-            return (f"✓ Collage terminé — {self._output.name}, mais relecture "
+            return (f"✓ Jonction terminée — {self._output.name}, mais relecture "
                     f"impossible ({e}) : vérifier sa durée avant de l'encoder.")
 
         ecart = derive_duree(attendue, obtenue)
         if ecart is not None:
             return (f"⚠ {self._output.name} dure {fmt_duration(obtenue)} pour "
                     f"{fmt_duration(attendue)} attendues ({ecart:+.0f} s).\n"
-                    f"Le collage est peut-être incomplet — le vérifier avant "
+                    f"La jonction est peut-être incomplète — la vérifier avant "
                     f"de l'encoder.")
 
         return (f"✓ Terminé — {self._output.name}, {fmt_duration(obtenue)}. "
@@ -328,7 +328,11 @@ class JoinScreen(TableNavMixin, Screen[bool]):
 
     # ── Sortie ────────────────────────────────────────────────────────────────
 
-    def action_go_back(self) -> None:
+    def _interrompre(self) -> None:
+        """Arrête le processus en cours et efface la sortie partielle.
+
+        Appelée au retour et en quittant l'application (UX-06).
+        """
         # Collage interrompu : le fichier partiel n'est pas exploitable.
         if self._process and not self._done:
             self._process.terminate()
@@ -337,6 +341,9 @@ class JoinScreen(TableNavMixin, Screen[bool]):
                 self._output.unlink(missing_ok=True)
             except OSError:
                 pass
+
+    def action_go_back(self) -> None:
+        self._interrompre()
         self.dismiss(self._ok)
 
     def action_accueil(self) -> None:

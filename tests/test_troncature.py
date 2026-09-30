@@ -81,6 +81,17 @@ def test_le_plancher_dolby_vision_tient_le_profil_le_plus_long():
         assert cfg_mod.COLUMN_MIN_WIDTHS[cle] >= len("DV:P8.1")
 
 
+def test_le_plancher_taille_tient_toute_taille_de_film():
+    """UX-20 : le dry-run affichait « 34.6 … » dans une colonne de six."""
+    from tui.common import fmt_bytes
+    tailles = [512 * 1024, 999 * 1_048_576, 34.6 * 2**30, 999.9 * 2**30,
+               1.5 * 2**40]
+    plus_long = max((fmt_bytes(int(b)) for b in tailles), key=len)
+    assert cfg_mod.COLUMN_MIN_WIDTHS["taille"] >= len(plus_long), plus_long
+    cfg = {"tui": {"dryrun": {"columns": {"taille": 6}}}}
+    assert cfg_mod.get_dryrun_column_widths(cfg)["taille"] >= len(plus_long)
+
+
 def test_les_planchers_valent_a_la_lecture_dune_largeur_persistee():
     """Une largeur écrite avant l'existence du plancher ne doit pas survivre."""
     cfg = {"tui": {"browser": {"columns": {"decision": 8, "duree": 5}}}}
@@ -97,6 +108,7 @@ class _Ecran(ColumnResizeMixin):
     RESIZE_COLS = ["a", "b", "c"]
     RESIZE_LABELS = {"a": "A", "b": "B", "c": "C"}
     RESIZE_FIXE = 4
+    MARGE_CELLULE = 0     # arithmétique nue ; les marges ont leur propre test
 
     def __init__(self, widths, largeur):
         self._w       = dict(widths)
@@ -155,3 +167,111 @@ def test_le_plafond_ne_sapplique_pas_sans_ecran_monte():
     e._resize_col_idx = 0
     e.action_col_grow()
     assert e._w["a"] == 22 and e.refus == 0
+
+
+# ── 4. Une colonne tient son propre en-tête ───────────────────────────────────
+
+def _ecrans_redimensionnables():
+    from tui.screens.browser import BrowserScreen
+    from tui.screens.dryrun import DryrunScreen
+    from tui.screens.tracks import TracksScreen
+    return [BrowserScreen, DryrunScreen, TracksScreen]
+
+
+@pytest.mark.parametrize("ecran", _ecrans_redimensionnables(),
+                         ids=lambda c: c.__name__)
+def test_toute_colonne_tient_son_entete_marque(ecran):
+    """
+    UX-27 : les planchers ne voyaient que le contenu. Textual rogne un en-tête
+    trop long sans ellipse — « Dolby V. ◄► » en 8, « Débit ◄► » en 6. Le
+    plancher se calcule sur le libellé : il tiendra dans toute langue sans
+    qu'on y retouche. Le repère de colonne active est un style, pas du texte.
+    """
+    e = ecran.__new__(ecran)
+    for i, cle in enumerate(ecran.RESIZE_COLS):
+        e._resize_col_idx = i
+        entete = e.resize_header(cle)
+        assert entete.plain == ecran.RESIZE_LABELS[cle]
+        assert e.resize_plancher(cle) >= len(entete), (ecran.__name__, entete)
+        assert e.resize_largeur(cle, 1) >= len(entete)
+
+
+def test_retrecir_sarrete_a_lentete():
+    """Le rétrécissement au clavier bute sur le plancher d'en-tête."""
+    e = _Ecran({"a": 20, "b": 20, "c": 20}, largeur=200)
+    e.RESIZE_LABELS = {"a": "Durée cible", "b": "B", "c": "C"}
+    e._resize_col_idx = 0
+    for _ in range(20):
+        e.action_col_shrink()
+    assert e._w["a"] == len("Durée cible")
+
+
+def test_la_colonne_active_se_repere_sans_caractere_ajoute():
+    """Le repère « ◄► » coûtait trois caractères à chaque colonne (UX-19)."""
+    e = _Ecran({"a": 20, "b": 20, "c": 20}, largeur=200)
+    e._resize_col_idx = 1
+    assert [e.resize_header(k).plain for k in "abc"] == ["A", "B", "C"]
+    assert "reverse" in str(e.resize_header("b").style)
+    assert "reverse" not in str(e.resize_header("a").style)
+
+
+# ── 5. Les marges comptent, Fichier prend le reste ────────────────────────────
+
+class _EcranMarge(_Ecran):
+    MARGE_CELLULE = 2
+
+
+def test_le_plafond_compte_les_marges_des_cellules():
+    """
+    UX-19 : chaque cellule a un caractère de marge de chaque côté. Sans elles,
+    le plafond laissait 164 colonnes déclarées en occuper 188.
+    """
+    e = _EcranMarge({"a": 20, "b": 20, "c": 20}, largeur=70)  # 60 + 6 + 4 = 70
+    e._resize_col_idx = 0
+    e.action_col_grow()
+    assert e._w["a"] == 20
+    assert e.refus == 1
+
+
+def test_fichier_remplit_la_place_restante():
+    e = _EcranMarge({"a": 0, "b": 20, "c": 20}, largeur=100)
+    # 100 − (20+2) − (20+2) − (0+2) − 4 fixes = 50
+    assert e.resize_remplissage("a", e._w, defaut=30) == 50
+    # Écran non monté : le défaut
+    e._largeur = 0
+    assert e.resize_remplissage("a", e._w, defaut=30) == 30
+    # Terminal trop étroit : jamais sous le plancher
+    e._largeur = 40
+    assert e.resize_remplissage("a", e._w, defaut=30) == e.resize_plancher("a")
+
+
+# ── 6. Les colonnes fixes aussi ───────────────────────────────────────────────
+
+def test_aucune_colonne_nommee_na_de_largeur_litterale():
+    """
+    UX-28 : « Langue » en 7 ne tient pas « Language ». Une largeur fixe se
+    calcule sur son en-tête (`largeur_entete`) : écrite en dur, elle ne suit
+    pas la langue affichée, et Textual rogne l'en-tête sans ellipse.
+    """
+    import ast
+    from pathlib import Path
+    fautes = []
+    for f in sorted(Path("tui").rglob("*.py")):
+        for n in ast.walk(ast.parse(f.read_text(encoding="utf-8"))):
+            if not (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                    and n.func.attr == "add_column" and n.args):
+                continue
+            libelle = n.args[0]
+            if not (isinstance(libelle, ast.Constant) and libelle.value):
+                continue
+            for kw in n.keywords:
+                if kw.arg == "width" and isinstance(kw.value, (ast.Constant, ast.Name)) \
+                        and getattr(kw.value, "value", 0) is not None:
+                    fautes.append(f"{f}:{n.lineno} « {libelle.value} »")
+    assert not fautes, fautes
+
+
+def test_largeur_entete():
+    from tui.common import largeur_entete
+    assert largeur_entete("Language", 7) == 8
+    assert largeur_entete("Langue", 7) == 7

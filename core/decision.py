@@ -199,7 +199,7 @@ class AudioDecision:
         if self.action == AudioAction.EXCLUDE:
             return ""
         if self.action == AudioAction.COPY:
-            return f"→ copy"
+            return "→ copie"
         canaux = ""
         if self.output_channels and self.output_channels != self.track.channels:
             canaux = f" {channel_layout_label(self.output_channels)}"

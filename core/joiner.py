@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .scanner import MARQUE_IRIS, VideoInfo
+from .texte import pluriel
 
 # Suffixe du fichier recousu. Absent de `SUFFIX_BY_ACTION` à dessein : ce n'est
 # pas une sortie d'encodage mais une entrée de travail, et le scan doit la voir
@@ -125,8 +126,8 @@ def controler(infos: list[VideoInfo]) -> Controle:
     ctrl = Controle()
     if len(infos) < MIN_PARTIES:
         ctrl.blocages.append(
-            f"Il faut au moins {MIN_PARTIES} parties à coller "
-            f"({len(infos)} sélectionnée(s))."
+            f"Il faut au moins {MIN_PARTIES} parties à joindre "
+            f"({pluriel(len(infos), 'sélectionnée')})."
         )
         return ctrl
 
@@ -141,8 +142,8 @@ def controler(infos: list[VideoInfo]) -> Controle:
             )
         if (info.width, info.height) != (ref.width, ref.height):
             ctrl.blocages.append(
-                f"{nom} — {info.width}×{info.height}, "
-                f"{ref.path.name} en {ref.width}×{ref.height}."
+                f"{nom} — {info.width}x{info.height}, "
+                f"{ref.path.name} en {ref.width}x{ref.height}."
             )
 
         # Pistes audio appariées rang par rang : seules celles que mkvmerge
@@ -161,14 +162,14 @@ def controler(infos: list[VideoInfo]) -> Controle:
 
         if len(info.audio_tracks) != len(ref.audio_tracks):
             ctrl.avertissements.append(
-                f"{nom} — {len(info.audio_tracks)} piste(s) audio contre "
-                f"{len(ref.audio_tracks)} : le fichier collé n'en gardera que "
+                f"{nom} — {pluriel(len(info.audio_tracks), 'piste audio', 'pistes audio')} contre "
+                f"{len(ref.audio_tracks)} : le fichier joint n'en gardera que "
                 f"{min(len(info.audio_tracks), len(ref.audio_tracks))}."
             )
         if len(info.subtitle_tracks) != len(ref.subtitle_tracks):
             ctrl.avertissements.append(
-                f"{nom} — {len(info.subtitle_tracks)} piste(s) de sous-titres "
-                f"contre {len(ref.subtitle_tracks)} : le fichier collé n'en "
+                f"{nom} — {pluriel(len(info.subtitle_tracks), 'piste', 'pistes')} de sous-titres "
+                f"contre {len(ref.subtitle_tracks)} : le fichier joint n'en "
                 f"gardera que "
                 f"{min(len(info.subtitle_tracks), len(ref.subtitle_tracks))}."
             )
@@ -190,17 +191,17 @@ def build_join_command(parts: list[Path], output: Path) -> list[str]:
     """
     if len(parts) < MIN_PARTIES:
         raise ValueError(
-            f"Collage : {MIN_PARTIES} parties au minimum ({len(parts)} donnée(s))."
+            f"Jonction : {MIN_PARTIES} parties au minimum ({pluriel(len(parts), 'donnée')})."
         )
 
     resolus = [p.resolve() for p in parts]
     if len(set(resolus)) != len(resolus):
-        raise ValueError("Collage : la même partie est présente deux fois.")
+        raise ValueError("Jonction : la même partie est présente deux fois.")
 
     if output.resolve() in resolus:
         raise ValueError(
             f"Chemin de sortie identique à une partie ({output.name}). "
-            f"Collage refusé pour éviter la corruption du fichier source."
+            f"Jonction refusée pour éviter la corruption du fichier source."
         )
 
     # Relu ici et non importé une fois pour toutes : `set_mkvmerge_path` peut

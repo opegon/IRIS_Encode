@@ -1,6 +1,6 @@
 ---
 type: index
-maj: 2026-09-24
+maj: 2026-09-26
 ---
 
 # Index du wiki IRIS ENCODE
@@ -33,7 +33,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 
 | Page | Résumé |
 |---|---|
-| [[ffmpeg]] | Encodage et remux ; filtres `dovi_rpu` et `hevc_mp4toannexb`, pièges d'horodatage et de spécificateurs |
+| [[ffmpeg]] | Encodage et remux ; API NVENC contre pilote ; filtres `dovi_rpu` et `hevc_mp4toannexb`, pièges d'horodatage et de spécificateurs |
 | [[ffprobe]] | Analyse ; débit vidéo réel, sous-profil DV, paquets, comptage des NAL |
 | [[mkvmerge]] | Remux Matroska ; `--gui-mode`, ID global des pistes, drapeau par défaut, collage |
 | [[dovi-tool]] | Dolby Vision ; `extract-rpu`, `remove`, `inject-rpu`, `info` en JSON |
@@ -54,6 +54,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-09-24-diagnostic]] | Relevés du diagnostic « son sans image » sur le retrait DV |
 | [[source-2026-09-24-utilisateur]] | Déclarations de l'utilisateur : G3, Jellyfin sans transcodage matériel |
 | [[source-2026-09-24-mise-a-jour]] | Relevés d'`updater.py` : cmd.exe et les `.bat` réécrits, essai réel contre GitHub |
+| [[source-2026-09-26-nvenc-pilote]] | NVENC refusé après réinstallation : API NVENC du build contre version du pilote |
 
 ## Brut (`raw/`, immuable)
 
@@ -62,3 +63,4 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-09-24-diagnostic-retrait-dv]] | Commandes et sorties du diagnostic, telles quelles |
 | [[2026-09-24-declarations-utilisateur]] | Citations de l'utilisateur |
 | [[2026-09-24-mise-a-jour-application]] | Expérience cmd.exe, sortie de la mise à jour réelle |
+| [[2026-09-26-nvenc-pilote]] | Builds ffmpeg essayés sous le pilote 597, sorties NVENC, sonde d'IRIS |

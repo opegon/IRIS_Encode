@@ -15,19 +15,32 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Label, ProgressBar, Static
 
+from core.texte import pluriel
 from core.decision import FileDecision, force_skip_to_encode
 from core.muxer import MuxProcess, build_mux_command, mux_output_path
 
-from ..common import actions_ecran, footer_line2, retour_accueil
+from ..common import barre_etat, actions_ecran, footer_line2, retour_accueil
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
+
+
+
+def commande_courte(cmd: list[str]) -> str:
+    """La commande, chemins réduits à leur nom de fichier.
+
+    Les chemins complets faisaient l'essentiel de sa longueur ; le dossier
+    est celui de la source, déjà connu (UX-26).
+    """
+    # Un nom de piste peut contenir « / » (« VF / AC3 ») : seuls les chemins
+    # absolus sont réduits.
+    return " ".join(Path(a).name if Path(a).is_absolute() else a for a in cmd)
 
 
 class MuxScreen(Screen[bool]):
     """Lance mkvmerge et suit sa progression."""
 
     BINDINGS = [
-        Binding("f1",        "dryrun",  "Dry-run", show=True),
+        Binding("f1",        "dryrun",  "Aperçu",  show=True),
         Binding("f2",        "encode",  "Encoder", show=True),
         Binding("backspace", "go_back", "Retour",  show=True),
         Binding("escape",    "go_back", "Retour",  show=False, priority=True),
@@ -52,8 +65,10 @@ class MuxScreen(Screen[bool]):
     #mux-label  { width: 12; }
     #mux-bar    { width: 1fr; }
     #mux-state  { height: 2; }
+    /* Repliée : la commande brute occupait l'écran (UX-26). */
     #mux-cmd {
-        height: 1fr;
+        height: auto;
+        max-height: 4;
         color: $text-muted;
         border-top: solid $primary;
         padding-top: 1;
@@ -86,9 +101,9 @@ class MuxScreen(Screen[bool]):
         )
 
     def on_mount(self) -> None:
-        self.query_one("#status-bar", Static).update(
-            f" Mux — {self._source.name} ── {len(self._tracks)} piste(s) greffée(s)"
-        )
+        self.query_one("#status-bar", Static).update(barre_etat(
+            "Mux", self._source.name, pluriel(len(self._tracks), "piste greffée")
+        ))
         self.query_one("#mux-out", Static).update(f"Sortie : {self._output.name}")
         self._run()
 
@@ -116,7 +131,7 @@ class MuxScreen(Screen[bool]):
                 self._set, "#mux-state", f"✗ {e}")
             return
 
-        self.app.call_from_thread(self._set, "#mux-cmd", " ".join(cmd))
+        self.app.call_from_thread(self._set, "#mux-cmd", commande_courte(cmd))
         self.app.call_from_thread(
             self._set, "#mux-state", "▶ Mux lancé — copie du conteneur en cours…")
 
@@ -210,7 +225,11 @@ class MuxScreen(Screen[bool]):
 
     # ── Sortie ────────────────────────────────────────────────────────────────
 
-    def action_go_back(self) -> None:
+    def _interrompre(self) -> None:
+        """Arrête le processus en cours et efface la sortie partielle.
+
+        Appelée au retour et en quittant l'application (UX-06).
+        """
         # Mux interrompu : le fichier partiel n'est pas exploitable
         if self._process and not self._done:
             self._process.terminate()
@@ -219,6 +238,9 @@ class MuxScreen(Screen[bool]):
                 self._output.unlink(missing_ok=True)
             except OSError:
                 pass
+
+    def action_go_back(self) -> None:
+        self._interrompre()
         self.dismiss(self._ok)
 
     def action_accueil(self) -> None:

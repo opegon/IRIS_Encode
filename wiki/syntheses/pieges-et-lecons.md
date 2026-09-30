@@ -1,7 +1,8 @@
 ---
 type: synthese
-maj: 2026-09-24
+maj: 2026-09-29
 sources:
+  - "[[source-2026-09-26-nvenc-pilote]]"
   - "[[source-2026-09-24-mise-a-jour]]"
   - "[[source-changelog]]"
   - "[[source-spec]]"
@@ -63,7 +64,10 @@ une ligne de moins dans une liste.
 | Barre de progression figée | deux tubes, un seul lu | [[sous-processus]] |
 | Sortie AV1 reproposée, source effacée | filtre des sorties d'IRIS incomplet | spec § 15.2 |
 | Fragment de ligne exécuté comme une commande | `.bat` remplacé pendant son exécution | [[sous-processus#Scripts .bat réécrits pendant leur exécution]] |
+| `hevc_nvenc` absent après réinstallation du poste | build ffmpeg à l'API NVENC 13.1, pilote 597 | [[ffmpeg#NVENC et version du pilote]] |
 | Débit « trop gros » : réencodage inutile | débit du conteneur comparé au seuil vidéo | [[codecs-video#Mesurer le débit vidéo|Codecs vidéo]] |
+| « Select.NULLk » dans le formulaire de profil | Textual 8 : la valeur vide est `Select.NULL`, `Select.BLANK` ne vaut plus que `False` ; une valeur hors liste laisse le champ vide *(mesuré, UX-03)* | spec § 14.8 |
+| ffmpeg continue après la sortie de l'écran | quitter un écran ne tue pas ses processus *(mesuré, UX-01)* | [[sous-processus]] |
 
 ## Hypothèses infirmées
 
@@ -73,6 +77,7 @@ une ligne de moins dans une liste.
 | Il faut `-ac 6` pour replier du 7.1 en AC3 | ffmpeg replie de lui-même, à l'octet près |
 | Le défaut d'audio vide vient de la disposition des sorties | c'est la simultanéité dans un même processus |
 | Le chemin MKV du retrait DV était aussi en cause dans le plantage TV | paquets identiques à la source ; seul le MP4 était cassé |
+| Une release stable de ffmpeg (8.1) suffit pour NVENC sous un vieux pilote | gyan.dev 8.1.2 exige l'API 13.1 ; seul BtbN n8.1.3 passe |
 
 ## Voir aussi
 

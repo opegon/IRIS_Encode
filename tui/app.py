@@ -80,6 +80,9 @@ class IrisEncodeApp(App):
             self.cfg, self.profiles
         )
         self.platform:         PlatformProfile = detect_platform()
+        # Les lots passés par l'écran d'encodage, que l'accueil n'a pas encore
+        # pris en compte : il les relit à son retour au premier plan (UX-04).
+        self.lots_encodes:     list[list] = []
         # Câble dovi_tool dans le scanner (enrichissement DV au scan)
         from core import dovi, scanner
         bin_dir   = cfg_mod.get_bin_dir(self.cfg)
@@ -103,9 +106,17 @@ class IrisEncodeApp(App):
             # qu'à partir d'Ada, et une carte antérieure ne le dit qu'au
             # moment d'échouer. ~0,7 s, en parallèle.
             from dataclasses import replace as _dc
-            from core.platform import encodeurs_a_sonder, sonder_encodeurs
-            self.platform = _dc(self.platform, encodeurs_ok=sonder_encodeurs(
-                encodeurs_a_sonder(self.platform), ffmpeg_p))
+            from core.platform import (alerte_pilote_nvenc, encodeurs_a_sonder,
+                                       sonder_encodeurs)
+            refus: dict[str, str] = {}
+            ok = sonder_encodeurs(encodeurs_a_sonder(self.platform), ffmpeg_p,
+                                  refus)
+            # Un ffmpeg plus récent que le pilote perd tout NVENC sans le dire
+            # ailleurs que dans sa sortie d'erreur : on la lit ici.
+            alerte = next(filter(None, (alerte_pilote_nvenc(err)
+                                        for err in refus.values())), None)
+            self.platform = _dc(self.platform, encodeurs_ok=ok,
+                                alerte_nvenc=alerte)
             from core import sync as sync_mod
             sync_mod.set_ffmpeg_path(ffmpeg_p)
         # Câble mkvmerge pour la greffe de pistes externes (optionnel)
@@ -149,6 +160,9 @@ class IrisEncodeApp(App):
     def on_mount(self) -> None:
         from tui.screens.browser import BrowserScreen
         self.push_screen(BrowserScreen(self.start_path, start_virtual=True))
+        if self.platform.alerte_nvenc:
+            self.notify(self.platform.alerte_nvenc, title="Carte graphique",
+                        severity="warning", timeout=30)
 
     def action_aide(self) -> None:
         """Ouvre le guide des touches, sauf si on est en train d'écrire."""
@@ -161,13 +175,41 @@ class IrisEncodeApp(App):
             return                       # déjà ouvert : `h` le referme
         self.push_screen(AideScreen())
 
+    # Worker en cours → ce que quitter lui fait. Les autres (scan, recherches)
+    # ne produisent rien qu'on perdrait.
+    _TRAVAUX = {
+        "encoder":       "L'encodage en cours sera arrêté, sa sortie partielle effacée.",
+        "muxer":         "Le mux en cours sera arrêté, sa sortie partielle effacée.",
+        "joiner":        "La jonction en cours sera arrêtée, sa sortie partielle effacée.",
+        "sync-measure":  "La mesure en cours sera perdue.",
+        "sync-ancrage":  "La mesure en cours sera perdue.",
+        "wizard-mesure": "La mesure en cours sera perdue.",
+        "sync-retime":   "Le recalage en cours sera perdu.",
+    }
+
+    def travaux_en_cours(self) -> list[str]:
+        """Les phrases de `_TRAVAUX` des workers qui tournent, sans doublon."""
+        phrases: list[str] = []
+        for w in self.workers:
+            texte = self._TRAVAUX.get(w.name or "")
+            if w.is_running and texte and texte not in phrases:
+                phrases.append(texte)
+        return phrases
+
     def action_request_quit(self) -> None:
         """Affiche la modal de confirmation avant de quitter."""
         from tui.screens.quit import QuitConfirmScreen
-        self.push_screen(QuitConfirmScreen(), self._on_quit_answer)
+        self.push_screen(QuitConfirmScreen(self.travaux_en_cours()),
+                         self._on_quit_answer)
 
     def _on_quit_answer(self, confirmed: bool) -> None:
         if confirmed:
+            # Tenir la promesse du message : un processus lancé par l'écran
+            # survivrait à l'application et continuerait d'écrire.
+            for ecran in self.screen_stack:
+                arreter = getattr(ecran, "_interrompre", None)
+                if arreter is not None:
+                    arreter()
             self.exit()
 
     # Surcharge de l'action native Textual (Ctrl+C système)

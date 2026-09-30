@@ -43,9 +43,10 @@ from core.decision import (
     AudioAction, DVAction, FileDecision, TracksSelection,
     VideoAction, VideoOverride, decide_audio, decide_video,
 )
-from ..common import (
+from ..common import (langue_affichee, nom_codec, barre_etat, 
     ECARTEE,
     actions_ecran,
+    largeur_entete,
     retour_accueil,
     raccourcis,
     cellule,
@@ -113,8 +114,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         Binding("+",         "val_up",        "Valeur suiv.",         show=False),
         Binding("-",         "val_down",      "Valeur préc.",         show=False),
         Binding("enter",     "enter_action",  "Valider",              show=True, priority=True),
-        Binding("f1",        "dryrun",        "Dry-run",              show=True),
-        Binding("f2",        "run",           "Run",                  show=True),
+        Binding("f1",        "dryrun",        "Aperçu",               show=True),
+        Binding("f2",        "run",           "Encoder",              show=True),
         Binding("f4",        "change_profile","Profil",               show=True),
         Binding("f6",        "open_codec",    "Codec",                show=True),
         Binding("f7",        "open_bitrate",  "Débit",                show=True),
@@ -132,7 +133,9 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
     RESIZE_COLS   = ["codec", "fmt", "src", "titre"]
     RESIZE_LABELS = {"codec": "Codec", "fmt": "Format", "src": "Source",
                      "titre": "Titre"}
-    RESIZE_FIXE   = 26   # case (7) + Piste (_W_IDX) + Langue (8), hors cycle
+    # case (7) + Piste (_W_IDX) + Langue (8), hors cycle, leurs marges, barre
+    # de défilement. « Décision / Cible » suit son contenu et n'y est pas.
+    RESIZE_FIXE   = 26 + 3 * 2 + 2
 
     DEFAULT_CSS = """
     TracksScreen { layout: vertical; }
@@ -223,11 +226,10 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         règle qui traverse sans couper le titre.
         """
         w    = self._resize_widths()
-        _min = self.RESIZE_MIN_DEFAULT
         # « Décision / Cible » s'ajuste à son contenu : le trait n'a pas de
         # largeur à suivre, il prend celle du plus long libellé qu'on y écrit.
-        largeurs = [7, _W_IDX, max(_min, w["codec"]), max(_min, w["fmt"]), 8,
-                    max(_min, w["src"]), max(_min, w["titre"]), 24]
+        largeurs = [7, _W_IDX, self.resize_largeur("codec", w["codec"]), self.resize_largeur("fmt", w["fmt"]), 8,
+                    self.resize_largeur("src", w["src"]), self.resize_largeur("titre", w["titre"]), 24]
         cells = [Text(titre, style="bold dim") if i == 1
                  else Text("─" * n, style="dim")
                  for i, n in enumerate(largeurs)]
@@ -240,19 +242,18 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         table.clear(columns=True)
 
         widths = cfg_mod.get_tracks_column_widths(self.app.cfg)  # type: ignore[attr-defined]
-        _min   = self.RESIZE_MIN_DEFAULT
 
         table.add_column("",                          width=7,                          key="check")
-        table.add_column("Piste",                     width=_W_IDX,                     key="idx")
-        table.add_column(self.resize_header("codec"), width=max(_min, widths["codec"]), key="codec")
-        table.add_column(self.resize_header("fmt"),   width=max(_min, widths["fmt"]),   key="fmt")
-        table.add_column("Langue",                    width=8,                          key="lang")
+        table.add_column("Piste",                     width=largeur_entete("Piste", _W_IDX),                     key="idx")
+        table.add_column(self.resize_header("codec"), width=self.resize_largeur("codec", widths["codec"]), key="codec")
+        table.add_column(self.resize_header("fmt"),   width=self.resize_largeur("fmt", widths["fmt"]),   key="fmt")
+        table.add_column("Langue",                    width=largeur_entete("Langue", 8),                          key="lang")
         # « Source » portait deux sens : le motif de sélection pour l'audio
         # (« défaut », « sélectionné ») et le titre déclaré pour les
         # sous-titres (« QoQ-Team »). Les deux comptent — ce sont deux
         # colonnes, pas deux usages d'une seule.
-        table.add_column(self.resize_header("src"),   width=max(_min, widths["src"]),   key="src")
-        table.add_column(self.resize_header("titre"), width=max(_min, widths["titre"]), key="titre")
+        table.add_column(self.resize_header("src"),   width=self.resize_largeur("src", widths["src"]),   key="src")
+        table.add_column(self.resize_header("titre"), width=self.resize_largeur("titre", widths["titre"]), key="titre")
         table.add_column("Décision / Cible",          width=None,                       key="dec")
         self._rows = []
 
@@ -280,9 +281,9 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             table.add_row(
                 self._check_text(_ROW_AUDIO, idx),
                 cellule(f"0:a:{idx}{lock}",   style=dim),
-                cellule(t.codec,              style=dim),
+                cellule(nom_codec(t.codec),   style=dim),
                 cellule(t.channel_layout,     style=dim),
-                cellule(t.language or "?",    style=dim),
+                cellule(langue_affichee(t.language), style=dim),
                 cellule(reason,               style=dim),
                 cellule(t.title or "—",       style=dim),
                 cellule(ad.display() or ECARTEE,
@@ -306,7 +307,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 sel   = st.index in self._sel_subs
                 style = "" if sel else "dim"
                 type_str = "image" if st.is_image_based else "texte"
-                cont_str = "→ MKV copy" if st.is_image_based else "→ MP4 copy"
+                cont_str = "→ copie MKV" if st.is_image_based else "→ copie MP4"
 
                 # Raison simplifiée pour l'affichage
                 if sel:
@@ -317,9 +318,9 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 table.add_row(
                     self._check_text(_ROW_SUBTITLE, st.index),
                     cellule(f"0:s:{st.index}",  style=style),
-                    cellule(st.codec,           style=style),
+                    cellule(nom_codec(st.codec), style=style),
                     cellule(type_str,           style=style),
-                    cellule(st.language or "?", style=style),
+                    cellule(langue_affichee(st.language), style=style),
                     cellule(reason,             style=style),
                     cellule(st.title or "—",    style=style),
                     cellule(cont_str if sel else ECARTEE,
@@ -337,9 +338,9 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 table.add_row(
                     Text("  ✓  ", style="bold green"),
                     cellule(f"ext #{et.source_tid}"),
-                    cellule(et.codec or kind),
+                    cellule(nom_codec(et.codec) if et.codec else kind),
                     cellule(et.sync_label()),
-                    cellule(et.language or "?",
+                    cellule(langue_affichee(et.language),
                             style="" if et.language else "bold dark_orange"),
                     cellule(et.source_path.name),
                     cellule(et.track_name or "—"),
@@ -457,15 +458,12 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         prof_id = self._decision.profile.id
         n_a     = len(self._sel_audio);  tot_a = len(self._decision.audio)
         n_s     = len(self._sel_subs);   tot_s = len(self._decision.info.subtitle_tracks)
-        ovr_str = "  ·  ★ vidéo modifiée" if self._has_override() else ""
-        self.query_one("#status-bar", Static).update(
-            f" {fname}    "
-            f"Profil : [{prof_id}]  ·  "
-            f"Audio : {n_a}/{tot_a}  ·  "
-            f"Sous-titres : {n_s}/{tot_s}"
-            f"{ovr_str}"
-            f"  ·  Col : {self.resize_col_label} [</>]"
-        )
+        ovr_str = "★ vidéo modifiée" if self._has_override() else ""
+        self.query_one("#status-bar", Static).update(barre_etat(
+            "", fname, f"Profil : {prof_id}", f"Audio : {n_a}/{tot_a}",
+            f"Sous-titres : {n_s}/{tot_s}", ovr_str,
+            f"Col : {self.resize_col_label}  </>",
+        ))
 
     def _update_hint_bar(self) -> None:
         """Aide contextuelle : contrôles d'édition sur la ligne vidéo, sélection sinon."""

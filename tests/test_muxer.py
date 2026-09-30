@@ -589,3 +589,14 @@ def test_encode_without_premux_reads_the_source():
     assert dec.encode_source is None
     cmd = build_command(dec, _plat())
     assert cmd[cmd.index("-i") + 1] == str(dec.info.path)
+
+
+def test_la_commande_affichee_est_repliee():
+    """UX-26 : les chemins complets faisaient l'essentiel de la commande."""
+    from pathlib import Path
+    from tui.screens.mux_run import commande_courte
+    src = str(Path("D:/Films/Heat/Heat.mkv").resolve())
+    cmd = ["mkvmerge", "-o", src.replace("Heat.mkv", "Heat.mux.IRIS.mkv"),
+           "--track-name", "0:VF / AC3", src]
+    assert commande_courte(cmd) == ("mkvmerge -o Heat.mux.IRIS.mkv "
+                                    "--track-name 0:VF / AC3 Heat.mkv")

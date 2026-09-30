@@ -36,15 +36,16 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
+from core.texte import pluriel
 from core.decision import (ACTION_CYCLE, SUFFIX_BY_ACTION, AudioAction,
                            DVAction, FileDecision, VideoAction, cycle_index,
                            decide_audio, resoudre_sorties)
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import measure_external_track
 
-from ..common import (bitrate_picker_config, codec_picker_opts, fmt_duration,
+from ..common import (langue_affichee, nom_codec, bitrate_picker_config, codec_picker_opts, fmt_duration,
                       footer_line2, retour_accueil, tronquer_milieu,
-                      ECARTEE, actions_ecran, cellule)
+                      ECARTEE, actions_ecran, cellule, largeur_entete)
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
@@ -80,9 +81,26 @@ _TOUCHES_ETAPE.update({
     Etape.FICHIER:  ("enter",),
     Etape.DECISION: ("space", "f6", "f7", "enter"),
     Etape.PISTES:   ("f9", "d", "enter"),
-    Etape.LANCER:   ("enter", "m", "e"),
+    Etape.LANCER:   ("enter", "f3", "f2"),
     Etape.TERMINE:  ("enter",),
 })
+
+# Ce qu'une touche fait à cette étape, quand le libellé général ne le dit pas.
+# La ligne d'aide redisait le pied de page avec d'autres mots — « Espace garde
+# ou écarte » face à « ␣ Garder » (UX-11) : le pied porte seul les touches.
+_LIBELLES_ETAPE: dict[Etape, dict[str, str]] = {
+    Etape.DECISION: {"space": "Garder / écarter"},
+    Etape.PISTES:   {"f9": "Présenter un fichier", "d": "Retirer la dernière"},
+    Etape.LANCER:   {"enter": "Lancer le recommandé"},
+    Etape.TERMINE:  {"enter": "Retour à la liste"},
+}
+
+
+def _actions_etape(ecran, etape: Etape) -> list[tuple[str, str]]:
+    propres = _LIBELLES_ETAPE.get(etape, {})
+    return [(k, propres.get(k, lib))
+            for k, lib in actions_ecran(ecran, _TOUCHES_ETAPE[etape])]
+
 
 # Genres de lignes de la table de l'étape 2
 _L_AUDIO, _L_SUB, _L_EXT = "a", "s", "e"
@@ -122,8 +140,9 @@ class WizardScreen(TableNavMixin, Screen):
         Binding("f7",        "debit",    "Débit",   show=True,  priority=True),
         Binding("f9",        "donneur",  "Ajouter", show=True,  priority=True),
         Binding("d",         "retirer",  "Retirer", show=True,  priority=True),
-        Binding("m",         "muxer",    "Muxer",   show=True,  priority=True),
-        Binding("e",         "encoder",  "Encoder", show=True,  priority=True),
+        # F2/F3 comme sur le recalage : `M` y veut dire Mesurer (UX-12).
+        Binding("f2",        "encoder",  "Encoder", show=True,  priority=True),
+        Binding("f3",        "muxer",    "Muxer",   show=True,  priority=True),
         Binding("backspace", "retour",   "Retour",  show=True,  priority=True),
         Binding("escape",    "retour",   "Retour",  show=False, priority=True),
         Binding("ctrl+home", "accueil",  "Accueil", show=True,  priority=True),
@@ -154,7 +173,7 @@ class WizardScreen(TableNavMixin, Screen):
         yield Static("", id="wiz-hint", markup=False)
         # Même accent que la barre de l'accueil en mode assistant : on sait
         # d'un coup d'œil dans quel parcours on se trouve.
-        yield KeyFooter(actions=actions_ecran(self, _TOUCHES_ETAPE[self._etape]),
+        yield KeyFooter(actions=_actions_etape(self, self._etape),
                         classes="assistant",
                         nav=footer_line2(back=True, nav=True, accueil=True))
 
@@ -217,7 +236,7 @@ class WizardScreen(TableNavMixin, Screen):
             table.focus()
         try:
             self.query_one(KeyFooter).update_line(
-                1, actions_ecran(self, _TOUCHES_ETAPE[self._etape]))
+                1, _actions_etape(self, self._etape))
         except Exception:
             pass                      # pas encore monté : compose a déjà servi
 
@@ -228,12 +247,12 @@ class WizardScreen(TableNavMixin, Screen):
         t = Text()
         t.append("Fichier à traiter\n\n", style="bold")
         t.append(f"  {d.info.path.name}\n\n")
-        t.append(f"  {d.info.width}×{d.info.height} · {d.info.codec} · "
+        t.append(f"  {d.info.width}x{d.info.height} · {nom_codec(d.info.codec)} · "
                  f"{d.info.kbps}k · {fmt_duration(d.info.duration)}\n")
-        t.append(f"  {len(d.info.audio_tracks)} piste(s) audio · "
-                 f"{len(d.info.subtitle_tracks)} sous-titre(s)\n\n")
+        t.append(f"  {pluriel(len(d.info.audio_tracks), 'piste audio', 'pistes audio')} · "
+                 f"{pluriel(len(d.info.subtitle_tracks), 'sous-titre')}\n\n")
         t.append(f"  Profil actif   {d.profile.id}\n", style="bold")
-        return t, "↵ Continuer   ·   ⌫ Retour à la liste", False
+        return t, "", False
 
     # ── Étape 2 — codec, débit, pistes ────────────────────────────────────────
 
@@ -247,18 +266,15 @@ class WizardScreen(TableNavMixin, Screen):
             t.append(f" · {v.target_bitrate // 1000}k visés")
         t.append(f"\n           {v.reason}\n")
         self._remplir_decision()
-        return (t,
-                "Espace garde ou écarte une piste   ·   F6 Codec   ·   "
-                "F7 Débit   ·   ↵ Continuer   ·   ⌫ Retour",
-                True)
+        return t, "", True
 
     def _remplir_decision(self) -> None:
         table = self.query_one(DataTable)
         table.add_column("", width=3)
-        table.add_column("Piste",    width=14)
-        table.add_column("Codec",    width=12)
-        table.add_column("Langue",   width=8)
-        table.add_column("Nom",      width=30)
+        table.add_column("Piste",    width=largeur_entete("Piste", 14))
+        table.add_column("Codec",    width=largeur_entete("Codec", 12))
+        table.add_column("Langue",   width=largeur_entete("Langue", 8))
+        table.add_column("Nom",      width=largeur_entete("Nom", 30))
         table.add_column("Décision", width=None)
 
         d = self._dec
@@ -272,7 +288,7 @@ class WizardScreen(TableNavMixin, Screen):
         for st in d.info.subtitle_tracks:
             self._ligne(_L_SUB, st.index, st.index in gardes,
                         f"0:s:{st.index}", st.codec, st.language, st.title,
-                        "copie" if st.index in gardes else ECARTEE)
+                        "→ copie" if st.index in gardes else ECARTEE)
         for n, ext in enumerate(d.external_tracks):
             kind = "audio" if ext.kind == TrackKind.AUDIO else "sous-titre"
             self._ligne(_L_EXT, n, True, f"greffe {kind}", ext.codec,
@@ -285,8 +301,8 @@ class WizardScreen(TableNavMixin, Screen):
         table.add_row(
             Text("✓" if garde else " ", style="bold green" if garde else "dim"),
             cellule(piste,        style=style),
-            cellule(codec,        style=style),
-            cellule(langue or "?", style=style),
+            cellule(nom_codec(codec), style=style),
+            cellule(langue_affichee(langue), style=style),
             cellule(nom or "—",   style=style, largeur=30),
             cellule(decision,     style="green" if garde else "dim"),
         )
@@ -309,14 +325,11 @@ class WizardScreen(TableNavMixin, Screen):
         else:
             for ext in d.external_tracks:
                 kind = "audio" if ext.kind == TrackKind.AUDIO else "sous-titre"
-                t.append(f"  {kind:11} {ext.language or '?':4} "
+                t.append(f"  {kind:11} {langue_affichee(ext.language):4} "
                          f"{ext.track_name or ext.source_path.name}\n")
                 t.append(f"              {ext.sync_label()}   "
                          f"{self._origine(ext)}\n", style="dim")
-        return (t,
-                "F9 Présenter un fichier   ·   D Retirer la dernière   ·   "
-                "↵ Continuer   ·   ⌫ Retour",
-                False)
+        return t, "", False
 
     @staticmethod
     def _origine(ext) -> str:
@@ -350,14 +363,11 @@ class WizardScreen(TableNavMixin, Screen):
                 t.append("  Sans piste à greffer, le mux n'aurait rien à faire.\n",
                          style="dim")
         t.append("\n  Les deux restent offerts : ")
-        t.append("M", style="bold")
+        t.append("F3", style="bold")
         t.append(" muxer, ")
-        t.append("E", style="bold")
+        t.append("F2", style="bold")
         t.append(" encoder.\n")
-        return (t,
-                "↵ Lancer le choix recommandé   ·   M Muxer   ·   E Encoder   "
-                "·   ⌫ Retour",
-                False)
+        return t, "", False
 
     # ── Étape 5 — terminé ─────────────────────────────────────────────────────
 
@@ -365,7 +375,7 @@ class WizardScreen(TableNavMixin, Screen):
         t = Text()
         t.append((self._bilan or "Opération terminée.") + "\n", style="bold")
         t.append(f"\n  {self._dec.output_path.name}\n")
-        return t, "↵ Retour à la liste des fichiers", False
+        return t, "", False
 
     # ── Navigation ────────────────────────────────────────────────────────────
 
@@ -519,7 +529,7 @@ class WizardScreen(TableNavMixin, Screen):
             if t.sync_origin != SyncOrigin.NONE:
                 continue                 # déjà reprise d'une piste mesurée
             libelle = (f"Mesure {rang + 1}/{len(ordre)} — "
-                       f"{t.language or '?'}")
+                       f"{langue_affichee(t.language)}")
 
             def rapport(f: float, _l=libelle, _r=rang) -> None:
                 # Chaque piste occupe sa part de la jauge : sinon elle
@@ -539,15 +549,15 @@ class WizardScreen(TableNavMixin, Screen):
                 t.stretch     = res.stretch
                 t.sync_origin = SyncOrigin.MEASURED
                 n = len(propager_recalage(pistes, i))
-                notes.append(f"{t.language or '?'} {res.delay_ms:+d} ms"
-                             + (f", reporté sur {n} sous-titre(s)" if n else "")
+                notes.append(f"{langue_affichee(t.language)} {res.delay_ms:+d} ms"
+                             + (f", reporté sur {pluriel(n, 'sous-titre')}" if n else "")
                              # Une mesure acceptée peut porter une réserve —
                              # des durées trop écartées pour être le même
                              # montage. La taire ici la perdrait : l'assistant
                              # ne montre pas le compte rendu détaillé.
                              + (f" — ⚠ {res.warning}" if res.warning else ""))
             else:
-                notes.append(f"{t.language or '?'} : {res.reason} — décalage "
+                notes.append(f"{langue_affichee(t.language)} : {res.reason} — décalage "
                              f"laissé à 0, à vérifier avant de lancer")
         self.app.call_from_thread(self._mesure_finie, notes)
 
@@ -556,8 +566,7 @@ class WizardScreen(TableNavMixin, Screen):
         self._jauge(False)
         self._afficher()
         if notes:
-            self.query_one("#wiz-hint", Static).update(
-                " · ".join(notes) + "\nF9 Ajouter   ·   ↵ Continuer")
+            self.query_one("#wiz-hint", Static).update(" · ".join(notes))
 
     # ── Étape 4 : exécution ───────────────────────────────────────────────────
 

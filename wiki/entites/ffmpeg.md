@@ -1,11 +1,12 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-09-24
+maj: 2026-09-26
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-diagnostic]]"
+  - "[[source-2026-09-26-nvenc-pilote]]"
 ---
 
 # ffmpeg
@@ -19,6 +20,27 @@ décalage). Outil **essentiel**. Voir aussi [[ffprobe]] et [[sous-processus]].
 |---|---|---|
 | 8.1.2 essentials (gyan.dev) | `bin/` | 2026-09-24 |
 | build git N-125365 (winget) | `PATH` du poste | 2026-09-24 |
+| n8.1.3 BtbN gpl | `PATH` du poste (`C:\Program Files\ffmpeg\bin`) | 2026-09-26 |
+
+`get_tool_path` prend le `PATH` **avant** `bin/`.
+
+## NVENC et version du pilote
+
+Chaque build embarque une version de l'API NVENC, qui fixe un pilote minimal.
+Un pilote trop ancien fait refuser **tous** les encodeurs NVENC. *(mesuré,
+pilote 597.16 = API 13.0, [[source-2026-09-26-nvenc-pilote]])*
+
+| Build | API exigée | Sous le pilote 597 |
+|---|---|---|
+| git master N-126856 (2026-09-25) | 13.1 (pilote ≥ 610) | refusé |
+| gyan.dev 8.1.2 essentials | 13.1 | refusé |
+| BtbN n9.0 | 13.1 | refusé |
+| BtbN n8.1.3 | ≤ 13.0 | accepté |
+
+Le numéro de ffmpeg ne dit donc rien : deux builds 8.1 divergent. La cause
+n'apparaît qu'en `-loglevel verbose` (« Driver does not support the required
+nvenc API version ») ; sans, seulement « Function not implemented ». Test :
+`ffmpeg -loglevel verbose -f lavfi -i testsrc2=d=1 -c:v hevc_nvenc -f null -`.
 
 Build installé par le preflight : *essentials* (~30 Mo), gyan.dev ou BtbN,
 SHA256 vérifié. Licence GPL (libx265 inclus). Un ffmpeg peut être construit

@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-09-24
+maj: 2026-09-29
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -44,6 +44,13 @@ bloquer le lancement.
   sortie partielle qui passe pour un film court. *(mesuré, IE-41)*
 - Tuer le processus si la boucle de lecture sort en erreur : un ffmpeg oublié
   décode un film entier pour personne.
+- **Quitter un écran ne tue rien.** Dépiler l'écran d'encodage laissait
+  ffmpeg écrire la sortie, invisible (UX-01). Un arrêt voulu termine le
+  processus **et** lève un drapeau que chaque démarrage relit *après* avoir
+  lancé le sien : sans ce second verrou, un arrêt tombé entre deux étapes
+  (mux préalable → encodage) laissait partir l'étape suivante. *(mesuré à
+  l'essai pour UX-01 ; le drapeau est vérifié par `tests/test_arret_encodage.py`,
+  v0.8.9.5)*
 
 ## Scripts .bat réécrits pendant leur exécution
 

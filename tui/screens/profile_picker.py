@@ -11,19 +11,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
-from ..common import DV_VALUE_STYLES, raccourcis
+from ..common import (PROFIL_COLONNES, cellules_profil, largeurs_colonnes,
+                      raccourcis)
 
 if TYPE_CHECKING:
     from core.profiles import Profile
-
-_COLUMNS = ["Profil", "1080p", "4K", "DV", "Preset", "HD audio", "Source"]
-
 
 class ProfilePickerScreen(ModalScreen[str | None]):
     """Modal de sélection de profil — mêmes touches que ValuePicker."""
@@ -75,27 +72,6 @@ class ProfilePickerScreen(ModalScreen[str | None]):
         self._current_id = current_id
         self._title      = title
 
-    # ── Cellules ──────────────────────────────────────────────────────────────
-
-    def _row_cells(self, name: str, prof: "Profile") -> list[Text]:
-        f       = prof.summary_fields()
-        active  = name == self._current_id
-        keep_4k = prof.data.get("keep_4k", False)
-        delete  = prof.data.get("delete_source", False)
-
-        name_txt = Text(f"{name} ✓" if active else name,
-                        style="bold green" if active else "bold", no_wrap=True)
-        br1080   = Text(f["1080p"], no_wrap=True)
-        br4k     = (Text(f["4k"], style="green", no_wrap=True) if keep_4k
-                    else Text("→ 1080p", style="dim", no_wrap=True))
-        dv       = Text(f["dv"], style=DV_VALUE_STYLES.get(f["dv"], ""), no_wrap=True)
-        preset   = Text(f["preset"], no_wrap=True)
-        hd       = Text(f["hd_audio"], style="" if f["hd_audio"] == "oui" else "dim",
-                        no_wrap=True)
-        source   = (Text("⚠ suppr.", style="bold dark_orange", no_wrap=True) if delete
-                    else Text("garder", style="dim", no_wrap=True))
-        return [name_txt, br1080, br4k, dv, preset, hd, source]
-
     # ── Composition ───────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
@@ -109,14 +85,10 @@ class ProfilePickerScreen(ModalScreen[str | None]):
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
 
-        rows = [self._row_cells(n, p) for n, p in self._profiles.items()]
-
-        # Largeur de chaque colonne = max(en-tête, contenu)
-        widths = [
-            max(len(_COLUMNS[i]), max((len(r[i].plain) for r in rows), default=0))
-            for i in range(len(_COLUMNS))
-        ]
-        for header, w in zip(_COLUMNS, widths):
+        rows = [cellules_profil(n, p, n == self._current_id)
+                for n, p in self._profiles.items()]
+        widths = largeurs_colonnes(PROFIL_COLONNES, rows)
+        for header, w in zip(PROFIL_COLONNES, widths):
             table.add_column(header, width=w)
 
         for name, cells in zip(self._names, rows):

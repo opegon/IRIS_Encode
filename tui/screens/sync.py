@@ -29,6 +29,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
 from core import preview
+from core.texte import pluriel
 from core.decision import FileDecision
 from core.muxer import (
     ExternalTrack, MuxProcess, SyncOrigin, TrackKind, build_sample_command,
@@ -40,7 +41,7 @@ from core.sync import (
     measure_with_anchor, read_cues, reperes_proposables,
 )
 
-from ..common import (actions_ecran, footer_line2, raccourcis, touche,
+from ..common import (langue_affichee, barre_etat, actions_ecran, footer_line2, largeur_entete, raccourcis, touche,
                       tronquer_milieu, retour_accueil)
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
@@ -97,7 +98,7 @@ _DELAY_JUMP_MS = 1000
 # les valeurs, et annoncer un pas en millisecondes y serait faux.
 _FIELD_KEYS: dict[str, list[tuple[str, str]]] = {
     "delay":   [("Ctrl+↑/↓", "±10 ms"), ("+/-", "±100 ms"),
-                ("Shift+↑/↓", "±1 s"), ("enter", "Liste")],
+                ("⇧↑/↓", "±1 s"), ("enter", "Liste")],
     "stretch": [("+/-", "Valeur suivante"), ("enter", "Liste")],
     "lang":    [("+/-", "Valeur suivante"), ("enter", "Liste")],
     "name":    [("+/-", "Valeur suivante"), ("enter", "Liste")],
@@ -158,9 +159,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("m",         "measure",      "Mesurer",       show=True),
         Binding("v",         "preview",      "Visualiser",    show=True),
         Binding("k",         "sample",       "Extrait",       show=True),
-        Binding("a",         "apply_candidate",
+        # `F` et `G` : `A` coche tout sur l'accueil, `S` passe un fichier
+        # pendant l'encodage, `O` ouvre OpenSubtitles sur l'écran voisin (UX-12).
+        Binding("f",         "apply_candidate",
                 "Forcer",  show=True),
-        Binding("s",         "show_segments", "Plages",        show=True),
+        Binding("g",         "show_segments", "Plages",        show=True),
         Binding("p",         "apply_segments",
                 "Appliquer",  show=True),
         Binding("c",         "copy_delay",   "Copier", show=True),
@@ -168,7 +171,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         Binding("d",         "remove_track", "Retirer",       show=True),
         # F1/F2 gardent partout le même sens : dry-run et encodage. Le mux,
         # propre à cet écran, prend F3.
-        Binding("f1",        "dryrun",       "Dry-run",       show=True),
+        Binding("f1",        "dryrun",       "Aperçu",        show=True),
         Binding("f2",        "run",          "Encoder",       show=True),
         Binding("f3",        "run_mux",      "Muxer",         show=True),
         Binding("f9",        "add_track",    "Ajouter", show=True),
@@ -197,7 +200,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
            entière, bordure comprise. La première ligne est celle du champ
            actif et ne s'efface jamais ; les trois autres sont au message. À
            une de moins, la dernière ligne d'un refus de mesure disparaissait —
-           celle qui renvoie vers 'a' ou 's', donc précisément l'indication
+           celle qui renvoie vers F ou G, donc précisément l'indication
            dont l'utilisateur a besoin à ce moment-là. */
         height: 5;
         background: $primary-darken-1;
@@ -229,7 +232,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         # (piste, décalage) proposé par une mesure refusée
         self._candidate: tuple[ExternalTrack, int] | None = None
         # (piste, plages) de la dernière mesure ayant constaté un montage
-        # différent — consultables avec 's', jamais appliquées
+        # différent — consultables avec 'g', jamais appliquées
         self._segments: tuple[ExternalTrack, list[Segment]] | None = None
 
     # ── Composition ───────────────────────────────────────────────────────────
@@ -265,14 +268,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         cursor = table.cursor_row if keep_cursor else 0
         table.clear(columns=True)
 
-        table.add_column("Source",    width=28, key="src")
-        table.add_column("Piste",     width=14, key="tid")
-        table.add_column("Décalage",  width=12, key="delay")
-        table.add_column("Étirement", width=11, key="stretch")
-        table.add_column("Langue",    width=8,  key="lang")
-        table.add_column("Nom",       width=_NAME_WIDTH, key="name")
-        table.add_column("Défaut",    width=8,  key="default")
-        table.add_column("Forcé",     width=7,  key="forced")
+        table.add_column("Source",    width=largeur_entete("Source", 28), key="src")
+        table.add_column("Piste",     width=largeur_entete("Piste", 14), key="tid")
+        table.add_column("Décalage",  width=largeur_entete("Décalage", 12), key="delay")
+        table.add_column("Étirement", width=largeur_entete("Étirement", 11), key="stretch")
+        table.add_column("Langue",    width=largeur_entete("Langue", 8),  key="lang")
+        table.add_column("Nom",       width=largeur_entete("Nom", _NAME_WIDTH), key="name")
+        table.add_column("Défaut",    width=largeur_entete("Défaut", 8),  key="default")
+        table.add_column("Forcé",     width=largeur_entete("Forcé", 7),  key="forced")
         table.add_column("Recalage",  width=None, key="origin")
 
         for i, t in enumerate(self._tracks):
@@ -293,7 +296,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         elif field == "stretch":
             txt = _STRETCH_LABELS.get(t.stretch, "?")
         elif field == "lang":
-            txt = t.language or "—"
+            txt = langue_affichee(t.language)
             if not t.language:
                 style = f"{style} bold dark_orange".strip()
         elif field == "name":
@@ -342,11 +345,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     def _update_status(self) -> None:
         n       = len(self._tracks)
         missing = sum(1 for t in self._tracks if not t.language)
-        warn    = f" ── ⚠ {missing} piste(s) sans langue" if missing else ""
-        self.query_one("#status-bar", Static).update(
-            f" {self._source.name} ── {n} piste(s) à greffer"
-            f" ── Champ : {_FIELD_LABELS[_FIELDS[self._field_idx]]}{warn}"
-        )
+        warn    = f"⚠ {pluriel(missing, 'piste')} sans langue" if missing else ""
+        self.query_one("#status-bar", Static).update(barre_etat(
+            "", self._source.name, f"{pluriel(n, 'piste')} à greffer",
+            f"Champ : {_FIELD_LABELS[_FIELDS[self._field_idx]]}", warn,
+        ))
         self._refresh_hint(missing)
 
     def _refresh_hint(self, missing: int | None = None) -> None:
@@ -576,12 +579,12 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self._candidate = (piste, res.best_delay_ms)
             self._segments  = (piste, res.segments) if res.segments else None
             if res.segments:
-                # report() porte déjà les paliers et renvoie vers 's' :
+                # report() porte déjà les paliers et renvoie vers 'g' :
                 # proposer d'appliquer un décalage unique serait ici trompeur.
                 self._set_hint(res.report())
             else:
                 self._set_hint(f"{res.report()}\n"
-                               f"'a' applique quand même "
+                               f"{touche('f')} applique quand même "
                                f"{res.best_delay_ms:+d} ms "
                                f"— à vérifier dans un lecteur.")
             return
@@ -614,7 +617,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         pistes = "sous-titre" if n == 1 else "sous-titres"
         accord = "s" if n > 1 else ""
         return (f"\n{n} {pistes} du même fichier recalé{accord} d'autant "
-                f"— 'c' pour en reprendre un autre.")
+                f"— {touche('c')} pour en reprendre un autre.")
 
     def action_ancrer(self) -> None:
         """Recale à partir d'un point donné à l'oreille.
@@ -628,7 +631,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         t = self._tracks[i]
         if t.kind != TrackKind.SUBTITLE:
             self._set_hint("Le point de repère sert aux sous-titres : une piste "
-                           "audio se mesure directement avec 'm'.")
+                           "audio se mesure directement avec M.")
             return
 
         from .ancrage import AncrageModal
@@ -707,7 +710,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         """
         if self._candidate is None:
             self._set_hint("Aucun candidat en attente — lancez d'abord une "
-                           "mesure avec 'm'.")
+                           "mesure avec M.")
             return
         piste, delay = self._candidate
         i = self._rang(piste)
@@ -765,7 +768,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return
         if self._segments is None:
             self._set_hint("Aucune plage connue — mesurez d'abord la piste "
-                           "audio du donneur avec 'm'.")
+                           "audio du donneur avec M.")
             return
 
         if self._measuring:
@@ -835,7 +838,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._set_hint(
             f"Piste recalée — décalage nul désormais.\n"
             f"{fichier.name}{reserve}\n"
-            f"'v' pour contrôler dans mpv, 'k' pour un extrait muxé.")
+            f"{touche('v')} pour contrôler dans mpv, {touche('k')} pour un extrait muxé.")
 
     def _build_corrected_subtitle(self, i: int, segs: list[Segment]) -> None:
         import tempfile
@@ -873,7 +876,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             f"Sous-titre recalé sur {len(segs)} plages ({paliers} ms) — "
             f"décalage nul désormais.\n"
             f"{out.name}\n"
-            f"'v' pour contrôler dans mpv, 'k' pour un extrait muxé.")
+            f"{touche('v')} pour contrôler dans mpv, {touche('k')} pour un extrait muxé.")
 
     # ── Contrôle à l'œil ──────────────────────────────────────────────────────
 

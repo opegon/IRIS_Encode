@@ -17,7 +17,8 @@ from textual.widgets import Button, DataTable, Static
 
 from core import profiles as prof_mod
 from core.profiles import Profile
-from ..common import (DV_VALUE_STYLES, actions_ecran, footer_line2, raccourcis,
+from ..common import (barre_etat, PROFIL_COLONNES, cellules_profil,
+                      largeurs_colonnes, actions_ecran, footer_line2, raccourcis,
                       retour_accueil)
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
@@ -26,6 +27,7 @@ from ..widgets.profile_form import ProfileCancelled, ProfileForm, ProfileSaved
 
 if TYPE_CHECKING:
     from ..app import IrisEncodeApp
+
 
 
 class ConfigScreen(TableNavMixin, Screen[bool]):
@@ -95,54 +97,23 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         profiles = self._app.profiles
         active   = self._app.active_profile_id
 
-        def _cw(header: str, vals: list[str], min_width: int = 0) -> int:
-            return max(len(header), max((len(v) for v in vals), default=0), min_width)
-
-        names        = list(profiles.keys())
-        fields_list  = [profiles[n].summary_fields() for n in names]
-        name_vals    = [f"[{n}] ✓" if n == active else f"[{n}]" for n in names]
-        action_vals  = ["✎ éditer  ✕ suppr." for _ in names]
-
-        table.add_column("Profil",   width=_cw("Profil",   name_vals,                       min_width=15), key="name")
-        table.add_column("Dolby V.", width=_cw("Dolby V.", [f["dv"]       for f in fields_list], min_width=9),  key="dv")
-        table.add_column("1080p",    width=_cw("1080p",    [f["1080p"]    for f in fields_list], min_width=7),  key="br1080")
-        table.add_column("4K",       width=_cw("4K",       [f["4k"]       for f in fields_list], min_width=10), key="br4k")
-        table.add_column("Preset",   width=_cw("Preset",   [f["preset"]   for f in fields_list], min_width=8),  key="preset")
-        table.add_column("HD Audio", width=_cw("HD Audio", [f["hd_audio"] for f in fields_list], min_width=9),  key="hd")
-        table.add_column("Suppr.",   width=_cw("Suppr.",   [f["del_src"]  for f in fields_list], min_width=7),  key="del")
-        table.add_column("Actions",  width=_cw("Actions",  action_vals,                     min_width=20), key="actions")
-
-        for name, profile in profiles.items():
-            is_active = (name == self._app.active_profile_id)
-            f         = profile.summary_fields()
-
-            name_txt  = Text(
-                f"[{name}]" + (" ✓" if is_active else ""),
-                style="bold green" if is_active else "bold",
-            )
-            dv_style  = DV_VALUE_STYLES.get(f["dv"], "")
-            actions   = Text("✎ éditer  ✕ suppr.", no_wrap=True)
-
-            table.add_row(
-                name_txt,
-                Text(f["dv"],       style=dv_style, no_wrap=True),
-                Text(f["1080p"],    no_wrap=True),
-                Text(f["4k"],       no_wrap=True),
-                Text(f["preset"],   no_wrap=True),
-                Text(f["hd_audio"], no_wrap=True),
-                Text(f["del_src"],  style="bold dark_orange" if "oui" in f["del_src"] else "dim", no_wrap=True),
-                actions,
-                key=name,
-            )
+        entetes = PROFIL_COLONNES + ["Actions"]
+        lignes  = [cellules_profil(n, p, n == active) +
+                   [Text("✎ éditer  ✕ suppr.", no_wrap=True)]
+                   for n, p in profiles.items()]
+        for entete, largeur in zip(entetes, largeurs_colonnes(entetes, lignes)):
+            table.add_column(entete, width=largeur)
+        for nom, cellules in zip(profiles, lignes):
+            table.add_row(*cellules, key=nom)
 
     def _update_header(self) -> None:
         if self._form_mode:
             return
         active = self._app.active_profile_id
-        self.query_one("#config-header-bar", Static).update(
-            f" Configuration — Profils d'encodage    "
-            f"profiles.toml · Actif : {active}"
-        )
+        self.query_one("#config-header-bar", Static).update(barre_etat(
+            "Gérer les profils", "profiles.toml",
+            f"Actif : {active}",
+        ))
 
     def _focused_profile_name(self) -> str | None:
         table = self.query_one(DataTable)
@@ -239,7 +210,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         self.query_one(ProfileForm).remove_class("hidden")
         self.query_one("#config-actions").display = False
         # Header contextuel
-        lbl = "Nouveau profil" if is_new else f"Edition [{profile_id}]"
+        lbl = "Nouveau profil" if is_new else f"Édition — {profile_id}"
         self.query_one("#config-header-bar", Static).update(
             f" {lbl}   —   " + raccourcis([("ctrl+s", "Enregistrer"),
                                           ("escape", "Annuler")])

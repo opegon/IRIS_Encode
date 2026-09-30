@@ -16,6 +16,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Static
 
 from core import config as cfg_mod
+from core.texte import pluriel
 from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
@@ -26,8 +27,9 @@ from core.decision import (
     AudioAction, DVAction, FileDecision, VideoAction,
     video_recopiee,
 )
-from ..common import (
+from ..common import (langue_affichee, barre_etat, 
     actions_ecran,
+    touche,
     cellule,
     retour_accueil,
     codec_picker_opts,
@@ -84,8 +86,9 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     BINDINGS = [
         Binding("space",     "toggle_select",        "Sélect",  show=True),
-        Binding("f2",        "run",         "Lancer",  show=True),
-        Binding("enter",     "run",         "Lancer",  show=False, priority=True),
+        # Pas de `↵` : partout ailleurs elle ouvre ou valide, ici elle lançait
+        # des heures d'encodage sans rien demander (UX-05). F2 seule lance.
+        Binding("f2",        "run",         "Encoder", show=True),
         Binding("f6",        "open_codec",  "Codec",   show=True),
         Binding("f7",        "open_bitrate","Débit",   show=True),
         Binding("backspace", "go_back",     "Retour",  show=True),
@@ -113,7 +116,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         "audio":       "Audio",
     }
     RESIZE_MIN    = {"fichier": 20, "audio": 10, **cfg_mod.COLUMN_MIN_WIDTHS}
-    RESIZE_FIXE   = 3   # case à cocher
+    RESIZE_FIXE   = 3 + 2 + 2   # case à cocher, sa marge, barre de défilement
 
     DEFAULT_CSS = """
     DryrunScreen { layout: vertical; }
@@ -158,17 +161,11 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         widths = cfg_mod.get_dryrun_column_widths(self._app.cfg)
 
         table.add_column("",                            width=3,    key="check")
-        # Colonne fichier : 50% de la largeur de l'écran (ou largeur sauvegardée)
-        if "fichier" in widths and widths["fichier"] > self.RESIZE_MIN["fichier"]:
-            fichier_width = widths["fichier"]
-        else:
-            # 50% de la largeur disponible (moins la colonne check et marges)
-            terminal_width = self.size.width if hasattr(self, 'size') else 120
-            fichier_width = max(self.RESIZE_MIN["fichier"], (terminal_width - 8) // 2)
+        fichier_width = self._largeur_fichier(widths)
         table.add_column(self.resize_header("fichier"), width=fichier_width, key="fichier")
 
         for col in self.RESIZE_COLS[1:]:
-            table.add_column(self.resize_header(col), width=widths[col], key=col)
+            table.add_column(self.resize_header(col), width=self.resize_largeur(col, widths[col]), key=col)
 
         total_src = 0
         total_est = 0
@@ -191,7 +188,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 res_str     = f"{vid.target_width}x{vid.target_height}"
 
             audio_parts = [
-                f"{ad.track.channel_layout} {ad.track.language or '?'} (→ {ad.display() or 'copy'})"
+                f"{ad.track.channel_layout} {langue_affichee(ad.track.language)} (→ {ad.display() or 'copie'})"
                 for ad in dec.audio if ad.action != AudioAction.EXCLUDE
             ]
 
@@ -289,10 +286,10 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         av1_str   = f"  ·  AV1 {av1}" if av1 else ""
         dv_str    = f"  ·  HEVC+DV {dv}" if dv else ""
         strip_str = f"  ·  DV→HDR10 {strip}" if strip else ""
-        self.query_one("#status-bar", Static).update(
-            f" Dry-run — {total} fichier(s) sélectionné(s)"
-            f"  ·  Col : {self.resize_col_label} [</>]"
-        )
+        self.query_one("#status-bar", Static).update(barre_etat(
+            "Aperçu", pluriel(total, "fichier sélectionné"),
+            f"Col : {self.resize_col_label}  </>",
+        ))
         self.query_one("#dryrun-summary", Static).update(
             f" À encoder : HEVC {hevc}  ·  H264 {h264}{av1_str}{dv_str}"
             f"{strip_str}  ·  SKIP {skip}{gain_str}"
@@ -300,8 +297,17 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     # ── Resize colonnes (ColumnResizeMixin) ───────────────────────────────────
 
+    def _largeur_fichier(self, widths: dict[str, int]) -> int:
+        """Fichier prend la place que les autres laissent, comme sur l'accueil."""
+        reglee = (self._app.cfg.get("tui", {}).get("dryrun", {})
+                  .get("columns", {}).get("fichier"))
+        if reglee:
+            return self.resize_largeur("fichier", reglee)
+        return self.resize_remplissage("fichier", widths, widths["fichier"])
+
     def _resize_widths(self) -> dict[str, int]:
-        return cfg_mod.get_dryrun_column_widths(self._app.cfg)
+        widths = cfg_mod.get_dryrun_column_widths(self._app.cfg)
+        return {**widths, "fichier": self._largeur_fichier(widths)}
 
     def _resize_persist(self, key: str, width: int) -> None:
         cfg_mod.set_dryrun_column_width(self._app.cfg, key, width)
@@ -370,7 +376,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         dec.video = dc_replace(
             dec.video,
             target_bitrate = new_bitrate_bps,
-            reason         = f"Débit modifié manuellement (dry-run) : {new_bitrate_bps // 1000}k",
+            reason         = f"Débit modifié manuellement (aperçu) : {new_bitrate_bps // 1000}k",
         )
 
     def action_open_codec(self) -> None:
@@ -418,6 +424,13 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         to_encode = [self._decisions[idx] for idx in self._selected
                      if idx < len(self._decisions) and self._decisions[idx].video.action != VideoAction.SKIP]
         if not to_encode:
+            # Rien à lancer : le dire (UX-17). Une ligne SKIP s'encode après
+            # un changement de codec, F6.
+            self.notify(
+                f"Rien à encoder : aucune ligne retenue n'est à réencoder — "
+                f"{touche('space')} retient une ligne, {touche('f6')} change "
+                f"le codec d'une ligne SKIP.",
+                severity="warning", timeout=4)
             return
         from .run import RunScreen
         self.app.push_screen(RunScreen(to_encode, self.app.platform))  # type: ignore[attr-defined]

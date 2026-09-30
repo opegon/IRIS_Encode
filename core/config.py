@@ -183,6 +183,9 @@ def get_bin_dir(cfg: dict[str, Any]) -> Path:
 # lecture comme au redimensionnement, parce qu'une largeur trop courte a pu
 # être persistée avant qu'ils existent.
 COLUMN_MIN_WIDTHS: dict[str, int] = {
+    # « 999.9 Go » — huit caractères. Le dry-run en persistait six : « 34.6 … »
+    # (UX-20).
+    "taille":       8,
     "duree":        7,   # « 3:17:24 »
     "temps_estim":  7,
     # « → HEVC → HDR10 » et « → HEVC → SDR ⚠ » font quatorze caractères. À huit,

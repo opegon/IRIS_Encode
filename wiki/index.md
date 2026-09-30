@@ -24,7 +24,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[hdr-dolby-vision]] | HDR10, HDR10+, profils DV, RPU et couche d'amélioration ; retrait, réencodage, SDR |
 | [[audio]] | Formats acceptés, plafonds AC3/E-AC3, repli 7.1, Atmos, pièges ffmpeg |
 | [[sous-titres]] | Texte contre image, incrustation, drapeaux, codes de langue `fra`/`fre` |
-| [[conteneurs]] | MP4 contre MKV, horodatages, chapitres, `hev1`, collage |
+| [[conteneurs]] | MP4 contre MKV, horodatages, chapitres, `hev1`/`hvc1`, collage |
 | [[synchronisation]] | Décalage, dérive PAL, montages différents, recalage par plages |
 | [[noms-de-release]] | Marques d'un nom de fichier, pièges d'analyse, ce qu'une conversion rend faux |
 | [[sous-processus]] | Règles pour lancer un outil externe : chemin, `stdin`, UTF-8, tubes, codes retour ; `.bat` réécrit en cours d'exécution |

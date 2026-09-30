@@ -69,6 +69,10 @@ Apple. Sur le [[lg-oled-g3|G3]] via Jellyfin, les deux passent en **lecture
 directe**, sauts quasi instantanés : même fichier, seule l'étiquette changée,
 en SDR comme en HDR10. *(observé, 2026-09-30)*
 
+IRIS écrit donc **`hvc1`** sur toutes ses sorties HEVC en MP4 depuis la
+v0.8.9.39 (`-tag:v hvc1`, sans effet sur le flux). *(mesuré : `ffprobe` →
+`hevc,hvc1`)*
+
 ## Réécrire un MKV
 
 mkvmerge ne sait pas ajouter une piste **en place** : il réécrit le conteneur

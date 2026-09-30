@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.38 — document de référence courant
+**Version** : 0.8.9.39 — document de référence courant
 **Date** : 2026-09-30
 **Statut** : stable
 
@@ -888,6 +888,13 @@ quand la décision demande du MP4, ffmpeg produit le fichier en une passe depuis
 la source, avec `dovi.build_strip_mp4()` (§ 7.3). Il ne lit plus le flux brut
 sans horodatage, et le correctif de cadence (`-r`) et de DTS négatifs
 (`-avoid_negative_ts`) que ce flux exigeait n'a plus d'objet.
+
+**Le HEVC en MP4 est étiqueté `hvc1`.** ffmpeg écrit `hev1` par défaut
+(paramètres de décodage répétés dans le flux) ; les lecteurs Apple exigent
+`hvc1` (paramètres dans l'en-tête). `build_command` ajoute `-tag:v hvc1` à
+toute sortie MP4 dont la vidéo est du HEVC — encodeur `hevc_*` ou `libx265`,
+ou copie d'une source HEVC (`_sortie_hevc`) — et `build_strip_mp4` toujours.
+Le LG G3 lit les deux étiquettes en lecture directe *(observé, IE-74)*.
 
 **Conteneur de sortie** — `output_container` suit les pistes réellement conservées :
 écarter les sous-titres image libère le MP4 ; `mov_text` n'est jamais proposé en
@@ -2596,6 +2603,8 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.39 | 2026-09-30 | **Le HEVC en MP4 est étiqueté `hvc1`** (§ 8.6, IE-74) : `-tag:v hvc1` sur toute sortie MP4 dont la vidéo est du HEVC (`_sortie_hevc`) et sur le retrait DV en MP4 ; le G3 lit `hev1` et `hvc1` en lecture directe, les lecteurs Apple exigent `hvc1` · `tests/test_conteneur.py` |
+| 0.8.9.38 | 2026-09-30 | **Une release publiée se voit dans l'heure** : cache de `updater.py` ramené de 24 h à 1 h, et invalidé quand la version installée a changé · `tests/test_updater.py` |
 | 0.8.9.37 | 2026-09-30 | **Les clés d'API se saisissent dans l'application** (§ 14.8, IE-101) : fenêtre au lancement si une clé manque et depuis `F5` → `K`, lien vers la page du service, vérification avant enregistrement, « Ne plus demander » · `tests/test_cles.py` |
 | 0.8.9.36 | 2026-09-30 | **La file se réordonne** (§ 14.7, IE-100) : `Ctrl+↑/↓` déplace, `Suppr` retire un fichier en attente · `tests/test_arret_encodage.py` |
 | 0.8.9.35 | 2026-09-30 | **L'en-tête annonce la file** (§ 14.7, IE-100) : « F12 Encodages en cours · n/N · % », « F12 Lot terminé », « F12 Fichiers » · `tests/test_arret_encodage.py` |

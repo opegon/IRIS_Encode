@@ -1,7 +1,7 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-09-26
+maj: 2026-09-30
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -76,7 +76,7 @@ sans libx265 : `ffmpeg -encoders | findstr x265`.
 - `atrim` découpe à l'échantillon près ; `-c copy` se cale sur la trame la plus
   proche. `concat` exige fréquence et disposition identiques.
 - Chapitres d'un MP4 : piste `bin_data` (voir [[conteneurs#Chapitres]]).
-- Écrit **`hev1`** par défaut pour du HEVC en MP4 ([[conteneurs]]).
+- Écrit **`hev1`** par défaut pour du HEVC en MP4 ; `-tag:v hvc1` le change sans toucher au flux, et IRIS le passe depuis la v0.8.9.39 ([[conteneurs]]).
 - Lit `stdin` pour son clavier interactif (`q` l'arrête) : voir [[sous-processus]].
 
 ## Encodeurs

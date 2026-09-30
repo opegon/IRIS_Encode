@@ -195,6 +195,18 @@ _CAUSES: tuple[tuple[str, str], ...] = (
 )
 
 
+def _sortie_hevc(cmd: list[str], codec_source: str) -> bool:
+    """La vidéo de sortie est-elle du HEVC ? Une copie garde le codec source.
+
+    En MP4, ffmpeg étiquette le HEVC `hev1` ; les lecteurs Apple exigent
+    `hvc1`. Le G3 lit les deux en lecture directe (IE-74) : `hvc1` partout.
+    """
+    encodeur = encodeur_de(cmd) or ""
+    if encodeur == "copy":
+        return codec_source == "hevc"
+    return "hevc" in encodeur or "265" in encodeur
+
+
 def encodeur_de(cmd: list[str]) -> Optional[str]:
     """Encodeur vidéo d'une commande construite, ou None."""
     try:
@@ -707,6 +719,8 @@ def build_command(
     # faststart est un réglage MP4 ; ffmpeg l'ignore en avertissant sur MKV
     if container == ".mp4":
         cmd += ["-movflags", "+faststart"]
+        if _sortie_hevc(cmd, info.codec):
+            cmd += ["-tag:v", "hvc1"]
     cmd += ["-y", str(decision.output_path)]
 
     return cmd

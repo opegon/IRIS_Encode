@@ -145,3 +145,61 @@ def test_le_remux_mp4_sans_sous_titre_ne_declare_pas_de_codec():
 
     cmd = build_strip_mp4(Path("s.mkv"), Path("o.mp4"), [])
     assert "-c:s" not in cmd
+
+
+# ─── Étiquette HEVC en MP4 : `hvc1` ───────────────────────────────────────────
+# ffmpeg écrit `hev1` par défaut ; les lecteurs Apple exigent `hvc1`, et le G3
+# lit les deux en lecture directe (IE-74).
+
+def _plateforme():
+    from core.platform import GPU, OS, PlatformProfile
+    return PlatformProfile(os=OS.WINDOWS, gpu=GPU.NVIDIA, hwaccel="cuda",
+                           encoder_hevc="hevc_nvenc", encoder_h264="h264_nvenc",
+                           encoder_av1="av1_nvenc")
+
+
+def _tag(cmd):
+    return cmd[cmd.index("-tag:v") + 1] if "-tag:v" in cmd else None
+
+
+def test_le_hevc_en_mp4_est_etiquete_hvc1(tmp_path):
+    from core.decision import VideoAction
+    from core.encoder import build_command
+
+    dec = decide(_info(tmp_path, [_st(0, "subrip")]),
+                 _profile(container="mp4", bitrate_1080p_kbps=2000))
+    assert dec.video.action == VideoAction.ENCODE_HEVC
+    assert dec.output_container == ".mp4"
+    cmd = build_command(dec, _plateforme())
+    assert _tag(cmd) == "hvc1"
+    assert cmd.index("-tag:v") < cmd.index(str(dec.output_path)),         "une option après le fichier de sortie est ignorée"
+
+
+def test_le_mkv_ne_recoit_pas_d_etiquette(tmp_path):
+    from core.encoder import build_command
+
+    dec = decide(_info(tmp_path, [_st(0, "subrip")]),
+                 _profile(container="mkv", bitrate_1080p_kbps=2000))
+    assert _tag(build_command(dec, _plateforme())) is None
+
+
+@pytest.mark.parametrize("encodeur, codec_source, attendu", [
+    ("hevc_nvenc", "h264", True),
+    ("libx265",    "h264", True),
+    ("hevc_videotoolbox", "h264", True),
+    ("h264_nvenc", "hevc", False),
+    ("av1_nvenc",  "hevc", False),
+    ("copy",       "hevc", True),
+    ("copy",       "h264", False),
+])
+def test_seule_une_sortie_hevc_est_etiquetee(encodeur, codec_source, attendu):
+    from core.encoder import _sortie_hevc
+    assert _sortie_hevc(["ffmpeg", "-c:v", encodeur], codec_source) is attendu
+
+
+def test_le_mp4_du_retrait_est_etiquete_hvc1(tmp_path):
+    from core.dovi import build_strip_mp4
+
+    cmd = build_strip_mp4(tmp_path / "s.mkv", tmp_path / "o.mp4", [])
+    assert _tag(cmd) == "hvc1"
+    assert cmd[-1] == str(tmp_path / "o.mp4")

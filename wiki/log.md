@@ -116,3 +116,9 @@ IE-74 : deux paires (Seven Nation Army SDR, Project Hail Mary HDR10 8 bits),
 original `hev1` et copie `hvc1` ; les quatre en lecture directe via Jellyfin,
 sauts quasi instantanés. Question retirée. Pages touchées : [[conteneurs]],
 [[lg-oled-g3]], [[questions-ouvertes]].
+
+
+## [2026-09-30] ingest | IRIS écrit `hvc1` (v0.8.9.39)
+
+v0.8.9.39 : `-tag:v hvc1` sur toutes les sorties HEVC en MP4, suite d'IE-74.
+Pages touchées : [[conteneurs]], [[ffmpeg]].

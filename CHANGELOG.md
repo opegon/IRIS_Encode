@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.39] — 2026-09-30
+
+### Le HEVC en MP4 est étiqueté `hvc1`
+
+En MP4, un flux HEVC porte l'étiquette `hev1` ou `hvc1`. ffmpeg écrit `hev1`
+par défaut, que les lecteurs Apple refusent. Le test IE-74 sur le LG G3 (deux
+paires de fichiers identiques à l'étiquette près, SDR et HDR10) : les quatre en
+lecture directe via Jellyfin, sauts quasi instantanés. `hvc1` ne coûte donc
+rien au G3 et ouvre les appareils Apple.
+
+- Toute sortie MP4 dont la vidéo est du HEVC reçoit `-tag:v hvc1` : encodage
+  `hevc_nvenc`, `libx265`, `hevc_videotoolbox`, ou copie d'une source HEVC.
+  H.264 et AV1 ne sont pas concernés, le Matroska non plus.
+- Le retrait du Dolby Vision en MP4 aussi.
+
+Vérifié sur un encodage libx265 réel et sur le retrait : `ffprobe` rapporte
+`hevc,hvc1`.
+
+`core/encoder.py` (`_sortie_hevc`), `core/dovi.py` (`build_strip_mp4`),
+`tests/test_conteneur.py`, spec § 8.6, wiki `conteneurs`.
+
 ## [v0.8.9.38] — 2026-09-30
 
 ### Une release publiée se voit dans l'heure

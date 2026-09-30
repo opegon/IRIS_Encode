@@ -146,7 +146,8 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
     cmd += audio_args(gardees)
     if sous_titres:
         cmd += ["-c:s", "mov_text"]
-    cmd += ["-movflags", "+faststart", str(output)]
+    # Du HEVC par construction : `hvc1`, que les lecteurs Apple exigent.
+    cmd += ["-movflags", "+faststart", "-tag:v", "hvc1", str(output)]
     return cmd
 
 

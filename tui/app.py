@@ -175,6 +175,10 @@ class IrisEncodeApp(App):
         self.add_mode(self.MODE_FICHIERS,
                       lambda: BrowserScreen(self.start_path, start_virtual=True))
         self.switch_mode(self.MODE_FICHIERS)
+        # Les clés d'API manquantes, une fois l'accueil affiché. Pas en test :
+        # une application sans terminal n'a personne pour répondre.
+        if not self.is_headless:
+            self.call_after_refresh(self.demander_cles)
         if self.platform.alerte_nvenc:
             self.notify(self.platform.alerte_nvenc, title="Carte graphique",
                         severity="warning", timeout=30)
@@ -270,6 +274,18 @@ class IrisEncodeApp(App):
             self.switch_mode(self.MODE_ENCODAGES)
         else:
             self.notify("Aucun encodage en cours.", timeout=3)
+
+    def demander_cles(self, tous: bool = False) -> None:
+        """La fenêtre des clés d'API (IE-101).
+
+        Au lancement : seulement les services dont la clé manque et qu'on n'a
+        pas écartés. Depuis `F5` (`tous`) : tous, pour les changer.
+        """
+        from core import cles
+        from tui.screens.cles import ClesScreen
+        services = list(cles.SERVICES) if tous else cles.a_demander(self.cfg)
+        if services:
+            self.push_screen(ClesScreen(services, au_lancement=not tous))
 
     def action_aide(self) -> None:
         """Ouvre le guide des touches, sauf si on est en train d'écrire."""

@@ -46,6 +46,11 @@ _DEFAULTS: dict[str, Any] = {
         "username": "",
         "password": "",
     },
+    # Services dont la clé manque et qu'on ne veut plus se voir demander au
+    # lancement (IE-101) : identifiants de core/cles.py.
+    "cles": {
+        "ne_plus_demander": [],
+    },
     "decision": {
         "near_1080p_min_width":  1600,
         "near_1080p_min_height":  850,

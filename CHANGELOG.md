@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.37] — 2026-09-30
+
+### Les clés d'API se saisissent dans l'application
+
+Il fallait éditer config.toml pour donner les clés d'OpenSubtitles et d'OMDb
+(IE-101). Au lancement, si une clé manque, une fenêtre la demande :
+
+- **Obtenir une clé** ouvre la page du service qui la délivre ;
+- on colle la clé — et, pour OpenSubtitles, identifiant et mot de passe
+  (masqué) ;
+- `Ctrl+S` **vérifie** auprès du service avant d'enregistrer : une clé
+  refusée n'est pas enregistrée, la fenêtre dit pourquoi ;
+- « Ne plus demander » écarte un service dont on ne veut pas ;
+- `Esc` remet à plus tard.
+
+La même fenêtre s'ouvre depuis la gestion des profils (`F5`, puis `K`) pour
+changer une clé. Les messages d'erreur d'OpenSubtitles y renvoient, et une clé
+refusée (403) est nommée comme telle.
+
+Vérification d'OpenSubtitles : seule la connexion contrôle la clé — la
+recherche accepte une clé inventée *(mesuré)*. Sans compte, on se connecte
+avec un compte inventé, pour ne pas consommer les tentatives d'un compte réel.
+
+`core/cles.py`, `tui/screens/cles.py`, `tui/app.py` (`demander_cles`),
+`tui/screens/config.py`, `core/opensubtitles.py`, `core/config.py`,
+`tests/test_cles.py`, GUIDE § 2.3 et 2.7, README § 9.
+
 ## [v0.8.9.36] — 2026-09-30
 
 ### La file se réordonne

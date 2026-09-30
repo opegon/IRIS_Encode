@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.36 — document de référence courant
+**Version** : 0.8.9.37 — document de référence courant
 **Date** : 2026-09-30
 **Statut** : stable
 
@@ -1170,7 +1170,9 @@ sous 128 Kio (algorithme de l'extension Kodi officielle).
 Configuration, section `[opensubtitles]` de `config.toml` (non suivi par git) :
 `api_key` (clé d'application, opensubtitles.com/consumers — exigée à chaque
 appel), `username` et `password` (exigés au téléchargement seulement ; 20 par
-jour en compte gratuit). `User-Agent` : `IRIS Encode v<version>`. Le jeton de
+jour en compte gratuit). Ils se saisissent dans l'application (§ 14.8,
+v0.8.9.37) ; les messages d'erreur y renvoient (`F5`, `K`), plus à
+config.toml. Une clé refusée répond **403**, un compte refusé **401**. `User-Agent` : `IRIS Encode v<version>`. Le jeton de
 connexion vit le temps de l'écran ; un compte VIP est servi par l'hôte que
 `login` annonce (`base_url`).
 
@@ -2260,6 +2262,21 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
 
 ### 14.8 Écran Config — gestion des profils
 
+**Clés d'API** (v0.8.9.37, IE-101) — `K` ouvre `ClesScreen` pour tous les
+services de `core/cles.py` (OpenSubtitles : clé, identifiant, mot de passe
+masqué ; OMDb : clé), champs pré-remplis. Au lancement, hors mode sans
+terminal, `IrisEncodeApp.demander_cles()` l'ouvre pour les services dont un
+champ **requis** manque (la clé ; le compte OpenSubtitles ne l'est pas) et qui
+ne sont pas dans `[cles] ne_plus_demander`. Chaque service : un bouton qui
+ouvre sa page (`webbrowser`), une case « Ne plus demander » (au lancement
+seulement), un état. `Ctrl+S` vérifie chaque service modifié, dans un worker,
+avant d'enregistrer : OMDb par une requête (`401` = clé refusée) ;
+OpenSubtitles par la **connexion**, seul appel qui contrôle la clé — la
+recherche accepte une clé inventée *(mesuré)*. Sans compte, la connexion se
+fait avec un compte inventé : `401` prouve la clé, sans consommer les
+tentatives d'un compte réel. Un service refusé n'est pas enregistré et la
+fenêtre reste ouverte ; une clé inchangée n'est pas re-vérifiée.
+
 Tous les profils sont éditables et supprimables (`D` / `Suppr`, avec
 confirmation) — ils viennent tous de `profiles.toml`, qui fait foi. Seule
 exception : le dernier de la liste, dont la suppression est refusée par un
@@ -2579,6 +2596,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.37 | 2026-09-30 | **Les clés d'API se saisissent dans l'application** (§ 14.8, IE-101) : fenêtre au lancement si une clé manque et depuis `F5` → `K`, lien vers la page du service, vérification avant enregistrement, « Ne plus demander » · `tests/test_cles.py` |
 | 0.8.9.36 | 2026-09-30 | **La file se réordonne** (§ 14.7, IE-100) : `Ctrl+↑/↓` déplace, `Suppr` retire un fichier en attente · `tests/test_arret_encodage.py` |
 | 0.8.9.35 | 2026-09-30 | **L'en-tête annonce la file** (§ 14.7, IE-100) : « F12 Encodages en cours · n/N · % », « F12 Lot terminé », « F12 Fichiers » · `tests/test_arret_encodage.py` |
 | 0.8.9.34 | 2026-09-30 | **Une file d'encodage, la navigation reste libre** (§ 14.7, IE-100) : `F2` ajoute à la file, `F12` bascule, `⌫` ne stoppe plus, `X` arrête tout ; doublons refusés, réglages figés, `Ctrl+D` et `F10` gardés · `tests/test_arret_encodage.py` |

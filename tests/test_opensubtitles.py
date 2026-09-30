@@ -189,13 +189,13 @@ def test_le_telechargement_se_connecte_et_ecrit_un_srt_qui_dit_sa_langue(tmp_pat
 
 def test_sans_compte_le_telechargement_le_dit(tmp_path, serveur):
     r = osub.Resultat(1, "fre", "", 0, False, False)
-    with pytest.raises(ErreurOpenSubtitles, match="username et password"):
+    with pytest.raises(ErreurOpenSubtitles, match="identifiant et mot de passe"):
         _client(user="", pwd="").telecharger(r, _video(tmp_path))
     assert serveur["appels"] == []
 
 
 def test_sans_cle_rien_ne_part():
-    with pytest.raises(ErreurOpenSubtitles, match="api_key"):
+    with pytest.raises(ErreurOpenSubtitles, match="Clé d.API absente"):
         Client("", "u", "p", "ua")
 
 

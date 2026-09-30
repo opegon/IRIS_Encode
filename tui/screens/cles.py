@@ -1,0 +1,205 @@
+"""
+tui/screens/cles.py — Saisir les clés d'API sans éditer config.toml (IE-101).
+
+S'ouvre au lancement pour chaque service dont la clé manque, et depuis la
+gestion des profils (`F5`, `K`) pour tous. Chaque service a son bouton vers la
+page qui délivre la clé ; une clé est vérifiée auprès du service avant d'être
+enregistrée (`core.cles`).
+
+Rend True si quelque chose a été enregistré.
+"""
+from __future__ import annotations
+
+import webbrowser
+
+from textual import on, work
+from textual.app import ComposeResult
+from textual.binding import Binding
+from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.screen import ModalScreen
+from textual.widgets import Button, Checkbox, Input, Label, Static
+
+from core import cles
+from core import config as cfg_mod
+
+from ..common import raccourcis
+
+
+class ClesScreen(ModalScreen[bool]):
+    """Une section par service : lien, champs, « Ne plus demander », état."""
+
+    DEFAULT_CSS = """
+    ClesScreen { align: center middle; }
+    #cles-panel {
+        width: 88;
+        max-width: 96%;
+        height: auto;
+        max-height: 92%;
+        background: $surface;
+        border: solid $primary;
+        padding: 1 2;
+    }
+    #cles-titre { text-style: bold; margin-bottom: 1; }
+    #cles-corps { height: auto; max-height: 30; }
+    .cles-service { height: auto; margin-bottom: 1; }
+    .cles-nom { text-style: bold; color: $accent; }
+    .cles-usage { color: $text-muted; }
+    .cles-ligne { height: auto; }
+    .cles-lbl { width: 16; padding-top: 1; color: $text-muted; }
+    .cles-ligne Input { width: 1fr; }
+    .cles-lien { height: auto; margin-top: 1; }
+    .cles-lien Button { border: none; min-width: 20; margin-right: 2; }
+    .cles-url { padding-top: 0; color: $text-muted; }
+    .cles-etat { height: auto; }
+    .cles-etat.ok { color: $success; }
+    .cles-etat.refus { color: darkorange; text-style: bold; }
+    #cles-hint {
+        color: $text-muted;
+        margin-top: 1;
+        border-top: solid $primary-darken-2;
+        padding-top: 1;
+    }
+    """
+
+    BINDINGS = [
+        Binding("ctrl+s", "enregistrer", "Enregistrer", show=False, priority=True),
+        Binding("escape", "plus_tard",   "Plus tard",   show=False, priority=True),
+    ]
+
+    def __init__(self, services: list[cles.Service], au_lancement: bool) -> None:
+        super().__init__()
+        self._services     = services
+        self._au_lancement = au_lancement
+        self._verification = False
+
+    @property
+    def _cfg(self) -> dict:
+        return self.app.cfg  # type: ignore[attr-defined]
+
+    # ── Composition ───────────────────────────────────────────────────────────
+
+    def compose(self) -> ComposeResult:
+        titre = ("Clés d'API manquantes" if self._au_lancement
+                 else "Clés d'API des services en ligne")
+        with Vertical(id="cles-panel"):
+            yield Label(titre, id="cles-titre")
+            with VerticalScroll(id="cles-corps"):
+                for s in self._services:
+                    actuelles = cles.valeurs(self._cfg, s)
+                    with Vertical(classes="cles-service", id=f"svc-{s.id}"):
+                        yield Static(s.nom, classes="cles-nom", markup=False)
+                        yield Static(f"{s.usage} — {s.sans_cle}.",
+                                     classes="cles-usage", markup=False)
+                        with Horizontal(classes="cles-lien"):
+                            yield Button("Obtenir une clé", id=f"lien-{s.id}")
+                            yield Static(s.url, classes="cles-url", markup=False)
+                        for c in s.champs:
+                            with Horizontal(classes="cles-ligne"):
+                                yield Label(c.libelle, classes="cles-lbl")
+                                yield Input(value=actuelles[c.cle],
+                                            password=c.secret,
+                                            id=f"champ-{s.id}-{c.cle}")
+                        if self._au_lancement:
+                            yield Checkbox("Ne plus demander",
+                                           id=f"ecarter-{s.id}")
+                        yield Static("", classes="cles-etat", id=f"etat-{s.id}",
+                                     markup=False)
+            yield Static(raccourcis([("tab", "Champ suivant"),
+                                     ("ctrl+s", "Vérifier et enregistrer"),
+                                     ("escape", "Plus tard")]), id="cles-hint")
+
+    def on_mount(self) -> None:
+        premier = self.query(Input)
+        if premier:
+            premier.first().focus()
+
+    # ── Actions ───────────────────────────────────────────────────────────────
+
+    @on(Button.Pressed)
+    def _ouvrir_page(self, event: Button.Pressed) -> None:
+        sid = (event.button.id or "").removeprefix("lien-")
+        service = cles.PAR_ID.get(sid)
+        if service is not None:
+            webbrowser.open(service.url)
+            self._etat(sid, f"Page ouverte dans le navigateur : copiez la clé, "
+                            f"puis collez-la ici.", "")
+
+    def _saisies(self, s: cles.Service) -> dict[str, str]:
+        return {c.cle: self.query_one(f"#champ-{s.id}-{c.cle}", Input).value
+                for c in s.champs}
+
+    def _etat(self, sid: str, texte: str, classe: str) -> None:
+        etat = self.query_one(f"#etat-{sid}", Static)
+        etat.set_classes(f"cles-etat {classe}".strip())
+        etat.update(texte)
+
+    def action_plus_tard(self) -> None:
+        if self._verification:
+            return
+        # « Ne plus demander » vaut aussi quand on ne saisit rien.
+        if self._au_lancement and self._ecarts():
+            cfg_mod.save(self._cfg)
+        self.dismiss(False)
+
+    def _ecarts(self) -> bool:
+        """Reporte les cases « Ne plus demander » ; vrai si une a changé."""
+        change = False
+        for s in self._services:
+            try:
+                oui = self.query_one(f"#ecarter-{s.id}", Checkbox).value
+            except Exception:
+                continue
+            if oui != (s.id in cles.ne_plus_demander(self._cfg)):
+                cles.ecarter(self._cfg, s.id, oui)
+                change = True
+        return change
+
+    def action_enregistrer(self) -> None:
+        if self._verification:
+            return
+        a_verifier = []
+        for s in self._services:
+            saisies = self._saisies(s)
+            if saisies == cles.valeurs(self._cfg, s):
+                continue                        # inchangé : rien à éprouver
+            if not any(v.strip() for v in saisies.values()):
+                cles.enregistrer(self._cfg, s, saisies)   # effacé volontairement
+                continue
+            a_verifier.append((s, saisies))
+            self._etat(s.id, "Vérification auprès du service…", "")
+        self._verification = True
+        self._verifier(a_verifier)
+
+    @work(thread=True, name="cles-verification")
+    def _verifier(self, a_verifier: list) -> None:
+        import time
+        refus: list[tuple[str, str]] = []
+        acceptes: list[tuple[cles.Service, dict]] = []
+        for n, (s, saisies) in enumerate(a_verifier):
+            if n:
+                time.sleep(1.1)          # OpenSubtitles : une connexion par seconde
+            erreur = cles.VERIFICATEURS[s.id](saisies)
+            if erreur:
+                refus.append((s.id, erreur))
+            else:
+                acceptes.append((s, saisies))
+        self.app.call_from_thread(self._fin_verification, acceptes, refus)
+
+    def _fin_verification(self, acceptes: list, refus: list) -> None:
+        self._verification = False
+        for s, saisies in acceptes:
+            cles.enregistrer(self._cfg, s, saisies)
+            # Une clé enregistrée n'a plus à être écartée.
+            cles.ecarter(self._cfg, s.id, False)
+            self._etat(s.id, "✓ Clé acceptée et enregistrée.", "ok")
+        for sid, erreur in refus:
+            self._etat(sid, f"✗ {erreur} Rien n'est enregistré pour ce service.",
+                       "refus")
+        if self._au_lancement:
+            self._ecarts()
+        cfg_mod.save(self._cfg)
+        if refus:
+            return                        # la fenêtre reste, on corrige
+        if acceptes:
+            self.app.notify("Clés d'API enregistrées.", timeout=3)
+        self.dismiss(bool(acceptes))

@@ -1142,7 +1142,7 @@ async def scenario_opensubtitles() -> None:
                 await pilot.pause(0.6)
                 assert type(app.screen).__name__ == "OpenSubtitlesScreen", type(app.screen).__name__
                 etat = str(app.screen.query_one("#os-state", Static).render())
-                assert "api_key" in etat, etat
+                assert "Clé d'API absente" in etat, etat
                 await pilot.press("escape")
                 await pilot.pause(0.4)
                 assert type(app.screen).__name__ == "DonorFileScreen", type(app.screen).__name__

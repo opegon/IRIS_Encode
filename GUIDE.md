@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.36
+**Version** : 0.8.9.37
 **Date** : 2026-09-29
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -246,14 +246,10 @@ télécharge la ligne ; le fichier revient ici comme si vous l'aviez choisi, et
 la suite est la même — piste présélectionnée, langue déduite, recalage.
 
 Il faut une clé d'application et un compte (gratuits, 20 téléchargements par
-jour), à renseigner une fois dans `config.toml` :
-
-```toml
-[opensubtitles]
-api_key  = "…"   # opensubtitles.com/consumers
-username = "…"
-password = "…"
-```
+jour). Au lancement, si la clé manque, une fenêtre la demande : **Obtenir une
+clé** ouvre opensubtitles.com/consumers, on colle la clé, l'identifiant et le
+mot de passe, `Ctrl+S` les vérifie auprès d'OpenSubtitles et les enregistre.
+Pour les saisir ou les changer plus tard : `F5`, puis `K` (§ 2.7).
 
 Sans eux, l'écran dit ce qui manque. Le `.srt` est écrit dans le dossier
 temporaire, pas à côté du film : il n'existe que pour la greffe.
@@ -359,7 +355,12 @@ vue. Un nouvel ajout démarre un nouveau lot.
 
 ### 2.7 Profils (`F5`)
 
-`N` crée, `E` édite, `D` supprime, `↵` active. La liste est exactement celle
+`N` crée, `E` édite, `D` supprime, `↵` active. `K` ouvre les **clés d'API**
+des services en ligne — OpenSubtitles et OMDb (fiche IMDB complète) : chaque
+service a son bouton vers la page qui délivre la clé, et une clé est vérifiée
+auprès du service avant d'être enregistrée. La même fenêtre s'ouvre au
+lancement tant qu'une clé manque ; « Ne plus demander » l'écarte pour ce
+service. La liste est exactement celle
 de `profiles.toml`, dans l'ordre du fichier : vous pouvez l'éditer à la main,
 l'application ne rajoute ni ne réordonne rien. Tous les profils s'effacent,
 sauf le dernier de la liste. Renommer un profil se fait dans le fichier : le

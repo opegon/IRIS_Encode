@@ -119,8 +119,8 @@ class Client:
                  user_agent: str) -> None:
         if not api_key:
             raise ErreurOpenSubtitles(
-                "Clé d'API absente — renseignez api_key dans la section "
-                "[opensubtitles] de config.toml.")
+                "Clé d'API absente — saisissez-la depuis la gestion des "
+                "profils (F5, puis K « Clés d'API »).")
         self._api_key     = api_key
         self._utilisateur = utilisateur
         self._mot_de_passe = mot_de_passe
@@ -148,6 +148,10 @@ class Client:
             raise ErreurOpenSubtitles(
                 "Refusé par OpenSubtitles (401) — clé d'API, identifiant ou "
                 "mot de passe incorrect.")
+        if r.status_code == 403:
+            raise ErreurOpenSubtitles(
+                "Clé d'API refusée par OpenSubtitles (403) — vérifiez-la "
+                "depuis la gestion des profils (F5, puis K).")
         if r.status_code == 406:
             raise ErreurOpenSubtitles(_message_quota(r))
         if r.status_code == 429:
@@ -164,8 +168,8 @@ class Client:
             return
         if not (self._utilisateur and self._mot_de_passe):
             raise ErreurOpenSubtitles(
-                "Télécharger demande un compte — renseignez username et "
-                "password dans la section [opensubtitles] de config.toml.")
+                "Télécharger demande un compte — saisissez identifiant et mot "
+                "de passe depuis la gestion des profils (F5, puis K).")
         rep = self._appel("POST", "login", json={
             "username": self._utilisateur, "password": self._mot_de_passe})
         self._jeton = rep.get("token")

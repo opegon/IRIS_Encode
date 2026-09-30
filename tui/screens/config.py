@@ -39,6 +39,8 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         Binding("e",         "edit_focused",   "Éditer",    show=True),
         Binding("d",         "delete_focused", "Supprimer", show=True),
         Binding("delete",    "delete_focused", "Supprimer", show=False),
+        # Les clés des services en ligne, sans éditer config.toml (IE-101).
+        Binding("k",         "cles",           "Clés d'API", show=True),
         Binding("backspace", "go_back",        "Retour",    show=True),
         Binding("escape",    "go_back",        "Retour",    show=False),
         # `priority` : un DataTable etouffe la touche avant les bindings —
@@ -105,6 +107,11 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             table.add_column(entete, width=largeur)
         for nom, cellules in zip(profiles, lignes):
             table.add_row(*cellules, key=nom)
+
+    def action_cles(self) -> None:
+        if self._form_mode:
+            return
+        self.app.demander_cles(tous=True)  # type: ignore[attr-defined]
 
     def _update_header(self) -> None:
         if self._form_mode:

@@ -203,6 +203,9 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                      "et son fichier partiel effacé.",
     },
     "ConfigScreen": {
+        "cles":           "Saisit ou change les clés d'API (OpenSubtitles, "
+                          "OMDb), vérifiées auprès du service avant d'être "
+                          "enregistrées.",
         "activate":       "Rend actif le profil sous le curseur.",
         "new_profile":    "Crée un profil.",
         "edit_focused":   "Édite le profil sous le curseur.",

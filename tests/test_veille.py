@@ -102,6 +102,19 @@ def test_hors_windows_rien_ne_se_passe(monkeypatch):
 
 # ─── La configuration ─────────────────────────────────────────────────────────
 
+@pytest.mark.skipif(not veille.disponible(), reason="API Windows")
+def test_le_vrai_moteur_pose_retire_et_prend_le_privilege():
+    """Le seul contact avec l'API réelle : ni veille ni arrêt, seulement la
+    demande d'éveil et le privilège qu'exige `SetSuspendState`. Sans
+    signatures déclarées, ctypes levait sur le pseudo-handle du processus, et
+    la mise en veille d'après lot faisait tomber l'application."""
+    moteur = veille._MoteurWindows()
+    jeton = moteur.poser("IRIS ENCODE : test")
+    assert jeton is not None
+    moteur.retirer(jeton)
+    moteur._privilege_arret()
+
+
 def test_bloquer_la_veille_est_active_par_defaut():
     cfg = cfg_mod._deep_merge({}, cfg_mod._DEFAULTS)
     assert cfg_mod.get_empecher_veille(cfg) is True

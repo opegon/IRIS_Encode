@@ -142,11 +142,24 @@ class _MoteurWindows:
                         ("Luid",           _Luid),
                         ("Attributes",     wintypes.DWORD)]
 
+        # Signatures déclarées : sans elles, ctypes passe le pseudo-handle du
+        # processus (-1, lu en 64 bits non signé) comme un int 32 bits et lève.
         advapi = ct.WinDLL("advapi32", use_last_error=True)
+        advapi.OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD,
+                                            ct.POINTER(wintypes.HANDLE)]
+        advapi.OpenProcessToken.restype  = wintypes.BOOL
+        advapi.LookupPrivilegeValueW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR,
+                                                 ct.POINTER(_Luid)]
+        advapi.LookupPrivilegeValueW.restype  = wintypes.BOOL
+        advapi.AdjustTokenPrivileges.argtypes = [wintypes.HANDLE, wintypes.BOOL,
+                                                 ct.POINTER(_Privileges), wintypes.DWORD,
+                                                 ct.c_void_p, ct.c_void_p]
+        advapi.AdjustTokenPrivileges.restype  = wintypes.BOOL
         jeton  = wintypes.HANDLE()
         TOKEN_ADJUST_PRIVILEGES, TOKEN_QUERY = 0x20, 0x8
         processus = ct.WinDLL("kernel32").GetCurrentProcess
-        processus.restype = wintypes.HANDLE
+        processus.argtypes = []
+        processus.restype  = wintypes.HANDLE
         if not advapi.OpenProcessToken(processus(),
                                        TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
                                        ct.byref(jeton)):
@@ -165,6 +178,8 @@ class _MoteurWindows:
         if action == "veille":
             self._privilege_arret()
             powrprof = self._ct.WinDLL("powrprof", use_last_error=True)
+            powrprof.SetSuspendState.argtypes = [self._ct.c_ubyte] * 3  # BOOLEAN
+            powrprof.SetSuspendState.restype  = self._ct.c_ubyte
             # bHibernate=False : la veille, pas l'hibernation. La confusion
             # célèbre vient de `rundll32 powrprof.dll,SetSuspendState`, qui
             # passe mal ses arguments — pas de l'appel direct.

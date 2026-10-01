@@ -160,7 +160,7 @@ class RunScreen(TableNavMixin, Screen):
         self._verrou       = threading.Lock()
         # Le bilan d'un lot fini reste jusqu'à ce qu'on l'ait vu.
         self._vu           = False
-        # L'action d'après lot (`A`). Jamais héritée d'un lot précédent : un
+        # L'action d'après lot (`E`). Jamais héritée d'un lot précédent : un
         # arrêt qu'on aurait oublié d'avoir demandé surprendrait des jours après.
         self.apres_lot     = False
 

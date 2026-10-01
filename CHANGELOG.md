@@ -1,5 +1,20 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.45] — 2026-10-01
+
+### La colonne Fichier suit la taille de la fenêtre
+
+Sur l'accueil, Fichier prend la place que les autres colonnes laissent, mais
+cette largeur n'était calculée qu'à l'entrée dans un dossier. Agrandir la
+fenêtre ensuite (plein écran, bord tiré) laissait un vide à droite ; la
+réduire poussait Audio hors de l'écran.
+
+- La largeur de Fichier se recalcule à chaque changement de taille de la
+  fenêtre, une fois le redimensionnement fini (0,15 s sans nouvel événement).
+- Une largeur réglée au clavier (`<` `>`) dans la session reste prioritaire.
+
+`tui/screens/browser.py` (`on_resize`), `tests/test_accueil.py`. Spec § 14.
+
 ## [v0.8.9.44] — 2026-10-01
 
 ### Des noms de sortie plus sobres : `-iris`, et sans le groupe de la source

@@ -160,3 +160,49 @@ def test_ctrl_home_ramene_aux_volumes(parcours):
 
 def test_ctrl_home_depuis_l_accueil(parcours):
     assert parcours["depuis_accueil"]
+
+
+# ─── La colonne Fichier suit la fenêtre ───────────────────────────────────────
+
+async def _largeurs_fichier(td: Path) -> list[int]:
+    """Largeur de Fichier : à l'entrée (180), après 260 puis 220 colonnes, et
+    au retour dans le dossier après un passage par les volumes en 240. Assez
+    large pour que Fichier reste au-dessus de son plancher."""
+    from tui.app import IrisEncodeApp
+
+    def fichier(app) -> int:
+        return app.screen.query_one(DataTable).columns.get("fichier").width
+
+    releve: list[int] = []
+    app = IrisEncodeApp(start_path=td)
+    async with app.run_test(size=(180, 40)) as pilot:
+        await pilot.pause(0.5)
+        ecran = app.screen
+        ecran._nav.enter(td)
+        ecran._refresh_view()
+        await pilot.pause(0.5)
+        releve.append(fichier(app))
+        for largeur in (260, 220):
+            await pilot.resize_terminal(largeur, 40)
+            await pilot.pause(0.5)
+            releve.append(fichier(app))
+        ecran._nav.aller_aux_volumes()
+        ecran._refresh_view()
+        await pilot.resize_terminal(240, 40)
+        await pilot.pause(0.5)
+        ecran._nav.enter(td)
+        ecran._refresh_view()
+        await pilot.pause(0.5)
+        releve.append(fichier(app))
+    return releve
+
+
+def test_fichier_suit_la_largeur_de_la_fenetre(tmp_path, monkeypatch):
+    """Fichier prend la place que les autres colonnes laissent : à l'entrée
+    dans un dossier, et à chaque changement de taille de la fenêtre."""
+    from core import config as cfg_mod
+    monkeypatch.setattr(cfg_mod, "save", lambda *a, **k: None)
+    entree, a_260, a_220, retour_240 = asyncio.run(_largeurs_fichier(tmp_path))
+    assert a_260 == entree + 80, (entree, a_260)
+    assert a_220 == entree + 40, (entree, a_220)
+    assert retour_240 == entree + 60, (entree, retour_240)

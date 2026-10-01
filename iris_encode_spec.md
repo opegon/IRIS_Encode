@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.44 — document de référence courant
+**Version** : 0.8.9.45 — document de référence courant
 **Date** : 2026-10-01
 **Statut** : stable
 
@@ -1798,7 +1798,10 @@ Conventions transverses :
   défilement verticale : 164 colonnes déclarées en occupaient 188. Sur
   l'accueil et le dry-run, **Fichier prend la place que les autres laissent**
   (`resize_remplissage`), plancher 20, sauf largeur réglée au clavier dans la
-  session ; à 160 colonnes, la table en occupe 158.
+  session ; à 160 colonnes, la table en occupe 158. Sur l'accueil, la largeur
+  se recalcule à l'entrée dans un dossier et **suit la fenêtre** (v0.8.9.45) :
+  `BrowserScreen.on_resize` reconstruit la table 0,15 s après le dernier
+  changement de taille, si la largeur voulue pour Fichier a changé.
 - **Un afficheur qui montre un nom se construit en `markup=False`.** `Static`
   interprète par défaut ce qui ressemble à une balise entre crochets, et la
   convention de nommage du projet jusqu'à la v0.8.8.10 — `_[mux]`, `_[hevc]`,
@@ -2696,6 +2699,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.45 | 2026-10-01 | **La colonne Fichier suit la fenêtre** (§ 14, accueil) : `BrowserScreen.on_resize` recalcule la place laissée à Fichier quand la fenêtre change de taille, une fois la rafale d'événements finie · `tests/test_accueil.py` |
 | 0.8.9.44 | 2026-10-01 | **Marque `-iris` et groupe retiré** (§ 8.7) : toute sortie finit par `-iris` au lieu de `.IRIS` (`scanner.MARQUE_IRIS`), l'ancienne marque n'est plus reconnue · le groupe de la release (`-GROUPE`, ` - GROUPE`) ne passe plus dans la sortie (`scanner.stem_sans_groupe`, `JETONS_RELEASE`), encodage, greffe et jonction · `tests/test_nom_iris.py` |
 | 0.8.9.43 | 2026-10-01 | **La veille bloquée pendant les traitements** (§ 14.7) : `core/veille.py`, demande d'alimentation `PowerCreateRequest` au motif lisible dans `powercfg /requests`, relevée toutes les 5 s sur les mêmes travaux que `F10` · indicateur « ☾ » dans l'en-tête · **après le lot** (`E`) : veille, veille prolongée ou arrêt une fois tout fini, après 60 s annulables, interrupteur décoché à chaque lot · **options** (§ 14.8, `F5` → `U`) : `[energie] empecher_veille` (vrai) et `action_fin` (`veille`) · `tests/test_veille.py` |
 | 0.8.9.42 | 2026-10-01 | **Fenêtre des clés : boutons et case OMDb visibles** (§ 14.8, IE-101) : boutons « Vérifier et enregistrer » et « Plus tard » ; la zone des services défile sous eux au lieu de les pousser hors du cadre, et se compacte pour que la case « Ne plus demander » d'OMDb se voie dès 40 lignes · `tests/test_cles.py` |

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rich.text import Text
-from textual import on, work
+from textual import events, on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
@@ -279,6 +279,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # de chaque ligne à chaque frappe coûtait plusieurs secondes.
         self._tailles:    dict[Path, int | None] = {}
         self._scan_epoch: int = 0
+        # Le relevé différé d'un changement de taille de la fenêtre (`on_resize`).
+        self._minuterie_largeur = None
 
     # ─── Accesseurs app ───────────────────────────────────────────────────────
 
@@ -777,6 +779,27 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # c'est d'elle que partent `<` et `>`.
         widths = cfg_mod.get_column_widths(self._app.cfg)
         return {**widths, "fichier": self._largeur_fichier(widths)}
+
+    def on_resize(self, event: events.Resize) -> None:
+        """La fenêtre change de taille : Fichier reprend la place laissée.
+
+        Sans cela, la largeur calculée à l'entrée dans le dossier restait
+        figée : agrandir la fenêtre laissait un vide à droite, la réduire
+        poussait Audio hors de l'écran. Un bord tiré à la souris envoie une
+        rafale d'événements : on ne reconstruit qu'une fois, quand elle cesse.
+        """
+        if self._minuterie_largeur is not None:
+            self._minuterie_largeur.stop()
+        self._minuterie_largeur = self.set_timer(0.15, self._suivre_la_fenetre)
+
+    def _suivre_la_fenetre(self) -> None:
+        self._minuterie_largeur = None
+        if self._nav.is_virtual:
+            return
+        colonne = self.query_one(DataTable).columns.get("fichier")  # type: ignore[call-overload]
+        voulue  = self._largeur_fichier(cfg_mod.get_column_widths(self._app.cfg))
+        if colonne is not None and colonne.width != voulue:
+            self._resize_rebuild()
 
     def _resize_persist(self, key: str, width: int) -> None:
         if self._nav.is_virtual:

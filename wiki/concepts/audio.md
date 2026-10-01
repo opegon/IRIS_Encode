@@ -1,7 +1,8 @@
 ---
 type: concept
-maj: 2026-09-24
+maj: 2026-10-01
 sources:
+  - "[[source-2026-10-01-entrelacement]]"
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-guide]]"
@@ -102,6 +103,26 @@ Voir [[sous-titres#Langues|Sous-titres]] : l'audio a le même piège
   indemne. Facteurs écartés par mesure : codec de sortie, durée, encodage
   matériel, drapeaux, `max_muxing_queue_size`, `max_interleave_delta`,
   `avoid_negative_ts`, `copyts`, `muxdelay`, ordre des `-map`.
+- **Une audio venue d'une autre entrée que la vidéo sortait mal entrelacée.**
+  Avec la vidéo encodée depuis l'entrée 0, l'audio recopiée depuis une entrée 1
+  (passe préalable ou greffe) et des sous-titres clairsemés mappés depuis
+  l'entrée 0, le muxeur écrit des centaines de secondes de vidéo seule, puis
+  l'audio en bloc. ffmpeg et mpv relisent le fichier sans erreur. Un lecteur de
+  salon s'arrête quand l'audio manque (*observé* : arrêt à 32 s, son perdu
+  après un saut). *(mesuré, ffmpeg 8.1, [[2026-10-01-entrelacement-audio]])*
+
+  | Disposition | Retard max de l'audio dans le fichier |
+  |---|---|
+  | sous-titres lus avec la vidéo (film entier) | ~1 150 s |
+  | idem, extrait de 300 s | 162 s |
+  | sans sous-titres | 0,2 s |
+  | `-max_interleave_delta 0` | 0,2 s, mais mémoire ∝ silence de la piste la plus creuse |
+  | **sous-titres par une entrée dédiée** | 0,2 s |
+
+  IRIS rouvre la source pour les sous-titres dans ce cas (v0.8.9.41).
+  *Supposé* : c'est l'ordonnanceur de ffmpeg 7+ qui bride l'entrée audio, et
+  le défaut des pistes sans perte vides ci-dessus pourrait avoir la même
+  cause. Non vérifié.
 - **L'AAC est forcé à 48 kHz** (`-ar:a:N 48000`).
 
 ## Voir aussi

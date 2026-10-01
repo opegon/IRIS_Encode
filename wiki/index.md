@@ -1,6 +1,6 @@
 ---
 type: index
-maj: 2026-09-26
+maj: 2026-10-01
 ---
 
 # Index du wiki IRIS ENCODE
@@ -57,6 +57,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-09-26-nvenc-pilote]] | NVENC refusé après réinstallation : API NVENC du build contre version du pilote |
 | [[source-2026-09-30-hev1-hvc1]] | `hev1` contre `hvc1` sur le G3 : les deux en lecture directe |
 | [[source-2026-09-30-lecture]] | Politique du PGS forcé, réglage de débit du client webOS |
+| [[source-2026-10-01-entrelacement]] | Audio écrite par blocs loin de la vidéo : arrêt à 32 s sur TV |
 
 ## Brut (`raw/`, immuable)
 
@@ -68,3 +69,4 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-09-26-nvenc-pilote]] | Builds ffmpeg essayés sous le pilote 597, sorties NVENC, sonde d'IRIS |
 | [[2026-09-30-hev1-hvc1-g3]] | `hev1` et `hvc1` sur le G3 : paires testées, citations de l'utilisateur |
 | [[2026-09-30-declarations-lecture]] | PGS forcé, débit du client webOS : citations de l'utilisateur |
+| [[2026-10-01-entrelacement-audio]] | *L'Ombre d'un doute* : relevés d'entrelacement, variantes ffmpeg mesurées |

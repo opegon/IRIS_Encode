@@ -177,6 +177,41 @@ def test_les_donneurs_ne_sont_pas_decales(tmp_path):
     assert "2:a:0" in maps, "l'audio dédiée passe en entrée 2"
 
 
+def test_les_sous_titres_ont_leur_propre_entree(tmp_path):
+    """Lus avec la vidéo pendant que l'audio vient d'ailleurs, ils rendaient
+    un fichier où l'audio s'interrompt de 31,9 s à 122,6 s — mesuré sur un
+    film entier, lecture arrêtée sur le téléviseur à 32 s."""
+    dec = decide(_info(tmp_path), _profile())
+    cmd = build_command(dec, _plat(), audio_source=tmp_path / "a.mka")
+    entrees = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-i"]
+    assert entrees == [str(dec.info.path), str(tmp_path / "a.mka"),
+                       str(dec.info.path)]
+    subs = [m for m in _maps(cmd) if ":s" in m]
+    assert subs and all(m.startswith("2:") for m in subs), subs
+
+
+def test_une_piste_audio_greffee_les_deplace_aussi(tmp_path):
+    """Même disposition sans passe préalable : l'audio greffée est une autre
+    entrée que la vidéo."""
+    donneur = tmp_path / "vf.mka"
+    donneur.write_bytes(b"")
+    dec = decide(_info(tmp_path, hd=False), _profile())
+    dec.external_tracks.append(ExternalTrack(
+        source_path=donneur, source_tid=0, kind=TrackKind.AUDIO,
+        codec="AC-3", language="fre"))
+    cmd  = build_command(dec, _plat())
+    subs = [m for m in _maps(cmd) if ":s" in m]
+    assert subs and all(m.startswith("2:") for m in subs), subs
+
+
+def test_sans_audio_a_part_une_seule_lecture(tmp_path):
+    """Tout vient de la source : rien à séparer, la source n'est lue qu'une fois."""
+    dec = decide(_info(tmp_path), _profile())
+    cmd = build_command(dec, _plat())
+    assert cmd.count("-i") == 1
+    assert all(m.startswith("0:") for m in _maps(cmd))
+
+
 def test_sans_passe_la_commande_ne_change_pas(tmp_path):
     """Le chemin historique : transcodage dans la passe d'encodage."""
     dec = decide(_info(tmp_path), _profile())

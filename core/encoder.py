@@ -532,6 +532,33 @@ def build_command(
     if audio_source is not None:
         cmd += ["-i", str(audio_source)]
 
+    # Un profil en `container = "mp4"` écarte les sous-titres image, que le
+    # MP4 ne porte pas — jamais en silence : la décision les liste, et si ce
+    # sont les seuls du fichier, c'est le conteneur qui cède, pas eux.
+    ecartes = {st.index for st in decision.sous_titres_ecartes}
+    sub_indices = decision.subtitle_indices
+    premux_subs = [t for t in premux_tracks if t.kind != TrackKind.AUDIO]
+    tout_garder = sub_indices is None and not ecartes
+    sous_titres_source = bool(
+        (info.subtitle_tracks if tout_garder else decision.subtitles_finales)
+        or premux_subs)
+
+    # Les sous-titres de la source passent par une entrée à eux dès que l'audio
+    # vient d'une autre entrée que la vidéo. Lus avec la vidéo, ils rendent un
+    # fichier dont l'audio s'interrompt : le muxeur écrit des centaines de
+    # secondes de vidéo seule, puis l'audio en bloc (mesuré, ffmpeg 8.1 : audio
+    # absente de 31,9 s à 122,6 s, et un retard jusqu'à 1 150 s). ffmpeg le
+    # relit sans broncher, un lecteur de salon s'arrête quand l'audio manque.
+    # `-max_interleave_delta 0` répare aussi, mais retient en mémoire tout ce
+    # qui précède la réplique suivante — 2 168 s de film sur une piste
+    # « forced ». Le prix ici est une seconde lecture de la source.
+    audio_a_part = (audio_source is not None
+                    or any(t.kind == TrackKind.AUDIO for t in ext_tracks))
+    sub_input = 0
+    if audio_a_part and sous_titres_source:
+        sub_input = len(ext_tracks) + 1 + (audio_source is not None)
+        cmd += ["-i", str(decision.encode_source or info.path)]
+
     # ── Filtre vidéo ──────────────────────────────────────────────────────────
     if not preserve_video:
         scale = (
@@ -637,24 +664,18 @@ def build_command(
     for j in range(len(premux_audio)):
         cmd += ["-map", f"0:a:{len(info.audio_tracks) + j}"]
 
-    # Un profil en `container = "mp4"` écarte les sous-titres image, que le
-    # MP4 ne porte pas — jamais en silence : la décision les liste, et si ce
-    # sont les seuls du fichier, c'est le conteneur qui cède, pas eux.
-    ecartes = {st.index for st in decision.sous_titres_ecartes}
-    sub_indices = decision.subtitle_indices
-    premux_subs = [t for t in premux_tracks if t.kind != TrackKind.AUDIO]
-    if sub_indices is None and not ecartes:
+    if tout_garder:
         # `0:s?` prend tout l'intermédiaire, greffées comprises : les mapper
         # une seconde fois les livrerait en double.
-        cmd += ["-map", "0:s?"]
+        cmd += ["-map", f"{sub_input}:s?"]
         n_src_subs = len(info.subtitle_tracks)
     else:
         gardes = [st.index for st in decision.subtitles_finales]
         for si in gardes:
-            cmd += ["-map", f"0:s:{si}"]
+            cmd += ["-map", f"{sub_input}:s:{si}"]
         n_src_subs = len(gardes)
         for j in range(len(premux_subs)):
-            cmd += ["-map", f"0:s:{len(info.subtitle_tracks) + j}"]
+            cmd += ["-map", f"{sub_input}:s:{len(info.subtitle_tracks) + j}"]
 
     # Pistes externes. Le donneur entre en entier : mapper son flux `:0`
     # supposait qu'il n'en porte qu'un — vrai d'un .srt nu, faux d'un

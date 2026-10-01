@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.41] — 2026-10-01
+
+### L'audio ne s'interrompt plus quand elle vient d'une autre entrée
+
+*L'Ombre d'un doute* (VC-1, DTS-HD MA, PGS + SRT) : la lecture s'arrêtait à
+32 s, et un saut faisait perdre la synchronisation et le son. Le fichier était
+complet, et ffmpeg comme mpv le lisaient sans erreur, mais l'audio était mal
+entrelacée. Le muxeur avait écrit la vidéo seule de 31,9 s à 122,6 s, puis
+l'audio en bloc, et le retard montait jusqu'à 1 150 s plus loin.
+
+Cause : la passe audio préalable (pistes sans perte + sous-titres) fournit
+l'audio par une seconde entrée, tandis que les sous-titres, clairsemés, sont
+lus dans la même entrée que la vidéo. Reproduit sur 300 s de la source :
+162 s de retard.
+
+- Dès que l'audio vient d'une autre entrée que la vidéo (passe préalable ou
+  piste audio greffée), les sous-titres de la source sont lus par une entrée
+  à eux, la dernière : 0,2 s d'écart au plus, mesuré sur l'extrait.
+- `-max_interleave_delta 0` répare aussi, mais retient en mémoire tout ce qui
+  précède la réplique suivante. La piste « forced » de ce film reste muette
+  2 168 s, soit environ 1 Go de mémoire. Écarté.
+- Coût : une seconde lecture de la source, et seulement dans ce cas.
+- Validé sur le film entier : 0,23 s de retard audio au plus.
+
+`core/encoder.py` (`build_command`), `tests/test_prepass_audio.py`, spec
+§ 12.1, wiki `audio`.
+
 ## [v0.8.9.40] — 2026-09-30
 
 ### Un PGS forcé doublé par un SRT forcé n'est plus gardé

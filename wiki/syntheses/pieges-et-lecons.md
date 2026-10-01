@@ -1,7 +1,8 @@
 ---
 type: synthese
-maj: 2026-09-30
+maj: 2026-10-01
 sources:
+  - "[[source-2026-10-01-entrelacement]]"
   - "[[source-2026-09-26-nvenc-pilote]]"
   - "[[source-2026-09-24-mise-a-jour]]"
   - "[[source-changelog]]"
@@ -50,6 +51,7 @@ une ligne de moins dans une liste.
 | Fichier absent de la liste | sortie ffprobe décodée en cp1252 | [[sous-processus]] |
 | Tous les fichiers « illisibles » sur installation neuve | ffprobe appelé par son nom, absent du `PATH` | [[sous-processus]] |
 | Piste audio transcodée vide | décodage sans perte et sous-titre tardif dans le même appel | [[audio|Audio]] |
+| Lecture arrêtée à 32 s sur TV, son perdu après un saut | audio d'une 2ᵉ entrée, sous-titres clairsemés lus avec la vidéo : audio écrite par blocs *(mesuré, v0.8.9.41)* | [[audio|Audio]] |
 | Réglage 48 kHz sur la mauvaise piste | `-ar:1` au lieu de `-ar:a:1` | [[audio|Audio]] |
 | DTS-HD MA traité comme un DTS | famille dans `profile`, pas dans `codec_name` | [[audio|Audio]] |
 | Métadonnées HDR10 jamais injectées | `dovi_tool info` rend du JSON | [[dovi-tool]] |

@@ -131,3 +131,13 @@ langue est écarté (v0.8.9.40) ; seul forcé de sa langue, il reste. IE-76 :
 client en « Auto », manuel de 8 à 120 Mb/s ; la question se resserre sur ce
 qu'« Auto » laisse passer. Pages touchées : [[sous-titres]], [[jellyfin]],
 [[questions-ouvertes]].
+
+
+## [2026-10-01] ingest | Audio mal entrelacée (v0.8.9.41)
+
+*L'Ombre d'un doute* : lecture arrêtée à 32 s, son perdu après un saut. Fichier
+complet et décodable, mais audio écrite par blocs, jusqu'à ~1 150 s de la vidéo
+correspondante. Cause reproduite : audio d'une seconde entrée, sous-titres
+clairsemés lus avec la vidéo. Parade : entrée dédiée aux sous-titres.
+Validée sur le film entier : 0,23 s de retard audio au plus.
+Pages touchées : [[audio]], [[pieges-et-lecons]].

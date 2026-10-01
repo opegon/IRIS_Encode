@@ -94,7 +94,7 @@ def test_une_sortie_sdr_perd_aussi_la_profondeur(tmp_path, nom, attendu):
     """Le tone mapping finit sur `format=yuv420p` : la sortie est en 8 bits."""
     dec = decide(_source(tmp_path, nom), _profile(dolby_vision="sdr"))
     assert dec.video.dv_action == DVAction.SDR
-    assert dec.output_path.stem == f"{attendu}.hevc.IRIS"
+    assert dec.output_path.stem == f"{attendu}.hevc-iris"
 
 
 def test_une_sortie_hdr10_garde_sa_profondeur(tmp_path):
@@ -122,7 +122,7 @@ def test_un_dv_ramene_en_sdr_perd_toutes_les_marques(tmp_path):
     dec = decide(_source(tmp_path, "Film.2160p.DV.HDR10"),
                  _profile(dolby_vision="sdr"))
     assert dec.video.dv_action == DVAction.SDR
-    assert dec.output_path.stem == "Film.2160p.hevc.IRIS"
+    assert dec.output_path.stem == "Film.2160p.hevc-iris"
 
 
 def test_une_source_sans_dv_n_est_pas_touchee(tmp_path):
@@ -194,7 +194,7 @@ def test_un_nom_muet_sur_l_audio_ne_gagne_rien(tmp_path):
     """On corrige une marque existante, on n'en ajoute pas."""
     dec = decide(_source(tmp_path, "Le Nom du film (2017)"),
                  _profile(audio_hd_codec="eac3"))
-    assert dec.output_path.stem == "Le Nom du film (2017).hevc.IRIS"
+    assert dec.output_path.stem == "Le Nom du film (2017).hevc-iris"
 
 
 def test_les_quatre_reecritures_se_composent(tmp_path):
@@ -202,7 +202,7 @@ def test_les_quatre_reecritures_se_composent(tmp_path):
     info = _source(tmp_path, "Film.2160p.DV.HDR10.x265.TrueHD.7.1-GROUP")
     dec  = decide(info, _profile(keep_4k=False, audio_hd_codec="eac3"))
     assert dec.video.action == VideoAction.ENCODE_HEVC
-    assert dec.output_path.stem == "Film.1080p.HDR10.E-AC3.5.1-GROUP.hevc.IRIS"
+    assert dec.output_path.stem == "Film.1080p.HDR10.E-AC3.5.1.hevc-iris"
 
 
 def test_un_skip_ne_touche_a_rien(tmp_path):

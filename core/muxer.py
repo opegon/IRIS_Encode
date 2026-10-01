@@ -19,7 +19,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
-from .scanner import MARQUE_IRIS, stem_sans_suffixe_produit
+from .scanner import MARQUE_IRIS, stem_sans_groupe, stem_sans_suffixe_produit
 
 # Suffixe appliqué quand on mux sans réencoder : le nom de sortie doit différer
 # de la source, qu'on ne réécrit jamais en place. `mux` est dans
@@ -504,7 +504,8 @@ def sample_output_path(source: Path) -> Path:
 
 def mux_output_path(source: Path) -> Path:
     """Chemin de sortie d'un mux sans réencodage (toujours MKV, jamais la source)."""
-    return source.parent / f"{stem_sans_suffixe_produit(source.stem)}{MUX_SUFFIX}.mkv"
+    stem = stem_sans_groupe(stem_sans_suffixe_produit(source.stem))
+    return source.parent / f"{stem}{MUX_SUFFIX}.mkv"
 
 
 # ─── Mux préalable à un encodage ──────────────────────────────────────────────

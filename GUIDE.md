@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.43
+**Version** : 0.8.9.44
 **Date** : 2026-10-01
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -135,22 +135,34 @@ les fichiers réussis sont décochés. Un fichier en échec ou interrompu reste
 coché, prêt à relancer.
 
 **Ce que l'application a encodé se reconnaît à son nom.** Toute sortie finit
-par `.IRIS`, précédée de ce que le traitement a fait : `Film.2160p.hevc.IRIS.mkv`,
-`Film.720p.h264.IRIS.mp4`, `Film.av1.IRIS.mkv`, `Film.dv.IRIS.mkv` (Dolby Vision
-conservé), `Film.hdr10.IRIS.mkv` (RPU retiré). Une caractéristique que le nom
-porte déjà n'est pas répétée — `Film.2160p.DV` sort `Film.2160p.DV.IRIS`. Ces
+par `-iris`, précédée de ce que le traitement a fait : `Film.2160p.hevc-iris.mkv`,
+`Film.720p.h264-iris.mp4`, `Film.av1-iris.mkv`, `Film.dv-iris.mkv` (Dolby Vision
+conservé), `Film.hdr10-iris.mkv` (RPU retiré). Une caractéristique que le nom
+porte déjà n'est pas répétée — `Film.2160p.DV` sort `Film.2160p.DV-iris`. Ces
 fichiers sont grisés dans la liste et écartés du scan récursif et de `A` : les
 reproposer reviendrait à offrir de réencoder par-dessus un fichier déjà traité,
 avec la perte de génération que cela implique.
 
-Un `.mux.IRIS` fait exception et **reste proposé** : ce n'est pas un encodage
+Un `.mux-iris` fait exception et **reste proposé** : ce n'est pas un encodage
 mais une greffe de pistes, et l'encoder ensuite est un enchaînement normal. Un
-`.join.IRIS` aussi, et pour une raison plus forte encore : un fichier collé
+`.join-iris` aussi, et pour une raison plus forte encore : un fichier collé
 n'existe que pour être encodé ensuite (§ 2.1bis).
+
+**Le groupe de la release ne suit pas.** Le dernier terme d'un nom de release,
+détaché par un tiret — `Film.1080p.x265-GROUPE`, `Film 1080p - GROUPE` —
+signe la source ; la sortie le perd : `Film.1080p.hevc-iris.mkv`. Il ne part
+que si le reste du nom porte une marque de release (`1080p`, `x265`, `HDR`,
+`BluRay`, `MULTi`…) et s'il n'en est pas une lui-même : `Spider-Man.mkv`,
+`Titre - Sous-titre.mkv`, `Film.1080p.DTS-HD.mkv` gardent leur fin.
 
 > Depuis la v0.8.8.11, les anciens noms (`_[hevc]`, `_[av1]`…) ne sont plus
 > reconnus : ils se traitent comme des sources ordinaires. Réencodé, un
-> `Film_[hevc]` sort `Film.hevc.IRIS`.
+> `Film_[hevc]` sort `Film.hevc-iris`.
+
+> Depuis la v0.8.9.44, la marque est `-iris` (elle était `.IRIS`). Les
+> sorties à l'ancienne marque ne sont plus reconnues : elles redeviennent des
+> sources, et un réencodage garde leur `.IRIS` dans le nom —
+> `Film.1080p.hevc.IRIS` sort `Film.1080p.IRIS.hevc-iris`.
 
 > Avant la v0.8.5.1, seuls `_[hevc]` et `_[H264]` étaient reconnus. Une sortie
 > AV1 reparaissait donc dans la liste, et comme l'AV1 n'est pas un codec que la
@@ -199,8 +211,8 @@ place.
 
 **Rien n'est effacé.** Les parties sont conservées ; `Ctrl+D` sur l'accueil
 reste le seul geste qui supprime. Le fichier produit s'appelle
-`<nom commun>.join.IRIS.mkv` — `Film part1.mkv` + `Film part2.mkv` donnent
-`Film.join.IRIS.mkv` — et la jonction refuse d'écraser un fichier existant.
+`<nom commun>.join-iris.mkv` — `Film part1.mkv` + `Film part2.mkv` donnent
+`Film.join-iris.mkv` — et la jonction refuse d'écraser un fichier existant.
 
 À la fin, l'écran compare la durée obtenue à la somme des parties. Un écart
 est annoncé plutôt que passé sous silence : un mkvmerge interrompu laisse un
@@ -454,8 +466,8 @@ Dolby Vision profil 8 et basculent en transcodage, avec des coupures de son.
 Retirer le DV **améliore** la lecture, contrairement à ce qu'on croirait.
 
 Avec un profil réglé sur `dolby_vision = hdr10` (`F5`, champ **DV**), une source
-DV que le profil n'a aucune raison de réencoder sort en `.hdr10.IRIS.mkv` ou
-`.hdr10.IRIS.mp4`, selon ce que ses pistes permettent :
+DV que le profil n'a aucune raison de réencoder sort en `.hdr10-iris.mkv` ou
+`.hdr10-iris.mp4`, selon ce que ses pistes permettent :
 
 - le RPU est retiré, **aucune image n'est recalculée** ;
 - le HDR10+ éventuel survit, ce qu'aucun réencodage ne permet ;
@@ -694,7 +706,7 @@ En 8.1, la couche de base *est* déjà du HDR10 : il suffit d'en retirer les
 métadonnées Dolby Vision. L'image ressort **identique au bit près**, le HDR10+
 éventuel est conservé, et un film 4K de 5,7 Go y passe en un peu plus de deux
 minutes — contre plusieurs heures pour un réencodage, qui abîmerait l'image et
-perdrait le HDR10+. La sortie est un `<nom>.hdr10.IRIS.mkv` ou `.mp4` portant
+perdrait le HDR10+. La sortie est un `<nom>.hdr10-iris.mkv` ou `.mp4` portant
 les pistes retenues de la source ; un profil 7 sort toujours en MKV.
 
 > **MP4 produits avant la v0.8.8.15 : à refaire.** Leur vidéo avait perdu ses

@@ -141,3 +141,12 @@ correspondante. Cause reproduite : audio d'une seconde entrée, sous-titres
 clairsemés lus avec la vidéo. Parade : entrée dédiée aux sous-titres.
 Validée sur le film entier : 0,23 s de retard audio au plus.
 Pages touchées : [[audio]], [[pieges-et-lecons]].
+
+
+## [2026-10-01] ingest | Marque `-iris`, groupe de release retiré (v0.8.9.44)
+
+Demande de l'utilisateur : la sortie ne garde plus le groupe de la source
+(`-GROUPE`, ` - GROUPE`), et la marque `.IRIS`, jugée criarde, devient `-iris`.
+Tranché : caractéristique conservée (`.hevc-iris`), ancienne marque plus
+reconnue, groupe retiré seulement d'un nom qui porte une marque de release.
+Pages touchées : [[noms-de-release]].

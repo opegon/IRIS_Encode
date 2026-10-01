@@ -74,11 +74,11 @@ def test_la_cible_suit_le_bucket_de_resolution(tmp_path):
     """H264 sous 1080p — il y compresse mieux —, HEVC au-dessus."""
     petit = decide(_info(tmp_path, "av1", largeur=1280, hauteur=720), _profile())
     assert petit.video.action == VideoAction.ENCODE_H264
-    assert petit.output_path.stem.endswith(".h264.IRIS")
+    assert petit.output_path.stem.endswith(".h264-iris")
 
     grand = decide(_info(tmp_path, "vp9"), _profile())
     assert grand.video.action == VideoAction.ENCODE_HEVC
-    assert grand.output_path.stem.endswith(".hevc.IRIS")
+    assert grand.output_path.stem.endswith(".hevc-iris")
 
 
 def test_un_codec_inconnu_est_traite_comme_illisible(tmp_path):

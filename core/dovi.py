@@ -13,8 +13,8 @@ Fonctions principales :
 Retrait pur du DV (orchestré par tui/screens/run.py), sans réencodage :
   MKV : 1. ffmpeg     : extract HEVC brut     (input.mkv  → temp.hevc)
         2. dovi_tool  : remove                (temp.hevc  → temp.nodv.hevc)
-        3. mkvmerge   : remux avec les pistes (→ sortie.hdr10.IRIS.mkv)
-  MP4 : 1. ffmpeg -bsf:v dovi_rpu=strip=1     (input → sortie.hdr10.IRIS.mp4)
+        3. mkvmerge   : remux avec les pistes (→ sortie.hdr10-iris.mkv)
+  MP4 : 1. ffmpeg -bsf:v dovi_rpu=strip=1     (input → sortie.hdr10-iris.mp4)
 
 Pipeline DV→HDR10 par réencodage (orchestré par encoder.py) :
   1. ffmpeg     : extract HEVC brut          (input.mkv → temp.hevc)

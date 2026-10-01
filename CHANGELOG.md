@@ -1,5 +1,30 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.44] — 2026-10-01
+
+### Des noms de sortie plus sobres : `-iris`, et sans le groupe de la source
+
+Un fichier d'entrée finit souvent par le groupe qui a fait la release
+(`Film.1080p.x265-GROUPE`, `Film 1080p - GROUPE`). Ce groupe signait la
+source, et la sortie le gardait : `Film.1080p-GROUPE.hevc.IRIS.mkv`. Et la
+marque `.IRIS`, en capitales, criait plus qu'elle ne signait.
+
+- Toute sortie finit par **`-iris`** : `Film.1080p.hevc-iris.mkv`,
+  `Film.mux-iris.mkv`, `Film.join-iris.mkv`. La caractéristique (`.hevc`,
+  `.dv`, `.hdr10`…) reste.
+- Le **groupe de la release part**, pour un encodage, une greffe ou une
+  jonction. Seulement d'un nom qui porte une marque de release (`1080p`,
+  `x265`, `HDR`, `BluRay`, `MULTi`…), et si le dernier terme n'en est pas
+  une : `Spider-Man.mkv`, `Titre - Sous-titre.mkv` et `Film.DTS-HD.mkv`
+  gardent leur fin.
+- L'ancienne marque **`.IRIS` n'est plus reconnue** : ces sorties
+  redeviennent des sources ordinaires, et un réencodage garde leur `.IRIS`
+  dans le nom (`Film.1080p.hevc.IRIS` → `Film.1080p.IRIS.hevc-iris`).
+
+`core/scanner.py` (`MARQUE_IRIS`, `stem_sans_groupe`, `JETONS_RELEASE`),
+`core/decision.py`, `core/muxer.py`, `core/joiner.py`, `tests/test_nom_iris.py`.
+Spec § 8.7, guide § 2.1, wiki `noms-de-release`.
+
 ## [v0.8.9.43] — 2026-10-01
 
 ### La machine ne se met plus en veille au milieu d'un encodage

@@ -18,7 +18,8 @@ from .scanner import (MARQUE_IRIS, AudioTrack, VideoInfo, channel_layout_label,
                       deja_produit, normalize_language, porte_marque,
                       stem_marques_remplacees,
                       stem_marques_retirees, stem_resolution_ramenee,
-                      stem_sans_marque_codec, stem_sans_suffixe_produit)
+                      stem_sans_groupe, stem_sans_marque_codec,
+                      stem_sans_suffixe_produit)
 
 
 # ─── Décision vidéo ───────────────────────────────────────────────────────────
@@ -72,7 +73,7 @@ def video_recopiee(action: "VideoAction", dv_action: "DVAction") -> bool:
 
     Conserver le Dolby Vision impose `-c:v copy` : le débit et la résolution
     demandés par le profil restent alors lettre morte. L'interface annonçait
-    pourtant « → HEVC → DV » et nommait la sortie `.hevc.IRIS`, pour un fichier
+    pourtant « → HEVC → DV » et nommait la sortie `.hevc-iris`, pour un fichier
     dont l'image n'avait pas bougé d'un bit — un débit de 60 Mb/s ressortait
     à 60 Mb/s sous un nom qui promettait l'inverse.
     """
@@ -108,7 +109,7 @@ class VideoDecision:
     target_width:    int
     target_height:   int
     dv_action:       DVAction
-    output_suffix:   str    # ".hevc.IRIS" | ".h264.IRIS" | … | "" (SKIP)
+    output_suffix:   str    # ".hevc-iris" | ".h264-iris" | … | "" (SKIP)
 
     def label(self) -> str:
         if self.action == VideoAction.SKIP:
@@ -292,7 +293,7 @@ def _needs_mkv_codec(codec: str) -> bool:
 # l'autre rendent un fichier Dolby Vision. Ce qui les sépare est le débit, que
 # la raison affichée explicite.
 #
-# Chaque suffixe est une caractéristique suivie de la marque `.IRIS` (§ 8.7).
+# Chaque suffixe est une caractéristique suivie de la marque `-iris` (§ 8.7).
 SUFFIX_DV_COPIE = f".dv{MARQUE_IRIS}"
 
 SUFFIX_BY_ACTION: dict["VideoAction", str] = {
@@ -338,13 +339,13 @@ _JETONS_CARACTERISTIQUE: dict[str, tuple[str, ...]] = {
 def suffixe_sans_redite(stem: str, suffix: str) -> str:
     """Le suffixe privé de sa caractéristique si le stem l'annonce déjà.
 
-    `Film.2160p.DV` dont le Dolby Vision est conservé sort `Film.2160p.dv.IRIS`,
-    pas `Film.2160p.DV.dv.IRIS` ; ramené en HDR10, son `DV` devient `HDR10`
+    `Film.2160p.DV` dont le Dolby Vision est conservé sort `Film.2160p.dv-iris`,
+    pas `Film.2160p.DV.dv-iris` ; ramené en HDR10, son `DV` devient `HDR10`
     (`_stem_a_jour`) et le suffixe n'a plus à le redire. Un nom qui ne
-    l'annonçait pas la reçoit : `Film.2160p` → `Film.2160p.hdr10.IRIS`.
+    l'annonçait pas la reçoit : `Film.2160p` → `Film.2160p.hdr10-iris`.
 
     La caractéristique reste quand la retirer changerait la nature du nom :
-    un `Film.DV.join` dont le DV est conservé sortirait `Film.DV.join.IRIS`,
+    un `Film.DV.join` dont le DV est conservé sortirait `Film.DV.join-iris`,
     que le filtre prendrait pour un collage à encoder (`ENTREES_IRIS`).
     """
     if not suffix.endswith(MARQUE_IRIS):
@@ -544,13 +545,14 @@ class FileDecision:
         ext    = self.output_container
         if not suffix and self.external_tracks:
             # SKIP + pistes externes : pas de suffixe de codec, donc rien ne
-            # distinguerait la sortie de la source. On mux sous `.mux.IRIS`.
+            # distinguerait la sortie de la source. On mux sous `.mux-iris`.
             suffix = MUX_SUFFIX
         if suffix:
             # La marque se remplace, elle ne s'empile pas : réencoder un
-            # `Film.av1.IRIS` en HEVC donne `Film.hevc.IRIS`, pas
-            # `Film.av1.IRIS.hevc.IRIS`. Le nom dit ce que le fichier est.
-            stem = stem_sans_suffixe_produit(stem)
+            # `Film.av1-iris` en HEVC donne `Film.hevc-iris`, pas
+            # `Film.av1-iris.hevc-iris`. Le nom dit ce que le fichier est.
+            # Le groupe de la release part ensuite : il signait la source.
+            stem = stem_sans_groupe(stem_sans_suffixe_produit(stem))
         stem = self._stem_a_jour(stem)
         return self.info.path.parent / f"{stem}{suffixe_sans_redite(stem, suffix)}{ext}"
 
@@ -562,7 +564,7 @@ class FileDecision:
         source : c'est le nom du fichier écrit qui se corrige.
 
         SKIP est écarté d'un bloc : la seule sortie qu'il produit est une
-        greffe de pistes (`.mux.IRIS`), que mkvmerge recopie sans rien convertir.
+        greffe de pistes (`.mux-iris`), que mkvmerge recopie sans rien convertir.
         Le fichier y garde jusqu'à son RPU Dolby Vision — quand `dovi_tool`
         manque, la décision retombe sur SKIP en gardant `dv_action`.
         """
@@ -630,7 +632,7 @@ class FileDecision:
         Seul un vrai réencodage vers un codec nommé le fait. Une vidéo
         recopiée (DV conservé, `-c:v copy`) sort dans le codec de la source :
         la marque du nom reste vraie, et l'effacer perdrait l'information au
-        profit d'un `.dv.IRIS` qui ne la porte pas.
+        profit d'un `.dv-iris` qui ne la porte pas.
         """
         return (self.video.action in ACTIONS_CODEC_NOMME
                 and not video_recopiee(self.video.action, self.video.dv_action))
@@ -1068,14 +1070,14 @@ def resoudre_sorties(decisions: list[FileDecision]) -> None:
     Remplacer le suffixe plutôt que l'empiler fait apparaître deux collisions
     que l'empilement masquait :
 
-    - la cible **est** la source — `Film.hevc.IRIS.mkv` réencodé en HEVC. C'est le
+    - la cible **est** la source — `Film.hevc-iris.mkv` réencodé en HEVC. C'est le
       geste le plus courant, rebaisser le débit d'une sortie, et le garde-fou
       de l'encodeur le refuserait ;
-    - la cible existe déjà — `Film.av1.IRIS.mkv` réencodé en HEVC alors qu'un
-      `Film.hevc.IRIS.mkv` a été produit hier. Ce fichier-là n'est la source de
+    - la cible existe déjà — `Film.av1-iris.mkv` réencodé en HEVC alors qu'un
+      `Film.hevc-iris.mkv` a été produit hier. Ce fichier-là n'est la source de
       personne : rien ne l'aurait protégé d'un écrasement silencieux.
 
-    Dans les deux cas on numérote : `Film.hevc.IRIS(2).mkv`. Rien n'est jamais
+    Dans les deux cas on numérote : `Film.hevc-iris(2).mkv`. Rien n'est jamais
     écrasé, et rien n'est refusé.
 
     **Le nom est posé une fois.** Une propriété qui interrogerait le disque à

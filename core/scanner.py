@@ -24,12 +24,13 @@ SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
 })
 
 # La marque que toute sortie de l'application porte en dernier, précédée de la
-# caractéristique qui dit ce que le traitement a fait (`.hevc.IRIS`,
-# `.hdr10.IRIS`…). Le point sépare, comme dans un nom de release (§ 8.7).
+# caractéristique qui dit ce que le traitement a fait (`.hevc-iris`,
+# `.hdr10-iris`…). Le tiret la détache comme le groupe d'une release, en
+# minuscules : plus sobre que l'ancien `.IRIS`, qui n'est plus reconnu (§ 8.7).
 #
-# La casse compte, à dessein : un titre qui finirait par `.Iris` — `Hotel.Iris`
-# — n'est pas une sortie, et le filtre le masquerait sans un mot.
-MARQUE_IRIS = ".IRIS"
+# La casse compte, à dessein : un titre qui finirait par `-Iris` n'est pas une
+# sortie, et le filtre le masquerait sans un mot.
+MARQUE_IRIS = "-iris"
 
 # Les sorties qui restent des **entrées** : un collage ou une greffe de pistes
 # ne sont pas des encodages, et on les encode ensuite. Le filtre ne doit pas
@@ -38,7 +39,7 @@ ENTREES_IRIS = ("mux", "join")
 
 # `(n)` : la numérotation de collision, posée après la marque (`resoudre_sorties`).
 _RE_MARQUE_IRIS = re.compile(rf"{re.escape(MARQUE_IRIS)}(?:\(\d+\))?$")
-# La caractéristique, elle, se lit sans casse : un `.MUX.IRIS` écrit avant
+# La caractéristique, elle, se lit sans casse : un `.MUX-iris` écrit avant
 # le passage aux minuscules reste une entrée.
 _RE_ENTREE_IRIS = re.compile(
     rf"\.(?i:{'|'.join(ENTREES_IRIS)}){re.escape(MARQUE_IRIS)}(?:\(\d+\))?$")
@@ -47,7 +48,7 @@ _RE_ENTREE_IRIS = re.compile(
 def deja_produit(stem: str) -> bool:
     """Ce nom de fichier est-il celui d'une sortie d'encodage de l'application ?
 
-    La marque est cherchée en **fin** de stem : `Film.hevc.IRIS (copie)` n'est
+    La marque est cherchée en **fin** de stem : `Film.hevc-iris (copie)` n'est
     pas une sortie que nous venons d'écrire. Les noms de l'ancien schéma
     (`_[hevc]`, `_[av1]`…) ne sont plus reconnus — ils redeviennent des sources.
     """
@@ -55,20 +56,20 @@ def deja_produit(stem: str) -> bool:
 
 
 def stem_sans_suffixe_produit(stem: str) -> str:
-    """Le stem débarrassé de la marque `.IRIS` qu'il porte, s'il en porte une.
+    """Le stem débarrassé de la marque `-iris` qu'il porte, s'il en porte une.
 
-    Réencoder une sortie ne doit pas empiler les marques : `Film.av1.IRIS`
-    réencodé en HEVC donne `Film.hevc.IRIS`, pas `Film.av1.IRIS.hevc.IRIS`.
+    Réencoder une sortie ne doit pas empiler les marques : `Film.av1-iris`
+    réencodé en HEVC donne `Film.hevc-iris`, pas `Film.av1-iris.hevc-iris`.
     Seule la marque part ici ; la caractéristique qui la précède est une marque
     comme une autre, que `FileDecision._stem_a_jour` réécrit si elle a changé
     (le `AV1` part avec les marques de codec) ou laisse si elle reste vraie.
 
     La numérotation de collision part avec elle — sans cela un
-    `Film.hevc.IRIS(2)` réencodé redonnerait `Film.hevc.IRIS(2).hevc.IRIS`.
+    `Film.hevc-iris(2)` réencodé redonnerait `Film.hevc-iris(2).hevc-iris`.
     `Film (2)`, la copie que fait Windows, n'est pas touché : le compteur ne
     compte que s'il suit immédiatement la marque.
 
-    Un `.mux.IRIS` ou un `.join.IRIS` perd aussi sa marque mais garde `mux` ou
+    Un `.mux-iris` ou un `.join-iris` perd aussi sa marque mais garde `mux` ou
     `join` : ils disent d'où vient le fichier, et l'encodage ne l'efface pas.
     """
     return _RE_MARQUE_IRIS.sub("", stem)
@@ -200,16 +201,60 @@ def stem_resolution_ramenee(stem: str, cible: str) -> str:
 def stem_sans_marque_codec(stem: str) -> str:
     """Le stem débarrassé des marques de codec vidéo qu'il porte.
 
-    Un `Film.1080p.x264` réencodé en HEVC ressortait `Film.1080p.x264.hevc.IRIS` :
+    Un `Film.1080p.x264` réencodé en HEVC ressortait `Film.1080p.x264.hevc-iris` :
     le nom annonçait deux codecs, dont un que le fichier n'a plus. C'est le
     suffixe produit qui dit le codec de sortie ; les marques de la source n'ont
     plus rien à annoncer, y compris quand elles tombent juste — un `x265` gardé
-    à côté de `.hevc.IRIS` répète la même chose deux fois.
+    à côté de `.hevc-iris` répète la même chose deux fois.
 
     Sont reconnues `x264`, `x265`, `H264`, `H265` (avec ou sans point), `HEVC`,
     `AV1` et `VP9`.
     """
     return stem_marques_retirees(stem, JETONS_CODEC_VIDEO)
+
+
+# Les marques qui font d'un nom un nom de release. Elles ne servent qu'à
+# reconnaître un tel nom avant d'en retirer le groupe (`stem_sans_groupe`) :
+# hors de ce contexte, « - Sous-titre » est une partie du titre.
+JETONS_RELEASE = JETONS_RESOLUTION_4K + JETONS_CODEC_VIDEO + (
+    "1080p", "720p", "576p", "480p",
+    "dolby vision", "dovi", "dv", "hdr10+", "hdr10", "hdr", "10 bits", "10 bit",
+    "truehd", "true-hd", "dts-hd ma", "dts-hd", "dts-x", "dts", "dd+", "ddp",
+    "e-ac3", "ac3", "atmos", "flac", "aac",
+    "multi", "vff", "vf2", "vfq", "vof", "vostfr", "french", "truefrench",
+    "bluray", "web-dl", "webrip", "remux", "hdlight", "bdrip", "hdtv",
+)
+
+# Le dernier terme d'un nom, détaché par un tiret : `x265-GROUPE`,
+# `1080p - GROUPE`. Un mot seul — sans espace, point ni crochet.
+_RE_GROUPE = re.compile(r"\s*-\s*(?P<groupe>[^\s.\-\[\](){}]+)$")
+
+
+def stem_sans_groupe(stem: str) -> str:
+    """Le stem privé du groupe de release qui le termine.
+
+    `Film.1080p.x265-GROUPE` et `Film 1080p - GROUPE` donnent `Film.1080p.x265`
+    et `Film 1080p` : le groupe signait la source, pas le fichier produit.
+
+    Trois gardes, car un tiret final n'annonce pas toujours un groupe :
+
+    - le reste du nom porte une **marque de release** — sans elle, `Spider-Man`
+      ou `Titre - Sous-titre` sont des titres ;
+    - le dernier terme n'est pas **lui-même une marque**, ni un morceau de
+      marque : `Film.1080p-x265`, `Film.DTS-HD`, `Film.WEB-DL` le gardent ;
+    - un nom qui ne serait plus rien est rendu tel quel.
+    """
+    m = _RE_GROUPE.search(stem)
+    if not m:
+        return stem
+    debut = m.start("groupe")
+    for marque in _re_marques(JETONS_RELEASE).finditer(stem):
+        if marque.end("avant") <= debut < marque.start("apres"):
+            return stem
+    reste = stem[: m.start()].rstrip(" ._-")
+    if not reste or not porte_marque(reste, JETONS_RELEASE):
+        return stem
+    return reste
 
 
 _LOSSLESS_CODECS = frozenset({"truehd", "dts-hd ma", "dtshd", "mlp"})
@@ -375,7 +420,7 @@ class VideoInfo:
 
     @property
     def is_already_encoded(self) -> bool:
-        """Vrai si le fichier porte la marque `.IRIS` d'une sortie d'encodage."""
+        """Vrai si le fichier porte la marque `-iris` d'une sortie d'encodage."""
         return deja_produit(self.path.stem)
 
     @property

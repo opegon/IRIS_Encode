@@ -522,7 +522,7 @@ async def scenario_external_tracks() -> None:
             assert app.screen._done, "mux non termine"
             assert app.screen._ok, "mux en echec"
 
-            out = td / "film.mux.IRIS.mkv"
+            out = td / "film.mux-iris.mkv"
             assert out.exists(), "fichier muxe absent"
             from core import muxer
             produced = muxer.identify(out)
@@ -537,8 +537,8 @@ async def scenario_external_tracks() -> None:
             # On lit ce qui est reellement rendu, pas ce qu'on a demande.
             for wid in ("#mux-out", "#mux-state"):
                 rendu = str(app.screen.query_one(wid, Static).render())
-                assert ".mux.IRIS" in rendu, f"{wid} : suffixe mange -> {rendu!r}"
-            print("[12b] Ecran de mux : le suffixe .mux.IRIS survit a l'affichage")
+                assert ".mux-iris" in rendu, f"{wid} : suffixe mange -> {rendu!r}"
+            print("[12b] Ecran de mux : le suffixe .mux-iris survit a l'affichage")
 
             # Apres le mux, c'est le fichier MUXE qui devient le fichier de
             # travail : sans ca, un encodage viserait l'original et la greffe
@@ -999,7 +999,7 @@ async def scenario_collage() -> None:
             noms = [i.path.name for i in join._infos]
             assert noms == ["Film part1.mkv", "Film part2.mkv",
                             "Film part10.mkv"], noms
-            assert join._output.name == "Film.join.IRIS.mkv", join._output.name
+            assert join._output.name == "Film.join-iris.mkv", join._output.name
             # La colonne du nom suit celle de l'accueil : une largeur figee
             # plus etroite tronquait des noms lisibles la-bas.
             from core import config as cfg_mod
@@ -1046,7 +1046,7 @@ async def scenario_collage() -> None:
             assert type(app.screen).__name__ == "BrowserScreen", \
                 type(app.screen).__name__
             noms_vus = {p.name for p in app.screen._decisions}
-            assert "Film.join.IRIS.mkv" in noms_vus, noms_vus
+            assert "Film.join-iris.mkv" in noms_vus, noms_vus
             print("[19e] Le fichier colle revient a l'accueil, decide comme les autres")
 
 
@@ -1059,7 +1059,7 @@ async def scenario_sorties_visibles() -> None:
             return
         # Ce que l'application ecrit elle-meme : jusqu'a la v0.8.8.3, ce
         # fichier disparaissait de l'ecran.
-        (td / "clip0.mkv").replace(td / "Deja.hevc.IRIS.mkv")
+        (td / "clip0.mkv").replace(td / "Deja.hevc-iris.mkv")
 
         app = IrisEncodeApp(start_path=td)
         async with app.run_test(size=(140, 40)) as pilot:
@@ -1070,9 +1070,9 @@ async def scenario_sorties_visibles() -> None:
             scr   = app.screen
             table = scr.query_one(DataTable)
             noms  = {p.name for p in scr._decisions}
-            assert noms == {"clip1.mkv", "Deja.hevc.IRIS.mkv"}, noms
+            assert noms == {"clip1.mkv", "Deja.hevc-iris.mkv"}, noms
             assert table.row_count == 2, table.row_count
-            produit = td / "Deja.hevc.IRIS.mkv"
+            produit = td / "Deja.hevc-iris.mkv"
             assert scr._produits == {produit}, scr._produits
             print("[20] La sortie deja produite est listee, marquee comme telle")
 

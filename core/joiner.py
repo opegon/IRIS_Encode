@@ -3,7 +3,7 @@ core/joiner.py — Collage bout à bout de plusieurs parties en un fichier uniqu
 
 Un film livré en `part1` / `part2` n'est encodable qu'une fois recousu : chaque
 partie prise seule donnerait sa propre sortie, et le profil déciderait deux fois
-au lieu d'une. Le collage produit un `.join.IRIS.mkv` que le navigateur reproposera
+au lieu d'une. Le collage produit un `.join-iris.mkv` que le navigateur reproposera
 comme n'importe quel autre fichier — c'est tout l'objet du suffixe (voir
 `scanner.ENTREES_IRIS`, qui l'écarte de la liste des sorties d'encodage).
 
@@ -23,7 +23,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .scanner import MARQUE_IRIS, VideoInfo
+from .scanner import MARQUE_IRIS, VideoInfo, stem_sans_groupe
 from .texte import pluriel
 
 # Suffixe du fichier recousu. Absent de `SUFFIX_BY_ACTION` à dessein : ce n'est
@@ -94,7 +94,7 @@ def nom_commun(parts: list[Path]) -> str:
 
 def join_output_path(parts: list[Path]) -> Path:
     """Chemin du fichier recousu, à côté des parties et jamais sur l'une d'elles."""
-    return parts[0].parent / f"{nom_commun(parts)}{JOIN_SUFFIX}.mkv"
+    return parts[0].parent / f"{stem_sans_groupe(nom_commun(parts))}{JOIN_SUFFIX}.mkv"
 
 
 # ─── Contrôle de compatibilité ────────────────────────────────────────────────

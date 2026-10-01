@@ -120,7 +120,7 @@ def _dec(path: Path) -> FileDecision:
         video=VideoDecision(action=VideoAction.ENCODE_HEVC, reason="",
                             target_bitrate=3_000_000, target_width=1920,
                             target_height=1080, dv_action=DVAction.NONE,
-                            output_suffix=".hevc.IRIS"))
+                            output_suffix=".hevc-iris"))
 
 
 @pytest.fixture

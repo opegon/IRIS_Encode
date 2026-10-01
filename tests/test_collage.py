@@ -84,21 +84,21 @@ def test_nom_commun_retire_le_marqueur_de_partie(noms, attendu):
 
 
 def test_nom_commun_sans_prefixe_commun_prend_la_premiere_partie():
-    """Mieux vaut un nom imparfait qu'un `.join.IRIS.mkv` sans nom."""
+    """Mieux vaut un nom imparfait qu'un `.join-iris.mkv` sans nom."""
     assert nom_commun([Path("alpha.mkv"), Path("beta.mkv")]) == "alpha"
 
 
 def test_join_output_path_est_dans_le_dossier_des_parties():
     parts = [Path("D:/films/Film part1.mkv"), Path("D:/films/Film part2.mkv")]
     sortie = join_output_path(parts)
-    assert sortie == Path("D:/films/Film.join.IRIS.mkv")
+    assert sortie == Path("D:/films/Film.join-iris.mkv")
     assert sortie.parent == parts[0].parent
 
 
 def test_le_fichier_colle_reste_visible_au_scan():
-    """`.join.IRIS` n'est pas une sortie d'encodage : le navigateur doit le voir.
+    """`.join-iris` n'est pas une sortie d'encodage : le navigateur doit le voir.
 
-    L'écarter comme `.hevc.IRIS` rendrait le collage inutile — on ne pourrait
+    L'écarter comme `.hevc-iris` rendrait le collage inutile — on ne pourrait
     plus travailler son propre résultat, qui est tout l'objet de la fonction.
     """
     assert not deja_produit(f"Film{JOIN_SUFFIX}")
@@ -172,7 +172,7 @@ def test_build_join_command_intercale_un_plus():
     superposerait les pistes au lieu de les enchaîner."""
     parts  = [Path("D:/films/p1.mkv"), Path("D:/films/p2.mkv"),
               Path("D:/films/p3.mkv")]
-    sortie = Path("D:/films/Film.join.IRIS.mkv")
+    sortie = Path("D:/films/Film.join-iris.mkv")
     cmd    = build_join_command(parts, sortie)
 
     assert cmd[1:4] == ["--gui-mode", "-o", str(sortie)]

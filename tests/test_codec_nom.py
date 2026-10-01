@@ -2,10 +2,10 @@
 tests/test_codec_nom.py — Le nom de sortie dit le codec de sortie.
 
 Un `Film.1080p.x264.mkv` réencodé en HEVC ressortait
-`Film.1080p.x264.hevc.IRIS.mkv` : le nom annonçait deux codecs, dont un que le
+`Film.1080p.x264.hevc-iris.mkv` : le nom annonçait deux codecs, dont un que le
 fichier n'a plus. C'est le suffixe produit qui dit le codec ; les marques que
 le nom portait pour la source partent, y compris quand elles tombent juste —
-un `x265` gardé à côté de `.hevc.IRIS` répète la même chose deux fois.
+un `x265` gardé à côté de `.hevc-iris` répète la même chose deux fois.
 
 La substitution ne vaut que pour le **nom du fichier produit**, et seulement
 quand le suffixe nomme vraiment le codec : une vidéo recopiée (DV conservé,
@@ -87,9 +87,9 @@ def test_un_nom_fait_de_la_seule_marque_est_rendu_tel_quel():
 # ─── Ce que produit une décision ─────────────────────────────────────────────
 
 @pytest.mark.parametrize("nom, attendu", [
-    ("Film.1080p.BluRay.x264", "Film.1080p.BluRay.hevc.IRIS"),
-    ("Film.1080p.x265-GROUP",  "Film.1080p-GROUP.hevc.IRIS"),
-    ("Film 1080p HEVC AAC",    "Film 1080p AAC.hevc.IRIS"),
+    ("Film.1080p.BluRay.x264", "Film.1080p.BluRay.hevc-iris"),
+    ("Film.1080p.x265-GROUP",  "Film.1080p.hevc-iris"),
+    ("Film 1080p HEVC AAC",    "Film 1080p AAC.hevc-iris"),
 ])
 def test_un_reencodage_en_hevc_efface_la_marque_de_la_source(tmp_path, nom, attendu):
     dec = decide(_source(tmp_path, nom), _profile())
@@ -110,12 +110,12 @@ def test_les_deux_marques_partent_ensemble(tmp_path):
                    largeur=3840, hauteur=2160, codec="hevc",
                    bitrate=40_000_000)
     dec = decide(info, _profile())
-    assert dec.output_path.stem == "Film.1080p.BluRay-GROUP.hevc.IRIS"
+    assert dec.output_path.stem == "Film.1080p.BluRay.hevc-iris"
 
 
 def test_une_video_recopiee_garde_sa_marque(tmp_path):
     """DV conservé impose `-c:v copy` : le codec de la source est celui de la
-    sortie, et `.DV.IRIS` ne le dit pas."""
+    sortie, et `.DV-iris` ne le dit pas."""
     info = _source(tmp_path, "Film.2160p.x265", largeur=3840, hauteur=2160,
                    codec="hevc", bitrate=40_000_000, dv="8.1")
     dec  = decide(info, _profile(dolby_vision="dv"))

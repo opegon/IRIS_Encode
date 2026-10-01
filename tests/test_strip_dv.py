@@ -94,7 +94,7 @@ def test_debit_sous_le_seuil_donne_un_retrait_de_dv(tmp_path):
     assert dec.video.action == VideoAction.STRIP_DV
     assert dec.video.dv_action == DVAction.HDR10
     assert dec.video.target_bitrate == 0
-    assert dec.output_path.stem == "film.hdr10.IRIS"
+    assert dec.output_path.stem == "film.hdr10-iris"
 
 
 @pytest.mark.parametrize("profil, compat, conteneur", [
@@ -194,7 +194,7 @@ def test_build_strip_command(tmp_path):
     muxer.set_mkvmerge_path("mkvmerge")
     cmd = muxer.build_strip_command(
         tmp_path / "nodv.hevc", tmp_path / "film.mkv",
-        tmp_path / "film.hdr10.IRIS.mkv", fps="24/1")
+        tmp_path / "film.hdr10-iris.mkv", fps="24/1")
     assert cmd[0] == "mkvmerge"
     # La cadence doit précéder le flux brut : sans elle, la vidéo dérive
     assert cmd[cmd.index("--default-duration") + 1] == "0:24p"

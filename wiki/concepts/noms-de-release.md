@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-09-24
+maj: 2026-10-01
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -25,6 +25,7 @@ propriétés. Règles d'IRIS : spec § 8.7.
 | Audio | `TrueHD`, `True-HD`, `MLP`, `DTS-HD MA`, `DTS-X`, `DTS`, `DD+`, `DDP`, `E-AC3`, `AC3`, `FLAC`, `LPCM`, `Opus`, `Atmos`, `5.1`, `7.1` |
 | Langue | `MULTi`, `VFF`, `VF2`, `VOF`, `FRENCH` |
 | Source | `BluRay`, `WEB-DL`, `WEBRip`, `Remux` |
+| Groupe | dernier terme après un tiret : `x265-GROUPE`, `1080p - GROUPE` |
 
 ## Pièges d'analyse
 
@@ -40,8 +41,12 @@ propriétés. Règles d'IRIS : spec § 8.7.
   (`Film.DV.HDR10` → `Film.`).
 - `HDR10Plus` n'est **pas** reconnu comme `HDR10+` : `HDR10Plus.DV` devient
   `HDR10Plus.HDR10` au retrait du RPU. *(constaté le 2026-09-24, non corrigé)*
-- Un titre peut finir comme une marque : `Hotel.Iris`. La marque `.IRIS`
+- Un titre peut finir comme une marque : `Film-Iris`. La marque `-iris`
   d'IRIS est donc sensible à la casse.
+- **Un tiret final n'annonce pas toujours un groupe** : `Spider-Man`,
+  `Titre - Sous-titre` sont des titres, `DTS-HD` et `WEB-DL` des marques. Le
+  groupe n'est retiré que si le reste du nom porte une marque de release et
+  que le dernier terme n'en est pas une.
 
 ## Ce que la conversion rend faux
 
@@ -54,16 +59,21 @@ propriétés. Règles d'IRIS : spec § 8.7.
 | Transcoder l'audio | la famille (`TrueHD` → `E-AC3`), `7.1` → `5.1`, `Atmos` |
 
 Exemple complet : `Film.2160p.DV.HDR10.x265.TrueHD.7.1-GROUP` ressort
-`Film.1080p.HDR10.E-AC3.5.1-GROUP.hevc.IRIS`.
+`Film.1080p.HDR10.E-AC3.5.1.hevc-iris`.
 
 ## Conventions d'IRIS
 
-- Toute sortie finit par **`.IRIS`**, en capitales, précédée d'une
+- Toute sortie finit par **`-iris`**, en minuscules, précédée d'une
   caractéristique **en minuscules** : `.hevc`, `.h264`, `.av1`, `.dv`,
-  `.hdr10`, `.mux`, `.join`. Préférence de l'utilisateur : les suffixes en
-  minuscules, sauf la marque `IRIS`.
+  `.hdr10`, `.mux`, `.join`. Préférence de l'utilisateur (2026-10-01) : une
+  marque sobre, détachée comme un groupe, plutôt que `.IRIS`, jugée criarde.
+- **Le groupe de la source ne passe pas dans la sortie** : `-iris` en prend
+  la place (préférence de l'utilisateur, 2026-10-01).
+- L'ancienne marque **`.IRIS` n'est plus reconnue** (choix de l'utilisateur) :
+  ces sorties redeviennent des sources, `.IRIS` restant dans le nom d'un
+  réencodage.
 - Une caractéristique que le nom annonce déjà n'est pas répétée.
-- Collision : `Film.hevc.IRIS(2).mkv`. Rien n'est jamais écrasé.
+- Collision : `Film.hevc-iris(2).mkv`. Rien n'est jamais écrasé.
 
 ## Voir aussi
 

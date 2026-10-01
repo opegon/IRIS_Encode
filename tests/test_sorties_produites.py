@@ -17,9 +17,9 @@ irréversible sur un fichier que personne n'a demandé à retoucher.
 mais une greffe de pistes, et encoder le résultat ensuite est un geste
 légitime. L'écarter du scan rendrait le fichier invisible dans le navigateur.
 
-v0.8.8.11 : les suffixes deviennent `.<caractéristique>.IRIS`, et le filtre ne
-regarde plus que la marque `.IRIS` en fin de nom — une seule chose à suivre
-au lieu d'une liste. `.mux.IRIS` et `.join.IRIS` en sont exceptés. Les noms
+v0.8.8.11 : les suffixes deviennent `.<caractéristique>-iris`, et le filtre ne
+regarde plus que la marque `-iris` en fin de nom — une seule chose à suivre
+au lieu d'une liste. `.mux-iris` et `.join-iris` en sont exceptés. Les noms
 de l'ancien schéma ne sont plus reconnus, à la demande.
 """
 from __future__ import annotations
@@ -47,10 +47,10 @@ def test_la_sortie_d_une_source_dv_conservee_n_est_pas_reproposee():
     assert deja_produit(f"Film{SUFFIX_DV_COPIE}")
 
 
-@pytest.mark.parametrize("stem", ["Film.av1.IRIS", "Film.HDR10.IRIS",
-                                  "Film.2160p.DV.IRIS", "Film.hevc.IRIS(2)"])
+@pytest.mark.parametrize("stem", ["Film.av1-iris", "Film.HDR10-iris",
+                                  "Film.2160p.DV-iris", "Film.hevc-iris(2)"])
 def test_les_sorties_ne_reviennent_pas_au_scan(stem):
-    """Le suffixe peut se réduire à `.IRIS` (caractéristique déjà dans le nom),
+    """Le suffixe peut se réduire à `-iris` (caractéristique déjà dans le nom),
     et la numérotation de collision le suit."""
     assert deja_produit(stem)
 
@@ -66,8 +66,10 @@ def test_le_mux_et_le_collage_restent_visibles(suffixe):
     "Le Nom du film (2017)",
     "Hotel.Iris.2021",          # la casse compte
     "Hotel.Iris",
-    "Film.hevc.IRIS (copie)",   # la marque doit finir le nom
-    "Film.IRIS.1080p",
+    "Hotel-Iris",
+    "Film.hevc.IRIS",           # ancienne marque : plus reconnue
+    "Film.hevc-iris (copie)",   # la marque doit finir le nom
+    "Film-iris.1080p",
     "Film_[hevc]",              # ancien schéma : plus reconnu
     "Film_[av1]",
 ])
@@ -76,11 +78,11 @@ def test_un_fichier_ordinaire_passe(stem):
 
 
 @pytest.mark.parametrize("stem, attendu", [
-    ("Film.hevc.IRIS",     "Film.hevc"),
-    ("Film.hevc.IRIS(3)",  "Film.hevc"),
-    ("Film.join.IRIS",     "Film.join"),
+    ("Film.hevc-iris",     "Film.hevc"),
+    ("Film.hevc-iris(3)",  "Film.hevc"),
+    ("Film.join-iris",     "Film.join"),
     ("Film (2)",           "Film (2)"),
-    ("Film.hevc.IRIS (copie)", "Film.hevc.IRIS (copie)"),
+    ("Film.hevc-iris (copie)", "Film.hevc-iris (copie)"),
 ])
 def test_seule_la_marque_finale_part(stem, attendu):
     assert stem_sans_suffixe_produit(stem) == attendu
@@ -99,7 +101,7 @@ def test_plus_aucun_litteral_de_suffixe_dans_les_filtres():
     fautifs = {}
     for f in _sources():
         lignes = [n for n, l in enumerate(f.read_text(encoding="utf-8").splitlines(), 1)
-                  if '".hevc.IRIS"' in l or '".h264.IRIS"' in l]
+                  if '".hevc-iris"' in l or '".h264-iris"' in l]
         if lignes:
             fautifs[f.name] = lignes
     assert not fautifs, f"suffixes encore écrits en dur : {fautifs}"
@@ -113,9 +115,9 @@ def test_la_propriete_de_videoinfo_suit_le_meme_predicat(tmp_path):
                          bitrate=8_000_000, codec="hevc", duration=1.0,
                          frame_count=0, dv_profile=None)
 
-    assert _info("Film.av1.IRIS").is_already_encoded
-    assert _info("Film.HDR10.IRIS").is_already_encoded
-    assert not _info("Film.mux.IRIS").is_already_encoded
+    assert _info("Film.av1-iris").is_already_encoded
+    assert _info("Film.HDR10-iris").is_already_encoded
+    assert not _info("Film.mux-iris").is_already_encoded
     assert not _info("Film").is_already_encoded
 
 
@@ -123,16 +125,16 @@ def test_le_scan_ecarte_ce_qu_il_a_produit(tmp_path, monkeypatch):
     """Bout à bout : le fichier n'est pas seulement non proposé, il n'est pas lu."""
     from core import scanner
 
-    for nom in ("Film.mkv", "Film.av1.IRIS.mkv", "Film.hdr10.IRIS.mkv",
-                "Film.mux.IRIS.mkv", "Film.join.IRIS.mkv", "Film.hevc.IRIS.mkv"):
+    for nom in ("Film.mkv", "Film.av1-iris.mkv", "Film.hdr10-iris.mkv",
+                "Film.mux-iris.mkv", "Film.join-iris.mkv", "Film.hevc-iris.mkv"):
         (tmp_path / nom).write_bytes(b"")
 
     scannes: list[str] = []
     monkeypatch.setattr(scanner, "scan",
                         lambda p: scannes.append(p.name) or _FAUX_INFO(p))
     scanner.scan_directory(tmp_path)
-    assert sorted(scannes) == ["Film.join.IRIS.mkv", "Film.mkv",
-                               "Film.mux.IRIS.mkv"], scannes
+    assert sorted(scannes) == ["Film.join-iris.mkv", "Film.mkv",
+                               "Film.mux-iris.mkv"], scannes
 
 
 def _FAUX_INFO(p: Path):

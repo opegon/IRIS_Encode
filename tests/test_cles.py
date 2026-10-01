@@ -92,6 +92,12 @@ def _touche(nom):
     return g
 
 
+def _cliquer(bouton):
+    async def g(ecran, pilot):
+        await pilot.click(f"#{bouton}")
+    return g
+
+
 def _cocher(sid):
     async def g(ecran, pilot):
         ecran.query_one(f"#ecarter-{sid}", Checkbox).value = True
@@ -155,6 +161,52 @@ def test_depuis_f5_les_cles_actuelles_sont_proposees(sans_reseau):
     valeur, cases, resultat = asyncio.run(_run())
     assert valeur == "deja" and cases == 0
     assert resultat is False and cfg["meta"]["omdb_api_key"] == "deja"
+
+
+def test_le_bouton_enregistre_comme_ctrl_s(sans_reseau):
+    cfg = {}
+    resultat, _ = _scenario(cfg, [cles.PAR_ID["omdb"]],
+                            [_saisir("omdb-omdb_api_key", "abc123"),
+                             _cliquer("btn-enregistrer")])
+    assert resultat is True and cfg["meta"]["omdb_api_key"] == "abc123"
+
+
+def test_le_bouton_plus_tard_ferme_sans_enregistrer(sans_reseau):
+    _, ecrits = sans_reseau
+    cfg = {}
+    resultat, _ = _scenario(cfg, list(cles.SERVICES), [_cliquer("btn-plus-tard")])
+    assert resultat is False and not ecrits and cfg == {}
+
+
+@pytest.mark.parametrize("lignes", [24, 30, 40])
+def test_les_boutons_restent_dans_le_cadre(lignes):
+    """La zone des services défile ; les boutons, eux, restent visibles."""
+    async def _run():
+        app = _App({}, list(cles.SERVICES))
+        async with app.run_test(size=(120, lignes)) as pilot:
+            await pilot.pause(0.3)
+            ecran = app.screen
+            panneau = ecran.query_one("#cles-panel").region
+            return [ecran.query_one(f"#{b}").region
+                    for b in ("btn-enregistrer", "btn-plus-tard")], panneau
+    boutons, panneau = asyncio.run(_run())
+    for b in boutons:
+        assert b.height and panneau.contains_region(b)
+
+
+def test_sur_40_lignes_toutes_les_cases_se_voient():
+    """La case d'OMDb, sous celle d'OpenSubtitles, ne doit pas exiger de défiler."""
+    async def _run():
+        app = _App({}, list(cles.SERVICES))
+        async with app.run_test(size=(120, 40)) as pilot:
+            await pilot.pause(0.3)
+            ecran = app.screen
+            corps = ecran.query_one("#cles-corps").region
+            return corps, [c.region for c in ecran.query(Checkbox)]
+    corps, cases = asyncio.run(_run())
+    assert len(cases) == 2
+    for c in cases:
+        assert corps.contains_region(c)
 
 
 def test_le_mot_de_passe_est_masque():

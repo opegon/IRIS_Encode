@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.41 — document de référence courant
+**Version** : 0.8.9.42 — document de référence courant
 **Date** : 2026-10-01
 **Statut** : stable
 
@@ -2296,7 +2296,10 @@ terminal, `IrisEncodeApp.demander_cles()` l'ouvre pour les services dont un
 champ **requis** manque (la clé ; le compte OpenSubtitles ne l'est pas) et qui
 ne sont pas dans `[cles] ne_plus_demander`. Chaque service : un bouton qui
 ouvre sa page (`webbrowser`), une case « Ne plus demander » (au lancement
-seulement), un état. `Ctrl+S` vérifie chaque service modifié, dans un worker,
+seulement), un état. Les boutons **Vérifier et enregistrer** (`Ctrl+S`) et
+**Plus tard** (`Échap`) restent sous la zone des services, qui défile si le
+terminal est trop bas (`on_resize` borne sa hauteur ; tout tient dès 40
+lignes). `Ctrl+S` vérifie chaque service modifié, dans un worker,
 avant d'enregistrer : OMDb par une requête (`401` = clé refusée) ;
 OpenSubtitles par la **connexion**, seul appel qui contrôle la clé — la
 recherche accepte une clé inventée *(mesuré)*. Sans compte, la connexion se
@@ -2623,6 +2626,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.42 | 2026-10-01 | **Fenêtre des clés : boutons et case OMDb visibles** (§ 14.8, IE-101) : boutons « Vérifier et enregistrer » et « Plus tard » ; la zone des services défile sous eux au lieu de les pousser hors du cadre, et se compacte pour que la case « Ne plus demander » d'OMDb se voie dès 40 lignes · `tests/test_cles.py` |
 | 0.8.9.41 | 2026-10-01 | **Audio entrelacée quand elle vient d'une autre entrée** (§ 12.1) : les sous-titres de la source sont lus par une entrée dédiée dès que l'audio vient de la passe préalable ou d'une greffe ; sans cela, l'audio s'arrêtait à 32 s sur lecteur matériel · `tests/test_prepass_audio.py` |
 | 0.8.9.40 | 2026-09-30 | **PGS forcé doublé écarté** (§ 8.6, IE-73) : sans sélection manuelle, un sous-titre image forcé doublé par un sous-titre texte forcé de même langue ne passe plus dans la sortie ; seul forcé de sa langue, il reste · `SubtitleTrack.forced` lu depuis `disposition` · `tests/test_langues.py` |
 | 0.8.9.39 | 2026-09-30 | **Le HEVC en MP4 est étiqueté `hvc1`** (§ 8.6, IE-74) : `-tag:v hvc1` sur toute sortie MP4 dont la vidéo est du HEVC (`_sortie_hevc`) et sur le retrait DV en MP4 ; le G3 lit `hev1` et `hvc1` en lecture directe, les lecteurs Apple exigent `hvc1` · `tests/test_conteneur.py` |

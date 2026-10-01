@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.41
+**Version** : 0.8.9.42
 **Date** : 2026-10-01
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -252,7 +252,7 @@ la suite est la même — piste présélectionnée, langue déduite, recalage.
 Il faut une clé d'application et un compte (gratuits, 20 téléchargements par
 jour). Au lancement, si la clé manque, une fenêtre la demande : **Obtenir une
 clé** ouvre opensubtitles.com/consumers, on colle la clé, l'identifiant et le
-mot de passe, `Ctrl+S` les vérifie auprès d'OpenSubtitles et les enregistre.
+mot de passe, **Vérifier et enregistrer** (ou `Ctrl+S`) les vérifie auprès d'OpenSubtitles et les enregistre.
 Pour les saisir ou les changer plus tard : `F5`, puis `K` (§ 2.7).
 
 Sans eux, l'écran dit ce qui manque. Le `.srt` est écrit dans le dossier

@@ -1,5 +1,24 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.42] — 2026-10-01
+
+### Fenêtre des clés d'API : des boutons, et la case d'OMDb visible
+
+Sur un poste sans clés, la fenêtre s'ouvrait bien, mais rien n'y disait
+comment enregistrer : seul `Ctrl+S` le faisait, cité dans la ligne des
+raccourcis. Et la case « Ne plus demander » d'OMDb n'apparaissait pas : la
+zone des services, plafonnée à 30 lignes pour 36 de contenu, la cachait sous
+le pli, sans signe qu'il fallait défiler.
+
+- Boutons **Vérifier et enregistrer** (`Ctrl+S`) et **Plus tard** (`Échap`).
+- La zone des services prend la hauteur que laisse le terminal et défile ;
+  les boutons restent toujours dans le cadre.
+- Fenêtre compactée (boutons « Obtenir une clé » sur une ligne, case sans
+  cadre, ligne d'état masquée tant qu'elle est vide) : tout tient dès 40
+  lignes, case d'OMDb comprise.
+
+`tui/screens/cles.py`, `tests/test_cles.py`, spec § 14.8, guide § 2.3.
+
 ## [v0.8.9.41] — 2026-10-01
 
 ### L'audio ne s'interrompt plus quand elle vient d'une autre entrée

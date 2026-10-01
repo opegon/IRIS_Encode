@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import webbrowser
 
-from textual import on, work
+from textual import events, on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
@@ -40,19 +40,22 @@ class ClesScreen(ModalScreen[bool]):
         padding: 1 2;
     }
     #cles-titre { text-style: bold; margin-bottom: 1; }
-    #cles-corps { height: auto; max-height: 30; }
+    #cles-corps { height: auto; }
     .cles-service { height: auto; margin-bottom: 1; }
     .cles-nom { text-style: bold; color: $accent; }
     .cles-usage { color: $text-muted; }
     .cles-ligne { height: auto; }
     .cles-lbl { width: 16; padding-top: 1; color: $text-muted; }
     .cles-ligne Input { width: 1fr; }
-    .cles-lien { height: auto; margin-top: 1; }
-    .cles-lien Button { border: none; min-width: 20; margin-right: 2; }
+    .cles-lien { height: auto; }
+    #cles-panel .cles-lien Button { border: none; height: 1; min-width: 20; margin-right: 2; }
     .cles-url { padding-top: 0; color: $text-muted; }
-    .cles-etat { height: auto; }
+    .cles-service Checkbox { border: none; padding: 0; }
+    .cles-etat { height: auto; display: none; }
     .cles-etat.ok { color: $success; }
     .cles-etat.refus { color: darkorange; text-style: bold; }
+    #cles-boutons { height: auto; align: center middle; margin-top: 1; }
+    #cles-boutons Button { min-width: 16; margin-right: 2; border: none; }
     #cles-hint {
         color: $text-muted;
         margin-top: 1;
@@ -65,6 +68,10 @@ class ClesScreen(ModalScreen[bool]):
         Binding("ctrl+s", "enregistrer", "Enregistrer", show=False, priority=True),
         Binding("escape", "plus_tard",   "Plus tard",   show=False, priority=True),
     ]
+
+    # Lignes du panneau hors zone défilante : cadre, marges, titre, boutons,
+    # raccourcis. La zone prend le reste, pour que les boutons restent visibles.
+    _HORS_CORPS = 12
 
     def __init__(self, services: list[cles.Service], au_lancement: bool) -> None:
         super().__init__()
@@ -104,9 +111,18 @@ class ClesScreen(ModalScreen[bool]):
                                            id=f"ecarter-{s.id}")
                         yield Static("", classes="cles-etat", id=f"etat-{s.id}",
                                      markup=False)
+            with Horizontal(id="cles-boutons"):
+                yield Button("✓  Vérifier et enregistrer", id="btn-enregistrer",
+                             variant="primary")
+                yield Button("✗  Plus tard", id="btn-plus-tard")
             yield Static(raccourcis([("tab", "Champ suivant"),
                                      ("ctrl+s", "Vérifier et enregistrer"),
                                      ("escape", "Plus tard")]), id="cles-hint")
+
+    def on_resize(self, event: events.Resize) -> None:
+        panneau = event.size.height * 92 // 100
+        self.query_one("#cles-corps").styles.max_height = max(
+            6, panneau - self._HORS_CORPS)
 
     def on_mount(self) -> None:
         premier = self.query(Input)
@@ -115,7 +131,15 @@ class ClesScreen(ModalScreen[bool]):
 
     # ── Actions ───────────────────────────────────────────────────────────────
 
-    @on(Button.Pressed)
+    @on(Button.Pressed, "#btn-enregistrer")
+    def _bouton_enregistrer(self) -> None:
+        self.action_enregistrer()
+
+    @on(Button.Pressed, "#btn-plus-tard")
+    def _bouton_plus_tard(self) -> None:
+        self.action_plus_tard()
+
+    @on(Button.Pressed, ".cles-lien Button")
     def _ouvrir_page(self, event: Button.Pressed) -> None:
         sid = (event.button.id or "").removeprefix("lien-")
         service = cles.PAR_ID.get(sid)
@@ -132,6 +156,7 @@ class ClesScreen(ModalScreen[bool]):
         etat = self.query_one(f"#etat-{sid}", Static)
         etat.set_classes(f"cles-etat {classe}".strip())
         etat.update(texte)
+        etat.display = bool(texte)
 
     def action_plus_tard(self) -> None:
         if self._verification:

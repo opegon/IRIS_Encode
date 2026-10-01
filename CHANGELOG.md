@@ -1,5 +1,41 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.43] — 2026-10-01
+
+### La machine ne se met plus en veille au milieu d'un encodage
+
+Windows met la machine en veille après quelques minutes sans clavier ni
+souris : il ne voit pas ffmpeg travailler, et un lot de nuit s'arrêtait au
+premier film.
+
+- Tant qu'un traitement tourne (encodage, mux, jonction, mesure, recalage),
+  IRIS pose une demande d'alimentation, visible dans `powercfg /requests`
+  (« IRIS ENCODE : encodage en cours »). L'en-tête affiche « ☾ veille
+  bloquée ». L'écran peut toujours s'éteindre.
+- La demande est relevée toutes les 5 s, sur les travaux que `F10` annonce
+  interrompre : aucun compteur qu'une erreur pourrait déséquilibrer. Si
+  l'application meurt, Windows retire la demande lui-même.
+- `SetThreadExecutionState` est écarté : il est lié au thread appelant, et
+  l'encodage change de thread à chaque fichier.
+- Toujours possible : la veille demandée à la main (menu Démarrer, capot
+  fermé), la batterie critique.
+
+### Après le lot : veille, veille prolongée ou arrêt
+
+- `E` dans la file d'encodage : une fois **tous** les traitements finis, la
+  machine se met en veille, en veille prolongée ou s'éteint, après un compte
+  à rebours de 60 s qu'on peut annuler (focus sur Annuler).
+- Décoché à chaque nouveau lot. Un lot arrêté par `X` ne déclenche rien.
+- L'en-tête l'annonce : « ☾ veille bloquée · puis arrêt ».
+
+### Options
+
+`F5` → `U` : bloquer la mise en veille (activé par défaut), et l'action
+d'après lot (veille par défaut). Section `[energie]` de `config.toml`.
+
+Windows seulement. `core/veille.py`, `tui/screens/options.py`,
+`tui/screens/fin_lot.py`, `tests/test_veille.py`, spec § 5, § 14.7, § 14.8.
+
 ## [v0.8.9.42] — 2026-10-01
 
 ### Fenêtre des clés d'API : des boutons, et la case d'OMDb visible

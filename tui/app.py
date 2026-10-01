@@ -14,6 +14,7 @@ from textual.binding import Binding
 import core.config as cfg_mod
 import core.profiles as prof_mod
 from core.platform import PlatformProfile, detect as detect_platform
+from core.veille import GardeVeille
 from version import __version__
 
 
@@ -96,6 +97,12 @@ class IrisEncodeApp(App):
         # Le lot d'encodage courant (un `RunScreen`), ou None. Il vit dans le
         # mode « encodages » jusqu'à ce que son bilan ait été vu.
         self._lot = None
+        # La machine reste éveillée tant qu'un traitement tourne (`[energie]`).
+        # `_fin_armee` : un lot fini a demandé l'action d'après lot, qui part
+        # quand plus rien ne tourne.
+        self.veille      = GardeVeille()
+        self._fin_armee  = False
+        self._decompte   = False
         # Câble dovi_tool dans le scanner (enrichissement DV au scan)
         from core import dovi, scanner
         bin_dir   = cfg_mod.get_bin_dir(self.cfg)
@@ -182,6 +189,12 @@ class IrisEncodeApp(App):
         if self.platform.alerte_nvenc:
             self.notify(self.platform.alerte_nvenc, title="Carte graphique",
                         severity="warning", timeout=30)
+        # Cinq secondes : la veille sur inactivité se compte en minutes, et un
+        # traitement qui finit relâche la machine presque aussitôt.
+        self.set_interval(5, self.surveiller_veille, name="veille")
+
+    def on_unmount(self) -> None:
+        self.veille.relacher()
 
     # ── File d'encodage (IE-100) ──────────────────────────────────────────────
 
@@ -233,6 +246,8 @@ class IrisEncodeApp(App):
             self._liberer_lot(force=True)
         lot = RunScreen(decisions, self.platform)
         self._lot = lot
+        # Une action d'après lot en attente appartenait au lot d'avant.
+        self._fin_armee = False
         self.add_mode(self.MODE_ENCODAGES, lambda: lot)
         self.switch_mode(self.MODE_ENCODAGES)
 
@@ -265,6 +280,92 @@ class IrisEncodeApp(App):
             return f"{f12} Lot terminé"
         done, total, pct = lot.avancement()
         return f"{f12} Encodages en cours · {done}/{total} · {pct} %"
+
+    # ── Veille (`core/veille.py`) ─────────────────────────────────────────────
+
+    # Worker → ce qu'il fait, pour le motif lu dans `powercfg /requests`. Les
+    # mêmes que `_TRAVAUX` : ce que quitter interromprait est ce qui doit
+    # tenir la machine éveillée.
+    _NATURES = {
+        "encoder":       "encodage",
+        "muxer":         "mux",
+        "joiner":        "jonction",
+        "sync-measure":  "mesure",
+        "sync-ancrage":  "mesure",
+        "wizard-mesure": "mesure",
+        "sync-retime":   "recalage",
+    }
+
+    def natures_en_cours(self) -> list[str]:
+        """Ce qui tourne, sans doublon : « encodage », « mesure »…"""
+        natures: list[str] = []
+        # Le lot se compte en entier : entre deux fichiers, aucun worker ne
+        # tourne pendant un instant, et la file n'est pas finie pour autant.
+        if self._lot is not None and not self._lot.termine:
+            natures.append("encodage")
+        for w in self.workers:
+            nature = self._NATURES.get(w.name or "")
+            if w.is_running and nature and nature not in natures:
+                natures.append(nature)
+        return natures
+
+    def fin_prevue(self) -> bool:
+        """Vrai si une action d'après lot est demandée et pas encore partie."""
+        lot = self._lot
+        return self._fin_armee or bool(
+            lot is not None and not lot.termine and lot.apres_lot)
+
+    def etat_veille(self) -> str:
+        """L'indicateur de l'en-tête. Vide quand la veille suit son cours."""
+        from core.veille import libelle_action
+        morceaux = []
+        if self.veille.active:
+            morceaux.append("veille bloquée")
+        if self.fin_prevue():
+            morceaux.append(f"puis {libelle_action(cfg_mod.get_action_fin(self.cfg))}")
+        return f"☾ {' · '.join(morceaux)}" if morceaux else ""
+
+    def surveiller_veille(self) -> None:
+        """Tient la demande d'éveil à jour ; lance l'action d'après lot."""
+        natures = self.natures_en_cours()
+        motif   = None
+        if natures and cfg_mod.get_empecher_veille(self.cfg):
+            motif = f"IRIS ENCODE : {', '.join(natures)} en cours"
+        self.veille.maintenir(motif)
+        if self._fin_armee and not natures and not self._decompte:
+            self._fin_armee = False
+            self._lancer_decompte()
+
+    def armer_fin_de_lot(self) -> None:
+        """Appelé par un lot fini normalement dont « Après le lot » est coché.
+
+        L'action attend que tout le reste soit fini — une mesure, un mux.
+        """
+        self._fin_armee = True
+        self.surveiller_veille()
+
+    def _lancer_decompte(self) -> None:
+        from tui.screens.fin_lot import FinDeLotModal
+        action = cfg_mod.get_action_fin(self.cfg)
+        self._decompte = True
+
+        def _reponse(ok) -> None:
+            self._decompte = False
+            if not ok:
+                self.notify("Action d'après lot annulée.", timeout=4)
+                return
+            # `F12` reste actif sous la modale : un traitement a pu repartir.
+            if self.natures_en_cours():
+                self.notify("Un traitement a repris : action d'après lot "
+                            "annulée.", severity="warning", timeout=8)
+                return
+            erreur = self.veille.executer_fin(action)
+            if erreur:
+                from core.veille import libelle_action
+                self.notify(f"{libelle_action(action).capitalize()} impossible : "
+                            f"{erreur}", severity="error", timeout=15)
+
+        self.push_screen(FinDeLotModal(action), _reponse)
 
     def action_encodages(self) -> None:
         """F12 : de la navigation au lot d'encodage, et retour."""

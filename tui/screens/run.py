@@ -71,6 +71,10 @@ class RunScreen(TableNavMixin, Screen):
         Binding("p",         "pause_resume", "Pause / Reprendre",  show=True),
         Binding("s",         "skip_current", "Passer le fichier",  show=True),
         Binding("x",         "arreter_tout", "Arrêter tout",       show=True),
+        # Veille, veille prolongée ou arrêt une fois tout fini : le choix est
+        # dans les options, l'interrupteur repart à « non » à chaque lot.
+        # `E` comme « ensuite » : `A` et `F` ont déjà leur sens (UX-12).
+        Binding("e",         "apres_lot",    "Après le lot",       show=True),
         # La file se réordonne tant qu'un fichier attend (IE-100). `priority` :
         # le DataTable prendrait Ctrl+↑/↓ pour lui — comme sur la jonction.
         Binding("ctrl+up",   "monter",       "Monter",             show=True, priority=True),
@@ -156,6 +160,9 @@ class RunScreen(TableNavMixin, Screen):
         self._verrou       = threading.Lock()
         # Le bilan d'un lot fini reste jusqu'à ce qu'on l'ait vu.
         self._vu           = False
+        # L'action d'après lot (`E`). Jamais héritée d'un lot précédent : un
+        # arrêt qu'on aurait oublié d'avoir demandé surprendrait des jours après.
+        self.apres_lot     = False
 
     # ─── File (IE-100) ────────────────────────────────────────────────────────
 
@@ -319,9 +326,15 @@ class RunScreen(TableNavMixin, Screen):
         """
         try:
             done, total, bar_pct = self.avancement()
+            apres = ""
+            if self.apres_lot and not self._done:
+                from core.config import get_action_fin
+                from core.veille import libelle_action
+                apres = f"Après le lot : {libelle_action(get_action_fin(self.app.cfg))}"  # type: ignore[attr-defined]
             self.query_one("#run-header-bar", Static).update(barre_etat(
                 "Encodage", pluriel(total, "fichier"),
                 f"{done}/{total} {accorde(done, 'terminé')}", f"Global : {bar_pct}%",
+                apres,
             ))
             self.query_one("#global-bar", ProgressBar).progress = bar_pct
         except Exception:
@@ -1099,6 +1112,10 @@ class RunScreen(TableNavMixin, Screen):
     def _on_all_done(self) -> None:
         from ..common import touche
         app = self.app
+        # Un lot arrêté (`X`, F10) ne déclenche rien : on est là, et on a
+        # choisi d'arrêter.
+        if self.apres_lot and not self._abandon:
+            app.armer_fin_de_lot()  # type: ignore[attr-defined]
         if app.current_mode == app.MODE_ENCODAGES:  # type: ignore[attr-defined]
             self._vu = True
         else:
@@ -1161,6 +1178,25 @@ class RunScreen(TableNavMixin, Screen):
         self._update_header()
         self.notify(f"{retire.decision.info.path.name} retiré de la file.",
                     timeout=3)
+
+    # ─── Après le lot ─────────────────────────────────────────────────────────
+
+    def action_apres_lot(self) -> None:
+        """Bascule l'action d'après lot ; la confirme par un message."""
+        from core import veille
+        from core.config import get_action_fin
+        if self._done:
+            return
+        if not veille.disponible():
+            self.notify("Mise en veille et arrêt pilotés sous Windows "
+                        "seulement.", severity="warning", timeout=4)
+            return
+        self.apres_lot = not self.apres_lot
+        libelle = veille.libelle_action(get_action_fin(self.app.cfg))  # type: ignore[attr-defined]
+        self.notify(f"Après le lot : {libelle}, après un compte à rebours de "
+                    f"{veille.COMPTE_A_REBOURS_S} s." if self.apres_lot
+                    else "Après le lot : rien.", timeout=4)
+        self._update_header()
 
     # ─── Pause/Resume ─────────────────────────────────────────────────────────
 

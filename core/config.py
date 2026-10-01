@@ -51,6 +51,13 @@ _DEFAULTS: dict[str, Any] = {
     "cles": {
         "ne_plus_demander": [],
     },
+    # La veille pendant les traitements (`core/veille.py`). `action_fin` est
+    # ce que fait la machine après un lot dont on a coché « Après le lot » ;
+    # l'interrupteur, lui, repart à « non » à chaque lot.
+    "energie": {
+        "empecher_veille": True,
+        "action_fin":      "veille",
+    },
     "decision": {
         "near_1080p_min_width":  1600,
         "near_1080p_min_height":  850,
@@ -313,3 +320,22 @@ def set_tracks_column_width(cfg: dict[str, Any], col: str, width: int) -> None:
      .setdefault("tui", {})
      .setdefault("tracks", {})
      .setdefault("columns", {}))[col] = width
+
+
+# ─── Énergie ──────────────────────────────────────────────────────────────────
+
+def get_empecher_veille(cfg: dict[str, Any]) -> bool:
+    return bool(cfg.get("energie", {}).get("empecher_veille", True))
+
+
+def get_action_fin(cfg: dict[str, Any]) -> str:
+    """L'action d'après lot ; une valeur inconnue (fichier édité) vaut le défaut."""
+    from core.veille import ACTION_FIN_DEFAUT, ACTIONS_FIN
+    action = cfg.get("energie", {}).get("action_fin", ACTION_FIN_DEFAUT)
+    return action if action in ACTIONS_FIN else ACTION_FIN_DEFAUT
+
+
+def set_energie(cfg: dict[str, Any], empecher_veille: bool, action_fin: str) -> None:
+    cfg.setdefault("energie", {}).update(empecher_veille=bool(empecher_veille),
+                                         action_fin=action_fin)
+    save(cfg)

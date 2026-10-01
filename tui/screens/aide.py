@@ -182,6 +182,12 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "retirer":      "Retire de la file le fichier en attente sous le curseur.",
         "arreter_tout": "Arrête le fichier en cours et vide la file, après "
                         "confirmation. La sortie partielle est effacée.",
+        "apres_lot":    "Coche ou décoche l'action d'après lot : mise en "
+                        "veille, veille prolongée ou arrêt, selon les options "
+                        "(F5, U). Elle part quand plus rien ne tourne, après "
+                        "un compte à rebours de 60 s qu'on peut annuler. "
+                        "Décochée à chaque nouveau lot ; un lot arrêté par X "
+                        "ne déclenche rien.",
         "go_back":      "Revient aux fichiers sans rien arrêter : l'encodage "
                         "continue, F12 le rouvre.",
     },
@@ -206,6 +212,10 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "cles":           "Saisit ou change les clés d'API (OpenSubtitles, "
                           "OMDb), vérifiées auprès du service avant d'être "
                           "enregistrées.",
+        "options":        "Ouvre les options : bloquer la mise en veille "
+                          "pendant les traitements (activé par défaut), et "
+                          "l'action d'après lot que coche E pendant "
+                          "l'encodage.",
         "activate":       "Rend actif le profil sous le curseur.",
         "new_profile":    "Crée un profil.",
         "edit_focused":   "Édite le profil sous le curseur.",

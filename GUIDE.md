@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.42
+**Version** : 0.8.9.43
 **Date** : 2026-10-01
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -349,6 +349,7 @@ file, « F12 Fichiers ».
 | `Ctrl+↑` / `Ctrl+↓` | Avancer / reculer d'un rang le fichier en attente sous le curseur |
 | `Suppr` | Retirer de la file le fichier en attente sous le curseur |
 | `X` | **Arrêter tout** — le fichier en cours et la file ; confirmation demandée |
+| `E` | **Après le lot** — mettre en veille, en veille prolongée ou éteindre la machine une fois tout fini |
 | `⌫` / `Esc` / `F12` | Revenir aux fichiers — **l'encodage continue** |
 
 Une fois le lot fini, le pied de page ne garde que la navigation, et la zone du
@@ -357,9 +358,24 @@ fichier produit. Si vous étiez dans les fichiers, une notification l'annonce ;
 le bilan attend que vous l'ayez vu (`F12`), puis s'efface quand vous quittez la
 vue. Un nouvel ajout démarre un nouveau lot.
 
+**La machine ne se met plus en veille pendant un traitement** — encodage, mux,
+jonction, mesure ou recalage. L'en-tête affiche alors « ☾ veille bloquée ».
+L'écran peut toujours s'éteindre, et une veille demandée à la main (menu
+Démarrer, capot fermé) passe quand même. Se désactive dans les options
+(`F5`, `U`).
+
+**Après le lot** (`E`) : une fois **tous** les traitements finis, la machine
+se met en veille, en veille prolongée ou s'éteint — au choix, dans les
+options. L'en-tête l'annonce (« ☾ … · puis arrêt »). Un compte à rebours de
+60 s le précède : `↵` sur « Annuler » (présélectionné) ou `Esc` l'arrête.
+L'interrupteur repart décoché à chaque nouveau lot, et un lot arrêté par `X`
+ne déclenche rien. Windows seulement.
+
 ### 2.7 Profils (`F5`)
 
-`N` crée, `E` édite, `D` supprime, `↵` active. `K` ouvre les **clés d'API**
+`N` crée, `E` édite, `D` supprime, `↵` active. `U` ouvre les **options** :
+bloquer la mise en veille pendant les traitements (activé par défaut), et ce
+que fait la machine après un lot dont on a coché « Après le lot ». `K` ouvre les **clés d'API**
 des services en ligne — OpenSubtitles et OMDb (fiche IMDB complète) : chaque
 service a son bouton vers la page qui délivre la clé, et une clé est vérifiée
 auprès du service avant d'être enregistrée. La même fenêtre s'ouvre au

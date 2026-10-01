@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.42 — document de référence courant
+**Version** : 0.8.9.43 — document de référence courant
 **Date** : 2026-10-01
 **Statut** : stable
 
@@ -55,6 +55,7 @@ iris_encode/
 │   ├── joiner.py                 ← collage bout à bout de plusieurs parties
 │   ├── sync.py                   ← mesure de décalage par corrélation croisée
 │   ├── preview.py                ← lancement mpv (visualisation)
+│   ├── veille.py                 ← veille bloquée pendant les traitements, action d'après lot
 │   ├── meta.py                   ← recherche métadonnées IMDB / AlloCiné
 │   └── opensubtitles.py          ← sous-titres OpenSubtitles.com (API REST v1)
 ├── tui/
@@ -72,6 +73,8 @@ iris_encode/
 │   │   ├── dryrun.py             ← prévisualisation décisions
 │   │   ├── run.py                ← encodage + progression
 │   │   ├── config.py             ← gestion profils (CRUD)
+│   │   ├── options.py            ← options hors profil (énergie)
+│   │   ├── fin_lot.py            ← compte à rebours avant l'action d'après lot
 │   │   ├── profile_picker.py     ← sélection de profil (table)
 │   │   ├── value_picker.py       ← modal sélection de valeur
 │   │   ├── meta_popup.py         ← popup métadonnées IMDB / AlloCiné
@@ -333,6 +336,10 @@ app = "ask"               # mise à jour d'IRIS elle-même (§ 3.1.2) : ask / au
 
 [meta]
 omdb_api_key = ""       # clé gratuite sur omdbapi.com — active note + synopsis IMDB
+
+[energie]
+empecher_veille = true    # veille bloquée pendant un traitement (§ 14.7)
+action_fin = "veille"     # après un lot coché « Après le lot » : veille / veille_prolongee / arret
 
 [decision]
 near_1080p_min_width  = 1600    # seuils de rattachement au bucket 1080p
@@ -2281,6 +2288,40 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   sortie du fichier en cours, sauf code 0 (fini juste avant l'arrêt) — pas en
   fin de boucle : le worker suivant d'un écran dépilé ne démarre pas toujours.
   Lot terminé : aucune confirmation.
+- **La veille bloquée pendant les traitements** (v0.8.9.43) —
+  `core/veille.py`. Windows met la machine en veille sur inactivité sans voir
+  ffmpeg travailler. `GardeVeille` pose une demande d'alimentation
+  (`PowerCreateRequest` + `PowerSetRequest(PowerRequestSystemRequired)`) au
+  motif lisible dans `powercfg /requests` (« IRIS ENCODE : encodage, mesure en
+  cours »). **Pas `SetThreadExecutionState`** : son état appartient au thread
+  appelant, et `_encode_next` est un worker qui se relance à chaque fichier —
+  la demande tomberait entre deux fichiers. Elle ne sert qu'en secours, depuis
+  le fil principal. `IrisEncodeApp.surveiller_veille()` relève l'état toutes
+  les 5 s plutôt que de compter entrées et sorties qu'un chemin d'erreur
+  déséquilibrerait : un lot non terminé, ou un worker de `_NATURES` — les
+  mêmes que `_TRAVAUX`, ce que `F10` annonce interrompre (test). `maintenir()`
+  est idempotent ; un nouveau motif pose la nouvelle demande **avant** de
+  retirer l'ancienne ; une demande refusée n'est pas retentée au relevé
+  suivant. Le processus mort, Windows la retire : rien ne peut laisser la
+  machine éveillée. Hors de portée : la veille demandée à la main, la
+  batterie critique, `powercfg /requestsoverride`. `ES_DISPLAY_REQUIRED`
+  n'est pas demandé : l'écran s'éteint. L'en-tête affiche « ☾ veille
+  bloquée » (`etat_veille()`), à droite de l'état de la file : une mesure
+  sans lot la bloque aussi. Option `[energie] empecher_veille`, vraie par
+  défaut. Hors Windows, `disponible()` est faux et rien n'est fait.
+- **Après le lot** (v0.8.9.43) — `E` arme l'action de `[energie] action_fin`
+  (veille, veille prolongée, arrêt). `RunScreen.apres_lot` part de `False` à
+  chaque lot, jamais hérité. Un lot fini **sans abandon** appelle
+  `armer_fin_de_lot()` ; un lot arrêté par `X` ou `F10` ne déclenche rien.
+  L'action attend que `natures_en_cours()` soit vide — au plus un relevé
+  après la fin, puisque le worker du dernier fichier vit encore quand le lot
+  se dit fini —, puis `FinDeLotModal` décompte 60 s, focus sur Annuler.
+  Annuler ou `Esc` : rien. Un nouveau lot efface une action en attente.
+  `executer_fin()` relâche la demande, puis : veille par
+  `SetSuspendState(FALSE, …)` après activation de `SeShutdownPrivilege`,
+  veille prolongée par `shutdown /h`, arrêt par `shutdown /s /t 0`. Un refus
+  (veille S3 absente en Modern Standby, hibernation désactivée) s'affiche
+  en notification.
 - **Fin du lot** (v0.8.9.10) : le pied ne garde que la navigation (Pause et
   Passer n'ont plus d'objet), la zone de commande fait le bilan — réussis, en
   échec, ignorés, puis le chemin des sorties (six au plus, le reste compté).
@@ -2288,6 +2329,14 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   déjà dans la colonne d'icône.
 
 ### 14.8 Écran Config — gestion des profils
+
+**Options** (v0.8.9.43) — `U` ouvre `OptionsScreen` : la case « Bloquer la
+mise en veille pendant les traitements » et le choix de l'action d'après lot,
+écrits dans `[energie]` par `Ctrl+S` (`config.set_energie`), `Esc` annule.
+Enregistrer relève aussitôt l'état (`surveiller_veille`) : décocher relâche
+la machine sans attendre. `O` aurait été plus parlant, mais il est
+OpenSubtitles chez le donneur (UX-12). Une action inconnue dans le fichier
+vaut `veille`.
 
 **Clés d'API** (v0.8.9.37, IE-101) — `K` ouvre `ClesScreen` pour tous les
 services de `core/cles.py` (OpenSubtitles : clé, identifiant, mot de passe
@@ -2572,6 +2621,7 @@ avec libx265 est déjà GPL — mais autant le décider sciemment.
 | `tests/test_preview.py` | Construction des commandes mpv |
 | `tests/test_sync.py` | Mesure de décalage sur paires connues |
 | `tests/test_updates.py` | Vérification de fraîcheur des outils |
+| `tests/test_veille.py` | Veille bloquée pendant un lot, action d'après lot (moteur Windows simulé) |
 
 ```bash
 python tests/smoke_tui.py     # headless, encode réellement de petits clips
@@ -2626,6 +2676,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.43 | 2026-10-01 | **La veille bloquée pendant les traitements** (§ 14.7) : `core/veille.py`, demande d'alimentation `PowerCreateRequest` au motif lisible dans `powercfg /requests`, relevée toutes les 5 s sur les mêmes travaux que `F10` · indicateur « ☾ » dans l'en-tête · **après le lot** (`E`) : veille, veille prolongée ou arrêt une fois tout fini, après 60 s annulables, interrupteur décoché à chaque lot · **options** (§ 14.8, `F5` → `U`) : `[energie] empecher_veille` (vrai) et `action_fin` (`veille`) · `tests/test_veille.py` |
 | 0.8.9.42 | 2026-10-01 | **Fenêtre des clés : boutons et case OMDb visibles** (§ 14.8, IE-101) : boutons « Vérifier et enregistrer » et « Plus tard » ; la zone des services défile sous eux au lieu de les pousser hors du cadre, et se compacte pour que la case « Ne plus demander » d'OMDb se voie dès 40 lignes · `tests/test_cles.py` |
 | 0.8.9.41 | 2026-10-01 | **Audio entrelacée quand elle vient d'une autre entrée** (§ 12.1) : les sous-titres de la source sont lus par une entrée dédiée dès que l'audio vient de la passe préalable ou d'une greffe ; sans cela, l'audio s'arrêtait à 32 s sur lecteur matériel · `tests/test_prepass_audio.py` |
 | 0.8.9.40 | 2026-09-30 | **PGS forcé doublé écarté** (§ 8.6, IE-73) : sans sélection manuelle, un sous-titre image forcé doublé par un sous-titre texte forcé de même langue ne passe plus dans la sortie ; seul forcé de sa langue, il reste · `SubtitleTrack.forced` lu depuis `disposition` · `tests/test_langues.py` |

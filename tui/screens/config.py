@@ -41,6 +41,10 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         Binding("delete",    "delete_focused", "Supprimer", show=False),
         # Les clés des services en ligne, sans éditer config.toml (IE-101).
         Binding("k",         "cles",           "Clés d'API", show=True),
+        # Ce qui n'appartient à aucun profil : la veille, l'après-lot.
+        # `O` est déjà OpenSubtitles chez le donneur, et une lettre n'a qu'un
+        # sens dans toute l'application (UX-12).
+        Binding("u",         "options",        "Options",   show=True),
         Binding("backspace", "go_back",        "Retour",    show=True),
         Binding("escape",    "go_back",        "Retour",    show=False),
         # `priority` : un DataTable etouffe la touche avant les bindings —
@@ -113,6 +117,12 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             return
         self.app.demander_cles(tous=True)  # type: ignore[attr-defined]
 
+    def action_options(self) -> None:
+        if self._form_mode:
+            return
+        from .options import OptionsScreen
+        self.app.push_screen(OptionsScreen())
+
     def _update_header(self) -> None:
         if self._form_mode:
             return
@@ -136,6 +146,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         # En mode formulaire, les touches restent au widget focalisé (Select/Input)
         if self._form_mode and action in {
             "activate", "new_profile", "edit_focused", "delete_focused",
+            "options",
         }:
             return False
         return True

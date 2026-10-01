@@ -59,7 +59,8 @@ class Entete(Header):
 
     Tant qu'un lot d'encodage existe, le titre porte au centre l'état de la
     file et la touche pour y aller (IE-100) : la file tourne pendant qu'on
-    navigue, c'est le seul endroit visible de partout.
+    navigue, c'est le seul endroit visible de partout. À sa droite, « ☾ » dit
+    que la mise en veille est bloquée, et ce que fera la machine après le lot.
     """
 
     def __init__(self, **kwargs) -> None:
@@ -75,13 +76,20 @@ class Entete(Header):
             pass
 
     def format_title(self):
-        base = super().format_title()
-        etat = getattr(self.app, "etat_file", lambda: "")()
-        if not etat:
+        base   = super().format_title()
+        etat   = getattr(self.app, "etat_file", lambda: "")()
+        veille = getattr(self.app, "etat_veille", lambda: "")()
+        if not (etat or veille):
             return base
         t = Text(str(base), no_wrap=True, overflow="ellipsis")
-        t.append("     ")
-        t.append(f" {etat} ", style="bold reverse")
+        if etat:
+            t.append("     ")
+            t.append(f" {etat} ", style="bold reverse")
+        # La veille à part : elle tient aussi pour une mesure ou un mux, sans
+        # lot d'encodage, et ce n'est pas l'état de la file.
+        if veille:
+            t.append("   ")
+            t.append(veille, style="italic")
         return t
 
     def compose(self) -> ComposeResult:

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.45
+**Version** : 0.8.9.46
 **Date** : 2026-10-01
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -120,6 +120,8 @@ d'après le profil actif.
 | `F4` / `F5` | Choisir un profil / gérer les profils |
 | `J` | **Joindre** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
 | `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |
+| `L` | **Filtrer** par type d'image : Dolby Vision (tous profils ou un seul), HDR sans DV, SDR |
+| `Z` | Masquer / afficher les fichiers `SKIP` |
 | `Tab` / `Maj+Tab` | Colonne suivante / précédente |
 | `<` / `>` | Rétrécir / élargir la colonne choisie (largeurs mémorisées) |
 
@@ -129,6 +131,13 @@ l'encodage au débit de la source. **La colonne le montre dès la coche** : la
 décision forcée remplace `← SKIP`, en orange, et un message le rappelle. Même
 chose pour une ligne `→ HDR10` (retrait du Dolby Vision) : cochée, elle est
 réencodée. `F1` et `F2` sans rien de coché le disent au lieu de ne rien faire.
+
+**Filtrer la liste.** `L` ne montre qu'un type d'image ; le choix ne propose
+que les types présents dans le dossier, avec leur nombre. `Z` masque les
+fichiers `SKIP`. Les deux se cumulent, tiennent d'un dossier à l'autre pendant
+la session, et la barre d'état dit combien de fichiers sont masqués. Les
+dossiers restent affichés. **Une ligne cochée ne se masque jamais** : ce qui
+partira à l'encodage reste sous les yeux. `A` ne coche que ce qui est visible.
 
 **Au retour d'un encodage**, la liste est relue — les sorties apparaissent — et
 les fichiers réussis sont décochés. Un fichier en échec ou interrompu reste

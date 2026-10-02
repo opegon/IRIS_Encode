@@ -1,5 +1,25 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.46] — 2026-10-02
+
+### Filtrer l'accueil : par type d'image, sans les SKIP
+
+Dans un dossier chargé, retrouver les Dolby Vision ou écarter ce qui n'a rien
+à faire demandait de lire la liste ligne à ligne.
+
+- `L` filtre par type d'image : Dolby Vision (tous profils, ou un profil
+  précis), HDR10 / HLG sans DV, SDR. Le choix ne propose que les types
+  présents dans le dossier, avec leur nombre.
+- `Z` masque ou réaffiche les fichiers dont la décision est `SKIP`.
+- Les deux se cumulent et tiennent d'un dossier à l'autre pendant la session.
+  La barre d'état nomme le filtre actif et compte les fichiers masqués.
+- Une ligne cochée ne se masque jamais : ce qui partira à l'encodage reste
+  visible. `A` ne coche que les lignes affichées.
+- `F` et `S` étaient prises ailleurs (une lettre, un sens — UX-12) : d'où
+  `L` et `Z`.
+
+`tui/screens/browser.py`, `tests/test_filtre_accueil.py`. Spec § 14.
+
 ## [v0.8.9.45] — 2026-10-01
 
 ### La colonne Fichier suit la taille de la fenêtre

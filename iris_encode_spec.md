@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.45 — document de référence courant
-**Date** : 2026-10-01
+**Version** : 0.8.9.46 — document de référence courant
+**Date** : 2026-10-02
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -1802,6 +1802,14 @@ Conventions transverses :
   se recalcule à l'entrée dans un dossier et **suit la fenêtre** (v0.8.9.45) :
   `BrowserScreen.on_resize` reconstruit la table 0,15 s après le dernier
   changement de taille, si la largeur voulue pour Fichier a changé.
+- **Filtre de l'accueil** (v0.8.9.46). `L` choisit un type d'image
+  (`browser.type_image` : profil DV `DV:P8.1`…, sinon `HDR` si la courbe est
+  PQ ou HLG, sinon `SDR`) parmi ceux du dossier (`options_filtre`), ou
+  « Dolby Vision » tous profils ; `Z` masque les lignes dont la décision est
+  `SKIP`. `ligne_visible` applique les deux, et laisse toujours passer une
+  ligne cochée. Le filtre vit sur l'écran (session, pas `config.toml`) ;
+  `_dossier` garde tous les fichiers du dossier pour pouvoir refiltrer sans
+  rescanner. La barre d'état nomme le filtre et compte les masqués.
 - **Un afficheur qui montre un nom se construit en `markup=False`.** `Static`
   interprète par défaut ce qui ressemble à une balise entre crochets, et la
   convention de nommage du projet jusqu'à la v0.8.8.10 — `_[mux]`, `_[hevc]`,
@@ -2699,6 +2707,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.46 | 2026-10-02 | **Filtre de l'accueil** (§ 14) : `L` filtre par type d'image (DV, un profil DV, HDR sans DV, SDR), `Z` masque les SKIP ; une ligne cochée reste visible · `tests/test_filtre_accueil.py` |
 | 0.8.9.45 | 2026-10-01 | **La colonne Fichier suit la fenêtre** (§ 14, accueil) : `BrowserScreen.on_resize` recalcule la place laissée à Fichier quand la fenêtre change de taille, une fois la rafale d'événements finie · `tests/test_accueil.py` |
 | 0.8.9.44 | 2026-10-01 | **Marque `-iris` et groupe retiré** (§ 8.7) : toute sortie finit par `-iris` au lieu de `.IRIS` (`scanner.MARQUE_IRIS`), l'ancienne marque n'est plus reconnue · le groupe de la release (`-GROUPE`, ` - GROUPE`) ne passe plus dans la sortie (`scanner.stem_sans_groupe`, `JETONS_RELEASE`), encodage, greffe et jonction · `tests/test_nom_iris.py` |
 | 0.8.9.43 | 2026-10-01 | **La veille bloquée pendant les traitements** (§ 14.7) : `core/veille.py`, demande d'alimentation `PowerCreateRequest` au motif lisible dans `powercfg /requests`, relevée toutes les 5 s sur les mêmes travaux que `F10` · indicateur « ☾ » dans l'en-tête · **après le lot** (`E`) : veille, veille prolongée ou arrêt une fois tout fini, après 60 s annulables, interrupteur décoché à chaque lot · **options** (§ 14.8, `F5` → `U`) : `[energie] empecher_veille` (vrai) et `action_fin` (`veille`) · `tests/test_veille.py` |

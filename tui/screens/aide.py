@@ -97,6 +97,11 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                                "n'importe quel autre.",
         "open_fiche":          "Ouvre la fiche du film : AlloCiné, puis IMDB "
                                "avec Tab.",
+        "filtre_type":         "Ne montre qu'un type d'image : Dolby Vision, un "
+                               "profil DV, HDR sans DV ou SDR. Une ligne cochée "
+                               "reste visible.",
+        "masquer_skip":        "Masque ou réaffiche les fichiers SKIP. Une ligne "
+                               "cochée reste visible.",
     },
     "TracksScreen": {
         "toggle_row":     "Garde ou écarte la piste sous le curseur. Une piste "

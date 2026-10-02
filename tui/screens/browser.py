@@ -192,6 +192,58 @@ def _estimate_output_bytes(dec: FileDecision,
     total_bits = (video_bps + audio_bps) * duration
     return int(total_bits / 8)
 
+# ─── Filtre de l'accueil (L, Z) ───────────────────────────────────────────────
+
+FILTRE_TOUS = "tous"
+FILTRE_DV   = "dv"      # Dolby Vision, tous profils
+
+
+def type_image(info) -> str:
+    """Le type d'image d'une source : son profil DV (`DV:P8.1`), `HDR` ou `SDR`."""
+    if info.dv_profile is not None:
+        return info.dv_label
+    return "HDR" if info.is_hdr else "SDR"
+
+
+def ligne_visible(dec: FileDecision, filtre: str, masquer_skip: bool,
+                  cochee: bool) -> bool:
+    """La ligne passe-t-elle le filtre ?
+
+    Une ligne cochée reste visible quoi qu'il arrive : ce qui partira à
+    l'encodage ne doit pas pouvoir disparaître de la vue.
+    """
+    if cochee:
+        return True
+    if masquer_skip and dec.video.action == VideoAction.SKIP:
+        return False
+    if filtre == FILTRE_TOUS:
+        return True
+    genre = type_image(dec.info)
+    if filtre == FILTRE_DV:
+        return genre.startswith("DV:")
+    return genre == filtre
+
+
+def options_filtre(decisions: list[FileDecision]) -> list[tuple[str, str]]:
+    """Les choix du filtre, limités aux types présents, avec leur nombre."""
+    genres  = [type_image(d.info) for d in decisions]
+    dv      = sorted({g for g in genres if g.startswith("DV:")})
+    options = [(FILTRE_TOUS, f"Tous les fichiers ({len(genres)})")]
+    if dv:
+        options.append((FILTRE_DV, f"Dolby Vision, tous profils "
+                                   f"({sum(g.startswith('DV:') for g in genres)})"))
+        options += [(g, f"  {g} ({genres.count(g)})") for g in dv]
+    if "HDR" in genres:
+        options.append(("HDR", f"HDR10 / HLG, sans DV ({genres.count('HDR')})"))
+    if "SDR" in genres:
+        options.append(("SDR", f"SDR ({genres.count('SDR')})"))
+    return options
+
+
+def libelle_filtre(filtre: str) -> str:
+    return {FILTRE_TOUS: "", FILTRE_DV: "Dolby Vision"}.get(filtre, filtre)
+
+
 # Marqueurs de ligne dans la table
 _ROW_TYPE_DIR   = "dir"
 _ROW_TYPE_FILE  = "file"
@@ -219,7 +271,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("j",         "join_parts",         "Joindre",  show=True),
         Binding("i",         "open_fiche",         "Fiche",    show=True),
         Binding("ctrl+d",    "delete_file",        "Supprimer", show=True),
-        Binding("f1",        "open_dryrun",        "Aperçu",   show=True),
+        Binding("l",         "filtre_type",        "Filtre",   show=True),
+        Binding("z",         "masquer_skip",       "Masquer SKIP", show=True),
+        Binding("f1",       "open_dryrun",        "Aperçu",   show=True),
         Binding("f2",        "open_run",           "Encoder",  show=True),
         Binding("f4",        "open_profile_picker","Profil",   show=True),
         Binding("f5",        "open_config",        "Gérer", show=True),
@@ -281,6 +335,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._scan_epoch: int = 0
         # Le relevé différé d'un changement de taille de la fenêtre (`on_resize`).
         self._minuterie_largeur = None
+        # Filtre de la vue (L, Z) : tient pour la session, d'un dossier à l'autre.
+        # `_dossier` garde tous les fichiers du dossier, masqués compris.
+        self._filtre       = FILTRE_TOUS
+        self._masquer_skip = False
+        self._dossier:    list[Path] = []
 
     # ─── Accesseurs app ───────────────────────────────────────────────────────
 
@@ -394,6 +453,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         ("j",         "Joindre"),
         ("i",         "Fiche"),
         ("ctrl+d",    "Supprimer"),
+        ("l",         "Filtre"),
+        ("z",         "Masquer SKIP"),
         ("backspace", "Remonter"),
         ("home",      "Début"),
         ("end",       "Fin"),
@@ -408,9 +469,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         parce qu'il commande ce que fait ↵ sur un fichier.
         """
         assistant = getattr(self._app, "wizard_mode", True)
-        return [(k, "Assistant" if assistant else "Manuel") if k == "w"
-                else (k, lib)
-                for k, lib in self._RACCOURCIS_FICHIERS]
+        variables = {
+            "w": "Assistant" if assistant else "Manuel",
+            "z": "Afficher SKIP" if self._masquer_skip else "Masquer SKIP",
+        }
+        return [(k, variables.get(k, lib)) for k, lib in self._RACCOURCIS_FICHIERS]
 
     def _footer_suit_le_mode(self) -> None:
         """Le footer n'annonce que ce que le mode courant sait faire."""
@@ -457,9 +520,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
         sel_count   = len(self._selected)
         total_files = sum(1 for t, _ in self._rows if t == _ROW_TYPE_FILE)
+        masques     = len(self._dossier) - total_files
+        filtre      = " + ".join(f for f in (
+            libelle_filtre(self._filtre),
+            "sans SKIP" if self._masquer_skip else "") if f)
         self.query_one("#status-bar", Static).update(barre_etat(
             "", self._nav.breadcrumb(),
             f"{sel_count}/{total_files} {accorde(sel_count, 'sélectionné')}",
+            f"Filtre : {filtre} ({pluriel(masques, 'masqué')})" if filtre else "",
             f"Col : {self.resize_col_label}  </>",
         ))
 
@@ -551,8 +619,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self._rows.append((_ROW_TYPE_DIR, d))
 
         # ── Fichiers ──────────────────────────────────────────────────────────
-        for dec in decisions:
+        self._dossier = [dec.info.path for dec in decisions]
+        tous      = decisions
+        decisions = [d for d in decisions
+                     if ligne_visible(d, self._filtre, self._masquer_skip,
+                                      d.info.path in self._selected)]
+        for dec in tous:
             self._decisions[dec.info.path] = dec
+        for dec in decisions:
             row_key = str(dec.info.path)
             check   = self._check_str(dec.info.path)
             produit = deja_produit(dec.info.path.stem)
@@ -566,11 +640,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
         # ── Dossier vide ──────────────────────────────────────────────────────
         if not subdirs and not decisions:
+            texte = (f"⚠  Tous les fichiers sont masqués  —  {touche('l')} "
+                     f"filtre, {touche('z')} SKIP" if tous else
+                     f"⚠  Aucun fichier vidéo dans ce dossier  —  "
+                     f"{touche('backspace')} pour remonter")
             table.add_row(
                 "",
-                Text(f"⚠  Aucun fichier vidéo dans ce dossier  —  "
-                     f"{touche('backspace')} pour remonter",
-                     style="dim italic"),
+                Text(texte, style="dim italic"),
                 "", "", "", "", "", "", "", "",
                 key="__empty__",
             )
@@ -817,8 +893,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         table      = self.query_one(DataTable)
         cursor_row = table.cursor_row
         subdirs    = [p for t, p in self._rows if t == _ROW_TYPE_DIR  and p is not None]
-        decisions  = [self._decisions[p] for t, p in self._rows
-                      if t == _ROW_TYPE_FILE and p is not None and p in self._decisions]
+        # Tout le dossier, pas les seules lignes affichées : le filtre a pu
+        # changer depuis la dernière construction.
+        decisions  = [self._decisions[p] for p in self._dossier
+                      if p in self._decisions]
         table.clear(columns=True)
         self._build_columns()
         self._populate_table(subdirs, decisions)
@@ -893,6 +971,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._selected.discard(path)
         self._audio_overrides.pop(path, None)
         self._subtitle_overrides.pop(path, None)
+        if path in self._dossier:
+            self._dossier.remove(path)
 
         idx = next(
             (i for i, (t, p) in enumerate(self._rows)
@@ -984,6 +1064,43 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         for path in paths:
             self._update_row_check(path)
         self._update_status()
+
+    # ─── Filtre (L, Z) ────────────────────────────────────────────────────────
+
+    def _refiltrer(self) -> None:
+        """Reconstruit la vue sous le nouveau filtre, curseur sur la même ligne
+        si elle reste visible."""
+        _, path = self._current_row_info()
+        self._resize_rebuild()
+        table = self.query_one(DataTable)
+        idx = next((i for i, (_, p) in enumerate(self._rows) if p == path), 0)
+        if table.row_count > 0:
+            table.move_cursor(row=idx)
+
+    def action_filtre_type(self) -> None:
+        if self._nav.is_virtual:
+            return
+        from .value_picker import ValuePickerScreen
+        options = options_filtre([self._decisions[p] for p in self._dossier
+                                  if p in self._decisions])
+        cles    = [c for c, _ in options]
+        courant = cles.index(self._filtre) if self._filtre in cles else 0
+
+        def _on_pick(idx: int | None) -> None:
+            if idx is None:
+                return
+            self._filtre = cles[idx]
+            self._refiltrer()
+        self.app.push_screen(
+            ValuePickerScreen("Type d'image", [l for _, l in options], courant),
+            _on_pick)
+
+    def action_masquer_skip(self) -> None:
+        if self._nav.is_virtual:
+            return
+        self._masquer_skip = not self._masquer_skip
+        self._footer_suit_le_mode()
+        self._refiltrer()
 
     # ─── Ouverture des autres écrans ──────────────────────────────────────────
 

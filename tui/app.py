@@ -311,6 +311,9 @@ class IrisEncodeApp(App):
 
     def fin_prevue(self) -> bool:
         """Vrai si une action d'après lot est demandée et pas encore partie."""
+        # « Ne rien faire » choisi entre-temps dans les options : rien à annoncer.
+        if cfg_mod.get_action_fin(self.cfg) == "rien":
+            return False
         lot = self._lot
         return self._fin_armee or bool(
             lot is not None and not lot.termine and lot.apres_lot)
@@ -334,7 +337,9 @@ class IrisEncodeApp(App):
         self.veille.maintenir(motif)
         if self._fin_armee and not natures and not self._decompte:
             self._fin_armee = False
-            self._lancer_decompte()
+            # Pas de compte à rebours pour ne rien faire.
+            if cfg_mod.get_action_fin(self.cfg) != "rien":
+                self._lancer_decompte()
 
     def armer_fin_de_lot(self) -> None:
         """Appelé par un lot fini normalement dont « Après le lot » est coché.

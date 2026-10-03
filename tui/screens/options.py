@@ -3,7 +3,8 @@ tui/screens/options.py — Les réglages qui ne sont pas ceux d'un profil.
 
 Ouvert depuis la gestion des profils (`F5`, `U`). Pour l'instant, l'énergie :
 bloquer la mise en veille pendant les traitements, et ce que fait la machine
-après un lot dont on a coché « Après le lot » (`core/veille.py`).
+après un lot dont on a coché « Après le lot » (`core/veille.py`) — par défaut,
+rien.
 
 Rend True si quelque chose a été enregistré.
 """

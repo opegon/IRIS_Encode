@@ -56,7 +56,7 @@ _DEFAULTS: dict[str, Any] = {
     # l'interrupteur, lui, repart à « non » à chaque lot.
     "energie": {
         "empecher_veille": True,
-        "action_fin":      "veille",
+        "action_fin":      "rien",
     },
     "decision": {
         "near_1080p_min_width":  1600,

@@ -1,7 +1,7 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.50
-**Date** : 2026-10-01
+**Version** : 0.8.9.54
+**Date** : 2026-10-03
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
 
@@ -388,16 +388,20 @@ Démarrer, capot fermé) passe quand même. Se désactive dans les options
 
 **Après le lot** (`E`) : une fois **tous** les traitements finis, la machine
 se met en veille, en veille prolongée ou s'éteint — au choix, dans les
-options. L'en-tête l'annonce (« ☾ … · puis arrêt »). Un compte à rebours de
+options. Par défaut, les options disent **« Ne rien faire »** : `E` n'arme
+alors rien et rappelle où choisir une action. L'en-tête l'annonce (« ☾ … · puis arrêt »). Un compte à rebours de
 60 s le précède : `↵` sur « Annuler » (présélectionné) ou `Esc` l'arrête.
 L'interrupteur repart décoché à chaque nouveau lot, et un lot arrêté par `X`
 ne déclenche rien. Windows seulement.
 
 ### 2.7 Profils (`F5`)
 
-`N` crée, `E` édite, `D` supprime, `↵` active. `U` ouvre les **options** :
+`N` crée, `E` édite, `C` copie, `D` supprime, `↵` active. La copie ouvre le
+formulaire avec les réglages du profil sous le curseur et un nom libre
+(`<nom>_copie`) : on modifie ce qui change, `Ctrl+S` enregistre le nouveau profil. `U` ouvre les **options** :
 bloquer la mise en veille pendant les traitements (activé par défaut), et ce
-que fait la machine après un lot dont on a coché « Après le lot ». `K` ouvre les **clés d'API**
+que fait la machine après un lot dont on a coché « Après le lot » (« Ne rien
+faire » par défaut, mise en veille, veille prolongée ou arrêt). `K` ouvre les **clés d'API**
 des services en ligne — OpenSubtitles et OMDb (fiche IMDB complète) : chaque
 service a son bouton vers la page qui délivre la clé, et une clé est vérifiée
 auprès du service avant d'être enregistrée. La même fenêtre s'ouvre au

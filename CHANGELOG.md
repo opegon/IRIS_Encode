@@ -1,5 +1,67 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.54] — 2026-10-03
+
+### Nouveaux profils livrés
+
+`data/profiles.default.toml` reprend tel quel la bibliothèque de profils de
+l'auteur : quatorze profils au lieu de dix.
+
+- `serie_anime` en tête — c'est lui qui est actif au premier lancement ; il ne
+  supprime pas la source.
+- Variantes qui suppriment la source après un encodage réussi :
+  `serie_anime_delete`, `serie_basic_delete`, `video_basic_delete`.
+- `film_basic`, `film_hdr`, `film_4k_basic` deviennent `movie_basic`,
+  `movie_hdr`, `movie_4k_basic` ; `cinema_4k_dv_quality_full` s'ajoute.
+- Une **installation neuve** reçoit ces profils au premier lancement. Une
+  **mise à jour** ne touche pas le `profiles.toml` existant (ignoré par git,
+  donc absent de l'archive de release) : chacun garde ses profils.
+
+## [v0.8.9.53] — 2026-10-03
+
+### Après le lot : « Ne rien faire » par défaut
+
+- **Nouveau choix « Ne rien faire »** dans les options (`F5`, `U`), en tête de
+  liste et **par défaut** — la mise en veille l'était jusqu'ici.
+- Avec ce choix, `E` pendant l'encodage n'arme rien : un message rappelle où
+  choisir une action.
+- Choisi pendant un lot où `E` était déjà coché, il désarme : plus d'annonce
+  « puis … » dans l'en-tête, pas de compte à rebours, aucun appel au système.
+- Une valeur inconnue dans `[energie] action_fin` vaut désormais « rien ».
+- Une installation dont `config.toml` porte déjà `action_fin = "veille"`
+  garde ce choix : seul le défaut change.
+
+## [v0.8.9.52] — 2026-10-03
+
+### Copier un profil pour en faire un nouveau
+
+- **`C` dans l'écran Profils (`F5`)** : ouvre le formulaire de création avec
+  tous les réglages du profil sous le curseur et un nom libre proposé
+  (`film_hdr_copie`, puis `film_hdr_copie2`…). On modifie ce qui change,
+  `Ctrl+S` enregistre le nouveau profil ; l'original n'est pas touché.
+- **Un nom déjà pris est refusé à la création.** Avant, enregistrer un
+  « nouveau » profil sous le nom d'un existant fusionnait en silence ses
+  valeurs dans ce dernier.
+- **Sélecteur de profil (`F4`) élargi** : la largeur comptait 1 caractère de
+  marge par colonne au lieu de 2 ; la colonne Source sortait tronquée
+  (« ⚠ supp ») avec une barre de défilement horizontale.
+- Aide embarquée (`H`), GUIDE § 2.7 et spec § 14 / § 14.9 à jour ;
+  `tests/test_copie_profil.py` (nom proposé, copie enregistrée, nom pris refusé).
+
+## [v0.8.9.51] — 2026-10-03
+
+### IRIS ENCODE passe sous licence GPL-3.0-or-later
+
+Le dépôt n'avait aucune licence : public, mais sans cadre pour le réutiliser ni
+pour y contribuer. Préalable à la traduction participative (IE-111).
+
+- `LICENSE` : texte de la GNU GPL version 3, déclarée « ou toute version
+  ultérieure ».
+- README : section 13 « Licence », et `LICENSE` dans la structure des fichiers.
+- Spec § 17.3 : licence d'IRIS, compatibilité des dépendances Python, et pourquoi
+  les licences des binaires externes (téléchargés, lancés en sous-processus) ne
+  s'étendent pas au code. Le build ffmpeg est précisé GPL-3.0.
+
 ## [v0.8.9.50] — 2026-10-03
 
 ### Le README montre comment IRIS décide

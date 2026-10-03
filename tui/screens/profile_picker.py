@@ -94,8 +94,11 @@ class ProfilePickerScreen(ModalScreen[str | None]):
         for name, cells in zip(self._names, rows):
             table.add_row(*cells, key=name)
 
-        # Largeur du panneau : colonnes + séparateurs (1/col) + padding/bordure
-        self.query_one("#profile-picker-box").styles.width = sum(widths) + len(widths) + 10
+        # Largeur du panneau : colonnes, marge de cellule (1 de chaque côté,
+        # `cell_padding=1`), bordure et padding (6), place d'une barre de
+        # défilement (2). À 1 par colonne, « ⚠ suppr. » sortait tronqué.
+        self.query_one("#profile-picker-box").styles.width = (
+            sum(widths) + 2 * len(widths) + 6 + 2)
 
         cur_idx = self._names.index(self._current_id) if self._current_id in self._names else 0
         table.move_cursor(row=cur_idx)

@@ -118,12 +118,14 @@ def test_le_vrai_moteur_pose_retire_et_prend_le_privilege():
 def test_bloquer_la_veille_est_active_par_defaut():
     cfg = cfg_mod._deep_merge({}, cfg_mod._DEFAULTS)
     assert cfg_mod.get_empecher_veille(cfg) is True
-    assert cfg_mod.get_action_fin(cfg) == "veille"
+    # Après le lot, par défaut : rien. La machine ne change d'état que si on
+    # l'a choisi dans les options.
+    assert cfg_mod.get_action_fin(cfg) == "rien"
 
 
 def test_une_action_inconnue_vaut_le_defaut():
     """config.toml s'édite à la main : une faute de frappe n'arrête pas la machine."""
-    assert cfg_mod.get_action_fin({"energie": {"action_fin": "eteindre"}}) == "veille"
+    assert cfg_mod.get_action_fin({"energie": {"action_fin": "eteindre"}}) == "rien"
     assert cfg_mod.get_action_fin({"energie": {"action_fin": "arret"}}) == "arret"
 
 
@@ -176,6 +178,13 @@ class _App(App):
         self.encoder(self._depart)
 
 
+def _cfg_veille():
+    """Les options où l'on a choisi la mise en veille après le lot."""
+    cfg = cfg_mod._deep_merge({}, cfg_mod._DEFAULTS)
+    cfg["energie"]["action_fin"] = "veille"
+    return cfg
+
+
 @pytest.fixture
 def windows(monkeypatch):
     monkeypatch.setattr(veille, "disponible", lambda: True)
@@ -226,7 +235,7 @@ def test_apres_le_lot_compte_a_rebours_puis_agit(faux, windows, tmp_path,
     monkeypatch.setattr("tui.screens.fin_lot.COMPTE_A_REBOURS_S", 1)
 
     async def _run():
-        app = _App([_dec(tmp_path / "a.mkv")])
+        app = _App([_dec(tmp_path / "a.mkv")], _cfg_veille())
         async with app.run_test() as pilot:
             await pilot.pause(0.4)
             lot = app.lot
@@ -254,7 +263,7 @@ def test_apres_le_lot_compte_a_rebours_puis_agit(faux, windows, tmp_path,
 
 def test_un_lot_arrete_ne_declenche_rien(faux, windows, tmp_path):
     async def _run():
-        app = _App([_dec(tmp_path / "a.mkv")])
+        app = _App([_dec(tmp_path / "a.mkv")], _cfg_veille())
         async with app.run_test() as pilot:
             await pilot.pause(0.4)
             await pilot.press("e")
@@ -275,7 +284,7 @@ def test_l_action_attend_que_tout_soit_fini(faux, windows, tmp_path, monkeypatch
     monkeypatch.setattr(_App, "natures_en_cours", lambda self: ["mesure"])
 
     async def _run():
-        app = _App([_dec(tmp_path / "a.mkv")])
+        app = _App([_dec(tmp_path / "a.mkv")], _cfg_veille())
         async with app.run_test() as pilot:
             await pilot.pause(0.4)
             await pilot.press("e")
@@ -332,3 +341,56 @@ def test_hors_windows_l_interrupteur_refuse(faux, monkeypatch, tmp_path):
 def test_les_natures_suivent_les_travaux_que_quitter_annonce():
     """Ce que F10 dit interrompre est ce qui doit tenir la machine éveillée."""
     assert set(_Iris._NATURES) == set(_Iris._TRAVAUX)
+
+
+# ─── « Ne rien faire », le défaut ─────────────────────────────────────────────
+
+def test_ne_rien_faire_n_appelle_pas_le_systeme():
+    m = _FauxMoteur()
+    assert GardeVeille(m).executer_fin("rien") is None
+    assert not any(e[0] == "executer" for e in m.journal)
+
+
+def test_par_defaut_e_n_arme_rien(faux, windows, tmp_path):
+    async def _run():
+        app = _App([_dec(tmp_path / "a.mkv")])
+        async with app.run_test() as pilot:
+            await pilot.pause(0.4)
+            await pilot.press("e")
+            await pilot.pause(0.1)
+            arme = app.lot.apres_lot
+            _FauxFfmpeg.lances[0].finir()
+            await pilot.pause(0.5)
+            app.surveiller_veille()
+            await pilot.pause(0.2)
+            ecran = type(app.screen).__name__
+        return arme, ecran, app.moteur.journal
+
+    arme, ecran, journal = asyncio.run(_run())
+    assert arme is False
+    assert ecran != "FinDeLotModal"
+    assert not any(e[0] == "executer" for e in journal)
+
+
+def test_passer_a_ne_rien_faire_desarme_un_lot_coche(faux, windows, tmp_path):
+    """E coché avec la veille, puis « Ne rien faire » choisi pendant le lot."""
+    async def _run():
+        app = _App([_dec(tmp_path / "a.mkv")], _cfg_veille())
+        async with app.run_test() as pilot:
+            await pilot.pause(0.4)
+            await pilot.press("e")
+            await pilot.pause(0.1)
+            app.cfg["energie"]["action_fin"] = "rien"
+            app.surveiller_veille()
+            annonce = app.etat_veille()
+            _FauxFfmpeg.lances[0].finir()
+            await pilot.pause(0.5)
+            app.surveiller_veille()
+            await pilot.pause(0.2)
+            ecran = type(app.screen).__name__
+        return annonce, ecran, app.moteur.journal
+
+    annonce, ecran, journal = asyncio.run(_run())
+    assert "puis" not in annonce
+    assert ecran != "FinDeLotModal"
+    assert not any(e[0] == "executer" for e in journal)

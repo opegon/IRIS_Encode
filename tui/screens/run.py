@@ -1185,14 +1185,21 @@ class RunScreen(TableNavMixin, Screen):
         """Bascule l'action d'après lot ; la confirme par un message."""
         from core import veille
         from core.config import get_action_fin
+        from ..common import touche
         if self._done:
             return
         if not veille.disponible():
             self.notify("Mise en veille et arrêt pilotés sous Windows "
                         "seulement.", severity="warning", timeout=4)
             return
+        action = get_action_fin(self.app.cfg)  # type: ignore[attr-defined]
+        if action == "rien" and not self.apres_lot:
+            self.notify("Après le lot : rien n'est prévu. Choisir une action "
+                        f"dans les options ({touche('f5')}, puis {touche('u')}).",
+                        timeout=6)
+            return
         self.apres_lot = not self.apres_lot
-        libelle = veille.libelle_action(get_action_fin(self.app.cfg))  # type: ignore[attr-defined]
+        libelle = veille.libelle_action(action)
         self.notify(f"Après le lot : {libelle}, après un compte à rebours de "
                     f"{veille.COMPTE_A_REBOURS_S} s." if self.apres_lot
                     else "Après le lot : rien.", timeout=4)

@@ -30,6 +30,18 @@ if TYPE_CHECKING:
 
 
 
+def nom_de_copie(nom: str, pris) -> str:
+    """`<nom>_copie`, puis `_copie2`, `_copie3`… : un nom libre, tenu dans
+    les 32 caractères qu'accepte le formulaire."""
+    n = 1
+    while True:
+        suffixe = "_copie" if n == 1 else f"_copie{n}"
+        candidat = nom[:32 - len(suffixe)] + suffixe
+        if candidat not in pris:
+            return candidat
+        n += 1
+
+
 class ConfigScreen(TableNavMixin, Screen[bool]):
     """Écran Config — CRUD profils d'encodage."""
 
@@ -37,6 +49,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         Binding("enter",     "activate",       "Activer",   show=True, priority=True),
         Binding("n",         "new_profile",    "Nouveau",   show=True),
         Binding("e",         "edit_focused",   "Éditer",    show=True),
+        Binding("c",         "copy_focused",   "Copier",    show=True),
         Binding("d",         "delete_focused", "Supprimer", show=True),
         Binding("delete",    "delete_focused", "Supprimer", show=False),
         # Les clés des services en ligne, sans éditer config.toml (IE-101).
@@ -145,8 +158,8 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
     def check_action(self, action: str, parameters: tuple) -> bool | None:
         # En mode formulaire, les touches restent au widget focalisé (Select/Input)
         if self._form_mode and action in {
-            "activate", "new_profile", "edit_focused", "delete_focused",
-            "options",
+            "activate", "new_profile", "edit_focused", "copy_focused",
+            "delete_focused", "options",
         }:
             return False
         return True
@@ -166,6 +179,12 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
     def action_new_profile(self) -> None:
         self._open_form("", is_new=True)
+
+    def action_copy_focused(self) -> None:
+        """Nouveau profil qui part des réglages de celui sous le curseur."""
+        name = self._focused_profile_name()
+        if name:
+            self._open_form(name, is_new=True, copie=True)
 
     def action_delete_focused(self) -> None:
         """Supprime le profil sous le curseur, avec confirmation."""
@@ -221,14 +240,16 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             pied.update_line(1, self._RACCOURCIS_ECRAN)
             pied.update_line(2, footer_line2(nav=True))
 
-    def _open_form(self, profile_id: str, is_new: bool) -> None:
+    def _open_form(self, profile_id: str, is_new: bool,
+                   copie: bool = False) -> None:
         self._form_mode = True
         self._footer_suit(True)
         self.query_one(DataTable).display         = False
         self.query_one(ProfileForm).remove_class("hidden")
         self.query_one("#config-actions").display = False
         # Header contextuel
-        lbl = "Nouveau profil" if is_new else f"Édition — {profile_id}"
+        lbl = (f"Copie de {profile_id}" if copie else
+               "Nouveau profil" if is_new else f"Édition — {profile_id}")
         self.query_one("#config-header-bar", Static).update(
             f" {lbl}   —   " + raccourcis([("ctrl+s", "Enregistrer"),
                                           ("escape", "Annuler")])
@@ -236,12 +257,16 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
         form     = self.query_one(ProfileForm)
         profiles = self._app.profiles
-        if is_new:
+        if copie:
+            form.load(nom_de_copie(profile_id, profiles),
+                      profiles[profile_id].data.copy(), is_new=True,
+                      ids_pris=profiles)
+        elif is_new:
             # Le profil actif sert de point de départ : le nom codé en dur
             # qui tenait ici levait un KeyError dès que le fichier ne le
             # décrivait plus.
             default_data = profiles[self._app.active_profile_id].data.copy()
-            form.load("", default_data, is_new=True)
+            form.load("", default_data, is_new=True, ids_pris=profiles)
         else:
             form.load(profile_id, profiles[profile_id].data, is_new=False)
 

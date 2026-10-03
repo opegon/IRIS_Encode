@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.50 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.54 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`. Ce que
@@ -532,6 +532,7 @@ iris_encode/
 ├── profiles.toml       ← Profils d'encodage (éditable)
 ├── requirements.txt    ← Dépendances Python
 ├── version.py          ← Version de l'application (source unique)
+├── LICENSE             ← Licence GPL-3.0-or-later
 ├── .venv/              ← Environnement Python local (auto)
 ├── .iris_update/       ← Cache, sauvegarde et manifeste des mises à jour (auto)
 ├── bin/                ← uv / python / ffmpeg / ffprobe / dovi_tool / mkvmerge / mpv (auto)
@@ -664,6 +665,19 @@ IRIS ENCODE ne modifie aucun paramètre système. Pour désinstaller :
 2. (Optionnel) Désinstallez les bibliothèques Python : `pip uninstall textual rich tomli-w requests beautifulsoup4`
 
 Les fichiers `config.toml` et `profiles.toml` sont supprimés avec le dossier.
+
+
+---
+
+## 13. Licence
+
+IRIS ENCODE est un logiciel libre, distribué sous **GNU General Public License,
+version 3 ou toute version ultérieure** (GPL-3.0-or-later). Le texte complet est
+dans [`LICENSE`](LICENSE).
+
+Les outils externes (ffmpeg, mkvmerge, mpv, dovi_tool, uv) ne sont pas fournis
+avec IRIS ENCODE : ils sont téléchargés dans `bin/` depuis leurs sources
+officielles et gardent chacun leur propre licence.
 
 ---
 

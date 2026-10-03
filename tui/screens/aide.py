@@ -189,7 +189,8 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                         "confirmation. La sortie partielle est effacée.",
         "apres_lot":    "Coche ou décoche l'action d'après lot : mise en "
                         "veille, veille prolongée ou arrêt, selon les options "
-                        "(F5, U). Elle part quand plus rien ne tourne, après "
+                        "(F5, U). Par défaut, les options disent « Ne rien "
+                        "faire » et la touche n'arme rien. Elle part quand plus rien ne tourne, après "
                         "un compte à rebours de 60 s qu'on peut annuler. "
                         "Décochée à chaque nouveau lot ; un lot arrêté par X "
                         "ne déclenche rien.",
@@ -224,6 +225,8 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "activate":       "Rend actif le profil sous le curseur.",
         "new_profile":    "Crée un profil.",
         "edit_focused":   "Édite le profil sous le curseur.",
+        "copy_focused":   "Crée un profil à partir de celui sous le curseur : "
+                          "mêmes réglages, nom à choisir.",
         "delete_focused": "Supprime le profil. Les profils fournis avec "
                           "l'application sont protégés.",
         "go_back":        "Revient à l'accueil.",

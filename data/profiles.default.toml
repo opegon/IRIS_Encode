@@ -1,3 +1,52 @@
+[serie_anime]
+bitrate_720p_kbps = 1500
+bitrate_1080p_kbps = 2000
+bitrate_4k_kbps = 3500
+keep_4k = false
+delete_source = false
+preset_encoder = "fast"
+dolby_vision = "sdr"
+preserve_hd_audio = false
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 448
+audio_surround_7_1_kbps = 640
+audio_copy_compatible = true
+audio_hd_codec = "none"
+container = "auto"
+
+[serie_anime_delete]
+bitrate_720p_kbps = 1500
+bitrate_1080p_kbps = 2000
+bitrate_4k_kbps = 3500
+dolby_vision = "sdr"
+preset_encoder = "fast"
+hdr10_quality = "compat"
+keep_4k = false
+delete_source = true
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 448
+audio_surround_7_1_kbps = 640
+preserve_hd_audio = false
+audio_hd_codec = "none"
+container = "auto"
+audio_copy_compatible = true
+
 [serie_basic]
 bitrate_720p_kbps = 1500
 bitrate_1080p_kbps = 2200
@@ -22,15 +71,15 @@ audio_copy_compatible = true
 audio_hd_codec = "none"
 container = "auto"
 
-[serie_anime]
+[serie_basic_delete]
 bitrate_720p_kbps = 1500
-bitrate_1080p_kbps = 2000
+bitrate_1080p_kbps = 2200
 bitrate_4k_kbps = 3500
-keep_4k = false
-delete_source = false
-preset_encoder = "fast"
 dolby_vision = "sdr"
-preserve_hd_audio = false
+preset_encoder = "medium"
+hdr10_quality = "compat"
+keep_4k = false
+delete_source = true
 audio_languages = [
     "fre",
     "eng",
@@ -42,9 +91,10 @@ subtitle_languages = [
 audio_stereo_kbps = 192
 audio_surround_kbps = 448
 audio_surround_7_1_kbps = 640
-audio_copy_compatible = true
+preserve_hd_audio = false
 audio_hd_codec = "none"
 container = "auto"
+audio_copy_compatible = true
 
 [serie_hdr]
 bitrate_720p_kbps = 2000
@@ -91,9 +141,11 @@ audio_stereo_kbps = 192
 audio_surround_kbps = 448
 audio_surround_7_1_kbps = 640
 preserve_hd_audio = false
+audio_hd_codec = "eac3"
+container = "auto"
+audio_copy_compatible = true
 
-
-[film_basic]
+[movie_basic]
 bitrate_720p_kbps = 2000
 bitrate_1080p_kbps = 3000
 bitrate_4k_kbps = 5000
@@ -118,15 +170,15 @@ audio_hd_codec = "none"
 container = "auto"
 hdr10_quality = "compat"
 
-[film_hdr]
+[movie_hdr]
 bitrate_720p_kbps = 3000
 bitrate_1080p_kbps = 5000
 bitrate_4k_kbps = 5000
 keep_4k = false
 delete_source = false
-preset_encoder = "slow"
+preset_encoder = "medium"
 dolby_vision = "hdr10"
-preserve_hd_audio = true
+preserve_hd_audio = false
 audio_languages = [
     "fre",
     "eng",
@@ -141,6 +193,32 @@ audio_surround_7_1_kbps = 768
 audio_copy_compatible = true
 audio_hd_codec = "eac3"
 container = "auto"
+hdr10_quality = "compat"
+
+[movie_4k_basic]
+bitrate_720p_kbps = 3000
+bitrate_1080p_kbps = 5000
+bitrate_4k_kbps = 5000
+keep_4k = true
+delete_source = false
+preset_encoder = "medium"
+dolby_vision = "sdr"
+preserve_hd_audio = false
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 640
+audio_surround_7_1_kbps = 768
+audio_copy_compatible = true
+audio_hd_codec = "eac3"
+container = "auto"
+hdr10_quality = "compat"
 
 [cinema_4k_hdr_basic]
 bitrate_720p_kbps = 3000
@@ -175,7 +253,7 @@ keep_4k = true
 delete_source = false
 preset_encoder = "slow"
 dolby_vision = "hdr10"
-preserve_hd_audio = true
+preserve_hd_audio = false
 audio_languages = [
     "fre",
     "eng",
@@ -201,7 +279,7 @@ delete_source = false
 preset_encoder = "slow"
 dolby_vision = "dv"
 hdr10_quality = "quality"
-preserve_hd_audio = true
+preserve_hd_audio = false
 audio_languages = [
     "fre",
     "eng",
@@ -214,8 +292,33 @@ audio_stereo_kbps = 192
 audio_surround_kbps = 640
 audio_surround_7_1_kbps = 768
 audio_copy_compatible = true
+audio_hd_codec = "eac3"
+container = "auto"
+
+[cinema_4k_dv_quality_full]
+bitrate_720p_kbps = 3000
+bitrate_1080p_kbps = 5000
+bitrate_4k_kbps = 12000
+dolby_vision = "dv"
+preset_encoder = "slow"
+hdr10_quality = "quality"
+keep_4k = true
+delete_source = false
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 192
+audio_surround_kbps = 640
+audio_surround_7_1_kbps = 768
+preserve_hd_audio = true
 audio_hd_codec = "none"
 container = "auto"
+audio_copy_compatible = true
 
 [video_basic_delete]
 bitrate_720p_kbps = 1500

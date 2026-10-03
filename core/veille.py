@@ -32,12 +32,14 @@ log = logging.getLogger(__name__)
 
 # Ce que la machine fait une fois le lot fini, si on l'a demandé. Le choix vit
 # dans `[energie] action_fin` ; l'interrupteur, lui, est propre à chaque lot.
+# « rien » est le défaut : la machine ne change d'état que si on l'a choisi.
 ACTIONS_FIN: dict[str, str] = {
+    "rien":             "ne rien faire",
     "veille":           "mise en veille",
     "veille_prolongee": "veille prolongée",
     "arret":            "arrêt",
 }
-ACTION_FIN_DEFAUT = "veille"
+ACTION_FIN_DEFAUT = "rien"
 
 # Le délai pendant lequel l'action se laisse annuler.
 COMPTE_A_REBOURS_S = 60
@@ -259,6 +261,8 @@ class GardeVeille:
     def executer_fin(self, action: str) -> str | None:
         """Relâche la demande, puis lance `action`. Rend l'erreur, ou None."""
         self.relacher()
+        if action == "rien":
+            return None
         moteur = self._le_moteur()
         if moteur is None:
             return "indisponible sur ce système"

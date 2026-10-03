@@ -7,7 +7,7 @@ Contrôles : Ctrl+S → enregistrer  |  Esc → annuler
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterable
 
 from textual import on
 from textual.app import ComposeResult
@@ -207,6 +207,7 @@ class ProfileForm(Widget):
         super().__init__(name=name, id=id, classes=classes, disabled=disabled)
         self._profile_id = ""
         self._is_new     = True
+        self._ids_pris: set[str] = set()
         # Options effectives de chaque liste, valeur du profil comprise.
         self._opts_champ: dict[str, list] = dict(self._SELECT_OPTS)
 
@@ -469,9 +470,12 @@ class ProfileForm(Widget):
     # ── Chargement / Dump ─────────────────────────────────────────────────────
 
     def load(self, profile_id: str, data: dict[str, Any],
-             is_new: bool = False) -> None:
+             is_new: bool = False, ids_pris: Iterable[str] = ()) -> None:
+        """`profile_id` pré-remplit le nom d'un profil nouveau (copie) ;
+        `ids_pris` sont les noms qu'une création ne peut pas reprendre."""
         self._profile_id = profile_id
         self._is_new     = is_new
+        self._ids_pris   = set(ids_pris)
 
         def _set_sel(wid: str, val: Any) -> None:
             try:
@@ -497,7 +501,7 @@ class ProfileForm(Widget):
             except Exception:
                 pass
 
-        _set_inp("#field-id",     "" if is_new else profile_id)
+        _set_inp("#field-id",     profile_id)
         _set_sel("#field-720p",   data.get("bitrate_720p_kbps",       1500))
         _set_sel("#field-1080p",  data.get("bitrate_1080p_kbps",      2500))
         _set_sel("#field-4k",     data.get("bitrate_4k_kbps",         5000))
@@ -585,6 +589,9 @@ class ProfileForm(Widget):
                 errors.append("Identifiant : caractères autorisés a-z, 0-9, - _")
             elif len(pid) > 32:
                 errors.append("Identifiant : 32 caractères maximum.")
+            elif pid in self._ids_pris:
+                # Sans ce refus, l'enregistrement écrasait le profil du même nom.
+                errors.append(f"Le profil « {pid} » existe déjà.")
         return errors
 
     # ── Clavier ───────────────────────────────────────────────────────────────

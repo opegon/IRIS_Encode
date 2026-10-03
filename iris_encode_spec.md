@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.50 — document de référence courant
+**Version** : 0.8.9.54 — document de référence courant
 **Date** : 2026-10-03
 **Statut** : stable
 
@@ -339,7 +339,7 @@ omdb_api_key = ""       # clé gratuite sur omdbapi.com — active note + synops
 
 [energie]
 empecher_veille = true    # veille bloquée pendant un traitement (§ 14.7)
-action_fin = "veille"     # après un lot coché « Après le lot » : veille / veille_prolongee / arret
+action_fin = "rien"       # après un lot coché « Après le lot » : rien / veille / veille_prolongee / arret
 
 [decision]
 near_1080p_min_width  = 1600    # seuils de rattachement au bucket 1080p
@@ -419,18 +419,23 @@ ne voit plus de Dolby Vision (IE-109). Les sources sans DV sont encodées normal
 | 2 | `data/profiles.default.toml` | les **profils livrés** : sèment le fichier au premier lancement, tiennent la session si le TOML de l'utilisateur devient illisible |
 | 3 | `_default_` | plancher codé en dur, dernier recours si le fichier livré manque |
 
-**Les profils livrés** (v0.8.8.4) sont dix, versionnés avec le code et donc
+**Les profils livrés** (v0.8.8.4 ; quatorze depuis la v0.8.9.54) sont versionnés avec le code et donc
 présents dans l'archive d'une release — `profiles.toml`, lui, est ignoré par
 git : c'est le fichier de travail de chaque poste. Jusque-là le plancher semait
 seul, et le sélecteur d'une installation neuve s'ouvrait sur une liste d'un
 élément : rien qui montre ce qu'un profil règle, ni ce que change le fait d'en
 changer.
 
-Le premier du fichier livré est `serie_basic`, et il porte
+Le premier du fichier livré est `serie_anime`, et il porte
 `delete_source = false` : c'est lui que `get_active_profile` retient au premier
-lancement, tant que rien n'a été choisi. Le seul profil livré à
-`delete_source = true`, `video_basic_delete`, est **dernier** — il n'est jamais
-actif par accident, et l'écran Config le signale « ⚠ oui ».
+lancement, tant que rien n'a été choisi (`tests/test_profils_livres.py` y
+veille). Trois profils livrés portent `delete_source = true` —
+`serie_anime_delete`, `serie_basic_delete` et `video_basic_delete` —, chacun
+signalé « ⚠ suppr. » dans `F4` et `F5` ; aucun n'est en tête.
+
+Depuis la v0.8.9.54, le fichier livré est la bibliothèque de profils de
+l'auteur, recopiée telle quelle : une installation neuve la reçoit au premier
+lancement, une mise à jour ne touche jamais le `profiles.toml` existant.
 
 Le fichier livré est une donnée, éditable à la main, que rien d'autre ne relit :
 `tests/test_profils_livres.py` en contrôle la forme (champs connus, types,
@@ -488,7 +493,7 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 
 ```
 ⚠ profiles.toml illisible (erreur syntaxe ligne 12).
-  Session tenue sur les 10 profils livrés — votre fichier n'a pas été touché.
+  Session tenue sur les 14 profils livrés — votre fichier n'a pas été touché.
 ```
 
 L'écriture du fichier semé passe par `save_all`, donc par l'écriture atomique de
@@ -2346,7 +2351,10 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   sans lot la bloque aussi. Option `[energie] empecher_veille`, vraie par
   défaut. Hors Windows, `disponible()` est faux et rien n'est fait.
 - **Après le lot** (v0.8.9.43) — `E` arme l'action de `[energie] action_fin`
-  (veille, veille prolongée, arrêt). `RunScreen.apres_lot` part de `False` à
+  (veille, veille prolongée, arrêt). **« Ne rien faire » (`rien`) est le
+  défaut** (v0.8.9.53) : `E` n'arme alors rien et renvoie aux options ;
+  choisi pendant un lot déjà coché, il désarme (`fin_prevue()` faux, pas de
+  `FinDeLotModal`, `executer_fin("rien")` n'appelle pas le système). `RunScreen.apres_lot` part de `False` à
   chaque lot, jamais hérité. Un lot fini **sans abandon** appelle
   `armer_fin_de_lot()` ; un lot arrêté par `X` ou `F10` ne déclenche rien.
   L'action attend que `natures_en_cours()` soit vide — au plus un relevé
@@ -2372,7 +2380,7 @@ mise en veille pendant les traitements » et le choix de l'action d'après lot,
 Enregistrer relève aussitôt l'état (`surveiller_veille`) : décocher relâche
 la machine sans attendre. `O` aurait été plus parlant, mais il est
 OpenSubtitles chez le donneur (UX-12). Une action inconnue dans le fichier
-vaut `veille`.
+vaut `rien` (v0.8.9.53 ; `veille` avant).
 
 **Clés d'API** (v0.8.9.37, IE-101) — `K` ouvre `ClesScreen` pour tous les
 services de `core/cles.py` (OpenSubtitles : clé, identifiant, mot de passe
@@ -2395,9 +2403,14 @@ fenêtre reste ouverte ; une clé inchangée n'est pas re-vérifiée.
 Tous les profils sont éditables et supprimables (`D` / `Suppr`, avec
 confirmation) — ils viennent tous de `profiles.toml`, qui fait foi. Seule
 exception : le dernier de la liste, dont la suppression est refusée par un
-message explicite. Un nouveau profil part des réglages du profil actif. Le
-champ **Nom** n'est saisissable qu'à la création : renommer se fait dans
-`profiles.toml`.
+message explicite. Un nouveau profil (`N`) part des réglages du profil actif.
+**Copier** (`C`, v0.8.9.52) ouvre le même formulaire de création avec les
+réglages du profil sous le curseur et un nom libre proposé par
+`nom_de_copie()` (`<nom>_copie`, puis `_copie2`…, tenu dans 32 caractères).
+Le champ **Nom** n'est saisissable qu'à la création : renommer se fait dans
+`profiles.toml`. Une création refuse un nom déjà pris (`ProfileForm.validate`,
+`ids_pris`) : avant, `_on_profile_saved` voyait un profil existant et y
+fusionnait les valeurs saisies, sans rien dire.
 
 **Valeur hors liste** (v0.8.9.7) — un débit que la liste ne propose pas
 (`serie_basic` : 3500k en 4K) s'y ajoute à sa place (`_avec_valeur()`), au lieu
@@ -2443,7 +2456,9 @@ le codec.
 Vraie table : Profil · 1080p · 4K · DV · Preset · HD audio · Source. Profil actif marqué
 `✓`, valeurs DV colorées, `⚠ suppr.` sur les profils qui suppriment la source. Le
 callback renvoie l'**id** du profil (plus robuste qu'un index). Utilisé par Browser (F4)
-et TracksScreen (F4).
+et TracksScreen (F4). Largeur du panneau : somme des colonnes, plus 2 par colonne
+(`cell_padding=1` de chaque côté), 6 pour bordure et padding, 2 pour une barre de
+défilement (v0.8.9.52 ; à 1 par colonne, `⚠ suppr.` sortait tronqué).
 
 ### 14.11 Retour à l'accueil — `Ctrl+Home`
 
@@ -2634,14 +2649,23 @@ sur les deux scripts disent tous la même chose.
 
 | Élément | Nature | Licence | Remarque |
 |---|---|---|---|
-| ffmpeg | essentiel | GPL (build libx265) | Build *essentials*, ~30 Mo |
+| ffmpeg | essentiel | GPL-3.0 (build `--enable-gpl --enable-version3`, libx265) | Build *essentials*, ~30 Mo |
 | dovi_tool | optionnel | MIT | Binaire Windows unique |
 | mkvmerge | optionnel | **GPL-2.0** | ZIP officiel statique, sans DLL, 22 Mo |
 | mpv | optionnel | GPL-2.0+ | Publié en `.7z`, extrait via le tar de Windows |
 
-**Licence.** Redistribuer mkvmerge et mpv dans les ZIP de release entraîne les
-obligations GPL correspondantes. Ce n'est pas une situation nouvelle — le ffmpeg embarqué
-avec libx265 est déjà GPL — mais autant le décider sciemment.
+**Licence d'IRIS ENCODE.** GPL-3.0-or-later, texte dans `LICENSE` à la racine.
+Choisie pour s'aligner sur l'outil central (ce build de ffmpeg est GPL-3.0) et pour
+que les contributions, traductions comprises, restent libres. Les dépendances
+Python (`textual`, `rich`, `tomli-w`, `beautifulsoup4` : MIT ; `requests` :
+Apache-2.0 ; `numpy` : BSD-3-Clause) sont toutes compatibles.
+
+**Binaires externes.** Ils ne sont pas redistribués : `bin/` n'est pas versionné,
+le ZIP de release est le `git archive` du tag, et `core/preflight.py` télécharge
+chaque outil depuis sa source. IRIS les lance en sous-processus, sans liaison :
+leurs licences ne s'étendent pas à son code. Embarquer un jour mkvmerge, mpv ou
+ffmpeg dans un ZIP entraînerait les obligations GPL de redistribution (texte de
+licence, accès aux sources) — à décider sciemment.
 
 ---
 
@@ -2712,6 +2736,10 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.54 | 2026-10-03 | **Nouveaux profils livrés** (§ 6) : `data/profiles.default.toml` reprend tel quel le `profiles.toml` de l'auteur — quatorze profils, `serie_anime` en tête, `film_*` devenus `movie_*`, variantes `_delete` ; semé à la première installation, jamais écrasé par une mise à jour ; aucun changement de code |
+| 0.8.9.53 | 2026-10-03 | **« Ne rien faire » après le lot, par défaut** (§ 14.7, § 14.8) : `ACTIONS_FIN` gagne `rien`, en tête et par défaut (`ACTION_FIN_DEFAUT`, `[energie] action_fin`) ; `E` refuse d'armer quand c'est le choix ; choisi pendant un lot coché, il désarme · `tests/test_veille.py` |
+| 0.8.9.52 | 2026-10-03 | **Copier un profil** (§ 14, `F5`) : `C` ouvre le formulaire de création sur les réglages du profil sous le curseur, nom proposé par `nom_de_copie()` ; une création refuse un nom déjà pris (elle écrasait le profil existant) · **`F4` élargi** (§ 14.9) : la marge de cellule comptée des deux côtés, `⚠ suppr.` n'est plus tronqué · `tests/test_copie_profil.py` |
+| 0.8.9.51 | 2026-10-03 | **Licence GPL-3.0-or-later** (§ 17.3) : fichier `LICENSE`, section Licence du README ; préalable à la traduction participative (IE-111) ; aucun changement de code |
 | 0.8.9.50 | 2026-10-03 | **README : arbre de décision illustré** : six schémas Mermaid (vue d'ensemble, définition et palier, vidéo et Dolby Vision, audio, sous-titres, conteneur) et le tableau des noms de sortie, établis sur `core/decision.py` et `core/encoder.py` ; aucun changement de code |
 | 0.8.9.49 | 2026-10-03 | **Copie Dolby Vision en MP4 : `dvcC` écrit** (§ 6, IE-109) : `build_command` ajoute `-strict unofficial` quand la vidéo DV est copiée vers un MP4 ; sans lui ffmpeg 8.1.2 omettait l'enregistrement de configuration DV et la sortie `.dv-iris.mp4` n'était que du HDR10 pour le téléviseur · `tests/test_conteneur.py` |
 | 0.8.9.48 | 2026-10-03 | **`HDR10Plus` et `HDR10P` reconnus comme `HDR10+`** (§ 8.7, IE-81) : ajoutés à `JETONS_HDR_PLUS` ; une sortie SDR ne garde plus la marque, et un nom qui la porte ne reçoit plus `.hdr10` en redite · `tests/test_hdr_audio_nom.py` |

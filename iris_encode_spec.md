@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.46 — document de référence courant
-**Date** : 2026-10-02
+**Version** : 0.8.9.50 — document de référence courant
+**Date** : 2026-10-03
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -407,7 +407,9 @@ passer, et tout réencodage le détruit. Deux issues, tranchées par
 
 Les deux sorties portent le suffixe `.dv-iris` (§ 8.7) — l'une comme l'autre rendent un
 fichier Dolby Vision ; ce qui les sépare est le débit, que la raison affichée
-explicite. Les sources sans DV sont encodées normalement par ce même profil.
+explicite. La copie qui sort en MP4 reçoit `-strict unofficial` : sans lui,
+ffmpeg n'écrit pas l'enregistrement de configuration `dvcC` et le téléviseur
+ne voit plus de Dolby Vision (IE-109). Les sources sans DV sont encodées normalement par ce même profil.
 
 **Trois niveaux, du plus légitime au plus dégradé.**
 
@@ -869,10 +871,12 @@ passait pour un DTS ordinaire et échappait à `preserve_hd_audio`.
 - SRT (texte) → MP4 possible, `-c:s mov_text`
 - ASS / SSA → MKV : le style ne survit pas à `mov_text`
 - Sélection par piste depuis `TracksScreen` (par défaut : toutes conservées)
-- **PGS forcé doublé** : sans sélection manuelle, un sous-titre image forcé
-  est écarté quand un sous-titre texte forcé de même langue est retenu
-  (`decision._pgs_forces_doubles`). Jellyfin incruste un sous-titre image, donc
-  transcode ; le SRT dit la même chose. Seul forcé de sa langue, il reste.
+- **PGS doublé** : sans sélection manuelle, un sous-titre image est écarté
+  quand un sous-titre texte de même langue **et de même nature** est retenu
+  (`decision._pgs_doubles`) : un SRT forcé double un PGS forcé, un SRT complet
+  un PGS complet, jamais l'un l'autre. Jellyfin incruste un sous-titre image,
+  donc transcode ; le SRT dit la même chose. Seul de sa langue et de sa
+  nature, le PGS reste.
   Forcé = `disposition.forced` ou « forced » / « forcé » dans le titre
   (`SubtitleTrack.is_forced`).
 
@@ -1031,7 +1035,8 @@ ne les remplace — une sortie SDR ne s'annonce pas, et le tone mapping finit
 sur `format=yuv420p` : le fichier ressort en 8 bits. En sortie HDR10 la
 profondeur reste vraie (`yuv420p10le`) et n'est pas touchée.
 `HDR10+` survit au passage en HDR10 : le retrait du RPU le laisse intact, et
-l'écraser effacerait une métadonnée présente. DV conservé (§ 6) : rien ne
+l'écraser effacerait une métadonnée présente. Ses graphies `HDR10Plus` et
+`HDR10P` valent `HDR10+` partout (`decision.JETONS_HDR_PLUS`). DV conservé (§ 6) : rien ne
 bouge.
 
 **La marque audio dit le format écrit.** La famille de la piste transcodée —
@@ -2707,6 +2712,10 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.50 | 2026-10-03 | **README : arbre de décision illustré** : six schémas Mermaid (vue d'ensemble, définition et palier, vidéo et Dolby Vision, audio, sous-titres, conteneur) et le tableau des noms de sortie, établis sur `core/decision.py` et `core/encoder.py` ; aucun changement de code |
+| 0.8.9.49 | 2026-10-03 | **Copie Dolby Vision en MP4 : `dvcC` écrit** (§ 6, IE-109) : `build_command` ajoute `-strict unofficial` quand la vidéo DV est copiée vers un MP4 ; sans lui ffmpeg 8.1.2 omettait l'enregistrement de configuration DV et la sortie `.dv-iris.mp4` n'était que du HDR10 pour le téléviseur · `tests/test_conteneur.py` |
+| 0.8.9.48 | 2026-10-03 | **`HDR10Plus` et `HDR10P` reconnus comme `HDR10+`** (§ 8.7, IE-81) : ajoutés à `JETONS_HDR_PLUS` ; une sortie SDR ne garde plus la marque, et un nom qui la porte ne reçoit plus `.hdr10` en redite · `tests/test_hdr_audio_nom.py` |
+| 0.8.9.47 | 2026-10-02 | **PGS complet doublé écarté** (§ 8.6) : la règle du PGS forcé (0.8.9.40) s'étend aux sous-titres complets ; sans sélection manuelle, un sous-titre image est décoché quand un sous-titre texte de même langue et de même nature (forcé / complet) est retenu (`decision._pgs_doubles`) · `tests/test_langues.py`, `tests/test_conteneur.py` |
 | 0.8.9.46 | 2026-10-02 | **Filtre de l'accueil** (§ 14) : `L` filtre par type d'image (DV, un profil DV, HDR sans DV, SDR), `Z` masque les SKIP ; une ligne cochée reste visible · `tests/test_filtre_accueil.py` |
 | 0.8.9.45 | 2026-10-01 | **La colonne Fichier suit la fenêtre** (§ 14, accueil) : `BrowserScreen.on_resize` recalcule la place laissée à Fichier quand la fenêtre change de taille, une fois la rafale d'événements finie · `tests/test_accueil.py` |
 | 0.8.9.44 | 2026-10-01 | **Marque `-iris` et groupe retiré** (§ 8.7) : toute sortie finit par `-iris` au lieu de `.IRIS` (`scanner.MARQUE_IRIS`), l'ancienne marque n'est plus reconnue · le groupe de la release (`-GROUPE`, ` - GROUPE`) ne passe plus dans la sortie (`scanner.stem_sans_groupe`, `JETONS_RELEASE`), encodage, greffe et jonction · `tests/test_nom_iris.py` |

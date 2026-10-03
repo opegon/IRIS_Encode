@@ -742,6 +742,11 @@ def build_command(
         cmd += ["-movflags", "+faststart"]
         if _sortie_hevc(cmd, info.codec):
             cmd += ["-tag:v", "hvc1"]
+        # Sans `-strict unofficial`, ffmpeg n'écrit pas la boîte `dvcC` en MP4 :
+        # le RPU reste dans le flux, mais le G3 ne voit plus de Dolby Vision
+        # (IE-109, mesuré sur ffmpeg 8.1.2).
+        if preserve_video and encodeur_de(cmd) == "copy":
+            cmd += ["-strict", "unofficial"]
     cmd += ["-y", str(decision.output_path)]
 
     return cmd

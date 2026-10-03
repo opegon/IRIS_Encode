@@ -155,3 +155,27 @@ def test_la_selection_manuelle_garde_le_pgs_force(tmp_path):
     info = _info(tmp_path, sous_titres=[
         _force(0, "fre"), _force(1, "fre", codec="hdmv_pgs_subtitle")])
     assert decide_subtitles(info, _profile(), override=[0, 1]) == [0, 1]
+
+
+# ── Un PGS complet doublé par un SRT complet de même langue n'est pas proposé ─
+
+def test_pgs_complet_double_par_un_srt_complet_est_ecarte(tmp_path):
+    info = _info(tmp_path, sous_titres=[
+        _st(0, "fre"), _st(1, "fre", codec="hdmv_pgs_subtitle"),
+        _st(2, "eng", codec="hdmv_pgs_subtitle")])
+    assert decide_subtitles(info, _profile()) == [0, 2]
+
+
+def test_un_srt_force_ne_double_pas_un_pgs_complet(tmp_path):
+    """Le SRT forcé ne couvre que les passages étrangers : le PGS complet reste."""
+    info = _info(tmp_path, sous_titres=[
+        _force(0, "fre"), _st(1, "fre", codec="hdmv_pgs_subtitle")])
+    assert decide_subtitles(info, _profile()) is None
+
+
+def test_pgs_complet_et_force_doubles_ensemble(tmp_path):
+    info = _info(tmp_path, sous_titres=[
+        _force(0, "fre"), _st(1, "fre"),
+        _force(2, "fre", codec="hdmv_pgs_subtitle"),
+        _st(3, "fre", codec="hdmv_pgs_subtitle")])
+    assert decide_subtitles(info, _profile()) == [0, 1]

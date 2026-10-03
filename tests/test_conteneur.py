@@ -67,10 +67,15 @@ def test_mkv_force_meme_quand_tout_tiendrait_en_mp4(tmp_path):
 
 
 def test_mp4_ecarte_les_sous_titres_image(tmp_path):
-    """Le cas courant : les PGS doublent des SubRip de mêmes langues."""
+    """Des sous-titres image d'autres langues que les SubRip.
+
+    Doublés par un SubRip de même langue, ils seraient décochés dès la
+    sélection (`_pgs_doubles`) et le conteneur n'aurait rien à écarter.
+    """
     dec = decide(
         _info(tmp_path, [_st(0, "subrip"), _st(1, "subrip"),
-                         _st(2, "hdmv_pgs_subtitle"), _st(3, "dvd_subtitle")]),
+                         _st(2, "hdmv_pgs_subtitle", "ger"),
+                         _st(3, "dvd_subtitle", "ita")]),
         _profile(container="mp4"))
     assert dec.output_container == ".mp4"
     assert [st.index for st in dec.sous_titres_ecartes] == [2, 3]
@@ -203,3 +208,37 @@ def test_le_mp4_du_retrait_est_etiquete_hvc1(tmp_path):
     cmd = build_strip_mp4(tmp_path / "s.mkv", tmp_path / "o.mp4", [])
     assert _tag(cmd) == "hvc1"
     assert cmd[-1] == str(tmp_path / "o.mp4")
+
+
+# ─── IE-109 : une copie Dolby Vision en MP4 garde sa boîte `dvcC` ────────────
+# Sans `-strict unofficial`, ffmpeg 8.1.2 n'écrit pas `dvcC` : le fichier
+# `.dv-iris.mp4` sortait sans Dolby Vision pour le téléviseur.
+
+def _source_dv(tmp_path):
+    info = _info(tmp_path, [_st(0, "subrip")])
+    info.dv_profile, info.dv_bl_compat = 8, 1
+    return info
+
+
+def test_une_copie_dv_en_mp4_ecrit_la_configuration_dv(tmp_path, monkeypatch):
+    import core.decision as decision
+    from core.encoder import build_command, encodeur_de
+
+    monkeypatch.setattr(decision, "peut_reencoder_en_dv", lambda *a: False)
+    dec = decide(_source_dv(tmp_path),
+                 _profile(container="mp4", dolby_vision="dv",
+                          bitrate_1080p_kbps=2000))
+    assert dec.output_container == ".mp4"
+    cmd = build_command(dec, _plateforme())
+    assert encodeur_de(cmd) == "copy"
+    i = cmd.index("-strict")
+    assert cmd[i + 1] == "unofficial"
+    assert i < cmd.index(str(dec.output_path))
+
+
+def test_un_encodage_sans_dv_n_a_pas_besoin_du_drapeau(tmp_path):
+    from core.encoder import build_command
+
+    dec = decide(_info(tmp_path, [_st(0, "subrip")]),
+                 _profile(container="mp4", bitrate_1080p_kbps=2000))
+    assert "-strict" not in build_command(dec, _plateforme())

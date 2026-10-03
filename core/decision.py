@@ -316,10 +316,11 @@ ACTIONS_CODEC_NOMME = frozenset({
 # Les marques de Dolby Vision et de HDR qu'un nom de release porte (§ 8.7).
 # `HDR10+` n'est pas dans le jeu du passage en HDR10 : le retrait du RPU le
 # laisse intact, et l'écraser en `HDR10` effacerait une métadonnée présente.
-# Il n'est faux qu'en sortie SDR, où il part avec le reste.
+# Il n'est faux qu'en sortie SDR, où il part avec le reste. Les releases
+# l'écrivent aussi `HDR10Plus` ou `HDR10P` (IE-81).
 JETONS_DV       = ("dolby vision", "dolby video", "dovi", "dv")
 JETONS_HDR      = ("hdr10", "hdr")
-JETONS_HDR_PLUS = ("hdr10+",)
+JETONS_HDR_PLUS = ("hdr10+", "hdr10plus", "hdr10p")
 
 # La profondeur, fausse en sortie SDR seulement. Le tone mapping finit sur
 # `format=yuv420p` (`_SDR_TONEMAP_FILTER`) : le fichier ressort en 8 bits. En
@@ -1147,7 +1148,7 @@ def decide_subtitles(
     Le profil filtrait l'audio par langue mais jamais les sous-titres : un rip
     streaming en embarque quarante, et les quarante traversaient la chaîne. La
     clé `subtitle_languages` pose la règle ; absente, rien ne change. Dans les
-    deux cas, un PGS forcé doublé par un SRT forcé part (`_pgs_forces_doubles`).
+    deux cas, un PGS doublé par un SRT de même langue part (`_pgs_doubles`).
     """
     if override is not None:
         return override
@@ -1157,24 +1158,25 @@ def decide_subtitles(
         voulues = {normalize_language(l) for l in langues}
         retenues = [st for st in retenues
                     if normalize_language(st.language) in voulues]
-    doublons = _pgs_forces_doubles(retenues)
+    doublons = _pgs_doubles(retenues)
     if not langues and not doublons:
         return None
     return [st.index for st in retenues if st not in doublons]
 
 
-def _pgs_forces_doubles(pistes: list) -> list:
-    """Sous-titres image forcés qu'un sous-titre texte forcé de même langue double.
+def _pgs_doubles(pistes: list) -> list:
+    """Sous-titres image qu'un sous-titre texte de même langue et de même nature double.
 
     Jellyfin incruste un sous-titre image à la lecture, donc transcode la
-    vidéo : un PGS forcé ne doit pas lui être proposé quand un SRT forcé dit
-    la même chose. Seul forcé de sa langue, il reste (IE-73).
+    vidéo : un PGS ne doit pas lui être proposé quand un SRT dit la même chose.
+    La nature compte : un SRT forcé ne double qu'un PGS forcé (IE-73), un SRT
+    complet qu'un PGS complet. Seul de sa langue et de sa nature, le PGS reste.
     """
-    textes = {normalize_language(st.language) for st in pistes
-              if st.is_forced and not st.is_image_based}
+    textes = {(normalize_language(st.language), st.is_forced) for st in pistes
+              if not st.is_image_based}
     return [st for st in pistes
-            if st.is_forced and st.is_image_based
-            and normalize_language(st.language) in textes]
+            if st.is_image_based
+            and (normalize_language(st.language), st.is_forced) in textes]
 
 
 def decide(

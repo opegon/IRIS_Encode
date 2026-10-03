@@ -1,10 +1,11 @@
 ---
 type: concept
-maj: 2026-09-24
+maj: 2026-10-03
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-diagnostic]]"
+  - "[[source-2026-10-03-dv81-mp4]]"
 ---
 
 # HDR et Dolby Vision
@@ -41,6 +42,14 @@ Le conteneur porte en plus un **enregistrement de configuration DV**
 (`dvcC`/`dvvC` en MP4, `BlockAdditionMapping` en MKV), que ffprobe affiche en
 `DOVI configuration record`. *(mesuré : comptage des NAL sur Kingdom of the
 Planet of the Apes, P8.1)*
+
+**En MP4, ffmpeg n'écrit `dvcC` qu'avec `-strict unofficial`.** Sans l'option,
+une copie `-c copy` garde le RPU dans le flux mais perd l'enregistrement : pas
+de Dolby Vision pour le lecteur. Un MP4 écrit depuis un flux HEVC brut (Annex-B)
+n'a pas `dvcC` même avec l'option : ffmpeg n'y trouve pas la configuration. Il
+faut partir d'un conteneur qui la porte (MKV de mkvmerge). Étiquette : `hvc1`
+lu en Dolby Vision par le G3, `dvh1` refusé ([[lg-oled-g3]]). *(mesuré,
+ffmpeg 8.1.2, 2026-10-03 ; corrigé dans IRIS en v0.8.9.49)*
 
 **Le RPU n'est pas une piste.** Aucun `-map` ne le laisse passer : tout
 réencodage le détruit.

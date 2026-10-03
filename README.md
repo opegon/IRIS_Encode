@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.46 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.50 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`. Ce que
@@ -51,6 +51,167 @@ sans qu'aucune machine n'ait à retoucher quoi que ce soit.
 
 Le reste de l'outil découle de là : une interface qui **montre sa décision avant
 de l'appliquer**, fichier par fichier, et qui permet de la contredire.
+
+## Comment IRIS décide, fichier par fichier
+
+Chaque fichier passe par le même arbre de décision. Le profil choisi fixe les
+seuils (clés entre crochets) ; l'écran des pistes et la touche de codec
+permettent de contredire chaque branche avant l'encodage. Les schémas suivent
+`core/decision.py` et `core/encoder.py`.
+
+### Vue d'ensemble
+
+```mermaid
+flowchart LR
+    F["Fichier source"] --> S["Analyse ffprobe<br/>codec, définition, débit vidéo,<br/>HDR, profil Dolby Vision,<br/>pistes audio et sous-titres"]
+    S --> P["Profil choisi"]
+    P --> V["① Vidéo et Dolby Vision"]
+    P --> A["② Audio, piste par piste"]
+    P --> T["③ Sous-titres"]
+    V --> C["④ Conteneur MP4 ou MKV"]
+    A --> C
+    T --> C
+    C --> N["⑤ Nom de sortie"]
+    N --> X{"Chemin d'exécution"}
+    X -->|"encodage, copie DV"| X1["ffmpeg"]
+    X -->|"réencodage DV"| X2["ffmpeg + dovi_tool<br/>+ mkvmerge"]
+    X -->|"retrait DV"| X3["dovi_tool + mkvmerge<br/>ou ffmpeg (MP4)"]
+    X -->|"SKIP"| X4["rien, ou greffe de<br/>pistes externes (.mux-iris)"]
+```
+
+### ① Vidéo et Dolby Vision
+
+D'abord la cible : la définition de sortie et le palier de débit qui s'y
+applique.
+
+```mermaid
+flowchart TD
+    D0{"Source 4K ?<br/>(≥ 2160 de haut ou ≥ 3840 de large)"}
+    D0 -->|"oui, keep_4k = true"| D1["Garde sa définition<br/>palier 4K [bitrate_4k_kbps]"]
+    D0 -->|"oui, keep_4k = false"| D2["Ramenée en 1080p<br/>palier 1080p [bitrate_1080p_kbps]"]
+    D0 -->|non| D3{"≈ 1080p ?<br/>(≥ 1600 de large ou ≥ 850 de haut,<br/>sources rognées comprises)"}
+    D3 -->|oui| D4["Garde sa définition<br/>palier 1080p"]
+    D3 -->|non| D5["Plafonnée en 720p<br/>palier 720p [bitrate_720p_kbps]"]
+    D1 --> K["Codec cible : HEVC"]
+    D2 --> K
+    D4 --> K
+    D5 --> K2["Codec cible : H264<br/>(compresse mieux sous 1080p)"]
+```
+
+Puis l'arbre lui-même. Les trois premières questions décident s'il faut
+réencoder ; la suite dit comment.
+
+```mermaid
+flowchart TD
+    Q1{"Débit vidéo ≥ cible du palier ?"}
+    Q1 -->|oui| E1["Réencoder<br/>au débit cible"]
+    Q1 -->|non| Q2{"Définition > cible ?"}
+    Q2 -->|oui| E2["Réencoder<br/>au débit de la source"]
+    Q2 -->|non| Q3{"Codec hors H264 / HEVC ?<br/>(MPEG-2, VC-1, AV1, VP9…)"}
+    Q3 -->|oui| E2
+    Q3 -->|non| Q4{"Dolby Vision<br/>et dolby_vision = hdr10 ?"}
+    Q4 -->|"oui, profil 8.1 ou 7,<br/>dovi_tool et mkvmerge présents"| STRIP["RETRAIT DV · .hdr10-iris<br/>RPU retiré, image identique au bit près,<br/>HDR10+ conservé, aucun réencodage"]
+    Q4 -->|non| SKIP["SKIP<br/>fichier laissé tel quel"]
+
+    E1 --> DV{"Source Dolby Vision ?<br/>que demande [dolby_vision] ?"}
+    E2 --> DV
+    DV -->|"pas de DV, source HDR"| H0["Encodage HDR conservé<br/>HEVC / AV1 en 10 bits<br/>(H264 reste en 8 bits)"]
+    DV -->|"pas de DV, source SDR"| S0["Encodage standard<br/>NVENC, sinon libx265 / x264<br/>(VideoToolbox sur macOS)"]
+    DV -->|"dv"| R{"HEVC, même définition,<br/>profil 8.1 ou 7,<br/>dovi_tool et mkvmerge ?"}
+    R -->|oui| EDV["RÉENCODAGE DV · .dv-iris<br/>RPU extrait, vidéo encodée,<br/>RPU réinjecté (P7 converti en 8.1)"]
+    R -->|non| CDV["COPIE DV · .dv-iris<br/>vidéo recopiée : débit et<br/>définition restent ceux de la source"]
+    DV -->|"hdr10"| H10{"[hdr10_quality]"}
+    H10 -->|compat| H1["NVENC 10 bits<br/>RPU perdu, HDR10"]
+    H10 -->|quality| H2["libx265 sur processeur<br/>métadonnées HDR10 réinjectées"]
+    DV -->|"sdr (défaut)"| SDR["Tone mapping vers SDR<br/>processeur, 8 bits, lent ⚠"]
+```
+
+L'AV1 n'est jamais choisi d'office : il se demande à la main, fichier par
+fichier. Une source Dolby Vision que rien ne pousse au réencodage reste en
+SKIP, Dolby Vision compris, sauf retrait possible.
+
+### ② Audio, piste par piste
+
+```mermaid
+flowchart TD
+    A0{"Sélection manuelle<br/>dans l'écran des pistes ?"}
+    A0 -->|oui| A1["Gardée ou exclue<br/>selon la sélection"]
+    A0 -->|non| A2{"Première piste<br/>de la source ?"}
+    A2 -->|oui| A3["Gardée, toujours<br/>(version originale)"]
+    A2 -->|non| A4{"Langue dans<br/>[audio_languages] ?"}
+    A4 -->|non| AX["Exclue"]
+    A4 -->|oui| A3
+    A1 --> B0
+    A3 --> B0{"Sans perte ?<br/>TrueHD, DTS-HD MA, MLP"}
+    B0 -->|"oui, preserve_hd_audio = true"| CP1["Copie<br/>(impose le MKV)"]
+    B0 -->|"oui, sinon"| TR["Transcodage"]
+    B0 -->|non| B1{"AAC, AC3, E-AC3<br/>et audio_copy_compatible ?"}
+    B1 -->|oui| CP2["Copie"]
+    B1 -->|"non (DTS, FLAC, Opus…)"| TR
+    TR --> T0{"[audio_hd_codec] = ac3 / eac3<br/>et piste TrueHD ou DTS<br/>de débit connu ?"}
+    T0 -->|oui| T1["Au débit de la source<br/>plafonné : AC3 640k, E-AC3 1024k"]
+    T0 -->|non| T2{"Canaux ?"}
+    T2 -->|mono| T3["AAC 64k"]
+    T2 -->|stéréo| T4["AAC [audio_stereo_kbps]"]
+    T2 -->|"jusqu'à 5.1"| T5["AC3 [audio_surround_kbps]"]
+    T2 -->|7.1| T6["AC3 5.1 [audio_surround_7_1_kbps]"]
+```
+
+Un transcodage ne sort jamais au-delà du 5.1, et le titre de la piste est
+réécrit pour ne pas annoncer un format disparu (« TrueHD 7.1 Atmos » devient
+« E-AC3 5.1 »). Une piste sans perte transcodée dans un fichier qui garde des
+sous-titres passe par une **passe audio préalable** : sans elle, ffmpeg rend
+une piste vide sans signaler d'erreur.
+
+### ③ Sous-titres
+
+```mermaid
+flowchart TD
+    S0{"Sélection manuelle ?"}
+    S0 -->|oui| S1["Respectée telle quelle"]
+    S0 -->|non| S2{"[subtitle_languages]<br/>défini ?"}
+    S2 -->|oui| S3["Seules ces langues<br/>sont gardées"]
+    S2 -->|non| S4["Toutes gardées"]
+    S3 --> S5
+    S4 --> S5{"Sous-titre image (PGS)<br/>doublé par un texte (SRT)<br/>de même langue et même nature<br/>(forcé / complet) ?"}
+    S5 -->|oui| S6["PGS décoché :<br/>Jellyfin l'incrusterait<br/>et transcoderait la vidéo"]
+    S5 -->|non| S7["Gardé"]
+```
+
+### ④ Conteneur
+
+```mermaid
+flowchart TD
+    C0{"[container] = mkv ?"}
+    C0 -->|oui| MKV["MKV"]
+    C0 -->|non| C1{"Réencodage DV, ou retrait DV<br/>d'un profil 7 ?"}
+    C1 -->|oui| MKV
+    C1 -->|non| C2{"Audio sans perte copié, ou piste<br/>greffée que le MP4 ne porte pas ?"}
+    C2 -->|oui| MKV
+    C2 -->|non| C3{"Sous-titre image (PGS, VobSub)<br/>ou stylé (ASS) gardé ?"}
+    C3 -->|non| MP4["MP4<br/>HEVC étiqueté hvc1,<br/>sous-titres en mov_text"]
+    C3 -->|oui| C4{"[container] = mp4<br/>et d'autres sous-titres texte ?"}
+    C4 -->|oui| C5["Sous-titres image écartés,<br/>listés à l'écran"] --> MP4
+    C4 -->|"non (auto, ou seuls sous-titres)"| MKV
+```
+
+En `auto`, le conteneur suit le contenu : MP4 quand tout y tient, MKV quand
+quelque chose y serait perdu. Une piste n'est jamais sacrifiée en silence.
+
+### ⑤ Nom de sortie
+
+| Traitement | Suffixe | Exemple |
+|---|---|---|
+| Encodage HEVC / H264 / AV1 | `.hevc-iris` · `.h264-iris` · `.av1-iris` | `Film.2160p.x265-GRP.mkv` → `Film.1080p.hevc-iris.mp4` |
+| Dolby Vision conservé (réencodé ou copié) | `.dv-iris` | `Film.2160p.DV.mkv` → `Film.2160p.DV-iris.mkv` |
+| Retrait du Dolby Vision | `.hdr10-iris` | `Film.2160p.DV.mkv` → `Film.2160p.HDR10-iris.mp4` |
+| SKIP avec pistes greffées | `.mux-iris` | `Film.mkv` → `Film.mux-iris.mkv` |
+
+Le nom dit ce que le fichier **est**, pas ce qu'était la source : les marques
+de codec, de définition (`2160p` → `1080p`), de HDR (`DV` → `HDR10`, toutes
+retirées en SDR) et d'audio (`TrueHD.7.1` → `E-AC3.5.1`) sont réécrites, le
+groupe de la release est retiré, et une caractéristique déjà annoncée n'est
+pas répétée. Rien n'est jamais écrasé : une collision donne `(2)`.
 
 ---
 

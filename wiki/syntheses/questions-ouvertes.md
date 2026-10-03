@@ -1,12 +1,13 @@
 ---
 type: synthese
-maj: 2026-09-30
+maj: 2026-10-03
 sources:
   - "[[source-spec]]"
   - "[[source-2026-09-24-diagnostic]]"
   - "[[source-2026-09-24-utilisateur]]"
   - "[[source-2026-09-26-nvenc-pilote]]"
   - "[[source-2026-09-30-hev1-hvc1]]"
+  - "[[source-2026-10-03-dv81-mp4]]"
   - "[[source-2026-09-30-lecture]]"
 ---
 
@@ -20,7 +21,6 @@ reporter la réponse dans la page du sujet.
 | Question | Pour trancher | Depuis |
 |---|---|---|
 | Les fichiers qui plantaient (son sans image) étaient-ils des MP4 issus d'un retrait DV, ou des MKV ? | refaire un fichier en v0.8.8.15, le lire, relever la méthode et la **raison de transcodage** dans le tableau de bord Jellyfin | 2026-09-24 |
-| Le Dolby Vision 8.1 en **MP4** passe-t-il en lecture directe sur le client webOS, là où le MKV part en remux HLS ? | un fichier DV en MP4 contre le même en MKV | 2026-09-24 |
 | Quel débit le réglage « Auto » du client webOS laisse-t-il passer ? (manuel : 8 à 120 Mb/s) | lire un remux UHD (40-80 Mb/s) en « Auto », relever la méthode de lecture | 2026-09-24 |
 
 ## Dolby Vision

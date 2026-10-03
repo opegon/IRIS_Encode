@@ -150,3 +150,40 @@ Demande de l'utilisateur : la sortie ne garde plus le groupe de la source
 Tranché : caractéristique conservée (`.hevc-iris`), ancienne marque plus
 reconnue, groupe retiré seulement d'un nom qui porte une marque de release.
 Pages touchées : [[noms-de-release]].
+
+
+## [2026-10-02] ingest | PGS complet doublé écarté (v0.8.9.47)
+
+Demande de l'utilisateur : comme le PGS forcé, un PGS doublé par un sous-titre
+texte de même langue arrive décoché. La nature (forcé / complet) doit
+concorder. Pages touchées : [[sous-titres]].
+
+
+## [2026-10-03] ingest | `HDR10Plus` reconnu comme `HDR10+` (v0.8.9.48)
+
+IE-81 corrigé. Le constat du 2026-09-24 visait le mauvais cas : garder
+`HDR10Plus` au passage en HDR10 est voulu ; les vrais défauts étaient la
+sortie SDR et le suffixe redondant. Pages touchées : [[noms-de-release]].
+
+
+## [2026-10-03] ingest | DV 8.1 en MP4 `hvc1` lu en direct sur le G3 (IE-75)
+
+MP4 `hvc1` : lecture directe, logo Dolby Vision. `dvh1` ne se lance pas, le
+MKV témoin plante l'application. Nouvelle question : son instable avec deux
+pistes E-AC3. Pages touchées : [[lg-oled-g3]], [[questions-ouvertes]],
+[[source-2026-10-03-dv81-mp4]].
+
+
+## [2026-10-03] ingest | Son à deux pistes : non reproduit (IE-107)
+
+Relecture du MP4 DV à deux pistes E-AC3 : lecture directe, son propre. Le
+« wobble » du premier essai ne revient pas. Pages touchées : [[lg-oled-g3]],
+[[questions-ouvertes]], [[source-2026-10-03-dv81-mp4]].
+
+
+## [2026-10-03] ingest | `dvcC` en MP4 : `-strict unofficial` (v0.8.9.49)
+
+Mesuré : sans l'option, ffmpeg n'écrit pas la configuration DV en MP4 ;
+depuis un flux brut, jamais. Copie DV d'IRIS corrigée (IE-109). Décisions
+d'IE-108 consignées. Pages touchées : [[hdr-dolby-vision]],
+[[source-2026-10-03-dv81-mp4]].

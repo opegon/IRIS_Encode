@@ -63,6 +63,9 @@ sous-titres, donc la sortie reste en MKV.
   même langue est écarté de la sortie ; seul forcé de sa langue, il reste.
   Forcé = drapeau du conteneur **ou** « forced » / « forcé » dans le titre.
   Une sélection manuelle n'est pas touchée.
+  **Étendue** (v0.8.9.47) aux sous-titres complets : un PGS complet doublé par
+  un SRT complet de même langue est écarté aussi. La nature (forcé / complet)
+  doit concorder : un SRT forcé ne remplace pas un PGS complet.
 
 ## Langues
 

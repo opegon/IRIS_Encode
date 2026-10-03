@@ -39,8 +39,10 @@ propriétés. Règles d'IRIS : spec § 8.7.
   pas laisser `Film []`.
 - **Fin de nom** : retirer deux marques finales laisse un séparateur nu
   (`Film.DV.HDR10` → `Film.`).
-- `HDR10Plus` n'est **pas** reconnu comme `HDR10+` : `HDR10Plus.DV` devient
-  `HDR10Plus.HDR10` au retrait du RPU. *(constaté le 2026-09-24, non corrigé)*
+- `HDR10Plus` et `HDR10P` sont des graphies de `HDR10+`. Avant v0.8.9.48,
+  elles restaient dans une sortie SDR et le suffixe redisait `.hdr10`.
+  `HDR10Plus.DV` → `HDR10Plus.HDR10` au retrait du RPU est, lui, le
+  comportement voulu, comme pour `HDR10+`. *(corrigé en v0.8.9.48, IE-81)*
 - Un titre peut finir comme une marque : `Film-Iris`. La marque `-iris`
   d'IRIS est donc sensible à la casse.
 - **Un tiret final n'annonce pas toujours un groupe** : `Spider-Man`,

@@ -1,5 +1,83 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.50] — 2026-10-03
+
+### Le README montre comment IRIS décide
+
+Nouvelle section « Comment IRIS décide, fichier par fichier » sur la page
+d'accueil du dépôt : l'arbre de décision complet d'un fichier, en six schémas
+Mermaid que GitHub affiche directement.
+
+- Vue d'ensemble, du scan au chemin d'exécution (ffmpeg, dovi_tool, mkvmerge).
+- Définition de sortie et palier de débit ; les trois questions qui décident
+  d'un réencodage ; les cinq traitements du Dolby Vision (réencodage, copie,
+  retrait, HDR10, SDR).
+- Audio piste par piste : sélection, copie ou transcodage, débits par nombre
+  de canaux et transcodage au débit de la source.
+- Sous-titres (langues, PGS doublé) et conteneur (MP4 ou MKV, et pourquoi).
+- Tableau des suffixes de sortie, exemples calculés par IRIS lui-même.
+
+Établi sur le code, non sur la spec. Aucun changement de comportement.
+
+## [v0.8.9.49] — 2026-10-03
+
+### Une copie Dolby Vision en MP4 garde son Dolby Vision
+
+Avec `dolby_vision = "dv"`, une source qui ne peut pas être réencodée en
+gardant le RPU voit sa vidéo copiée (« → DV (copie) »). Quand cette sortie
+partait en MP4, ffmpeg n'y écrivait pas l'enregistrement de configuration
+Dolby Vision (`dvcC`) : le RPU restait dans le flux, mais le fichier nommé
+`.dv-iris.mp4` n'était que du HDR10 pour le téléviseur (IE-109).
+
+- `-strict unofficial` est ajouté à la commande dans ce cas : ffmpeg 8.1.2
+  n'écrit `dvcC` qu'avec lui (mesuré, avec et sans l'option).
+- Vérifié sur un extrait DV 8.1 : la sortie MP4 `hvc1` porte profil 8,
+  compatibilité 1. Le même format passe en lecture directe avec le logo
+  Dolby Vision sur le G3 (IE-75).
+- Les `.dv-iris.mp4` déjà produits par ce chemin se réparent par un remux,
+  sans réencodage : `ffmpeg -i f.mp4 -map 0 -c copy -tag:v hvc1 -strict
+  unofficial sortie.mp4`.
+
+`core/encoder.py` (`build_command`), `tests/test_conteneur.py`. Spec § 6,
+wiki `hdr-dolby-vision`.
+
+## [v0.8.9.48] — 2026-10-03
+
+### `HDR10Plus` et `HDR10P` valent `HDR10+` dans les noms
+
+Les releases écrivent le HDR10+ de trois façons ; seule `HDR10+` était
+reconnue (IE-81, relevé sur Kingdom of the Planet of the Apes).
+
+- Une sortie SDR retire désormais `HDR10Plus` / `HDR10P` comme `HDR10+` :
+  le nom n'annonce plus un HDR10+ que le tone mapping a fait disparaître.
+- Un nom qui porte `HDR10Plus` ou `HDR10P` annonce déjà la couche HDR10 : le
+  suffixe ne la redit plus (`Film.2160p.HDR10Plus.hdr10-iris` →
+  `Film.2160p.HDR10Plus-iris`).
+- Au retrait du RPU, la marque reste, comme `HDR10+` : la métadonnée est
+  toujours là.
+
+`core/decision.py` (`JETONS_HDR_PLUS`), `tests/test_hdr_audio_nom.py`.
+Spec § 8.7, wiki `noms-de-release`.
+
+## [v0.8.9.47] — 2026-10-02
+
+### Un PGS doublé par un SRT de même langue arrive décoché
+
+La règle du PGS forcé (v0.8.9.40, IE-73) s'étend aux sous-titres complets :
+quand un rip porte le même sous-titre en SRT et en PGS, le PGS n'est plus
+proposé à Jellyfin, qui l'incrusterait et transcoderait la vidéo.
+
+- Sans sélection manuelle, un sous-titre image est décoché quand un
+  sous-titre texte de même langue **et de même nature** est retenu : un SRT
+  forcé double un PGS forcé, un SRT complet un PGS complet.
+- Un SRT forcé ne remplace jamais un PGS complet : il ne couvre que les
+  passages étrangers.
+- Seul de sa langue et de sa nature, le PGS reste. Le recocher suffit.
+
+`core/decision.py` (`_pgs_doubles`, ex-`_pgs_forces_doubles`),
+`tests/test_langues.py`, `tests/test_conteneur.py`. Spec § 8.6, wiki
+`sous-titres`.
+
 ## [v0.8.9.46] — 2026-10-02
 
 ### Filtrer l'accueil : par type d'image, sans les SKIP

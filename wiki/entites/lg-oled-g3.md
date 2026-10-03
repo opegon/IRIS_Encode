@@ -1,10 +1,11 @@
 ---
 type: entite
 categorie: materiel
-maj: 2026-09-30
+maj: 2026-10-03
 sources:
   - "[[source-2026-09-24-utilisateur]]"
   - "[[source-2026-09-30-hev1-hvc1]]"
+  - "[[source-2026-10-03-dv81-mp4]]"
   - "[[source-readme]]"
 ---
 
@@ -18,7 +19,9 @@ principale des fichiers produits. Place dans la chaîne : [[chaine-de-diffusion]
 | Élément | Comportement | Niveau |
 |---|---|---|
 | HEVC Main 10, HDR10 | lu | observé |
-| Dolby Vision | lu nativement | supposé |
+| Dolby Vision 8.1 en MP4 `hvc1` | **lecture directe**, logo « Dolby Vision » (et « + Dolby Atmos » avec un E-AC3 JOC), sauts corrects ([[source-2026-10-03-dv81-mp4]]) | observé (2026-10-03) |
+| Dolby Vision 8.1 en MP4 `dvh1` | **ne se lance pas** | observé (2026-10-03) |
+| Dolby Vision 8.1 en MKV (extrait 94 s, 2 E-AC3, 6 SRT) | **plante l'application** | observé (2026-10-03) |
 | Dolby Vision profil 8 via le client Jellyfin | remux HLS, coupures audio | observé (README) |
 | HDR10+ | ignoré, sans gêne | supposé |
 | E-AC3, AC3, AAC | lus | observé (README) |
@@ -36,6 +39,11 @@ principale des fichiers produits. Place dans la chaîne : [[chaine-de-diffusion]
   Confirmation sur le téléviseur en attente ([[questions-ouvertes]]).
 - Refus de fichiers dont la vidéo ne démarre pas à zéro (`-itsoffset`
   négatif), corrigé en v0.8.1.0 ([[conteneurs#Horodatages]]).
+
+- **Son instable (« wobble »)**, une fois, sur un MP4 DV `hvc1` à deux pistes
+  E-AC3 (7.1 fre + 5.1 Atmos eng), juste après un plantage de l'application
+  sur un MKV (2026-10-03). **Non reproduit** à la relecture : lecture directe,
+  son propre. Deux pistes E-AC3 en MP4 ne posent pas de problème.
 
 Le décodeur matériel est plus strict que [[mpv]] ou VLC : contrôler sur le
 téléviseur, pas sur PC.

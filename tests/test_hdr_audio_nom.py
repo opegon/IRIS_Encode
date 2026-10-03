@@ -83,6 +83,19 @@ def test_une_sortie_sdr_n_annonce_plus_rien():
                                  jetons) == "Film.2160p.x265"
 
 
+@pytest.mark.parametrize("graphie", ["HDR10+", "HDR10Plus", "HDR10P"])
+def test_les_graphies_du_hdr10_plus_se_valent(graphie):
+    """IE-81 : `HDR10Plus` restait dans une sortie SDR et redoublait `.hdr10`."""
+    from core.decision import (JETONS_DV, JETONS_HDR, JETONS_HDR_PLUS,
+                               suffixe_sans_redite)
+    stem = f"Film.2160p.{graphie}.DV.x265"
+    assert stem_marques_remplacees(stem, JETONS_DV + JETONS_HDR,
+                                   "HDR10") == f"Film.2160p.{graphie}.HDR10.x265"
+    assert stem_marques_retirees(stem, JETONS_DV + JETONS_HDR
+                                 + JETONS_HDR_PLUS) == "Film.2160p.x265"
+    assert suffixe_sans_redite(f"Film.2160p.{graphie}", ".hdr10-iris") == "-iris"
+
+
 @pytest.mark.parametrize("nom, attendu", [
     ("Film.2160p.10bit.DV",       "Film.2160p"),
     ("Film.2160p.10bits.HDR10+",  "Film.2160p"),

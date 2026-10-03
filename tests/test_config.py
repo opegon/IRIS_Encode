@@ -134,8 +134,8 @@ def test_choix_et_gestion_des_profils_ont_une_seule_presentation():
         assert "PROFIL_COLONNES" in src and "cellules_profil" in src, mod.__name__
     p = Profile.__new__(Profile)
     p.data = {"keep_4k": False, "bitrate_4k_kbps": 3500, "delete_source": True}
-    cellules = cellules_profil("serie_basic", p, True)
-    assert cellules[0].plain == "serie_basic ✓"          # ni crochets ni capitales
+    cellules = cellules_profil("series_basic", p, True)
+    assert cellules[0].plain == "series_basic ✓"          # ni crochets ni capitales
     assert cellules[2].plain == "→ 1080p"
     assert cellules[-1].plain == "⚠ suppr."
     assert largeurs_colonnes(PROFIL_COLONNES, [cellules])[-1] >= cellules[-1].cell_len

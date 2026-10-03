@@ -24,8 +24,10 @@ sources:
 Politique d'IRIS (`container = "auto"`) : **MP4 quand tout y tient, MKV quand
 quelque chose serait perdu**. Conséquence à connaître : une source WEB-DL en
 E-AC3 + SRT sort en MP4, même traitée par un retrait du Dolby Vision. Des
-pistes externes greffées ou un Dolby Vision conservé imposent le MKV. Détail :
-spec § 8.6.
+pistes externes greffées imposent le MKV. Un Dolby Vision conservé, copié ou
+réencodé, sort en MP4 `hvc1` avec sa boîte `dvcC` depuis la v0.8.9.57
+(IE-108) : le G3 le lit en lecture directe, alors que le MKV plante l'appli
+([[hdr-dolby-vision]], [[lg-oled-g3]]). Détail : spec § 7.4 et § 8.6.
 
 ## Horodatages
 

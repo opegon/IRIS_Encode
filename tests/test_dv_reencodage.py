@@ -80,7 +80,7 @@ def test_l_ecran_annonce_un_encodage_hevc_qui_garde_le_dv():
 
 def test_la_sortie_porte_le_suffixe_dv():
     d = decide(_source(), _profil())
-    assert d.output_path.name == f"Film{SUFFIX_DV_COPIE}.mkv"
+    assert d.output_path.name == f"Film{SUFFIX_DV_COPIE}.mp4"
 
 
 # ─── Quand on s'y refuse ─────────────────────────────────────────────────────
@@ -125,15 +125,39 @@ def test_sous_le_plafond_rien_n_est_reencode():
 
 # ─── Le conteneur ────────────────────────────────────────────────────────────
 
-def test_le_matroska_est_impose_meme_si_le_profil_veut_du_mp4():
-    """Le remux passe par mkvmerge, qui n'écrit que du Matroska.
+def test_le_conteneur_suit_la_regle_commune():
+    """IE-108 : sur le G3, un DV 8.1 en MP4 `hvc1` passe en lecture directe,
+    le même en MKV plante l'appli Jellyfin. Le réencodage DV ne force donc
+    plus le Matroska : MP4 dès que le contenu le permet."""
+    d = decide(_source(), _profil())
+    assert d.video.action is VideoAction.ENCODE_DV
+    assert d.output_container == ".mp4"
+    assert decide(_source(), _profil(container="mkv")).output_container == ".mkv"
 
-    Un MP4 obtenu autrement perdrait le RPU — soit exactement ce que
-    l'opération cherche à préserver.
-    """
-    d = decide(_source(), _profil(container="mp4"))
+
+def test_un_contenu_qui_exige_le_matroska_l_obtient():
+    info = _source()
+    info.audio_tracks = [AudioTrack(index=0, codec="truehd", channels=8,
+                                    language="eng", title="", bitrate=4_000_000)]
+    d = decide(info, _profil(preserve_hd_audio=True))
     assert d.video.action is VideoAction.ENCODE_DV
     assert d.output_container == ".mkv"
+
+
+def test_un_profil_7_reencode_sort_aussi_en_mp4():
+    """Converti en 8.1 en chemin : plus de couche d'amélioration."""
+    d = decide(_source(dv_profile=7), _profil())
+    assert d.video.action is VideoAction.ENCODE_DV
+    assert d.output_container == ".mp4"
+
+
+def test_le_remux_mp4_ecrit_dvcc_et_hvc1():
+    from core.dovi import build_dv_mp4_remux
+    cmd = build_dv_mp4_remux(Path("a.mkv"), Path("b.mp4"))
+    assert cmd[cmd.index("-strict") + 1] == "unofficial"
+    assert cmd[cmd.index("-tag:v") + 1] == "hvc1"
+    assert cmd[cmd.index("-c:s") + 1] == "mov_text"
+    assert "0:t" not in " ".join(cmd), "une pièce jointe ne tient pas en MP4"
 
 
 # ─── La commande d'encodage ──────────────────────────────────────────────────

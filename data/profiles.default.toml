@@ -1,4 +1,4 @@
-[serie_anime]
+[series_anime]
 bitrate_720p_kbps = 1500
 bitrate_1080p_kbps = 2000
 bitrate_4k_kbps = 3500
@@ -22,7 +22,7 @@ audio_copy_compatible = true
 audio_hd_codec = "none"
 container = "auto"
 
-[serie_anime_delete]
+[series_anime_delete]
 bitrate_720p_kbps = 1500
 bitrate_1080p_kbps = 2000
 bitrate_4k_kbps = 3500
@@ -47,7 +47,7 @@ audio_hd_codec = "none"
 container = "auto"
 audio_copy_compatible = true
 
-[serie_basic]
+[series_basic]
 bitrate_720p_kbps = 1500
 bitrate_1080p_kbps = 2200
 bitrate_4k_kbps = 3500
@@ -71,7 +71,7 @@ audio_copy_compatible = true
 audio_hd_codec = "none"
 container = "auto"
 
-[serie_basic_delete]
+[series_basic_delete]
 bitrate_720p_kbps = 1500
 bitrate_1080p_kbps = 2200
 bitrate_4k_kbps = 3500
@@ -96,7 +96,7 @@ audio_hd_codec = "none"
 container = "auto"
 audio_copy_compatible = true
 
-[serie_hdr]
+[series_hdr]
 bitrate_720p_kbps = 2000
 bitrate_1080p_kbps = 2500
 bitrate_4k_kbps = 5000
@@ -120,7 +120,7 @@ audio_copy_compatible = true
 audio_hd_codec = "none"
 container = "auto"
 
-[serie_4k_hdr]
+[series_4k_hdr]
 bitrate_720p_kbps = 2000
 bitrate_1080p_kbps = 2500
 bitrate_4k_kbps = 5000

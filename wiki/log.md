@@ -187,3 +187,10 @@ Mesuré : sans l'option, ffmpeg n'écrit pas la configuration DV en MP4 ;
 depuis un flux brut, jamais. Copie DV d'IRIS corrigée (IE-109). Décisions
 d'IE-108 consignées. Pages touchées : [[hdr-dolby-vision]],
 [[source-2026-10-03-dv81-mp4]].
+
+
+## [2026-10-03] ingest | Réencodage DV en MP4 (IE-108, v0.8.9.57)
+
+Le réencodage DV ne force plus le MKV : mkvmerge puis remux MP4 par ffmpeg.
+Mesuré sur l'extrait Apes : `hvc1`, `dvcC` P8 compat. 1, RPU intact
+(2 270 images). Pages touchées : [[conteneurs]], [[hdr-dolby-vision]].

@@ -44,6 +44,15 @@ PROFIL_DEFAUT_ID = "_default_"
 
 ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,32}$")
 
+# v0.8.9.56 (IE-112) : le préfixe français `serie_` des profils livrés devient
+# `series_`, les noms de profils restant les mêmes dans toutes les langues.
+# Ancien nom → nouveau, pour les seuls profils livrés : un `serie_*` créé par
+# l'utilisateur garde son nom.
+RENOMMAGES_LIVRES: dict[str, str] = {
+    f"serie_{s}": f"series_{s}"
+    for s in ("anime", "anime_delete", "basic", "basic_delete", "hdr", "4k_hdr")
+}
+
 # ─── Profil par défaut embarqué ────────────────────────────────────────────
 
 _BASE_AUDIO = {
@@ -196,6 +205,11 @@ def load_all() -> dict[str, "Profile"]:
         )
         return _plancher()
 
+    migre = _migrer_noms(raw)
+    if migre is not None:
+        raw = migre
+        _ecrire(raw)
+
     profiles = {
         name: Profile(id=name, data=dict(data))
         for name, data in raw.items()
@@ -205,6 +219,21 @@ def load_all() -> dict[str, "Profile"]:
     # Un fichier vide, ou qui ne décrit pas une seule table nommée, ne laisse
     # aucun profil sélectionnable : le plancher reprend la main.
     return profiles or _plancher()
+
+
+def _migrer_noms(raw: dict[str, Any]) -> dict[str, Any] | None:
+    """Le contenu du fichier avec les profils livrés renommés, ou None si rien
+    n'est à renommer.
+
+    Un ancien nom n'est renommé que si le nouveau est libre : un fichier qui
+    porte déjà `series_basic` garde aussi son `serie_basic`, plutôt que d'en
+    perdre un. L'ordre du fichier est conservé — il fait foi.
+    """
+    a_renommer = {ancien: neuf for ancien, neuf in RENOMMAGES_LIVRES.items()
+                  if ancien in raw and neuf not in raw}
+    if not a_renommer:
+        return None
+    return {a_renommer.get(nom, nom): data for nom, data in raw.items()}
 
 
 # Deux écrans peuvent enregistrer, et `load_all` réécrit les défauts au premier

@@ -65,7 +65,7 @@ async def _rendus():
         "ConfirmModal":  lambda: ConfirmModal(title="Supprimer ?", body="T", danger=True),
         "QuitConfirm":   lambda: QuitConfirmScreen(),
         "ValuePicker":   lambda: ValuePickerScreen("Codec", ["HEVC", "H264"], 0),
-        "ProfilePicker": lambda: ProfilePickerScreen(profs, "serie_basic"),
+        "ProfilePicker": lambda: ProfilePickerScreen(profs, "series_basic"),
     }
 
     app = IrisEncodeApp(dossier)

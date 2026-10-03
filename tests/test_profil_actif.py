@@ -23,7 +23,7 @@ _FICHIER = '''[qui_supprime]
 bitrate_1080p_kbps = 2000
 delete_source = true
 
-[serie_basic]
+[series_basic]
 bitrate_1080p_kbps = 2200
 
 [film_hdr]
@@ -61,8 +61,8 @@ def test_un_profil_efface_du_fichier_ne_bloque_pas_le_lancement(bac):
     app = _app()
     app.active_profile_id = "film_hdr"
     (bac / "profiles.toml").write_text(
-        "[serie_basic]\nbitrate_1080p_kbps = 2200\n", encoding="utf-8")
-    assert _app().active_profile_id == "serie_basic"
+        "[series_basic]\nbitrate_1080p_kbps = 2200\n", encoding="utf-8")
+    assert _app().active_profile_id == "series_basic"
 
 
 def test_reposer_le_meme_profil_n_ecrit_pas(bac):

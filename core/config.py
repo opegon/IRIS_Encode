@@ -14,6 +14,8 @@ from typing import Any
 
 import tomli_w
 
+from core.profiles import RENOMMAGES_LIVRES
+
 APP_DIR     = Path(__file__).resolve().parent.parent
 CONFIG_PATH = APP_DIR / "config.toml"
 
@@ -174,6 +176,10 @@ def get_active_profile(cfg: dict[str, Any], profile_ids) -> str:
     if not ids:
         raise ValueError("aucun profil à activer")
     retenu = cfg.get("app", {}).get("active_profile", "")
+    if retenu not in ids:
+        # Profil livré renommé depuis (IE-112) : `profiles.load_all` a migré
+        # le fichier, la mémoire du profil actif suit.
+        retenu = RENOMMAGES_LIVRES.get(retenu, retenu)
     return retenu if retenu in ids else ids[0]
 
 

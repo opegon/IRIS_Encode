@@ -503,14 +503,11 @@ class FileDecision:
         if voulu == "mkv":
             return True
 
-        # Un réencodage qui préserve le Dolby Vision sort d'un flux Annex-B
-        # recomposé par mkvmerge, qui n'écrit que du Matroska. Le RPU vit dans
-        # le flux, pas dans le conteneur : le porter en MP4 demanderait de
-        # réécrire les en-têtes, et un `container = "mp4"` produirait sans ça
-        # un fichier sans Dolby Vision — exactement ce que l'opération cherche
-        # à éviter. Le profil ne peut donc pas forcer le MP4 ici.
-        if self.video.action == VideoAction.ENCODE_DV:
-            return True
+        # Un réencodage qui préserve le Dolby Vision suit la règle commune
+        # depuis IE-108 : mkvmerge recompose un Matroska, que ffmpeg remuxe en
+        # MP4 `hvc1` avec sa boîte `dvcC` quand le contenu le permet. Sur le
+        # G3, ce MP4 passe en lecture directe avec le Dolby Vision ; le MKV
+        # plante l'appli Jellyfin. Un profil 7 y est converti en 8.1.
 
         # Le retrait du RPU passe par mkvmerge en MKV, par le filtre
         # `dovi_rpu` de ffmpeg en MP4. Ce filtre ne retire que le RPU : la
@@ -683,6 +680,20 @@ class FileDecision:
 CODECS_LISIBLES: frozenset[str] = frozenset({"h264", "hevc"})
 
 
+# Tolérance autour du débit cible, en pourcents. La cible est une moyenne
+# visée : en VBR avec 50 % de marge (`encoder.py`), une sortie réussie la
+# dépasse de quelques pourcents. Sans tolérance, une sortie à 2 100k pour
+# 2 000k visés repartait en CAS 1 au scan suivant — réencoder du HEVC en HEVC
+# pour 5 % d'octets, au prix d'une génération de perte. Seul le côté haut
+# compte : une source sous la cible n'est jamais réencodée pour son débit.
+TOLERANCE_DEBIT_PCT = 10
+
+
+def debit_au_dessus_de_la_cible(bitrate: int, target_bps: int) -> bool:
+    """La source dépasse-t-elle la cible de plus que la tolérance ?"""
+    return bitrate * 100 > target_bps * (100 + TOLERANCE_DEBIT_PCT)
+
+
 # Le retrait du RPU demande dovi_tool *et* mkvmerge. Sans eux, proposer
 # « → HDR10 » serait proposer une action qui échouera au lancement : la
 # décision retombe sur SKIP. L'application le renseigne au démarrage.
@@ -791,11 +802,12 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
             return f"{base} · DV préservé, RPU réinjecté"
         return f"{base} · DV conservé → vidéo copiée" if copiee else base
 
-    # CAS 1 — Bitrate source ≥ seuil cible
-    if info.bitrate >= target_bps:
+    # CAS 1 — Bitrate source au-delà de la cible + tolérance
+    if debit_au_dessus_de_la_cible(info.bitrate, target_bps):
         return VideoDecision(
             action=action,
-            reason=_raison(f"Débit {info.kbps}k ≥ {target_bps // 1000}k cible"),
+            reason=_raison(f"Débit {info.kbps}k > {target_bps // 1000}k cible "
+                           f"+{TOLERANCE_DEBIT_PCT} %"),
             target_bitrate=target_bps,
             target_width=limit_w,
             target_height=limit_h,
@@ -845,7 +857,10 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     # SKIP
     return VideoDecision(
         action=VideoAction.SKIP,
-        reason=f"Débit OK, résolution OK, codec {info.codec}",
+        reason=(f"Débit dans la cible ±{TOLERANCE_DEBIT_PCT} %, "
+                f"résolution OK, codec {info.codec}"
+                if info.bitrate >= target_bps else
+                f"Débit OK, résolution OK, codec {info.codec}"),
         target_bitrate=0,
         target_width=info.width,
         target_height=info.height,

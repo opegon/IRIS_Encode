@@ -51,6 +51,12 @@ faut partir d'un conteneur qui la porte (MKV de mkvmerge). Étiquette : `hvc1`
 lu en Dolby Vision par le G3, `dvh1` refusé ([[lg-oled-g3]]). *(mesuré,
 ffmpeg 8.1.2, 2026-10-03 ; corrigé dans IRIS en v0.8.9.49)*
 
+**Réencodage DV en MP4** (v0.8.9.57, IE-108) : mkvmerge recompose un MKV, que
+ffmpeg remuxe en MP4 (`-c copy -tag:v hvc1 -strict unofficial`). Mesuré sur
+l'extrait Apes (2 270 images) : `dvcC` profil 8 compat. 1, RPU de 2 270
+images relu par `dovi_tool info`. *(mesuré, 2026-10-03)* Reste à lire un film
+entier sur le G3 (IE-78).
+
 **Le RPU n'est pas une piste.** Aucun `-map` ne le laisse passer : tout
 réencodage le détruit.
 

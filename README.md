@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.54 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.57 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`. Ce que
@@ -74,7 +74,7 @@ flowchart LR
     C --> N["⑤ Nom de sortie"]
     N --> X{"Chemin d'exécution"}
     X -->|"encodage, copie DV"| X1["ffmpeg"]
-    X -->|"réencodage DV"| X2["ffmpeg + dovi_tool<br/>+ mkvmerge"]
+    X -->|"réencodage DV"| X2["ffmpeg + dovi_tool<br/>+ mkvmerge (+ ffmpeg en MP4)"]
     X -->|"retrait DV"| X3["dovi_tool + mkvmerge<br/>ou ffmpeg (MP4)"]
     X -->|"SKIP"| X4["rien, ou greffe de<br/>pistes externes (.mux-iris)"]
 ```
@@ -103,7 +103,7 @@ réencoder ; la suite dit comment.
 
 ```mermaid
 flowchart TD
-    Q1{"Débit vidéo ≥ cible du palier ?"}
+    Q1{"Débit vidéo > cible du palier + 10 % ?"}
     Q1 -->|oui| E1["Réencoder<br/>au débit cible"]
     Q1 -->|non| Q2{"Définition > cible ?"}
     Q2 -->|oui| E2["Réencoder<br/>au débit de la source"]
@@ -184,7 +184,7 @@ flowchart TD
 flowchart TD
     C0{"[container] = mkv ?"}
     C0 -->|oui| MKV["MKV"]
-    C0 -->|non| C1{"Réencodage DV, ou retrait DV<br/>d'un profil 7 ?"}
+    C0 -->|non| C1{"Retrait DV<br/>d'un profil 7 ?"}
     C1 -->|oui| MKV
     C1 -->|non| C2{"Audio sans perte copié, ou piste<br/>greffée que le MP4 ne porte pas ?"}
     C2 -->|oui| MKV
@@ -203,7 +203,7 @@ quelque chose y serait perdu. Une piste n'est jamais sacrifiée en silence.
 | Traitement | Suffixe | Exemple |
 |---|---|---|
 | Encodage HEVC / H264 / AV1 | `.hevc-iris` · `.h264-iris` · `.av1-iris` | `Film.2160p.x265-GRP.mkv` → `Film.1080p.hevc-iris.mp4` |
-| Dolby Vision conservé (réencodé ou copié) | `.dv-iris` | `Film.2160p.DV.mkv` → `Film.2160p.DV-iris.mkv` |
+| Dolby Vision conservé (réencodé ou copié) | `.dv-iris` | `Film.2160p.DV.mkv` → `Film.2160p.DV-iris.mp4` |
 | Retrait du Dolby Vision | `.hdr10-iris` | `Film.2160p.DV.mkv` → `Film.2160p.HDR10-iris.mp4` |
 | SKIP avec pistes greffées | `.mux-iris` | `Film.mkv` → `Film.mux-iris.mkv` |
 
@@ -570,7 +570,7 @@ password = ""
 
 **`profiles.toml`** — profils d'encodage (bitrate, résolution, audio, Dolby Vision) :
 ```toml
-[serie_basic]
+[series_basic]
 bitrate_1080p_kbps = 2500
 keep_4k            = false
 dolby_vision       = "hdr"

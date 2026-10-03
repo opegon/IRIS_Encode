@@ -845,6 +845,9 @@ class RunScreen(TableNavMixin, Screen):
            entrée une première fois pour reconstituer l'ordre des images.
         5. les pistes audio finales si la décision en transcode une, puis le
            remux par mkvmerge.
+        6. en sortie MP4, un remux du Matroska par ffmpeg (IE-108) : c'est
+           depuis le MKV, et non depuis le flux brut, que ffmpeg sait écrire
+           la boîte `dvcC`.
         """
         from core import dovi
         from core.encoder import build_dv_video_command
@@ -876,10 +879,15 @@ class RunScreen(TableNavMixin, Screen):
         enc = source.with_name(f"{source.stem}.iris_enc.hevc")
         inj = source.with_name(f"{source.stem}.iris_dv.hevc")
         mka = source.with_name(f"{source.stem}.iris_audio.mka")
+        # En sortie MP4, mkvmerge écrit d'abord ce Matroska, que ffmpeg remuxe.
+        en_mp4 = sortie.suffix.lower() == ".mp4"
+        mkv    = source.with_name(f"{source.stem}.iris_dv.mkv") if en_mp4 else sortie
 
         passe_audio = audio_pass_needed(dec.audio)
         n_etapes    = 5 if passe_audio else 4
         if dec.info.dv_profile == 7:
+            n_etapes += 1
+        if en_mp4:
             n_etapes += 1
         etape     = 0
         s.percent = -1
@@ -971,11 +979,11 @@ class RunScreen(TableNavMixin, Screen):
                             f"Le transcodage des pistes audio a échoué (code {code}).")
                     return
 
-            # N — remux par mkvmerge. Le conteneur est forcément du Matroska :
-            # la décision l'impose dès qu'elle retient ENCODE_DV.
+            # N — remux par mkvmerge, vers la sortie ou vers l'intermédiaire
+            # que l'étape suivante passera en MP4.
             exclues = [ad for ad in dec.audio if ad.action == AudioAction.EXCLUDE]
             cmd = build_strip_command(
-                inj, source, sortie,
+                inj, source, mkv,
                 fps=dec.info.frame_rate,
                 tracks=dec.external_tracks,
                 audio_source=mka if passe_audio else None,
@@ -994,10 +1002,32 @@ class RunScreen(TableNavMixin, Screen):
                     self.app.call_from_thread(self._update_ffmpeg_line, ligne)
             code = mux.wait()
             self._mux = None
-            if code != 0 or not sortie.exists():
+            if code != 0 or not mkv.exists():
                 detail = mux.errors[-1] if mux.errors else f"code {code}"
                 echouer(f"remux : {detail}", f"Remux échoué — {detail}")
                 return
+
+            # N+1 — le Matroska passe en MP4, Dolby Vision compris (IE-108)
+            if en_mp4:
+                if s.state == FileState.SKIPPED:
+                    return
+                cmd = dovi.build_dv_mp4_remux(mkv, sortie, ffmpeg_path)
+                annoncer("Remux en MP4 par ffmpeg…", " ".join(cmd))
+                proc = EncoderProcess(cmd, dec.info.duration)
+                self._demarrer(proc)
+                for ligne, progress in proc.iter_progress():
+                    s.last_line = ligne
+                    if progress:
+                        s.percent = progress.percent
+                        self.app.call_from_thread(self._update_row, index)
+                code = proc.wait()
+                self._process = None
+                if s.state == FileState.SKIPPED:
+                    return
+                if code != 0 or not sortie.exists():
+                    echouer(f"remux MP4 : code {code}",
+                            f"Le remux en MP4 a échoué (code {code}).")
+                    return
 
             should_delete = (
                 dec.delete_source_override
@@ -1020,7 +1050,7 @@ class RunScreen(TableNavMixin, Screen):
             self._process = None
             # Deux flux bruts de la taille de la vidéo encodée : les laisser
             # traîner remplirait le disque, que l'opération ait abouti ou non.
-            for tmp in (rpu, p8, enc, inj, mka):
+            for tmp in (rpu, p8, enc, inj, mka) + ((mkv,) if en_mp4 else ()):
                 try:
                     if tmp.exists():
                         tmp.unlink()

@@ -151,6 +151,31 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
     return cmd
 
 
+def build_dv_mp4_remux(mkv: Path, output: Path,
+                       ffmpeg_path: str = "ffmpeg") -> list[str]:
+    """Remux en MP4 du Matroska que mkvmerge a recomposé (réencodage DV).
+
+    Le passage par le Matroska n'est pas un détour : depuis le flux Annex-B
+    brut, ffmpeg écrit un MP4 sans boîte `dvcC`, même avec `-strict
+    unofficial` (mesuré, IE-108) ; depuis un MKV qui porte l'enregistrement de
+    configuration DV, il la recopie. Sans `-strict unofficial`, pas de `dvcC`
+    non plus (IE-109). `hvc1` et jamais `dvh1` : le G3 ne lance pas `dvh1`
+    (IE-75).
+
+    Vidéo, audio et sous-titres seulement : une pièce jointe (police) ne
+    tient pas en MP4. Les sous-titres arrivent ici en SubRip — la décision
+    n'a retenu le MP4 que sans sous-titre image ni stylé — et deviennent du
+    `mov_text`. L'option est posée sans condition : sans sous-titre, ffmpeg
+    l'ignore (mesuré).
+    """
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(mkv),
+           "-map", "0:v:0", "-map", "0:a?", "-map", "0:s?",
+           "-c", "copy", "-c:s", "mov_text",
+           "-tag:v", "hvc1", "-strict", "unofficial",
+            "-movflags", "+faststart", str(output)]
+    return cmd
+
+
 def strip_bsf_disponible(ffmpeg_path: str = "ffmpeg") -> bool:
     """ffmpeg connaît-il le filtre `dovi_rpu` (7.1+) ? Un ffmpeg plus ancien
     échouerait sur « Unknown bitstream filter », que l'écran rendrait mal."""

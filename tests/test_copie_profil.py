@@ -17,7 +17,7 @@ from core import config as cfg_mod
 from core import profiles as prof_mod
 from tui.screens.config import nom_de_copie
 
-_FICHIER = '''[serie_basic]
+_FICHIER = '''[series_basic]
 bitrate_1080p_kbps = 2200
 
 [film_hdr]
@@ -88,11 +88,11 @@ def test_la_copie_reprend_les_reglages_sous_un_nouveau_nom(bac):
     relus = prof_mod.load_all()
     assert relus["film_hdr_copie"].data["bitrate_1080p_kbps"] == 5000
     assert relus["film_hdr"].data["bitrate_1080p_kbps"] == 5000
-    assert list(relus) == ["serie_basic", "film_hdr", "film_hdr_copie"]
+    assert list(relus) == ["series_basic", "film_hdr", "film_hdr_copie"]
 
 
 def test_un_nom_deja_pris_est_refuse(bac):
-    _, erreur, profils = _parcours(bac, "serie_basic")
+    _, erreur, profils = _parcours(bac, "series_basic")
     assert "existe déjà" in erreur
-    assert profils["serie_basic"].data["bitrate_1080p_kbps"] == 2200
-    assert prof_mod.load_all()["serie_basic"].data["bitrate_1080p_kbps"] == 2200
+    assert profils["series_basic"].data["bitrate_1080p_kbps"] == 2200
+    assert prof_mod.load_all()["series_basic"].data["bitrate_1080p_kbps"] == 2200

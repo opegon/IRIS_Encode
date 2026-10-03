@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.54 — document de référence courant
+**Version** : 0.8.9.57 — document de référence courant
 **Date** : 2026-10-03
 **Statut** : stable
 
@@ -426,16 +426,26 @@ seul, et le sélecteur d'une installation neuve s'ouvrait sur une liste d'un
 élément : rien qui montre ce qu'un profil règle, ni ce que change le fait d'en
 changer.
 
-Le premier du fichier livré est `serie_anime`, et il porte
+Le premier du fichier livré est `series_anime`, et il porte
 `delete_source = false` : c'est lui que `get_active_profile` retient au premier
 lancement, tant que rien n'a été choisi (`tests/test_profils_livres.py` y
 veille). Trois profils livrés portent `delete_source = true` —
-`serie_anime_delete`, `serie_basic_delete` et `video_basic_delete` —, chacun
+`series_anime_delete`, `series_basic_delete` et `video_basic_delete` —, chacun
 signalé « ⚠ suppr. » dans `F4` et `F5` ; aucun n'est en tête.
 
 Depuis la v0.8.9.54, le fichier livré est la bibliothèque de profils de
 l'auteur, recopiée telle quelle : une installation neuve la reçoit au premier
-lancement, une mise à jour ne touche jamais le `profiles.toml` existant.
+lancement, une mise à jour ne touche jamais le `profiles.toml` existant — à
+une exception près, le renommage des profils livrés.
+
+**Renommage `serie_*` → `series_*`** (v0.8.9.56, IE-112). Les noms de profils
+ne se traduisent pas : ils doivent être neutres, et `serie_` était le seul
+préfixe français. `load_all` migre le fichier de l'utilisateur au chargement
+(`RENOMMAGES_LIVRES`, `_migrer_noms`) : un ancien nom de profil livré est
+renommé si le nouveau est libre, dans l'ordre du fichier, réglages intacts,
+et le fichier est réécrit une fois. Un `serie_*` créé par l'utilisateur garde
+son nom. `config.get_active_profile` applique le même renommage au profil
+actif mémorisé. `tests/test_migration_profils.py`.
 
 Le fichier livré est une donnée, éditable à la main, que rien d'autre ne relit :
 `tests/test_profils_livres.py` en contrôle la forme (champs connus, types,
@@ -643,12 +653,13 @@ toutes nécessaires :
 
 À défaut, la décision retombe sur la copie du flux — libellé « → DV (copie) ».
 
-**Le conteneur est forcé en Matroska**, même si le profil demande du MP4 : le
-remux passe par mkvmerge, et porter le RPU en MP4 demanderait de réécrire les
-en-têtes. Un `container = "mp4"` rendrait sinon un fichier sans Dolby Vision,
-soit exactement ce que l'opération cherche à éviter.
+**Le conteneur suit la règle commune** (v0.8.9.57, IE-108) : MP4 dès que le
+contenu le permet avec `container = "auto"`, MKV sinon (§ 8.6). Sur le G3, un
+DV 8.1 en MP4 `hvc1` passe en lecture directe avec le Dolby Vision ; le même
+en MKV plante l'appli Jellyfin, et `dvh1` ne se lance pas (IE-75). Le profil 7,
+converti en 8.1 à l'étape 2, sort aussi en MP4.
 
-**Pipeline** — `tui/screens/run.py:_encode_dv`, quatre à six étapes :
+**Pipeline** — `tui/screens/run.py:_encode_dv`, quatre à sept étapes :
 
 ```
 1. ffmpeg -c:v copy -f hevc -  |  dovi_tool extract-rpu -   →  film.rpu
@@ -657,7 +668,20 @@ soit exactement ce que l'opération cherche à éviter.
 4. dovi_tool inject-rpu -i enc.hevc --rpu-in film.rpu       →  dv.hevc
 5. (si transcodage audio) build_audio_command               →  audio.mka
 6. mkvmerge dv.hevc + pistes de la source                   →  sortie.dv-iris.mkv
+                                                               (ou iris_dv.mkv)
+7. (sortie MP4) dovi.build_dv_mp4_remux                     →  sortie.dv-iris.mp4
 ```
+
+**L'étape 7 part du Matroska, pas du flux brut.** Depuis `dv.hevc`, ffmpeg
+écrit un MP4 sans boîte `dvcC`, même avec `-strict unofficial` : le RPU est
+dans le flux, mais le téléviseur ne voit plus de Dolby Vision. Depuis le MKV
+de mkvmerge, qui porte l'enregistrement de configuration, il la recopie —
+à condition de `-strict unofficial` (IE-109). Options : `-c copy -c:s
+mov_text -tag:v hvc1 -strict unofficial -movflags +faststart`, vidéo, audio et
+sous-titres seuls (une pièce jointe ne tient pas en MP4). Mesuré sur un
+extrait DV 8.1 de 2 270 images (2026-10-03) : `hvc1`, `dvcC` profil 8 compat. 1,
+RPU de 2 270 images, SRT passés en `mov_text`. L'intermédiaire est effacé
+comme les autres.
 
 L'étape 1 est un tuyau : `dovi_tool extract-rpu` accepte `-` en entrée, ce qui
 évite une recopie du film entier pour en tirer quelques kilo-octets.
@@ -697,12 +721,20 @@ params = [
 
 | Cas | Condition | Action |
 |---|---|---|
-| **CAS 1** | bitrate source ≥ seuil cible | Réencodage HEVC (ou H264 si cible < 1080p) au bitrate cible |
+| **CAS 1** | bitrate source > seuil cible + 10 % (`TOLERANCE_DEBIT_PCT`) | Réencodage HEVC (ou H264 si cible < 1080p) au bitrate cible |
 | **CAS 2** | bitrate OK mais résolution trop grande | Redimensionnement HEVC, bitrate original |
 | **CAS 3** | bitrate OK, résolution OK, **codec hors `CODECS_LISIBLES`** | Réencodage, bitrate conservé — H264 sous 1080p, HEVC au-dessus |
 | **ENCODE_DV** | un des trois cas ci-dessus, profil en `dv`, et RPU réinjectable (§ 7.4) | Réencodage au débit cible, RPU sorti puis remis |
 | **STRIP_DV** | aucun des cas ci-dessus, mais RPU retirable (DV 8.1 ou 7) et profil en `hdr10` | Retrait du RPU par remux, sans réencodage (§ 7.3) |
 | **SKIP** | bitrate OK, résolution OK, codec H264 ou HEVC | Aucun traitement |
+
+**Le CAS 1 tolère ±10 % autour de la cible** (v0.8.9.55). La cible est une
+moyenne visée : en VBR avec 50 % de marge (§ 12.1), une sortie réussie la
+dépasse de quelques pourcents. Sans tolérance, une sortie à 2 100k pour
+2 000k visés repartait en CAS 1 au scan suivant, pour 5 % de gain et une
+génération de perte. Seul le côté haut joue : une source sous la cible n'est
+jamais réencodée pour son débit. Le SKIP d'une source dans la tolérance le dit
+(« Débit dans la cible ±10 % »).
 
 **Le CAS 3 ne regarde plus la résolution.** `CODECS_LISIBLES` — `h264` et
 `hevc` — énumère ce qu'une chaîne de lecture grand public prend sans
@@ -1913,7 +1945,7 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 ┌─ IRIS ENCODE ────────────────────────────────── 14:22 ─┐
 │ D:\Videos  ·  2/4 sélectionnés  ·  Col : Résol.  </>   │
 │                                                         │
-│ F4 🎬 serie_basic 🎬    • 1080p 2200k  ·  4K→1080p     │
+│ F4 🎬 series_basic 🎬    • 1080p 2200k  ·  4K→1080p     │
 │      HD audio non                                       │
 │ ⏳ Analyse en cours… 2 / 4                              │
 ├─ ──┬─ Fichier ──────┬─ Taille ─┬─ Résol. ──┬─ Durée ─┬─ Débit ─┬─ Codec ─┬─ Dolby V. ─┬─ Décision ─┬─ Estim. (Δ%) ─┬─ ETA ─┬─ Audio ─────┤
@@ -2736,6 +2768,9 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.57 | 2026-10-03 | **Réencodage DV en MP4** (§ 7.4, IE-108) : `ENCODE_DV` ne force plus le Matroska ; MP4 `hvc1` dès que le contenu le permet — mkvmerge recompose un MKV, que ffmpeg remuxe avec `-strict unofficial` pour garder la boîte `dvcC` (`dovi.build_dv_mp4_remux`, étape 7 de `_encode_dv`) ; profil 7 inclus, converti en 8.1 · mesuré sur un extrait DV 8.1 : `dvcC` P8 compat. 1, RPU de 2 270 images intact · `tests/test_dv_reencodage.py` |
+| 0.8.9.56 | 2026-10-03 | **Profils livrés `serie_*` renommés `series_*`** (§ 6, IE-112) : noms neutres, non traduits ; migration du `profiles.toml` existant au chargement (seulement si le nouveau nom est libre, ordre et réglages conservés, profils de l'utilisateur intouchés) et du profil actif mémorisé · `tests/test_migration_profils.py` |
+| 0.8.9.55 | 2026-10-03 | **Tolérance de ±10 % sur le débit cible** (§ 8.1) : le CAS 1 ne se déclenche qu'au-delà de la cible + 10 % (`TOLERANCE_DEBIT_PCT`) ; une sortie VBR qui dépasse légèrement sa cible n'est plus reproposée au réencodage · `tests/test_tolerance_debit.py` |
 | 0.8.9.54 | 2026-10-03 | **Nouveaux profils livrés** (§ 6) : `data/profiles.default.toml` reprend tel quel le `profiles.toml` de l'auteur — quatorze profils, `serie_anime` en tête, `film_*` devenus `movie_*`, variantes `_delete` ; semé à la première installation, jamais écrasé par une mise à jour ; aucun changement de code |
 | 0.8.9.53 | 2026-10-03 | **« Ne rien faire » après le lot, par défaut** (§ 14.7, § 14.8) : `ACTIONS_FIN` gagne `rien`, en tête et par défaut (`ACTION_FIN_DEFAUT`, `[energie] action_fin`) ; `E` refuse d'armer quand c'est le choix ; choisi pendant un lot coché, il désarme · `tests/test_veille.py` |
 | 0.8.9.52 | 2026-10-03 | **Copier un profil** (§ 14, `F5`) : `C` ouvre le formulaire de création sur les réglages du profil sous le curseur, nom proposé par `nom_de_copie()` ; une création refuse un nom déjà pris (elle écrasait le profil existant) · **`F4` élargi** (§ 14.9) : la marge de cellule comptée des deux côtés, `⚠ suppr.` n'est plus tronqué · `tests/test_copie_profil.py` |

@@ -71,7 +71,7 @@ def test_le_libelle_annonce_la_copie_et_non_un_encodage():
 
 def test_la_raison_explique_pourquoi_le_debit_ne_baissera_pas():
     v = decide(_source(60_000_000), _PROFIL_DV).video
-    assert "60000k ≥ 12000k" in v.reason, "le déclencheur reste visible"
+    assert "60000k > 12000k" in v.reason, "le déclencheur reste visible"
     assert "vidéo copiée" in v.reason,    "sa neutralisation aussi"
 
 

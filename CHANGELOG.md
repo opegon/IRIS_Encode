@@ -1,5 +1,68 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.57] — 2026-10-03
+
+### Réencodage Dolby Vision en MP4 (IE-108)
+
+Sur le G3, un DV 8.1 en MP4 `hvc1` passe en lecture directe avec le Dolby
+Vision ; le même extrait en MKV plante l'appli Jellyfin (IE-75). Or le
+réencodage DV (`→ HEVC → DV`) forçait le Matroska, même avec
+`container = "mp4"`.
+
+- `FileDecision.needs_mkv` ne fait plus d'exception pour `ENCODE_DV` : la
+  règle commune s'applique, MP4 dès que le contenu le permet en `auto`. Le
+  profil 7, converti en 8.1 en chemin, est inclus.
+- `_encode_dv` (`tui/screens/run.py`) gagne une étape en sortie MP4 :
+  mkvmerge écrit un Matroska intermédiaire, que ffmpeg remuxe
+  (`core/dovi.py`, `build_dv_mp4_remux` : `-c copy -c:s mov_text -tag:v hvc1
+  -strict unofficial -movflags +faststart`). Partir du flux brut ne donne pas
+  de `dvcC` ; partir du MKV, si. L'intermédiaire est effacé dans tous les cas.
+- Mesuré sur l'extrait Apes (DV 8.1, 2 270 images) : `hvc1`, `dvcC` profil 8
+  compat. 1, RPU de 2 270 images relu par `dovi_tool`, SRT en `mov_text`.
+  Reste la lecture d'un film entier sur le G3 (IE-78).
+- `tests/test_dv_reencodage.py` : le test qui exigeait le MKV devient celui de
+  la règle commune ; ajout du profil 7, du contenu qui impose le MKV, et de la
+  commande de remux. Spec § 7.4, README (schémas vue d'ensemble et ④), wiki.
+
+## [v0.8.9.56] — 2026-10-03
+
+### Profils livrés : `serie_*` devient `series_*` (IE-112)
+
+Les noms de profils ne se traduiront pas (cadrage de la localisation) : ils
+doivent être neutres, et `serie_` était le seul préfixe français. Les six
+profils `series_anime`, `series_anime_delete`, `series_basic`,
+`series_basic_delete`, `series_hdr` et `series_4k_hdr` remplacent leurs
+homonymes dans `data/profiles.default.toml`.
+
+- **Migration au chargement** (`core/profiles.py`, `RENOMMAGES_LIVRES`) : dans
+  le `profiles.toml` existant, un ancien nom de profil livré est renommé si le
+  nouveau est libre. Ordre et réglages conservés, fichier réécrit une fois.
+- Un `serie_*` créé par l'utilisateur garde son nom ; un nom déjà pris bloque
+  le renommage plutôt que d'écraser un profil.
+- Le profil actif mémorisé suit (`core/config.py`, `get_active_profile`).
+- `tests/test_migration_profils.py` ; les tests qui utilisaient `serie_basic`
+  comme profil d'essai passent à `series_basic`.
+
+## [v0.8.9.55] — 2026-10-03
+
+### Tolérance de ±10 % sur le débit cible
+
+Une série encodée avec `video_basic_delete`, réaffichée avec tous les
+fichiers, était entièrement reproposée au réencodage : HEVC 1080p à 2 100k –
+2 514k pour 2 000k visés, et un 720p H264 à 1 505k pour 1 500k, « gain »
+annoncé de 1 %. L'encodeur tourne en VBR avec 50 % de marge et dépasse
+légitimement sa cible de quelques pourcents ; le CAS 1 comparait en `≥` strict.
+
+- Le CAS 1 ne se déclenche plus qu'au-delà de **la cible + 10 %**
+  (`core/decision.py`, `TOLERANCE_DEBIT_PCT`, `debit_au_dessus_de_la_cible`).
+  Sous la cible, rien ne change : une source n'est jamais réencodée pour son
+  débit.
+- La raison affichée suit : « Débit 2514k > 2000k cible +10 % » pour un
+  réencodage, « Débit dans la cible ±10 % » pour un SKIP dans la tolérance.
+- La tolérance ne touche ni la résolution (CAS 2) ni le codec (CAS 3).
+- `tests/test_tolerance_debit.py` ; `tests/test_dv_copie.py` suit le nouveau
+  libellé.
+
 ## [v0.8.9.54] — 2026-10-03
 
 ### Nouveaux profils livrés

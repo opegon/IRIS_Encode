@@ -1,5 +1,37 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.74] — 2026-10-04
+
+### Textes de `core/` extraits pour la traduction
+
+IE-87. Chaque texte que `core/` affiche est désormais un message anglais, avec
+sa traduction française au catalogue : **181 messages**, le français repris à
+l'identique. Rien ne change à l'écran, sauf quelques pluriels désormais
+accordés (« 1 seconde », « 1 repère », « 1 plage détectée »).
+
+- **Fichiers traités** : `cles`, `decision` (raisons de décision, libellés),
+  `encoder` (diagnostics d'échec), `joiner`, `meta`, `muxer`, `opensubtitles`,
+  `platform`, `preflight` (console), `preview`, `profiles`, `sync` (comptes
+  rendus de mesure), `updates`, `veille`.
+- **Erreurs affichées** : `ErreurAffichable` (hérite de `ValueError`) au lieu
+  de `ValueError`/`RuntimeError` porteurs d'une phrase française ; `str(e)`
+  donne l'anglais pour le journal, l'écran affiche `texte_erreur(e)`.
+  `Nn_` pour une erreur au pluriel, `ErreurAffichable.brute` pour le message
+  d'un service. `ErreurOpenSubtitles` en hérite.
+- **Constats de l'audit corrigés** : tables de textes marquées et traduites à
+  l'affichage (L-06, L-17, L-38) ; raisons et comptes rendus en gabarits (L-11,
+  L-12, L-21, L-34) ; pluriels par `ngettext` (L-20) ; niveaux de confiance
+  sans accord au féminin (L-33) ; alerte NVENC en phrases entières (L-28) ;
+  lettre du « oui » de la console au catalogue, `y` toujours accepté (L-29) ;
+  marques et indentation hors des messages (L-30).
+- `core/texte.py` ne sert plus qu'à `tui/` (IE-88).
+- **Tests** : ils chargent le français (`tests/conftest.py`, smoke, captures),
+  si bien que chaque test qui vérifie un message français vérifie aussi sa
+  traduction. Nouveaux garde-fous : aucun `_` jetable (`for _ in …`) dans un
+  module qui traduit, plus d'import de `core/texte.py` dans `core/`.
+- L'extraction refuse un texte déjà composé (f-string, `+`, `%`, `.format()`)
+  passé à `_()`, et ignore une variable (texte marqué ailleurs).
+
 ## [v0.8.9.73] — 2026-10-04
 
 ### Glossaire anglais → français

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.73 — document de référence courant
+**Version** : 0.8.9.74 — document de référence courant
 **Date** : 2026-10-04
 **Statut** : stable
 
@@ -125,7 +125,8 @@ tout message non traduit ou flou, retombe sur l'anglais.
 | `_`, `ngettext`, `pgettext`, `npgettext` | Traduction, pluriels (règle de chaque `.po`), contexte d'un libellé ambigu |
 | `N_` | Marque un texte défini au chargement d'un module (table, `BINDINGS`), traduit à l'affichage |
 | `liste(éléments)` | « a, b and c » / « a, b et c » |
-| `ErreurAffichable(msgid, **params)` | Erreur montrée à l'écran : `str(e)` en anglais pour le journal, `e.message()` traduit |
+| `ErreurAffichable(msgid, **params)` | Erreur montrée à l'écran (hérite de `ValueError`) : `str(e)` en anglais pour le journal, `e.message()` traduit ; au pluriel `Nn_(singulier, pluriel)` + `count` ; `ErreurAffichable.brute(texte)` pour le message d'un service, montré tel quel |
+| `texte_erreur(e)` | Le texte d'une erreur pour l'écran : traduit si c'est une `ErreurAffichable`, sinon tel quel |
 | `tui.common.texte_style(gabarit, **champs)` | Phrase traduite dont certains champs (une touche) sont stylés, sans balise dans le message |
 
 Les catalogues compilés (`.mo`) sont **versionnés** et livrés dans la release :
@@ -134,7 +135,12 @@ extrait les textes vers le `.pot` (`extraire`), met les `.po` à jour (`maj`,
 traductions gardées, disparus en obsolètes) et compile les `.mo` (`compiler`) ;
 `tout` enchaîne les trois. `tests/test_i18n.py` vérifie que le `.pot` et les `.mo`
 du dépôt sont à jour. Le détail des règles d'écriture est en tête de
-`core/i18n.py`. L'extraction des textes existants suit (IE-87, IE-88).
+`core/i18n.py`. **Les textes de `core/` sont extraits (v0.8.9.74)** : raisons
+de décision, diagnostics, refus, mesures, console du preflight (dont la lettre
+du « oui », `o` en français, `y` toujours accepté). Ceux de `tui/` suivent
+(IE-88) ; `core/texte.py`, qui code la règle de pluriel française, ne sert plus
+qu'à eux. Les tests chargent le français (`tests/conftest.py`, smoke, captures) :
+un test qui vérifie un message français vérifie aussi sa traduction.
 
 Le **glossaire** (`locales/glossaire.fr.csv`, colonnes `source`, `target`,
 `explanation`) fixe un terme anglais = une traduction, et les termes à ne
@@ -2840,6 +2846,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.74 | 2026-10-04 | **Textes de `core/` extraits** (§ 2.1, IE-87) : messages en anglais source, français au catalogue à l'identique (181 messages) ; erreurs affichées en `ErreurAffichable`, montrées par `texte_erreur` ; pluriels par `ngettext` ; niveaux de confiance, oui/non des profils et actions d'après lot traduits à l'affichage ; lettre du « oui » de la console au catalogue · `tests/test_i18n.py` |
 | 0.8.9.73 | 2026-10-04 | **Glossaire anglais → français** (§ 2.1, IE-85) : `locales/glossaire.fr.csv`, un terme = une traduction, termes à ne pas traduire ; arbitrages de l'utilisateur (SKIP invariant, Dry run, Guided, « lossless » gardé) au wiki, page `localisation` · `tests/test_i18n.py` |
 | 0.8.9.72 | 2026-10-04 | **Socle de la traduction** (§ 2.1, IE-86) : `core/i18n.py` (gettext, anglais source, repli), `locales/` avec le catalogue français et son `.mo` versionné, `outils/i18n.py` sans dépendance (extraction, mise à jour, compilation), `ErreurAffichable`, `liste`, `texte_style` ; `main.py` charge la langue après `config.toml` ; aucun texte encore extrait, rien ne change à l'écran · `tests/test_i18n.py` |
 | 0.8.9.71 | 2026-10-04 | Retrait DV en MKV : le compteur de l'étape audio (« ▶ 3/4 ») se calcule comme ses voisines ; aucun changement visible (clôture d'IE-83) |

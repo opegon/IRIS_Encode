@@ -229,6 +229,17 @@ def test_texte_style_garde_la_phrase_entiere():
 
 # ─── Glossaire (IE-85) ────────────────────────────────────────────────────────
 
+def test_core_n_accorde_plus_par_texte_py():
+    """IE-87 : les pluriels de `core/` passent par `ngettext` ; `core/texte.py`
+    code la règle française et ne survit que pour `tui/` (IE-88)."""
+    fautes = [f.name for f in RACINE.joinpath("core").glob("*.py")
+              if f.name != "texte.py"
+              and any(isinstance(n, ast.ImportFrom)
+                      and (n.module or "").split(".")[-1] == "texte"
+                      for n in ast.walk(ast.parse(f.read_text(encoding="utf-8"))))]
+    assert not fautes, fautes
+
+
 def test_le_glossaire_est_coherent():
     """`locales/glossaire.fr.csv`, importable comme glossaire Weblate : un
     terme anglais = une traduction, et un terme à ne pas traduire reste

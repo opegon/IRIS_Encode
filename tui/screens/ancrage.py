@@ -97,7 +97,7 @@ class AncrageModal(ModalScreen["tuple[float, float] | None"]):
             t.append(f"{self._nom}\n", style="bold")
         t.append("Écoutez le film à l'endroit indiqué. Si cette réplique ne se\n"
                  "retrouve pas, ↓ en propose une autre.\n\n", style="dim")
-        t.append("Formats acceptés : 13:22 · 1:13:22 · 13:22,5 · 802",
+        t.append("Formats acceptés : 13:22 · 1:13:22 · 13:22.5 · 802",
                  style="dim")
         return t
 

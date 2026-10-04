@@ -25,7 +25,7 @@ from core.joiner import (build_join_command, controler, derive_duree,
 from core.muxer import MuxProcess
 from core.scanner import VideoInfo
 
-from ..common import barre_etat, actions_ecran, cellule, fmt_duration, footer_line2, retour_accueil
+from ..common import barre_etat, actions_ecran, cellule, fmt_duration, footer_line2, retour_accueil, touche
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
@@ -323,7 +323,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
 
         return (f"✓ Terminé — {self._output.name}, {fmt_duration(obtenue)}. "
                 f"Les parties sont conservées.\n"
-                f"BACKSPACE revient au dossier, où le fichier se travaille "
+                f"{touche('backspace')} revient au dossier, où le fichier se travaille "
                 f"comme n'importe quel autre.")
 
     # ── Sortie ────────────────────────────────────────────────────────────────

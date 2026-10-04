@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.68
+**Version** : 0.8.9.69
 **Date** : 2026-10-04
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -675,7 +675,7 @@ La corrélation reste pourtant utilisable si on lui dit **où** chercher.
 1. `R` **propose une réplique** et l'instant où elle est écrite. `↓` et `↑` en
    proposent une autre, si celle-ci ne se retrouve pas.
 2. Écoutez le film à cet endroit, et donnez l'instant où vous l'entendez
-   réellement. Formats acceptés : `13:22`, `1:13:22`, `13:22,5`, `802`.
+   réellement. Formats acceptés : `13:22`, `1:13:22`, `13:22.5`, `802`.
 3. La recherche se centre sur l'écart entre les deux. Elle retrouve alors le
    décalage, et les plages s'il y a plusieurs coupures.
 

@@ -1081,3 +1081,12 @@ def test_les_limites_de_resolution_ne_portent_pas_de_libelle():
     for keep_4k in (True, False):
         limites = _resolve_limits(info, Profile(id="p", data={"keep_4k": keep_4k}))
         assert all(isinstance(v, int) for v in limites), limites
+
+
+def test_les_touches_et_les_decimales_s_ecrivent_comme_partout():
+    """L-56, L-70 (IE-113) : un exemple « 13:22,5 » quand l'application écrit
+    le point décimal, et « BACKSPACE » en toutes lettres quand toutes les
+    autres touches s'écrivent comme au pied de page (« ⌫ », UX-10)."""
+    textes = [(f, l, v) for f, l, v in _litteraux("core", "tui")]
+    assert not [f"{f}:{l}" for f, l, v in textes if "13:22,5" in v]
+    assert not [f"{f}:{l}" for f, l, v in textes if "BACKSPACE" in v]

@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.69] — 2026-10-04
+
+### Exemple décimal et nom de touche alignés sur le reste
+
+IE-113, constats L-56 et L-70 de l'audit de localisation. Deux écarts déjà
+visibles en français.
+
+- **Point de repère** (`tui/screens/ancrage.py`) : l'exemple « 13:22,5 »
+  devient « 13:22.5 », comme partout ailleurs dans l'application (le point
+  décimal est gardé en français, L-05). La saisie accepte toujours les deux.
+  `GUIDE.md` suit.
+- **Fin de jonction** (`tui/screens/join.py`) : « BACKSPACE revient au
+  dossier » devient « ⌫ revient au dossier » ; la touche passe par
+  `touche()`, comme toutes les autres (UX-10).
+- `tests/test_revue_code.py` : ni « 13:22,5 » ni « BACKSPACE » dans un texte
+  affiché.
+
 ## [v0.8.9.68] — 2026-10-04
 
 ### Libellé mort retiré de `_resolve_limits`

@@ -1004,3 +1004,7 @@ msgstr ""
 #: tui/screens/config.py:120
 msgid "Actions"
 msgstr ""
+
+#: tui/widgets/entete.py:56
+msgid "Help"
+msgstr ""

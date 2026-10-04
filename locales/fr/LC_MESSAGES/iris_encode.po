@@ -1004,3 +1004,7 @@ msgstr "{usage} — {without_key}."
 #: tui/screens/config.py:120
 msgid "Actions"
 msgstr "Actions"
+
+#: tui/widgets/entete.py:56
+msgid "Help"
+msgstr "Aide"

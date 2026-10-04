@@ -15,12 +15,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from rich.cells import cell_len
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import Header
 from textual.widgets._header import HeaderIcon, HeaderTitle
 
+from core.i18n import _
 from ..common import touche
 
 # « H Aide  ·  00:12:34 » : six pour le rappel, trois pour le séparateur,
@@ -43,14 +45,20 @@ class AideEtHeure(Widget):
     """
 
     def on_mount(self) -> None:
+        # La largeur suit le libellé traduit : « H Aide » tenait dans 21
+        # colonnes, une autre langue peut en demander plus (L-49). Padding 0 1.
+        self.styles.width = max(_LARGEUR, cell_len(self.render().plain) + 2)
         self.set_interval(1, self.refresh, name="horloge de l'en-tete")
 
     def render(self) -> Text:
         t = Text(no_wrap=True, overflow="ellipsis")
         t.append(touche("h"), style="bold yellow")
-        t.append(" Aide")
+        t.append(" " + _("Help"))
         t.append("  ·  ", style="dim")
-        t.append(datetime.now().time().strftime("%X"), style="")
+        # Format écrit en toutes lettres : `%X` dépendrait de la locale du
+        # processus, que rien ne règle aujourd'hui mais qu'un appel suffirait
+        # à changer en douce (L-49).
+        t.append(datetime.now().time().strftime("%H:%M:%S"), style="")
         return t
 
 

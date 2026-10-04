@@ -1047,6 +1047,7 @@ msgid "Widen"
 msgstr "Élargir"
 
 #: tui/common.py:391
+#: tui/screens/donor_picker.py:226
 #: tui/screens/opensubtitles.py:57
 #: tui/screens/profile_picker.py:61
 #: tui/screens/value_picker.py:53
@@ -1102,6 +1103,10 @@ msgstr "Les colonnes occupent déjà les {width} colonnes du terminal — rétr�
 #: tui/screens/confirm.py:73
 #: tui/screens/confirm.py:92
 #: tui/screens/confirm.py:110
+#: tui/screens/donor_picker.py:110
+#: tui/screens/donor_picker.py:131
+#: tui/screens/donor_picker.py:225
+#: tui/screens/donor_picker.py:242
 #: tui/screens/opensubtitles.py:56
 #: tui/screens/opensubtitles.py:74
 #: tui/screens/options.py:52
@@ -1117,6 +1122,8 @@ msgstr "Annuler"
 #: tui/screens/ancrage.py:88
 #: tui/screens/confirm.py:76
 #: tui/screens/confirm.py:109
+#: tui/screens/donor_picker.py:224
+#: tui/screens/donor_picker.py:241
 msgid "OK"
 msgstr "Valider"
 
@@ -1270,6 +1277,62 @@ msgstr "Supprimer le fichier"
 msgid "Delete"
 msgstr "Supprimer"
 
+#: tui/screens/donor_picker.py:107
+#: tui/screens/donor_picker.py:128
+msgid "Open"
+msgstr "Ouvrir"
+
+#: tui/screens/donor_picker.py:108
+#: tui/screens/donor_picker.py:129
+msgid "Up"
+msgstr "Remonter"
+
+#: tui/screens/donor_picker.py:124
+msgid "Donor file"
+msgstr "Fichier donneur"
+
+#: tui/screens/donor_picker.py:135
+msgid "File"
+msgstr "Fichier"
+
+#: tui/screens/donor_picker.py:136
+msgid "Size"
+msgstr "Taille"
+
+#: tui/screens/donor_picker.py:223
+msgid "Toggle"
+msgstr "Sélect"
+
+#: tui/screens/donor_picker.py:237
+msgid "Donor tracks"
+msgstr "Pistes du donneur"
+
+#: tui/screens/donor_picker.py:240
+msgid "Select"
+msgstr "Sélectionner"
+
+#: tui/screens/donor_picker.py:250
+msgid "Track"
+msgstr "Piste"
+
+#: tui/screens/donor_picker.py:251
+#: tui/screens/meta_popup.py:187
+msgid "Type"
+msgstr "Type"
+
+#: tui/screens/donor_picker.py:253
+#: tui/screens/opensubtitles.py:80
+msgid "Language"
+msgstr "Langue"
+
+#: tui/screens/donor_picker.py:254
+msgid "Name"
+msgstr "Nom"
+
+#: tui/screens/donor_picker.py:257
+msgid "no readable track"
+msgstr "aucune piste lisible"
+
 #: tui/screens/fin_lot.py:27
 msgid "All tasks are done."
 msgstr "Tous les traitements sont terminés."
@@ -1330,10 +1393,6 @@ msgstr "Fermer"
 msgid "Match"
 msgstr "Correspondance"
 
-#: tui/screens/meta_popup.py:187
-msgid "Type"
-msgstr "Type"
-
 #: tui/screens/meta_popup.py:188
 msgid "Year"
 msgstr "Année"
@@ -1368,10 +1427,6 @@ msgstr "Impossible de récupérer les informations :"
 #: tui/screens/opensubtitles.py:73
 msgid "Download"
 msgstr "Télécharger"
-
-#: tui/screens/opensubtitles.py:80
-msgid "Language"
-msgstr "Langue"
 
 #. column header, short for "downloads"; 8 characters at most.
 #: tui/screens/opensubtitles.py:82

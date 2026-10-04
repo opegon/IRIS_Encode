@@ -22,6 +22,7 @@ from textual.widgets import DataTable, Label, Static
 from ..common import (cellule, colonne_fixe, fmt_size, langue_affichee,
                       libelle_type_piste, nom_codec, raccourcis)
 
+from core.i18n import _, N_
 from core.muxer import (
     ExternalTrack, IdentifiedTrack, guess_language, identify,
 )
@@ -103,10 +104,10 @@ class DonorFileScreen(ModalScreen["Path | None"]):
 
     # ⌫ remonte, comme sur l'accueil ; Esc annule (UX-22).
     BINDINGS = [
-        Binding("enter",     "select", "Ouvrir",           show=True, priority=True),
-        Binding("backspace", "go_up",  "Remonter",         show=True, priority=True),
+        Binding("enter",     "select", N_("Open"),           show=True, priority=True),
+        Binding("backspace", "go_up",  N_("Up"),         show=True, priority=True),
         Binding("o",         "opensubtitles", "OpenSubtitles", show=True),
-        Binding("escape",    "cancel", "Annuler",          show=True, priority=True),
+        Binding("escape",    "cancel", N_("Cancel"),          show=True, priority=True),
     ]
 
     def __init__(self, start_dir: Path, exclude: Path | None = None,
@@ -120,19 +121,19 @@ class DonorFileScreen(ModalScreen["Path | None"]):
 
     def compose(self) -> ComposeResult:
         with Static(id="donor-box"):
-            yield Label("Fichier donneur", id="donor-title")
+            yield Label(_("Donor file"), id="donor-title")
             yield Static("", id="donor-path", markup=False)
             yield DataTable(id="donor-table", cursor_type="row",
                             show_header=True, zebra_stripes=True)
-            yield Static(raccourcis([("enter", "Ouvrir"),
-                                     ("backspace", "Remonter"),
+            yield Static(raccourcis([("enter", N_("Open")),
+                                     ("backspace", N_("Up")),
                                      ("o", "OpenSubtitles"),
-                                     ("escape", "Annuler")]), id="donor-hint")
+                                     ("escape", N_("Cancel"))]), id="donor-hint")
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
-        table.add_column("Fichier", width=None, key="name")
-        colonne_fixe(table, "Taille",  8, key="taille")
+        table.add_column(_("File"), width=None, key="name")
+        colonne_fixe(table, _("Size"),  8, key="taille")
         self._populate()
         table.focus()
 
@@ -219,10 +220,10 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
     """
 
     BINDINGS = [
-        Binding("space",     "toggle", "Sélect",  show=True),
-        Binding("enter",     "accept", "Valider", show=True, priority=True),
-        Binding("escape",    "cancel", "Annuler", show=True, priority=True),
-        Binding("backspace", "cancel", "Retour",  show=False, priority=True),
+        Binding("space",     "toggle", N_("Toggle"),  show=True),
+        Binding("enter",     "accept", N_("OK"), show=True, priority=True),
+        Binding("escape",    "cancel", N_("Cancel"), show=True, priority=True),
+        Binding("backspace", "cancel", N_("Back"),  show=False, priority=True),
     ]
 
     def __init__(self, donor: Path) -> None:
@@ -233,12 +234,12 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
 
     def compose(self) -> ComposeResult:
         with Static(id="dt-box"):
-            yield Label("Pistes du donneur", id="dt-title")
+            yield Label(_("Donor tracks"), id="dt-title")
             yield Static(self._donor.name, id="dt-file")
             yield DataTable(id="dt-table", cursor_type="row", zebra_stripes=True)
-            yield Static(raccourcis([("space", "Sélectionner"),
-                                     ("enter", "Valider"),
-                                     ("escape", "Annuler")]), id="dt-hint")
+            yield Static(raccourcis([("space", N_("Select")),
+                                     ("enter", N_("OK")),
+                                     ("escape", N_("Cancel"))]), id="dt-hint")
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
@@ -246,14 +247,14 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
         # place, le codec la rend — « SubRip » n'a jamais eu besoin de 22
         # colonnes.
         table.add_column("",       width=5,  key="check")
-        colonne_fixe(table, "Piste",  6,  key="tid")
-        colonne_fixe(table, "Type",   11, key="kind")
+        colonne_fixe(table, _("Track"),  6,  key="tid")
+        colonne_fixe(table, _("Type"),   11, key="kind")
         colonne_fixe(table, "Codec",  14, key="codec")
-        colonne_fixe(table, "Langue", 8,  key="lang")
-        table.add_column("Nom",    width=None, key="name")
+        colonne_fixe(table, _("Language"), 8,  key="lang")
+        table.add_column(_("Name"), width=None, key="name")
 
         if not self._tracks:
-            table.add_row(Text(""), Text("(aucune piste lisible)", style="dim italic"),
+            table.add_row(Text(""), Text(f"({_('no readable track')})", style="dim italic"),
                           Text(""), Text(""), Text(""), Text(""))
         for t in self._tracks:
             table.add_row(*self._row(t), key=str(t.tid))

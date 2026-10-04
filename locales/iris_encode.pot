@@ -781,6 +781,7 @@ msgid "ffmpeg failed: {error}"
 msgstr ""
 
 #: core/sync.py:1372
+#: tui/screens/mux_run.py:159
 #, python-brace-format
 msgid "code {code}"
 msgstr ""
@@ -1048,6 +1049,8 @@ msgstr ""
 
 #: tui/common.py:391
 #: tui/screens/donor_picker.py:226
+#: tui/screens/mux_run.py:45
+#: tui/screens/mux_run.py:46
 #: tui/screens/opensubtitles.py:57
 #: tui/screens/profile_picker.py:61
 #: tui/screens/value_picker.py:53
@@ -1055,6 +1058,7 @@ msgid "Back"
 msgstr ""
 
 #: tui/common.py:395
+#: tui/screens/mux_run.py:49
 msgid "Home"
 msgstr ""
 
@@ -1421,6 +1425,63 @@ msgstr ""
 
 #: tui/screens/meta_popup.py:212
 msgid "Cannot fetch the information:"
+msgstr ""
+
+#: tui/screens/mux_run.py:43
+msgid "Dry run"
+msgstr ""
+
+#: tui/screens/mux_run.py:44
+msgid "Encode"
+msgstr ""
+
+#: tui/screens/mux_run.py:106
+#, python-brace-format
+msgid "{count} added track"
+msgid_plural "{count} added tracks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: tui/screens/mux_run.py:110
+#, python-brace-format
+msgid "Output: {file}"
+msgstr ""
+
+#: tui/screens/mux_run.py:139
+msgid "Mux started — copying the container…"
+msgstr ""
+
+#: tui/screens/mux_run.py:161
+#, python-brace-format
+msgid "Mux failed: {detail}"
+msgstr ""
+
+#: tui/screens/mux_run.py:178
+#, python-brace-format
+msgid "Mux succeeded ({file}) but cannot be read back: {error}. Encoding would target the original file."
+msgstr ""
+
+#: tui/screens/mux_run.py:197
+#, python-brace-format
+msgid "Done — {file}"
+msgstr ""
+
+#: tui/screens/mux_run.py:199
+#, python-brace-format
+msgid "Working file: {file}"
+msgstr ""
+
+#: tui/screens/mux_run.py:200
+#, python-brace-format
+msgid "{key} will encode this file  {decision}"
+msgstr ""
+
+#: tui/screens/mux_run.py:211
+msgid "Mux in progress…"
+msgstr ""
+
+#: tui/screens/mux_run.py:212
+msgid "Mux failed — nothing to encode."
 msgstr ""
 
 #: tui/screens/opensubtitles.py:55

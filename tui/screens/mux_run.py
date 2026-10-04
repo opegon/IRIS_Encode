@@ -15,12 +15,11 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Label, ProgressBar, Static
 
-from core.i18n import texte_erreur
-from core.texte import pluriel
+from core.i18n import N_, _, ngettext, texte_erreur
 from core.decision import FileDecision, force_skip_to_encode
 from core.muxer import MuxProcess, build_mux_command, mux_output_path
 
-from ..common import confier_a_la_file, barre_etat, actions_ecran, footer_line2, retour_accueil
+from ..common import confier_a_la_file, barre_etat, actions_ecran, footer_line2, retour_accueil, touche
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 
@@ -41,13 +40,13 @@ class MuxScreen(Screen[bool]):
     """Lance mkvmerge et suit sa progression."""
 
     BINDINGS = [
-        Binding("f1",        "dryrun",  "Aperçu",  show=True),
-        Binding("f2",        "encode",  "Encoder", show=True),
-        Binding("backspace", "go_back", "Retour",  show=True),
-        Binding("escape",    "go_back", "Retour",  show=False, priority=True),
+        Binding("f1",        "dryrun",  N_("Dry run"),  show=True),
+        Binding("f2",        "encode",  N_("Encode"), show=True),
+        Binding("backspace", "go_back", N_("Back"),  show=True),
+        Binding("escape",    "go_back", N_("Back"),  show=False, priority=True),
         # `priority` : un DataTable etouffe la touche avant les bindings —
         # meme avertissement qu'en tete de tui/mixins.py.
-        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+        Binding("ctrl+home", "accueil",   N_("Home"),       show=True,
                 priority=True),
     ]
 
@@ -103,9 +102,12 @@ class MuxScreen(Screen[bool]):
 
     def on_mount(self) -> None:
         self.query_one("#status-bar", Static).update(barre_etat(
-            "Mux", self._source.name, pluriel(len(self._tracks), "piste greffée")
+            "Mux", self._source.name,
+            ngettext("{count} added track", "{count} added tracks",
+                     len(self._tracks)).format(count=len(self._tracks))
         ))
-        self.query_one("#mux-out", Static).update(f"Sortie : {self._output.name}")
+        self.query_one("#mux-out", Static).update(
+            _("Output: {file}").format(file=self._output.name))
         self._run()
 
     # ── Exécution ─────────────────────────────────────────────────────────────
@@ -134,7 +136,7 @@ class MuxScreen(Screen[bool]):
 
         self.app.call_from_thread(self._set, "#mux-cmd", commande_courte(cmd))
         self.app.call_from_thread(
-            self._set, "#mux-state", "▶ Mux lancé — copie du conteneur en cours…")
+            self._set, "#mux-state", "▶ " + _("Mux started — copying the container…"))
 
         proc = MuxProcess(cmd)
         self._process = proc
@@ -154,9 +156,9 @@ class MuxScreen(Screen[bool]):
             self.app.call_from_thread(self._set_progress, 100)
             self.app.call_from_thread(self._adopt_output)
         else:
-            detail = proc.errors[0] if proc.errors else f"code {rc}"
+            detail = proc.errors[0] if proc.errors else _("code {code}").format(code=rc)
             self.app.call_from_thread(
-                self._set, "#mux-state", f"✗ Échec du mux : {detail}")
+                self._set, "#mux-state", "✗ " + _("Mux failed: {detail}").format(detail=detail))
 
     def _adopt_output(self) -> None:
         """
@@ -173,8 +175,10 @@ class MuxScreen(Screen[bool]):
             new_info = scanner.scan(self._output)
         except Exception as e:
             self._set("#mux-state",
-                      f"✓ Mux réussi ({self._output.name}) mais relecture "
-                      f"impossible : {texte_erreur(e)}. L'encodage viserait le fichier d'origine.")
+                      "✓ " + _("Mux succeeded ({file}) but cannot be read back: "
+                               "{error}. Encoding would target the original "
+                               "file.").format(file=self._output.name,
+                                               error=texte_erreur(e)))
             return
 
         fresh = decide(new_info, self._decision.profile)
@@ -190,10 +194,11 @@ class MuxScreen(Screen[bool]):
         # produit, autant l'afficher plutôt que de la faire découvrir.
         planned = force_skip_to_encode(self._decision).video.label()
         self._set("#mux-state",
-                  f"✓ Terminé — {self._output.name}")
+                  "✓ " + _("Done — {file}").format(file=self._output.name))
         self._set("#mux-out",
-                  f"Fichier de travail : {self._output.name}\n"
-                  f"F2 encodera ce fichier  {planned}")
+                  _("Working file: {file}").format(file=self._output.name) + "\n"
+                  + _("{key} will encode this file  {decision}").format(
+                      key=touche("f2"), decision=planned))
 
     # ── Enchaînement direct sur l'encodage ────────────────────────────────────
 
@@ -203,8 +208,8 @@ class MuxScreen(Screen[bool]):
             return True
         self.app.bell()
         self._set("#mux-state",
-                  "Mux en cours…" if not self._done
-                  else "✗ Mux en échec — rien à encoder.")
+                  _("Mux in progress…") if not self._done
+                  else "✗ " + _("Mux failed — nothing to encode."))
         return False
 
     def action_encode(self) -> None:

@@ -328,3 +328,29 @@ def test_la_console_accepte_la_lettre_de_sa_langue_et_y(monkeypatch):
     monkeypatch.setattr(preflight, "_ask", lambda p: invites.append(p) or "y")
     assert preflight._oui_non("Update these tools?")
     assert invites[-1] == "  Update these tools? (y/N): "
+
+
+def test_un_module_importe_ce_qu_il_appelle():
+    """Pendant l'extraction (IE-88), un `touche(...)` ajouté sans son import
+    ne s'est vu qu'en exécutant ce chemin-là : un `NameError` caché. Les
+    fonctions de traduction et d'affichage appelées doivent être importées
+    ou définies dans le module."""
+    noms = {"_", "N_", "Nn_", "ngettext", "pgettext", "npgettext",
+            "texte_erreur", "touche", "texte_style", "raccourcis", "colonne_fixe"}
+    fautes = []
+    for f in sorted([*RACINE.joinpath("core").rglob("*.py"),
+                     *RACINE.joinpath("tui").rglob("*.py")]):
+        arbre = ast.parse(f.read_text(encoding="utf-8"))
+        connus = set()
+        for n in ast.walk(arbre):
+            if isinstance(n, (ast.Import, ast.ImportFrom)):
+                connus |= {(a.asname or a.name).split(".")[0] for a in n.names}
+            elif isinstance(n, (ast.FunctionDef, ast.ClassDef)):
+                connus.add(n.name)
+            elif isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store):
+                connus.add(n.id)
+        appeles = {n.func.id for n in ast.walk(arbre)
+                   if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                   and n.func.id in noms}
+        fautes += [f"{f.relative_to(RACINE)} : {nom}" for nom in appeles - connus]
+    assert not fautes, fautes

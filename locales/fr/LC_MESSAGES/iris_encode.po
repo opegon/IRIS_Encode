@@ -781,6 +781,7 @@ msgid "ffmpeg failed: {error}"
 msgstr "ffmpeg a échoué : {error}"
 
 #: core/sync.py:1372
+#: tui/screens/mux_run.py:159
 #, python-brace-format
 msgid "code {code}"
 msgstr "code {code}"
@@ -1048,6 +1049,8 @@ msgstr "Élargir"
 
 #: tui/common.py:391
 #: tui/screens/donor_picker.py:226
+#: tui/screens/mux_run.py:45
+#: tui/screens/mux_run.py:46
 #: tui/screens/opensubtitles.py:57
 #: tui/screens/profile_picker.py:61
 #: tui/screens/value_picker.py:53
@@ -1055,6 +1058,7 @@ msgid "Back"
 msgstr "Retour"
 
 #: tui/common.py:395
+#: tui/screens/mux_run.py:49
 msgid "Home"
 msgstr "Accueil"
 
@@ -1422,6 +1426,63 @@ msgstr "Synopsis"
 #: tui/screens/meta_popup.py:212
 msgid "Cannot fetch the information:"
 msgstr "Impossible de récupérer les informations :"
+
+#: tui/screens/mux_run.py:43
+msgid "Dry run"
+msgstr "Aperçu"
+
+#: tui/screens/mux_run.py:44
+msgid "Encode"
+msgstr "Encoder"
+
+#: tui/screens/mux_run.py:106
+#, python-brace-format
+msgid "{count} added track"
+msgid_plural "{count} added tracks"
+msgstr[0] "{count} piste greffée"
+msgstr[1] "{count} pistes greffées"
+
+#: tui/screens/mux_run.py:110
+#, python-brace-format
+msgid "Output: {file}"
+msgstr "Sortie : {file}"
+
+#: tui/screens/mux_run.py:139
+msgid "Mux started — copying the container…"
+msgstr "Mux lancé — copie du conteneur en cours…"
+
+#: tui/screens/mux_run.py:161
+#, python-brace-format
+msgid "Mux failed: {detail}"
+msgstr "Échec du mux : {detail}"
+
+#: tui/screens/mux_run.py:178
+#, python-brace-format
+msgid "Mux succeeded ({file}) but cannot be read back: {error}. Encoding would target the original file."
+msgstr "Mux réussi ({file}) mais relecture impossible : {error}. L'encodage viserait le fichier d'origine."
+
+#: tui/screens/mux_run.py:197
+#, python-brace-format
+msgid "Done — {file}"
+msgstr "Terminé — {file}"
+
+#: tui/screens/mux_run.py:199
+#, python-brace-format
+msgid "Working file: {file}"
+msgstr "Fichier de travail : {file}"
+
+#: tui/screens/mux_run.py:200
+#, python-brace-format
+msgid "{key} will encode this file  {decision}"
+msgstr "{key} encodera ce fichier  {decision}"
+
+#: tui/screens/mux_run.py:211
+msgid "Mux in progress…"
+msgstr "Mux en cours…"
+
+#: tui/screens/mux_run.py:212
+msgid "Mux failed — nothing to encode."
+msgstr "Mux en échec — rien à encoder."
 
 #: tui/screens/opensubtitles.py:55
 #: tui/screens/opensubtitles.py:73

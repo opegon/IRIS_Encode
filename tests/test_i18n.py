@@ -292,3 +292,11 @@ def test_un_module_qui_traduit_n_ecrase_pas_underscore():
                     or isinstance(n, ast.arg) and n.arg == "_"):
                 fautes.append(f"{f.relative_to(RACINE)}:{n.lineno}")
     assert not fautes, fautes
+
+
+def test_une_erreur_brute_se_montre_telle_quelle():
+    """Le message d'un service : ni catalogue, ni `.format` (ses accolades
+    éventuelles ne cassent rien)."""
+    e = i18n.ErreurAffichable.brute("Quota {exceeded}")
+    assert str(e) == "Quota {exceeded}"
+    assert i18n.texte_erreur(e) == "Quota {exceeded}"

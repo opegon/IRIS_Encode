@@ -74,6 +74,7 @@ msgid "Give both the username and the password, or neither."
 msgstr ""
 
 #: core/cles.py:161
+#: core/opensubtitles.py:150
 #, python-brace-format
 msgid "OpenSubtitles unreachable: {error}"
 msgstr ""
@@ -356,6 +357,64 @@ msgstr ""
 #: core/muxer.py:434
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Remux refused to avoid corrupting the source file."
+msgstr ""
+
+#. F5 then K are keys; "API keys" is the name of the API keys window.
+#: core/opensubtitles.py:125
+msgid "API key missing — enter it from the profile management (F5, then K “API keys”)."
+msgstr ""
+
+#: core/opensubtitles.py:153
+msgid "Refused by OpenSubtitles (401) — wrong API key, username or password."
+msgstr ""
+
+#. F5 then K are keys.
+#: core/opensubtitles.py:158
+msgid "API key refused by OpenSubtitles (403) — check it from the profile management (F5, then K)."
+msgstr ""
+
+#: core/opensubtitles.py:166
+#, python-brace-format
+msgid "Too many requests — try again in {count} second."
+msgid_plural "Too many requests — try again in {count} seconds."
+msgstr[0] ""
+msgstr[1] ""
+
+#: core/opensubtitles.py:170
+msgid "Too many requests — try again in a few seconds."
+msgstr ""
+
+#: core/opensubtitles.py:173
+#, python-brace-format
+msgid "OpenSubtitles answered {status}: {detail}"
+msgstr ""
+
+#. F5 then K are keys.
+#: core/opensubtitles.py:182
+msgid "Downloading needs an account — enter a username and password from the profile management (F5, then K)."
+msgstr ""
+
+#: core/opensubtitles.py:189
+msgid "Login refused: no token received."
+msgstr ""
+
+#: core/opensubtitles.py:247
+msgid "No download link received."
+msgstr ""
+
+#: core/opensubtitles.py:252
+#, python-brace-format
+msgid "Download interrupted: {error}"
+msgstr ""
+
+#. {reset} is OpenSubtitles' own text, in English.
+#: core/opensubtitles.py:306
+#, python-brace-format
+msgid "Daily download quota used up — {reset}."
+msgstr ""
+
+#: core/opensubtitles.py:308
+msgid "Daily download quota used up."
 msgstr ""
 
 #: tui/screens/cles.py:99

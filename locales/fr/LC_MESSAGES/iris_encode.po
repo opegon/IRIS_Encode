@@ -74,6 +74,7 @@ msgid "Give both the username and the password, or neither."
 msgstr "Donnez l'identifiant et le mot de passe, ou aucun des deux."
 
 #: core/cles.py:161
+#: core/opensubtitles.py:150
 #, python-brace-format
 msgid "OpenSubtitles unreachable: {error}"
 msgstr "OpenSubtitles injoignable : {error}"
@@ -357,6 +358,64 @@ msgstr "Langue manquante pour la piste {track} de {file}. Sans langue, la piste 
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Remux refused to avoid corrupting the source file."
 msgstr "Chemin de sortie identique à la source ({path}). Remux refusé pour éviter la corruption du fichier source."
+
+#. F5 then K are keys; "API keys" is the name of the API keys window.
+#: core/opensubtitles.py:125
+msgid "API key missing — enter it from the profile management (F5, then K “API keys”)."
+msgstr "Clé d'API absente — saisissez-la depuis la gestion des profils (F5, puis K « Clés d'API »)."
+
+#: core/opensubtitles.py:153
+msgid "Refused by OpenSubtitles (401) — wrong API key, username or password."
+msgstr "Refusé par OpenSubtitles (401) — clé d'API, identifiant ou mot de passe incorrect."
+
+#. F5 then K are keys.
+#: core/opensubtitles.py:158
+msgid "API key refused by OpenSubtitles (403) — check it from the profile management (F5, then K)."
+msgstr "Clé d'API refusée par OpenSubtitles (403) — vérifiez-la depuis la gestion des profils (F5, puis K)."
+
+#: core/opensubtitles.py:166
+#, python-brace-format
+msgid "Too many requests — try again in {count} second."
+msgid_plural "Too many requests — try again in {count} seconds."
+msgstr[0] "Trop de requêtes — réessayez dans {count} seconde."
+msgstr[1] "Trop de requêtes — réessayez dans {count} secondes."
+
+#: core/opensubtitles.py:170
+msgid "Too many requests — try again in a few seconds."
+msgstr "Trop de requêtes — réessayez dans quelques secondes."
+
+#: core/opensubtitles.py:173
+#, python-brace-format
+msgid "OpenSubtitles answered {status}: {detail}"
+msgstr "OpenSubtitles a répondu {status} : {detail}"
+
+#. F5 then K are keys.
+#: core/opensubtitles.py:182
+msgid "Downloading needs an account — enter a username and password from the profile management (F5, then K)."
+msgstr "Télécharger demande un compte — saisissez identifiant et mot de passe depuis la gestion des profils (F5, puis K)."
+
+#: core/opensubtitles.py:189
+msgid "Login refused: no token received."
+msgstr "Connexion refusée : aucun jeton reçu."
+
+#: core/opensubtitles.py:247
+msgid "No download link received."
+msgstr "Aucun lien de téléchargement reçu."
+
+#: core/opensubtitles.py:252
+#, python-brace-format
+msgid "Download interrupted: {error}"
+msgstr "Téléchargement interrompu : {error}"
+
+#. {reset} is OpenSubtitles' own text, in English.
+#: core/opensubtitles.py:306
+#, python-brace-format
+msgid "Daily download quota used up — {reset}."
+msgstr "Quota de téléchargements du jour épuisé — {reset}."
+
+#: core/opensubtitles.py:308
+msgid "Daily download quota used up."
+msgstr "Quota de téléchargements du jour épuisé."
 
 #: tui/screens/cles.py:99
 #, python-brace-format

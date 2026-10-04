@@ -22,6 +22,7 @@ from textual.widgets import DataTable, Label, Static
 from ..common import colonne_fixe, raccourcis
 
 from core.texte import pluriel
+from core.i18n import texte_erreur
 from core.opensubtitles import Client, ErreurOpenSubtitles, Resultat
 
 
@@ -97,7 +98,7 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
             res = self._client.chercher(self._video, self._langues)
             self.app.call_from_thread(self._afficher, res)
         except ErreurOpenSubtitles as e:
-            self.app.call_from_thread(self._echec, str(e))
+            self.app.call_from_thread(self._echec, texte_erreur(e))
 
     def _afficher(self, resultats: list[Resultat]) -> None:
         self._occupe    = False
@@ -140,7 +141,7 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
             chemin, restant = self._client.telecharger(resultat, self._video)
             self.app.call_from_thread(self._fini, chemin, restant)
         except ErreurOpenSubtitles as e:
-            self.app.call_from_thread(self._echec, str(e))
+            self.app.call_from_thread(self._echec, texte_erreur(e))
 
     def _fini(self, chemin: Path, restant) -> None:
         if restant is not None:

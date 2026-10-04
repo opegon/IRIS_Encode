@@ -125,7 +125,15 @@ class ErreurAffichable(ValueError):
             source = msgid
         super().__init__(source.format(**params))
 
+    @classmethod
+    def brute(cls, texte: str) -> "ErreurAffichable":
+        """Un texte venu d'ailleurs (le message d'un service), montré tel
+        quel : il n'est pas au catalogue, et n'a pas à y être."""
+        return cls("{text}", text=texte)
+
     def message(self) -> str:
+        if self.msgid == "{text}":
+            return str(self.params["text"])
         if isinstance(self.msgid, tuple):
             gabarit = ngettext(*self.msgid, self.params["count"])
         else:

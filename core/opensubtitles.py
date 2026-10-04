@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from .i18n import N_, Nn_, ErreurAffichable
 from .meta import parse_title
 
 API_URL = "https://api.opensubtitles.com/api/v1"
@@ -58,8 +59,9 @@ _DEPUIS_API: dict[str, str] = {
 _EPISODE_RE = re.compile(r"(?i)\bS(\d{1,2})E(\d{1,3})\b")
 
 
-class ErreurOpenSubtitles(Exception):
-    """Un échec que l'utilisateur doit lire tel quel : le message est français."""
+class ErreurOpenSubtitles(ErreurAffichable):
+    """Un échec que l'utilisateur doit lire : message source anglais, traduit
+    à l'écran (`texte_erreur`)."""
 
 
 @dataclass
@@ -118,9 +120,11 @@ class Client:
     def __init__(self, api_key: str, utilisateur: str, mot_de_passe: str,
                  user_agent: str) -> None:
         if not api_key:
-            raise ErreurOpenSubtitles(
-                "Clé d'API absente — saisissez-la depuis la gestion des "
-                "profils (F5, puis K « Clés d'API »).")
+            # TRANSLATORS: F5 then K are keys; "API keys" is the name of the
+            # API keys window.
+            raise ErreurOpenSubtitles(N_(
+                "API key missing — enter it from the profile management (F5, "
+                "then K “API keys”)."))
         self._api_key     = api_key
         self._utilisateur = utilisateur
         self._mot_de_passe = mot_de_passe
@@ -143,38 +147,46 @@ class Client:
             r = requests.request(methode, f"{self._base}/{route}",
                                  headers=self._entetes(), timeout=20, **kw)
         except requests.RequestException as e:
-            raise ErreurOpenSubtitles(f"OpenSubtitles injoignable : {e}") from e
+            raise ErreurOpenSubtitles(N_("OpenSubtitles unreachable: {error}"),
+                                      error=e) from e
         if r.status_code == 401:
-            raise ErreurOpenSubtitles(
-                "Refusé par OpenSubtitles (401) — clé d'API, identifiant ou "
-                "mot de passe incorrect.")
+            raise ErreurOpenSubtitles(N_(
+                "Refused by OpenSubtitles (401) — wrong API key, username or "
+                "password."))
         if r.status_code == 403:
-            raise ErreurOpenSubtitles(
-                "Clé d'API refusée par OpenSubtitles (403) — vérifiez-la "
-                "depuis la gestion des profils (F5, puis K).")
+            # TRANSLATORS: F5 then K are keys.
+            raise ErreurOpenSubtitles(N_(
+                "API key refused by OpenSubtitles (403) — check it from the "
+                "profile management (F5, then K)."))
         if r.status_code == 406:
-            raise ErreurOpenSubtitles(_message_quota(r))
+            raise _erreur_quota(r)
         if r.status_code == 429:
-            attente = r.headers.get("Retry-After", "quelques")
-            raise ErreurOpenSubtitles(
-                f"Trop de requêtes — réessayez dans {attente} secondes.")
+            attente = r.headers.get("Retry-After", "")
+            if attente.isdigit():
+                raise ErreurOpenSubtitles(Nn_(
+                    "Too many requests — try again in {count} second.",
+                    "Too many requests — try again in {count} seconds."),
+                    count=int(attente))
+            raise ErreurOpenSubtitles(N_(
+                "Too many requests — try again in a few seconds."))
         if r.status_code >= 400:
-            raise ErreurOpenSubtitles(
-                f"OpenSubtitles a répondu {r.status_code} : {r.text[:200]}")
+            raise ErreurOpenSubtitles(N_("OpenSubtitles answered {status}: {detail}"),
+                                      status=r.status_code, detail=r.text[:200])
         return r.json()
 
     def _connecter(self) -> None:
         if self._jeton:
             return
         if not (self._utilisateur and self._mot_de_passe):
-            raise ErreurOpenSubtitles(
-                "Télécharger demande un compte — saisissez identifiant et mot "
-                "de passe depuis la gestion des profils (F5, puis K).")
+            # TRANSLATORS: F5 then K are keys.
+            raise ErreurOpenSubtitles(N_(
+                "Downloading needs an account — enter a username and password "
+                "from the profile management (F5, then K)."))
         rep = self._appel("POST", "login", json={
             "username": self._utilisateur, "password": self._mot_de_passe})
         self._jeton = rep.get("token")
         if not self._jeton:
-            raise ErreurOpenSubtitles("Connexion refusée : aucun jeton reçu.")
+            raise ErreurOpenSubtitles(N_("Login refused: no token received."))
         # Un compte VIP est servi par un autre hôte, que la connexion annonce.
         if rep.get("base_url"):
             self._base = f"https://{rep['base_url']}/api/v1"
@@ -230,12 +242,15 @@ class Client:
                            json={"file_id": resultat.file_id, "sub_format": "srt"})
         lien = rep.get("link")
         if not lien:
-            raise ErreurOpenSubtitles(rep.get("message") or "Aucun lien de téléchargement reçu.")
+            if rep.get("message"):
+                raise ErreurOpenSubtitles.brute(rep["message"])
+            raise ErreurOpenSubtitles(N_("No download link received."))
         try:
             contenu = requests.get(lien, timeout=30)
             contenu.raise_for_status()
         except requests.RequestException as e:
-            raise ErreurOpenSubtitles(f"Téléchargement interrompu : {e}") from e
+            raise ErreurOpenSubtitles(N_("Download interrupted: {error}"),
+                                      error=e) from e
 
         dossier = Path(tempfile.gettempdir()) / "iris_opensubtitles"
         dossier.mkdir(exist_ok=True)
@@ -279,11 +294,15 @@ def _lire_resultats(rep: dict) -> list[Resultat]:
     return sortie
 
 
-def _message_quota(r) -> str:
+def _erreur_quota(r) -> "ErreurOpenSubtitles":
+    """Quota du jour épuisé ; `remise` est le texte de l'API, tel quel (L-27)."""
     try:
         rep = r.json()
     except ValueError:
         rep = {}
     remise = rep.get("reset_time") or rep.get("message") or ""
-    return ("Quota de téléchargements du jour épuisé"
-            + (f" — {remise}" if remise else "") + ".")
+    if remise:
+        # TRANSLATORS: {reset} is OpenSubtitles' own text, in English.
+        return ErreurOpenSubtitles(N_("Daily download quota used up — {reset}."),
+                                   reset=remise)
+    return ErreurOpenSubtitles(N_("Daily download quota used up."))

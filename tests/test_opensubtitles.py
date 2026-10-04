@@ -6,7 +6,9 @@ les réponses de l'API v1 et garde la trace des requêtes reçues.
 """
 from __future__ import annotations
 
+import re
 import struct
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -187,15 +189,24 @@ def test_le_telechargement_se_connecte_et_ecrit_un_srt_qui_dit_sa_langue(tmp_pat
     chemin.unlink()
 
 
+@contextmanager
+def _refuse(motif: str):
+    """Le refus, lu comme l'écran le montre (`texte_erreur`, en français)."""
+    from core.i18n import texte_erreur
+    with pytest.raises(ErreurOpenSubtitles) as refus:
+        yield
+    assert re.search(motif, texte_erreur(refus.value)), texte_erreur(refus.value)
+
+
 def test_sans_compte_le_telechargement_le_dit(tmp_path, serveur):
     r = osub.Resultat(1, "fre", "", 0, False, False)
-    with pytest.raises(ErreurOpenSubtitles, match="identifiant et mot de passe"):
+    with _refuse("identifiant et mot de passe"):
         _client(user="", pwd="").telecharger(r, _video(tmp_path))
     assert serveur["appels"] == []
 
 
 def test_sans_cle_rien_ne_part():
-    with pytest.raises(ErreurOpenSubtitles, match="Clé d.API absente"):
+    with _refuse("Clé d.API absente"):
         Client("", "u", "p", "ua")
 
 
@@ -207,7 +218,7 @@ def test_sans_cle_rien_ne_part():
 ])
 def test_les_refus_de_l_api_sont_lisibles(tmp_path, serveur, status, json, headers, motif):
     serveur["routes"]["subtitles"] = _Rep(status, json, headers=headers)
-    with pytest.raises(ErreurOpenSubtitles, match=motif):
+    with _refuse(motif):
         _client().chercher(_video(tmp_path, taille=100), ["fre"])
 
 
@@ -215,7 +226,7 @@ def test_le_reseau_absent_est_lisible(tmp_path, monkeypatch):
     def panne(*a, **k):
         raise requests.ConnectionError("pas de réseau")
     monkeypatch.setattr(requests, "request", panne)
-    with pytest.raises(ErreurOpenSubtitles, match="injoignable"):
+    with _refuse("injoignable"):
         _client().chercher(_video(tmp_path, taille=100), ["fre"])
 
 

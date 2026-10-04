@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.75 — document de référence courant
+**Version** : 0.8.9.76 — document de référence courant
 **Date** : 2026-10-05
 **Statut** : stable
 
@@ -352,7 +352,9 @@ vérifier : l'URL vient d'une découverte dynamique, pas d'une source épinglée
 drapeaux à 5 s de délai chacun, et mkvmerge comme dovi_tool échouent sur le premier :
 en série, un démarrage payait jusqu'à dix lancements de sous-processus l'un après
 l'autre, deux fois s'il fallait installer ffmpeg. Même position que
-`platform.sonder_encodeurs` pour les encodeurs (§ 11).
+`platform.sonder_encodeurs` pour les encodeurs (§ 11). Le numéro lu est le
+premier `X.Y[.Z]` de la sortie, préfixe `v` ou `n` admis (`mkvmerge v99.0`,
+ffmpeg BtbN `n8.1.3-20260925`).
 
 ### 4.5 Sortie console
 
@@ -2850,6 +2852,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.76 | 2026-10-05 | **Version de ffmpeg mal lue** (§ 3, IE-115) : un build BtbN (`n8.1.3-…`) se lisait « 1.3 », et toute 8.x paraissait plus récente · `tests/test_updates.py` |
 | 0.8.9.75 | 2026-10-05 | **Textes de `tui/` extraits** (§ 2.1, IE-88) : environ 575 messages, français repris à l'identique (phrases autrefois coupées à la main repliées d'elles-mêmes) ; descriptions de touches marquées `N_()` et traduites au rendu ; largeurs d'en-têtes sur le texte affiché, en cellules ; capitales décoratives au rendu ; `core/texte.py` retiré · `tests/test_i18n.py` (garde-fou du français en dur dans `tui/`) |
 | 0.8.9.74 | 2026-10-04 | **Textes de `core/` extraits** (§ 2.1, IE-87) : messages en anglais source, français au catalogue à l'identique (181 messages) ; erreurs affichées en `ErreurAffichable`, montrées par `texte_erreur` ; pluriels par `ngettext` ; niveaux de confiance, oui/non des profils et actions d'après lot traduits à l'affichage ; lettre du « oui » de la console au catalogue · `tests/test_i18n.py` |
 | 0.8.9.73 | 2026-10-04 | **Glossaire anglais → français** (§ 2.1, IE-85) : `locales/glossaire.fr.csv`, un terme = une traduction, termes à ne pas traduire ; arbitrages de l'utilisateur (SKIP invariant, Dry run, Guided, « lossless » gardé) au wiki, page `localisation` · `tests/test_i18n.py` |

@@ -440,155 +440,155 @@ msgctxt "console prompt"
 msgid "{question} ({yes}/N): "
 msgstr ""
 
-#: core/preflight.py:180
+#: core/preflight.py:182
 #, python-brace-format
 msgid "Download failed: {error}"
 msgstr ""
 
-#: core/preflight.py:186
+#: core/preflight.py:188
 msgid "Wrong SHA256 checksum — download rejected."
 msgstr ""
 
 #. "expected" and "got" lines are aligned on their colon.
-#: core/preflight.py:188
+#: core/preflight.py:190
 #, python-brace-format
 msgid "expected: {value}"
 msgstr ""
 
-#: core/preflight.py:189
+#: core/preflight.py:191
 #, python-brace-format
 msgid "got:      {value}"
 msgstr ""
 
-#: core/preflight.py:207
-#: core/preflight.py:244
-#: core/preflight.py:311
+#: core/preflight.py:209
+#: core/preflight.py:246
+#: core/preflight.py:313
 #, python-brace-format
 msgid "Installed: {path}"
 msgstr ""
 
-#: core/preflight.py:210
+#: core/preflight.py:212
 msgid "Invalid archive (not a ZIP)."
 msgstr ""
 
-#: core/preflight.py:255
-#: core/preflight.py:270
-#: core/preflight.py:331
-#: core/preflight.py:354
-#: core/preflight.py:486
+#: core/preflight.py:257
+#: core/preflight.py:272
+#: core/preflight.py:333
+#: core/preflight.py:356
+#: core/preflight.py:488
 #, python-brace-format
 msgid "Downloading from {url}"
 msgstr ""
 
-#: core/preflight.py:268
-#: core/preflight.py:329
-#: core/preflight.py:352
+#: core/preflight.py:270
+#: core/preflight.py:331
+#: core/preflight.py:354
 #, python-brace-format
 msgid "{tool} URL not found in the sources."
 msgstr ""
 
-#: core/preflight.py:299
+#: core/preflight.py:301
 #, python-brace-format
 msgid "Extraction impossible ({error}) — tar not found?"
 msgstr ""
 
-#: core/preflight.py:302
+#: core/preflight.py:304
 msgid "7z archive unreadable by tar."
 msgstr ""
 
-#: core/preflight.py:324
-#: core/preflight.py:347
+#: core/preflight.py:326
+#: core/preflight.py:349
 #, python-brace-format
 msgid "On Linux, install {tool} with your package manager."
 msgstr ""
 
-#: core/preflight.py:365
+#: core/preflight.py:367
 msgid "optional"
 msgstr ""
 
-#: core/preflight.py:395
+#: core/preflight.py:397
 msgid "dovi_tool missing (optional — needed for Dolby Vision)."
 msgstr ""
 
-#: core/preflight.py:399
+#: core/preflight.py:401
 msgid "mkvmerge missing (optional — needed to add external tracks)."
 msgstr ""
 
-#: core/preflight.py:403
+#: core/preflight.py:405
 msgid "mpv missing (optional — used to check a resync by eye)."
 msgstr ""
 
-#: core/preflight.py:413
+#: core/preflight.py:415
 msgid "No download URL configured."
 msgstr ""
 
 #. config.toml > [ffmpeg] > fetch_url is a settings key, keep it as is.
-#: core/preflight.py:416
+#: core/preflight.py:418
 msgid "Fill in config.toml > [ffmpeg] > fetch_url"
 msgstr ""
 
-#: core/preflight.py:420
+#: core/preflight.py:422
 msgid "Download and install ffmpeg into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:429
+#: core/preflight.py:431
 msgid "Install ffmpeg manually into ./bin/ or add it to the PATH."
 msgstr ""
 
-#: core/preflight.py:436
+#: core/preflight.py:438
 msgid "Download and install dovi_tool (Dolby Vision) into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:439
+#: core/preflight.py:441
 msgid "dovi_tool installation failed — Dolby Vision features unavailable."
 msgstr ""
 
-#: core/preflight.py:441
+#: core/preflight.py:443
 msgid "dovi_tool skipped — Dolby Vision files will not be handled optimally."
 msgstr ""
 
-#: core/preflight.py:447
+#: core/preflight.py:449
 msgid "Download and install mkvmerge (external tracks) into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:450
+#: core/preflight.py:452
 msgid "mkvmerge installation failed — adding external tracks unavailable."
 msgstr ""
 
-#: core/preflight.py:452
+#: core/preflight.py:454
 msgid "mkvmerge skipped — adding external audio/subtitle tracks will be unavailable."
 msgstr ""
 
-#: core/preflight.py:458
+#: core/preflight.py:460
 msgid "Download and install mpv (resync check) into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:461
+#: core/preflight.py:463
 msgid "mpv installation failed — the resync can only be set blind."
 msgstr ""
 
-#: core/preflight.py:463
+#: core/preflight.py:465
 msgid "mpv skipped — you will not be able to check a resync by eye."
 msgstr ""
 
-#: core/preflight.py:516
+#: core/preflight.py:518
 msgid "Checking for updates…"
 msgstr ""
 
-#: core/preflight.py:538
+#: core/preflight.py:540
 msgid "Update these tools?"
 msgstr ""
 
-#: core/preflight.py:539
+#: core/preflight.py:541
 msgid "Update skipped — the installed versions stay in place."
 msgstr ""
 
-#: core/preflight.py:546
+#: core/preflight.py:548
 #, python-brace-format
 msgid "{tool}: downloading {version}…"
 msgstr ""
 
-#: core/preflight.py:553
+#: core/preflight.py:555
 #, python-brace-format
 msgid "{tool} update failed — previous version kept."
 msgstr ""

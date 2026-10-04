@@ -97,9 +97,11 @@ def _get_version(path: str) -> str:
             if not output or r.returncode not in (0, 1):
                 continue
             # Cherche un numéro de version semver (X.Y ou X.Y.Z) en priorité.
-            # Le 'v?' couvre les versions collées à leur préfixe (mkvmerge v99.0),
-            # où \b ne s'applique pas entre la lettre et le premier chiffre.
-            m = __import__('re').search(r'\bv?(\d+\.\d+(?:\.\d+)*)\b', output)
+            # Le '[vn]?' couvre les versions collées à leur préfixe (mkvmerge
+            # v99.0, ffmpeg BtbN n8.1.3), où \b ne s'applique pas entre la
+            # lettre et le premier chiffre : sans lui, « n8.1.3 » se lisait
+            # « 1.3 » (IE-115).
+            m = __import__('re').search(r'\b[vn]?(\d+\.\d+(?:\.\d+)*)\b', output)
             if m:
                 return m.group(1)
             # Fallback : dernier token de la première ligne (hash, build id…)

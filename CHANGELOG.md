@@ -1,5 +1,15 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.76] — 2026-10-05
+
+### Version de ffmpeg mal lue au démarrage
+
+IE-115. Le preflight affichait « ffmpeg — 1.3 » pour un ffmpeg 8.1.3 : les
+builds BtbN s'annoncent `n8.1.3-20260925`, et la lecture du numéro sautait
+le « n8 » collé à sa lettre. La version fausse faisait aussi paraître plus
+récente n'importe quelle release 8.x, d'où une mise à jour proposée à tort.
+Le préfixe `n` est maintenant admis, comme l'était le `v` de mkvmerge.
+
 ## [v0.8.9.75] — 2026-10-05
 
 ### Textes de `tui/` extraits pour la traduction

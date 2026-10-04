@@ -110,3 +110,29 @@ def test_corrupt_cache_is_not_an_error(tmp_path: Path):
     cache = tmp_path / "c.toml"
     cache.write_text("ceci n'est pas du toml [[[", encoding="utf-8")
     assert updates.load_cache(cache) is None
+
+
+# ─── Version installée, lue dans la sortie de l'outil (IE-115) ────────────────
+
+@pytest.mark.parametrize("sortie, attendu", [
+    # Build BtbN : le numéro collé à un « n ». Lu « 1.3 », il faisait proposer
+    # une mise à jour à chaque lancement.
+    ("ffmpeg version n8.1.3-20260925 Copyright (c) 2000-2026 the FFmpeg developers", "8.1.3"),
+    ("ffprobe version n8.1.3-20260925 Copyright (c) 2007-2026 the FFmpeg developers", "8.1.3"),
+    ("ffmpeg version 8.1.2-essentials_build-www.gyan.dev Copyright (c) 2000-2026", "8.1.2"),
+    ("mkvmerge v99.0 ('Gargantua') 64-bit", "99.0"),
+    ("dovi_tool 2.3.1", "2.3.1"),
+    ("mpv v0.41.0-dev-g1234abc Copyright © 2000-2026 mpv/MPlayer/mplayer2 projects", "0.41.0"),
+])
+def test_la_version_installee_se_lit_dans_la_sortie(monkeypatch, sortie, attendu):
+    import subprocess
+    from core import preflight
+
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(
+        a[0], 0, stdout=sortie + "\nbuilt with gcc 16.2.0\n", stderr=""))
+    assert preflight._get_version("outil") == attendu
+
+
+def test_un_ffmpeg_a_jour_ne_reclame_pas_de_mise_a_jour():
+    """IE-115 : « 1.3 » au lieu de 8.1.3 faisait gagner n'importe quelle 8.x."""
+    assert not updates.is_newer("8.1.2", "8.1.3")

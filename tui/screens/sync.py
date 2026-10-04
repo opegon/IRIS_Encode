@@ -28,9 +28,8 @@ from textual.events import Key
 from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
-from core.i18n import texte_erreur
+from core.i18n import N_, _, liste, ngettext, texte_erreur
 from core import preview
-from core.texte import pluriel
 from core.decision import FileDecision
 from core.muxer import (
     ExternalTrack, MuxProcess, SyncOrigin, TrackKind, build_sample_command,
@@ -54,12 +53,12 @@ from .value_picker import ValuePickerScreen
 _FIELDS = ["delay", "stretch", "lang", "name", "default", "forced"]
 
 _FIELD_LABELS = {
-    "delay":   "Décalage",
-    "stretch": "Étirement",
-    "lang":    "Langue",
-    "name":    "Nom",
-    "default": "Défaut",
-    "forced":  "Forcé",
+    "delay":   N_("Offset"),
+    "stretch": N_("Stretch"),
+    "lang":    N_("Language"),
+    "name":    N_("Name"),
+    "default": N_("Default"),
+    "forced":  N_("Forced"),
 }
 
 # Étirements courants : corrige les sources PAL accélérées (25 vs 23.976 fps)
@@ -86,7 +85,7 @@ def _noms(t: ExternalTrack) -> list[str]:
 # sur +/-, mais la liste évite de marteler une touche pour partir de loin.
 _DELAY_PRESETS = [-5000, -3000, -2000, -1000, -500, -250, 0,
                   250, 500, 1000, 2000, 3000, 5000]
-_BOOLS = ["non", "oui"]
+_BOOLS = [N_("no"), N_("yes")]
 
 # « Français (France) (forced) » fait 26 caractères : la colonne les tient.
 # En dessous, deux pistes d'un même rip s'affichaient à l'identique.
@@ -104,12 +103,12 @@ _DELAY_JUMP_MS = 1000
 # les valeurs, et annoncer un pas en millisecondes y serait faux.
 _FIELD_KEYS: dict[str, list[tuple[str, str]]] = {
     "delay":   [("Ctrl+↑/↓", "±10 ms"), ("+/-", "±100 ms"),
-                ("⇧↑/↓", "±1 s"), ("enter", "Liste")],
-    "stretch": [("+/-", "Valeur suivante"), ("enter", "Liste")],
-    "lang":    [("+/-", "Valeur suivante"), ("enter", "Liste")],
-    "name":    [("+/-", "Valeur suivante"), ("enter", "Liste")],
-    "default": [("+/-", "Bascule"),         ("enter", "Liste")],
-    "forced":  [("+/-", "Bascule"),         ("enter", "Liste")],
+                ("⇧↑/↓", "±1 s"), ("enter", N_("List"))],
+    "stretch": [("+/-", N_("Step through values")), ("enter", N_("List"))],
+    "lang":    [("+/-", N_("Step through values")), ("enter", N_("List"))],
+    "name":    [("+/-", N_("Step through values")), ("enter", N_("List"))],
+    "default": [("+/-", N_("Switch")),              ("enter", N_("List"))],
+    "forced":  [("+/-", N_("Switch")),              ("enter", N_("List"))],
 }
 
 
@@ -123,29 +122,36 @@ def ligne_champ(field: str) -> str:
     deux seules situations où l'on vient justement régler une valeur. Ne
     restait que l'état où tout va bien et où il n'y a rien à faire.
     """
-    return (f"{_FIELD_LABELS[field]} : "
-            + raccourcis(_FIELD_KEYS[field] + [("←/→", "Autre champ")]))
+    return _("{field}: {keys}").format(
+        field=_(_FIELD_LABELS[field]),
+        keys=raccourcis(_FIELD_KEYS[field] + [("←/→", N_("Other field"))]))
 
 
 # Les actions de l'écran, en repli quand aucun message ne les remplace.
-_HINT = raccourcis([("m", "Mesurer"), ("v", "Visualiser"),
-                    ("k", "Extrait de contrôle"), ("c", "Copier"),
-                    ("r", "Repère"), ("F9", "Ajouter"),
-                    ("d", "Retirer")])
-_HINT_NO_LANG = (f"⚠ Langue manquante — +/- ou {touche('enter')} pour la "
-                 f"choisir. Sans elle, la piste sortirait en « und ».")
+# Rendues à l'appel : `raccourcis` traduit, la langue n'est pas chargée à
+# l'import (L-39).
+def _hint() -> str:
+    return raccourcis([("m", N_("Measure")), ("v", N_("Play")),
+                       ("k", N_("Check sample")), ("c", N_("Copy")),
+                       ("r", N_("Anchor")), ("F9", N_("Add")),
+                       ("d", N_("Remove"))])
+
+
+def _hint_no_lang() -> str:
+    return "⚠ " + _("Missing language — +/- or {key} to choose it. Without it, "
+                    "the track would come out as “und”.").format(key=touche("enter"))
 
 
 class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     """Réglage du recalage de chaque piste externe, puis mux."""
 
     BINDINGS = [
-        Binding("left",      "field_prev",   "Champ préc.",   show=False),
-        Binding("right",     "field_next",   "Champ suiv.",   show=False),
+        Binding("left",      "field_prev",   N_("Prev. field"),   show=False),
+        Binding("right",     "field_next",   N_("Next field"),    show=False),
         # Alias clavier : selon la disposition, '+' arrive en 'plus',
         # 'equals_sign' ou depuis le pavé numérique.
-        Binding("+,plus,equals_sign,kp_plus",   "val_up",   "Valeur suiv.", show=False),
-        Binding("-,minus,kp_minus",             "val_down", "Valeur préc.", show=False),
+        Binding("+,plus,equals_sign,kp_plus",   "val_up",   N_("Next value"), show=False),
+        Binding("-,minus,kp_minus",             "val_down", N_("Prev. value"), show=False),
         Binding("shift+up",  "jump_up",      "+1 s",          show=False),
         Binding("shift+down","jump_down",    "-1 s",          show=False),
         # Pas fin, pour finir d'approcher une valeur mesurée.
@@ -161,31 +167,31 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 "fine_up",   "+10 ms", show=False),
         Binding("ctrl+down,ctrl+underscore,ctrl+minus,ctrl+kp_minus",
                 "fine_down", "-10 ms", show=False),
-        Binding("enter",     "open_picker",  "Liste",         show=True, priority=True),
-        Binding("m",         "measure",      "Mesurer",       show=True),
-        Binding("v",         "preview",      "Visualiser",    show=True),
-        Binding("k",         "sample",       "Extrait",       show=True),
+        Binding("enter",     "open_picker",  N_("List"),          show=True, priority=True),
+        Binding("m",         "measure",      N_("Measure"),       show=True),
+        Binding("v",         "preview",      N_("Play"),          show=True),
+        Binding("k",         "sample",       N_("Sample"),        show=True),
         # `F` et `G` : `A` coche tout sur l'accueil, `S` passe un fichier
         # pendant l'encodage, `O` ouvre OpenSubtitles sur l'écran voisin (UX-12).
         Binding("f",         "apply_candidate",
-                "Forcer",  show=True),
-        Binding("g",         "show_segments", "Plages",        show=True),
+                N_("Force"),  show=True),
+        Binding("g",         "show_segments", N_("Segments"),   show=True),
         Binding("p",         "apply_segments",
-                "Appliquer",  show=True),
-        Binding("c",         "copy_delay",   "Copier", show=True),
-        Binding("r",         "ancrer",       "Repère", show=True),
-        Binding("d",         "remove_track", "Retirer",       show=True),
+                N_("Apply"),  show=True),
+        Binding("c",         "copy_delay",   N_("Copy"),   show=True),
+        Binding("r",         "ancrer",       N_("Anchor"), show=True),
+        Binding("d",         "remove_track", N_("Remove"),        show=True),
         # F1/F2 gardent partout le même sens : dry-run et encodage. Le mux,
         # propre à cet écran, prend F3.
-        Binding("f1",        "dryrun",       "Aperçu",        show=True),
-        Binding("f2",        "run",          "Encoder",       show=True),
-        Binding("f3",        "run_mux",      "Muxer",         show=True),
-        Binding("f9",        "add_track",    "Ajouter", show=True),
-        Binding("backspace", "go_back",      "Retour",        show=True),
-        Binding("escape",    "go_back",      "Retour",        show=False, priority=True),
+        Binding("f1",        "dryrun",       N_("Dry run"),       show=True),
+        Binding("f2",        "run",          N_("Encode"),        show=True),
+        Binding("f3",        "run_mux",      N_("Mux"),           show=True),
+        Binding("f9",        "add_track",    N_("Add"), show=True),
+        Binding("backspace", "go_back",      N_("Back"),          show=True),
+        Binding("escape",    "go_back",      N_("Back"),          show=False, priority=True),
         # `priority` : un DataTable etouffe la touche avant les bindings —
         # meme avertissement qu'en tete de tui/mixins.py.
-        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+        Binding("ctrl+home", "accueil",   N_("Home"),       show=True,
                 priority=True),
     ]
 
@@ -248,7 +254,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield DataTable(id="sync-table", cursor_type="row", zebra_stripes=False)
         with Static(id="sync-bar-row"):
-            yield Label("Mesure en cours", id="sync-bar-label")
+            yield Label(_("Measurement in progress"), id="sync-bar-label")
             yield ProgressBar(total=100, show_eta=False, id="sync-bar")
         yield Static("", id="sync-hint", markup=False)
         yield KeyFooter(
@@ -276,13 +282,13 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
 
         # Les champs éditables portent le nom que leur donne `_FIELD_LABELS` :
         # un en-tête, un libellé (L-79).
-        colonne_fixe(table, "Source", 28, key="src")
-        colonne_fixe(table, "Piste",  14, key="tid")
+        colonne_fixe(table, _("Source"), 28, key="src")
+        colonne_fixe(table, _("Track"),  14, key="tid")
         for champ, plancher in (("delay", 12), ("stretch", 11), ("lang", 8),
                                 ("name", _NAME_WIDTH), ("default", 8),
                                 ("forced", 7)):
-            colonne_fixe(table, _FIELD_LABELS[champ], plancher, key=champ)
-        table.add_column("Recalage",  width=None, key="origin")
+            colonne_fixe(table, _(_FIELD_LABELS[champ]), plancher, key=champ)
+        table.add_column(_("Sync"),  width=None, key="origin")
 
         for i, t in enumerate(self._tracks):
             table.add_row(*self._row(i), key=str(i))
@@ -310,9 +316,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             # une ellipse à droite les rendait toutes identiques.
             txt = tronquer_milieu(t.track_name or "—", _NAME_WIDTH)
         elif field == "default":
-            txt = "oui" if t.is_default else "non"
+            txt = _(_BOOLS[t.is_default])
         else:
-            txt = "oui" if t.is_forced else "non"
+            txt = _(_BOOLS[t.is_forced])
         return Text(txt, style=style, no_wrap=True)
 
     def _row(self, i: int) -> tuple:
@@ -320,10 +326,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         kind = libelle_type_piste(t.kind)
         origin = {
             SyncOrigin.NONE:     Text("—", style="dim"),
-            SyncOrigin.MEASURED: Text("mesuré", style="green"),
-            SyncOrigin.MANUAL:   Text("manuel", style="cyan"),
+            SyncOrigin.MEASURED: Text(_("measured"), style="green"),
+            SyncOrigin.MANUAL:   Text(_("manual"), style="cyan"),
             SyncOrigin.COPIED:   Text(
-                f"repris de #{(t.copied_from or 0) + 1}", style="cyan"),
+                _("copied from #{number}").format(number=(t.copied_from or 0) + 1),
+                style="cyan"),
         }[t.sync_origin]
         return (
             Text(t.source_path.name, no_wrap=True, overflow="ellipsis"),
@@ -351,10 +358,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     def _update_status(self) -> None:
         n       = len(self._tracks)
         missing = sum(1 for t in self._tracks if not t.language)
-        warn    = f"⚠ {pluriel(missing, 'piste')} sans langue" if missing else ""
+        warn    = ("⚠ " + ngettext("{count} track without a language",
+                                   "{count} tracks without a language",
+                                   missing).format(count=missing)) if missing else ""
         self.query_one("#status-bar", Static).update(barre_etat(
-            "", self._source.name, f"{pluriel(n, 'piste')} à greffer",
-            f"Champ : {_FIELD_LABELS[_FIELDS[self._field_idx]]}", warn,
+            "", self._source.name,
+            ngettext("{count} track to add", "{count} tracks to add", n).format(count=n),
+            _("Field: {field}").format(field=_(_FIELD_LABELS[_FIELDS[self._field_idx]])),
+            warn,
         ))
         self._refresh_hint(missing)
 
@@ -368,13 +379,13 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             missing = sum(1 for t in self._tracks if not t.language)
         # Un message de mesure survit à la navigation : sans ça, la moindre
         # flèche effaçait le résultat et l'écran semblait n'avoir rien fait.
-        message = self._hint_override or (_HINT_NO_LANG if missing else _HINT)
+        message = self._hint_override or (_hint_no_lang() if missing else _hint())
         self.query_one("#sync-hint", Static).update(
             ligne_champ(_FIELDS[self._field_idx]) + "\n" + message
         )
 
     @on(DataTable.RowHighlighted)
-    def _on_row_highlight(self, _: DataTable.RowHighlighted) -> None:
+    def _on_row_highlight(self, _evt: DataTable.RowHighlighted) -> None:
         self._refresh_all()
 
     # ── Navigation entre champs ───────────────────────────────────────────────
@@ -479,7 +490,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             cur  = min(range(len(_DELAY_PRESETS)),
                        key=lambda k: abs(_DELAY_PRESETS[k] - t.delay_ms))
         else:
-            opts = _BOOLS
+            opts = [_(b) for b in _BOOLS]
             cur  = int(t.is_default if field == "default" else t.is_forced)
 
         def _apply(choice: int | None) -> None:
@@ -504,7 +515,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self._update_status()
 
         self.app.push_screen(
-            ValuePickerScreen(_FIELD_LABELS[field], opts, cur), _apply
+            ValuePickerScreen(_(_FIELD_LABELS[field]), opts, cur), _apply
         )
 
     # ── Mesure automatique ────────────────────────────────────────────────────
@@ -514,14 +525,15 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         if i is None:
             return
         if self._measuring:
-            self._set_hint("Une mesure est déjà en cours — laissez-la finir.")
+            self._set_hint(_("A measurement is already running — let it finish."))
             return
         self._measuring = True
-        self._set_hint(f"⏳ Mesure de « {self._tracks[i].source_path.name} »\n"
-                       f"Décodage de l'audio du film — sur un long métrage, "
-                       f"comptez plusieurs dizaines de secondes.")
+        self._set_hint("⏳ " + _("Measuring “{file}”").format(
+                           file=self._tracks[i].source_path.name) + "\n"
+                       + _("Decoding the film's audio — on a feature film, "
+                           "allow several tens of seconds."))
         # Visible dans la ligne elle-même : la barre du bas peut passer inaperçue
-        self._set_origin_cell(i, Text("mesure…", style="yellow"))
+        self._set_origin_cell(i, Text(_("measuring…"), style="yellow"))
         self._show_bar(True)
         self._measure(self._tracks[i])
 
@@ -532,7 +544,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         except Exception:
             pass
 
-    def _show_bar(self, visible: bool, libelle: str = "Mesure en cours") -> None:
+    def _show_bar(self, visible: bool, libelle: str = "") -> None:
         """Affiche la barre, en nommant le travail réellement en cours.
 
         Un libellé qui parle de mesure pendant un recalage laisse croire à un
@@ -542,7 +554,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         try:
             self.query_one("#sync-bar-row").set_class(visible, "mesure")
             if visible:
-                self.query_one("#sync-bar-label", Label).update(libelle)
+                self.query_one("#sync-bar-label", Label).update(
+                    libelle or _("Measurement in progress"))
                 self.query_one("#sync-bar", ProgressBar).progress = 0
         except Exception:
             pass
@@ -569,7 +582,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             res = measure_external_track(self._source, t, progress=report,
                                          duration=self._decision.info.duration)
         except Exception as e:                       # ffmpeg absent, fichier illisible…
-            res = SyncResult(0, None, 0.0, False, f"mesure impossible : {texte_erreur(e)}")
+            res = SyncResult(0, None, 0.0, False, _("cannot measure: {error}").format(
+                error=texte_erreur(e)))
         self.app.call_from_thread(self._apply_measure, t, res)
 
     def _apply_measure(self, piste: ExternalTrack, res: SyncResult) -> None:
@@ -580,7 +594,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return                                   # piste retirée entre-temps
         if not res.ok:
             self.app.bell()
-            self._set_origin_cell(i, Text("échec", style="bold dark_orange"))
+            self._set_origin_cell(i, Text(_("failed"), style="bold dark_orange"))
             # Le candidat refusé reste applicable : il est souvent correct
             # malgré une confiance basse, et un décalage d'une minute est
             # hors de portée des touches +/-.
@@ -591,10 +605,10 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 # proposer d'appliquer un décalage unique serait ici trompeur.
                 self._set_hint(res.report())
             else:
-                self._set_hint(f"{res.report()}\n"
-                               f"{touche('f')} applique quand même "
-                               f"{res.best_delay_ms:+d} ms "
-                               f"— à vérifier dans un lecteur.")
+                self._set_hint(res.report() + "\n"
+                               + _("{key} applies {delay} ms anyway — check it "
+                                   "in a player.").format(
+                                   key=touche("f"), delay=f"{res.best_delay_ms:+d}"))
             return
         self._candidate = None
         self._segments  = None
@@ -622,10 +636,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     def _note_propagation(n: int) -> str:
         if n == 0:
             return ""
-        pistes = "sous-titre" if n == 1 else "sous-titres"
-        accord = "s" if n > 1 else ""
-        return (f"\n{n} {pistes} du même fichier recalé{accord} d'autant "
-                f"— {touche('c')} pour en reprendre un autre.")
+        return "\n" + ngettext(
+            "{count} subtitle from the same file resynced by the same amount "
+            "— {key} to copy from another one.",
+            "{count} subtitles from the same file resynced by the same amount "
+            "— {key} to copy from another one.", n).format(count=n, key=touche("c"))
 
     def action_ancrer(self) -> None:
         """Recale à partir d'un point donné à l'oreille.
@@ -638,8 +653,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return
         t = self._tracks[i]
         if t.kind != TrackKind.SUBTITLE:
-            self._set_hint("Le point de repère sert aux sous-titres : une piste "
-                           "audio se mesure directement avec M.")
+            self._set_hint(_("The anchor point is for subtitles: an audio track "
+                             "is measured directly with {key}.").format(key=touche("m")))
             return
 
         from .ancrage import AncrageModal
@@ -653,16 +668,17 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                                           TrackKind.SUBTITLE)
                 extrait = extract_subtitle(t.source_path, idx)
                 if extrait is None:
-                    self._set_hint("Sous-titre image (PGS, VobSub) : aucun "
-                                   "texte à proposer comme repère.")
+                    self._set_hint(_("Image subtitle (PGS, VobSub): no text to "
+                                     "offer as an anchor."))
                     return
                 src = extrait
             reperes = reperes_proposables(src)
         except Exception as e:                       # noqa: BLE001
-            self._set_hint(f"Lecture des répliques impossible : {texte_erreur(e)}")
+            self._set_hint(_("Cannot read the subtitle lines: {error}").format(
+                error=texte_erreur(e)))
             return
         if not reperes:
-            self._set_hint("Aucune réplique lisible dans cette piste.")
+            self._set_hint(_("No readable line in this track."))
             return
 
         def _apres(points) -> None:
@@ -670,10 +686,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 return
             ecrit, entendu = points
             self._measuring = True
-            self._set_hint(f"⏳ Recherche autour de {entendu - ecrit:+.1f} s.\n"
-                           f"Décodage de l'audio du film — comptez plusieurs "
-                           f"dizaines de secondes.")
-            self._set_origin_cell(i, Text("mesure…", style="yellow"))
+            self._set_hint("⏳ " + _("Searching around {offset} s.").format(
+                               offset=f"{entendu - ecrit:+.1f}") + "\n"
+                           + _("Decoding the film's audio — allow several tens "
+                               "of seconds."))
+            self._set_origin_cell(i, Text(_("measuring…"), style="yellow"))
             self._show_bar(True)
             self._mesure_ancree(t, ecrit, entendu)
 
@@ -695,7 +712,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                                       duration=self._decision.info.duration,
                                       donor_track=idx)
         except Exception as e:                       # noqa: BLE001
-            res = SyncResult(0, None, 0.0, False, f"mesure impossible : {texte_erreur(e)}")
+            res = SyncResult(0, None, 0.0, False, _("cannot measure: {error}").format(
+                error=texte_erreur(e)))
         self.app.call_from_thread(self._apply_measure, t, res)
 
     def _set_hint(self, text: str) -> None:
@@ -717,15 +735,15 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         avec +/-.
         """
         if self._candidate is None:
-            self._set_hint("Aucun candidat en attente — lancez d'abord une "
-                           "mesure avec M.")
+            self._set_hint(_("No candidate pending — run a measurement with "
+                             "{key} first.").format(key=touche("m")))
             return
         piste, delay = self._candidate
         i = self._rang(piste)
         if i is None:                       # piste retirée depuis la mesure
             self._candidate = None
-            self._set_hint("La piste mesurée a été retirée — le candidat ne "
-                           "s'applique plus à rien.")
+            self._set_hint(_("The measured track has been removed — the "
+                             "candidate no longer applies to anything."))
             return
         t = piste
         t.delay_ms    = delay
@@ -736,8 +754,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         # Un candidat forcé reste une décision de l'utilisateur : les
         # sous-titres du même donneur la suivent comme ils suivraient une
         # mesure.
-        self._set_hint(f"Candidat appliqué : {delay:+d} ms — non confirmé par "
-                       f"la mesure, vérifiez dans un lecteur avant de muxer."
+        self._set_hint(_("Candidate applied: {delay} ms — not confirmed by the "
+                         "measurement, check it in a player before "
+                         "muxing.").format(delay=f"{delay:+d}")
                        + self._note_propagation(self._propager(i)))
         self._update_status()
 
@@ -750,9 +769,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         la piste serait faux partout ailleurs.
         """
         if self._segments is None:
-            self._set_hint("Aucune plage à montrer — elles n'apparaissent "
-                           "qu'après une mesure ayant constaté un montage "
-                           "différent.")
+            self._set_hint(_("No segment to show — they only appear after a "
+                             "measurement that found a different cut."))
             return
         piste, segs = self._segments
         nom = piste.source_path.name if self._rang(piste) is not None else ""
@@ -775,15 +793,15 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         if i is None:
             return
         if self._segments is None:
-            self._set_hint("Aucune plage connue — mesurez d'abord la piste "
-                           "audio du donneur avec M.")
+            self._set_hint(_("No known segment — first measure the donor's "
+                             "audio track with {key}.").format(key=touche("m")))
             return
 
         if self._measuring:
-            self._set_hint("Une opération est déjà en cours — laissez-la finir.")
+            self._set_hint(_("An operation is already running — let it finish."))
             return
 
-        _, segs = self._segments
+        segs = self._segments[1]
         t = self._tracks[i]
         if t.kind == TrackKind.SUBTITLE:
             self._build_corrected_subtitle(i, segs)
@@ -793,11 +811,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         # rallonger aux points de bascule et le réencoder. C'est long, donc
         # hors du thread UI.
         self._measuring = True
-        self._set_hint(f"⏳ Recalage de « {t.source_path.name} » sur "
-                       f"{len(segs)} plages.\nDécodage puis réencodage de la "
-                       f"piste — comptez une poignée de minutes.")
-        self._set_origin_cell(i, Text("recalage…", style="yellow"))
-        self._show_bar(True, "Recalage en cours")
+        self._set_hint("⏳ " + ngettext("Resyncing “{file}” over {count} segment.",
+                                       "Resyncing “{file}” over {count} segments.",
+                                       len(segs)).format(file=t.source_path.name,
+                                                         count=len(segs))
+                       + "\n" + _("Decoding then re-encoding the track — allow a "
+                                  "handful of minutes."))
+        self._set_origin_cell(i, Text(_("resyncing…"), style="yellow"))
+        self._show_bar(True, _("Resync in progress"))
         self._retime(i, segs)
 
     @work(thread=True, name="sync-retime")
@@ -829,8 +850,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return                                   # piste retirée entre-temps
         if fichier is None:
             self.app.bell()
-            self._set_origin_cell(i, Text("échec", style="bold dark_orange"))
-            self._set_hint("Recalage impossible.\n" + " · ".join(notes))
+            self._set_origin_cell(i, Text(_("failed"), style="bold dark_orange"))
+            self._set_hint(_("Cannot resync.") + "\n" + " · ".join(notes))
             return
 
         t = self._tracks[i]
@@ -844,9 +865,10 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._update_status()
         reserve = ("\n⚠ " + " · ".join(notes)) if notes else ""
         self._set_hint(
-            f"Piste recalée — décalage nul désormais.\n"
+            _("Track resynced — offset now zero.") + "\n"
             f"{fichier.name}{reserve}\n"
-            f"{touche('v')} pour contrôler dans mpv, {touche('k')} pour un extrait muxé.")
+            + _("{play_key} to check in mpv, {sample_key} for a muxed "
+                "sample.").format(play_key=touche("v"), sample_key=touche("k")))
 
     def _build_corrected_subtitle(self, i: int, segs: list[Segment]) -> None:
         import tempfile
@@ -860,15 +882,15 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 src = extract_subtitle(t.source_path, idx)
                 if src is None:
                     self.app.bell()
-                    self._set_hint("Extraction impossible — sous-titre image "
-                                   "(PGS, VobSub) ou piste illisible.")
+                    self._set_hint(_("Cannot extract — image subtitle (PGS, "
+                                     "VobSub) or unreadable track."))
                     return
             out = (Path(tempfile.gettempdir())
                    / f"{self._source.stem}_{t.language or 'und'}_[recale].srt")
             shift_srt(src, segs, out)
         except Exception as e:
             self.app.bell()
-            self._set_hint(f"Correction impossible : {texte_erreur(e)}")
+            self._set_hint(_("Cannot correct: {error}").format(error=texte_erreur(e)))
             return
 
         t.source_path = out
@@ -881,10 +903,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._update_status()
         paliers = " · ".join(f"{s.delay_ms:+d}" for s in segs)
         self._set_hint(
-            f"Sous-titre recalé sur {len(segs)} plages ({paliers} ms) — "
-            f"décalage nul désormais.\n"
+            ngettext("Subtitle resynced over {count} segment ({steps} ms) — "
+                     "offset now zero.",
+                     "Subtitle resynced over {count} segments ({steps} ms) — "
+                     "offset now zero.", len(segs)).format(count=len(segs),
+                                                           steps=paliers) + "\n"
             f"{out.name}\n"
-            f"{touche('v')} pour contrôler dans mpv, {touche('k')} pour un extrait muxé.")
+            + _("{play_key} to check in mpv, {sample_key} for a muxed "
+                "sample.").format(play_key=touche("v"), sample_key=touche("k")))
 
     # ── Contrôle à l'œil ──────────────────────────────────────────────────────
 
@@ -901,7 +927,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return
         if not preview.available():
             self.app.bell()
-            self._set_hint("mpv absent — relancez le preflight pour l'installer.")
+            self._set_hint(_("mpv missing — run the preflight again to install it."))
             return
 
         t = self._tracks[i]
@@ -925,20 +951,20 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             preview.launch(cmd)
         except Exception as e:
             self.app.bell()
-            self._set_hint(f"Lancement de mpv impossible : {texte_erreur(e)}")
+            self._set_hint(_("Cannot start mpv: {error}").format(error=texte_erreur(e)))
             return
 
         if t.stretch:
             self._set_hint(
-                f"mpv ouvert avec {t.delay_ms:+d} ms.\n"
-                f"⚠ L'étirement n'est pas prévisualisable — mpv ne sait "
-                f"appliquer qu'un décalage constant.\n"
-                f"{preview.keys_hint(t)}, puis reportez la valeur ici.")
+                _("mpv opened with {delay} ms.").format(delay=f"{t.delay_ms:+d}") + "\n"
+                + "⚠ " + _("The stretch cannot be previewed — mpv can only apply "
+                           "a constant offset.") + "\n"
+                + _("{keys}, then enter the value here.").format(keys=preview.keys_hint(t)))
         else:
             self._set_hint(
-                f"mpv ouvert avec {t.delay_ms:+d} ms appliqués.\n"
+                _("mpv opened with {delay} ms applied.").format(delay=f"{t.delay_ms:+d}") + "\n"
                 f"{preview.keys_hint(t)}.\n"
-                f"Reportez ensuite la valeur corrigée dans cet écran.")
+                + _("Then enter the corrected value in this screen."))
 
     # ── Extrait de contrôle ───────────────────────────────────────────────────
 
@@ -951,13 +977,13 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         avec, on en prend deux — tôt et tard — parce que la dérive s'accumule.
         """
         if self._measuring or self._sampling:
-            self._set_hint("Une opération est déjà en cours.")
+            self._set_hint(_("An operation is already running."))
             return
         if not self._ready():
             return
         self._sampling = True
         self._show_bar(True)
-        self._set_hint("⏳ Construction de l'extrait de contrôle…")
+        self._set_hint("⏳ " + _("Building the check sample…"))
         self._build_sample()
 
     @work(thread=True, name="sync-sample")
@@ -992,23 +1018,25 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._show_bar(False)
         if erreur:
             self.app.bell()
-            self._set_hint(f"✗ Extrait impossible : {erreur}")
+            self._set_hint("✗ " + _("Cannot build the sample: {error}").format(error=erreur))
             return
 
-        fenetres = " et ".join(timecode(s) for s in starts)
+        fenetres = liste(timecode(s) for s in starts)
         if preview.available():
             try:
                 preview.open_file(out)
             except Exception as e:
-                self._set_hint(f"Extrait prêt : {out}\nmpv n'a pas pu l'ouvrir : {texte_erreur(e)}")
+                self._set_hint(_("Sample ready: {path}").format(path=out) + "\n"
+                               + _("mpv could not open it: {error}").format(
+                                   error=texte_erreur(e)))
                 return
             self._set_hint(
-                f"Extrait ouvert dans mpv — fenêtres à {fenetres}.\n"
-                f"C'est le résultat réel du mux : ce que vous entendez est "
-                f"ce que produira F3.")
+                _("Sample opened in mpv — windows at {times}.").format(times=fenetres)
+                + "\n" + _("This is the actual mux result: what you hear is what "
+                           "{key} will produce.").format(key=touche("f3")))
         else:
-            self._set_hint(f"Extrait prêt (mpv absent) : {out}\n"
-                           f"Fenêtres à {fenetres}.")
+            self._set_hint(_("Sample ready (mpv missing): {path}").format(path=out)
+                           + "\n" + _("Windows at {times}.").format(times=fenetres))
 
     # ── Reprise de décalage ───────────────────────────────────────────────────
 
@@ -1042,7 +1070,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self._update_status()
 
         self.app.push_screen(
-            ValuePickerScreen("Reprendre le décalage de", opts, 0), _apply
+            ValuePickerScreen(_("Copy the offset from"), opts, 0), _apply
         )
 
     def action_add_track(self) -> None:
@@ -1054,8 +1082,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         pistes entre les deux.
         """
         if self._measuring:
-            self._set_hint("Mesure en cours — attendez sa fin avant d'ajouter "
-                           "une piste.")
+            self._set_hint(_("Measurement in progress — wait for it to finish "
+                             "before adding a track."))
             return
         from .donor_picker import pick_external_tracks
 
@@ -1090,7 +1118,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         if not self._tracks:
             self.app.bell()
             self._set_hint(
-                "Aucune piste à greffer — ajoutez-en une avec F9."
+                _("No track to add — add one with {key}.").format(key=touche("f9"))
             )
             return False
         # Piste sans langue : on amène le curseur dessus au lieu de bloquer
@@ -1101,8 +1129,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self.query_one(DataTable).move_cursor(row=missing)
             self._refresh_all()
             self._set_hint(
-                f"⚠ Mux impossible : « {self._tracks[missing].source_path.name} » "
-                f"n'a pas de langue. Choisissez-la avec +/- ou ↵."
+                "⚠ " + _("Cannot mux: “{file}” has no language. Choose it with "
+                         "+/- or {key}.").format(
+                    file=self._tracks[missing].source_path.name, key=touche("enter"))
             )
             self._update_status()
             return False
@@ -1144,17 +1173,17 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         # l'encodage, sans que l'utilisateur ait à enchaîner deux écrans.
         if getattr(self.app, "mkvmerge_available", False):
             self._set_hint(
-                f"« {stretched.source_path.name} » demande un étirement : "
-                f"mkvmerge greffera les pistes\njuste avant l'encodage, puis "
-                f"ffmpeg encodera le résultat. Le fichier intermédiaire est "
-                f"temporaire.")
+                _("“{file}” needs a stretch: mkvmerge will add the tracks just "
+                  "before encoding, then ffmpeg will encode the result. The "
+                  "intermediate file is temporary.").format(
+                    file=stretched.source_path.name))
             return True
 
         self.app.bell()
         self._set_hint(
-            f"« {stretched.source_path.name} » demande un étirement, que "
-            f"ffmpeg ne sait pas appliquer\nen une passe. Seul mkvmerge en "
-            f"est capable — relancez le preflight pour l'installer.")
+            _("“{file}” needs a stretch, which ffmpeg cannot apply in one pass. "
+              "Only mkvmerge can — run the preflight again to install "
+              "it.").format(file=stretched.source_path.name))
         return False
 
     def _launch(self, screen_factory) -> None:
@@ -1185,8 +1214,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         qui sort de l'écran n'avait pas de raison d'y échapper.
         """
         if self._measuring:
-            self._set_hint("Mesure en cours — attendez sa fin avant de "
-                           "revenir. La jauge indique où elle en est.")
+            self._set_hint(_("Measurement in progress — wait for it to finish "
+                             "before going back. The gauge shows how far it "
+                             "has got."))
             return
         self.dismiss(self._tracks)
 
@@ -1204,6 +1234,6 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 retour_accueil(self.app)
 
         self.app.push_screen(ConfirmModal(
-            "Revenir à l'accueil ?",
-            "Les pistes greffées et leur recalage seront perdus.",
-            confirm_label="Revenir", cancel_label="Rester", danger=True), _apres)
+            _("Go back to Home?"),
+            _("The added tracks and their resync will be lost."),
+            confirm_label=_("Go back"), cancel_label=_("Stay"), danger=True), _apres)

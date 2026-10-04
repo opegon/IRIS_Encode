@@ -32,6 +32,7 @@ from pathlib import Path
 import pytest
 from textual.widgets import DataTable, Static
 
+from core.i18n import _
 from core.decision import decide
 from core.muxer import ExternalTrack, TrackKind
 from core.profiles import Profile
@@ -172,5 +173,6 @@ def test_chaque_champ_se_nomme_et_dit_comment_en_changer(champ):
     from tui.screens.sync import _FIELD_LABELS
 
     ligne = ligne_champ(champ)
-    assert ligne.startswith(_FIELD_LABELS[champ] + " :"), ligne
+    # Le libellé affiché (traduit), pas la table source.
+    assert ligne.startswith(_(_FIELD_LABELS[champ]) + " :"), ligne
     assert "Autre champ" in ligne

@@ -37,9 +37,10 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
 from core.texte import pluriel
-from core.decision import (ACTION_CYCLE, SUFFIX_BY_ACTION, AudioAction,
-                           DVAction, FileDecision, VideoAction, cycle_index,
-                           decide_audio, resoudre_sorties)
+from core.decision import (ACTION_CYCLE, AudioAction,
+                           FileDecision, VideoAction, cycle_index,
+                           choisir_codec, decide_audio, force_skip_to_encode,
+                           resoudre_sorties)
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import measure_external_track
 
@@ -348,8 +349,21 @@ class WizardScreen(TableNavMixin, Screen):
                                            VideoAction.STRIP_DV)
                 and bool(self._dec.external_tracks))
 
-    def _etape_lancer(self):
+    def _a_encoder(self) -> FileDecision:
+        """Ce que F2 confie à la file.
+
+        Un SKIP est forcé, comme une ligne cochée au navigateur : la file
+        l'aurait marqué « ignoré » sans rien produire. Le retrait du DV, lui,
+        est déjà un traitement, et part tel quel. Le nom de sortie change avec
+        la décision : il sera reposé.
+        """
         d = self._dec
+        if d.video.action != VideoAction.SKIP:
+            return d
+        return dc_replace(force_skip_to_encode(d), output_override=None)
+
+    def _etape_lancer(self):
+        d = self._dec if self._muxable() else self._a_encoder()
         t = Text()
         t.append("Prêt\n\n", style="bold")
         t.append(f"  Sortie   {d.output_path.name}\n\n", style="bold")
@@ -357,6 +371,9 @@ class WizardScreen(TableNavMixin, Screen):
             t.append("  Recommandé : muxer. Rien n'est à réencoder, les pistes\n"
                      "  sont greffées par mkvmerge et l'image recopiée telle\n"
                      "  quelle — quelques minutes au lieu de quelques heures.\n")
+        elif self._dec.video.action == VideoAction.SKIP:
+            t.append("  Rien n'est à réencoder d'office. F2 force l'encodage : "
+                     f"{d.video.label()},\n  au débit de la source.\n")
         else:
             t.append(f"  Recommandé : encoder. {d.video.label()}.\n")
             if not d.external_tracks:
@@ -440,13 +457,8 @@ class WizardScreen(TableNavMixin, Screen):
         def _appliquer(choix: Optional[int]) -> None:
             if choix is None:
                 return
-            action = ACTION_CYCLE[choix]
-            dv     = v.dv_action
-            if action == VideoAction.ENCODE_H264 and dv == DVAction.DV:
-                dv = DVAction.HDR10          # H264 ne sait pas porter de RPU
             self._dec.video = dc_replace(
-                v, action=action, dv_action=dv,
-                output_suffix=SUFFIX_BY_ACTION.get(action, v.output_suffix),
+                choisir_codec(self._dec, ACTION_CYCLE[choix]),
                 reason="Choisi dans l'assistant")
             # Le suffixe vient de changer : le nom de sortie déjà résolu ne
             # vaut plus. Il sera reposé à l'affichage.
@@ -602,4 +614,4 @@ class WizardScreen(TableNavMixin, Screen):
         else:
             # La file d'encodage prend le relais (IE-100) : l'assistant
             # rend la liste des fichiers, où l'on choisit le suivant.
-            confier_a_la_file(self.app, [self._dec])
+            confier_a_la_file(self.app, [self._a_encoder()])

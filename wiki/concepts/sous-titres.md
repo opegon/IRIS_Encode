@@ -1,11 +1,12 @@
 ---
 type: concept
-maj: 2026-09-30
+maj: 2026-10-04
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-diagnostic]]"
   - "[[source-2026-09-30-lecture]]"
+  - "[[source-2026-10-04-mov-text]]"
 ---
 
 # Sous-titres
@@ -66,6 +67,16 @@ sous-titres, donc la sortie reste en MKV.
   **Étendue** (v0.8.9.47) aux sous-titres complets : un PGS complet doublé par
   un SRT complet de même langue est écarté aussi. La nature (forcé / complet)
   doit concorder : un SRT forcé ne remplace pas un PGS complet.
+
+## Long silence en MP4
+
+**Un silence de plus de 2 147,48 s efface les temps d'un `mov_text`.** Le
+muxeur MP4 de ffmpeg (8.1.2, 8.1.3) colle alors au début du film la réplique
+suivante et toutes celles d'après, sans message. Cas typique : la piste forcée,
+dont la première réplique arrive tard. *(mesuré, [[source-2026-10-04-mov-text]])*
+IRIS passe ces pistes par un Matroska porteur où une réplique invisible
+(espace insécable, 1 ms) coupe chaque tranche de 1 800 s (v0.8.9.62,
+`core/sous_titres.py`).
 
 ## Langues
 

@@ -59,6 +59,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-09-30-lecture]] | Politique du PGS forcé, réglage de débit du client webOS |
 | [[source-2026-10-01-entrelacement]] | Audio écrite par blocs loin de la vidéo : arrêt à 32 s sur TV |
 | [[source-2026-10-03-dv81-mp4]] | DV 8.1 en MP4 `hvc1` lu en direct sur le G3 ; `dvh1` et MKV refusés |
+| [[source-2026-10-04-mov-text]] | `mov_text` : temps écrasés après un silence de plus de 2³¹ µs |
 
 ## Brut (`raw/`, immuable)
 
@@ -72,3 +73,4 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-09-30-declarations-lecture]] | PGS forcé, débit du client webOS : citations de l'utilisateur |
 | [[2026-10-01-entrelacement-audio]] | *L'Ombre d'un doute* : relevés d'entrelacement, variantes ffmpeg mesurées |
 | [[2026-10-03-essai-dv81-mp4]] | Essai DV 8.1 MP4/MKV sur le G3 : citations de l'utilisateur, variantes audio |
+| [[2026-10-04-mov-text-silence]] | *Premier Contact* : VF forcée désynchronisée, seuil mesuré, contournement |

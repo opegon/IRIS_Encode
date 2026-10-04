@@ -1125,6 +1125,43 @@ def resoudre_sorties(decisions: list[FileDecision]) -> None:
         reserves.add(candidat)
 
 
+def choisir_codec(dec: FileDecision, action: VideoAction,
+                  dv_action: Optional[DVAction] = None) -> VideoDecision:
+    """La décision vidéo quand l'utilisateur choisit un codec à la main.
+
+    Une seule règle pour la coche forcée, l'assistant, l'aperçu et l'écran des
+    pistes. Chacun recopiait la sienne, et aucune ne connaissait `ENCODE_DV` :
+    choisir HEVC sur une source Dolby Vision donnait une copie du flux nommée
+    `.hevc-iris`, avec un débit cible nul hérité du SKIP.
+
+    - H264 ne porte pas de RPU : le DV conservé devient HDR10.
+    - Depuis SKIP ou un retrait de DV, sans débit cible : celui de la source.
+    - HEVC avec le DV conservé : `ENCODE_DV` si `peut_reencoder_en_dv`.
+    - Vidéo recopiée malgré tout : suffixe de copie.
+    `reason` est laissé à l'appelant.
+    """
+    from dataclasses import replace as dc_replace
+    v  = dec.video
+    dv = v.dv_action if dv_action is None else dv_action
+    if action == VideoAction.ENCODE_DV:
+        action = VideoAction.ENCODE_HEVC     # le choix porte sur le codec
+    if action == VideoAction.ENCODE_H264 and dv == DVAction.DV:
+        dv = DVAction.HDR10
+    if action in (VideoAction.SKIP, VideoAction.STRIP_DV):
+        return dc_replace(v, action=action, target_bitrate=0, dv_action=dv,
+                          output_suffix=SUFFIX_BY_ACTION[action])
+    debit = v.target_bitrate
+    if v.action in (VideoAction.SKIP, VideoAction.STRIP_DV) or not debit:
+        debit = dec.info.bitrate
+    if (dv == DVAction.DV and action == VideoAction.ENCODE_HEVC
+            and peut_reencoder_en_dv(dec.info, v.target_width, v.target_height)):
+        action = VideoAction.ENCODE_DV
+    suffixe = (SUFFIX_DV_COPIE if video_recopiee(action, dv)
+               else SUFFIX_BY_ACTION[action])
+    return dc_replace(v, action=action, target_bitrate=debit, dv_action=dv,
+                      output_suffix=suffixe)
+
+
 def force_skip_to_encode(dec: FileDecision) -> FileDecision:
     """Force un fichier SKIP en encodage (HEVC ou H264 si < 1080p).
 
@@ -1136,26 +1173,9 @@ def force_skip_to_encode(dec: FileDecision) -> FileDecision:
         return dec
     sub_1080   = dec.info.height < 1080
     forced_act = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
-    # H264 incompatible avec DV : si la source est DV et qu'on force H264,
-    # convertir en HDR10 (suppression du RPU)
-    forced_dv = dec.video.dv_action
-    if sub_1080 and forced_dv == DVAction.DV:
-        forced_dv = DVAction.HDR10
-    # Le DV conservé se réencode quand il le peut, comme dans `decide_video`.
-    # Sans cela, la coche promettait un encodage et livrait une simple copie
-    # du flux, sous un nom `.hevc-iris`.
-    if (forced_dv == DVAction.DV and forced_act == VideoAction.ENCODE_HEVC
-            and peut_reencoder_en_dv(dec.info, dec.video.target_width,
-                                     dec.video.target_height)):
-        forced_act = VideoAction.ENCODE_DV
-    suffix = (SUFFIX_DV_COPIE if video_recopiee(forced_act, forced_dv)
-              else SUFFIX_BY_ACTION[forced_act])
     return dc_replace(dec, video=dc_replace(
-        dec.video,
-        action        = forced_act,
+        choisir_codec(dec, forced_act),
         target_bitrate= dec.info.bitrate,
-        output_suffix = suffix,
-        dv_action     = forced_dv,
         reason        = ("Forcé manuellement (était SKIP)"
                          if dec.video.action == VideoAction.SKIP
                          else "Forcé manuellement (était retrait DV)"),

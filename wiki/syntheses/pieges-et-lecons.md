@@ -1,7 +1,8 @@
 ---
 type: synthese
-maj: 2026-10-01
+maj: 2026-10-04
 sources:
+  - "[[source-2026-10-04-mov-text]]"
   - "[[source-2026-10-01-entrelacement]]"
   - "[[source-2026-09-26-nvenc-pilote]]"
   - "[[source-2026-09-24-mise-a-jour]]"
@@ -61,6 +62,7 @@ une ligne de moins dans une liste.
 | AV1 cassé sur toute machine | `-profile` passé à `av1_nvenc` | [[codecs-video|Codecs vidéo]] |
 | Morceau d'audio présent deux fois | points d'insertion non croissants | [[synchronisation|Synchronisation]] |
 | Piste alignée refusée | saillance comparée entre ratios | [[synchronisation|Synchronisation]] |
+| Sous-titre forcé affiché dès les premières images (MP4) | silence de plus de 2 147 s dans une piste `mov_text` *(mesuré, v0.8.9.62)* | [[sous-titres#Long silence en MP4|Sous-titres]] |
 | Sous-titres affichés d'office | drapeau par défaut posé par mkvmerge | [[sous-titres|Sous-titres]] |
 | L'interface perd des frappes | sous-processus héritant du `stdin` du terminal | [[sous-processus]] |
 | Barre de progression figée | deux tubes, un seul lu | [[sous-processus]] |

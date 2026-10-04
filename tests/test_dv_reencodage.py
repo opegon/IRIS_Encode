@@ -235,3 +235,67 @@ def test_forcee_sans_les_outils_la_copie_porte_le_suffixe_de_copie():
     v = D.force_skip_to_encode(dec).video
     assert video_recopiee(v.action, v.dv_action)
     assert v.output_suffix == SUFFIX_DV_COPIE
+
+
+# ─── Un codec choisi à la main (choisir_codec) ───────────────────────────────
+#
+# L'assistant, l'aperçu et l'écran des pistes avaient chacun leur règle : HEVC
+# choisi sur une source DV en SKIP donnait une copie du flux à débit nul.
+
+def _skip_dv():
+    dec = decide(_source(h=1606, bitrate=3_000_000), _profil())
+    assert dec.video.action is VideoAction.SKIP
+    return dec
+
+
+def test_hevc_choisi_sur_un_skip_dv_reencode_en_dv():
+    v = D.choisir_codec(_skip_dv(), VideoAction.ENCODE_HEVC)
+    assert v.action is VideoAction.ENCODE_DV
+    assert v.target_bitrate == 3_000_000
+    assert v.output_suffix == SUFFIX_DV_COPIE
+
+
+def test_hevc_avec_le_dv_retire_reste_un_hevc_simple():
+    v = D.choisir_codec(_skip_dv(), VideoAction.ENCODE_HEVC, DVAction.HDR10)
+    assert v.action is VideoAction.ENCODE_HEVC
+    assert v.output_suffix == D.SUFFIX_BY_ACTION[VideoAction.ENCODE_HEVC]
+
+
+def test_h264_ne_porte_pas_le_dv():
+    v = D.choisir_codec(_skip_dv(), VideoAction.ENCODE_H264)
+    assert v.dv_action is DVAction.HDR10
+
+
+def test_av1_avec_le_dv_conserve_est_une_copie_nommee_comme_telle():
+    v = D.choisir_codec(_skip_dv(), VideoAction.ENCODE_AV1)
+    assert video_recopiee(v.action, v.dv_action)
+    assert v.output_suffix == SUFFIX_DV_COPIE
+
+
+def test_revenir_a_skip_remet_le_debit_a_zero():
+    dec = _skip_dv()
+    dec.video = D.choisir_codec(dec, VideoAction.ENCODE_HEVC)
+    v = D.choisir_codec(dec, VideoAction.SKIP)
+    assert v.action is VideoAction.SKIP and v.target_bitrate == 0
+
+
+# ─── L'assistant : F2 sur un SKIP (WizardScreen._a_encoder) ──────────────────
+
+def _assistant(dec):
+    from tui.screens.wizard import WizardScreen
+    ecran = object.__new__(WizardScreen)
+    ecran._dec = dec
+    return ecran
+
+
+def test_f2_de_l_assistant_force_un_skip_dv_en_reencodage_dv():
+    """La file marquait le SKIP « ignoré » : F2 ne produisait rien."""
+    d = _assistant(_skip_dv())._a_encoder()
+    assert d.video.action is VideoAction.ENCODE_DV
+    assert d.output_path.stem.endswith("-iris")
+
+
+def test_f2_de_l_assistant_laisse_le_retrait_du_dv_tel_quel():
+    dec = decide(_source(h=1606, bitrate=3_000_000), _profil(dolby_vision="hdr10"))
+    assert dec.video.action is VideoAction.STRIP_DV
+    assert _assistant(dec)._a_encoder() is dec

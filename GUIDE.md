@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.60
+**Version** : 0.8.9.62
 **Date** : 2026-10-03
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -82,7 +82,7 @@ Dans la liste, `↵` sur un fichier ouvre le parcours :
 | 1 — Fichier | Vérifier le fichier et le profil actif |
 | 2 — Décision | Codec (`F6`), débit (`F7`), pistes à garder (`Espace`) — tout sur le même écran, et le nom du fichier qui sortira |
 | 3 — Pistes externes | `F9` présente un fichier portant une VF ou des sous-titres, `D` retire la dernière |
-| 4 — Lancer | `↵` prend le choix recommandé ; `F3` force le mux, `F2` force l'encodage |
+| 4 — Lancer | `↵` prend le choix recommandé ; `F3` force le mux, `F2` force l'encodage — même d'un fichier en `SKIP`, au débit de la source, en gardant le Dolby Vision si le profil le garde |
 | 5 — Terminé | Le résultat, `↵` ramène à la liste |
 
 **La mesure du décalage est automatique.** Dès qu'une piste est ajoutée, elle

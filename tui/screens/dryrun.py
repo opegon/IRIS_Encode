@@ -23,7 +23,7 @@ from core.decision import (
     ACTION_CYCLE,
     cycle_index,
     AV1_BITRATE_OPTS_KBPS,
-    SUFFIX_BY_ACTION,
+    choisir_codec,
     AudioAction, DVAction, FileDecision, VideoAction,
     video_recopiee,
 )
@@ -347,25 +347,10 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def _apply_codec(self, dec: FileDecision, new_action: VideoAction) -> None:
         """Change le codec d'une décision et ajuste suffix/bitrate cohérents."""
         from dataclasses import replace as dc_replace
-        old_action = dec.video.action
-        if new_action == old_action:
+        if new_action == dec.video.action:
             return
-        # SKIP et retrait de DV ont tous deux un débit cible nul : repartir du
-        # débit source quand l'un ou l'autre bascule en encodage.
-        was_skip   = old_action in (VideoAction.SKIP, VideoAction.STRIP_DV)
-        new_bitrate = dec.video.target_bitrate
-        if was_skip and new_action != VideoAction.SKIP:
-            new_bitrate = dec.info.bitrate
-        # H264 ne peut pas porter de RPU DV → DV→HDR10 forcé
-        new_dv = dec.video.dv_action
-        if new_action == VideoAction.ENCODE_H264 and new_dv == DVAction.DV:
-            new_dv = DVAction.HDR10
         dec.video = dc_replace(
-            dec.video,
-            action         = new_action,
-            target_bitrate = new_bitrate if new_action != VideoAction.SKIP else 0,
-            output_suffix  = SUFFIX_BY_ACTION.get(new_action, dec.video.output_suffix),
-            dv_action      = new_dv,
+            choisir_codec(dec, new_action),
             reason         = f"Modifié manuellement (dry-run) : {new_action.name}",
         )
 

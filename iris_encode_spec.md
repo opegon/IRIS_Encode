@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.60 — document de référence courant
+**Version** : 0.8.9.62 — document de référence courant
 **Date** : 2026-10-03
 **Statut** : stable
 
@@ -52,6 +52,7 @@ iris_encode/
 │   ├── encoder.py                ← construction commande ffmpeg + exécution
 │   ├── dovi.py                   ← wrapper dovi_tool (probe, RPU, x265-params HDR10)
 │   ├── muxer.py                  ← wrapper mkvmerge (identify, mux, extrait)
+│   ├── sous_titres.py            ← sous-titres texte vers MP4 : longs silences comblés
 │   ├── joiner.py                 ← collage bout à bout de plusieurs parties
 │   ├── sync.py                   ← mesure de décalage par corrélation croisée
 │   ├── preview.py                ← lancement mpv (visualisation)
@@ -98,6 +99,7 @@ iris_encode/
 │   ├── test_collage.py
 │   ├── test_preview.py
 │   ├── test_sync.py
+│   ├── test_sous_titres_mp4.py
 │   └── test_updates.py
 └── requirements.txt
 ```
@@ -962,6 +964,20 @@ les chapitres que sous la forme d'une piste texte QuickTime, et c'est ainsi que
 les lecteurs les retrouvent. Vérifié : `-map_chapters -1` le fait disparaître,
 et les chapitres avec lui. Le Matroska, qui a un conteneur de chapitres propre,
 n'affiche rien de tel.
+
+**Un long silence dans un sous-titre texte en MP4** (v0.8.9.62,
+`core/sous_titres.py`). Le muxeur MP4 de ffmpeg (8.1.2, 8.1.3) écrase les temps
+d'une piste `mov_text` après un silence de plus de 2³¹ µs (2 147,48 s), avant
+la première réplique ou entre deux : la suivante et toutes les autres se collent
+au début, code retour nul. Une piste forcée y tombe presque toujours. Avant une
+sortie MP4 qui garde du texte (`pistes_a_porter`), RunScreen extrait ces pistes
+en SRT, une lecture de la source (`_porter_sous_titres`). Si l'une a un silence
+de plus de `SEUIL_S` (1 800 s), une réplique `BOUCHE_TROU` (espace insécable,
+1 ms ; une espace simple est retirée par le décodeur) coupe chaque tranche, et
+toutes vont dans un Matroska porteur (`build_porteur`, langue, titre et
+drapeaux reportés ; ffmpeg et non mkvmerge, le MKV n'ayant pas le défaut).
+`build_command`, `build_strip_mp4` et `build_dv_mp4_remux` y lisent alors les
+sous-titres à la place de la source. Sans long silence, pas de porteur.
 
 ### 8.7 Nommage des sorties
 
@@ -1909,6 +1925,16 @@ demande aucune attention.
 | 4 — Lancer | Muxer ou encoder — **les deux toujours offerts** | `F3` `F2` `↵` |
 | 5 — Terminé | Le résultat, puis retour à l'accueil | `↵` |
 
+**`F2` sur un SKIP force l'encodage** (v0.8.9.61), comme une ligne cochée au
+navigateur : la file l'aurait marqué « ignoré » (`WizardScreen._a_encoder`).
+L'étape 4 annonce la décision forcée et le nom qui en sort. Un retrait du DV
+part tel quel.
+
+**Un codec choisi à la main** (`F6` ici, dans l'aperçu et l'écran des pistes,
+et la coche forcée) passe par `decision.choisir_codec` : H264 retire le DV,
+HEVC avec le DV conservé devient `ENCODE_DV` quand `peut_reencoder_en_dv`
+l'accepte, et un débit nul hérité d'un SKIP prend celui de la source.
+
 **La mesure passe par `sync.measure_external_track`**, seul point d'entrée pour
 mesurer une piste externe. Il traduit le tid mkvmerge en index ffmpeg — les deux
 numérotations se ressemblent assez pour qu'on les confonde, et une mesure lancée
@@ -2776,6 +2802,8 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.62 | 2026-10-04 | **Sous-titre texte en MP4 : plus de temps écrasés après un long silence** (§ 8.6) : ffmpeg perd les temps d'un `mov_text` après plus de 2³¹ µs de silence ; `core/sous_titres.py` intercale des répliques invisibles dans un Matroska porteur, lu par l'encodage, le retrait et le réencodage DV · `tests/test_sous_titres_mp4.py` |
+| 0.8.9.61 | 2026-10-04 | **Réencodage DV forcé depuis l'assistant** (§ 14.0) : `F2` sur un SKIP le force au lieu de le laisser « ignoré » ; `decision.choisir_codec`, règle unique du codec choisi à la main (assistant, aperçu, pistes, coche), connaît `ENCODE_DV` et reprend le débit de la source · `tests/test_dv_reencodage.py` |
 | 0.8.9.60 | 2026-10-04 | **Une vidéo recopiée n'échoue plus sur « copy indisponible ici »** (§ 14.7) : le contrôle des encodeurs sondés lisait `-c:v copy` comme un encodeur ; `encoder.encodeur_a_controler` l'en exclut · `tests/test_capacites.py` |
 | 0.8.9.59 | 2026-10-04 | **Une ligne DV forcée se réencode en DV** (§ 14) : `force_skip_to_encode` passait en `ENCODE_HEVC`, donc en copie du flux nommée `.hevc-iris` ; il retient désormais `ENCODE_DV` quand la source s'y prête · `tests/test_dv_reencodage.py` |
 | 0.8.9.58 | 2026-10-04 | **Le lot suit l'ordre alphabétique** (§ 14.7) : l'aperçu, `F2` et le collage parcouraient la sélection — un ensemble — dans l'ordre des hachages ; `BrowserScreen._cochees` la rend triée comme le tableau · `tests/test_ordre_lot.py` |

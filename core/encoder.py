@@ -448,10 +448,14 @@ def build_command(
     decision: FileDecision,
     platform: PlatformProfile,
     audio_source: Path | None = None,
+    sous_titres_porteur: Path | None = None,
 ) -> list[str]:
     """
     Retourne la liste d'arguments ffmpeg pour un FileDecision.
     Retourne [] si l'action est SKIP.
+
+    `sous_titres_porteur` : le Matroska de `core/sous_titres.py`, d'où les
+    sous-titres texte de la source sont pris à la place de la source.
     """
     vid     = decision.video
     info    = decision.info
@@ -569,6 +573,11 @@ def build_command(
         sub_input = len(ext_tracks) + 1 + (audio_source is not None)
         cmd += ["-i", str(decision.encode_source or info.path)]
 
+    porteur_input = None
+    if sous_titres_porteur is not None:
+        porteur_input = cmd.count("-i")
+        cmd += ["-i", str(sous_titres_porteur)]
+
     # ── Filtre vidéo ──────────────────────────────────────────────────────────
     if not preserve_video:
         scale = (
@@ -674,7 +683,16 @@ def build_command(
     for j in range(len(premux_audio)):
         cmd += ["-map", f"0:a:{len(info.audio_tracks) + j}"]
 
-    if tout_garder:
+    if porteur_input is not None:
+        # Le porteur tient toutes les pistes de la source que la sortie garde,
+        # dans l'ordre ; les greffées d'un mux préalable restent dans l'entrée.
+        from .sous_titres import pistes_a_porter
+        n_src_subs = len(pistes_a_porter(decision))
+        for j in range(n_src_subs):
+            cmd += ["-map", f"{porteur_input}:s:{j}"]
+        for j in range(len(premux_subs)):
+            cmd += ["-map", f"{sub_input}:s:{len(info.subtitle_tracks) + j}"]
+    elif tout_garder:
         # `0:s?` prend tout l'intermédiaire, greffées comprises : les mapper
         # une seconde fois les livrerait en double.
         cmd += ["-map", f"{sub_input}:s?"]

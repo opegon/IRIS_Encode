@@ -9,6 +9,7 @@ rend la navigation sans rien arrêter.
 """
 from __future__ import annotations
 
+import subprocess
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -434,13 +435,25 @@ class RunScreen(TableNavMixin, Screen):
                 self._encode_next()
                 return
 
+        # Un long silence dans un sous-titre fausse ses temps en MP4 : voir
+        # `core/sous_titres.py`.
+        ok, porteur = self._porter_sous_titres(next_idx, dec)
+        if not ok:
+            if audio_tmp is not None:
+                audio_tmp.unlink(missing_ok=True)
+            self._encode_next()
+            return
+
         try:
-            cmd = build_command(dec, self._platform, audio_source=audio_tmp)
+            cmd = build_command(dec, self._platform, audio_source=audio_tmp,
+                                sous_titres_porteur=porteur)
         except ValueError as e:
             s.state     = FileState.ERROR
             s.last_line = str(e)
             s.error_msg = str(e)[:60]
             self.app.call_from_thread(self._update_row, next_idx)
+            if porteur is not None:
+                porteur.unlink(missing_ok=True)
             self._encode_next()  # passe au suivant
             return
         self.app.call_from_thread(
@@ -463,6 +476,8 @@ class RunScreen(TableNavMixin, Screen):
                     f"au lancement. L'AV1 par NVENC demande une RTX 40 ou plus "
                     f"récente ; le HEVC et le H264 restent disponibles.")
             self.app.call_from_thread(self._update_row, next_idx)
+            if porteur is not None:
+                porteur.unlink(missing_ok=True)
             self._encode_next()
             return
 
@@ -537,12 +552,14 @@ class RunScreen(TableNavMixin, Screen):
             except Exception:
                 pass
 
-        # Les pistes audio produites à part ont été recopiées dans la sortie.
-        if audio_tmp is not None:
-            try:
-                audio_tmp.unlink(missing_ok=True)
-            except OSError:
-                pass
+        # Les pistes audio produites à part ont été recopiées dans la sortie,
+        # les sous-titres réécrits aussi.
+        for tmp in (audio_tmp, porteur):
+            if tmp is not None:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
         # L'intermédiaire d'un mux préalable n'a plus de raison d'être, que
         # l'encodage ait réussi ou non : il pèse le poids du film et se
@@ -615,6 +632,73 @@ class RunScreen(TableNavMixin, Screen):
             return None
         return out
 
+    def _porter_sous_titres(self, index: int,
+                            dec: FileDecision) -> tuple[bool, Optional[Path]]:
+        """Les sous-titres texte d'une sortie MP4, réécrits s'il le faut.
+
+        Rend (réussite, porteur). Le porteur est None quand aucune piste n'a
+        de silence assez long pour le défaut de `core/sous_titres.py` : la
+        commande lit alors la source comme avant. Le coût est une lecture de
+        la source, payée seulement par les sorties MP4 qui gardent du texte.
+        """
+        from core import sous_titres as st_mod
+
+        pistes = st_mod.pistes_a_porter(dec)
+        if not pistes:
+            return True, None
+        s       = self._statuses[index]
+        source  = dec.info.path
+        ffmpeg  = getattr(self.app, "ffmpeg_path", "ffmpeg")
+        porteur = source.with_name(f"{source.stem}.iris_st.mkv")
+        cmd, srts = st_mod.build_extraction(source, pistes, source.parent, ffmpeg)
+
+        def echouer(detail: str) -> tuple[bool, None]:
+            s.state, s.error_msg = FileState.ERROR, "sous-titres : préparation échouée"
+            s.last_line = detail
+            self.app.call_from_thread(self._update_row, index)
+            porteur.unlink(missing_ok=True)
+            return False, None
+
+        try:
+            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+            self.app.call_from_thread(
+                self._update_ffmpeg_line,
+                "▶ Lecture des sous-titres — un long silence fausse leurs temps en MP4…")
+            s.percent = -1
+            self.app.call_from_thread(self._update_row, index)
+            proc = EncoderProcess(cmd, dec.info.duration)
+            self._demarrer(proc)
+            for ligne, progress in proc.iter_progress():
+                s.last_line = ligne
+                if progress:
+                    s.percent = progress.percent
+                    self.app.call_from_thread(self._update_row, index)
+            code = proc.wait()
+            self._process = None
+            if code != 0 or not all(p.exists() for p in srts):
+                return echouer(f"L'extraction des sous-titres a échoué (code {code}).")
+
+            combles = 0
+            for chemin in srts:
+                texte, n = st_mod.combler_srt(chemin.read_text(encoding="utf-8"))
+                if n:
+                    chemin.write_text(texte, encoding="utf-8")
+                combles += n
+            if not combles:
+                return True, None
+
+            cmd = st_mod.build_porteur(pistes, srts, porteur, ffmpeg)
+            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+            r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
+                               encoding="utf-8", errors="replace", timeout=300)
+            if r.returncode != 0 or not porteur.exists():
+                return echouer("Le regroupement des sous-titres a échoué : "
+                               + (r.stderr.strip().splitlines() or ["?"])[-1])
+            return True, porteur
+        finally:
+            for chemin in srts:
+                chemin.unlink(missing_ok=True)
+
     def _strip_dv(self, index: int, dec: FileDecision) -> None:
         """Retire le RPU Dolby Vision sans réencoder, puis passe au suivant.
 
@@ -653,6 +737,7 @@ class RunScreen(TableNavMixin, Screen):
         # Le MP4 est recomposé par ffmpeg en une passe depuis la source : le
         # filtre `dovi_rpu` retire le RPU, l'audio se transcode au passage.
         mp4 = dec.output_container == ".mp4"
+        porteur: Optional[Path] = None
         ffmpeg_path = getattr(self.app, "ffmpeg_path", "ffmpeg")
         if mp4 and not dovi.strip_bsf_disponible(ffmpeg_path):
             echouer("ffmpeg 7.1+ requis (filtre dovi_rpu)",
@@ -744,11 +829,14 @@ class RunScreen(TableNavMixin, Screen):
             # écrire que du Matroska : quand le profil demande du MP4, c'est
             # ffmpeg qui recompose, depuis la source.
             if mp4:
+                ok, porteur = self._porter_sous_titres(index, dec)
+                if not ok:
+                    return
                 cmd = dovi.build_strip_mp4(
                     source, sortie,
                     sous_titres=[st.index for st in dec.subtitles_finales],
                     ffmpeg_path=ffmpeg_path,
-                    audio=dec.audio)
+                    audio=dec.audio, porteur=porteur)
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
@@ -819,9 +907,9 @@ class RunScreen(TableNavMixin, Screen):
             self._process = None
             # Les deux flux bruts pèsent chacun le poids du film : les laisser
             # traîner remplirait le disque, que l'opération ait abouti ou non.
-            for tmp in (brut, nodv, mka):
+            for tmp in (brut, nodv, mka, porteur):
                 try:
-                    if tmp.exists():
+                    if tmp is not None and tmp.exists():
                         tmp.unlink()
                 except OSError:
                     pass
@@ -882,6 +970,7 @@ class RunScreen(TableNavMixin, Screen):
         # En sortie MP4, mkvmerge écrit d'abord ce Matroska, que ffmpeg remuxe.
         en_mp4 = sortie.suffix.lower() == ".mp4"
         mkv    = source.with_name(f"{source.stem}.iris_dv.mkv") if en_mp4 else sortie
+        porteur: Optional[Path] = None
 
         passe_audio = audio_pass_needed(dec.audio)
         n_etapes    = 5 if passe_audio else 4
@@ -1011,7 +1100,10 @@ class RunScreen(TableNavMixin, Screen):
             if en_mp4:
                 if s.state == FileState.SKIPPED:
                     return
-                cmd = dovi.build_dv_mp4_remux(mkv, sortie, ffmpeg_path)
+                ok, porteur = self._porter_sous_titres(index, dec)
+                if not ok:
+                    return
+                cmd = dovi.build_dv_mp4_remux(mkv, sortie, ffmpeg_path, porteur)
                 annoncer("Remux en MP4 par ffmpeg…", " ".join(cmd))
                 proc = EncoderProcess(cmd, dec.info.duration)
                 self._demarrer(proc)
@@ -1050,9 +1142,9 @@ class RunScreen(TableNavMixin, Screen):
             self._process = None
             # Deux flux bruts de la taille de la vidéo encodée : les laisser
             # traîner remplirait le disque, que l'opération ait abouti ou non.
-            for tmp in (rpu, p8, enc, inj, mka) + ((mkv,) if en_mp4 else ()):
+            for tmp in (rpu, p8, enc, inj, mka, porteur) + ((mkv,) if en_mp4 else ()):
                 try:
-                    if tmp.exists():
+                    if tmp is not None and tmp.exists():
                         tmp.unlink()
                 except OSError:
                     pass

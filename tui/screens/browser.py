@@ -1158,24 +1158,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             # Appliquer les overrides vidéo
             if result.video_override:
                 from dataclasses import replace as dc_replace
-                from core.decision import SUFFIX_BY_ACTION as _SUFFIX_BY_ACTION
+                from core.decision import choisir_codec
                 ov = result.video_override
-                # SKIP et retrait de DV ont tous deux un débit cible nul.
-                was_skip = dec.video.action in (VideoAction.SKIP,
-                                                VideoAction.STRIP_DV)
-                if ov.action        is not None:
-                    # Recalculer le suffixe selon la nouvelle action
-                    dec.video = dc_replace(
-                        dec.video,
-                        action       = ov.action,
-                        output_suffix= _SUFFIX_BY_ACTION.get(ov.action, dec.video.output_suffix),
-                    )
-                    # Si l'originale était SKIP (bitrate=0) et qu'on encode désormais,
-                    # poser le débit source par défaut si non spécifié explicitement
-                    if was_skip and ov.bitrate is None and ov.action != VideoAction.SKIP:
-                        dec.video = dc_replace(dec.video, target_bitrate=dec.info.bitrate)
+                # Codec et sort du DV se tranchent ensemble : HEVC ne garde le
+                # DV par réencodage que si le DV est bien conservé.
+                if ov.action is not None or ov.dv_action is not None:
+                    dec.video = choisir_codec(
+                        dec, ov.action or dec.video.action, ov.dv_action)
                 if ov.bitrate       is not None: dec.video = dc_replace(dec.video, target_bitrate=ov.bitrate)
-                if ov.dv_action     is not None: dec.video = dc_replace(dec.video, dv_action=ov.dv_action)
                 if ov.delete_source is not None: dec.delete_source_override = ov.delete_source
             # Mettre à jour la cellule audio dans la table
             if adopted:

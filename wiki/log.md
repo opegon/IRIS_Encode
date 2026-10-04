@@ -194,3 +194,11 @@ d'IE-108 consignées. Pages touchées : [[hdr-dolby-vision]],
 Le réencodage DV ne force plus le MKV : mkvmerge puis remux MP4 par ffmpeg.
 Mesuré sur l'extrait Apes : `hvc1`, `dvcC` P8 compat. 1, RPU intact
 (2 270 images). Pages touchées : [[conteneurs]], [[hdr-dolby-vision]].
+
+## [2026-10-04] ingest | `mov_text` désynchronisé après un long silence (v0.8.9.62)
+
+VF forcée de *Premier Contact* affichée dès les premières images : le muxeur
+MP4 de ffmpeg écrase les temps d'un `mov_text` après plus de 2³¹ µs de
+silence. Seuil mesuré, MKV indemne, contournement par répliques invisibles.
+Source : [[source-2026-10-04-mov-text]]. Pages touchées : [[sous-titres]],
+[[ffmpeg]], [[pieges-et-lecons]].

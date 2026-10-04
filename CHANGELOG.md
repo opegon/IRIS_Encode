@@ -1,5 +1,53 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.62] — 2026-10-04
+
+### Sous-titre forcé désynchronisé en MP4
+
+La VF forcée de *Premier Contact*, sortie en MP4, s'affichait dès les
+premières images. Sa première réplique est à 53 min 51 s ; dans la sortie,
+à 0 s, et toutes les suivantes collées derrière.
+
+**Défaut de ffmpeg** (8.1.2 et 8.1.3), mesuré : le muxeur MP4/MOV perd les
+temps d'une piste `mov_text` dès qu'un silence, avant la première réplique ou
+entre deux, dépasse 2³¹ µs (2 147,48 s, 35 min 47 s). Code retour nul. Le
+Matroska n'a pas le défaut. Une piste forcée y tombe presque toujours.
+
+- `core/sous_titres.py` : avant une sortie MP4 qui garde des sous-titres
+  texte, ils sont extraits en SRT (une lecture de la source). Une piste dont
+  un silence dépasse 1 800 s reçoit une réplique invisible (espace
+  insécable, 1 ms) par tranche ; les pistes vont alors dans un Matroska
+  porteur, langue, titre et drapeaux compris, où la commande les lit à la
+  place de la source. Sans long silence, rien ne change.
+- Branché sur les trois chemins qui écrivent du MP4 : l'encodage
+  (`build_command`), le retrait du DV (`build_strip_mp4`) et le réencodage DV
+  (`build_dv_mp4_remux`).
+- `SubtitleTrack.default` : le drapeau « par défaut », pour que la piste
+  réécrite le garde.
+- Mesuré sur le film : FR forcée à 3 231,562 s, et les quatre pistes
+  complètes (16, 980, 8 et 1 234 répliques).
+- `tests/test_sous_titres_mp4.py`. Spec § 8.6, wiki (`sous-titres`, `ffmpeg`).
+
+## [v0.8.9.61] — 2026-10-04
+
+### Forcer un réencodage Dolby Vision depuis l'assistant
+
+*Premier Contact* (DV 8.1, 3 Mb/s) restait en SKIP dans l'assistant, quoi
+qu'on fasse :
+
+- **`F2` à l'étape 4 ne forçait rien.** La décision SKIP partait telle quelle
+  à la file, qui la marquait « ignoré ». `F2` vaut désormais la coche du
+  navigateur : un SKIP est forcé (`WizardScreen._a_encoder`), et l'étape 4
+  annonce la décision forcée et le nom de sortie. Un retrait du DV part tel
+  quel.
+- **`F6` → HEVC donnait une copie du flux à débit nul.** L'assistant, l'aperçu
+  et l'écran des pistes recopiaient chacun leur règle de changement de codec,
+  sans `ENCODE_DV` et, pour l'assistant, sans reprendre le débit de la source.
+  `decision.choisir_codec` devient la règle unique, la coche forcée comprise :
+  H264 retire le DV, HEVC avec le DV conservé passe en `ENCODE_DV` si la
+  source s'y prête, une vidéo recopiée malgré tout porte le suffixe de copie.
+- `tests/test_dv_reencodage.py`. Spec § 14.0, GUIDE.
+
 ## [v0.8.9.60] — 2026-10-04
 
 ### « copy indisponible ici » sur une vidéo recopiée

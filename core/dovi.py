@@ -106,7 +106,8 @@ def build_extract_hevc_command(input_path: Path, output_hevc: Path,
 
 def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
                     ffmpeg_path: str = "ffmpeg",
-                    audio: list | None = None) -> list[str]:
+                    audio: list | None = None,
+                    porteur: Path | None = None) -> list[str]:
     """Retrait du RPU vers du MP4, en une passe ffmpeg depuis la source.
 
     mkvmerge ne sait écrire que du Matroska : quand le profil demande du MP4,
@@ -128,19 +129,23 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
 
     `audio` porte la décision piste par piste. Absente, l'audio de la source
     est recopiée en bloc.
+
+    `porteur` : les mêmes sous-titres, réécrits par `core/sous_titres.py`.
     """
     from .decision import AudioAction
     from .encoder import audio_args
-    cmd = [ffmpeg_path, "-y", "-loglevel", "error",
-           "-i", str(source), "-map", "0:v:0"]
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(source)]
+    if porteur is not None:
+        cmd += ["-i", str(porteur)]
+    cmd += ["-map", "0:v:0"]
     gardees = [ad for ad in (audio or []) if ad.action != AudioAction.EXCLUDE]
     if audio is None:
         cmd += ["-map", "0:a?"]
     else:
         for ad in gardees:
             cmd += ["-map", f"0:a:{ad.track.index}"]
-    for index in sous_titres:
-        cmd += ["-map", f"0:s:{index}"]
+    for n, index in enumerate(sous_titres):
+        cmd += ["-map", f"1:s:{n}" if porteur is not None else f"0:s:{index}"]
     cmd += ["-c", "copy", "-bsf:v", "dovi_rpu=strip=1"]
     # `-c copy` vaut pour tout ; les options par piste, plus précises, gagnent.
     cmd += audio_args(gardees)
@@ -152,7 +157,8 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
 
 
 def build_dv_mp4_remux(mkv: Path, output: Path,
-                       ffmpeg_path: str = "ffmpeg") -> list[str]:
+                       ffmpeg_path: str = "ffmpeg",
+                       porteur: Path | None = None) -> list[str]:
     """Remux en MP4 du Matroska que mkvmerge a recomposé (réencodage DV).
 
     Le passage par le Matroska n'est pas un détour : depuis le flux Annex-B
@@ -167,10 +173,16 @@ def build_dv_mp4_remux(mkv: Path, output: Path,
     n'a retenu le MP4 que sans sous-titre image ni stylé — et deviennent du
     `mov_text`. L'option est posée sans condition : sans sous-titre, ffmpeg
     l'ignore (mesuré).
+
+    `porteur` : les sous-titres réécrits par `core/sous_titres.py`, pris à la
+    place de ceux du Matroska.
     """
-    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(mkv),
-           "-map", "0:v:0", "-map", "0:a?", "-map", "0:s?",
-           "-c", "copy", "-c:s", "mov_text",
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(mkv)]
+    if porteur is not None:
+        cmd += ["-i", str(porteur)]
+    cmd += ["-map", "0:v:0", "-map", "0:a?",
+            "-map", "1:s?" if porteur is not None else "0:s?",
+            "-c", "copy", "-c:s", "mov_text",
            "-tag:v", "hvc1", "-strict", "unofficial",
             "-movflags", "+faststart", str(output)]
     return cmd

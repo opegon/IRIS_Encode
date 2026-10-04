@@ -374,6 +374,9 @@ class SubtitleTrack:
     # Drapeau « forced » du conteneur. Beaucoup de rips ne le posent pas et
     # l'écrivent dans le titre (« FR Forced ») : les deux valent.
     forced:   bool = False
+    # Drapeau « par défaut ». Lu pour qu'une piste réécrite à part le garde
+    # (`core/sous_titres.py`) : recopiée depuis la source, elle l'emporte seule.
+    default:  bool = False
 
     @property
     def is_image_based(self) -> bool:
@@ -724,6 +727,7 @@ def scan(path: Path) -> VideoInfo:
             language=tags.get("language", ""),
             title=tags.get("title", "") or "",
             forced=bool((s.get("disposition") or {}).get("forced")),
+            default=bool((s.get("disposition") or {}).get("default")),
         ))
 
     # ── Dolby Vision ──────────────────────────────────────────────────────────

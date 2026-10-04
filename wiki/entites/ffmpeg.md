@@ -1,12 +1,13 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-09-30
+maj: 2026-10-04
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-diagnostic]]"
   - "[[source-2026-09-26-nvenc-pilote]]"
+  - "[[source-2026-10-04-mov-text]]"
 ---
 
 # ffmpeg
@@ -75,6 +76,9 @@ sans libx265 : `ffmpeg -encoders | findstr x265`.
   sous-titre tardif, avec un code retour 0. *(mesuré, [[audio]])*
 - `atrim` découpe à l'échantillon près ; `-c copy` se cale sur la trame la plus
   proche. `concat` exige fréquence et disposition identiques.
+- **`mov_text` après un silence de plus de 2³¹ µs** (35 min 47 s) : temps
+  écrasés à l'écriture en MP4/MOV, en 8.1.2 comme en 8.1.3. Le MKV n'a pas
+  le défaut. *(mesuré, [[sous-titres#Long silence en MP4]])*
 - Chapitres d'un MP4 : piste `bin_data` (voir [[conteneurs#Chapitres]]).
 - Écrit **`hev1`** par défaut pour du HEVC en MP4 ; `-tag:v hvc1` le change sans toucher au flux, et IRIS le passe depuis la v0.8.9.39 ([[conteneurs]]).
 - Lit `stdin` pour son clavier interactif (`q` l'arrête) : voir [[sous-processus]].

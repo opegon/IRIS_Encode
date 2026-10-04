@@ -22,11 +22,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from core.i18n import N_, _
+
 
 @dataclass(frozen=True)
 class Champ:
     cle:     str           # nom dans la section de config.toml
-    libelle: str
+    libelle: str           # marqué N_(), traduit à l'affichage
     secret:  bool = False  # saisie masquée
     requis:  bool = True   # sans lui, le service est « manquant »
 
@@ -37,8 +39,8 @@ class Service:
     nom:      str
     section:  str          # section de config.toml
     url:      str          # page qui délivre la clé
-    usage:    str          # à quoi il sert, dit dans la fenêtre
-    sans_cle: str          # ce qui arrive sans lui
+    usage:    str          # à quoi il sert, dit dans la fenêtre — N_(), traduit à l'affichage
+    sans_cle: str          # ce qui arrive sans lui — idem
     champs:   tuple[Champ, ...]
 
 
@@ -46,18 +48,20 @@ SERVICES: tuple[Service, ...] = (
     Service(
         id="opensubtitles", nom="OpenSubtitles", section="opensubtitles",
         url="https://www.opensubtitles.com/consumers",
-        usage="sous-titres à télécharger (O depuis le fichier donneur)",
-        sans_cle="sans clé, pas de recherche ; sans compte, pas de téléchargement",
-        champs=(Champ("api_key", "Clé d'API"),
-                Champ("username", "Identifiant", requis=False),
-                Champ("password", "Mot de passe", secret=True, requis=False)),
+        # TRANSLATORS: "O" is the key pressed on the donor file screen.
+        usage=N_("subtitles to download (O from the donor file)"),
+        sans_cle=N_("without a key, no search; without an account, no download"),
+        champs=(Champ("api_key", N_("API key")),
+                Champ("username", N_("Username"), requis=False),
+                Champ("password", N_("Password"), secret=True, requis=False)),
     ),
     Service(
         id="omdb", nom="OMDb", section="meta",
         url="https://www.omdbapi.com/apikey.aspx",
-        usage="fiche IMDB complète (I, puis Tab)",
-        sans_cle="sans clé, la fiche IMDB se réduit aux suggestions d'IMDB",
-        champs=(Champ("omdb_api_key", "Clé d'API"),),
+        # TRANSLATORS: "I" then "Tab" are the keys that open the IMDB info.
+        usage=N_("full IMDB info (I, then Tab)"),
+        sans_cle=N_("without a key, the IMDB info is limited to IMDB's suggestions"),
+        champs=(Champ("omdb_api_key", N_("API key")),),
     ),
 )
 
@@ -119,16 +123,19 @@ def verifier_omdb(saisies: dict[str, str]) -> Optional[str]:
                          params={"apikey": cle, "i": "tt0111161"},
                          headers={"User-Agent": _UA}, timeout=12)
     except requests.RequestException as e:
-        return f"OMDb injoignable : {e}"
+        return _("OMDb unreachable: {error}").format(error=e)
     if r.status_code == 401:
-        return "Clé refusée par OMDb — vérifiez-la, ou activez-la par le lien reçu par courriel."
+        return _("Key refused by OMDb — check it, or activate it with the link "
+                 "received by email.")
     if r.status_code >= 400:
-        return f"OMDb a répondu {r.status_code}."
+        return _("OMDb answered {status}.").format(status=r.status_code)
     try:
         if r.json().get("Response") == "False":
-            return f"OMDb : {r.json().get('Error', 'réponse négative')}"
+            # TRANSLATORS: {error} is OMDb's own message, in English (L-08).
+            return _("OMDb: “{error}”").format(
+                error=r.json().get("Error") or _("negative answer"))
     except ValueError:
-        return "OMDb a rendu une réponse illisible."
+        return _("OMDb returned an unreadable answer.")
     return None
 
 
@@ -139,7 +146,7 @@ def verifier_opensubtitles(saisies: dict[str, str]) -> Optional[str]:
     user  = saisies.get("username", "").strip()
     mdp   = saisies.get("password", "")
     if bool(user) != bool(mdp):
-        return "Donnez l'identifiant et le mot de passe, ou aucun des deux."
+        return _("Give both the username and the password, or neither.")
     compte = bool(user)
     try:
         r = requests.post(
@@ -151,16 +158,16 @@ def verifier_opensubtitles(saisies: dict[str, str]) -> Optional[str]:
                   "password": mdp if compte else "x"},
             timeout=15)
     except requests.RequestException as e:
-        return f"OpenSubtitles injoignable : {e}"
+        return _("OpenSubtitles unreachable: {error}").format(error=e)
     if r.status_code == 403:
-        return "Clé d'API refusée par OpenSubtitles."
+        return _("API key refused by OpenSubtitles.")
     if r.status_code == 429:
-        return "OpenSubtitles limite les connexions à une par seconde — réessayez."
+        return _("OpenSubtitles allows one login per second — try again.")
     if r.status_code == 401:
-        return ("Identifiant ou mot de passe refusé par OpenSubtitles."
+        return (_("Username or password refused by OpenSubtitles.")
                 if compte else None)          # compte inventé : la clé est bonne
     if r.status_code >= 400:
-        return f"OpenSubtitles a répondu {r.status_code}."
+        return _("OpenSubtitles answered {status}.").format(status=r.status_code)
     return None
 
 

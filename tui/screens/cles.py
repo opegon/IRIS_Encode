@@ -21,6 +21,7 @@ from textual.widgets import Button, Checkbox, Input, Label, Static
 
 from core import cles
 from core import config as cfg_mod
+from core.i18n import _
 
 from ..common import raccourcis
 
@@ -95,14 +96,15 @@ class ClesScreen(ModalScreen[bool]):
                     actuelles = cles.valeurs(self._cfg, s)
                     with Vertical(classes="cles-service", id=f"svc-{s.id}"):
                         yield Static(s.nom, classes="cles-nom", markup=False)
-                        yield Static(f"{s.usage} — {s.sans_cle}.",
+                        yield Static(_("{usage} — {without_key}.").format(
+                                         usage=_(s.usage), without_key=_(s.sans_cle)),
                                      classes="cles-usage", markup=False)
                         with Horizontal(classes="cles-lien"):
                             yield Button("Obtenir une clé", id=f"lien-{s.id}")
                             yield Static(s.url, classes="cles-url", markup=False)
                         for c in s.champs:
                             with Horizontal(classes="cles-ligne"):
-                                yield Label(c.libelle, classes="cles-lbl")
+                                yield Label(_(c.libelle), classes="cles-lbl")
                                 yield Input(value=actuelles[c.cle],
                                             password=c.secret,
                                             id=f"champ-{s.id}-{c.cle}")

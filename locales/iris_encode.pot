@@ -8,6 +8,91 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#. "O" is the key pressed on the donor file screen.
+#: core/cles.py:52
+msgid "subtitles to download (O from the donor file)"
+msgstr ""
+
+#: core/cles.py:53
+msgid "without a key, no search; without an account, no download"
+msgstr ""
+
+#: core/cles.py:54
+#: core/cles.py:64
+msgid "API key"
+msgstr ""
+
+#: core/cles.py:55
+msgid "Username"
+msgstr ""
+
+#: core/cles.py:56
+msgid "Password"
+msgstr ""
+
+#. "I" then "Tab" are the keys that open the IMDB info.
+#: core/cles.py:62
+msgid "full IMDB info (I, then Tab)"
+msgstr ""
+
+#: core/cles.py:63
+msgid "without a key, the IMDB info is limited to IMDB's suggestions"
+msgstr ""
+
+#: core/cles.py:126
+#, python-brace-format
+msgid "OMDb unreachable: {error}"
+msgstr ""
+
+#: core/cles.py:128
+msgid "Key refused by OMDb — check it, or activate it with the link received by email."
+msgstr ""
+
+#: core/cles.py:131
+#, python-brace-format
+msgid "OMDb answered {status}."
+msgstr ""
+
+#. {error} is OMDb's own message, in English (L-08).
+#: core/cles.py:135
+#, python-brace-format
+msgid "OMDb: “{error}”"
+msgstr ""
+
+#: core/cles.py:136
+msgid "negative answer"
+msgstr ""
+
+#: core/cles.py:138
+msgid "OMDb returned an unreadable answer."
+msgstr ""
+
+#: core/cles.py:149
+msgid "Give both the username and the password, or neither."
+msgstr ""
+
+#: core/cles.py:161
+#, python-brace-format
+msgid "OpenSubtitles unreachable: {error}"
+msgstr ""
+
+#: core/cles.py:163
+msgid "API key refused by OpenSubtitles."
+msgstr ""
+
+#: core/cles.py:165
+msgid "OpenSubtitles allows one login per second — try again."
+msgstr ""
+
+#: core/cles.py:167
+msgid "Username or password refused by OpenSubtitles."
+msgstr ""
+
+#: core/cles.py:170
+#, python-brace-format
+msgid "OpenSubtitles answered {status}."
+msgstr ""
+
 #. separator between the first items of a list ("a, b and c").
 #: core/i18n.py:93
 msgctxt "list"
@@ -19,4 +104,9 @@ msgstr ""
 #, python-brace-format
 msgctxt "list"
 msgid "{items} and {last}"
+msgstr ""
+
+#: tui/screens/cles.py:99
+#, python-brace-format
+msgid "{usage} — {without_key}."
 msgstr ""

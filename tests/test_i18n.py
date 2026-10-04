@@ -258,3 +258,22 @@ def test_texte_erreur_traduit_ce_qui_peut_l_etre(tmp_path):
     assert isinstance(e, ValueError)          # les `except ValueError` tiennent
     assert i18n.texte_erreur(e) == "Impossible de lire a."
     assert i18n.texte_erreur(OSError("disque plein")) == "disque plein"
+
+
+def test_un_module_qui_traduit_n_ecrase_pas_underscore():
+    """`for _ in …` ou `a, _ = …` dans un module qui importe `_` de
+    `core.i18n` remplacerait la fonction de traduction dans ce bloc : le
+    prochain `_("…")` planterait, ou pire, rendrait n'importe quoi."""
+    fautes = []
+    for f in sorted([*RACINE.joinpath("core").rglob("*.py"),
+                     *RACINE.joinpath("tui").rglob("*.py")]):
+        arbre = ast.parse(f.read_text(encoding="utf-8"))
+        importe = any(isinstance(n, ast.ImportFrom) and n.module == "core.i18n"
+                      and any(a.name == "_" for a in n.names)
+                      for n in ast.walk(arbre))
+        if not importe:
+            continue
+        for n in ast.walk(arbre):
+            if isinstance(n, ast.Name) and n.id == "_" and isinstance(n.ctx, ast.Store):
+                fautes.append(f"{f.relative_to(RACINE)}:{n.lineno}")
+    assert not fautes, fautes

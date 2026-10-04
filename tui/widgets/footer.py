@@ -23,11 +23,13 @@ from __future__ import annotations
 
 import re
 
+from rich.cells import cell_len
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import Static
 
+from core.i18n import _
 from ..common import SEP_TOUCHE, touche as _fmt_key
 
 _SEP = "   "        # entre deux raccourcis d'une même ligne — resserré ici
@@ -35,7 +37,9 @@ _PADDING = 2        # padding horizontal du bloc, à défalquer de la largeur
 
 
 def _entry_width(key: str, desc: str) -> int:
-    return len(_fmt_key(key)) + len(SEP_TOUCHE) + len(desc)
+    # En cellules d'écran, pas en caractères : une traduction en écriture
+    # pleine chasse occupe deux cellules par caractère (L-50).
+    return cell_len(_fmt_key(key)) + cell_len(SEP_TOUCHE) + cell_len(desc)
 
 
 def pack(pairs: list[tuple[str, str]], width: int) -> list[list[tuple[str, str]]]:
@@ -162,8 +166,10 @@ class KeyFooter(Widget):
         # pour un seul raccourci. On enchaîne, et on ne passe à la ligne qu'au
         # débordement. Les touches de fonction restent en fin de séquence,
         # simplement plus toujours en tête de ligne.
-        raccourcis = [p for bande in split_bands(self._actions, self._nav)
-                      for p in bande]
+        # Les descriptions arrivent en texte source (anglais, marqué N_) et se
+        # traduisent ici, au rendu : un seul endroit pour tous les écrans (L-39).
+        raccourcis = [(k, _(d)) for bande in split_bands(self._actions, self._nav)
+                      for k, d in bande]
         style_touche = (STYLE_TOUCHE_ASSISTANT if self.has_class("assistant")
                         else STYLE_TOUCHE)
         lignes: list[Text] = [_render_line(l, style_touche)

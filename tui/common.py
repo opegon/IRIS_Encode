@@ -13,6 +13,7 @@ from pathlib import Path
 from rich.cells import cell_len
 from rich.text import Text
 
+from core.i18n import _
 from core import config as cfg_mod
 from core.muxer import TrackKind
 from core.decision import (
@@ -94,7 +95,8 @@ def touche(nom: str) -> str:
 def raccourci(nom: str, libelle: str) -> str:
     """Un raccourci rendu. `nom` peut être une touche Textual (« enter ») ou
     une notation déjà composée (« +/- », « ⇧↑/↓ »)."""
-    return f"{touche(nom)}{SEP_TOUCHE}{libelle}"
+    # `libelle` arrive en texte source (marqué N_) : traduit ici, au rendu (L-39).
+    return f"{touche(nom)}{SEP_TOUCHE}{_(libelle)}"
 
 
 def raccourcis(paires: list[tuple[str, str]]) -> str:

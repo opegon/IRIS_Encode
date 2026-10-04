@@ -1067,3 +1067,17 @@ def test_un_en_tete_de_colonne_n_est_ecrit_qu_une_fois():
               for n, l in enumerate(f.read_text(encoding="utf-8").splitlines(), 1)
               if motif.search(l)]
     assert not fautes, fautes
+
+
+def test_les_limites_de_resolution_ne_portent_pas_de_libelle():
+    """L-14 (IE-113) : `_resolve_limits` rendait aussi « Original WxH »,
+    jamais lu — un texte à traduire pour rien."""
+    from core.decision import _resolve_limits
+    from core.profiles import Profile
+    from core.scanner import VideoInfo
+    info = VideoInfo(path=Path("Film.mkv"), width=3840, height=2160,
+                     bitrate=20_000_000, codec="hevc", duration=60.0,
+                     frame_count=0, dv_profile=None)
+    for keep_4k in (True, False):
+        limites = _resolve_limits(info, Profile(id="p", data={"keep_4k": keep_4k}))
+        assert all(isinstance(v, int) for v in limites), limites

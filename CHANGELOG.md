@@ -1,5 +1,19 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.68] — 2026-10-04
+
+### Libellé mort retiré de `_resolve_limits`
+
+IE-113, constat L-14 de l'audit de localisation.
+
+`core/decision._resolve_limits` rendait, en plus des limites de sortie, un
+libellé (« Original 3840x2160 », « 1080p », « 720p ») que son seul appelant
+jetait. Un texte affiché nulle part, que l'extraction aurait pourtant proposé
+à la traduction. La fonction rend désormais `(limit_w, limit_h, bucket_h)`.
+Aucun changement de comportement.
+
+- `tests/test_revue_code.py` : les limites ne sont que des nombres.
+
 ## [v0.8.9.67] — 2026-10-04
 
 ### Un libellé, une source

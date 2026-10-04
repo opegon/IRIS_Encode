@@ -741,8 +741,8 @@ def _near_1080p_thresholds() -> tuple[int, int]:
     return _NEAR_1080P_CACHE
 
 
-def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, int, str]:
-    """Retourne (limit_w, limit_h, bucket_h, label).
+def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, int]:
+    """Retourne (limit_w, limit_h, bucket_h).
 
     limit_w/limit_h : dimensions max de la sortie (downscale si source > limit).
     bucket_h        : hauteur de référence pour le calcul du bitrate (720/1080/2160).
@@ -752,15 +752,15 @@ def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, int, s
 
     if is_4k_source:
         if keep_4k:
-            return info.width, info.height, 2160, f"Original {info.width}x{info.height}"
-        return 1920, 1080, 1080, "1080p"
+            return info.width, info.height, 2160
+        return 1920, 1080, 1080
 
     near_w, near_h = _near_1080p_thresholds()
     if info.width >= near_w or info.height >= near_h:
         # Source ≈ 1080p (possiblement rognée) → conserve la résolution d'origine.
-        return info.width, info.height, 1080, f"Original {info.width}x{info.height}"
+        return info.width, info.height, 1080
 
-    return 1280, 720, 720, "720p"
+    return 1280, 720, 720
 
 
 def _decide_dv(info: VideoInfo, profile: Profile) -> DVAction:
@@ -780,7 +780,7 @@ def _decide_dv(info: VideoInfo, profile: Profile) -> DVAction:
 
 def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     """Applique les 4 cas de la spec et retourne la décision vidéo."""
-    limit_w, limit_h, bucket_h, _ = _resolve_limits(info, profile)
+    limit_w, limit_h, bucket_h    = _resolve_limits(info, profile)
     dv_action                     = _decide_dv(info, profile)
 
     # bucket_h = hauteur de référence du bucket de bitrate (720/1080/2160),

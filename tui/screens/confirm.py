@@ -16,6 +16,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
+from core.i18n import _, N_
 from ..common import raccourcis
 
 
@@ -68,27 +69,27 @@ class ConfirmModal(ModalScreen[bool]):
     """
 
     BINDINGS = [
-        Binding("escape",    "cancel",        "Annuler", show=False, priority=True),
-        Binding("backspace", "cancel",        "Annuler", show=False),
+        Binding("escape",    "cancel",        N_("Cancel"), show=False, priority=True),
+        Binding("backspace", "cancel",        N_("Cancel"), show=False),
         Binding("left",      "toggle_focus",  "",        show=False),
         Binding("right",     "toggle_focus",  "",        show=False),
-        Binding("enter",     "press_focused", "Valider", show=False),
+        Binding("enter",     "press_focused", N_("OK"), show=False),
     ]
 
     def __init__(
         self,
         title:         str,
-        body:          str,
-        confirm_label: str  = "Confirmer",
-        cancel_label:  str  = "Annuler",
+        body,                                 # texte, ou `rich.text.Text`
+        confirm_label: str | None = None,     # défaut : « Confirmer », traduit
+        cancel_label:  str | None = None,     # défaut : « Annuler », traduit
         danger:        bool = False,
         focus_confirm: bool = False,
     ) -> None:
         super().__init__(classes="danger" if danger else "")
         self._title         = title
         self._body          = body
-        self._confirm_label = confirm_label
-        self._cancel_label  = cancel_label
+        self._confirm_label = confirm_label or _("Confirm")
+        self._cancel_label  = cancel_label or _("Cancel")
         self._danger        = danger
         self._focus_confirm = focus_confirm
 
@@ -105,8 +106,8 @@ class ConfirmModal(ModalScreen[bool]):
                     variant="warning" if self._danger else "primary",
                 )
                 yield Button(f"✗  {self._cancel_label}", id="btn-cancel", variant="default")
-            yield Static(raccourcis([("←/→", "Choisir"), ("enter", "Valider"),
-                                     ("escape", "Annuler")]), id="confirm-hint")
+            yield Static(raccourcis([("←/→", N_("Choose")), ("enter", N_("OK")),
+                                     ("escape", N_("Cancel"))]), id="confirm-hint")
 
     def on_mount(self) -> None:
         target = "#btn-confirm" if self._focus_confirm else "#btn-cancel"

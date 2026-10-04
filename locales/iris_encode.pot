@@ -881,6 +881,7 @@ msgstr ""
 #: tui/app.py:62
 #: tui/app.py:63
 #: tui/common.py:396
+#: tui/screens/quit.py:23
 msgid "Quit"
 msgstr ""
 
@@ -1101,6 +1102,84 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
+#: tui/screens/confirm.py:72
+#: tui/screens/confirm.py:73
+#: tui/screens/confirm.py:92
+#: tui/screens/confirm.py:110
+#: tui/widgets/profile_form.py:211
+msgid "Cancel"
+msgstr ""
+
+#: tui/screens/confirm.py:76
+#: tui/screens/confirm.py:109
+msgid "OK"
+msgstr ""
+
+#: tui/screens/confirm.py:91
+msgid "Confirm"
+msgstr ""
+
+#: tui/screens/confirm.py:109
+msgid "Choose"
+msgstr ""
+
+#: tui/screens/delete_confirm.py:20
+#, python-brace-format
+msgid "File: {name}"
+msgstr ""
+
+#: tui/screens/delete_confirm.py:21
+#, python-brace-format
+msgid "Size: {size}"
+msgstr ""
+
+#: tui/screens/delete_confirm.py:22
+#: tui/screens/recursive_confirm.py:18
+#, python-brace-format
+msgid "Folder: {folder}"
+msgstr ""
+
+#: tui/screens/delete_confirm.py:24
+msgid "Permanent deletion — no recycle bin, no undo."
+msgstr ""
+
+#: tui/screens/delete_confirm.py:28
+msgid "Delete the file"
+msgstr ""
+
+#: tui/screens/delete_confirm.py:30
+msgid "Delete"
+msgstr ""
+
+#: tui/screens/quit.py:21
+msgid "Quit IRIS ENCODE?"
+msgstr ""
+
+#: tui/screens/quit.py:22
+msgid "No task in progress."
+msgstr ""
+
+#: tui/screens/recursive_confirm.py:19
+#, python-brace-format
+msgid "Active profile: {profile}"
+msgstr ""
+
+#: tui/screens/recursive_confirm.py:21
+msgid "Every video file in this folder and its subfolders (no depth limit) will be scanned and sent to the dry run with the active profile."
+msgstr ""
+
+#: tui/screens/recursive_confirm.py:24
+msgid "No manual track selection — automatic decisions."
+msgstr ""
+
+#: tui/screens/recursive_confirm.py:27
+msgid "Encode the folder"
+msgstr ""
+
+#: tui/screens/recursive_confirm.py:29
+msgid "Start the scan"
+msgstr ""
+
 #: tui/widgets/profile_form.py:41
 msgid "8000k ⚠ recommended"
 msgstr ""
@@ -1159,10 +1238,6 @@ msgstr ""
 
 #: tui/widgets/profile_form.py:210
 msgid "Save"
-msgstr ""
-
-#: tui/widgets/profile_form.py:211
-msgid "Cancel"
 msgstr ""
 
 #: tui/widgets/profile_form.py:226

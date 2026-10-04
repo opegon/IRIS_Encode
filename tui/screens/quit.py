@@ -6,6 +6,7 @@ que si l'utilisateur déplace explicitement le focus sur Quitter.
 """
 from __future__ import annotations
 
+from core.i18n import _
 from .confirm import ConfirmModal
 
 
@@ -17,10 +18,9 @@ class QuitConfirmScreen(ConfirmModal):
         # encodage interrompu même quand rien ne tournait, et taisait une
         # mesure ou un mux.
         super().__init__(
-            title="⚠  Quitter IRIS ENCODE ?",
-            body="\n".join(en_cours) if en_cours else "Aucun traitement en cours.",
-            confirm_label="Quitter",
-            cancel_label="Annuler",
+            title="⚠  " + _("Quit IRIS ENCODE?"),
+            body="\n".join(en_cours) if en_cours else _("No task in progress."),
+            confirm_label=_("Quit"),
             danger=True,
             focus_confirm=False,
         )

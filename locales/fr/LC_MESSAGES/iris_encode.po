@@ -881,6 +881,7 @@ msgstr "indisponible sur ce système"
 #: tui/app.py:62
 #: tui/app.py:63
 #: tui/common.py:396
+#: tui/screens/quit.py:23
 msgid "Quit"
 msgstr "Quitter"
 
@@ -1101,6 +1102,84 @@ msgstr "{usage} — {without_key}."
 msgid "Actions"
 msgstr "Actions"
 
+#: tui/screens/confirm.py:72
+#: tui/screens/confirm.py:73
+#: tui/screens/confirm.py:92
+#: tui/screens/confirm.py:110
+#: tui/widgets/profile_form.py:211
+msgid "Cancel"
+msgstr "Annuler"
+
+#: tui/screens/confirm.py:76
+#: tui/screens/confirm.py:109
+msgid "OK"
+msgstr "Valider"
+
+#: tui/screens/confirm.py:91
+msgid "Confirm"
+msgstr "Confirmer"
+
+#: tui/screens/confirm.py:109
+msgid "Choose"
+msgstr "Choisir"
+
+#: tui/screens/delete_confirm.py:20
+#, python-brace-format
+msgid "File: {name}"
+msgstr "Fichier : {name}"
+
+#: tui/screens/delete_confirm.py:21
+#, python-brace-format
+msgid "Size: {size}"
+msgstr "Taille : {size}"
+
+#: tui/screens/delete_confirm.py:22
+#: tui/screens/recursive_confirm.py:18
+#, python-brace-format
+msgid "Folder: {folder}"
+msgstr "Dossier : {folder}"
+
+#: tui/screens/delete_confirm.py:24
+msgid "Permanent deletion — no recycle bin, no undo."
+msgstr "Suppression définitive — pas de corbeille, pas de retour arrière."
+
+#: tui/screens/delete_confirm.py:28
+msgid "Delete the file"
+msgstr "Supprimer le fichier"
+
+#: tui/screens/delete_confirm.py:30
+msgid "Delete"
+msgstr "Supprimer"
+
+#: tui/screens/quit.py:21
+msgid "Quit IRIS ENCODE?"
+msgstr "Quitter IRIS ENCODE ?"
+
+#: tui/screens/quit.py:22
+msgid "No task in progress."
+msgstr "Aucun traitement en cours."
+
+#: tui/screens/recursive_confirm.py:19
+#, python-brace-format
+msgid "Active profile: {profile}"
+msgstr "Profil actif : {profile}"
+
+#: tui/screens/recursive_confirm.py:21
+msgid "Every video file in this folder and its subfolders (no depth limit) will be scanned and sent to the dry run with the active profile."
+msgstr "Tous les fichiers vidéo de ce répertoire et de ses sous-répertoires (illimités) seront analysés et soumis à l'aperçu avec le profil actif."
+
+#: tui/screens/recursive_confirm.py:24
+msgid "No manual track selection — automatic decisions."
+msgstr "Aucune sélection de pistes manuelle — décisions automatiques."
+
+#: tui/screens/recursive_confirm.py:27
+msgid "Encode the folder"
+msgstr "Encoder le dossier"
+
+#: tui/screens/recursive_confirm.py:29
+msgid "Start the scan"
+msgstr "Lancer l'analyse"
+
 #: tui/widgets/profile_form.py:41
 msgid "8000k ⚠ recommended"
 msgstr "8000k ⚠ recommandé"
@@ -1160,10 +1239,6 @@ msgstr "Valeur suiv./préc."
 #: tui/widgets/profile_form.py:210
 msgid "Save"
 msgstr "Enregistrer"
-
-#: tui/widgets/profile_form.py:211
-msgid "Cancel"
-msgstr "Annuler"
 
 #: tui/widgets/profile_form.py:226
 #: tui/widgets/profile_form.py:229

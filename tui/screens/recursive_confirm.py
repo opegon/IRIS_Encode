@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rich.markup import escape
+from rich.text import Text
 
+from core.i18n import _
+from ..common import texte_style, touche
 from .confirm import ConfirmModal
 
 
@@ -12,19 +14,19 @@ class RecursiveConfirmModal(ConfirmModal):
     """Modal de confirmation avant un scan/encodage récursif."""
 
     def __init__(self, directory: Path, profile_id: str) -> None:
-        body = (
-            f"Répertoire : [bold]{escape(str(directory))}[/bold]\n"
-            f"Profil actif : [bold]{escape(profile_id)}[/bold]\n\n"
-            "Tous les fichiers vidéo de ce répertoire et de ses "
-            "sous-répertoires (illimités) seront analysés et soumis "
-            "à l'aperçu avec le profil actif.\n"
-            "Aucune sélection de pistes manuelle — décisions automatiques."
-        )
+        body = Text("\n").join([
+            texte_style(_("Folder: {folder}"), folder=(str(directory), "bold")),
+            texte_style(_("Active profile: {profile}"), profile=(profile_id, "bold")),
+            Text(""),
+            Text(_("Every video file in this folder and its subfolders (no "
+                   "depth limit) will be scanned and sent to the dry run with "
+                   "the active profile.")),
+            Text(_("No manual track selection — automatic decisions.")),
+        ])
         super().__init__(
-            title="R — Encoder le dossier",
+            title=f"{touche('r')} — " + _("Encode the folder"),
             body=body,
-            confirm_label="Lancer l'analyse",
-            cancel_label="Annuler",
+            confirm_label=_("Start the scan"),
             danger=False,
             focus_confirm=True,
         )

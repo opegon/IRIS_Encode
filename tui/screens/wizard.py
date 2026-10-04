@@ -40,13 +40,14 @@ from core.texte import pluriel
 from core.decision import (ACTION_CYCLE, AudioAction,
                            FileDecision, VideoAction, cycle_index,
                            choisir_codec, decide_audio, force_skip_to_encode,
-                           resoudre_sorties)
+                           resoudre_sorties, LIBELLE_COPIE)
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import measure_external_track
 
 from ..common import (confier_a_la_file, langue_affichee, nom_codec, bitrate_picker_config, codec_picker_opts, fmt_duration,
                       footer_line2, retour_accueil, tronquer_milieu,
-                      ECARTEE, actions_ecran, cellule, largeur_entete)
+                      ECARTEE, actions_ecran, cellule, colonne_fixe,
+                      libelle_type_piste)
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
@@ -272,10 +273,10 @@ class WizardScreen(TableNavMixin, Screen):
     def _remplir_decision(self) -> None:
         table = self.query_one(DataTable)
         table.add_column("", width=3)
-        table.add_column("Piste",    width=largeur_entete("Piste", 14))
-        table.add_column("Codec",    width=largeur_entete("Codec", 12))
-        table.add_column("Langue",   width=largeur_entete("Langue", 8))
-        table.add_column("Nom",      width=largeur_entete("Nom", 30))
+        colonne_fixe(table, "Piste",    14)
+        colonne_fixe(table, "Codec",    12)
+        colonne_fixe(table, "Langue",   8)
+        colonne_fixe(table, "Nom",      30)
         table.add_column("Décision", width=None)
 
         d = self._dec
@@ -289,9 +290,9 @@ class WizardScreen(TableNavMixin, Screen):
         for st in d.info.subtitle_tracks:
             self._ligne(_L_SUB, st.index, st.index in gardes,
                         f"0:s:{st.index}", st.codec, st.language, st.title,
-                        "→ copie" if st.index in gardes else ECARTEE)
+                        LIBELLE_COPIE if st.index in gardes else ECARTEE)
         for n, ext in enumerate(d.external_tracks):
-            kind = "audio" if ext.kind == TrackKind.AUDIO else "sous-titre"
+            kind = libelle_type_piste(ext.kind)
             self._ligne(_L_EXT, n, True, f"greffe {kind}", ext.codec,
                         ext.language, ext.track_name or ext.source_path.name,
                         ext.sync_label())
@@ -325,7 +326,7 @@ class WizardScreen(TableNavMixin, Screen):
                      style="dim")
         else:
             for ext in d.external_tracks:
-                kind = "audio" if ext.kind == TrackKind.AUDIO else "sous-titre"
+                kind = libelle_type_piste(ext.kind)
                 t.append(f"  {kind:11} {langue_affichee(ext.language):4} "
                          f"{ext.track_name or ext.source_path.name}\n")
                 t.append(f"              {ext.sync_label()}   "

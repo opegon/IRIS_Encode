@@ -13,6 +13,7 @@ from rich.cells import cell_len
 from rich.text import Text
 
 from core import config as cfg_mod
+from core.muxer import TrackKind
 from core.decision import (
     DVAction,
     style_dv,
@@ -163,6 +164,21 @@ def largeur_entete(libelle: str, largeur: int) -> int:
     une largeur littérale pour une colonne nommée.
     """
     return max(largeur, len(libelle))
+
+
+def colonne_fixe(table, libelle: str, plancher: int, **kw) -> None:
+    """Ajoute une colonne de largeur fixe relevée à son en-tête.
+
+    Le libellé n'est écrit qu'une fois : `add_column(libellé,
+    width=largeur_entete(libellé, n))`, recopié à chaque colonne, l'écrivait
+    deux fois — et deux copies d'un en-tête se traduisent deux fois (L-66).
+    """
+    table.add_column(libelle, width=largeur_entete(libelle, plancher), **kw)
+
+
+def libelle_type_piste(kind: TrackKind) -> str:
+    """Le type d'une piste greffée, tel que l'affichent les écrans (L-66)."""
+    return "audio" if kind == TrackKind.AUDIO else "sous-titre"
 
 
 # Toute cellule de table passe par ici. `tests/test_troncature.py` le vérifie.

@@ -24,7 +24,7 @@ from core.decision import (
     cycle_index,
     AV1_BITRATE_OPTS_KBPS,
     choisir_codec,
-    AudioAction, DVAction, FileDecision, VideoAction,
+    AudioAction, DVAction, DV_SORTIE, FileDecision, VideoAction,
     video_recopiee,
 )
 from ..common import (confier_a_la_file, langue_affichee, barre_etat, 
@@ -173,12 +173,8 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             vid  = dec.video
             info = dec.info
 
-            dv_str = {
-                DVAction.NONE:  "—",
-                DVAction.HDR10: "→ HDR10",
-                DVAction.DV:    "→ DV",
-                DVAction.SDR:   "→ SDR ⚠",
-            }.get(vid.dv_action, "?")
+            dv_str = (f"→ {DV_SORTIE[vid.dv_action]}"
+                      if vid.dv_action in DV_SORTIE else "—")
 
             if vid.action in (VideoAction.SKIP, VideoAction.STRIP_DV):
                 bitrate_str = "—"
@@ -188,7 +184,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 res_str     = f"{vid.target_width}x{vid.target_height}"
 
             audio_parts = [
-                f"{ad.track.channel_layout} {langue_affichee(ad.track.language)} (→ {ad.display() or 'copie'})"
+                f"{ad.track.channel_layout} {langue_affichee(ad.track.language)} ({ad.display()})"
                 for ad in dec.audio if ad.action != AudioAction.EXCLUDE
             ]
 

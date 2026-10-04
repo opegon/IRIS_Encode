@@ -19,11 +19,11 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
-from ..common import (cellule, fmt_size, langue_affichee, nom_codec,
-                      largeur_entete, raccourcis)
+from ..common import (cellule, colonne_fixe, fmt_size, langue_affichee,
+                      libelle_type_piste, nom_codec, raccourcis)
 
 from core.muxer import (
-    ExternalTrack, IdentifiedTrack, TrackKind, guess_language, identify,
+    ExternalTrack, IdentifiedTrack, guess_language, identify,
 )
 
 # Conteneurs pouvant porter une piste audio ou des sous-titres
@@ -132,7 +132,7 @@ class DonorFileScreen(ModalScreen["Path | None"]):
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
         table.add_column("Fichier", width=None, key="name")
-        table.add_column("Taille",  width=largeur_entete("Taille", 8), key="taille")
+        colonne_fixe(table, "Taille",  8, key="taille")
         self._populate()
         table.focus()
 
@@ -246,10 +246,10 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
         # place, le codec la rend — « SubRip » n'a jamais eu besoin de 22
         # colonnes.
         table.add_column("",       width=5,  key="check")
-        table.add_column("Piste",  width=largeur_entete("Piste", 6),  key="tid")
-        table.add_column("Type",   width=largeur_entete("Type", 11), key="kind")
-        table.add_column("Codec",  width=largeur_entete("Codec", 14), key="codec")
-        table.add_column("Langue", width=largeur_entete("Langue", 8),  key="lang")
+        colonne_fixe(table, "Piste",  6,  key="tid")
+        colonne_fixe(table, "Type",   11, key="kind")
+        colonne_fixe(table, "Codec",  14, key="codec")
+        colonne_fixe(table, "Langue", 8,  key="lang")
         table.add_column("Nom",    width=None, key="name")
 
         if not self._tracks:
@@ -269,7 +269,7 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
         return (
             Text("  ✓  " if sel else "  ·  ", style="bold green" if sel else "dim"),
             Text(str(t.tid), style=style),
-            Text("audio" if t.kind == TrackKind.AUDIO else "sous-titre", style=style),
+            Text(libelle_type_piste(t.kind), style=style),
             Text(nom_codec(t.codec), no_wrap=True, overflow="ellipsis", style=style),
             Text(langue_affichee(t.language), style=style),
             Text(t.track_name or "—", no_wrap=True, style=style),

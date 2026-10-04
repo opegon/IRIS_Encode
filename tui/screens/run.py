@@ -35,7 +35,7 @@ from core.muxer import (
     premux_output_path,
 )
 from core.platform import PlatformProfile
-from ..common import (barre_etat, actions_ecran, footer_line2, largeur_entete,
+from ..common import (barre_etat, actions_ecran, colonne_fixe, footer_line2,
                       record_measured_speed,
                       retour_accueil)
 from ..mixins import TableNavMixin
@@ -259,7 +259,7 @@ class RunScreen(TableNavMixin, Screen):
         table.add_column("",        width=3,                              key="icon")
         table.add_column("Fichier", width=max(20, _cw("Fichier", names)), key="file")
         table.add_column("Action",  width=_cw("Action", actions),         key="action")
-        table.add_column("État",    width=largeur_entete("État", 50),     key="state")
+        colonne_fixe(table, "État",    50,     key="state")
 
         for i, s in enumerate(self._statuses):
             dec   = s.decision

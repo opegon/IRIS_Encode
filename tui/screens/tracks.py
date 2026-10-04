@@ -30,7 +30,6 @@ from textual.widgets import DataTable, Static
 
 import core.config as cfg_mod
 from core import dovi
-from core.muxer import TrackKind
 from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
@@ -42,11 +41,13 @@ from core.decision import (
     BITRATE_OPTS_KBPS as _BITRATE_OPTS,
     AudioAction, DVAction, FileDecision, TracksSelection,
     VideoAction, VideoOverride, decide_audio, decide_video,
+    DV_SORTIE, EXCLU_MANUELLEMENT, LIBELLE_COPIE,
 )
 from ..common import (langue_affichee, nom_codec, barre_etat, 
     ECARTEE,
     actions_ecran,
-    largeur_entete,
+    colonne_fixe,
+    libelle_type_piste,
     retour_accueil,
     raccourcis,
     cellule,
@@ -90,12 +91,7 @@ _ACTION_SHORT: dict[VideoAction, str] = {
     VideoAction.STRIP_DV:    "HDR10",   # retrait du RPU, sans réencodage
     VideoAction.SKIP:        "SKIP",
 }
-_DV_SHORT: dict[DVAction, str] = {
-    DVAction.NONE:   "—",
-    DVAction.HDR10:  "HDR10",
-    DVAction.DV:     "DV",
-    DVAction.SDR:    "SDR ⚠",
-}
+_DV_SHORT: dict[DVAction, str] = {DVAction.NONE: "—", **DV_SORTIE}
 
 # Hints contextuels affichés dans la barre du bas selon la ligne courante
 _HINT_VIDEO = raccourcis([("←/→", "Champ"), ("+/-", "Valeur"),
@@ -244,10 +240,10 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         widths = cfg_mod.get_tracks_column_widths(self.app.cfg)  # type: ignore[attr-defined]
 
         table.add_column("",                          width=7,                          key="check")
-        table.add_column("Piste",                     width=largeur_entete("Piste", _W_IDX),                     key="idx")
+        colonne_fixe(table, "Piste",                     _W_IDX,                     key="idx")
         table.add_column(self.resize_header("codec"), width=self.resize_largeur("codec", widths["codec"]), key="codec")
         table.add_column(self.resize_header("fmt"),   width=self.resize_largeur("fmt", widths["fmt"]),   key="fmt")
-        table.add_column("Langue",                    width=largeur_entete("Langue", 8),                          key="lang")
+        colonne_fixe(table, "Langue",                    8,                          key="lang")
         # « Source » portait deux sens : le motif de sélection pour l'audio
         # (« défaut », « sélectionné ») et le titre déclaré pour les
         # sous-titres (« QoQ-Team »). Les deux comptent — ce sont deux
@@ -272,7 +268,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
             # Raison simplifiée pour l'affichage
             if excl:
-                reason = "exclu manuellement"
+                reason = EXCLU_MANUELLEMENT
             elif idx == 0:
                 reason = "défaut"
             else:
@@ -307,13 +303,13 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 sel   = st.index in self._sel_subs
                 style = "" if sel else "dim"
                 type_str = "image" if st.is_image_based else "texte"
-                cont_str = "→ copie MKV" if st.is_image_based else "→ copie MP4"
+                cont_str = f"{LIBELLE_COPIE} {'MKV' if st.is_image_based else 'MP4'}"
 
                 # Raison simplifiée pour l'affichage
                 if sel:
                     reason = "défaut" if st.index == 0 else "sélectionné"
                 else:
-                    reason = "exclu manuellement"
+                    reason = EXCLU_MANUELLEMENT
 
                 table.add_row(
                     self._check_text(_ROW_SUBTITLE, st.index),
@@ -334,7 +330,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         if ext:
             self._ligne_section(table, "EXTERNES", "__sec_ext__")
             for i, et in enumerate(ext):
-                kind = "audio" if et.kind == TrackKind.AUDIO else "sous-titre"
+                kind = libelle_type_piste(et.kind)
                 table.add_row(
                     Text("  ✓  ", style="bold green"),
                     cellule(f"ext #{et.source_tid}"),

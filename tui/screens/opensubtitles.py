@@ -19,7 +19,7 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
-from ..common import largeur_entete, raccourcis
+from ..common import colonne_fixe, raccourcis
 
 from core.texte import pluriel
 from core.opensubtitles import Client, ErreurOpenSubtitles, Resultat
@@ -77,9 +77,9 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
         table = self.query_one(DataTable)
         # ≡ : déposé pour cette release exacte, donc déjà synchronisé.
         table.add_column("",        width=3,  key="hash")
-        table.add_column("Langue",  width=largeur_entete("Langue", 7),  key="lang")
-        table.add_column("Téléch.", width=largeur_entete("Téléch.", 8),  key="count")
-        table.add_column("SME",     width=largeur_entete("SME", 4),  key="hi")
+        colonne_fixe(table, "Langue",  7,  key="lang")
+        colonne_fixe(table, "Téléch.", 8,  key="count")
+        colonne_fixe(table, "SME",     4,  key="hi")
         table.add_column("Release", width=None, key="release")
         self._etat(f"Recherche pour {self._video.name}…")
         self._chercher()

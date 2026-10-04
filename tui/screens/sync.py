@@ -41,7 +41,7 @@ from core.sync import (
     measure_with_anchor, read_cues, reperes_proposables,
 )
 
-from ..common import (confier_a_la_file, langue_affichee, barre_etat, actions_ecran, footer_line2, largeur_entete, raccourcis, touche,
+from ..common import (confier_a_la_file, langue_affichee, barre_etat, actions_ecran, footer_line2, colonne_fixe, libelle_type_piste, raccourcis, touche,
                       tronquer_milieu, retour_accueil)
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
@@ -268,14 +268,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         cursor = table.cursor_row if keep_cursor else 0
         table.clear(columns=True)
 
-        table.add_column("Source",    width=largeur_entete("Source", 28), key="src")
-        table.add_column("Piste",     width=largeur_entete("Piste", 14), key="tid")
-        table.add_column("Décalage",  width=largeur_entete("Décalage", 12), key="delay")
-        table.add_column("Étirement", width=largeur_entete("Étirement", 11), key="stretch")
-        table.add_column("Langue",    width=largeur_entete("Langue", 8),  key="lang")
-        table.add_column("Nom",       width=largeur_entete("Nom", _NAME_WIDTH), key="name")
-        table.add_column("Défaut",    width=largeur_entete("Défaut", 8),  key="default")
-        table.add_column("Forcé",     width=largeur_entete("Forcé", 7),  key="forced")
+        # Les champs éditables portent le nom que leur donne `_FIELD_LABELS` :
+        # un en-tête, un libellé (L-79).
+        colonne_fixe(table, "Source", 28, key="src")
+        colonne_fixe(table, "Piste",  14, key="tid")
+        for champ, plancher in (("delay", 12), ("stretch", 11), ("lang", 8),
+                                ("name", _NAME_WIDTH), ("default", 8),
+                                ("forced", 7)):
+            colonne_fixe(table, _FIELD_LABELS[champ], plancher, key=champ)
         table.add_column("Recalage",  width=None, key="origin")
 
         for i, t in enumerate(self._tracks):
@@ -311,7 +311,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
 
     def _row(self, i: int) -> tuple:
         t    = self._tracks[i]
-        kind = "audio" if t.kind == TrackKind.AUDIO else "sous-titre"
+        kind = libelle_type_piste(t.kind)
         origin = {
             SyncOrigin.NONE:     Text("—", style="dim"),
             SyncOrigin.MEASURED: Text("mesuré", style="green"),

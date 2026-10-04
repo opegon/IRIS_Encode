@@ -68,6 +68,20 @@ class DVAction(Enum):
     SDR    = auto()   # DV → SDR (tone map P5, CPU, lent)
 
 
+# Le sort du Dolby Vision tel qu'il s'affiche. Une seule source pour la
+# décision, l'aperçu et l'écran des pistes, qui l'écrivaient chacun (L-13).
+DV_SORTIE: dict["DVAction", str] = {
+    DVAction.HDR10: "HDR10",
+    DVAction.DV:    "DV",
+    DVAction.SDR:   "SDR ⚠",
+}
+
+# Une piste recopiée telle quelle, et une piste écartée à la main : mêmes mots
+# sur l'accueil, l'aperçu, l'écran des pistes et l'assistant (L-13, L-15).
+LIBELLE_COPIE      = "→ copie"
+EXCLU_MANUELLEMENT = "exclu manuellement"
+
+
 def video_recopiee(action: "VideoAction", dv_action: "DVAction") -> bool:
     """Le flux vidéo sort-il tel quel, malgré une action d'encodage ?
 
@@ -115,15 +129,13 @@ class VideoDecision:
         if self.action == VideoAction.SKIP:
             return "← SKIP"
         if self.action == VideoAction.STRIP_DV:
-            return "→ HDR10"
+            return f"→ {DV_SORTIE[DVAction.HDR10]}"
         if video_recopiee(self.action, self.dv_action):
             return "→ DV (copie)"
         codec = ("HEVC" if self.action in (VideoAction.ENCODE_HEVC,
                                            VideoAction.ENCODE_DV) else "H264")
-        dv = ""
-        if self.dv_action == DVAction.HDR10: dv = " → HDR10"
-        if self.dv_action == DVAction.DV:    dv = " → DV"
-        if self.dv_action == DVAction.SDR:   dv = " → SDR ⚠"
+        dv = (f" → {DV_SORTIE[self.dv_action]}"
+              if self.dv_action in DV_SORTIE else "")
         return f"→ {codec}{dv}"
 
     def emphase(self) -> "Emphase":
@@ -200,7 +212,7 @@ class AudioDecision:
         if self.action == AudioAction.EXCLUDE:
             return ""
         if self.action == AudioAction.COPY:
-            return "→ copie"
+            return LIBELLE_COPIE
         canaux = ""
         if self.output_channels and self.output_channels != self.track.channels:
             canaux = f" {channel_layout_label(self.output_channels)}"
@@ -1020,7 +1032,7 @@ def decide_audio(
         # ── Sélection ────────────────────────────────────────────────────────
         if override_selected is not None:
             included = i in override_selected
-            reason   = "sélection manuelle" if included else "exclu manuellement"
+            reason   = "sélection manuelle" if included else EXCLU_MANUELLEMENT
         elif i == 0:
             included = True
             reason   = "piste originale (index 0)"

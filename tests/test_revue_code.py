@@ -1005,3 +1005,65 @@ def test_laperçu_n_affiche_ni_nom_d_enumeration_ni_dry_run():
     textes = list(_COMMUNES.values()) + [t for e in _PAR_ECRAN.values()
                                           for t in e.values()]
     assert not [t for t in textes if "dry-run" in t.lower()]
+
+
+def _litteraux(*dossiers: str) -> list[tuple[str, int, str]]:
+    """(fichier, ligne, valeur) de chaque chaîne littérale du code, hors
+    docstrings."""
+    import ast
+    sortie = []
+    for d in dossiers:
+        for f in sorted(Path(d).rglob("*.py")):
+            arbre = ast.parse(f.read_text(encoding="utf-8"))
+            docs = {id(n.body[0].value) for n in ast.walk(arbre)
+                    if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef))
+                    and n.body and isinstance(n.body[0], ast.Expr)}
+            sortie += [(str(f), n.lineno, n.value) for n in ast.walk(arbre)
+                       if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                       and id(n) not in docs]
+    return sortie
+
+
+@pytest.mark.parametrize("libelle, sources", [
+    ("→ copie", 1), ("exclu manuellement", 1), ("SDR ⚠", 1),
+    # Le sort du Dolby Vision se compose depuis `decision.DV_SORTIE` : aucune
+    # forme fléchée n'est écrite à la main. (« HDR10 » nu reste aussi une
+    # marque de nom de fichier, donnée distincte : non compté.)
+    ("→ HDR10", 0), ("→ DV", 0), ("→ SDR ⚠", 0),
+])
+def test_un_libelle_recopie_n_a_qu_une_source(libelle, sources):
+    """L-13, L-15, L-81 (IE-113) : un même libellé écrit à plusieurs endroits
+    se traduirait plusieurs fois, et divergerait."""
+    vus = [f"{f}:{l}" for f, l, v in _litteraux("core", "tui")
+           if v.strip() == libelle or v.strip(" →") == libelle.strip(" →")
+           and libelle.startswith("→ ") is v.strip().startswith("→")]
+    assert len(vus) <= sources, vus
+
+
+def test_le_type_de_piste_se_nomme_a_un_seul_endroit():
+    """L-66 : `"audio" if … else "sous-titre"` recopié dans quatre écrans."""
+    import re
+    motif = re.compile(r"""["']audio["']\s+if\b.*\belse\s+["']sous-titre["']""")
+    vus = [f"{f}:{n}" for f in sorted(Path("tui").rglob("*.py"))
+           for n, l in enumerate(f.read_text(encoding="utf-8").splitlines(), 1)
+           if motif.search(l)]
+    assert len(vus) <= 1, vus
+
+
+def test_laperçu_n_ajoute_pas_de_seconde_fleche_a_l_audio():
+    """Vu en menant IE-113 : `(→ {ad.display()})` alors que `display()` porte
+    déjà la flèche — l'aperçu affichait « (→ → copie) »."""
+    import inspect
+    from tui.screens import dryrun
+    assert "(→ {ad.display()" not in inspect.getsource(dryrun)
+
+
+def test_un_en_tete_de_colonne_n_est_ecrit_qu_une_fois():
+    """L-66, L-79 : `add_column("Langue", width=largeur_entete("Langue", 8))`
+    écrivait chaque en-tête deux fois."""
+    import re
+    motif = re.compile(r"largeur_entete\(\s*[\"']")
+    fautes = [f"{f}:{n}" for f in sorted(Path("tui").rglob("*.py"))
+              for n, l in enumerate(f.read_text(encoding="utf-8").splitlines(), 1)
+              if motif.search(l)]
+    assert not fautes, fautes

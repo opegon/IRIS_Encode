@@ -1,5 +1,29 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.67] — 2026-10-04
+
+### Un libellé, une source
+
+IE-113, constats L-13, L-15, L-66, L-79 et L-81 de l'audit de localisation.
+Un même libellé écrit à plusieurs endroits se traduirait plusieurs fois, et
+les copies finiraient par diverger.
+
+- **Sort du Dolby Vision** : `core/decision.DV_SORTIE` (`HDR10`, `DV`,
+  `SDR ⚠`). La décision, l'aperçu et l'écran des pistes l'écrivaient chacun.
+- **« → copie »** et **« exclu manuellement »** : `LIBELLE_COPIE` et
+  `EXCLU_MANUELLEMENT` dans `core/decision.py`, repris par l'écran des pistes
+  et l'assistant.
+- **Type de piste** (« audio » / « sous-titre ») : `tui/common.libelle_type_piste`,
+  au lieu de cinq copies dans quatre écrans.
+- **En-têtes de colonnes fixes** : `tui/common.colonne_fixe` écrit le libellé
+  une fois (il l'était deux : en-tête et calcul de largeur). Le recalage
+  prend ceux de ses champs dans `_FIELD_LABELS`.
+- **Défaut corrigé au passage** : la colonne audio de l'aperçu ajoutait une
+  flèche à un libellé qui en portait déjà une, et affichait « (→ → copie) »
+  ou « (→ → ac3 448k) ». Elle affiche « (→ copie) ».
+- `tests/test_revue_code.py` : chaque libellé n'a qu'une source, aucun
+  en-tête n'est écrit deux fois, pas de seconde flèche.
+
 ## [v0.8.9.66] — 2026-10-04
 
 ### L'aperçu ne montre plus de nom interne

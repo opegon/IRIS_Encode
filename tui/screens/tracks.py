@@ -30,6 +30,7 @@ from textual.widgets import DataTable, Static
 
 import core.config as cfg_mod
 from core import dovi
+from core.i18n import _
 from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
@@ -41,7 +42,7 @@ from core.decision import (
     BITRATE_OPTS_KBPS as _BITRATE_OPTS,
     AudioAction, DVAction, FileDecision, TracksSelection,
     VideoAction, VideoOverride, decide_audio, decide_video,
-    DV_SORTIE, EXCLU_MANUELLEMENT, LIBELLE_COPIE,
+    DV_SORTIE, EXCLU_MANUELLEMENT, libelle_copie,
 )
 from ..common import (langue_affichee, nom_codec, barre_etat, 
     ECARTEE,
@@ -268,7 +269,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
             # Raison simplifiée pour l'affichage
             if excl:
-                reason = EXCLU_MANUELLEMENT
+                reason = _(EXCLU_MANUELLEMENT)
             elif idx == 0:
                 reason = "défaut"
             else:
@@ -303,13 +304,13 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 sel   = st.index in self._sel_subs
                 style = "" if sel else "dim"
                 type_str = "image" if st.is_image_based else "texte"
-                cont_str = f"{LIBELLE_COPIE} {'MKV' if st.is_image_based else 'MP4'}"
+                cont_str = f"{libelle_copie()} {'MKV' if st.is_image_based else 'MP4'}"
 
                 # Raison simplifiée pour l'affichage
                 if sel:
                     reason = "défaut" if st.index == 0 else "sélectionné"
                 else:
-                    reason = EXCLU_MANUELLEMENT
+                    reason = _(EXCLU_MANUELLEMENT)
 
                 table.add_row(
                     self._check_text(_ROW_SUBTITLE, st.index),
@@ -467,7 +468,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         self.query_one("#hint-bar", Static).update(hint)
 
     @on(DataTable.RowHighlighted)
-    def _on_row_highlight(self, _: DataTable.RowHighlighted) -> None:
+    def _on_row_highlight(self, _evt: DataTable.RowHighlighted) -> None:
         self._update_hint_bar()
 
     def _current_row(self) -> tuple[str, int] | None:

@@ -274,6 +274,7 @@ def test_un_module_qui_traduit_n_ecrase_pas_underscore():
         if not importe:
             continue
         for n in ast.walk(arbre):
-            if isinstance(n, ast.Name) and n.id == "_" and isinstance(n.ctx, ast.Store):
+            if (isinstance(n, ast.Name) and n.id == "_" and isinstance(n.ctx, ast.Store)
+                    or isinstance(n, ast.arg) and n.arg == "_"):
                 fautes.append(f"{f.relative_to(RACINE)}:{n.lineno}")
     assert not fautes, fautes

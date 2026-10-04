@@ -40,7 +40,7 @@ from core.texte import pluriel
 from core.decision import (ACTION_CYCLE, AudioAction,
                            FileDecision, VideoAction, cycle_index,
                            choisir_codec, decide_audio, force_skip_to_encode,
-                           resoudre_sorties, LIBELLE_COPIE)
+                           resoudre_sorties, libelle_copie)
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import measure_external_track
 
@@ -290,7 +290,7 @@ class WizardScreen(TableNavMixin, Screen):
         for st in d.info.subtitle_tracks:
             self._ligne(_L_SUB, st.index, st.index in gardes,
                         f"0:s:{st.index}", st.codec, st.language, st.title,
-                        LIBELLE_COPIE if st.index in gardes else ECARTEE)
+                        libelle_copie() if st.index in gardes else ECARTEE)
         for n, ext in enumerate(d.external_tracks):
             kind = libelle_type_piste(ext.kind)
             self._ligne(_L_EXT, n, True, f"greffe {kind}", ext.codec,

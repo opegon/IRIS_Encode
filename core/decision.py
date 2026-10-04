@@ -12,6 +12,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
+from .i18n import N_, _, pgettext
 from .muxer import MUX_SUFFIX, ExternalTrack
 from .profiles import Profile
 from .scanner import (MARQUE_IRIS, AudioTrack, VideoInfo, channel_layout_label,
@@ -76,10 +77,16 @@ DV_SORTIE: dict["DVAction", str] = {
     DVAction.SDR:   "SDR ⚠",
 }
 
-# Une piste recopiée telle quelle, et une piste écartée à la main : mêmes mots
-# sur l'accueil, l'aperçu, l'écran des pistes et l'assistant (L-13, L-15).
-LIBELLE_COPIE      = "→ copie"
-EXCLU_MANUELLEMENT = "exclu manuellement"
+# Une piste écartée à la main : mêmes mots sur l'écran des pistes et dans la
+# raison de la décision (L-15). Marqué ici, traduit à l'affichage.
+EXCLU_MANUELLEMENT = N_("manually excluded")
+
+
+def libelle_copie() -> str:
+    """« → copie » : une piste recopiée telle quelle. Mêmes mots sur l'accueil,
+    l'aperçu, l'écran des pistes et l'assistant (L-13)."""
+    # TRANSLATORS: a track copied unchanged into the output ("→ copy").
+    return f"→ {pgettext('track action', 'copy')}"
 
 
 def video_recopiee(action: "VideoAction", dv_action: "DVAction") -> bool:
@@ -131,7 +138,7 @@ class VideoDecision:
         if self.action == VideoAction.STRIP_DV:
             return f"→ {DV_SORTIE[DVAction.HDR10]}"
         if video_recopiee(self.action, self.dv_action):
-            return "→ DV (copie)"
+            return f"→ DV ({pgettext('track action', 'copy')})"
         codec = ("HEVC" if self.action in (VideoAction.ENCODE_HEVC,
                                            VideoAction.ENCODE_DV) else "H264")
         dv = (f" → {DV_SORTIE[self.dv_action]}"
@@ -212,7 +219,7 @@ class AudioDecision:
         if self.action == AudioAction.EXCLUDE:
             return ""
         if self.action == AudioAction.COPY:
-            return LIBELLE_COPIE
+            return libelle_copie()
         canaux = ""
         if self.output_channels and self.output_channels != self.track.channels:
             canaux = f" {channel_layout_label(self.output_channels)}"
@@ -811,15 +818,18 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
 
     def _raison(base: str) -> str:
         if reencode_dv:
-            return f"{base} · DV préservé, RPU réinjecté"
-        return f"{base} · DV conservé → vidéo copiée" if copiee else base
+            return _("{reason} · DV preserved, RPU reinjected").format(reason=base)
+        if copiee:
+            return _("{reason} · DV kept → video copied").format(reason=base)
+        return base
 
     # CAS 1 — Bitrate source au-delà de la cible + tolérance
     if debit_au_dessus_de_la_cible(info.bitrate, target_bps):
         return VideoDecision(
             action=action,
-            reason=_raison(f"Débit {info.kbps}k > {target_bps // 1000}k cible "
-                           f"+{TOLERANCE_DEBIT_PCT} %"),
+            reason=_raison(_("Bitrate {bitrate}k > {target}k target +{tolerance} %").format(
+                bitrate=info.kbps, target=target_bps // 1000,
+                tolerance=TOLERANCE_DEBIT_PCT)),
             target_bitrate=target_bps,
             target_width=limit_w,
             target_height=limit_h,
@@ -831,7 +841,9 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     if info.width > limit_w or info.height > limit_h:
         return VideoDecision(
             action=action,
-            reason=_raison(f"Résolution {info.width}x{info.height} > {limit_w}x{limit_h}"),
+            reason=_raison(_("Resolution {width}x{height} > {max_width}x{max_height}").format(
+                width=info.width, height=info.height,
+                max_width=limit_w, max_height=limit_h)),
             target_bitrate=info.bitrate,
             target_width=limit_w,
             target_height=limit_h,
@@ -843,7 +855,8 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     if info.codec.lower() not in CODECS_LISIBLES:
         return VideoDecision(
             action=action,
-            reason=_raison(f"Codec {info.codec} non lu par la chaîne"),
+            reason=_raison(_("Codec {codec} not supported by the playback chain").format(
+                codec=info.codec)),
             target_bitrate=info.bitrate,
             target_width=limit_w,
             target_height=limit_h,
@@ -858,7 +871,7 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     if _STRIP_DV_AVAILABLE and dv_action == DVAction.HDR10 and info.can_strip_dv:
         return VideoDecision(
             action=VideoAction.STRIP_DV,
-            reason=f"{info.dv_label} → HDR10 sans réencodage",
+            reason=_("{dv} → HDR10 without re-encoding").format(dv=info.dv_label),
             target_bitrate=0,
             target_width=info.width,
             target_height=info.height,
@@ -869,10 +882,10 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     # SKIP
     return VideoDecision(
         action=VideoAction.SKIP,
-        reason=(f"Débit dans la cible ±{TOLERANCE_DEBIT_PCT} %, "
-                f"résolution OK, codec {info.codec}"
+        reason=(_("Bitrate within target ±{tolerance} %, resolution OK, codec {codec}")
+                .format(tolerance=TOLERANCE_DEBIT_PCT, codec=info.codec)
                 if info.bitrate >= target_bps else
-                f"Débit OK, résolution OK, codec {info.codec}"),
+                _("Bitrate OK, resolution OK, codec {codec}").format(codec=info.codec)),
         target_bitrate=0,
         target_width=info.width,
         target_height=info.height,
@@ -1032,16 +1045,17 @@ def decide_audio(
         # ── Sélection ────────────────────────────────────────────────────────
         if override_selected is not None:
             included = i in override_selected
-            reason   = "sélection manuelle" if included else EXCLU_MANUELLEMENT
+            reason   = _("manual selection") if included else _(EXCLU_MANUELLEMENT)
         elif i == 0:
             included = True
-            reason   = "piste originale (index 0)"
+            reason   = _("original track (index 0)")
         elif normalize_language(track.language) in langues_voulues:
             included = True
-            reason   = f"langue {track.language}"
+            reason   = _("language {language}").format(language=track.language)
         else:
             included = False
-            reason   = f"langue {track.language or '?'} non retenue"
+            reason   = _("language {language} not kept").format(
+                language=track.language or "?")
 
         if not included:
             decisions.append(AudioDecision(
@@ -1057,14 +1071,18 @@ def decide_audio(
             if preserve_hd:
                 decisions.append(AudioDecision(
                     track=track, action=AudioAction.COPY,
-                    reason=f"{reason} · lossless + preserve_hd_audio → copy",
+                    # TRANSLATORS: "lossless", "copy" and the profile key
+                    # preserve_hd_audio stay in English (glossary).
+                    reason=_("{reason} · lossless + preserve_hd_audio → copy").format(
+                        reason=reason),
                     output_codec="copy", output_bitrate=0, locked=(i == 0),
                 ))
                 continue
             out_codec, out_br, out_ch = _transcode_spec(track, profile)
             decisions.append(AudioDecision(
                 track=track, action=AudioAction.TRANSCODE,
-                reason=f"{reason} · lossless → {out_codec}",
+                reason=_("{reason} · lossless → {codec}").format(
+                    reason=reason, codec=out_codec),
                 output_codec=out_codec, output_bitrate=out_br, locked=(i == 0),
                 output_channels=out_ch,
             ))
@@ -1073,7 +1091,8 @@ def decide_audio(
         if copy_compat and track.is_copy_compat:
             decisions.append(AudioDecision(
                 track=track, action=AudioAction.COPY,
-                reason=f"{reason} · {codec_lc} compatible → copy",
+                reason=_("{reason} · {codec} compatible → copy").format(
+                    reason=reason, codec=codec_lc),
                 output_codec="copy", output_bitrate=0, locked=(i == 0),
             ))
             continue
@@ -1081,7 +1100,7 @@ def decide_audio(
         out_codec, out_br, out_ch = _transcode_spec(track, profile)
         decisions.append(AudioDecision(
             track=track, action=AudioAction.TRANSCODE,
-            reason=f"{reason} · → {out_codec}",
+            reason=_("{reason} · → {codec}").format(reason=reason, codec=out_codec),
             output_codec=out_codec, output_bitrate=out_br, locked=(i == 0),
             output_channels=out_ch,
         ))
@@ -1188,9 +1207,9 @@ def force_skip_to_encode(dec: FileDecision) -> FileDecision:
     return dc_replace(dec, video=dc_replace(
         choisir_codec(dec, forced_act),
         target_bitrate= dec.info.bitrate,
-        reason        = ("Forcé manuellement (était SKIP)"
+        reason        = (_("Forced manually (was SKIP)")
                          if dec.video.action == VideoAction.SKIP
-                         else "Forcé manuellement (était retrait DV)"),
+                         else _("Forced manually (was DV removal)")),
     ))
 
 

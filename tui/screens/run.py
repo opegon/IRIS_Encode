@@ -22,8 +22,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
-from core.i18n import texte_erreur
-from core.texte import accorde, pluriel
+from core.i18n import N_, _, ngettext, texte_erreur
 from core.decision import (AudioAction, FileDecision, VideoAction,
                            resoudre_sorties)
 from core.encoder import (
@@ -70,25 +69,25 @@ class RunScreen(TableNavMixin, Screen):
     """Écran d'encodage séquentiel avec suivi progression."""
 
     BINDINGS = [
-        Binding("p",         "pause_resume", "Pause / Reprendre",  show=True),
-        Binding("s",         "skip_current", "Passer le fichier",  show=True),
-        Binding("x",         "arreter_tout", "Arrêter tout",       show=True),
+        Binding("p",         "pause_resume", N_("Pause / Resume"),  show=True),
+        Binding("s",         "skip_current", N_("Skip the file"),   show=True),
+        Binding("x",         "arreter_tout", N_("Stop all"),        show=True),
         # Veille, veille prolongée ou arrêt une fois tout fini : le choix est
         # dans les options, l'interrupteur repart à « non » à chaque lot.
         # `E` comme « ensuite » : `A` et `F` ont déjà leur sens (UX-12).
-        Binding("e",         "apres_lot",    "Après le lot",       show=True),
+        Binding("e",         "apres_lot",    N_("After the batch"),  show=True),
         # La file se réordonne tant qu'un fichier attend (IE-100). `priority` :
         # le DataTable prendrait Ctrl+↑/↓ pour lui — comme sur la jonction.
-        Binding("ctrl+up",   "monter",       "Monter",             show=True, priority=True),
-        Binding("ctrl+down", "descendre",    "Descendre",          show=True, priority=True),
-        Binding("delete",    "retirer",      "Retirer",            show=True),
+        Binding("ctrl+up",   "monter",       N_("Move up"),         show=True, priority=True),
+        Binding("ctrl+down", "descendre",    N_("Move down"),       show=True, priority=True),
+        Binding("delete",    "retirer",      N_("Remove"),          show=True),
         # Retour à la navigation : l'encodage continue (IE-100). Arrêter est
         # une décision à part, `X`, qui demande confirmation.
-        Binding("backspace", "go_back",      "Fichiers",           show=True),
-        Binding("escape",    "go_back",      "Fichiers",           show=False, priority=True),
+        Binding("backspace", "go_back",      N_("Files"),           show=True),
+        Binding("escape",    "go_back",      N_("Files"),           show=False, priority=True),
         # `priority` : un DataTable etouffe la touche avant les bindings —
         # meme avertissement qu'en tete de tui/mixins.py.
-        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+        Binding("ctrl+home", "accueil",   N_("Home"),       show=True,
                 priority=True),
     ]
 
@@ -203,7 +202,7 @@ class RunScreen(TableNavMixin, Screen):
         yield Static("", id="run-header-bar", classes="status-bar")
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
         with Static(id="global-bar-row"):
-            yield Label("Global", id="global-label")
+            yield Label(_("Overall"), id="global-label")
             yield ProgressBar(total=100, show_eta=False, id="global-bar")
         with Static(id="cmd-zone"):
             # L'avancement d'abord : c'est la seule ligne qui change, et la
@@ -212,7 +211,7 @@ class RunScreen(TableNavMixin, Screen):
             yield Static("", id="cmd-lines", markup=False)
         yield KeyFooter(
             actions=actions_ecran(self),
-            nav=footer_line2(nav=True, accueil=True, extra=(("backspace", "Fichiers"),)),
+            nav=footer_line2(nav=True, accueil=True, extra=(("backspace", N_("Files")),)),
         )
 
     def on_mount(self) -> None:
@@ -258,9 +257,10 @@ class RunScreen(TableNavMixin, Screen):
         actions = [s.decision.video.label()  for s in self._statuses]
 
         table.add_column("",        width=3,                              key="icon")
-        table.add_column("Fichier", width=max(20, _cw("Fichier", names)), key="file")
-        table.add_column("Action",  width=_cw("Action", actions),         key="action")
-        colonne_fixe(table, "État",    50,     key="state")
+        fichier, action = _("File"), _("Action")
+        table.add_column(fichier, width=max(20, _cw(fichier, names)), key="file")
+        table.add_column(action,  width=_cw(action, actions),         key="action")
+        colonne_fixe(table, _("State"),    50,     key="state")
 
         for i, s in enumerate(self._statuses):
             dec   = s.decision
@@ -270,7 +270,7 @@ class RunScreen(TableNavMixin, Screen):
                 self._icon(s),
                 Text(name, overflow="ellipsis", no_wrap=True),
                 Text(action_label, style=dec.video.style()),
-                "en attente",
+                _("pending"),
                 key=str(i),
             )
 
@@ -291,7 +291,7 @@ class RunScreen(TableNavMixin, Screen):
             # Gère le cas où la durée est inconnue (percent = -1)
             if s.state == FileState.RUNNING:
                 if s.percent < 0:
-                    running_txt = "en cours…"
+                    running_txt = _("running…")
                 else:
                     # Affiche : "45% (2m30s / 3m45s · 3.71x)"
                     prog_pct = f"{s.percent * 100:.0f}%"
@@ -305,12 +305,13 @@ class RunScreen(TableNavMixin, Screen):
                 state_txt = Text(running_txt, style="yellow")
             else:
                 state_txt = {
-                    FileState.PENDING:  Text("en attente",      style="dim"),
+                    FileState.PENDING:  Text(_("pending"),      style="dim"),
                     # Le symbole est déjà dans la colonne d'icône (UX-16).
                     # Minuscules, comme « en attente » et « ignoré » (UX-09).
-                    FileState.SUCCESS:  Text("terminé",          style="bold green"),
-                    FileState.ERROR:    Text(f"échec : {s.error_msg[:30]}", style="bold dark_orange"),
-                    FileState.SKIPPED:  Text("ignoré",           style="dim"),
+                    FileState.SUCCESS:  Text(_("done"),          style="bold green"),
+                    FileState.ERROR:    Text(_("failed: {error}").format(error=s.error_msg[:30]),
+                                             style="bold dark_orange"),
+                    FileState.SKIPPED:  Text(_("skipped"),       style="dim"),
                 }[s.state]
             table.update_cell(str(index), "icon",  self._icon(s),  update_width=False)
             table.update_cell(str(index), "state", state_txt,       update_width=False)
@@ -332,10 +333,14 @@ class RunScreen(TableNavMixin, Screen):
             if self.apres_lot and not self._done:
                 from core.config import get_action_fin
                 from core.veille import libelle_action
-                apres = f"Après le lot : {libelle_action(get_action_fin(self.app.cfg))}"  # type: ignore[attr-defined]
+                apres = _("After the batch: {action}").format(
+                    action=libelle_action(get_action_fin(self.app.cfg)))  # type: ignore[attr-defined]
             self.query_one("#run-header-bar", Static).update(barre_etat(
-                "Encodage", pluriel(total, "fichier"),
-                f"{done}/{total} {accorde(done, 'terminé')}", f"Global : {bar_pct}%",
+                _("Encoding"),
+                ngettext("{count} file", "{count} files", total).format(count=total),
+                ngettext("{done}/{total} done", "{done}/{total} done",
+                         done).format(done=done, total=total),
+                _("Overall: {percent}%").format(percent=bar_pct),
                 apres,
             ))
             self.query_one("#global-bar", ProgressBar).progress = bar_pct
@@ -468,14 +473,14 @@ class RunScreen(TableNavMixin, Screen):
         choisi = encodeur_a_controler(cmd)
         if choisi and self._platform.peut_encoder(choisi) is False:
             s.state     = FileState.ERROR
-            s.error_msg = f"{choisi} indisponible ici"[:60]
+            s.error_msg = _("{encoder} unavailable here").format(encoder=choisi)[:60]
             if "nvenc" in choisi and self._platform.alerte_nvenc:
                 s.last_line = self._platform.alerte_nvenc
             else:
-                s.last_line = (
-                    f"Cette machine ne sait pas encoder avec « {choisi} » — sondé "
-                    f"au lancement. L'AV1 par NVENC demande une RTX 40 ou plus "
-                    f"récente ; le HEVC et le H264 restent disponibles.")
+                s.last_line = _(
+                    "This machine cannot encode with “{encoder}” — probed at "
+                    "startup. AV1 through NVENC needs an RTX 40 or newer; HEVC "
+                    "and H264 remain available.").format(encoder=choisi)
             self.app.call_from_thread(self._update_row, next_idx)
             if porteur is not None:
                 porteur.unlink(missing_ok=True)
@@ -488,7 +493,7 @@ class RunScreen(TableNavMixin, Screen):
         # Affiche "Encodage lancé" jusqu'à première ligne
         self.app.call_from_thread(
             self._update_ffmpeg_line,
-            "▶ Encodage lancé, initialisation en cours…"
+            "▶ " + _("Encoding started, initialising…")
         )
         s.percent = -1  # Force "en cours…" au lieu de "0%"
         self.app.call_from_thread(self._update_row, next_idx)
@@ -533,11 +538,11 @@ class RunScreen(TableNavMixin, Screen):
                 success = False
                 # Le bloc de conclusion retronque `last_line` dans `error_msg` :
                 # l'essentiel doit tenir dans les soixante premiers caractères.
-                s.last_line = (
-                    f"Piste audio vide dans la sortie : {' · '.join(vides)}. "
-                    "L'encodage s'est pourtant terminé sans erreur. Le fichier "
-                    "est inutilisable en l'état, et ce cas sort du périmètre "
-                    "connu — signalez-le.")
+                s.last_line = _(
+                    "Empty audio track in the output: {tracks}. The encode "
+                    "nevertheless finished without error. The file is unusable "
+                    "as it is, and this case is outside the known scope — "
+                    "please report it.").format(tracks=" · ".join(vides))
 
         if success and s._last_progress:
             record_measured_speed(self.app.cfg, dec.video.action, s._last_progress.speed)  # type: ignore[attr-defined]
@@ -585,7 +590,8 @@ class RunScreen(TableNavMixin, Screen):
                 s.error_msg = (cause or s.last_line)[:60]
                 if cause:
                     # Le détail complet reste sous les yeux, sous la cause.
-                    s.last_line = f"{cause}  —  ffmpeg : {s.last_line}"
+                    s.last_line = (cause + "  —  "
+                                   + _("ffmpeg: {detail}").format(detail=s.last_line))
 
         self.app.call_from_thread(self._update_row, next_idx)
         self.app.call_from_thread(self._update_header)
@@ -609,7 +615,7 @@ class RunScreen(TableNavMixin, Screen):
         self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
         self.app.call_from_thread(
             self._update_ffmpeg_line,
-            "▶ Pistes audio préparées à part — voir la note de version…")
+            "▶ " + _("Audio tracks prepared separately — see the release notes…"))
         s.percent = -1
         self.app.call_from_thread(self._update_row, index)
 
@@ -625,9 +631,9 @@ class RunScreen(TableNavMixin, Screen):
 
         if code != 0 or not out.exists():
             s.state     = FileState.ERROR
-            s.error_msg = f"préparation audio : code {code}"[:60]
-            s.last_line = ("La préparation des pistes audio a échoué "
-                           f"(code {code}).")
+            s.error_msg = _("audio preparation: code {code}").format(code=code)[:60]
+            s.last_line = _("Preparing the audio tracks failed (code {code}).").format(
+                code=code)
             self.app.call_from_thread(self._update_row, index)
             out.unlink(missing_ok=True)
             return None
@@ -654,7 +660,7 @@ class RunScreen(TableNavMixin, Screen):
         cmd, srts = st_mod.build_extraction(source, pistes, source.parent, ffmpeg)
 
         def echouer(detail: str) -> tuple[bool, None]:
-            s.state, s.error_msg = FileState.ERROR, "sous-titres : préparation échouée"
+            s.state, s.error_msg = FileState.ERROR, _("subtitles: preparation failed")
             s.last_line = detail
             self.app.call_from_thread(self._update_row, index)
             porteur.unlink(missing_ok=True)
@@ -664,7 +670,8 @@ class RunScreen(TableNavMixin, Screen):
             self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
             self.app.call_from_thread(
                 self._update_ffmpeg_line,
-                "▶ Lecture des sous-titres — un long silence fausse leurs temps en MP4…")
+                "▶ " + _("Reading the subtitles — a long silence skews their "
+                         "timings in MP4…"))
             s.percent = -1
             self.app.call_from_thread(self._update_row, index)
             proc = EncoderProcess(cmd, dec.info.duration)
@@ -677,7 +684,8 @@ class RunScreen(TableNavMixin, Screen):
             code = proc.wait()
             self._process = None
             if code != 0 or not all(p.exists() for p in srts):
-                return echouer(f"L'extraction des sous-titres a échoué (code {code}).")
+                return echouer(_("Extracting the subtitles failed (code {code}).").format(
+                    code=code))
 
             combles = 0
             for chemin in srts:
@@ -693,8 +701,8 @@ class RunScreen(TableNavMixin, Screen):
             r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
                                encoding="utf-8", errors="replace", timeout=300)
             if r.returncode != 0 or not porteur.exists():
-                return echouer("Le regroupement des sous-titres a échoué : "
-                               + (r.stderr.strip().splitlines() or ["?"])[-1])
+                return echouer(_("Grouping the subtitles failed: {detail}").format(
+                    detail=(r.stderr.strip().splitlines() or ["?"])[-1]))
             return True, porteur
         finally:
             for chemin in srts:
@@ -720,9 +728,9 @@ class RunScreen(TableNavMixin, Screen):
 
         dovi_path = getattr(self.app, "dovi_path", None)
         if dovi_path is None or not getattr(self.app, "mkvmerge_available", False):
-            echouer("dovi_tool + mkvmerge requis",
-                    "Le retrait du Dolby Vision demande dovi_tool et mkvmerge. "
-                    "Relancez le preflight pour les installer.")
+            echouer(_("dovi_tool + mkvmerge required"),
+                    _("Removing Dolby Vision needs dovi_tool and mkvmerge. Run "
+                      "the preflight again to install them."))
             self._encode_next()
             return
 
@@ -741,10 +749,10 @@ class RunScreen(TableNavMixin, Screen):
         porteur: Optional[Path] = None
         ffmpeg_path = getattr(self.app, "ffmpeg_path", "ffmpeg")
         if mp4 and not dovi.strip_bsf_disponible(ffmpeg_path):
-            echouer("ffmpeg 7.1+ requis (filtre dovi_rpu)",
-                    "Le retrait du Dolby Vision vers du MP4 demande le filtre "
-                    "dovi_rpu, apparu avec ffmpeg 7.1. Mettez ffmpeg à jour "
-                    "depuis le preflight.")
+            echouer(_("ffmpeg 7.1+ required (dovi_rpu filter)"),
+                    _("Removing Dolby Vision to MP4 needs the dovi_rpu filter, "
+                      "which came with ffmpeg 7.1. Update ffmpeg from the "
+                      "preflight."))
             self._encode_next()
             return
         passe_audio = not mp4 and audio_pass_needed(dec.audio)
@@ -761,7 +769,8 @@ class RunScreen(TableNavMixin, Screen):
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
-                    f"▶ 1/{n_etapes} Extraction du flux HEVC — copie, sans réencodage…")
+                    f"▶ 1/{n_etapes} " + _("Extracting the HEVC stream — copy, no "
+                                           "re-encoding…"))
                 self.app.call_from_thread(self._update_row, index)
 
                 proc = EncoderProcess(cmd, dec.info.duration)
@@ -778,8 +787,9 @@ class RunScreen(TableNavMixin, Screen):
                 if s.state == FileState.SKIPPED:
                     return
                 if code != 0 or not brut.exists():
-                    echouer(f"extraction HEVC : code {code}",
-                            f"L'extraction du flux HEVC a échoué (code {code}).")
+                    echouer(_("HEVC extraction: code {code}").format(code=code),
+                            _("Extracting the HEVC stream failed (code {code}).").format(
+                                code=code))
                     return
 
                 # 2/N — retrait du RPU
@@ -788,13 +798,13 @@ class RunScreen(TableNavMixin, Screen):
                     f"{dovi_path} remove -i {brut.name} -o {nodv.name}")
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
-                    f"▶ 2/{n_etapes} Retrait du RPU Dolby Vision par dovi_tool…")
+                    f"▶ 2/{n_etapes} " + _("Removing the Dolby Vision RPU with dovi_tool…"))
                 s.percent = -1
                 self.app.call_from_thread(self._update_row, index)
 
                 if not dovi.remove_dv(brut, nodv, dovi_path):
-                    echouer("dovi_tool remove a échoué",
-                            "dovi_tool n'a pas pu retirer le RPU du flux.")
+                    echouer(_("dovi_tool remove failed"),
+                            _("dovi_tool could not remove the RPU from the stream."))
                     return
 
             # 3/4 — pistes audio finales, quand la décision en transcode une.
@@ -805,7 +815,7 @@ class RunScreen(TableNavMixin, Screen):
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
-                    f"▶ 3/{n_etapes} Transcodage des pistes audio…")
+                    f"▶ 3/{n_etapes} " + _("Transcoding the audio tracks…"))
                 s.percent = -1
                 self.app.call_from_thread(self._update_row, index)
 
@@ -822,8 +832,9 @@ class RunScreen(TableNavMixin, Screen):
                 if s.state == FileState.SKIPPED:
                     return
                 if code != 0 or not mka.exists():
-                    echouer(f"transcodage audio : code {code}",
-                            f"Le transcodage des pistes audio a échoué (code {code}).")
+                    echouer(_("audio transcoding: code {code}").format(code=code),
+                            _("Transcoding the audio tracks failed (code "
+                              "{code}).").format(code=code))
                     return
 
             # N/N — remux avec les pistes de la source. mkvmerge ne sait
@@ -841,8 +852,8 @@ class RunScreen(TableNavMixin, Screen):
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
-                    "▶ 1/1 Retrait du RPU et remux par ffmpeg — copie, "
-                    "sans réencodage…")
+                    "▶ 1/1 " + _("Removing the RPU and remuxing with ffmpeg — "
+                                 "copy, no re-encoding…"))
                 proc = EncoderProcess(cmd, dec.info.duration)
                 self._demarrer(proc)
                 for ligne, progress in proc.iter_progress():
@@ -868,7 +879,7 @@ class RunScreen(TableNavMixin, Screen):
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
-                    f"▶ {n_etapes}/{n_etapes} Remux des pistes par mkvmerge…")
+                    f"▶ {n_etapes}/{n_etapes} " + _("Remuxing the tracks with mkvmerge…"))
 
                 mux = MuxProcess(cmd)
                 self._demarrer(mux)
@@ -884,7 +895,8 @@ class RunScreen(TableNavMixin, Screen):
 
             if code != 0 or not sortie.exists():
                 detail = erreurs[-1] if erreurs else f"code {code}"
-                echouer(f"remux : {detail}", f"Remux échoué — {detail}")
+                echouer(_("remux: {detail}").format(detail=detail),
+                        _("Remux failed — {detail}").format(detail=detail))
                 return
 
             should_delete = (
@@ -951,10 +963,10 @@ class RunScreen(TableNavMixin, Screen):
 
         dovi_path = getattr(self.app, "dovi_path", None)
         if dovi_path is None or not getattr(self.app, "mkvmerge_available", False):
-            echouer("dovi_tool + mkvmerge requis",
-                    "Préserver le Dolby Vision à travers un réencodage demande "
-                    "dovi_tool et mkvmerge. Relancez le preflight pour les "
-                    "installer.")
+            echouer(_("dovi_tool + mkvmerge required"),
+                    _("Preserving Dolby Vision through a re-encode needs "
+                      "dovi_tool and mkvmerge. Run the preflight again to "
+                      "install them."))
             self._encode_next()
             return
 
@@ -994,32 +1006,32 @@ class RunScreen(TableNavMixin, Screen):
 
         try:
             # 1 — le RPU, en tuyau
-            annoncer("Extraction des métadonnées Dolby Vision…",
+            annoncer(_("Extracting the Dolby Vision metadata…"),
                      f"{dovi_path.name} extract-rpu - -o {rpu.name}")
             if not dovi.extract_rpu_depuis_source(source, rpu, dovi_path, ffmpeg_path):
-                echouer("extraction du RPU échouée",
-                        "dovi_tool n'a pas pu extraire les métadonnées Dolby "
-                        "Vision de la source. Le réencodage les aurait "
-                        "détruites : on s'arrête plutôt que de rendre un "
-                        "fichier sans Dolby Vision.")
+                echouer(_("RPU extraction failed"),
+                        _("dovi_tool could not extract the Dolby Vision metadata "
+                          "from the source. The re-encode would have destroyed "
+                          "it: stopping rather than producing a file without "
+                          "Dolby Vision."))
                 return
             if s.state == FileState.SKIPPED:
                 return
 
             # 2 — profil 7 → 8.1
             if dec.info.dv_profile == 7:
-                annoncer("Conversion du RPU en profil 8.1…",
+                annoncer(_("Converting the RPU to profile 8.1…"),
                          f"{dovi_path.name} convert -m 2 -i {rpu.name}")
                 if not dovi.convert_p7_to_p8(rpu, p8, dovi_path):
-                    echouer("conversion RPU 7 → 8.1 échouée",
-                            "dovi_tool n'a pas pu convertir le RPU du profil 7 "
-                            "vers le profil 8.1.")
+                    echouer(_("RPU 7 → 8.1 conversion failed"),
+                            _("dovi_tool could not convert the RPU from profile 7 "
+                              "to profile 8.1."))
                     return
                 p8.replace(rpu)
 
             # 3 — l'encodage vidéo, seul
             cmd = build_dv_video_command(dec, self._platform, enc, ffmpeg_path)
-            annoncer("Encodage de la vidéo…", " ".join(cmd))
+            annoncer(_("Encoding the video…"), " ".join(cmd))
             proc = EncoderProcess(cmd, dec.info.duration)
             self._demarrer(proc)
             for ligne, progress in proc.iter_progress():
@@ -1033,18 +1045,18 @@ class RunScreen(TableNavMixin, Screen):
             if s.state == FileState.SKIPPED:
                 return
             if code != 0 or not enc.exists():
-                echouer(f"encodage vidéo : code {code}",
-                        f"L'encodage de la vidéo a échoué (code {code}).")
+                echouer(_("video encoding: code {code}").format(code=code),
+                        _("Encoding the video failed (code {code}).").format(code=code))
                 return
 
             # 4 — le RPU revient
-            annoncer("Réinjection du Dolby Vision…",
+            annoncer(_("Re-injecting Dolby Vision…"),
                      f"{dovi_path.name} inject-rpu -i {enc.name} --rpu-in {rpu.name}")
             if not dovi.inject_rpu(enc, rpu, inj, dovi_path):
-                echouer("réinjection du RPU échouée",
-                        "dovi_tool n'a pas pu réinjecter le RPU. La cause la "
-                        "plus courante est un nombre d'images différent entre "
-                        "la source et l'encodage.")
+                echouer(_("RPU re-injection failed"),
+                        _("dovi_tool could not re-inject the RPU. The most "
+                          "common cause is a different frame count between the "
+                          "source and the encode."))
                 return
             if s.state == FileState.SKIPPED:
                 return
@@ -1052,7 +1064,7 @@ class RunScreen(TableNavMixin, Screen):
             # 5 — pistes audio finales, quand la décision en transcode une
             if passe_audio:
                 cmd = build_audio_command(source, mka, dec.audio, ffmpeg_path)
-                annoncer("Transcodage des pistes audio…", " ".join(cmd))
+                annoncer(_("Transcoding the audio tracks…"), " ".join(cmd))
                 proc = EncoderProcess(cmd, dec.info.duration)
                 self._demarrer(proc)
                 for ligne, progress in proc.iter_progress():
@@ -1065,8 +1077,9 @@ class RunScreen(TableNavMixin, Screen):
                 if s.state == FileState.SKIPPED:
                     return
                 if code != 0 or not mka.exists():
-                    echouer(f"transcodage audio : code {code}",
-                            f"Le transcodage des pistes audio a échoué (code {code}).")
+                    echouer(_("audio transcoding: code {code}").format(code=code),
+                            _("Transcoding the audio tracks failed (code "
+                              "{code}).").format(code=code))
                     return
 
             # N — remux par mkvmerge, vers la sortie ou vers l'intermédiaire
@@ -1081,7 +1094,7 @@ class RunScreen(TableNavMixin, Screen):
                                 if ad.action != AudioAction.EXCLUDE]
                                if exclues and not passe_audio else None),
                 sous_titres=[st.index for st in dec.subtitles_finales])
-            annoncer("Remux des pistes par mkvmerge…", " ".join(cmd))
+            annoncer(_("Remuxing the tracks with mkvmerge…"), " ".join(cmd))
             mux = MuxProcess(cmd)
             self._demarrer(mux)
             for ligne, pourcent in mux.iter_progress():
@@ -1094,7 +1107,8 @@ class RunScreen(TableNavMixin, Screen):
             self._mux = None
             if code != 0 or not mkv.exists():
                 detail = mux.errors[-1] if mux.errors else f"code {code}"
-                echouer(f"remux : {detail}", f"Remux échoué — {detail}")
+                echouer(_("remux: {detail}").format(detail=detail),
+                        _("Remux failed — {detail}").format(detail=detail))
                 return
 
             # N+1 — le Matroska passe en MP4, Dolby Vision compris (IE-108)
@@ -1105,7 +1119,7 @@ class RunScreen(TableNavMixin, Screen):
                 if not ok:
                     return
                 cmd = dovi.build_dv_mp4_remux(mkv, sortie, ffmpeg_path, porteur)
-                annoncer("Remux en MP4 par ffmpeg…", " ".join(cmd))
+                annoncer(_("Remuxing to MP4 with ffmpeg…"), " ".join(cmd))
                 proc = EncoderProcess(cmd, dec.info.duration)
                 self._demarrer(proc)
                 for ligne, progress in proc.iter_progress():
@@ -1118,8 +1132,8 @@ class RunScreen(TableNavMixin, Screen):
                 if s.state == FileState.SKIPPED:
                     return
                 if code != 0 or not sortie.exists():
-                    echouer(f"remux MP4 : code {code}",
-                            f"Le remux en MP4 a échoué (code {code}).")
+                    echouer(_("MP4 remux: code {code}").format(code=code),
+                            _("The MP4 remux failed (code {code}).").format(code=code))
                     return
 
             should_delete = (
@@ -1161,10 +1175,9 @@ class RunScreen(TableNavMixin, Screen):
         s = self._statuses[index]
         if not getattr(self.app, "mkvmerge_available", False):
             s.state     = FileState.ERROR
-            s.error_msg = "mkvmerge requis (étirement)"
-            s.last_line = ("Une piste demande un facteur d'étirement : seul "
-                           "mkvmerge sait l'appliquer. Relancez le preflight "
-                           "pour l'installer.")
+            s.error_msg = _("mkvmerge required (stretch)")
+            s.last_line = _("A track needs a stretch factor: only mkvmerge can "
+                            "apply it. Run the preflight again to install it.")
             self.app.call_from_thread(self._update_row, index)
             return False
 
@@ -1180,7 +1193,7 @@ class RunScreen(TableNavMixin, Screen):
         self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
         self.app.call_from_thread(
             self._update_ffmpeg_line,
-            "▶ Greffe des pistes par mkvmerge (étirement) avant encodage…")
+            "▶ " + _("Adding the tracks with mkvmerge (stretch) before encoding…"))
 
         proc = MuxProcess(cmd)
         self._demarrer(proc)
@@ -1197,8 +1210,9 @@ class RunScreen(TableNavMixin, Screen):
             # Interrompu ou échoué, l'intermédiaire pèse le poids du film.
             sortie.unlink(missing_ok=True)
             detail = proc.errors[-1] if proc.errors else f"code {code}"
-            s.state, s.error_msg = FileState.ERROR, f"mux : {detail}"[:60]
-            s.last_line = f"Mux préalable échoué — {detail}"
+            s.state, s.error_msg = (FileState.ERROR,
+                                    _("mux: {detail}").format(detail=detail)[:60])
+            s.last_line = _("Pre-mux failed — {detail}").format(detail=detail)
             self.app.call_from_thread(self._update_row, index)
             return False
 
@@ -1222,15 +1236,17 @@ class RunScreen(TableNavMixin, Screen):
         compte = {etat: sum(1 for s in self._statuses if s.state == etat)
                   for etat in (FileState.SUCCESS, FileState.ERROR,
                                FileState.SKIPPED)}
-        lignes = [f"Terminé — réussis : {compte[FileState.SUCCESS]}"
-                  f" · en échec : {compte[FileState.ERROR]}"
-                  f" · ignorés : {compte[FileState.SKIPPED]}"]
+        lignes = [_("Done — succeeded: {success} · failed: {failed} · skipped: "
+                    "{skipped}").format(success=compte[FileState.SUCCESS],
+                                        failed=compte[FileState.ERROR],
+                                        skipped=compte[FileState.SKIPPED])]
         sorties = [s.decision.output_path for s in self._statuses
                    if s.state == FileState.SUCCESS]
         lignes += [f"→ {p}" for p in sorties[:self._SORTIES_LISTEES]]
         reste = len(sorties) - self._SORTIES_LISTEES
         if reste > 0:
-            lignes.append(f"   … et {reste} autres")
+            lignes.append("   " + ngettext("… and {count} other", "… and {count} others",
+                                           reste).format(count=reste))
         return "\n".join(lignes)
 
     def _on_all_done(self) -> None:
@@ -1243,7 +1259,8 @@ class RunScreen(TableNavMixin, Screen):
         if app.current_mode == app.MODE_ENCODAGES:  # type: ignore[attr-defined]
             self._vu = True
         else:
-            app.notify(f"Lot d'encodage terminé — {touche('f12')} pour le bilan.",
+            app.notify(_("Encoding batch done — {key} for the summary.").format(
+                key=touche("f12")),
                        timeout=8)
         try:
             self._update_header()
@@ -1262,8 +1279,8 @@ class RunScreen(TableNavMixin, Screen):
                 and self._statuses[i].state == FileState.PENDING)
 
     def _refus_file(self) -> None:
-        self.notify("Seul un fichier en attente se déplace ou se retire — "
-                    "celui qui tourne et ceux qui sont finis restent.",
+        self.notify(_("Only a pending file can be moved or removed — the "
+                      "running one and the finished ones stay."),
                     severity="warning", timeout=4)
 
     def _deplacer(self, sens: int) -> None:
@@ -1300,7 +1317,8 @@ class RunScreen(TableNavMixin, Screen):
             return
         self._reconstruire_table()
         self._update_header()
-        self.notify(f"{retire.decision.info.path.name} retiré de la file.",
+        self.notify(_("{file} removed from the queue.").format(
+                        file=retire.decision.info.path.name),
                     timeout=3)
 
     # ─── Après le lot ─────────────────────────────────────────────────────────
@@ -1313,20 +1331,23 @@ class RunScreen(TableNavMixin, Screen):
         if self._done:
             return
         if not veille.disponible():
-            self.notify("Mise en veille et arrêt pilotés sous Windows "
-                        "seulement.", severity="warning", timeout=4)
+            self.notify(_("Sleep and shutdown are only managed under "
+                          "Windows."), severity="warning", timeout=4)
             return
         action = get_action_fin(self.app.cfg)  # type: ignore[attr-defined]
         if action == "rien" and not self.apres_lot:
-            self.notify("Après le lot : rien n'est prévu. Choisir une action "
-                        f"dans les options ({touche('f5')}, puis {touche('u')}).",
+            self.notify(_("After the batch: nothing is planned. Choose an "
+                          "action in the options ({key}, then {option_key}).").format(
+                            key=touche("f5"), option_key=touche("u")),
                         timeout=6)
             return
         self.apres_lot = not self.apres_lot
         libelle = veille.libelle_action(action)
-        self.notify(f"Après le lot : {libelle}, après un compte à rebours de "
-                    f"{veille.COMPTE_A_REBOURS_S} s." if self.apres_lot
-                    else "Après le lot : rien.", timeout=4)
+        self.notify(_("After the batch: {action}, after a {seconds} s "
+                      "countdown.").format(action=libelle,
+                                           seconds=veille.COMPTE_A_REBOURS_S)
+                    if self.apres_lot
+                    else _("After the batch: nothing."), timeout=4)
         self._update_header()
 
     # ─── Pause/Resume ─────────────────────────────────────────────────────────
@@ -1348,7 +1369,7 @@ class RunScreen(TableNavMixin, Screen):
         if 0 <= self._current_idx < len(self._statuses):
             s = self._statuses[self._current_idx]
             s.state    = FileState.SKIPPED
-            s.last_line = "Passé manuellement"
+            s.last_line = _("Skipped manually")
             self._update_row(self._current_idx)
         # terminate() ferme le process : la boucle iter_progress se termine,
         # _encode_next() enchaîne automatiquement sur le suivant
@@ -1427,7 +1448,7 @@ class RunScreen(TableNavMixin, Screen):
                 for s in self._statuses:
                     if s.state in (FileState.PENDING, FileState.RUNNING):
                         s.state     = FileState.SKIPPED
-                        s.last_line = "Arrêté"
+                        s.last_line = _("Stopped")
                 self._done = True
             self._interrompre()
             for i in range(len(self._statuses)):
@@ -1435,12 +1456,12 @@ class RunScreen(TableNavMixin, Screen):
             self._on_all_done()
 
         restants = self.en_attente()
-        corps = "Le fichier en cours est abandonné, sa sortie partielle effacée."
+        corps = _("The current file is abandoned, its partial output deleted.")
         if restants:
-            corps += (f"\nLes {restants} fichiers en attente ne seront pas encodés."
-                      if restants > 1 else
-                      "\nLe fichier en attente ne sera pas encodé.")
+            corps += "\n" + ngettext("The pending file will not be encoded.",
+                                     "The {count} pending files will not be encoded.",
+                                     restants).format(count=restants)
         self.app.push_screen(ConfirmModal(
-            "Arrêter tous les encodages ?", corps,
-            confirm_label="Arrêter", cancel_label="Continuer", danger=True),
+            _("Stop all encodes?"), corps,
+            confirm_label=_("Stop"), cancel_label=_("Continue"), danger=True),
             _reponse)

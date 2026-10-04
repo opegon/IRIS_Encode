@@ -33,7 +33,7 @@ from core.texte import pluriel
 from core.decision import FileDecision
 from core.muxer import (
     ExternalTrack, MuxProcess, SyncOrigin, TrackKind, build_sample_command,
-    ffmpeg_stream_index, propager_recalage, sample_output_path,
+    ffmpeg_stream_index, noms_proposes, propager_recalage, sample_output_path,
     sample_windows, timecode,
 )
 from core.sync import (
@@ -74,7 +74,12 @@ _STRETCH_LABELS = {
 }
 
 _LANGS = ["fre", "eng", "ger", "spa", "ita", "jpn", "por", "rus", "und"]
-_NAMES = ["—", "VF", "VOSTFR", "VO", "Forcés", "Commentaires", "SDH"]
+
+
+def _noms(t: ExternalTrack) -> list[str]:
+    """Les noms du champ Nom pour cette piste : « — » (aucun), puis ceux de sa
+    langue (`core.muxer.noms_proposes`, L-77)."""
+    return ["—", *noms_proposes(t.language)]
 
 # Décalages proposés par ↵ sur le champ Décalage : le réglage fin reste
 # sur +/-, mais la liste évite de marteler une touche pour partir de loin.
@@ -440,8 +445,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             cur = _LANGS.index(t.language) if t.language in _LANGS else 0
             t.language = _LANGS[(cur + delta) % len(_LANGS)]
         elif field == "name":
-            cur = _NAMES.index(t.track_name) if t.track_name in _NAMES else 0
-            nxt = _NAMES[(cur + delta) % len(_NAMES)]
+            noms = _noms(t)
+            cur = noms.index(t.track_name) if t.track_name in noms else 0
+            nxt = noms[(cur + delta) % len(noms)]
             t.track_name = "" if nxt == "—" else nxt
         elif field == "default":
             t.is_default = not t.is_default
@@ -462,7 +468,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             opts, cur = _LANGS, (_LANGS.index(t.language) if t.language in _LANGS else 0)
         elif field == "name":
             label = t.track_name or "—"
-            opts, cur = _NAMES, (_NAMES.index(label) if label in _NAMES else 0)
+            opts  = _noms(t)
+            cur   = opts.index(label) if label in opts else 0
         elif field == "stretch":
             opts = [_STRETCH_LABELS[s] for s in _STRETCH_CYCLE]
             cur  = _STRETCH_CYCLE.index(t.stretch) if t.stretch in _STRETCH_CYCLE else 0
@@ -480,7 +487,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             if field == "lang":
                 t.language = _LANGS[choice]
             elif field == "name":
-                t.track_name = "" if _NAMES[choice] == "—" else _NAMES[choice]
+                t.track_name = "" if opts[choice] == "—" else opts[choice]
             elif field == "stretch":
                 t.stretch = _STRETCH_CYCLE[choice]
                 t.sync_origin = SyncOrigin.MANUAL

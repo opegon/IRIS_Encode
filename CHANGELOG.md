@@ -1,5 +1,29 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.70] — 2026-10-04
+
+### Noms de piste proposés selon la langue de la piste
+
+IE-113, constat L-77 de l'audit de localisation, tranché le 2026-10-04 :
+**la liste suit la langue de la piste**.
+
+Le champ Nom du recalage proposait la même liste à toute piste greffée :
+« VF », « VOSTFR », « VO », « Forcés », « Commentaires », « SDH ». Ces noms
+sont écrits dans le fichier : ce sont des données, que la traduction de
+l'interface ne doit pas toucher. Mais une piste anglaise se voyait proposer
+« VF » et « Forcés ».
+
+- `core/muxer.noms_proposes(langue)` :
+  - `fre` (ou `fra`) → VF, VFF, VFQ, VOSTFR, Forcés, Commentaires, SDH ;
+  - `eng` → English, Forced, Commentary, SDH ;
+  - toute autre langue → Forced, SDH.
+- `tui/screens/sync.py` : le champ Nom (`+`/`-` et la liste `↵`) lit la langue
+  de la piste ; changer la langue change la liste. Un nom saisi hors liste
+  reste en place tant qu'on n'y touche pas.
+- « VO » disparaît de la liste : sur une piste anglaise, la liste anglaise le
+  remplace par « English ».
+- `tests/test_muxer.py`. Spec § 9.3.
+
 ## [v0.8.9.69] — 2026-10-04
 
 ### Exemple décimal et nom de touche alignés sur le reste

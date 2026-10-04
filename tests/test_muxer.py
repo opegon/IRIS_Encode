@@ -600,3 +600,27 @@ def test_la_commande_affichee_est_repliee():
            "--track-name", "0:VF / AC3", src]
     assert commande_courte(cmd) == ("mkvmerge -o Heat.mux-iris.mkv "
                                     "--track-name 0:VF / AC3 Heat.mkv")
+
+
+# ─── Noms de piste proposés (L-77, IE-113) ───────────────────────────────────
+
+def test_les_noms_proposes_suivent_la_langue_de_la_piste():
+    """Écrits dans le fichier, ils dépendent de la piste, jamais de la langue
+    de l'interface : une piste anglaise ne se voit pas proposer « VF »."""
+    from core.muxer import noms_proposes
+    fr = noms_proposes("fre")
+    assert {"VF", "VOSTFR", "Forcés", "Commentaires"} <= set(fr)
+    assert noms_proposes("fra") == fr                     # même français
+    en = noms_proposes("eng")
+    assert {"English", "Forced", "Commentary", "SDH"} <= set(en)
+    assert not {"VF", "VOSTFR", "Forcés"} & set(en)
+    assert set(noms_proposes("ger")) == {"Forced", "SDH"}  # sans liste propre
+    assert set(noms_proposes("")) == {"Forced", "SDH"}
+
+
+def test_le_recalage_tire_ses_noms_de_la_langue_de_la_piste():
+    """Plus de liste figée dans l'écran (`_NAMES`)."""
+    import inspect
+    from tui.screens import sync
+    assert not hasattr(sync, "_NAMES")
+    assert "noms_proposes" in inspect.getsource(sync)

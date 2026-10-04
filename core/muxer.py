@@ -19,7 +19,8 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
-from .scanner import MARQUE_IRIS, stem_sans_groupe, stem_sans_suffixe_produit
+from .scanner import (MARQUE_IRIS, normalize_language, stem_sans_groupe,
+                      stem_sans_suffixe_produit)
 
 # Suffixe appliqué quand on mux sans réencoder : le nom de sortie doit différer
 # de la source, qu'on ne réécrit jamais en place. `mux` est dans
@@ -119,6 +120,25 @@ class ExternalTrack:
         if self.stretch:
             out += f" ×{self.stretch[0]}/{self.stretch[1]}"
         return out
+
+
+# ─── Noms de piste proposés ───────────────────────────────────────────────────
+
+# Ce que le recalage propose pour nommer une piste greffée, selon la langue de
+# **la piste** (L-77). Le nom est écrit dans le fichier : c'est une donnée, pas
+# un texte de l'interface — la liste ne suit jamais la langue de l'application,
+# sans quoi un même fichier sortirait différemment selon le réglage.
+_NOMS_PAR_LANGUE: dict[str, tuple[str, ...]] = {
+    "fre": ("VF", "VFF", "VFQ", "VOSTFR", "Forcés", "Commentaires", "SDH"),
+    "eng": ("English", "Forced", "Commentary", "SDH"),
+}
+# Une langue sans liste propre : les seules mentions d'usage international.
+_NOMS_NEUTRES: tuple[str, ...] = ("Forced", "SDH")
+
+
+def noms_proposes(langue: str) -> tuple[str, ...]:
+    """Les noms à proposer pour une piste de cette langue (code ISO 639-2)."""
+    return _NOMS_PAR_LANGUE.get(normalize_language(langue), _NOMS_NEUTRES)
 
 
 # ─── Langue déduite du nom de fichier ─────────────────────────────────────────

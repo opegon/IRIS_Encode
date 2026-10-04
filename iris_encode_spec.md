@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.69 — document de référence courant
+**Version** : 0.8.9.70 — document de référence courant
 **Date** : 2026-10-04
 **Statut** : stable
 
@@ -1196,6 +1196,7 @@ retourne `.mkv` dès que cette liste n'est pas vide.
 | `identify(path)` | Pistes du fichier via `mkvmerge -J` → `list[IdentifiedTrack]`. Mémorisé par (chemin, taille, date) : traduire vingt index ne relançait pas vingt processus |
 | `ffmpeg_stream_index(path, tid, kind)` | Traduit un TID mkvmerge en index ffprobe |
 | `guess_language(path)` | Déduit une langue du nom de fichier (`film.VF.mka`) |
+| `noms_proposes(langue)` | Noms que le champ Nom du recalage propose, selon la langue **de la piste** : `fre` → VF, VFF, VFQ, VOSTFR, Forcés, Commentaires, SDH ; `eng` → English, Forced, Commentary, SDH ; autre → Forced, SDH. Écrits dans le fichier, ce sont des données : ils ne suivent jamais la langue de l'interface (v0.8.9.70) |
 | `build_mux_command(…)` | Arguments mkvmerge complets |
 | `build_sample_command(…)` | Extrait de contrôle muxé |
 | `sample_windows(duration, has_stretch, …)` | Fenêtres à découper (deux si étirement) |
@@ -2802,6 +2803,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.70 | 2026-10-04 | **Noms de piste proposés selon la langue de la piste** (IE-113, L-77, § 9.3) : le champ Nom du recalage proposait la même liste française à toute piste ; `muxer.noms_proposes` la tire de la langue de la piste (`fre`, `eng`, sinon Forced/SDH). Données écrites dans le fichier, hors traduction de l'interface · `tests/test_muxer.py` |
 | 0.8.9.69 | 2026-10-04 | **Exemple décimal et nom de touche alignés sur le reste** (IE-113, L-56, L-70) : le point de repère montre « 13:22.5 » (la virgule reste acceptée), la fin de jonction écrit « ⌫ » et non « BACKSPACE » · `tests/test_revue_code.py` |
 | 0.8.9.68 | 2026-10-04 | **Libellé mort retiré de `_resolve_limits`** (IE-113, L-14) : la fonction rendait aussi « Original WxH » / « 1080p », jamais lu · `tests/test_revue_code.py` |
 | 0.8.9.67 | 2026-10-04 | **Un libellé, une source** (IE-113, L-13, L-15, L-66, L-79, L-81) : sort du Dolby Vision (`decision.DV_SORTIE`), « → copie », « exclu manuellement », type de piste (`libelle_type_piste`) et en-têtes de colonnes fixes (`colonne_fixe`) écrits une seule fois · l'aperçu n'affiche plus « (→ → copie) » dans la colonne audio · `tests/test_revue_code.py` |

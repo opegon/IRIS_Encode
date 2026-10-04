@@ -15,9 +15,10 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Button, DataTable, Static
 
+from core.i18n import _
 from core import profiles as prof_mod
 from core.profiles import Profile
-from ..common import (barre_etat, PROFIL_COLONNES, cellules_profil,
+from ..common import (barre_etat, PROFIL_COLONNES, cellules_profil, profil_colonnes,
                       largeurs_colonnes, actions_ecran, footer_line2, raccourcis,
                       retour_accueil)
 from ..mixins import TableNavMixin
@@ -116,7 +117,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         profiles = self._app.profiles
         active   = self._app.active_profile_id
 
-        entetes = PROFIL_COLONNES + ["Actions"]
+        entetes = profil_colonnes() + [_("Actions")]
         lignes  = [cellules_profil(n, p, n == active) +
                    [Text("✎ éditer  ✕ suppr.", no_wrap=True)]
                    for n, p in profiles.items()]
@@ -299,7 +300,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         self._show_save_notice(msg.profile_id)
 
     @on(ProfileCancelled)
-    def _on_profile_cancelled(self, _: ProfileCancelled) -> None:
+    def _on_profile_cancelled(self, _msg: ProfileCancelled) -> None:
         self._close_form()
 
     def _flash_header(self, msg: str) -> None:

@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from tui.common import TOUCHES as _TOUCHES
+from tui.common import TOUCHES as _TOUCHES, touche as _touche
 from tui.screens import aide
 
 _ECRANS = sorted(aide.classes_documentees())
@@ -133,7 +133,8 @@ _TABLES_GUIDE = {
 
 # Notation affichée → nom Textual. L'inverse de `tui.common.TOUCHES`, plus les
 # formes que le guide compose lui-même (« Maj+↑ » pour `shift+up`).
-_VERS_TEXTUAL = {affiche.lower(): nom for nom, affiche in _TOUCHES.items()}
+# Par `touche()` : un nom de touche écrit (« Suppr ») se traduit (IE-88).
+_VERS_TEXTUAL = {_touche(nom).lower(): nom for nom in _TOUCHES}
 _VERS_TEXTUAL.update({
     "espace": "space", "maj+tab": "shift+tab",
     "maj+↑": "shift+up", "maj+↓": "shift+down",

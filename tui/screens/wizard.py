@@ -47,7 +47,7 @@ from core.sync import measure_external_track
 
 from ..common import (confier_a_la_file, langue_affichee, nom_codec, bitrate_picker_config, codec_picker_opts, fmt_duration,
                       footer_line2, retour_accueil, tronquer_milieu,
-                      ECARTEE, actions_ecran, cellule, colonne_fixe,
+                      libelle_ecartee, actions_ecran, cellule, colonne_fixe,
                       libelle_type_piste)
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
@@ -286,12 +286,12 @@ class WizardScreen(TableNavMixin, Screen):
                         ad.action != AudioAction.EXCLUDE,
                         f"0:a:{ad.track.index}", ad.track.codec,
                         ad.track.language, ad.track.title,
-                        ad.display() or ECARTEE)
+                        ad.display() or libelle_ecartee())
         gardes = {st.index for st in d.subtitles_finales}
         for st in d.info.subtitle_tracks:
             self._ligne(_L_SUB, st.index, st.index in gardes,
                         f"0:s:{st.index}", st.codec, st.language, st.title,
-                        libelle_copie() if st.index in gardes else ECARTEE)
+                        libelle_copie() if st.index in gardes else libelle_ecartee())
         for n, ext in enumerate(d.external_tracks):
             kind = libelle_type_piste(ext.kind)
             self._ligne(_L_EXT, n, True, f"greffe {kind}", ext.codec,

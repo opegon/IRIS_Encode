@@ -13,7 +13,7 @@ from pathlib import Path
 from rich.cells import cell_len
 from rich.text import Text
 
-from core.i18n import _
+from core.i18n import N_, _, pgettext
 from core import config as cfg_mod
 from core.muxer import TrackKind
 from core.decision import (
@@ -62,7 +62,8 @@ TOUCHES: dict[str, str] = {
     "escape":    "Esc",
     "tab":       "Tab",
     "shift+tab": "⇧Tab",
-    "delete":    "Suppr",
+    # TRANSLATORS: the Delete key, as printed on the keyboard ("Suppr" in French).
+    "delete":    N_("Del"),
     "pageup":    "PgUp",
     "pagedown":  "PgDn",
     "home":      "Home",
@@ -88,8 +89,9 @@ SEP_ENTREE: str = "     "
 
 
 def touche(nom: str) -> str:
-    """Nom de touche Textual → notation affichée. Inconnue : en majuscules."""
-    return TOUCHES.get(nom.lower(), nom.upper())
+    """Nom de touche Textual → notation affichée. Inconnue : en majuscules.
+    Les symboles passent tels quels ; un nom écrit (« Suppr ») se traduit."""
+    return _(TOUCHES[nom.lower()]) if nom.lower() in TOUCHES else nom.upper()
 
 
 def raccourci(nom: str, libelle: str) -> str:
@@ -227,7 +229,10 @@ def cellule(texte: str, *, style: str = "", largeur: int | None = None) -> Text:
 # l'assistant l'écrivaient chacun à leur façon — et l'assistant ne l'écrivait
 # pas du tout : une case vide se lit comme une donnée manquante, pas comme une
 # décision prise.
-ECARTEE: str = "← écartée"
+def libelle_ecartee() -> str:
+    """« ← écartée » : une piste que la sortie ne contiendra pas."""
+    # TRANSLATORS: a track left out of the output (feminine in French: "piste").
+    return f"← {pgettext('track', 'discarded')}"
 
 
 def fmt_bytes(b: int) -> str:
@@ -320,7 +325,7 @@ def estimate_encoding_duration(
 CODEC_PICKER_OPTS: list[str] = [
     "HEVC",
     "H264",
-    "AV1  (⚠ très gourmand)",
+    N_("AV1  (⚠ very demanding)"),
     "SKIP",
 ]
 
@@ -332,7 +337,7 @@ def codec_picker_opts(plat=None) -> list[str]:
     à jour, et masquer l'option laisserait croire qu'elle n'existe pas. On dit
     ce qui va se passer, et la décision reste à l'utilisateur.
     """
-    opts = list(CODEC_PICKER_OPTS)
+    opts = [_(o) for o in CODEC_PICKER_OPTS]
     if plat is None:
         return opts
     for i, (action, encodeur) in enumerate((
@@ -341,7 +346,7 @@ def codec_picker_opts(plat=None) -> list[str]:
         (2, getattr(plat, "encoder_av1", None)),
     )):
         if encodeur and plat.peut_encoder(encodeur) is False:
-            opts[action] += "  ✗ indisponible ici"
+            opts[action] += "  ✗ " + _("unavailable here")
     return opts
 
 
@@ -356,7 +361,7 @@ def bitrate_picker_config(
     """
     is_av1 = action == VideoAction.ENCODE_AV1
     blist  = AV1_BITRATE_OPTS_KBPS if is_av1 else BITRATE_OPTS_KBPS
-    title  = "Débit (AV1)" if is_av1 else "Débit cible"
+    title  = _("Bitrate (AV1)") if is_av1 else _("Target bitrate")
     opts   = [f"{v} kbps" for v in blist]
     cur_k  = current_bps // 1000
     idx    = min(range(len(blist)), key=lambda i: abs(blist[i] - cur_k))
@@ -369,25 +374,26 @@ def bitrate_picker_config(
 # ligne 2 = retour + navigation table + resize colonnes + F10 Quitter (dernier).
 
 FOOTER_NAV: list[tuple[str, str]] = [
-    ("home",     "Début"),
-    ("end",      "Fin"),
-    ("pageup",   "Page ↑"),
-    ("pagedown", "Page ↓"),
+    ("home",     N_("Start")),
+    ("end",      N_("End")),
+    ("pageup",   N_("Page ↑")),
+    ("pagedown", N_("Page ↓")),
 ]
 
 FOOTER_RESIZE: list[tuple[str, str]] = [
-    ("shift+tab", "Col préc."),
-    ("tab",       "Col suiv."),
-    ("<",         "Rétrécir"),
-    (">",         "Élargir"),
+    # TRANSLATORS: "Col" is short for column; keep these labels short.
+    ("shift+tab", N_("Prev col")),
+    ("tab",       N_("Next col")),
+    ("<",         N_("Narrow")),
+    (">",         N_("Widen")),
 ]
 
-FOOTER_BACK: tuple[str, str] = ("backspace", "Retour")
+FOOTER_BACK: tuple[str, str] = ("backspace", N_("Back"))
 # `Home` appartient à la navigation dans les tables — voir FOOTER_NAV et
 # TableNavMixin. Le retour à l'accueil prend donc Ctrl+Home, qui dit la même
 # chose d'un cran au-dessus.
-FOOTER_ACCUEIL: tuple[str, str] = ("ctrl+home", "Accueil")
-FOOTER_QUIT: tuple[str, str] = ("f10",       "Quitter")
+FOOTER_ACCUEIL: tuple[str, str] = ("ctrl+home", N_("Home"))
+FOOTER_QUIT: tuple[str, str] = ("f10",       N_("Quit"))
 
 
 # Touches rendues par `footer_line2` : elles ont leur place fixe en bande 2 et
@@ -510,8 +516,15 @@ def retour_accueil(app) -> None:
 # « Suppr. », la 4K lue « → 1080p » d'un côté et « 3500k » de l'autre, le nom
 # entre crochets d'un seul côté (UX-13). Une définition, deux écrans.
 
-PROFIL_COLONNES: list[str] = ["Profil", "1080p", "4K", "Dolby V.", "Preset",
-                              "HD audio", "Source"]
+# En-têtes marqués ici, traduits à l'usage (`profil_colonnes`).
+# TRANSLATORS: "Dolby V." is short for Dolby Vision; keep it short.
+PROFIL_COLONNES: list[str] = [N_("Profile"), "1080p", "4K", N_("Dolby V."),
+                              N_("Preset"), N_("HD audio"), N_("Source")]
+
+
+def profil_colonnes() -> list[str]:
+    """Les en-têtes de `PROFIL_COLONNES`, dans la langue chargée."""
+    return [_(c) for c in PROFIL_COLONNES]
 
 
 def cellules_profil(nom: str, prof, actif: bool) -> list[Text]:
@@ -532,8 +545,11 @@ def cellules_profil(nom: str, prof, actif: bool) -> list[Text]:
         # Ces deux colonnes se lisent sur les booléens du profil, pas sur un
         # libellé (UX-29, L-43).
         Text(f["hd_audio"], style="" if hd else "dim", no_wrap=True),
-        (Text("⚠ suppr.", style="bold dark_orange", no_wrap=True) if suppr
-         else Text("garder", style="dim", no_wrap=True)),
+        # TRANSLATORS: profile column Source — "del." = the source is deleted
+        # after encoding (keep it short), "keep" = it is kept.
+        (Text("⚠ " + pgettext("source file", "del."), style="bold dark_orange",
+              no_wrap=True) if suppr
+         else Text(pgettext("source file", "keep"), style="dim", no_wrap=True)),
     ]
 
 

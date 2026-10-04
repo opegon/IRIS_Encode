@@ -45,7 +45,7 @@ from core.decision import (
     DV_SORTIE, EXCLU_MANUELLEMENT, libelle_copie,
 )
 from ..common import (langue_affichee, nom_codec, barre_etat, 
-    ECARTEE,
+    libelle_ecartee,
     actions_ecran,
     colonne_fixe,
     libelle_type_piste,
@@ -283,7 +283,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 cellule(langue_affichee(t.language), style=dim),
                 cellule(reason,               style=dim),
                 cellule(t.title or "—",       style=dim),
-                cellule(ad.display() or ECARTEE,
+                cellule(ad.display() or libelle_ecartee(),
                         style="green" if not excl else "dim"),
                 key=f"a:{idx}",
             )
@@ -320,7 +320,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                     cellule(langue_affichee(st.language), style=style),
                     cellule(reason,             style=style),
                     cellule(st.title or "—",    style=style),
-                    cellule(cont_str if sel else ECARTEE,
+                    cellule(cont_str if sel else libelle_ecartee(),
                             style="green" if sel else "dim"),
                     key=f"s:{st.index}",
                 )

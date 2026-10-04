@@ -124,8 +124,10 @@ def test_le_picker_ne_retire_jamais_l_option():
 def test_sans_sondage_le_picker_n_annote_rien():
     from tui.common import CODEC_PICKER_OPTS, codec_picker_opts
 
-    assert codec_picker_opts(_PLAT) == CODEC_PICKER_OPTS
-    assert codec_picker_opts(None) == CODEC_PICKER_OPTS
+    from core.i18n import _
+    sans_note = [_(o) for o in CODEC_PICKER_OPTS]
+    assert codec_picker_opts(_PLAT) == sans_note
+    assert codec_picker_opts(None) == sans_note
 
 
 # ─── Le diagnostic d'un échec ─────────────────────────────────────────────────

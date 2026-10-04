@@ -16,7 +16,7 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
-from ..common import (PROFIL_COLONNES, cellules_profil, largeurs_colonnes,
+from ..common import (PROFIL_COLONNES, cellules_profil, largeurs_colonnes, profil_colonnes,
                       raccourcis)
 
 if TYPE_CHECKING:
@@ -87,8 +87,9 @@ class ProfilePickerScreen(ModalScreen[str | None]):
 
         rows = [cellules_profil(n, p, n == self._current_id)
                 for n, p in self._profiles.items()]
-        widths = largeurs_colonnes(PROFIL_COLONNES, rows)
-        for header, w in zip(PROFIL_COLONNES, widths):
+        entetes = profil_colonnes()
+        widths = largeurs_colonnes(entetes, rows)
+        for header, w in zip(entetes, widths):
             table.add_column(header, width=w)
 
         for name, cells in zip(self._names, rows):

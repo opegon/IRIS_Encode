@@ -878,7 +878,116 @@ msgstr ""
 msgid "unavailable on this system"
 msgstr ""
 
+#. the Delete key, as printed on the keyboard ("Suppr" in French).
+#: tui/common.py:66
+msgid "Del"
+msgstr ""
+
+#. a track left out of the output (feminine in French: "piste").
+#: tui/common.py:235
+msgctxt "track"
+msgid "discarded"
+msgstr ""
+
+#: tui/common.py:328
+msgid "AV1  (⚠ very demanding)"
+msgstr ""
+
+#: tui/common.py:349
+msgid "unavailable here"
+msgstr ""
+
+#: tui/common.py:364
+msgid "Bitrate (AV1)"
+msgstr ""
+
+#: tui/common.py:364
+msgid "Target bitrate"
+msgstr ""
+
+#: tui/common.py:377
+msgid "Start"
+msgstr ""
+
+#: tui/common.py:378
+msgid "End"
+msgstr ""
+
+#: tui/common.py:379
+msgid "Page ↑"
+msgstr ""
+
+#: tui/common.py:380
+msgid "Page ↓"
+msgstr ""
+
+#. "Col" is short for column; keep these labels short.
+#: tui/common.py:385
+msgid "Prev col"
+msgstr ""
+
+#: tui/common.py:386
+msgid "Next col"
+msgstr ""
+
+#: tui/common.py:387
+msgid "Narrow"
+msgstr ""
+
+#: tui/common.py:388
+msgid "Widen"
+msgstr ""
+
+#: tui/common.py:391
+msgid "Back"
+msgstr ""
+
+#: tui/common.py:395
+msgid "Home"
+msgstr ""
+
+#: tui/common.py:396
+msgid "Quit"
+msgstr ""
+
+#. "Dolby V." is short for Dolby Vision; keep it short.
+#: tui/common.py:521
+msgid "Profile"
+msgstr ""
+
+#. "Dolby V." is short for Dolby Vision; keep it short.
+#: tui/common.py:521
+msgid "Dolby V."
+msgstr ""
+
+#: tui/common.py:522
+msgid "Preset"
+msgstr ""
+
+#: tui/common.py:522
+msgid "HD audio"
+msgstr ""
+
+#: tui/common.py:522
+msgid "Source"
+msgstr ""
+
+#. profile column Source — "del." = the source is deleted after encoding (keep it short), "keep" = it is kept.
+#: tui/common.py:550
+msgctxt "source file"
+msgid "del."
+msgstr ""
+
+#: tui/common.py:552
+msgctxt "source file"
+msgid "keep"
+msgstr ""
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."
+msgstr ""
+
+#: tui/screens/config.py:120
+msgid "Actions"
 msgstr ""

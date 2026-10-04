@@ -114,12 +114,12 @@ def test_la_fiche_bascule_dallocine_a_imdb(monkeypatch):
     from pathlib import Path
     from textual.app import App
     from textual.widgets import Static
-    from core.meta import MovieMeta
+    from core.meta import MovieMeta, Nature
     import tui.screens.meta_popup as mp
 
     def _fiche(source):
         return lambda title, year, **_: MovieMeta(
-            source=source, title=f"{title} {source}", year=year, kind="Film",
+            source=source, title=f"{title} {source}", year=year, kind=Nature.FILM,
             rating=None, rating_max=10.0)
     monkeypatch.setattr(mp, "fetch_allocine", _fiche("allocine"))
     monkeypatch.setattr(mp, "fetch_imdb", _fiche("imdb"))

@@ -13,11 +13,19 @@ from textual.widgets import LoadingIndicator, Static
 
 from ..common import raccourcis
 
-from core.meta import (Correspondance, MovieMeta, fetch_allocine, fetch_imdb,
-                       parse_title)
+from core.meta import (Correspondance, MovieMeta, Nature, fetch_allocine,
+                       fetch_imdb, parse_title)
 
 
 _LIBELLES = {"allocine": "AlloCiné", "imdb": "IMDB"}
+
+LIBELLES_NATURE: dict[Nature, str] = {
+    Nature.FILM:       "Film",
+    Nature.SERIE:      "Série",
+    Nature.MINI_SERIE: "Mini-série",
+    Nature.TELEFILM:   "Téléfilm",
+    Nature.EPISODE:    "Épisode",
+}
 
 LIBELLES_CORRESPONDANCE: dict[Correspondance, str] = {
     Correspondance.TITRE_ET_ANNEE: "titre et année",
@@ -175,7 +183,7 @@ class MetaPopup(ModalScreen):
                               classes="meta-val"))
 
         rows = [
-            ("Type",         meta.kind),
+            ("Type",         LIBELLES_NATURE[meta.kind]),
             ("Année",        str(meta.year) if meta.year else "—"),
             ("Note",         rating_str),
             ("Genres",       ", ".join(meta.genres) if meta.genres else "—"),

@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.65] — 2026-10-04
+
+### Nature de la fiche : une valeur, pas un libellé
+
+IE-113, constat L-22 de l'audit de localisation.
+
+`MovieMeta.kind` stockait le mot affiché (« Film », « Série », « Mini-série »,
+« Téléfilm », « Épisode »), recopié dans trois tables, une par source. Une
+donnée en français au cœur de `core/` : la traduire aurait voulu dire
+traduire la donnée. Rien ne change à l'écran.
+
+- `core/meta.Nature` ; `NATURE_OMDB`, `NATURE_IMDB`, `NATURE_ALLOCINE`
+  ramènent les codes de chaque source à cette valeur.
+- `tui/screens/meta_popup.LIBELLES_NATURE` : le seul endroit qui la met en
+  mots.
+- `tests/test_revue_code.py` : chaque table rend une `Nature`, chaque
+  `Nature` a son libellé.
+
 ## [v0.8.9.64] — 2026-10-04
 
 ### Correspondance de la fiche : une valeur, pas un libellé

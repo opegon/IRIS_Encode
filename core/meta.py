@@ -63,12 +63,36 @@ class Correspondance(Enum):
     INCERTAINE     = auto()   # le titre ne correspond pas : à vérifier
 
 
+class Nature(Enum):
+    """Ce que décrit la fiche. Une valeur : le libellé est l'affaire de
+    l'écran (L-22)."""
+    FILM       = auto()
+    SERIE      = auto()
+    MINI_SERIE = auto()
+    TELEFILM   = auto()
+    EPISODE    = auto()
+
+
+# Les codes de chaque source, ramenés à une `Nature`.
+NATURE_OMDB: dict[str, Nature] = {
+    "movie": Nature.FILM, "series": Nature.SERIE, "episode": Nature.EPISODE,
+}
+NATURE_IMDB: dict[str, Nature] = {
+    "movie": Nature.FILM, "tvSeries": Nature.SERIE,
+    "tvMiniSeries": Nature.MINI_SERIE, "tvMovie": Nature.TELEFILM,
+}
+NATURE_ALLOCINE: dict[str, Nature] = {
+    "Movie": Nature.FILM, "TVSeries": Nature.SERIE,
+    "TVMiniSeries": Nature.MINI_SERIE,
+}
+
+
 @dataclass
 class MovieMeta:
     source:     str
     title:      str
     year:       Optional[int]
-    kind:       str              # "Film" | "Série" | "Téléfilm" | …
+    kind:       Nature
     rating:     Optional[float]
     rating_max: float            # 10.0 IMDB, 5.0 AlloCiné
     genres:     list[str]        = field(default_factory=list)
@@ -107,8 +131,7 @@ def _fetch_imdb_omdb(title: str, year: Optional[int], key: str) -> MovieMeta:
     if d.get("Response") == "False":
         raise RuntimeError(f"OMDb : {d.get('Error', 'résultat introuvable')}")
 
-    kind_map = {"movie": "Film", "series": "Série", "episode": "Épisode"}
-    kind = kind_map.get(d.get("Type", "movie"), "Film")
+    kind = NATURE_OMDB.get(d.get("Type", "movie"), Nature.FILM)
 
     try:
         rating = float(d.get("imdbRating", "N/A").replace(",", "."))
@@ -168,9 +191,7 @@ def _fetch_imdb_suggestions(title: str, year: Optional[int]) -> MovieMeta:
     if not best:
         raise RuntimeError(f"Aucun résultat IMDB pour « {title} »")
 
-    kind_map = {"movie": "Film", "tvSeries": "Série",
-                "tvMiniSeries": "Mini-série", "tvMovie": "Téléfilm"}
-    kind  = kind_map.get(best.get("qid", "movie"), "Film")
+    kind  = NATURE_IMDB.get(best.get("qid", "movie"), Nature.FILM)
     stars = [s.strip() for s in best.get("s", "").split(",") if s.strip()]
     imdb_id = best.get("id", "")
 
@@ -326,8 +347,8 @@ def fetch_allocine(title: str, year: Optional[int] = None) -> MovieMeta:
     if m:
         year_out = int(m.group())
 
-    kind_map = {"Movie": "Film", "TVSeries": "Série", "TVMiniSeries": "Mini-série"}
-    kind = kind_map.get(data.get("@type", ""), "Série" if is_serie else "Film")
+    kind = NATURE_ALLOCINE.get(data.get("@type", ""),
+                               Nature.SERIE if is_serie else Nature.FILM)
 
     return MovieMeta(
         source     = "allocine",

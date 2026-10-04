@@ -967,3 +967,17 @@ def test_la_couleur_de_la_correspondance_suit_le_niveau_pas_le_libelle():
     assert "dark_orange" in str(ligne_correspondance(C.INCERTAINE).style)
     for sure in (C.TITRE, C.TITRE_ET_ANNEE):
         assert "dark_orange" not in str(ligne_correspondance(sure).style)
+
+
+def test_la_nature_de_la_fiche_est_une_valeur_pas_un_libelle():
+    """L-22 (IE-113) : `MovieMeta.kind` stockait « Film », « Série »… en
+    français. Les trois sources se ramènent à une `Nature`, que seul l'écran
+    met en mots."""
+    from tui.screens.meta_popup import LIBELLES_NATURE
+    N = meta_mod.Nature
+    for table in (meta_mod.NATURE_OMDB, meta_mod.NATURE_IMDB,
+                  meta_mod.NATURE_ALLOCINE):
+        assert all(isinstance(v, N) for v in table.values())
+    assert set(LIBELLES_NATURE) == set(N)
+    assert meta_mod.NATURE_IMDB["tvMiniSeries"] is N.MINI_SERIE
+    assert meta_mod.NATURE_ALLOCINE["TVSeries"] is N.SERIE

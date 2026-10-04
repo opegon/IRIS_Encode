@@ -22,6 +22,7 @@ import itertools
 import pytest
 from rich.text import Text
 
+from core.i18n import _
 from core import config as cfg_mod
 from core.decision import DVAction, VideoAction, VideoDecision
 from tui.common import cellule
@@ -191,7 +192,8 @@ def test_toute_colonne_tient_son_entete_marque(ecran):
     for i, cle in enumerate(ecran.RESIZE_COLS):
         e._resize_col_idx = i
         entete = e.resize_header(cle)
-        assert entete.plain == ecran.RESIZE_LABELS[cle]
+        # Le texte affiché : le libellé source, traduit (IE-88).
+        assert entete.plain == _(ecran.RESIZE_LABELS[cle])
         assert e.resize_plancher(cle) >= len(entete), (ecran.__name__, entete)
         assert e.resize_largeur(cle, 1) >= len(entete)
 

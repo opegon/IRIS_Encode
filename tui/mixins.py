@@ -8,6 +8,7 @@ ColumnResizeMixin: sélection (Tab/Shift+Tab) + resize (</>) de colonnes,
 """
 from __future__ import annotations
 
+from rich.cells import cell_len
 from rich.text import Text
 from textual.binding import Binding
 from textual.events import Key
@@ -199,8 +200,9 @@ class ColumnResizeMixin:
         (UX-27). Calculé depuis le libellé à l'exécution, il tient dans toute
         langue.
         """
+        # Le libellé **affiché** (traduit), en cellules d'écran (L-46).
         return max(self.RESIZE_MIN.get(key, self.RESIZE_MIN_DEFAULT),
-                   len(self.RESIZE_LABELS[key]))
+                   cell_len(_(self.RESIZE_LABELS[key])))
 
     def resize_largeur(self, key: str, largeur: int) -> int:
         """`largeur` relevée au plancher — pour construire la table."""

@@ -15,8 +15,8 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static
 
+from core.i18n import _, N_, ngettext
 from core import config as cfg_mod
-from core.texte import pluriel
 from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
@@ -85,17 +85,17 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
     """Écran de prévisualisation des décisions d'encodage."""
 
     BINDINGS = [
-        Binding("space",     "toggle_select",        "Sélect",  show=True),
+        Binding("space",     "toggle_select",        N_("Toggle"),  show=True),
         # Pas de `↵` : partout ailleurs elle ouvre ou valide, ici elle lançait
         # des heures d'encodage sans rien demander (UX-05). F2 seule lance.
-        Binding("f2",        "run",         "Encoder", show=True),
-        Binding("f6",        "open_codec",  "Codec",   show=True),
-        Binding("f7",        "open_bitrate","Débit",   show=True),
-        Binding("backspace", "go_back",     "Retour",  show=True),
-        Binding("escape",    "go_back",     "Retour",  show=False, priority=True),
+        Binding("f2",        "run",         N_("Encode"), show=True),
+        Binding("f6",        "open_codec",  N_("Codec"), show=True),
+        Binding("f7",        "open_bitrate",N_("Bitrate"),   show=True),
+        Binding("backspace", "go_back",     N_("Back"),  show=True),
+        Binding("escape",    "go_back",     N_("Back"),  show=False, priority=True),
         # `priority` : un DataTable etouffe la touche avant les bindings —
         # meme avertissement qu'en tete de tui/mixins.py.
-        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+        Binding("ctrl+home", "accueil",   N_("Home"),       show=True,
                 priority=True),
     ]
 
@@ -103,16 +103,17 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
     RESIZE_COLS   = ["fichier", "taille", "duree", "estim", "temps_estim", "action", "conteneur",
                      "dv", "bitrate", "res", "audio"]
     RESIZE_LABELS = {
-        "fichier":     "Fichier",
-        "taille":      "Taille",
-        "duree":       "Durée",
-        "estim":       "Estim. (Δ%)",
+        "fichier":     N_("File"),
+        "taille":      N_("Size"),
+        "duree":       N_("Duration"),
+        # TRANSLATORS: estimated output size and its change; keep it short.
+        "estim":       N_("Est. (Δ%)"),
         "temps_estim": "ETA",
-        "action":      "Action",
-        "conteneur":   "Conteneur",
+        "action":      N_("Action"),
+        "conteneur":   N_("Container"),
         "dv":          "DV",
-        "bitrate":     "Débit cible",
-        "res":         "Résolution",
+        "bitrate":     N_("Target bitrate"),
+        "res":         N_("Resolution"),
         "audio":       "Audio",
     }
     RESIZE_MIN    = {"fichier": 20, "audio": 10, **cfg_mod.COLUMN_MIN_WIDTHS}
@@ -193,7 +194,8 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             # lancement, pas se découvrir dans le fichier produit.
             ecartes = len(dec.sous_titres_ecartes)
             if ecartes:
-                container += f"  −{ecartes} st"
+                # TRANSLATORS: "st" = subtitle track(s) left out; keep it short.
+                container += f"  −{ecartes} " + _("st")
 
             # Estimation taille de sortie — un seul stat() par fichier,
             # réutilisé pour la ligne ET les totaux du summary
@@ -275,20 +277,23 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             delta_pct = (total_est - total_src) * 100 / total_src
             sign      = "+" if delta_pct > 0 else ""
             gain_str  = (
-                f"  ·  Source : {fmt_bytes(total_src)}  →  "
-                f"Estimé : {fmt_bytes(total_est)} ({sign}{delta_pct:.0f}%)"
+                "  ·  " + _("Source: {size}").format(size=fmt_bytes(total_src)) + "  →  "
+                + _("Estimated: {size}").format(size=fmt_bytes(total_est))
+                + f" ({sign}{delta_pct:.0f}%)"
             )
 
         av1_str   = f"  ·  AV1 {av1}" if av1 else ""
         dv_str    = f"  ·  HEVC+DV {dv}" if dv else ""
         strip_str = f"  ·  DV→HDR10 {strip}" if strip else ""
         self.query_one("#status-bar", Static).update(barre_etat(
-            "Aperçu", pluriel(total, "fichier sélectionné"),
-            f"Col : {self.resize_col_label}  </>",
+            _("Dry run"), ngettext("{count} file selected", "{count} files selected",
+                                   total).format(count=total),
+            _("Col: {column}").format(column=self.resize_col_label) + "  </>",
         ))
         self.query_one("#dryrun-summary", Static).update(
-            f" À encoder : HEVC {hevc}  ·  H264 {h264}{av1_str}{dv_str}"
-            f"{strip_str}  ·  SKIP {skip}{gain_str}"
+            " " + _("To encode: {counts}").format(
+                counts=f"HEVC {hevc}  ·  H264 {h264}{av1_str}{dv_str}{strip_str}"
+                       f"  ·  SKIP {skip}") + gain_str
         )
 
     # ── Resize colonnes (ColumnResizeMixin) ───────────────────────────────────
@@ -347,7 +352,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
         dec.video = dc_replace(
             choisir_codec(dec, new_action),
-            reason         = "Choisi dans l'aperçu",
+            reason         = _("Chosen in the dry run"),
         )
 
     def _apply_bitrate(self, dec: FileDecision, new_bitrate_bps: int) -> None:
@@ -357,7 +362,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         dec.video = dc_replace(
             dec.video,
             target_bitrate = new_bitrate_bps,
-            reason         = "Débit choisi dans l'aperçu",
+            reason         = _("Bitrate chosen in the dry run"),
         )
 
     def action_open_codec(self) -> None:
@@ -378,7 +383,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                     self._apply_bitrate(d, closest * 1000)
             self._resize_rebuild()
         self.app.push_screen(
-            ValuePickerScreen("Codec", codec_picker_opts(self._app.platform),
+            ValuePickerScreen(_("Codec"), codec_picker_opts(self._app.platform),
                               current),
             _on_pick)
 
@@ -408,9 +413,9 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             # Rien à lancer : le dire (UX-17). Une ligne SKIP s'encode après
             # un changement de codec, F6.
             self.notify(
-                f"Rien à encoder : aucune ligne retenue n'est à réencoder — "
-                f"{touche('space')} retient une ligne, {touche('f6')} change "
-                f"le codec d'une ligne SKIP.",
+                _("Nothing to encode: no kept line needs re-encoding — {space} "
+                  "keeps a line, {codec_key} changes the codec of a SKIP "
+                  "line.").format(space=touche("space"), codec_key=touche("f6")),
                 severity="warning", timeout=4)
             return
         confier_a_la_file(self.app, to_encode)

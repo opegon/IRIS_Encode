@@ -1004,47 +1004,48 @@ msgid "Bitrate (AV1)"
 msgstr ""
 
 #: tui/common.py:364
+#: tui/screens/dryrun.py:115
 msgid "Target bitrate"
 msgstr ""
 
 #: tui/common.py:377
-#: tui/mixins.py:35
+#: tui/mixins.py:36
 msgid "Start"
 msgstr ""
 
 #: tui/common.py:378
-#: tui/mixins.py:36
+#: tui/mixins.py:37
 msgid "End"
 msgstr ""
 
 #: tui/common.py:379
-#: tui/mixins.py:37
+#: tui/mixins.py:38
 msgid "Page ↑"
 msgstr ""
 
 #: tui/common.py:380
-#: tui/mixins.py:38
+#: tui/mixins.py:39
 msgid "Page ↓"
 msgstr ""
 
 #. "Col" is short for column; keep these labels short.
 #: tui/common.py:385
-#: tui/mixins.py:139
+#: tui/mixins.py:140
 msgid "Prev col"
 msgstr ""
 
 #: tui/common.py:386
-#: tui/mixins.py:140
+#: tui/mixins.py:141
 msgid "Next col"
 msgstr ""
 
 #: tui/common.py:387
-#: tui/mixins.py:141
+#: tui/mixins.py:142
 msgid "Narrow"
 msgstr ""
 
 #: tui/common.py:388
-#: tui/mixins.py:142
+#: tui/mixins.py:143
 msgid "Widen"
 msgstr ""
 
@@ -1053,6 +1054,8 @@ msgstr ""
 #: tui/screens/config.py:63
 #: tui/screens/config.py:102
 #: tui/screens/donor_picker.py:226
+#: tui/screens/dryrun.py:94
+#: tui/screens/dryrun.py:95
 #: tui/screens/join.py:59
 #: tui/screens/join.py:60
 #: tui/screens/mux_run.py:45
@@ -1065,6 +1068,7 @@ msgstr ""
 
 #: tui/common.py:395
 #: tui/screens/config.py:66
+#: tui/screens/dryrun.py:98
 #: tui/screens/join.py:61
 #: tui/screens/mux_run.py:49
 msgid "Home"
@@ -1106,7 +1110,7 @@ msgctxt "source file"
 msgid "keep"
 msgstr ""
 
-#: tui/mixins.py:287
+#: tui/mixins.py:289
 #, python-brace-format
 msgid "The columns already take all {width} columns of the terminal — narrow another one ({column} can still be made smaller)."
 msgstr ""
@@ -1393,15 +1397,18 @@ msgid "Donor file"
 msgstr ""
 
 #: tui/screens/donor_picker.py:135
+#: tui/screens/dryrun.py:106
 #: tui/screens/join.py:38
 msgid "File"
 msgstr ""
 
 #: tui/screens/donor_picker.py:136
+#: tui/screens/dryrun.py:107
 msgid "Size"
 msgstr ""
 
 #: tui/screens/donor_picker.py:223
+#: tui/screens/dryrun.py:88
 msgid "Toggle"
 msgstr ""
 
@@ -1435,6 +1442,94 @@ msgstr ""
 msgid "no readable track"
 msgstr ""
 
+#: tui/screens/dryrun.py:91
+#: tui/screens/mux_run.py:44
+msgid "Encode"
+msgstr ""
+
+#: tui/screens/dryrun.py:92
+#: tui/screens/dryrun.py:386
+msgid "Codec"
+msgstr ""
+
+#: tui/screens/dryrun.py:93
+msgid "Bitrate"
+msgstr ""
+
+#: tui/screens/dryrun.py:108
+#: tui/screens/join.py:38
+#: tui/screens/segments.py:24
+msgid "Duration"
+msgstr ""
+
+#. estimated output size and its change; keep it short.
+#: tui/screens/dryrun.py:110
+msgid "Est. (Δ%)"
+msgstr ""
+
+#: tui/screens/dryrun.py:112
+msgid "Action"
+msgstr ""
+
+#: tui/screens/dryrun.py:113
+#: tui/widgets/profile_form.py:298
+msgid "Container"
+msgstr ""
+
+#: tui/screens/dryrun.py:116
+msgid "Resolution"
+msgstr ""
+
+#. "st" = subtitle track(s) left out; keep it short.
+#: tui/screens/dryrun.py:198
+msgid "st"
+msgstr ""
+
+#: tui/screens/dryrun.py:280
+#, python-brace-format
+msgid "Source: {size}"
+msgstr ""
+
+#: tui/screens/dryrun.py:281
+#, python-brace-format
+msgid "Estimated: {size}"
+msgstr ""
+
+#: tui/screens/dryrun.py:289
+#: tui/screens/mux_run.py:43
+msgid "Dry run"
+msgstr ""
+
+#: tui/screens/dryrun.py:289
+#, python-brace-format
+msgid "{count} file selected"
+msgid_plural "{count} files selected"
+msgstr[0] ""
+msgstr[1] ""
+
+#: tui/screens/dryrun.py:291
+#, python-brace-format
+msgid "Col: {column}"
+msgstr ""
+
+#: tui/screens/dryrun.py:294
+#, python-brace-format
+msgid "To encode: {counts}"
+msgstr ""
+
+#: tui/screens/dryrun.py:355
+msgid "Chosen in the dry run"
+msgstr ""
+
+#: tui/screens/dryrun.py:365
+msgid "Bitrate chosen in the dry run"
+msgstr ""
+
+#: tui/screens/dryrun.py:416
+#, python-brace-format
+msgid "Nothing to encode: no kept line needs re-encoding — {space} keeps a line, {codec_key} changes the codec of a SKIP line."
+msgstr ""
+
 #: tui/screens/fin_lot.py:27
 msgid "All tasks are done."
 msgstr ""
@@ -1447,11 +1542,6 @@ msgstr ""
 #: tui/screens/fin_lot.py:36
 #, python-brace-format
 msgid "{action} in {seconds} s"
-msgstr ""
-
-#: tui/screens/join.py:38
-#: tui/screens/segments.py:24
-msgid "Duration"
 msgstr ""
 
 #: tui/screens/join.py:38
@@ -1654,14 +1744,6 @@ msgstr ""
 
 #: tui/screens/meta_popup.py:212
 msgid "Cannot fetch the information:"
-msgstr ""
-
-#: tui/screens/mux_run.py:43
-msgid "Dry run"
-msgstr ""
-
-#: tui/screens/mux_run.py:44
-msgid "Encode"
 msgstr ""
 
 #: tui/screens/mux_run.py:106
@@ -1935,10 +2017,6 @@ msgstr ""
 
 #: tui/widgets/profile_form.py:294
 msgid "Output container"
-msgstr ""
-
-#: tui/widgets/profile_form.py:298
-msgid "Container"
 msgstr ""
 
 #: tui/widgets/profile_form.py:309

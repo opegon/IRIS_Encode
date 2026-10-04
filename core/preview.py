@@ -17,6 +17,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
+from .i18n import N_, ErreurAffichable, _
 from .muxer import ExternalTrack, TrackKind
 
 # Position d'ouverture quand rien de mieux n'est connu : le début d'un film
@@ -56,10 +57,10 @@ def build_command(
     """
     Commande mpv ouvrant `video` avec `track` greffée et son décalage appliqué.
 
-    Lève RuntimeError si mpv n'est pas disponible.
+    Lève ErreurAffichable si mpv n'est pas disponible.
     """
     if _mpv_path is None:
-        raise RuntimeError("mpv n'est pas installé.")
+        raise ErreurAffichable(N_("mpv is not installed."))
 
     delay_s = track.delay_ms / 1000.0
     cmd = [
@@ -104,12 +105,14 @@ def launch(cmd: list[str]) -> subprocess.Popen:
 def open_file(path: Path) -> subprocess.Popen:
     """Ouvre un fichier déjà prêt (extrait de contrôle) dans mpv."""
     if _mpv_path is None:
-        raise RuntimeError("mpv n'est pas installé.")
+        raise ErreurAffichable(N_("mpv is not installed."))
     return launch([_mpv_path, "--osd-level=1", str(path)])
 
 
 def keys_hint(track: ExternalTrack) -> str:
     """Touches mpv à utiliser pour ajuster ce type de piste."""
     if track.kind == TrackKind.SUBTITLE:
-        return "dans mpv : z / Z décalent les sous-titres par pas de 100 ms"
-    return "dans mpv : Ctrl++ / Ctrl+- décalent l'audio par pas de 100 ms"
+        # TRANSLATORS: z / Z are mpv's own keys, keep them.
+        return _("in mpv: z / Z shift the subtitles by 100 ms steps")
+    # TRANSLATORS: Ctrl++ / Ctrl+- are mpv's own keys, keep them.
+    return _("in mpv: Ctrl++ / Ctrl+- shift the audio by 100 ms steps")

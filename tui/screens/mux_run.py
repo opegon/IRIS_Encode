@@ -174,7 +174,7 @@ class MuxScreen(Screen[bool]):
         except Exception as e:
             self._set("#mux-state",
                       f"✓ Mux réussi ({self._output.name}) mais relecture "
-                      f"impossible : {e}. L'encodage viserait le fichier d'origine.")
+                      f"impossible : {texte_erreur(e)}. L'encodage viserait le fichier d'origine.")
             return
 
         fresh = decide(new_info, self._decision.profile)

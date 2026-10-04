@@ -313,7 +313,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             obtenue = scanner.scan(self._output).duration
         except Exception as e:
             return (f"✓ Jonction terminée — {self._output.name}, mais relecture "
-                    f"impossible ({e}) : vérifier sa durée avant de l'encoder.")
+                    f"impossible ({texte_erreur(e)}) : vérifier sa durée avant de l'encoder.")
 
         ecart = derive_duree(attendue, obtenue)
         if ecart is not None:

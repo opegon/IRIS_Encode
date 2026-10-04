@@ -20,6 +20,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static
 
+from core.i18n import texte_erreur
 from core import config as cfg_mod
 from core import preview
 from core.texte import accorde, pluriel
@@ -931,7 +932,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             preview.open_file(path)
         except Exception as e:
             self.app.bell()
-            self._flash_status(f"Lecture impossible : {e}")
+            self._flash_status(f"Lecture impossible : {texte_erreur(e)}")
 
     def action_delete_file(self) -> None:
         """
@@ -964,7 +965,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         except Exception as e:
             # Cas courant sous Windows : mpv tient encore le fichier ouvert.
             self.app.bell()
-            self._flash_status(f"Suppression impossible : {e}")
+            self._flash_status(f"Suppression impossible : {texte_erreur(e)}")
             return
 
         self._decisions.pop(path, None)

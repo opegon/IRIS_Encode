@@ -28,6 +28,7 @@ from textual.events import Key
 from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
+from core.i18n import texte_erreur
 from core import preview
 from core.texte import pluriel
 from core.decision import FileDecision
@@ -568,7 +569,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             res = measure_external_track(self._source, t, progress=report,
                                          duration=self._decision.info.duration)
         except Exception as e:                       # ffmpeg absent, fichier illisible…
-            res = SyncResult(0, None, 0.0, False, f"mesure impossible : {e}")
+            res = SyncResult(0, None, 0.0, False, f"mesure impossible : {texte_erreur(e)}")
         self.app.call_from_thread(self._apply_measure, t, res)
 
     def _apply_measure(self, piste: ExternalTrack, res: SyncResult) -> None:
@@ -658,7 +659,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 src = extrait
             reperes = reperes_proposables(src)
         except Exception as e:                       # noqa: BLE001
-            self._set_hint(f"Lecture des répliques impossible : {e}")
+            self._set_hint(f"Lecture des répliques impossible : {texte_erreur(e)}")
             return
         if not reperes:
             self._set_hint("Aucune réplique lisible dans cette piste.")
@@ -694,7 +695,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                                       duration=self._decision.info.duration,
                                       donor_track=idx)
         except Exception as e:                       # noqa: BLE001
-            res = SyncResult(0, None, 0.0, False, f"mesure impossible : {e}")
+            res = SyncResult(0, None, 0.0, False, f"mesure impossible : {texte_erreur(e)}")
         self.app.call_from_thread(self._apply_measure, t, res)
 
     def _set_hint(self, text: str) -> None:
@@ -817,7 +818,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             fichier, notes = retime_audio(t.source_path, idx, segs, out,
                                           progress=report)
         except Exception as e:
-            fichier, notes = None, [str(e)]
+            fichier, notes = None, [texte_erreur(e)]
         self.app.call_from_thread(self._retime_done, i, fichier, notes)
 
     def _retime_done(self, i: int, fichier: Path | None,
@@ -867,7 +868,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             shift_srt(src, segs, out)
         except Exception as e:
             self.app.bell()
-            self._set_hint(f"Correction impossible : {e}")
+            self._set_hint(f"Correction impossible : {texte_erreur(e)}")
             return
 
         t.source_path = out
@@ -924,7 +925,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             preview.launch(cmd)
         except Exception as e:
             self.app.bell()
-            self._set_hint(f"Lancement de mpv impossible : {e}")
+            self._set_hint(f"Lancement de mpv impossible : {texte_erreur(e)}")
             return
 
         if t.stretch:
@@ -974,7 +975,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             out.unlink(missing_ok=True)      # une relance remplace l'ancien
             cmd = build_sample_command(self._source, list(self._tracks), out, starts)
         except (ValueError, OSError) as e:
-            self.app.call_from_thread(self._sample_done, None, str(e), starts)
+            self.app.call_from_thread(self._sample_done, None, texte_erreur(e), starts)
             return
 
         proc = MuxProcess(cmd)
@@ -999,7 +1000,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             try:
                 preview.open_file(out)
             except Exception as e:
-                self._set_hint(f"Extrait prêt : {out}\nmpv n'a pas pu l'ouvrir : {e}")
+                self._set_hint(f"Extrait prêt : {out}\nmpv n'a pas pu l'ouvrir : {texte_erreur(e)}")
                 return
             self._set_hint(
                 f"Extrait ouvert dans mpv — fenêtres à {fenetres}.\n"

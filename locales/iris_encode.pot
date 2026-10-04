@@ -593,6 +593,21 @@ msgstr ""
 msgid "{tool} update failed — previous version kept."
 msgstr ""
 
+#: core/preview.py:63
+#: core/preview.py:108
+msgid "mpv is not installed."
+msgstr ""
+
+#. z / Z are mpv's own keys, keep them.
+#: core/preview.py:116
+msgid "in mpv: z / Z shift the subtitles by 100 ms steps"
+msgstr ""
+
+#. Ctrl++ / Ctrl+- are mpv's own keys, keep them.
+#: core/preview.py:118
+msgid "in mpv: Ctrl++ / Ctrl+- shift the audio by 100 ms steps"
+msgstr ""
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."

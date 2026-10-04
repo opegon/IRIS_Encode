@@ -42,8 +42,10 @@ def _opt(cmd: list[str], prefix: str) -> str:
 def test_unavailable_without_mpv():
     preview.set_mpv_path(None)
     assert not preview.available()
-    with pytest.raises(RuntimeError):
+    from core.i18n import ErreurAffichable, texte_erreur
+    with pytest.raises(ErreurAffichable) as refus:
         preview.build_command(Path("/films/f.mkv"), _sub())
+    assert texte_erreur(refus.value) == "mpv n'est pas installé."
 
 
 # ─── Sous-titres ──────────────────────────────────────────────────────────────

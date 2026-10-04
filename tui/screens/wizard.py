@@ -36,6 +36,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
+from core.i18n import texte_erreur
 from core.texte import pluriel
 from core.decision import (ACTION_CYCLE, AudioAction,
                            FileDecision, VideoAction, cycle_index,
@@ -555,7 +556,7 @@ class WizardScreen(TableNavMixin, Screen):
                 res = measure_external_track(cible, t, progress=rapport,
                                              duration=duree)
             except Exception as e:                       # noqa: BLE001
-                notes.append(f"{t.source_path.name} : mesure impossible ({e})")
+                notes.append(f"{t.source_path.name} : mesure impossible ({texte_erreur(e)})")
                 continue
             if res.ok:
                 t.delay_ms    = res.delay_ms

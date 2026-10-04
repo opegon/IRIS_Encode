@@ -183,7 +183,7 @@ def colonne_fixe(table, libelle: str, plancher: int, **kw) -> None:
 
 def libelle_type_piste(kind: TrackKind) -> str:
     """Le type d'une piste greffée, tel que l'affichent les écrans (L-66)."""
-    return "audio" if kind == TrackKind.AUDIO else "sous-titre"
+    return _("audio") if kind == TrackKind.AUDIO else _("subtitle")
 
 
 _CHAMP = re.compile(r"\{\{|\}\}|\{(\w+)\}")

@@ -985,6 +985,14 @@ msgstr[1] ""
 msgid "Del"
 msgstr ""
 
+#: tui/common.py:186
+msgid "audio"
+msgstr ""
+
+#: tui/common.py:186
+msgid "subtitle"
+msgstr ""
+
 #. a track left out of the output (feminine in French: "piste").
 #: tui/common.py:235
 msgctxt "track"
@@ -1063,6 +1071,8 @@ msgstr ""
 #: tui/screens/opensubtitles.py:57
 #: tui/screens/profile_picker.py:61
 #: tui/screens/value_picker.py:53
+#: tui/screens/wizard.py:149
+#: tui/screens/wizard.py:150
 msgid "Back"
 msgstr ""
 
@@ -1071,6 +1081,7 @@ msgstr ""
 #: tui/screens/dryrun.py:98
 #: tui/screens/join.py:61
 #: tui/screens/mux_run.py:49
+#: tui/screens/wizard.py:151
 msgid "Home"
 msgstr ""
 
@@ -1399,6 +1410,7 @@ msgstr ""
 #: tui/screens/donor_picker.py:135
 #: tui/screens/dryrun.py:106
 #: tui/screens/join.py:38
+#: tui/screens/wizard.py:76
 msgid "File"
 msgstr ""
 
@@ -1421,6 +1433,7 @@ msgid "Select"
 msgstr ""
 
 #: tui/screens/donor_picker.py:250
+#: tui/screens/wizard.py:289
 msgid "Track"
 msgstr ""
 
@@ -1431,10 +1444,12 @@ msgstr ""
 
 #: tui/screens/donor_picker.py:253
 #: tui/screens/opensubtitles.py:80
+#: tui/screens/wizard.py:291
 msgid "Language"
 msgstr ""
 
 #: tui/screens/donor_picker.py:254
+#: tui/screens/wizard.py:292
 msgid "Name"
 msgstr ""
 
@@ -1444,15 +1459,19 @@ msgstr ""
 
 #: tui/screens/dryrun.py:91
 #: tui/screens/mux_run.py:44
+#: tui/screens/wizard.py:147
 msgid "Encode"
 msgstr ""
 
 #: tui/screens/dryrun.py:92
 #: tui/screens/dryrun.py:386
+#: tui/screens/wizard.py:142
+#: tui/screens/wizard.py:489
 msgid "Codec"
 msgstr ""
 
 #: tui/screens/dryrun.py:93
+#: tui/screens/wizard.py:143
 msgid "Bitrate"
 msgstr ""
 
@@ -1915,6 +1934,233 @@ msgstr ""
 #: tui/screens/segments.py:129
 #, python-brace-format
 msgid "Each segment is aligned, at its own offset — both files carry the same content in two different cuts ({total} ms accumulated). A single offset cannot resync them: adding the track would require building a corrected track."
+msgstr ""
+
+#: tui/screens/wizard.py:77
+#: tui/screens/wizard.py:293
+msgid "Decision"
+msgstr ""
+
+#: tui/screens/wizard.py:78
+msgid "External tracks"
+msgstr ""
+
+#: tui/screens/wizard.py:79
+msgid "Launch"
+msgstr ""
+
+#: tui/screens/wizard.py:80
+msgid "Done"
+msgstr ""
+
+#: tui/screens/wizard.py:95
+msgid "Keep / discard"
+msgstr ""
+
+#: tui/screens/wizard.py:96
+msgid "Present a file"
+msgstr ""
+
+#: tui/screens/wizard.py:96
+msgid "Remove the last one"
+msgstr ""
+
+#: tui/screens/wizard.py:97
+msgid "Run the recommended one"
+msgstr ""
+
+#: tui/screens/wizard.py:98
+msgid "Return to the list"
+msgstr ""
+
+#: tui/screens/wizard.py:140
+msgid "Continue"
+msgstr ""
+
+#: tui/screens/wizard.py:141
+msgid "Keep"
+msgstr ""
+
+#: tui/screens/wizard.py:144
+msgid "Add"
+msgstr ""
+
+#: tui/screens/wizard.py:145
+msgid "Remove"
+msgstr ""
+
+#: tui/screens/wizard.py:148
+msgid "Mux"
+msgstr ""
+
+#: tui/screens/wizard.py:174
+#: tui/screens/wizard.py:194
+msgid "Measuring the offset"
+msgstr ""
+
+#: tui/screens/wizard.py:221
+msgid "Guided mode"
+msgstr ""
+
+#: tui/screens/wizard.py:222
+#, python-brace-format
+msgid "step {step} of {total}"
+msgstr ""
+
+#: tui/screens/wizard.py:255
+msgid "File to process"
+msgstr ""
+
+#: tui/screens/wizard.py:260
+#, python-brace-format
+msgid "{count} audio track"
+msgid_plural "{count} audio tracks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: tui/screens/wizard.py:262
+#, python-brace-format
+msgid "{count} subtitle"
+msgid_plural "{count} subtitles"
+msgstr[0] ""
+msgstr[1] ""
+
+#: tui/screens/wizard.py:264
+msgid "Active profile"
+msgstr ""
+
+#: tui/screens/wizard.py:272
+msgid "What will be produced"
+msgstr ""
+
+#: tui/screens/wizard.py:274
+#: tui/screens/wizard.py:384
+msgid "Output"
+msgstr ""
+
+#: tui/screens/wizard.py:274
+msgid "Video"
+msgstr ""
+
+#: tui/screens/wizard.py:280
+#, python-brace-format
+msgid "{bitrate}k targeted"
+msgstr ""
+
+#. {kind} is "audio" or "subtitle".
+#: tui/screens/wizard.py:310
+#, python-brace-format
+msgid "added {kind}"
+msgstr ""
+
+#: tui/screens/wizard.py:332
+msgid "Tracks from another file"
+msgstr ""
+
+#: tui/screens/wizard.py:334
+msgid "Measuring the offset…"
+msgstr ""
+
+#: tui/screens/wizard.py:336
+msgid "None so far."
+msgstr ""
+
+#: tui/screens/wizard.py:337
+msgid "A dubbed track, subtitles: present the file that carries them. Guided mode never looks for one on its own — a wrong match is only heard afterwards."
+msgstr ""
+
+#: tui/screens/wizard.py:353
+msgid "not measured"
+msgstr ""
+
+#: tui/screens/wizard.py:354
+msgid "measured"
+msgstr ""
+
+#: tui/screens/wizard.py:355
+msgid "set by hand"
+msgstr ""
+
+#: tui/screens/wizard.py:356
+msgid "taken from the audio track"
+msgstr ""
+
+#: tui/screens/wizard.py:383
+msgid "Ready"
+msgstr ""
+
+#: tui/screens/wizard.py:386
+msgid "Recommended: mux. Nothing needs re-encoding, the tracks are added by mkvmerge and the picture copied as it is — a few minutes instead of a few hours."
+msgstr ""
+
+#: tui/screens/wizard.py:391
+#, python-brace-format
+msgid "Nothing needs re-encoding by default. {key} forces the encode: {video}, at the source bitrate."
+msgstr ""
+
+#: tui/screens/wizard.py:395
+#, python-brace-format
+msgid "Recommended: encode. {video}."
+msgstr ""
+
+#: tui/screens/wizard.py:398
+msgid "With no track to add, the mux would have nothing to do."
+msgstr ""
+
+#: tui/screens/wizard.py:401
+#, python-brace-format
+msgid "Both remain available: {mux_key} mux, {encode_key} encode."
+msgstr ""
+
+#: tui/screens/wizard.py:412
+msgid "Operation complete."
+msgstr ""
+
+#: tui/screens/wizard.py:481
+msgid "Chosen in guided mode"
+msgstr ""
+
+#: tui/screens/wizard.py:506
+msgid "Bitrate chosen in guided mode"
+msgstr ""
+
+#: tui/screens/wizard.py:562
+#, python-brace-format
+msgid "Measurement {current}/{total} — {language}"
+msgstr ""
+
+#: tui/screens/wizard.py:577
+#, python-brace-format
+msgid "{file}: cannot measure ({error})"
+msgstr ""
+
+#: tui/screens/wizard.py:586
+#, python-brace-format
+msgid "copied to {count} subtitle"
+msgid_plural "copied to {count} subtitles"
+msgstr[0] ""
+msgstr[1] ""
+
+#: tui/screens/wizard.py:595
+#, python-brace-format
+msgid "{language}: {reason} — offset left at 0, check it before starting"
+msgstr ""
+
+#: tui/screens/wizard.py:620
+#, python-brace-format
+msgid "Nothing to mux: no external track to add. {key} to encode."
+msgstr ""
+
+#: tui/screens/wizard.py:626
+msgid "Done — the tracks have been added."
+msgstr ""
+
+#: tui/screens/wizard.py:628
+msgid "Done — the file has been produced."
+msgstr ""
+
+#: tui/screens/wizard.py:630
+msgid "The operation produced no file. Go back to the previous step."
 msgstr ""
 
 #: tui/widgets/profile_form.py:41

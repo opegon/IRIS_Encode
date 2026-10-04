@@ -985,6 +985,14 @@ msgstr[1] "{count} fichiers en attente ne seront pas encodés."
 msgid "Del"
 msgstr "Suppr"
 
+#: tui/common.py:186
+msgid "audio"
+msgstr "audio"
+
+#: tui/common.py:186
+msgid "subtitle"
+msgstr "sous-titre"
+
 #. a track left out of the output (feminine in French: "piste").
 #: tui/common.py:235
 msgctxt "track"
@@ -1063,6 +1071,8 @@ msgstr "Élargir"
 #: tui/screens/opensubtitles.py:57
 #: tui/screens/profile_picker.py:61
 #: tui/screens/value_picker.py:53
+#: tui/screens/wizard.py:149
+#: tui/screens/wizard.py:150
 msgid "Back"
 msgstr "Retour"
 
@@ -1071,6 +1081,7 @@ msgstr "Retour"
 #: tui/screens/dryrun.py:98
 #: tui/screens/join.py:61
 #: tui/screens/mux_run.py:49
+#: tui/screens/wizard.py:151
 msgid "Home"
 msgstr "Accueil"
 
@@ -1399,6 +1410,7 @@ msgstr "Fichier donneur"
 #: tui/screens/donor_picker.py:135
 #: tui/screens/dryrun.py:106
 #: tui/screens/join.py:38
+#: tui/screens/wizard.py:76
 msgid "File"
 msgstr "Fichier"
 
@@ -1421,6 +1433,7 @@ msgid "Select"
 msgstr "Sélectionner"
 
 #: tui/screens/donor_picker.py:250
+#: tui/screens/wizard.py:289
 msgid "Track"
 msgstr "Piste"
 
@@ -1431,10 +1444,12 @@ msgstr "Type"
 
 #: tui/screens/donor_picker.py:253
 #: tui/screens/opensubtitles.py:80
+#: tui/screens/wizard.py:291
 msgid "Language"
 msgstr "Langue"
 
 #: tui/screens/donor_picker.py:254
+#: tui/screens/wizard.py:292
 msgid "Name"
 msgstr "Nom"
 
@@ -1444,15 +1459,19 @@ msgstr "aucune piste lisible"
 
 #: tui/screens/dryrun.py:91
 #: tui/screens/mux_run.py:44
+#: tui/screens/wizard.py:147
 msgid "Encode"
 msgstr "Encoder"
 
 #: tui/screens/dryrun.py:92
 #: tui/screens/dryrun.py:386
+#: tui/screens/wizard.py:142
+#: tui/screens/wizard.py:489
 msgid "Codec"
 msgstr "Codec"
 
 #: tui/screens/dryrun.py:93
+#: tui/screens/wizard.py:143
 msgid "Bitrate"
 msgstr "Débit"
 
@@ -1917,6 +1936,233 @@ msgstr "Plages de décalage détectées"
 msgid "Each segment is aligned, at its own offset — both files carry the same content in two different cuts ({total} ms accumulated). A single offset cannot resync them: adding the track would require building a corrected track."
 msgstr "Chaque plage est alignée, à son propre décalage — les deux fichiers portent le même contenu dans deux montages différents ({total} ms accumulés). Un décalage unique ne peut pas les recaler : la greffe demanderait de fabriquer une piste corrigée."
 
+#: tui/screens/wizard.py:77
+#: tui/screens/wizard.py:293
+msgid "Decision"
+msgstr "Décision"
+
+#: tui/screens/wizard.py:78
+msgid "External tracks"
+msgstr "Pistes externes"
+
+#: tui/screens/wizard.py:79
+msgid "Launch"
+msgstr "Lancer"
+
+#: tui/screens/wizard.py:80
+msgid "Done"
+msgstr "Terminé"
+
+#: tui/screens/wizard.py:95
+msgid "Keep / discard"
+msgstr "Garder / écarter"
+
+#: tui/screens/wizard.py:96
+msgid "Present a file"
+msgstr "Présenter un fichier"
+
+#: tui/screens/wizard.py:96
+msgid "Remove the last one"
+msgstr "Retirer la dernière"
+
+#: tui/screens/wizard.py:97
+msgid "Run the recommended one"
+msgstr "Lancer le recommandé"
+
+#: tui/screens/wizard.py:98
+msgid "Return to the list"
+msgstr "Retour à la liste"
+
+#: tui/screens/wizard.py:140
+msgid "Continue"
+msgstr "Continuer"
+
+#: tui/screens/wizard.py:141
+msgid "Keep"
+msgstr "Garder"
+
+#: tui/screens/wizard.py:144
+msgid "Add"
+msgstr "Ajouter"
+
+#: tui/screens/wizard.py:145
+msgid "Remove"
+msgstr "Retirer"
+
+#: tui/screens/wizard.py:148
+msgid "Mux"
+msgstr "Muxer"
+
+#: tui/screens/wizard.py:174
+#: tui/screens/wizard.py:194
+msgid "Measuring the offset"
+msgstr "Mesure du décalage"
+
+#: tui/screens/wizard.py:221
+msgid "Guided mode"
+msgstr "Assistant"
+
+#: tui/screens/wizard.py:222
+#, python-brace-format
+msgid "step {step} of {total}"
+msgstr "étape {step} sur {total}"
+
+#: tui/screens/wizard.py:255
+msgid "File to process"
+msgstr "Fichier à traiter"
+
+#: tui/screens/wizard.py:260
+#, python-brace-format
+msgid "{count} audio track"
+msgid_plural "{count} audio tracks"
+msgstr[0] "{count} piste audio"
+msgstr[1] "{count} pistes audio"
+
+#: tui/screens/wizard.py:262
+#, python-brace-format
+msgid "{count} subtitle"
+msgid_plural "{count} subtitles"
+msgstr[0] "{count} sous-titre"
+msgstr[1] "{count} sous-titres"
+
+#: tui/screens/wizard.py:264
+msgid "Active profile"
+msgstr "Profil actif"
+
+#: tui/screens/wizard.py:272
+msgid "What will be produced"
+msgstr "Ce qui sera produit"
+
+#: tui/screens/wizard.py:274
+#: tui/screens/wizard.py:384
+msgid "Output"
+msgstr "Sortie"
+
+#: tui/screens/wizard.py:274
+msgid "Video"
+msgstr "Vidéo"
+
+#: tui/screens/wizard.py:280
+#, python-brace-format
+msgid "{bitrate}k targeted"
+msgstr "{bitrate}k visés"
+
+#. {kind} is "audio" or "subtitle".
+#: tui/screens/wizard.py:310
+#, python-brace-format
+msgid "added {kind}"
+msgstr "greffe {kind}"
+
+#: tui/screens/wizard.py:332
+msgid "Tracks from another file"
+msgstr "Pistes venues d'un autre fichier"
+
+#: tui/screens/wizard.py:334
+msgid "Measuring the offset…"
+msgstr "Mesure du décalage en cours…"
+
+#: tui/screens/wizard.py:336
+msgid "None so far."
+msgstr "Aucune pour l'instant."
+
+#: tui/screens/wizard.py:337
+msgid "A dubbed track, subtitles: present the file that carries them. Guided mode never looks for one on its own — a wrong match is only heard afterwards."
+msgstr "Une VF, des sous-titres : présentez le fichier qui les porte. L'assistant n'en cherche aucun tout seul — un mauvais appariement ne s'entend qu'après coup."
+
+#: tui/screens/wizard.py:353
+msgid "not measured"
+msgstr "non mesuré"
+
+#: tui/screens/wizard.py:354
+msgid "measured"
+msgstr "mesuré"
+
+#: tui/screens/wizard.py:355
+msgid "set by hand"
+msgstr "réglé à la main"
+
+#: tui/screens/wizard.py:356
+msgid "taken from the audio track"
+msgstr "repris de la piste audio"
+
+#: tui/screens/wizard.py:383
+msgid "Ready"
+msgstr "Prêt"
+
+#: tui/screens/wizard.py:386
+msgid "Recommended: mux. Nothing needs re-encoding, the tracks are added by mkvmerge and the picture copied as it is — a few minutes instead of a few hours."
+msgstr "Recommandé : muxer. Rien n'est à réencoder, les pistes sont greffées par mkvmerge et l'image recopiée telle quelle — quelques minutes au lieu de quelques heures."
+
+#: tui/screens/wizard.py:391
+#, python-brace-format
+msgid "Nothing needs re-encoding by default. {key} forces the encode: {video}, at the source bitrate."
+msgstr "Rien n'est à réencoder d'office. {key} force l'encodage : {video}, au débit de la source."
+
+#: tui/screens/wizard.py:395
+#, python-brace-format
+msgid "Recommended: encode. {video}."
+msgstr "Recommandé : encoder. {video}."
+
+#: tui/screens/wizard.py:398
+msgid "With no track to add, the mux would have nothing to do."
+msgstr "Sans piste à greffer, le mux n'aurait rien à faire."
+
+#: tui/screens/wizard.py:401
+#, python-brace-format
+msgid "Both remain available: {mux_key} mux, {encode_key} encode."
+msgstr "Les deux restent offerts : {mux_key} muxer, {encode_key} encoder."
+
+#: tui/screens/wizard.py:412
+msgid "Operation complete."
+msgstr "Opération terminée."
+
+#: tui/screens/wizard.py:481
+msgid "Chosen in guided mode"
+msgstr "Choisi dans l'assistant"
+
+#: tui/screens/wizard.py:506
+msgid "Bitrate chosen in guided mode"
+msgstr "Débit choisi dans l'assistant"
+
+#: tui/screens/wizard.py:562
+#, python-brace-format
+msgid "Measurement {current}/{total} — {language}"
+msgstr "Mesure {current}/{total} — {language}"
+
+#: tui/screens/wizard.py:577
+#, python-brace-format
+msgid "{file}: cannot measure ({error})"
+msgstr "{file} : mesure impossible ({error})"
+
+#: tui/screens/wizard.py:586
+#, python-brace-format
+msgid "copied to {count} subtitle"
+msgid_plural "copied to {count} subtitles"
+msgstr[0] "reporté sur {count} sous-titre"
+msgstr[1] "reporté sur {count} sous-titres"
+
+#: tui/screens/wizard.py:595
+#, python-brace-format
+msgid "{language}: {reason} — offset left at 0, check it before starting"
+msgstr "{language} : {reason} — décalage laissé à 0, à vérifier avant de lancer"
+
+#: tui/screens/wizard.py:620
+#, python-brace-format
+msgid "Nothing to mux: no external track to add. {key} to encode."
+msgstr "Rien à muxer : aucune piste externe à greffer. {key} pour encoder."
+
+#: tui/screens/wizard.py:626
+msgid "Done — the tracks have been added."
+msgstr "Terminé — les pistes ont été greffées."
+
+#: tui/screens/wizard.py:628
+msgid "Done — the file has been produced."
+msgstr "Terminé — le fichier a été produit."
+
+#: tui/screens/wizard.py:630
+msgid "The operation produced no file. Go back to the previous step."
+msgstr "L'opération n'a produit aucun fichier. Revenez à l'étape précédente."
+
 #: tui/widgets/profile_form.py:41
 msgid "8000k ⚠ recommended"
 msgstr "8000k ⚠ recommandé"
@@ -2159,3 +2405,6 @@ msgstr "Identifiant : 32 caractères maximum."
 #, python-brace-format
 msgid "The profile “{profile}” already exists."
 msgstr "Le profil « {profile} » existe déjà."
+
+#~ msgid "Back to the list"
+#~ msgstr "Retour à la liste"

@@ -176,8 +176,10 @@ def test_aucune_touche_entre_crochets_ni_entre_apostrophes():
 def test_lassistant_nomme_les_touches_selon_letape():
     """UX-11 : le pied porte le sens de l'étape, la ligne d'aide ne le redit plus."""
     from tui.screens.wizard import Etape, WizardScreen, _actions_etape
-    lancer = dict(_actions_etape(WizardScreen, Etape.LANCER))
+    from core.i18n import _
+    # Descriptions sources, traduites au rendu : comparer au texte affiché.
+    lancer = {k: _(v) for k, v in _actions_etape(WizardScreen, Etape.LANCER)}
     assert lancer["enter"] == "Lancer le recommandé"
     assert lancer["f2"] == "Encoder" and lancer["f3"] == "Muxer"
-    assert dict(_actions_etape(WizardScreen, Etape.DECISION))["space"] == "Garder / écarter"
-    assert dict(_actions_etape(WizardScreen, Etape.FICHIER))["enter"] == "Continuer"
+    assert _(dict(_actions_etape(WizardScreen, Etape.DECISION))["space"]) == "Garder / écarter"
+    assert _(dict(_actions_etape(WizardScreen, Etape.FICHIER))["enter"]) == "Continuer"

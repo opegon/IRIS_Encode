@@ -20,10 +20,9 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static
 
-from core.i18n import texte_erreur
+from core.i18n import N_, _, ngettext, texte_erreur
 from core import config as cfg_mod
 from core import preview
-from core.texte import accorde, pluriel
 from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
@@ -31,7 +30,7 @@ from core.decision import (
     video_recopiee,
 )
 from core.scanner import deja_produit, scan, scan_directory_recursive
-from ..common import (barre_etat, 
+from ..common import (barre_etat, colonne_fixe,
     touche,
     cellule,
     DV_VALUE_STYLES,
@@ -229,13 +228,14 @@ def options_filtre(decisions: list[FileDecision]) -> list[tuple[str, str]]:
     """Les choix du filtre, limités aux types présents, avec leur nombre."""
     genres  = [type_image(d.info) for d in decisions]
     dv      = sorted({g for g in genres if g.startswith("DV:")})
-    options = [(FILTRE_TOUS, f"Tous les fichiers ({len(genres)})")]
+    options = [(FILTRE_TOUS, _("All files ({count})").format(count=len(genres)))]
     if dv:
-        options.append((FILTRE_DV, f"Dolby Vision, tous profils "
-                                   f"({sum(g.startswith('DV:') for g in genres)})"))
+        options.append((FILTRE_DV, _("Dolby Vision, all profiles ({count})").format(
+            count=sum(g.startswith('DV:') for g in genres))))
         options += [(g, f"  {g} ({genres.count(g)})") for g in dv]
     if "HDR" in genres:
-        options.append(("HDR", f"HDR10 / HLG, sans DV ({genres.count('HDR')})"))
+        options.append(("HDR", _("HDR10 / HLG, without DV ({count})").format(
+            count=genres.count('HDR'))))
     if "SDR" in genres:
         options.append(("SDR", f"SDR ({genres.count('SDR')})"))
     return options
@@ -255,38 +255,41 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     """Écran principal — navigation + sélection fichiers."""
 
     BINDINGS = [
-        Binding("space",     "toggle_select",      "Sélect",   show=True),
-        Binding("a",         "select_all",         "Tout",     show=True),
-        Binding("n",         "select_none",        "Aucun",    show=True),
-        Binding("enter",     "enter_dir",          "Ouvrir",   show=True, priority=True),
-        Binding("backspace", "go_up",              "Remonter", show=True),
-        Binding("ctrl+home", "accueil",            "Accueil",  show=True,
+        Binding("space",     "toggle_select",      N_("Toggle"),   show=True),
+        Binding("a",         "select_all",         N_("All"),      show=True),
+        Binding("n",         "select_none",        N_("None"),     show=True),
+        Binding("enter",     "enter_dir",          N_("Open"),     show=True, priority=True),
+        Binding("backspace", "go_up",              N_("Up"),       show=True),
+        Binding("ctrl+home", "accueil",            N_("Home"),     show=True,
                 priority=True),
         # Visible : en mode assistant, c'est le seul accès aux pistes (UX-25).
-        Binding("t",         "open_tracks",        "Pistes",   show=True),
-        Binding("w",         "toggle_wizard",      "Mode",     show=True),
-        Binding("v",         "play",               "Visualiser", show=True),
+        Binding("t",         "open_tracks",        N_("Tracks"),   show=True),
+        Binding("w",         "toggle_wizard",      N_("Mode"),     show=True),
+        Binding("v",         "play",               N_("Play"), show=True),
         # Les touches de fonction ont un seul sens dans toute l'application
         # (UX-07) ; ce qui n'existe qu'ici passe sur des lettres.
-        Binding("r",         "recursive_run",      "Encoder le dossier", show=True),
-        Binding("j",         "join_parts",         "Joindre",  show=True),
-        Binding("i",         "open_fiche",         "Fiche",    show=True),
-        Binding("ctrl+d",    "delete_file",        "Supprimer", show=True),
-        Binding("l",         "filtre_type",        "Filtre",   show=True),
-        Binding("z",         "masquer_skip",       "Masquer SKIP", show=True),
-        Binding("f1",       "open_dryrun",        "Aperçu",   show=True),
-        Binding("f2",        "open_run",           "Encoder",  show=True),
-        Binding("f4",        "open_profile_picker","Profil",   show=True),
-        Binding("f5",        "open_config",        "Gérer", show=True),
+        Binding("r",         "recursive_run",      N_("Encode the folder"), show=True),
+        Binding("j",         "join_parts",         N_("Join parts"),  show=True),
+        Binding("i",         "open_fiche",         N_("Info"),     show=True),
+        Binding("ctrl+d",    "delete_file",        N_("Delete"),   show=True),
+        Binding("l",         "filtre_type",        N_("Filter"),   show=True),
+        Binding("z",         "masquer_skip",       N_("Hide SKIP"), show=True),
+        Binding("f1",       "open_dryrun",        N_("Dry run"),  show=True),
+        Binding("f2",        "open_run",           N_("Encode"),   show=True),
+        Binding("f4",        "open_profile_picker",N_("Profile"),  show=True),
+        Binding("f5",        "open_config",        N_("Manage"),   show=True),
     ]
 
     # Colonnes redimensionnables (ColumnResizeMixin) — fichier en premier pour accès au focus
     RESIZE_COLS   = ["fichier", "taille", "resolution", "duree", "debit", "codec",
                      "dolby_vision", "decision", "estim", "temps_estim", "audio"]
-    RESIZE_LABELS = {"fichier": "Fichier", "taille": "Taille", "resolution": "Résol.",
-                     "duree": "Durée", "debit": "Débit", "codec": "Codec",
-                     "dolby_vision": "Dolby V.", "decision": "Décision", "estim": "Estim. (Δ%)",
-                     "temps_estim": "ETA", "audio": "Audio"}
+    RESIZE_LABELS = {"fichier": N_("File"), "taille": N_("Size"),
+                     # TRANSLATORS: column header, short for "Resolution".
+                     "resolution": N_("Res."),
+                     "duree": N_("Duration"), "debit": N_("Bitrate"), "codec": N_("Codec"),
+                     "dolby_vision": "Dolby V.", "decision": N_("Decision"),
+                     "estim": N_("Est. (Δ%)"),
+                     "temps_estim": "ETA", "audio": N_("Audio")}
     # Les planchers imposés par le contenu viennent de core.config, seule
     # source de vérité : ils valent aussi à la lecture d'une largeur persistée.
     # Fichier à 20 : à 160 colonnes, les autres ne lui en laissent que 29.
@@ -358,7 +361,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield Static("", id="spacer-1")
         yield Static("", id="profile-bar")
-        yield Static("⏳ Analyse en cours…", id="scan-notice", markup=False)
+        analyse = "⏳ " + _("Analysing…")
+        yield Static(analyse, id="scan-notice", markup=False)
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
         yield KeyFooter(
             actions=self._RACCOURCIS_FICHIERS,
@@ -367,10 +371,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 resize=True,
                 accueil=True,
                 extra=(
-                    ("f1", "Aperçu"),
-                    ("f2", "Encoder"),
-                    ("f4", "Profil"),
-                    ("f5", "Gérer"),
+                    ("f1", N_("Dry run")),
+                    ("f2", N_("Encode")),
+                    ("f4", N_("Profile")),
+                    ("f5", N_("Manage")),
                 ),
             ),
         )
@@ -412,10 +416,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     # décision d'encodage. Promettre dix colonnes qu'aucune ligne ne peut
     # remplir revient à faire lire un tableau vide.
     _COLS_VOLUMES: list[tuple[str, str, int]] = [
-        ("volume", "Volume",       34),
-        ("libre",  "Espace libre", 14),
-        ("total",  "Total",        12),
-        ("occupe", "Occupé",       10),
+        ("volume", N_("Volume"),       34),
+        ("libre",  N_("Free space"),   14),
+        ("total",  N_("Total"),        12),
+        ("occupe", N_("Used"),         10),
     ]
 
     def _build_columns(self) -> None:
@@ -424,7 +428,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
         if self._nav.is_virtual:
             for cle, libelle, largeur in self._COLS_VOLUMES:
-                table.add_column(libelle, width=largeur, key=cle)
+                colonne_fixe(table, _(libelle), largeur, key=cle)
             return
 
         table.add_column("",                                width=3,    key="check")
@@ -440,25 +444,25 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     # Ce qu'on peut faire d'un volume : l'ouvrir. Sélectionner, encoder,
     # interroger AlloCiné ou redimensionner des colonnes n'a pas de sens tant
     # qu'aucun fichier n'est en vue.
-    _RACCOURCIS_VOLUMES: list[tuple[str, str]] = [("enter", "Ouvrir le volume")]
+    _RACCOURCIS_VOLUMES: list[tuple[str, str]] = [("enter", N_("Open the volume"))]
 
     _RACCOURCIS_FICHIERS: list[tuple[str, str]] = [
-        ("space",     "Sélect"),
-        ("a",         "Tout"),
-        ("n",         "Aucun"),
-        ("enter",     "Ouvrir"),
-        ("w",         "Mode"),
-        ("t",         "Pistes"),
-        ("v",         "Visualiser"),
-        ("r",         "Encoder le dossier"),
-        ("j",         "Joindre"),
-        ("i",         "Fiche"),
-        ("ctrl+d",    "Supprimer"),
-        ("l",         "Filtre"),
-        ("z",         "Masquer SKIP"),
-        ("backspace", "Remonter"),
-        ("home",      "Début"),
-        ("end",       "Fin"),
+        ("space",     N_("Toggle")),
+        ("a",         N_("All")),
+        ("n",         N_("None")),
+        ("enter",     N_("Open")),
+        ("w",         N_("Mode")),
+        ("t",         N_("Tracks")),
+        ("v",         N_("Play")),
+        ("r",         N_("Encode the folder")),
+        ("j",         N_("Join parts")),
+        ("i",         N_("Info")),
+        ("ctrl+d",    N_("Delete")),
+        ("l",         N_("Filter")),
+        ("z",         N_("Hide SKIP")),
+        ("backspace", N_("Up")),
+        ("home",      N_("Start")),
+        ("end",       N_("End")),
         ("pageup",    "Page ↑"),
         ("pagedown",  "Page ↓"),
     ]
@@ -471,8 +475,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         """
         assistant = getattr(self._app, "wizard_mode", True)
         variables = {
-            "w": "Assistant" if assistant else "Manuel",
-            "z": "Afficher SKIP" if self._masquer_skip else "Masquer SKIP",
+            "w": N_("Guided") if assistant else N_("Manual"),
+            "z": N_("Show SKIP") if self._masquer_skip else N_("Hide SKIP"),
         }
         return [(k, variables.get(k, lib)) for k, lib in self._RACCOURCIS_FICHIERS]
 
@@ -493,8 +497,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             pied.update_line(1, self._raccourcis_fichiers())
             pied.update_line(2, footer_line2(
                 nav=False, resize=True, accueil=True,
-                extra=(("f1", "Aperçu"), ("f2", "Encoder"),
-                       ("f4", "Profil"), ("f5", "Gérer"))))
+                extra=(("f1", N_("Dry run")), ("f2", N_("Encode")),
+                       ("f4", N_("Profile")), ("f5", N_("Manage")))))
 
     def _refresh_view(self) -> None:
         """Reconstruit la vue complète (dirs + fichiers)."""
@@ -514,22 +518,27 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if self._nav.is_virtual:
             # Aucun volume n'est sélectionnable, et les colonnes ne se
             # redimensionnent pas : annoncer l'un ou l'autre serait faux.
-            n = sum(1 for t, _ in self._rows if t == _ROW_TYPE_DIR)
+            n = sum(1 for t, _p in self._rows if t == _ROW_TYPE_DIR)
             self.query_one("#status-bar", Static).update(
-                barre_etat("Choisir un volume", pluriel(n, "volume"))
+                barre_etat(_("Choose a volume"),
+                           ngettext("{count} volume", "{count} volumes", n).format(count=n))
             )
             return
         sel_count   = len(self._selected)
-        total_files = sum(1 for t, _ in self._rows if t == _ROW_TYPE_FILE)
+        total_files = sum(1 for t, _p in self._rows if t == _ROW_TYPE_FILE)
         masques     = len(self._dossier) - total_files
         filtre      = " + ".join(f for f in (
             libelle_filtre(self._filtre),
-            "sans SKIP" if self._masquer_skip else "") if f)
+            _("without SKIP") if self._masquer_skip else "") if f)
+        masques_txt = ngettext("{count} hidden", "{count} hidden",
+                               masques).format(count=masques)
         self.query_one("#status-bar", Static).update(barre_etat(
             "", self._nav.breadcrumb(),
-            f"{sel_count}/{total_files} {accorde(sel_count, 'sélectionné')}",
-            f"Filtre : {filtre} ({pluriel(masques, 'masqué')})" if filtre else "",
-            f"Col : {self.resize_col_label}  </>",
+            ngettext("{selected}/{total} selected", "{selected}/{total} selected",
+                     sel_count).format(selected=sel_count, total=total_files),
+            _("Filter: {filter} ({hidden})").format(filter=filtre, hidden=masques_txt)
+            if filtre else "",
+            _("Col: {column}").format(column=self.resize_col_label) + "  </>",
         ))
 
     def _update_profile_bar(self) -> None:
@@ -545,7 +554,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         f = prof.summary_fields()
 
         keep_4k  = prof.data.get("keep_4k", False)
-        k4_str   = f"4K : {f['4k']}" if keep_4k else "4K → 1080p"
+        k4_str   = _("4K: {value}").format(value=f['4k']) if keep_4k else "4K → 1080p"
         k4_style = "green"              if keep_4k else "dim"
         dv_color = DV_VALUE_STYLES.get(f["dv"], "")
 
@@ -555,7 +564,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # avoir à l'essayer.
         assistant = getattr(self._app, "wizard_mode", True)
         line1.append(f"{touche('w')} ", style="dim")
-        line1.append("Assistant" if assistant else "Manuel",
+        line1.append(_("Guided") if assistant else _("Manual"),
                      style="bold cyan" if assistant else "bold")
         line1.append("  │  ", style="dim")
         line1.append(f"{touche('f4')} ", style="dim")
@@ -573,10 +582,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
         # Ligne 2 : autres infos
         line2 = Text()
-        line2.append("HD audio ", style="dim"); line2.append(f["hd_audio"], style="bold")
+        line2.append(_("HD audio") + " ", style="dim"); line2.append(f["hd_audio"], style="bold")
         if prof.data.get("delete_source", False):
             line2.append("  ·  ")
-            line2.append("⚠ SUPPRESSION", style="bold dark_orange")
+            # TRANSLATORS: the profile deletes the source files; shown in capitals.
+            line2.append("⚠ " + _("Deletion").upper(), style="bold dark_orange")
 
         txt = Text()
         txt.append(line1)
@@ -641,10 +651,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
         # ── Dossier vide ──────────────────────────────────────────────────────
         if not subdirs and not decisions:
-            texte = (f"⚠  Tous les fichiers sont masqués  —  {touche('l')} "
-                     f"filtre, {touche('z')} SKIP" if tous else
-                     f"⚠  Aucun fichier vidéo dans ce dossier  —  "
-                     f"{touche('backspace')} pour remonter")
+            texte = ("⚠  " + _("All files are hidden") + "  —  "
+                     + _("{filter_key} filter, {skip_key} SKIP").format(
+                         filter_key=touche("l"), skip_key=touche("z"))
+                     if tous else
+                     "⚠  " + _("No video file in this folder") + "  —  "
+                     + _("{key} to go up").format(key=touche("backspace")))
             table.add_row(
                 "",
                 Text(texte, style="dim italic"),
@@ -762,11 +774,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
         if len(forcees) == 1:
             dec = force_skip_to_encode(self._decisions[forcees[0]])
-            texte = (f"{forcees[0].name} n'était pas à réencoder : cochée, elle "
-                     f"sera encodée ({dec.video.label()}, débit de la source).")
+            texte = _("{file} did not need re-encoding: checked, it will be "
+                      "encoded ({video}, source bitrate).").format(
+                file=forcees[0].name, video=dec.video.label())
         else:
-            texte = (f"Lignes non réencodées d'office cochées : {len(forcees)}. "
-                     f"Elles seront encodées au débit de leur source.")
+            texte = _("Checked lines not re-encoded by default: {count}. They "
+                      "will be encoded at their source bitrate.").format(
+                count=len(forcees))
         self.notify(texte, severity="warning", timeout=5)
 
     # ─── Worker de scan ───────────────────────────────────────────────────────
@@ -786,7 +800,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 self.query_one("#scan-notice", Static).update, msg
             )
 
-        _set_notice(f"⏳ Analyse en cours… 0 / {total}")
+        _set_notice("⏳ " + _("Analysing… {done} / {total}").format(done=0, total=total))
 
         # Scans ffprobe parallélisés (ordre des résultats préservé par map)
         done = 0
@@ -812,7 +826,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 _LOG.warning("Échec du scan : %s", vpath, exc_info=True)
             with lock:
                 done += 1
-                _set_notice(f"⏳ Analyse en cours… {done} / {total}")
+                _set_notice("⏳ " + _("Analysing… {done} / {total}").format(
+                    done=done, total=total))
             return dec
 
         decisions: list[FileDecision] = []
@@ -926,13 +941,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
         if not preview.available():
             self.app.bell()
-            self._flash_status("mpv absent — relancez le preflight pour l'installer.")
+            self._flash_status(_("mpv missing — run the preflight again to install it."))
             return
         try:
             preview.open_file(path)
         except Exception as e:
             self.app.bell()
-            self._flash_status(f"Lecture impossible : {texte_erreur(e)}")
+            self._flash_status(_("Cannot play: {error}").format(error=texte_erreur(e)))
 
     def action_delete_file(self) -> None:
         """
@@ -946,8 +961,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
         # Un fichier en file ou en cours d'encodage se lit encore (IE-100).
         if path in self._app.sources_en_file():
-            self.notify(f"{path.name} est dans la file d'encodage : il ne peut "
-                        f"pas être supprimé maintenant.", severity="warning",
+            self.notify(_("{file} is in the encoding queue: it cannot be "
+                          "deleted now.").format(file=path.name), severity="warning",
                         timeout=5)
             return
 
@@ -965,7 +980,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         except Exception as e:
             # Cas courant sous Windows : mpv tient encore le fichier ouvert.
             self.app.bell()
-            self._flash_status(f"Suppression impossible : {texte_erreur(e)}")
+            self._flash_status(_("Cannot delete: {error}").format(error=texte_erreur(e)))
             return
 
         self._decisions.pop(path, None)
@@ -1071,10 +1086,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def _refiltrer(self) -> None:
         """Reconstruit la vue sous le nouveau filtre, curseur sur la même ligne
         si elle reste visible."""
-        _, path = self._current_row_info()
+        _type, path = self._current_row_info()
         self._resize_rebuild()
         table = self.query_one(DataTable)
-        idx = next((i for i, (_, p) in enumerate(self._rows) if p == path), 0)
+        idx = next((i for i, (_t, p) in enumerate(self._rows) if p == path), 0)
         if table.row_count > 0:
             table.move_cursor(row=idx)
 
@@ -1084,7 +1099,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         from .value_picker import ValuePickerScreen
         options = options_filtre([self._decisions[p] for p in self._dossier
                                   if p in self._decisions])
-        cles    = [c for c, _ in options]
+        cles    = [c for c, _l in options]
         courant = cles.index(self._filtre) if self._filtre in cles else 0
 
         def _on_pick(idx: int | None) -> None:
@@ -1093,7 +1108,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self._filtre = cles[idx]
             self._refiltrer()
         self.app.push_screen(
-            ValuePickerScreen("Type d'image", [l for _, l in options], courant),
+            ValuePickerScreen(_("Picture type"), [l for _c, l in options], courant),
             _on_pick)
 
     def action_masquer_skip(self) -> None:
@@ -1112,9 +1127,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._update_profile_bar()
         self._footer_suit_le_mode()
         self._flash_status(
-            "Mode assistant — ↵ ouvre le parcours guidé, un fichier à la fois."
+            _("Guided mode — {key} opens the guided path, one file at a "
+              "time.").format(key=touche("enter"))
             if app.wizard_mode else                               # type: ignore[attr-defined]
-            "Mode manuel — ↵ ouvre l'écran des pistes.")
+            _("Manual mode — {key} opens the tracks screen.").format(key=touche("enter")))
 
     def action_open_wizard(self) -> None:
         """Ouvre le parcours guidé sur le fichier sous le curseur."""
@@ -1126,7 +1142,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
         from .wizard import WizardScreen
         self.app.push_screen(WizardScreen(dec),
-                             lambda _: self._update_status())
+                             lambda _res: self._update_status())
 
     def action_open_tracks(self) -> None:
         row_type, path = self._current_row_info()
@@ -1194,11 +1210,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Une touche sans effet et sans message se lit comme une touche cassée.
         """
         if self._nav.is_virtual:
-            texte = (f"{action} : entrez d'abord dans un volume, puis cochez "
-                     f"des fichiers ({touche('space')}).")
+            texte = _("{action}: first enter a volume, then check files "
+                      "({key}).").format(action=action, key=touche("space"))
         else:
-            texte = (f"{action} : aucun fichier coché — {touche('space')} coche "
-                     f"la ligne, {touche('a')} coche tout.")
+            texte = _("{action}: no file checked — {key} checks the line, "
+                      "{all_key} checks everything.").format(
+                action=action, key=touche("space"), all_key=touche("a"))
         self.notify(texte, severity="warning", timeout=4)
 
     def _cochees(self) -> list[FileDecision]:
@@ -1214,7 +1231,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def action_open_dryrun(self) -> None:
         decisions = [force_skip_to_encode(d) for d in self._cochees()]
         if not decisions:
-            self._refus_sans_selection("Aperçu")
+            self._refus_sans_selection(_("Dry run"))
             return
         from .dryrun import DryrunScreen
         self.app.push_screen(DryrunScreen(decisions))
@@ -1222,7 +1239,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def action_open_run(self) -> None:
         decisions = [force_skip_to_encode(d) for d in self._cochees()]
         if not decisions:
-            self._refus_sans_selection("Encoder")
+            self._refus_sans_selection(_("Encode"))
             return
         self._confier(decisions)
 
@@ -1253,7 +1270,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if len(infos) < MIN_PARTIES:
             self.app.bell()
             self._flash_status(
-                f"Joindre : cocher au moins {MIN_PARTIES} parties ({touche('space')}).")
+                _("Join: check at least {count} parts ({key}).").format(
+                    count=MIN_PARTIES, key=touche("space")))
             return
 
         from .join import JoinScreen
@@ -1294,7 +1312,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def _launch_recursive_scan(self, directory: Path) -> None:
         self.app.call_from_thread(
             self.query_one("#scan-notice", Static).update,
-            f"⏳ Scan récursif de {directory.name}…",
+            "⏳ " + _("Recursive scan of {folder}…").format(folder=directory.name),
         )
         infos     = scan_directory_recursive(directory)
         profile   = self._active_profile()
@@ -1305,7 +1323,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self.query_one("#scan-notice", Static).update("")
             if not decisions:
                 self.query_one("#scan-notice", Static).update(
-                    "⚠ Aucun fichier à encoder dans ce répertoire."
+                    "⚠ " + _("No file to encode in this folder.")
                 )
                 return
             from .dryrun import DryrunScreen

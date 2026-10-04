@@ -78,7 +78,10 @@ def _nav_de_lecran(module: str) -> list[tuple[str, str]]:
             continue
         for c in ast.walk(n):
             if isinstance(c, ast.Call) and getattr(c.func, "id", "") == "footer_line2":
-                kw = {k.arg: ast.literal_eval(k.value) for k in c.keywords}
+                # Littéraux et `N_()`, qui rend son argument tel quel (IE-88).
+                kw = {k.arg: eval(compile(ast.Expression(k.value), module, "eval"),
+                                  {"__builtins__": {}, "N_": lambda s: s})
+                      for k in c.keywords}
                 return footer_line2(**kw)
     raise AssertionError(f"aucun footer_line2 dans compose() de {module}")
 

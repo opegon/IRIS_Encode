@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.73] — 2026-10-04
+
+### Glossaire anglais → français
+
+IE-85, préalable à l'extraction des textes : un terme anglais, une traduction,
+partout. Rien ne change à l'écran.
+
+- `locales/glossaire.fr.csv` (colonnes `source`, `target`, `explanation`) :
+  écrans (Home → Accueil, Dry run → Aperçu, Guided → Assistant…), vocabulaire
+  métier (track → piste, donor file → fichier donneur, segment → plage, tag →
+  marque, queue → file, batch → lot…), et les termes à ne pas traduire : SKIP,
+  release, noms d'outils, de formats et de services. Format importable comme
+  glossaire Weblate (IE-111 point 6).
+- Arbitrages de l'utilisateur : « SKIP » invariant dans toutes les langues ;
+  l'Aperçu s'appelle « Dry run » en anglais, l'assistant « Guided » ;
+  « lossless → copy » reste en anglais dans les raisons audio.
+- Wiki : page `localisation` (ce qui ne se traduit jamais, noms de piste selon
+  la langue de la piste, arbitrages), source et relevé des décisions du jour.
+- `tests/test_i18n.py` : chaque terme une seule fois, un terme à ne pas
+  traduire reste identique, arbitrages présents.
+
 ## [v0.8.9.72] — 2026-10-04
 
 ### Socle de la traduction

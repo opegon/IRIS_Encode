@@ -1,0 +1,94 @@
+source,target,explanation
+Home,Accueil,"Screen: the file browser, start of every session (Ctrl+Home)."
+Guided,Assistant,"Mode label in the footer (W Guided / W Manual): one file at a time, five steps."
+Guided mode,Assistant,Screen name of the guided mode.
+Manual,Manuel,"Mode label, opposite of Guided: Enter opens the Tracks screen."
+Tracks,Pistes,"Screen: what each track of a file will become."
+Sync,Recalage,"Screen: add tracks from another file and put them back in time."
+Dry run,Aperçu,"Screen (F1): what would be done, without doing anything. Not ""Preview"": playing a file is ""Play""."
+Play,Visualiser,Opens the file in mpv.
+Encoding,Encodage,Screen: the running encode and its queue (F12).
+Join,Jonction,"Screen and action: put the parts of one film back together, without re-encoding (part1 / part2)."
+Profiles,Profils,Screen: create and edit encoding profiles.
+Info,Fiche,"Movie or series details from AlloCiné or IMDB (I)."
+API keys,Clés d'API,Online service keys (OMDb, OpenSubtitles).
+decision,décision,"What IRIS will do with a file: encode, remove the RPU, SKIP…"
+profile,profil,A named set of encoding settings (profiles.toml). Profile names are identifiers: never translated.
+track,piste,Audio or subtitle stream of a file.
+subtitle,sous-titre,
+external track,piste externe,"A track taken from another file (the donor), added at mux time."
+added track,piste greffée,"An external track added to the output."
+add (a track),greffer,"Adding an external track to the output (French: ""greffe"", ""piste greffée"")."
+donor file,fichier donneur,The file an external track comes from.
+offset,décalage,"Constant time shift of an external track, in ms."
+stretch,étirement,"Speed ratio correcting a PAL source (25 vs 23.976 fps): ""PAL→film""."
+resync,recaler,"To correct the timing of an external track (French noun: ""recalage"")."
+segment,plage,Part of a film where a track keeps one offset (different cuts of the same film).
+anchor point,point de repère,A subtitle line the user locates by ear to guide the measurement.
+subtitle line,réplique,One cue of a subtitle track.
+measurement,mesure,Offset measurement by audio correlation.
+confidence,confiance,"How sure a measurement is: none, low, medium, excellent (levels, not adjectives of ""confidence"" alone)."
+check sample,extrait de contrôle,Short muxed excerpt to watch before muxing for real.
+source,source,"The input file. Output file names derive from it."
+output,sortie,The file IRIS writes.
+tag,marque,"A token of a release file name (2160p, DV, TrueHD…) and IRIS's own suffix (-iris)."
+RPU removal,retrait du RPU,"Removing the Dolby Vision layer without re-encoding (also ""DV removal"", ""retrait du DV"")."
+encode,encoder,
+re-encode,réencoder,Encode again a file that is already compressed (most of IRIS's work).
+transcode,transcoder,Convert an audio track to another codec.
+copy,copie,"Column label: the track is copied unchanged (""→ copy""). In decision reasons, ""copy"" stays in English (see ""lossless"")."
+queue,file,"Encoding queue (French: ""file d'encodage"")."
+batch,lot,The files sent together to the queue.
+bitrate,débit,"Units stay as in the source (k, kbps)."
+target bitrate,débit cible,
+fixed bitrate,forfait,"Audio bitrate set by the profile, used when the source rate is not kept."
+container,conteneur,MP4 or MKV.
+forced,forcé,"Subtitle flag: shown only for foreign-language lines."
+default,par défaut,"Track flag (""default track""). Use the context ""track"": not a fault."
+discarded,écartée,"A track the output will not contain (""← discarded"")."
+check (select),cocher,"Mark a file in the browser (Space). Checked file: ""fichier coché""."
+volume,volume,A drive in the volume list.
+folder,dossier,
+sleep,veille,Windows sleep; IRIS blocks it while working.
+after the batch,après le lot,What the computer does once the batch is done (sleep / shutdown).
+match,correspondance,"How the Info card was chosen among search results: title and year, title, uncertain."
+SDH,SME,"Subtitles for the deaf and hard of hearing (French: sourds et malentendants). Column header, 4 characters at most."
+SKIP,SKIP,"Do not translate. Decision state: the file is left as it is. Decided 2026-10-04."
+release,release,"Do not translate. A scene/rip release (file name with tags). French uses the same word."
+lossless,lossless,"Do not translate in decision reasons (""lossless → copy""), decided 2026-10-04. In full sentences, French writes ""sans perte""."
+IRIS ENCODE,IRIS ENCODE,Do not translate. Product name.
+Dolby Vision,Dolby Vision,Do not translate.
+DV,DV,"Do not translate. Dolby Vision; DV profiles are written P8.1, DV:P8.1."
+RPU,RPU,Do not translate. Dolby Vision metadata layer.
+HDR,HDR,Do not translate.
+HDR10,HDR10,Do not translate.
+HDR10+,HDR10+,Do not translate.
+HLG,HLG,Do not translate.
+SDR,SDR,Do not translate.
+HEVC,HEVC,Do not translate.
+H264,H264,Do not translate.
+AV1,AV1,Do not translate.
+MKV,MKV,Do not translate.
+MP4,MP4,Do not translate.
+PGS,PGS,Do not translate. Image subtitles.
+VobSub,VobSub,Do not translate. Image subtitles.
+SRT,SRT,Do not translate. Text subtitles (SubRip).
+AAC,AAC,Do not translate.
+AC3,AC3,Do not translate.
+E-AC3,E-AC3,Do not translate.
+TrueHD,TrueHD,Do not translate.
+DTS-HD MA,DTS-HD MA,Do not translate.
+Atmos,Atmos,Do not translate.
+NVENC,NVENC,Do not translate.
+PAL,PAL,Do not translate.
+mux,mux,"Do not translate as a term: combine tracks into one file without re-encoding (screen ""Mux"", verb ""muxer"" in French)."
+remux,remux,Do not translate.
+ffmpeg,ffmpeg,Do not translate. Tool name.
+mkvmerge,mkvmerge,Do not translate. Tool name.
+dovi_tool,dovi_tool,Do not translate. Tool name.
+mpv,mpv,Do not translate. Tool name.
+Jellyfin,Jellyfin,Do not translate.
+OMDb,OMDb,Do not translate.
+IMDB,IMDB,Do not translate.
+AlloCiné,AlloCiné,Do not translate.
+OpenSubtitles,OpenSubtitles,Do not translate.

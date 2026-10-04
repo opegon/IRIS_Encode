@@ -202,3 +202,11 @@ MP4 de ffmpeg écrase les temps d'un `mov_text` après plus de 2³¹ µs de
 silence. Seuil mesuré, MKV indemne, contournement par répliques invisibles.
 Source : [[source-2026-10-04-mov-text]]. Pages touchées : [[sous-titres]],
 [[ffmpeg]], [[pieges-et-lecons]].
+
+## [2026-10-04] ingest | Localisation : politique de traduction et glossaire (v0.8.9.73)
+
+Audit de localisation (82 constats) et décisions de l'utilisateur : ce qui ne se
+traduit jamais, noms de piste selon la langue de la piste, console de démarrage
+en anglais seul, arbitrages du glossaire (SKIP invariant, Dry run, Guided,
+« lossless » gardé). Glossaire dans `locales/glossaire.fr.csv`.
+Source : [[source-2026-10-04-localisation]]. Pages touchées : [[localisation]].

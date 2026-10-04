@@ -223,3 +223,26 @@ def test_texte_style_garde_la_phrase_entiere():
     # Le traducteur déplace le champ : le style suit.
     t = texte_style("{key} : jonction", key=("F2", "bold"))
     assert t.plain == "F2 : jonction" and t.spans[0].start == 0
+
+
+# ─── Glossaire (IE-85) ────────────────────────────────────────────────────────
+
+def test_le_glossaire_est_coherent():
+    """`locales/glossaire.fr.csv`, importable comme glossaire Weblate : un
+    terme anglais = une traduction, et un terme à ne pas traduire reste
+    identique."""
+    import csv
+    chemin = RACINE / "locales" / "glossaire.fr.csv"
+    with open(chemin, encoding="utf-8", newline="") as f:
+        lignes = list(csv.DictReader(f))
+    assert lignes and set(lignes[0]) == {"source", "target", "explanation"}
+    sources = [l["source"] for l in lignes]
+    assert len(sources) == len(set(sources)), "terme en double"
+    for l in lignes:
+        assert l["source"].strip() and l["target"].strip(), l
+        if l["explanation"].startswith("Do not translate"):
+            assert l["target"] == l["source"], l
+    # Les arbitrages du 2026-10-04 (wiki `localisation`).
+    par = {l["source"]: l["target"] for l in lignes}
+    assert par["SKIP"] == "SKIP" and par["lossless"] == "lossless"
+    assert par["Dry run"] == "Aperçu" and par["Guided"] == "Assistant"

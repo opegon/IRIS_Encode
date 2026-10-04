@@ -27,6 +27,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[conteneurs]] | MP4 contre MKV, horodatages, chapitres, `hev1`/`hvc1`, collage |
 | [[synchronisation]] | Décalage, dérive PAL, montages différents, recalage par plages |
 | [[noms-de-release]] | Marques d'un nom de fichier, pièges d'analyse, ce qu'une conversion rend faux |
+| [[localisation]] | Ce qui se traduit ou jamais, noms de piste selon la langue de la piste, glossaire et ses arbitrages |
 | [[sous-processus]] | Règles pour lancer un outil externe : chemin, `stdin`, UTF-8, tubes, codes retour ; `.bat` réécrit en cours d'exécution |
 
 ## Entités
@@ -60,6 +61,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-10-01-entrelacement]] | Audio écrite par blocs loin de la vidéo : arrêt à 32 s sur TV |
 | [[source-2026-10-03-dv81-mp4]] | DV 8.1 en MP4 `hvc1` lu en direct sur le G3 ; `dvh1` et MKV refusés |
 | [[source-2026-10-04-mov-text]] | `mov_text` : temps écrasés après un silence de plus de 2³¹ µs |
+| [[source-2026-10-04-localisation]] | Audit de localisation et décisions de l'utilisateur : politique de traduction, glossaire |
 
 ## Brut (`raw/`, immuable)
 
@@ -74,3 +76,4 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-01-entrelacement-audio]] | *L'Ombre d'un doute* : relevés d'entrelacement, variantes ffmpeg mesurées |
 | [[2026-10-03-essai-dv81-mp4]] | Essai DV 8.1 MP4/MKV sur le G3 : citations de l'utilisateur, variantes audio |
 | [[2026-10-04-mov-text-silence]] | *Premier Contact* : VF forcée désynchronisée, seuil mesuré, contournement |
+| [[2026-10-04-decisions-localisation]] | Choix de l'utilisateur après l'audit de localisation : citations et options retenues |

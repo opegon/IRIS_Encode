@@ -1095,9 +1095,70 @@ msgstr ""
 msgid "The columns already take all {width} columns of the terminal — narrow another one ({column} can still be made smaller)."
 msgstr ""
 
+#: tui/screens/cles.py:69
+#: tui/screens/options.py:51
+#: tui/screens/options.py:83
+#: tui/widgets/profile_form.py:210
+msgid "Save"
+msgstr ""
+
+#: tui/screens/cles.py:70
+#: tui/screens/cles.py:119
+#: tui/screens/cles.py:122
+msgid "Later"
+msgstr ""
+
+#: tui/screens/cles.py:90
+msgid "Missing API keys"
+msgstr ""
+
+#: tui/screens/cles.py:91
+msgid "API keys of the online services"
+msgstr ""
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."
+msgstr ""
+
+#: tui/screens/cles.py:103
+msgid "Get a key"
+msgstr ""
+
+#: tui/screens/cles.py:112
+msgid "Do not ask again"
+msgstr ""
+
+#: tui/screens/cles.py:117
+#: tui/screens/cles.py:121
+msgid "Check and save"
+msgstr ""
+
+#: tui/screens/cles.py:120
+#: tui/screens/options.py:82
+#: tui/widgets/profile_form.py:206
+msgid "Next field"
+msgstr ""
+
+#: tui/screens/cles.py:150
+msgid "Page opened in the browser: copy the key, then paste it here."
+msgstr ""
+
+#: tui/screens/cles.py:196
+msgid "Checking with the service…"
+msgstr ""
+
+#: tui/screens/cles.py:221
+msgid "Key accepted and saved."
+msgstr ""
+
+#: tui/screens/cles.py:223
+#, python-brace-format
+msgid "{error} Nothing is saved for this service."
+msgstr ""
+
+#: tui/screens/cles.py:232
+msgid "API keys saved."
 msgstr ""
 
 #: tui/screens/config.py:120
@@ -1175,12 +1236,6 @@ msgstr ""
 msgid "{action} in {seconds} s"
 msgstr ""
 
-#: tui/screens/options.py:51
-#: tui/screens/options.py:83
-#: tui/widgets/profile_form.py:210
-msgid "Save"
-msgstr ""
-
 #: tui/screens/options.py:62
 msgid "Options"
 msgstr ""
@@ -1209,11 +1264,6 @@ msgstr ""
 
 #: tui/screens/options.py:80
 msgid "No effect on this system: Windows only."
-msgstr ""
-
-#: tui/screens/options.py:82
-#: tui/widgets/profile_form.py:206
-msgid "Next field"
 msgstr ""
 
 #: tui/screens/profile_picker.py:74

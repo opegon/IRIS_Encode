@@ -21,7 +21,7 @@ from textual.widgets import Button, Checkbox, Input, Label, Static
 
 from core import cles
 from core import config as cfg_mod
-from core.i18n import _
+from core.i18n import N_, _
 
 from ..common import raccourcis
 
@@ -66,8 +66,8 @@ class ClesScreen(ModalScreen[bool]):
     """
 
     BINDINGS = [
-        Binding("ctrl+s", "enregistrer", "Enregistrer", show=False, priority=True),
-        Binding("escape", "plus_tard",   "Plus tard",   show=False, priority=True),
+        Binding("ctrl+s", "enregistrer", N_("Save"), show=False, priority=True),
+        Binding("escape", "plus_tard",   N_("Later"),   show=False, priority=True),
     ]
 
     # Lignes du panneau hors zone défilante : cadre, marges, titre, boutons,
@@ -87,8 +87,8 @@ class ClesScreen(ModalScreen[bool]):
     # ── Composition ───────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
-        titre = ("Clés d'API manquantes" if self._au_lancement
-                 else "Clés d'API des services en ligne")
+        titre = (_("Missing API keys") if self._au_lancement
+                 else _("API keys of the online services"))
         with Vertical(id="cles-panel"):
             yield Label(titre, id="cles-titre")
             with VerticalScroll(id="cles-corps"):
@@ -100,7 +100,7 @@ class ClesScreen(ModalScreen[bool]):
                                          usage=_(s.usage), without_key=_(s.sans_cle)),
                                      classes="cles-usage", markup=False)
                         with Horizontal(classes="cles-lien"):
-                            yield Button("Obtenir une clé", id=f"lien-{s.id}")
+                            yield Button(_("Get a key"), id=f"lien-{s.id}")
                             yield Static(s.url, classes="cles-url", markup=False)
                         for c in s.champs:
                             with Horizontal(classes="cles-ligne"):
@@ -109,17 +109,17 @@ class ClesScreen(ModalScreen[bool]):
                                             password=c.secret,
                                             id=f"champ-{s.id}-{c.cle}")
                         if self._au_lancement:
-                            yield Checkbox("Ne plus demander",
+                            yield Checkbox(_("Do not ask again"),
                                            id=f"ecarter-{s.id}")
                         yield Static("", classes="cles-etat", id=f"etat-{s.id}",
                                      markup=False)
             with Horizontal(id="cles-boutons"):
-                yield Button("✓  Vérifier et enregistrer", id="btn-enregistrer",
+                yield Button("✓  " + _("Check and save"), id="btn-enregistrer",
                              variant="primary")
-                yield Button("✗  Plus tard", id="btn-plus-tard")
-            yield Static(raccourcis([("tab", "Champ suivant"),
-                                     ("ctrl+s", "Vérifier et enregistrer"),
-                                     ("escape", "Plus tard")]), id="cles-hint")
+                yield Button("✗  " + _("Later"), id="btn-plus-tard")
+            yield Static(raccourcis([("tab", N_("Next field")),
+                                     ("ctrl+s", N_("Check and save")),
+                                     ("escape", N_("Later"))]), id="cles-hint")
 
     def on_resize(self, event: events.Resize) -> None:
         panneau = event.size.height * 92 // 100
@@ -147,8 +147,8 @@ class ClesScreen(ModalScreen[bool]):
         service = cles.PAR_ID.get(sid)
         if service is not None:
             webbrowser.open(service.url)
-            self._etat(sid, f"Page ouverte dans le navigateur : copiez la clé, "
-                            f"puis collez-la ici.", "")
+            self._etat(sid, _("Page opened in the browser: copy the key, "
+                              "then paste it here."), "")
 
     def _saisies(self, s: cles.Service) -> dict[str, str]:
         return {c.cle: self.query_one(f"#champ-{s.id}-{c.cle}", Input).value
@@ -193,7 +193,7 @@ class ClesScreen(ModalScreen[bool]):
                 cles.enregistrer(self._cfg, s, saisies)   # effacé volontairement
                 continue
             a_verifier.append((s, saisies))
-            self._etat(s.id, "Vérification auprès du service…", "")
+            self._etat(s.id, _("Checking with the service…"), "")
         self._verification = True
         self._verifier(a_verifier)
 
@@ -218,9 +218,10 @@ class ClesScreen(ModalScreen[bool]):
             cles.enregistrer(self._cfg, s, saisies)
             # Une clé enregistrée n'a plus à être écartée.
             cles.ecarter(self._cfg, s.id, False)
-            self._etat(s.id, "✓ Clé acceptée et enregistrée.", "ok")
+            self._etat(s.id, "✓ " + _("Key accepted and saved."), "ok")
         for sid, erreur in refus:
-            self._etat(sid, f"✗ {erreur} Rien n'est enregistré pour ce service.",
+            self._etat(sid, "✗ " + _("{error} Nothing is saved for this service.")
+                       .format(error=erreur),
                        "refus")
         if self._au_lancement:
             self._ecarts()
@@ -228,5 +229,5 @@ class ClesScreen(ModalScreen[bool]):
         if refus:
             return                        # la fenêtre reste, on corrige
         if acceptes:
-            self.app.notify("Clés d'API enregistrées.", timeout=3)
+            self.app.notify(_("API keys saved."), timeout=3)
         self.dismiss(bool(acceptes))

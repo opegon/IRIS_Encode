@@ -1236,6 +1236,82 @@ msgstr "Maintenant"
 msgid "{action} in {seconds} s"
 msgstr "{action} dans {seconds} s"
 
+#: tui/screens/meta_popup.py:24
+msgid "Film"
+msgstr "Film"
+
+#: tui/screens/meta_popup.py:25
+msgid "Series"
+msgstr "Série"
+
+#: tui/screens/meta_popup.py:26
+msgid "Miniseries"
+msgstr "Mini-série"
+
+#: tui/screens/meta_popup.py:27
+msgid "TV movie"
+msgstr "Téléfilm"
+
+#: tui/screens/meta_popup.py:28
+msgid "Episode"
+msgstr "Épisode"
+
+#: tui/screens/meta_popup.py:32
+msgid "title and year"
+msgstr "titre et année"
+
+#: tui/screens/meta_popup.py:33
+msgid "title"
+msgstr "titre"
+
+#: tui/screens/meta_popup.py:34
+msgid "uncertain — the title does not match"
+msgstr "incertaine — le titre ne correspond pas"
+
+#: tui/screens/meta_popup.py:48
+#: tui/screens/meta_popup.py:49
+#: tui/screens/meta_popup.py:137
+msgid "Close"
+msgstr "Fermer"
+
+#: tui/screens/meta_popup.py:182
+msgid "Match"
+msgstr "Correspondance"
+
+#: tui/screens/meta_popup.py:187
+msgid "Type"
+msgstr "Type"
+
+#: tui/screens/meta_popup.py:188
+msgid "Year"
+msgstr "Année"
+
+#: tui/screens/meta_popup.py:189
+msgid "Rating"
+msgstr "Note"
+
+#: tui/screens/meta_popup.py:190
+msgid "Genres"
+msgstr "Genres"
+
+#: tui/screens/meta_popup.py:192
+msgid "Director"
+msgid_plural "Directors"
+msgstr[0] "Réalisateur"
+msgstr[1] "Réalisateurs"
+
+#: tui/screens/meta_popup.py:194
+msgid "Cast"
+msgstr "Casting"
+
+#: tui/screens/meta_popup.py:201
+msgid "Synopsis"
+msgstr "Synopsis"
+
+#: tui/screens/meta_popup.py:212
+msgid "Cannot fetch the information:"
+msgstr "Impossible de récupérer les informations :"
+
 #: tui/screens/options.py:62
 msgid "Options"
 msgstr "Options"

@@ -1236,6 +1236,82 @@ msgstr ""
 msgid "{action} in {seconds} s"
 msgstr ""
 
+#: tui/screens/meta_popup.py:24
+msgid "Film"
+msgstr ""
+
+#: tui/screens/meta_popup.py:25
+msgid "Series"
+msgstr ""
+
+#: tui/screens/meta_popup.py:26
+msgid "Miniseries"
+msgstr ""
+
+#: tui/screens/meta_popup.py:27
+msgid "TV movie"
+msgstr ""
+
+#: tui/screens/meta_popup.py:28
+msgid "Episode"
+msgstr ""
+
+#: tui/screens/meta_popup.py:32
+msgid "title and year"
+msgstr ""
+
+#: tui/screens/meta_popup.py:33
+msgid "title"
+msgstr ""
+
+#: tui/screens/meta_popup.py:34
+msgid "uncertain — the title does not match"
+msgstr ""
+
+#: tui/screens/meta_popup.py:48
+#: tui/screens/meta_popup.py:49
+#: tui/screens/meta_popup.py:137
+msgid "Close"
+msgstr ""
+
+#: tui/screens/meta_popup.py:182
+msgid "Match"
+msgstr ""
+
+#: tui/screens/meta_popup.py:187
+msgid "Type"
+msgstr ""
+
+#: tui/screens/meta_popup.py:188
+msgid "Year"
+msgstr ""
+
+#: tui/screens/meta_popup.py:189
+msgid "Rating"
+msgstr ""
+
+#: tui/screens/meta_popup.py:190
+msgid "Genres"
+msgstr ""
+
+#: tui/screens/meta_popup.py:192
+msgid "Director"
+msgid_plural "Directors"
+msgstr[0] ""
+msgstr[1] ""
+
+#: tui/screens/meta_popup.py:194
+msgid "Cast"
+msgstr ""
+
+#: tui/screens/meta_popup.py:201
+msgid "Synopsis"
+msgstr ""
+
+#: tui/screens/meta_popup.py:212
+msgid "Cannot fetch the information:"
+msgstr ""
+
 #: tui/screens/options.py:62
 msgid "Options"
 msgstr ""

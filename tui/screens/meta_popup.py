@@ -13,7 +13,7 @@ from textual.widgets import LoadingIndicator, Static
 
 from ..common import raccourcis
 
-from core.i18n import texte_erreur
+from core.i18n import N_, _, ngettext, texte_erreur
 from core.meta import (Correspondance, MovieMeta, Nature, fetch_allocine,
                        fetch_imdb, parse_title)
 
@@ -21,23 +21,23 @@ from core.meta import (Correspondance, MovieMeta, Nature, fetch_allocine,
 _LIBELLES = {"allocine": "AlloCiné", "imdb": "IMDB"}
 
 LIBELLES_NATURE: dict[Nature, str] = {
-    Nature.FILM:       "Film",
-    Nature.SERIE:      "Série",
-    Nature.MINI_SERIE: "Mini-série",
-    Nature.TELEFILM:   "Téléfilm",
-    Nature.EPISODE:    "Épisode",
+    Nature.FILM:       N_("Film"),
+    Nature.SERIE:      N_("Series"),
+    Nature.MINI_SERIE: N_("Miniseries"),
+    Nature.TELEFILM:   N_("TV movie"),
+    Nature.EPISODE:    N_("Episode"),
 }
 
 LIBELLES_CORRESPONDANCE: dict[Correspondance, str] = {
-    Correspondance.TITRE_ET_ANNEE: "titre et année",
-    Correspondance.TITRE:          "titre",
-    Correspondance.INCERTAINE:     "incertaine — le titre ne correspond pas",
+    Correspondance.TITRE_ET_ANNEE: N_("title and year"),
+    Correspondance.TITRE:          N_("title"),
+    Correspondance.INCERTAINE:     N_("uncertain — the title does not match"),
 }
 
 
 def ligne_correspondance(c: Correspondance) -> Text:
     """Le libellé de la correspondance, en alerte quand elle est incertaine."""
-    return Text(LIBELLES_CORRESPONDANCE[c],
+    return Text(_(LIBELLES_CORRESPONDANCE[c]),
                 style="bold dark_orange" if c is Correspondance.INCERTAINE else "")
 
 
@@ -45,8 +45,8 @@ class MetaPopup(ModalScreen):
     """Fiche AlloCiné ou IMDB d'un fichier (`I` sur l'accueil), `Tab` bascule."""
 
     BINDINGS = [
-        Binding("escape", "dismiss",        "Fermer",  show=True),
-        Binding("i",      "dismiss",        "Fermer",  show=False),
+        Binding("escape", "dismiss",        N_("Close"),  show=True),
+        Binding("i",      "dismiss",        N_("Close"),  show=False),
         # `priority` : sans elle, Tab déplace le focus au lieu de basculer.
         Binding("tab",    "changer_source", "Source",  show=False, priority=True),
     ]
@@ -134,7 +134,7 @@ class MetaPopup(ModalScreen):
             f"[bold]{_LIBELLES[self._source]}[/bold] — {query}"
         )
         self.query_one("#meta-hint", Static).update(raccourcis(
-            [("tab", _LIBELLES[self._autre_source()]), ("escape", "Fermer")]))
+            [("tab", _LIBELLES[self._autre_source()]), ("escape", N_("Close"))]))
         body = self.query_one("#meta-body", ScrollableContainer)
         body.remove_children()
         body.mount(LoadingIndicator(classes="meta-loading"))
@@ -179,24 +179,26 @@ class MetaPopup(ModalScreen):
         # Le choix parmi les résultats peut se tromper : on dit sur quoi il
         # repose, et le lien en bas de fiche permet de vérifier (UX-24).
         if meta.confiance:
-            body.mount(Static("Correspondance", classes="meta-lbl"))
+            body.mount(Static(_("Match"), classes="meta-lbl"))
             body.mount(Static(ligne_correspondance(meta.confiance),
                               classes="meta-val"))
 
         rows = [
-            ("Type",         LIBELLES_NATURE[meta.kind]),
-            ("Année",        str(meta.year) if meta.year else "—"),
-            ("Note",         rating_str),
-            ("Genres",       ", ".join(meta.genres) if meta.genres else "—"),
-            ("Réalisateur",  ", ".join(meta.directors) if meta.directors else "—"),
-            ("Casting",      ", ".join(meta.cast) if meta.cast else "—"),
+            (_("Type"),      _(LIBELLES_NATURE[meta.kind])),
+            (_("Year"),      str(meta.year) if meta.year else "—"),
+            (_("Rating"),    rating_str),
+            (_("Genres"),    ", ".join(meta.genres) if meta.genres else "—"),
+            # Le libellé s'accorde au nombre de noms (L-71).
+            (ngettext("Director", "Directors", len(meta.directors)),
+             ", ".join(meta.directors) if meta.directors else "—"),
+            (_("Cast"),      ", ".join(meta.cast) if meta.cast else "—"),
         ]
         for lbl, val in rows:
             body.mount(Static(lbl, classes="meta-lbl"))
             body.mount(Static(val, classes="meta-val"))
 
         if meta.synopsis:
-            body.mount(Static("Synopsis", classes="meta-synopsis-lbl"))
+            body.mount(Static(_("Synopsis"), classes="meta-synopsis-lbl"))
             body.mount(Static(meta.synopsis, classes="meta-synopsis"))
 
         body.mount(Static(meta.url, id="meta-url"))
@@ -207,6 +209,6 @@ class MetaPopup(ModalScreen):
         body = self.query_one("#meta-body", ScrollableContainer)
         body.remove_children()
         body.mount(Static(
-            f"Impossible de récupérer les informations :\n{msg}",
+            _("Cannot fetch the information:") + f"\n{msg}",
             id="meta-error",
         ))

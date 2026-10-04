@@ -15,6 +15,13 @@ from __future__ import annotations
 
 import pytest
 
+from core import i18n
+
+# L'interface se teste en français, la langue de l'utilisateur : depuis que les
+# textes sont en anglais dans le code (IE-87), un test qui vérifie un message
+# français vérifie aussi que sa traduction n'a pas bougé.
+i18n.init("fr")
+
 # (module, nom de la variable) — l'état global que l'application pose.
 _GLOBALES = [
     ("core.muxer",    "_mkvmerge_path"),

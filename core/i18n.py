@@ -96,7 +96,7 @@ def liste(elements: Iterable[object]) -> str:
         items=sep.join(el[:-1]), last=el[-1])
 
 
-class ErreurAffichable(Exception):
+class ErreurAffichable(ValueError):
     """Une erreur dont le message est montré à l'utilisateur (L-18).
 
     Elle porte le message **source** et ses paramètres, pas une phrase
@@ -104,6 +104,9 @@ class ErreurAffichable(Exception):
     (hors catalogue, dans une langue stable) ; `e.message()` le rend traduit,
     pour l'écran. Le message se marque à la levée :
     `raise ErreurAffichable(N_("Cannot read {path}."), path=p)`.
+
+    Elle hérite de `ValueError` : les appelants qui attrapaient les
+    `ValueError` d'avant l'attrapent toujours. Pour l'écran, `texte_erreur`.
     """
 
     def __init__(self, msgid: str, **params: object) -> None:
@@ -113,3 +116,9 @@ class ErreurAffichable(Exception):
 
     def message(self) -> str:
         return _(self.msgid).format(**self.params)
+
+
+def texte_erreur(e: BaseException) -> str:
+    """Le texte d'une erreur pour l'écran : traduit si elle le permet, sinon
+    tel quel (erreur d'un outil, du système, d'une bibliothèque)."""
+    return e.message() if isinstance(e, ErreurAffichable) else str(e)

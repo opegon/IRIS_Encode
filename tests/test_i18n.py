@@ -26,10 +26,12 @@ FR_PO = RACINE / "locales" / "fr" / "LC_MESSAGES" / "iris_encode.po"
 
 @pytest.fixture(autouse=True)
 def langue_source():
-    """Chaque test part de l'anglais et y revient : la langue est globale."""
+    """Chaque test part de l'anglais, puis rend la langue d'avant (le
+    français de `conftest.py`) : la langue est globale."""
+    avant = i18n.langue()
     i18n.init("en")
     yield
-    i18n.init("en")
+    i18n.init(avant)
 
 
 def _catalogue(tmp_path: Path, langue: str, entete: str, entrees) -> Path:
@@ -246,3 +248,13 @@ def test_le_glossaire_est_coherent():
     par = {l["source"]: l["target"] for l in lignes}
     assert par["SKIP"] == "SKIP" and par["lossless"] == "lossless"
     assert par["Dry run"] == "Aperçu" and par["Guided"] == "Assistant"
+
+
+def test_texte_erreur_traduit_ce_qui_peut_l_etre(tmp_path):
+    dossier = _catalogue(tmp_path, "fr", _ENTETE_FR, [outils.Entree(
+        msgid="Cannot read {path}.", msgstr=["Impossible de lire {path}."])])
+    i18n.init("fr", dossier)
+    e = i18n.ErreurAffichable(i18n.N_("Cannot read {path}."), path="a")
+    assert isinstance(e, ValueError)          # les `except ValueError` tiennent
+    assert i18n.texte_erreur(e) == "Impossible de lire a."
+    assert i18n.texte_erreur(OSError("disque plein")) == "disque plein"

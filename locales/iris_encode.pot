@@ -1049,6 +1049,9 @@ msgid "Widen"
 msgstr ""
 
 #: tui/common.py:391
+#: tui/screens/config.py:62
+#: tui/screens/config.py:63
+#: tui/screens/config.py:102
 #: tui/screens/donor_picker.py:226
 #: tui/screens/join.py:59
 #: tui/screens/join.py:60
@@ -1061,6 +1064,7 @@ msgid "Back"
 msgstr ""
 
 #: tui/common.py:395
+#: tui/screens/config.py:66
 #: tui/screens/join.py:61
 #: tui/screens/mux_run.py:49
 msgid "Home"
@@ -1090,7 +1094,9 @@ msgid "Source"
 msgstr ""
 
 #. profile column Source — "del." = the source is deleted after encoding (keep it short), "keep" = it is kept.
+#. column Actions of the profile list; keep it short.
 #: tui/common.py:550
+#: tui/screens/config.py:123
 msgctxt "source file"
 msgid "del."
 msgstr ""
@@ -1107,6 +1113,7 @@ msgstr ""
 
 #: tui/screens/ancrage.py:64
 #: tui/screens/ancrage.py:89
+#: tui/screens/config.py:260
 #: tui/screens/confirm.py:72
 #: tui/screens/confirm.py:73
 #: tui/screens/confirm.py:92
@@ -1177,6 +1184,7 @@ msgid "More than five minutes away from {time} — check the time before confirm
 msgstr ""
 
 #: tui/screens/cles.py:69
+#: tui/screens/config.py:259
 #: tui/screens/options.py:51
 #: tui/screens/options.py:83
 #: tui/widgets/profile_form.py:210
@@ -1242,8 +1250,97 @@ msgstr ""
 msgid "API keys saved."
 msgstr ""
 
+#: tui/screens/config.py:50
+msgid "Activate"
+msgstr ""
+
+#: tui/screens/config.py:51
+msgid "New"
+msgstr ""
+
+#: tui/screens/config.py:52
+msgid "Edit"
+msgstr ""
+
+#: tui/screens/config.py:53
+msgid "Copy"
+msgstr ""
+
+#: tui/screens/config.py:54
+#: tui/screens/config.py:55
+#: tui/screens/config.py:215
+#: tui/screens/delete_confirm.py:30
+msgid "Delete"
+msgstr ""
+
+#: tui/screens/config.py:57
+msgid "API keys"
+msgstr ""
+
+#: tui/screens/config.py:61
+#: tui/screens/options.py:62
+msgid "Options"
+msgstr ""
+
+#: tui/screens/config.py:101
+#: tui/screens/config.py:256
+msgid "New profile"
+msgstr ""
+
 #: tui/screens/config.py:120
 msgid "Actions"
+msgstr ""
+
+#. column Actions of the profile list; keep it short.
+#: tui/screens/config.py:123
+msgid "edit"
+msgstr ""
+
+#: tui/screens/config.py:147
+msgid "Manage profiles"
+msgstr ""
+
+#: tui/screens/config.py:148
+#, python-brace-format
+msgid "Active: {profile}"
+msgstr ""
+
+#: tui/screens/config.py:203
+#, python-brace-format
+msgid "[{profile}] is the last profile — cannot be deleted"
+msgstr ""
+
+#: tui/screens/config.py:210
+#, python-brace-format
+msgid "Profile [{profile}] deleted"
+msgstr ""
+
+#: tui/screens/config.py:213
+#, python-brace-format
+msgid "Delete the profile [{profile}]?"
+msgstr ""
+
+#: tui/screens/config.py:214
+msgid "The profile will be removed from profiles.toml for good."
+msgstr ""
+
+#: tui/screens/config.py:255
+#, python-brace-format
+msgid "Copy of {profile}"
+msgstr ""
+
+#: tui/screens/config.py:257
+#, python-brace-format
+msgid "Editing — {profile}"
+msgstr ""
+
+#: tui/screens/config.py:317
+msgid "Configuration — Encoding profiles"
+msgstr ""
+
+#: tui/screens/config.py:318
+#, python-brace-format
+msgid "Profile [{profile}] saved and active"
 msgstr ""
 
 #: tui/screens/confirm.py:91
@@ -1279,10 +1376,6 @@ msgstr ""
 
 #: tui/screens/delete_confirm.py:28
 msgid "Delete the file"
-msgstr ""
-
-#: tui/screens/delete_confirm.py:30
-msgid "Delete"
 msgstr ""
 
 #: tui/screens/donor_picker.py:107
@@ -1657,10 +1750,6 @@ msgid "Subtitle downloaded — {count} left today."
 msgid_plural "Subtitle downloaded — {count} left today."
 msgstr[0] ""
 msgstr[1] ""
-
-#: tui/screens/options.py:62
-msgid "Options"
-msgstr ""
 
 #: tui/screens/options.py:63
 msgid "Power"

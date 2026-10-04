@@ -15,7 +15,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Button, DataTable, Static
 
-from core.i18n import _
+from core.i18n import N_, _, pgettext
 from core import profiles as prof_mod
 from core.profiles import Profile
 from ..common import (barre_etat, PROFIL_COLONNES, cellules_profil, profil_colonnes,
@@ -47,23 +47,23 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
     """Écran Config — CRUD profils d'encodage."""
 
     BINDINGS = [
-        Binding("enter",     "activate",       "Activer",   show=True, priority=True),
-        Binding("n",         "new_profile",    "Nouveau",   show=True),
-        Binding("e",         "edit_focused",   "Éditer",    show=True),
-        Binding("c",         "copy_focused",   "Copier",    show=True),
-        Binding("d",         "delete_focused", "Supprimer", show=True),
-        Binding("delete",    "delete_focused", "Supprimer", show=False),
+        Binding("enter",     "activate",       N_("Activate"),   show=True, priority=True),
+        Binding("n",         "new_profile",    N_("New"),   show=True),
+        Binding("e",         "edit_focused",   N_("Edit"),    show=True),
+        Binding("c",         "copy_focused",   N_("Copy"),    show=True),
+        Binding("d",         "delete_focused", N_("Delete"), show=True),
+        Binding("delete",    "delete_focused", N_("Delete"), show=False),
         # Les clés des services en ligne, sans éditer config.toml (IE-101).
-        Binding("k",         "cles",           "Clés d'API", show=True),
+        Binding("k",         "cles",           N_("API keys"), show=True),
         # Ce qui n'appartient à aucun profil : la veille, l'après-lot.
         # `O` est déjà OpenSubtitles chez le donneur, et une lettre n'a qu'un
         # sens dans toute l'application (UX-12).
-        Binding("u",         "options",        "Options",   show=True),
-        Binding("backspace", "go_back",        "Retour",    show=True),
-        Binding("escape",    "go_back",        "Retour",    show=False),
+        Binding("u",         "options",        N_("Options"),   show=True),
+        Binding("backspace", "go_back",        N_("Back"),    show=True),
+        Binding("escape",    "go_back",        N_("Back"),    show=False),
         # `priority` : un DataTable etouffe la touche avant les bindings —
         # meme avertissement qu'en tete de tui/mixins.py.
-        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+        Binding("ctrl+home", "accueil",   N_("Home"),       show=True,
                 priority=True),
     ]
 
@@ -98,8 +98,8 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         yield DataTable(id="profile-table", cursor_type="row", zebra_stripes=True)
         yield ProfileForm(id="form-container", classes="hidden")
         with Static(id="config-actions"):
-            yield Button("+ Nouveau profil",  id="btn-new",  variant="primary")
-            yield Button("← Retour",          id="btn-back", variant="default")
+            yield Button("+ " + _("New profile"),  id="btn-new",  variant="primary")
+            yield Button("← " + _("Back"),          id="btn-back", variant="default")
         yield KeyFooter(
             actions=self._RACCOURCIS_ECRAN,
             nav=footer_line2(back=True, nav=True, accueil=True),
@@ -119,7 +119,9 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
         entetes = profil_colonnes() + [_("Actions")]
         lignes  = [cellules_profil(n, p, n == active) +
-                   [Text("✎ éditer  ✕ suppr.", no_wrap=True)]
+                   # TRANSLATORS: column Actions of the profile list; keep it short.
+                   [Text("✎ " + _("edit") + "  ✕ " + pgettext("source file", "del."),
+                         no_wrap=True)]
                    for n, p in profiles.items()]
         for entete, largeur in zip(entetes, largeurs_colonnes(entetes, lignes)):
             table.add_column(entete, width=largeur)
@@ -142,8 +144,8 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             return
         active = self._app.active_profile_id
         self.query_one("#config-header-bar", Static).update(barre_etat(
-            "Gérer les profils", "profiles.toml",
-            f"Actif : {active}",
+            _("Manage profiles"), "profiles.toml",
+            _("Active: {profile}").format(profile=active),
         ))
 
     def _focused_profile_name(self) -> str | None:
@@ -198,18 +200,19 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         # Le fichier fait foi, donc tout profil s'efface — sauf le dernier :
         # une liste vide ne laisse rien à sélectionner pour encoder.
         if len(self._app.profiles) == 1:
-            self._flash_header(f"✗ [{name}] est le dernier profil — non supprimable")
+            self._flash_header("✗ " + _("[{profile}] is the last profile — cannot be "
+                                        "deleted").format(profile=name))
             return
         from .confirm import ConfirmModal
         def _on_answer(ok: bool) -> None:
             if ok:
                 self._delete_profile(name)
-                self._flash_header(f"✓ Profil [{name}] supprimé")
+                self._flash_header("✓ " + _("Profile [{profile}] deleted").format(profile=name))
         self.app.push_screen(
             ConfirmModal(
-                title=f"Supprimer le profil [{name}] ?",
-                body="Le profil sera retiré définitivement de profiles.toml.",
-                confirm_label="Supprimer",
+                title=_("Delete the profile [{profile}]?").format(profile=name),
+                body=_("The profile will be removed from profiles.toml for good."),
+                confirm_label=_("Delete"),
                 danger=True,
             ),
             _on_answer,
@@ -249,11 +252,12 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         self.query_one(ProfileForm).remove_class("hidden")
         self.query_one("#config-actions").display = False
         # Header contextuel
-        lbl = (f"Copie de {profile_id}" if copie else
-               "Nouveau profil" if is_new else f"Édition — {profile_id}")
+        lbl = (_("Copy of {profile}").format(profile=profile_id) if copie else
+               _("New profile") if is_new
+               else _("Editing — {profile}").format(profile=profile_id))
         self.query_one("#config-header-bar", Static).update(
-            f" {lbl}   —   " + raccourcis([("ctrl+s", "Enregistrer"),
-                                          ("escape", "Annuler")])
+            f" {lbl}   —   " + raccourcis([("ctrl+s", N_("Save")),
+                                          ("escape", N_("Cancel"))])
         )
 
         form     = self.query_one(ProfileForm)
@@ -310,7 +314,8 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
     def _show_save_notice(self, profile_id: str) -> None:
         self._flash_header(
-            f"Configuration — Profils d'encodage   ✓ Profil [{profile_id}] enregistré et actif"
+            _("Configuration — Encoding profiles") + "   ✓ "
+            + _("Profile [{profile}] saved and active").format(profile=profile_id)
         )
 
     def _delete_profile(self, name: str) -> None:

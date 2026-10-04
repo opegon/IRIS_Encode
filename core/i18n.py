@@ -72,6 +72,12 @@ def N_(message: str) -> str:
     return message
 
 
+def Nn_(singulier: str, pluriel: str) -> tuple[str, str]:
+    """`N_` pour un message au pluriel : marqué pour l'extraction, accordé à
+    l'affichage. Sert à `ErreurAffichable`, avec le paramètre `count`."""
+    return (singulier, pluriel)
+
+
 def ngettext(singulier: str, pluriel: str, n: int) -> str:
     return _traduction.ngettext(singulier, pluriel, n)
 
@@ -103,19 +109,28 @@ class ErreurAffichable(ValueError):
     traduite : `str(e)` rend l'anglais formaté, c'est ce qu'écrit le journal
     (hors catalogue, dans une langue stable) ; `e.message()` le rend traduit,
     pour l'écran. Le message se marque à la levée :
-    `raise ErreurAffichable(N_("Cannot read {path}."), path=p)`.
+    `raise ErreurAffichable(N_("Cannot read {path}."), path=p)`. Au pluriel,
+    `Nn_(singulier, pluriel)` et un paramètre `count`, qui choisit la forme.
 
     Elle hérite de `ValueError` : les appelants qui attrapaient les
     `ValueError` d'avant l'attrapent toujours. Pour l'écran, `texte_erreur`.
     """
 
-    def __init__(self, msgid: str, **params: object) -> None:
+    def __init__(self, msgid: str | tuple[str, str], **params: object) -> None:
         self.msgid  = msgid
         self.params = params
-        super().__init__(msgid.format(**params))
+        if isinstance(msgid, tuple):
+            source = msgid[0] if params["count"] == 1 else msgid[1]
+        else:
+            source = msgid
+        super().__init__(source.format(**params))
 
     def message(self) -> str:
-        return _(self.msgid).format(**self.params)
+        if isinstance(self.msgid, tuple):
+            gabarit = ngettext(*self.msgid, self.params["count"])
+        else:
+            gabarit = _(self.msgid)
+        return gabarit.format(**self.params)
 
 
 def texte_erreur(e: BaseException) -> str:

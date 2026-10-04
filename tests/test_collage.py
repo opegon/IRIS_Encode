@@ -192,19 +192,26 @@ def test_build_join_command_suit_le_chemin_mkvmerge_pose():
 
 
 def test_build_join_command_refuse_une_seule_partie():
-    with pytest.raises(ValueError, match=str(MIN_PARTIES)):
+    from core.i18n import texte_erreur
+    with pytest.raises(ValueError) as refus:
         build_join_command([Path("p1.mkv")], Path("out.mkv"))
+    assert texte_erreur(refus.value) == \
+        f"Jonction : {MIN_PARTIES} parties au minimum (1 donnée)."
 
 
 def test_build_join_command_refuse_une_partie_en_double():
-    with pytest.raises(ValueError, match="deux fois"):
+    from core.i18n import texte_erreur
+    with pytest.raises(ValueError) as refus:
         build_join_command([Path("p1.mkv"), Path("p1.mkv")], Path("out.mkv"))
+    assert "deux fois" in texte_erreur(refus.value)
 
 
 def test_build_join_command_refuse_d_ecraser_une_partie():
+    from core.i18n import texte_erreur
     parts = [Path("D:/films/p1.mkv"), Path("D:/films/p2.mkv")]
-    with pytest.raises(ValueError, match="Jonction refusée"):
+    with pytest.raises(ValueError) as refus:
         build_join_command(parts, parts[1])
+    assert "Jonction refusée" in texte_erreur(refus.value)
 
 
 # ─── Vérification du résultat ─────────────────────────────────────────────────

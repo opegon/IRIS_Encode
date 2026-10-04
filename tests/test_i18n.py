@@ -250,6 +250,18 @@ def test_le_glossaire_est_coherent():
     assert par["Dry run"] == "Aperçu" and par["Guided"] == "Assistant"
 
 
+def test_une_erreur_au_pluriel_s_accorde_dans_chaque_langue(tmp_path):
+    dossier = _catalogue(tmp_path, "fr", _ENTETE_FR, [outils.Entree(
+        msgid="{count} part given.", plural="{count} parts given.",
+        msgstr=["{count} partie donnée.", "{count} parties données."])])
+    gabarit = i18n.Nn_("{count} part given.", "{count} parts given.")
+    zero, deux = (i18n.ErreurAffichable(gabarit, count=n) for n in (0, 2))
+    assert str(zero) == "0 parts given."                     # règle anglaise
+    i18n.init("fr", dossier)
+    assert zero.message() == "0 partie donnée."              # règle française
+    assert deux.message() == "2 parties données."
+
+
 def test_texte_erreur_traduit_ce_qui_peut_l_etre(tmp_path):
     dossier = _catalogue(tmp_path, "fr", _ENTETE_FR, [outils.Entree(
         msgid="Cannot read {path}.", msgstr=["Impossible de lire {path}."])])

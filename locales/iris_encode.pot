@@ -235,16 +235,73 @@ msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply
 msgstr ""
 
 #. separator between the first items of a list ("a, b and c").
-#: core/i18n.py:93
+#: core/i18n.py:99
 msgctxt "list"
 msgid ", "
 msgstr ""
 
 #. joins the last item of a list; {items} is "a, b".
-#: core/i18n.py:95
+#: core/i18n.py:101
 #, python-brace-format
 msgctxt "list"
 msgid "{items} and {last}"
+msgstr ""
+
+#: core/joiner.py:128
+#, python-brace-format
+msgid "At least {minimum} parts are needed to join ({count} selected)."
+msgid_plural "At least {minimum} parts are needed to join ({count} selected)."
+msgstr[0] ""
+msgstr[1] ""
+
+#: core/joiner.py:140
+#, python-brace-format
+msgid "{file} — video in {codec}, {reference} in {reference_codec}."
+msgstr ""
+
+#: core/joiner.py:145
+#, python-brace-format
+msgid "{file} — {width}x{height}, {reference} in {reference_width}x{reference_height}."
+msgstr ""
+
+#: core/joiner.py:156
+#, python-brace-format
+msgid "{file} — audio track {number} in {codec}, {reference_codec} in {reference}."
+msgstr ""
+
+#: core/joiner.py:162
+#, python-brace-format
+msgid "{file} — audio track {number} in {layout}, {reference_layout} in {reference}."
+msgstr ""
+
+#: core/joiner.py:170
+#, python-brace-format
+msgid "{file} — {count} audio track against {reference_count}: the joined file will keep only {kept}."
+msgid_plural "{file} — {count} audio tracks against {reference_count}: the joined file will keep only {kept}."
+msgstr[0] ""
+msgstr[1] ""
+
+#: core/joiner.py:179
+#, python-brace-format
+msgid "{file} — {count} subtitle track against {reference_count}: the joined file will keep only {kept}."
+msgid_plural "{file} — {count} subtitle tracks against {reference_count}: the joined file will keep only {kept}."
+msgstr[0] ""
+msgstr[1] ""
+
+#: core/joiner.py:203
+#, python-brace-format
+msgid "Join: {minimum} parts at least ({count} given)."
+msgid_plural "Join: {minimum} parts at least ({count} given)."
+msgstr[0] ""
+msgstr[1] ""
+
+#: core/joiner.py:210
+msgid "Join: the same part is present twice."
+msgstr ""
+
+#: core/joiner.py:213
+#, python-brace-format
+msgid "Output path identical to one of the parts ({file}). Join refused to avoid corrupting the source file."
 msgstr ""
 
 #: tui/screens/cles.py:99

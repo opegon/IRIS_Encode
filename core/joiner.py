@@ -23,8 +23,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .i18n import N_, Nn_, ErreurAffichable, _, ngettext
 from .scanner import MARQUE_IRIS, VideoInfo, stem_sans_groupe
-from .texte import pluriel
 
 # Suffixe du fichier recousu. Absent de `SUFFIX_BY_ACTION` à dessein : ce n'est
 # pas une sortie d'encodage mais une entrée de travail, et le scan doit la voir
@@ -125,10 +125,10 @@ def controler(infos: list[VideoInfo]) -> Controle:
     """
     ctrl = Controle()
     if len(infos) < MIN_PARTIES:
-        ctrl.blocages.append(
-            f"Il faut au moins {MIN_PARTIES} parties à joindre "
-            f"({pluriel(len(infos), 'sélectionnée')})."
-        )
+        ctrl.blocages.append(ngettext(
+            "At least {minimum} parts are needed to join ({count} selected).",
+            "At least {minimum} parts are needed to join ({count} selected).",
+            len(infos)).format(minimum=MIN_PARTIES, count=len(infos)))
         return ctrl
 
     ref = infos[0]
@@ -137,42 +137,52 @@ def controler(infos: list[VideoInfo]) -> Controle:
 
         if info.codec != ref.codec:
             ctrl.blocages.append(
-                f"{nom} — vidéo en {info.codec}, "
-                f"{ref.path.name} en {ref.codec}."
-            )
+                _("{file} — video in {codec}, {reference} in {reference_codec}.")
+                .format(file=nom, codec=info.codec, reference=ref.path.name,
+                        reference_codec=ref.codec))
         if (info.width, info.height) != (ref.width, ref.height):
             ctrl.blocages.append(
-                f"{nom} — {info.width}x{info.height}, "
-                f"{ref.path.name} en {ref.width}x{ref.height}."
-            )
+                _("{file} — {width}x{height}, {reference} in "
+                  "{reference_width}x{reference_height}.")
+                .format(file=nom, width=info.width, height=info.height,
+                        reference=ref.path.name, reference_width=ref.width,
+                        reference_height=ref.height))
 
         # Pistes audio appariées rang par rang : seules celles que mkvmerge
         # mettra effectivement bout à bout sont comparées.
         for rang, (a, b) in enumerate(zip(ref.audio_tracks, info.audio_tracks)):
             if a.codec != b.codec:
                 ctrl.blocages.append(
-                    f"{nom} — piste audio {rang + 1} en {b.codec}, "
-                    f"{a.codec} dans {ref.path.name}."
-                )
+                    _("{file} — audio track {number} in {codec}, "
+                      "{reference_codec} in {reference}.")
+                    .format(file=nom, number=rang + 1, codec=b.codec,
+                            reference_codec=a.codec, reference=ref.path.name))
             elif a.channels != b.channels:
                 ctrl.blocages.append(
-                    f"{nom} — piste audio {rang + 1} en {b.channel_layout}, "
-                    f"{a.channel_layout} dans {ref.path.name}."
-                )
+                    _("{file} — audio track {number} in {layout}, "
+                      "{reference_layout} in {reference}.")
+                    .format(file=nom, number=rang + 1, layout=b.channel_layout,
+                            reference_layout=a.channel_layout,
+                            reference=ref.path.name))
 
         if len(info.audio_tracks) != len(ref.audio_tracks):
-            ctrl.avertissements.append(
-                f"{nom} — {pluriel(len(info.audio_tracks), 'piste audio', 'pistes audio')} contre "
-                f"{len(ref.audio_tracks)} : le fichier joint n'en gardera que "
-                f"{min(len(info.audio_tracks), len(ref.audio_tracks))}."
-            )
+            n = len(info.audio_tracks)
+            ctrl.avertissements.append(ngettext(
+                "{file} — {count} audio track against {reference_count}: the "
+                "joined file will keep only {kept}.",
+                "{file} — {count} audio tracks against {reference_count}: the "
+                "joined file will keep only {kept}.", n).format(
+                    file=nom, count=n, reference_count=len(ref.audio_tracks),
+                    kept=min(n, len(ref.audio_tracks))))
         if len(info.subtitle_tracks) != len(ref.subtitle_tracks):
-            ctrl.avertissements.append(
-                f"{nom} — {pluriel(len(info.subtitle_tracks), 'piste', 'pistes')} de sous-titres "
-                f"contre {len(ref.subtitle_tracks)} : le fichier joint n'en "
-                f"gardera que "
-                f"{min(len(info.subtitle_tracks), len(ref.subtitle_tracks))}."
-            )
+            n = len(info.subtitle_tracks)
+            ctrl.avertissements.append(ngettext(
+                "{file} — {count} subtitle track against {reference_count}: "
+                "the joined file will keep only {kept}.",
+                "{file} — {count} subtitle tracks against {reference_count}: "
+                "the joined file will keep only {kept}.", n).format(
+                    file=nom, count=n, reference_count=len(ref.subtitle_tracks),
+                    kept=min(n, len(ref.subtitle_tracks))))
 
     return ctrl
 
@@ -190,19 +200,19 @@ def build_join_command(parts: list[Path], output: Path) -> list[str]:
     deux fois, ou si la sortie écrase l'une d'elles.
     """
     if len(parts) < MIN_PARTIES:
-        raise ValueError(
-            f"Jonction : {MIN_PARTIES} parties au minimum ({pluriel(len(parts), 'donnée')})."
-        )
+        raise ErreurAffichable(Nn_(
+            "Join: {minimum} parts at least ({count} given).",
+            "Join: {minimum} parts at least ({count} given)."),
+            minimum=MIN_PARTIES, count=len(parts))
 
     resolus = [p.resolve() for p in parts]
     if len(set(resolus)) != len(resolus):
-        raise ValueError("Jonction : la même partie est présente deux fois.")
+        raise ErreurAffichable(N_("Join: the same part is present twice."))
 
     if output.resolve() in resolus:
-        raise ValueError(
-            f"Chemin de sortie identique à une partie ({output.name}). "
-            f"Jonction refusée pour éviter la corruption du fichier source."
-        )
+        raise ErreurAffichable(N_(
+            "Output path identical to one of the parts ({file}). Join refused "
+            "to avoid corrupting the source file."), file=output.name)
 
     # Relu ici et non importé une fois pour toutes : `set_mkvmerge_path` peut
     # l'avoir changé après l'import du module.

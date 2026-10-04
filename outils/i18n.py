@@ -33,6 +33,7 @@ SOURCES  = ("core", "tui", "main.py")
 MOTS_CLES: dict[str, tuple[str, ...]] = {
     "_":         ("msgid",),
     "N_":        ("msgid",),
+    "Nn_":       ("msgid", "plural"),
     "ngettext":  ("msgid", "plural"),
     "pgettext":  ("ctxt", "msgid"),
     "npgettext": ("ctxt", "msgid", "plural"),
@@ -95,6 +96,14 @@ def _commentaires(source: str) -> dict[int, str]:
     return notes
 
 
+def _deja_compose(arg: ast.expr) -> bool:
+    """f-string, concaténation, `%`, ou `.format()` : la phrase est remplie
+    avant d'être traduite, donc introuvable au catalogue."""
+    return (isinstance(arg, (ast.JoinedStr, ast.BinOp))
+            or isinstance(arg, ast.Call) and isinstance(arg.func, ast.Attribute)
+            and arg.func.attr == "format")
+
+
 def extraire_fichier(chemin: Path, racine: Path) -> list[Entree]:
     source = chemin.read_text(encoding="utf-8")
     notes  = _commentaires(source)
@@ -110,11 +119,12 @@ def extraire_fichier(chemin: Path, racine: Path) -> list[Entree]:
         valeurs: dict[str, str] = {}
         for role, arg in zip(roles, n.args):
             if not (isinstance(arg, ast.Constant) and isinstance(arg.value, str)):
-                if n.func.id == "_" and role == "msgid" and not isinstance(arg, ast.JoinedStr):
-                    break       # `_(variable)` : traduction d'un texte marqué N_()
-                raise ErreurExtraction(
-                    f"{rel}:{n.lineno} — {n.func.id}() veut un texte littéral "
-                    f"(gabarit, puis .format) ; reçu {type(arg).__name__}")
+                if _deja_compose(arg):
+                    raise ErreurExtraction(
+                        f"{rel}:{n.lineno} — {n.func.id}() veut le gabarit, pas "
+                        f"un texte déjà composé ({type(arg).__name__}) : "
+                        f"_(\"… {{nom}}\").format(nom=…)")
+                break           # variable : traduction d'un texte marqué N_()
             valeurs[role] = arg.value
         else:
             e = Entree(msgid=valeurs["msgid"], ctxt=valeurs.get("ctxt"),

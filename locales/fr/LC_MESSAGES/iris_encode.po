@@ -878,6 +878,105 @@ msgstr "action inconnue : {action}"
 msgid "unavailable on this system"
 msgstr "indisponible sur ce système"
 
+#: tui/app.py:62
+#: tui/app.py:63
+#: tui/common.py:396
+msgid "Quit"
+msgstr "Quitter"
+
+#: tui/app.py:71
+#: tui/widgets/entete.py:56
+msgid "Help"
+msgstr "Aide"
+
+#: tui/app.py:74
+msgid "Encodes"
+msgstr "Encodages"
+
+#: tui/app.py:193
+msgid "Graphics card"
+msgstr "Carte graphique"
+
+#: tui/app.py:235
+#, python-brace-format
+msgid "Already in the queue: {files}"
+msgstr "Déjà dans la file : {files}"
+
+#: tui/app.py:241
+#, python-brace-format
+msgid "{count} file added to the queue — {key} to follow it."
+msgid_plural "{count} files added to the queue — {key} to follow it."
+msgstr[0] "{count} fichier ajouté à la file — {key} pour la suivre."
+msgstr[1] "{count} fichiers ajoutés à la file — {key} pour la suivre."
+
+#: tui/app.py:284
+msgid "Files"
+msgstr "Fichiers"
+
+#: tui/app.py:286
+msgid "Batch done"
+msgstr "Lot terminé"
+
+#: tui/app.py:288
+#, python-brace-format
+msgid "Encoding in progress · {done}/{total} · {percent} %"
+msgstr "Encodages en cours · {done}/{total} · {percent} %"
+
+#: tui/app.py:333
+msgid "sleep blocked"
+msgstr "veille bloquée"
+
+#: tui/app.py:335
+#, python-brace-format
+msgid "then {action}"
+msgstr "puis {action}"
+
+#: tui/app.py:368
+msgid "After-batch action cancelled."
+msgstr "Action d'après lot annulée."
+
+#: tui/app.py:372
+msgid "A task has resumed: after-batch action cancelled."
+msgstr "Un traitement a repris : action d'après lot annulée."
+
+#: tui/app.py:378
+#, python-brace-format
+msgid "{action} impossible: {error}"
+msgstr "{action} impossible : {error}"
+
+#: tui/app.py:391
+msgid "No encoding in progress."
+msgstr "Aucun encodage en cours."
+
+#: tui/app.py:419
+msgid "The running encode will be stopped, its partial output deleted."
+msgstr "L'encodage en cours sera arrêté, sa sortie partielle effacée."
+
+#: tui/app.py:420
+msgid "The running mux will be stopped, its partial output deleted."
+msgstr "Le mux en cours sera arrêté, sa sortie partielle effacée."
+
+#: tui/app.py:421
+msgid "The running join will be stopped, its partial output deleted."
+msgstr "La jonction en cours sera arrêtée, sa sortie partielle effacée."
+
+#: tui/app.py:422
+#: tui/app.py:423
+#: tui/app.py:424
+msgid "The running measurement will be lost."
+msgstr "La mesure en cours sera perdue."
+
+#: tui/app.py:425
+msgid "The running resync will be lost."
+msgstr "Le recalage en cours sera perdu."
+
+#: tui/app.py:439
+#, python-brace-format
+msgid "{count} waiting file will not be encoded."
+msgid_plural "{count} waiting files will not be encoded."
+msgstr[0] "{count} fichier en attente ne sera pas encodé."
+msgstr[1] "{count} fichiers en attente ne seront pas encodés."
+
 #. the Delete key, as printed on the keyboard ("Suppr" in French).
 #: tui/common.py:66
 msgid "Del"
@@ -954,10 +1053,6 @@ msgstr "Retour"
 msgid "Home"
 msgstr "Accueil"
 
-#: tui/common.py:396
-msgid "Quit"
-msgstr "Quitter"
-
 #. "Dolby V." is short for Dolby Vision; keep it short.
 #: tui/common.py:521
 msgid "Profile"
@@ -1005,10 +1100,6 @@ msgstr "{usage} — {without_key}."
 #: tui/screens/config.py:120
 msgid "Actions"
 msgstr "Actions"
-
-#: tui/widgets/entete.py:56
-msgid "Help"
-msgstr "Aide"
 
 #: tui/widgets/profile_form.py:41
 msgid "8000k ⚠ recommended"

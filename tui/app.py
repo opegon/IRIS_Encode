@@ -13,6 +13,7 @@ from textual.binding import Binding
 
 import core.config as cfg_mod
 import core.profiles as prof_mod
+from core.i18n import _, N_, ngettext
 from core.platform import PlatformProfile, detect as detect_platform
 from core.veille import GardeVeille
 from version import __version__
@@ -56,8 +57,10 @@ class IrisEncodeApp(App):
     """
 
     BINDINGS = [
-        Binding("f10",    "request_quit", "F10 Quitter", show=True,  priority=True),
-        Binding("ctrl+c", "request_quit", "Quitter",     show=False, priority=True),
+        # La touche n'est pas dans la description : le pied de page la
+        # compose (L-40).
+        Binding("f10",    "request_quit", N_("Quit"),    show=True,  priority=True),
+        Binding("ctrl+c", "request_quit", N_("Quit"),    show=False, priority=True),
         # `H` sans `priority` : une liaison prioritaire au niveau de
         # l'application passe **avant** le widget focalisé, et taper « h » dans
         # un nom de profil ouvrirait le guide au lieu d'écrire la lettre.
@@ -65,10 +68,10 @@ class IrisEncodeApp(App):
         # consomme ; ailleurs elle remonte jusqu'ici. `action_aide` refuse en
         # plus d'agir quand une saisie a le focus — ceinture et bretelles, le
         # coût d'une erreur étant un texte corrompu sans message.
-        Binding("h",      "aide",         "Aide",        show=False),
+        Binding("h",      "aide",         N_("Help"),    show=False),
         # La file d'encodage tourne pendant qu'on navigue ; F12 passe de l'une
         # à l'autre (IE-100). F11 est prise par Windows Terminal (plein écran).
-        Binding("f12",    "encodages",    "Encodages",   show=False, priority=True),
+        Binding("f12",    "encodages",    N_("Encodes"), show=False, priority=True),
     ]
 
     # Deux modes Textual, chacun sa pile d'écrans : la navigation et le lot
@@ -187,7 +190,7 @@ class IrisEncodeApp(App):
         if not self.is_headless:
             self.call_after_refresh(self.demander_cles)
         if self.platform.alerte_nvenc:
-            self.notify(self.platform.alerte_nvenc, title="Carte graphique",
+            self.notify(self.platform.alerte_nvenc, title=_("Graphics card"),
                         severity="warning", timeout=30)
         # Cinq secondes : la veille sur inactivité se compte en minutes, et un
         # traitement qui finit relâche la machine presque aussitôt.
@@ -217,7 +220,6 @@ class IrisEncodeApp(App):
         suite et la navigation reste où elle est.
         """
         from copy import deepcopy
-        from core.texte import pluriel
         from tui.common import touche
 
         vues      = self.sources_en_file()
@@ -230,13 +232,17 @@ class IrisEncodeApp(App):
             vues.add(dec.info.path)
             nouvelles.append(deepcopy(dec))
         if refusees:
-            self.notify(f"Déjà dans la file : {', '.join(refusees)}",
+            self.notify(_("Already in the queue: {files}").format(
+                            files=", ".join(refusees)),
                         severity="warning", timeout=5)
         if not nouvelles:
             return
         if self._lot is not None and self._lot.ajouter(nouvelles):
-            self.notify(f"{pluriel(len(nouvelles), 'fichier ajouté')} à la file"
-                        f" — {touche('f12')} pour la suivre.", timeout=4)
+            self.notify(ngettext(
+                "{count} file added to the queue — {key} to follow it.",
+                "{count} files added to the queue — {key} to follow it.",
+                len(nouvelles)).format(count=len(nouvelles), key=touche("f12")),
+                timeout=4)
             return
         self._nouveau_lot(nouvelles)
 
@@ -275,11 +281,12 @@ class IrisEncodeApp(App):
             return ""
         f12 = touche("f12")
         if self.current_mode == self.MODE_ENCODAGES:
-            return f"{f12} Fichiers"
+            return f"{f12} " + _("Files")
         if lot.termine:
-            return f"{f12} Lot terminé"
+            return f"{f12} " + _("Batch done")
         done, total, pct = lot.avancement()
-        return f"{f12} Encodages en cours · {done}/{total} · {pct} %"
+        return f"{f12} " + _("Encoding in progress · {done}/{total} · {percent} %").format(
+            done=done, total=total, percent=pct)
 
     # ── Veille (`core/veille.py`) ─────────────────────────────────────────────
 
@@ -323,9 +330,10 @@ class IrisEncodeApp(App):
         from core.veille import libelle_action
         morceaux = []
         if self.veille.active:
-            morceaux.append("veille bloquée")
+            morceaux.append(_("sleep blocked"))
         if self.fin_prevue():
-            morceaux.append(f"puis {libelle_action(cfg_mod.get_action_fin(self.cfg))}")
+            morceaux.append(_("then {action}").format(
+                action=libelle_action(cfg_mod.get_action_fin(self.cfg))))
         return f"☾ {' · '.join(morceaux)}" if morceaux else ""
 
     def surveiller_veille(self) -> None:
@@ -357,18 +365,19 @@ class IrisEncodeApp(App):
         def _reponse(ok) -> None:
             self._decompte = False
             if not ok:
-                self.notify("Action d'après lot annulée.", timeout=4)
+                self.notify(_("After-batch action cancelled."), timeout=4)
                 return
             # `F12` reste actif sous la modale : un traitement a pu repartir.
             if self.natures_en_cours():
-                self.notify("Un traitement a repris : action d'après lot "
-                            "annulée.", severity="warning", timeout=8)
+                self.notify(_("A task has resumed: after-batch action "
+                              "cancelled."), severity="warning", timeout=8)
                 return
             erreur = self.veille.executer_fin(action)
             if erreur:
                 from core.veille import libelle_action
-                self.notify(f"{libelle_action(action).capitalize()} impossible : "
-                            f"{erreur}", severity="error", timeout=15)
+                self.notify(_("{action} impossible: {error}").format(
+                    action=libelle_action(action).capitalize(), error=erreur),
+                    severity="error", timeout=15)
 
         self.push_screen(FinDeLotModal(action), _reponse)
 
@@ -379,7 +388,7 @@ class IrisEncodeApp(App):
         elif self._lot is not None:
             self.switch_mode(self.MODE_ENCODAGES)
         else:
-            self.notify("Aucun encodage en cours.", timeout=3)
+            self.notify(_("No encoding in progress."), timeout=3)
 
     def demander_cles(self, tous: bool = False) -> None:
         """La fenêtre des clés d'API (IE-101).
@@ -407,30 +416,30 @@ class IrisEncodeApp(App):
     # Worker en cours → ce que quitter lui fait. Les autres (scan, recherches)
     # ne produisent rien qu'on perdrait.
     _TRAVAUX = {
-        "encoder":       "L'encodage en cours sera arrêté, sa sortie partielle effacée.",
-        "muxer":         "Le mux en cours sera arrêté, sa sortie partielle effacée.",
-        "joiner":        "La jonction en cours sera arrêtée, sa sortie partielle effacée.",
-        "sync-measure":  "La mesure en cours sera perdue.",
-        "sync-ancrage":  "La mesure en cours sera perdue.",
-        "wizard-mesure": "La mesure en cours sera perdue.",
-        "sync-retime":   "Le recalage en cours sera perdu.",
+        "encoder":       N_("The running encode will be stopped, its partial output deleted."),
+        "muxer":         N_("The running mux will be stopped, its partial output deleted."),
+        "joiner":        N_("The running join will be stopped, its partial output deleted."),
+        "sync-measure":  N_("The running measurement will be lost."),
+        "sync-ancrage":  N_("The running measurement will be lost."),
+        "wizard-mesure": N_("The running measurement will be lost."),
+        "sync-retime":   N_("The running resync will be lost."),
     }
 
     def travaux_en_cours(self) -> list[str]:
         """Les phrases de `_TRAVAUX` des workers qui tournent, sans doublon."""
         phrases: list[str] = []
         for w in self.workers:
-            texte = self._TRAVAUX.get(w.name or "")
+            texte = _(self._TRAVAUX.get(w.name or "", ""))
             if w.is_running and texte and texte not in phrases:
                 phrases.append(texte)
         # Ce qui attend dans la file n'a pas de worker à soi : il faut le dire.
         if self._lot is not None and not self._lot.termine:
-            from core.texte import pluriel
             attente = self._lot.en_attente()
             if attente:
-                phrases.append(f"{pluriel(attente, 'fichier')} en attente ne "
-                               f"{'seront' if attente > 1 else 'sera'} pas encodé"
-                               f"{'s' if attente > 1 else ''}.")
+                phrases.append(ngettext(
+                    "{count} waiting file will not be encoded.",
+                    "{count} waiting files will not be encoded.",
+                    attente).format(count=attente))
         return phrases
 
     def action_request_quit(self) -> None:

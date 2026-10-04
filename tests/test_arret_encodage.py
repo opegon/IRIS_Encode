@@ -330,7 +330,8 @@ def test_quitter_pendant_un_encodage_l_annonce_et_l_arrete(faux, tmp_path):
             await pilot.pause(0.3)
         return pendant, sortie
     pendant, sortie = asyncio.run(_run())
-    assert pendant == [IrisEncodeApp._TRAVAUX["encoder"],
+    # Le texte affiché, en français : celui de `_TRAVAUX` traduit.
+    assert pendant == ["L'encodage en cours sera arrêté, sa sortie partielle effacée.",
                        "1 fichier en attente ne sera pas encodé."]
     assert [p.arrete for p in _FauxFfmpeg.lances] == [True]
     assert not sortie.exists()

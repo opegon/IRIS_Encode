@@ -878,6 +878,105 @@ msgstr ""
 msgid "unavailable on this system"
 msgstr ""
 
+#: tui/app.py:62
+#: tui/app.py:63
+#: tui/common.py:396
+msgid "Quit"
+msgstr ""
+
+#: tui/app.py:71
+#: tui/widgets/entete.py:56
+msgid "Help"
+msgstr ""
+
+#: tui/app.py:74
+msgid "Encodes"
+msgstr ""
+
+#: tui/app.py:193
+msgid "Graphics card"
+msgstr ""
+
+#: tui/app.py:235
+#, python-brace-format
+msgid "Already in the queue: {files}"
+msgstr ""
+
+#: tui/app.py:241
+#, python-brace-format
+msgid "{count} file added to the queue — {key} to follow it."
+msgid_plural "{count} files added to the queue — {key} to follow it."
+msgstr[0] ""
+msgstr[1] ""
+
+#: tui/app.py:284
+msgid "Files"
+msgstr ""
+
+#: tui/app.py:286
+msgid "Batch done"
+msgstr ""
+
+#: tui/app.py:288
+#, python-brace-format
+msgid "Encoding in progress · {done}/{total} · {percent} %"
+msgstr ""
+
+#: tui/app.py:333
+msgid "sleep blocked"
+msgstr ""
+
+#: tui/app.py:335
+#, python-brace-format
+msgid "then {action}"
+msgstr ""
+
+#: tui/app.py:368
+msgid "After-batch action cancelled."
+msgstr ""
+
+#: tui/app.py:372
+msgid "A task has resumed: after-batch action cancelled."
+msgstr ""
+
+#: tui/app.py:378
+#, python-brace-format
+msgid "{action} impossible: {error}"
+msgstr ""
+
+#: tui/app.py:391
+msgid "No encoding in progress."
+msgstr ""
+
+#: tui/app.py:419
+msgid "The running encode will be stopped, its partial output deleted."
+msgstr ""
+
+#: tui/app.py:420
+msgid "The running mux will be stopped, its partial output deleted."
+msgstr ""
+
+#: tui/app.py:421
+msgid "The running join will be stopped, its partial output deleted."
+msgstr ""
+
+#: tui/app.py:422
+#: tui/app.py:423
+#: tui/app.py:424
+msgid "The running measurement will be lost."
+msgstr ""
+
+#: tui/app.py:425
+msgid "The running resync will be lost."
+msgstr ""
+
+#: tui/app.py:439
+#, python-brace-format
+msgid "{count} waiting file will not be encoded."
+msgid_plural "{count} waiting files will not be encoded."
+msgstr[0] ""
+msgstr[1] ""
+
 #. the Delete key, as printed on the keyboard ("Suppr" in French).
 #: tui/common.py:66
 msgid "Del"
@@ -954,10 +1053,6 @@ msgstr ""
 msgid "Home"
 msgstr ""
 
-#: tui/common.py:396
-msgid "Quit"
-msgstr ""
-
 #. "Dolby V." is short for Dolby Vision; keep it short.
 #: tui/common.py:521
 msgid "Profile"
@@ -1004,10 +1099,6 @@ msgstr ""
 
 #: tui/screens/config.py:120
 msgid "Actions"
-msgstr ""
-
-#: tui/widgets/entete.py:56
-msgid "Help"
 msgstr ""
 
 #: tui/widgets/profile_form.py:41

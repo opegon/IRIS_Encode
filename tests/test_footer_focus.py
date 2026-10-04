@@ -75,8 +75,10 @@ def test_les_touches_de_l_ecran_disparaissent(footers):
 
 
 def test_les_touches_du_formulaire_apparaissent(footers):
-    for _, libelle in ProfileForm.RACCOURCIS:
-        assert libelle in footers["formulaire"], f"« {libelle} » manquant"
+    from core.i18n import _
+    for _touche, libelle in ProfileForm.RACCOURCIS:
+        # Déclarés en texte source, affichés traduits (IE-88).
+        assert _(libelle) in footers["formulaire"], f"« {_(libelle)} » manquant"
 
 
 def test_f10_reste_partout(footers):

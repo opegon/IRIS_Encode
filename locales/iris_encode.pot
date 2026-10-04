@@ -191,6 +191,49 @@ msgstr ""
 msgid "Forced manually (was DV removal)"
 msgstr ""
 
+#: core/encoder.py:175
+msgid "This graphics card cannot encode this format. AV1 with NVENC needs an RTX 40 or newer; HEVC and H264 remain available."
+msgstr ""
+
+#: core/encoder.py:178
+msgid "NVENC refused: this ffmpeg needs a newer NVIDIA driver than the one installed. Update the driver, or use an ffmpeg built for an older NVENC API."
+msgstr ""
+
+#: core/encoder.py:182
+msgid "The encoder could not be opened on this computer. If it is AV1: NVENC only encodes it from the RTX 40 series."
+msgstr ""
+
+#: core/encoder.py:185
+msgid "The NVIDIA driver cannot be found. Without it, no accelerated encoding is possible."
+msgstr ""
+
+#: core/encoder.py:188
+msgid "The requested bitrate is outside what the encoder accepts. Choose a value within the range it announces."
+msgstr ""
+
+#: core/encoder.py:191
+msgid "The chosen encoder does not support this channel layout or this pixel format."
+msgstr ""
+
+#: core/encoder.py:194
+msgid "The destination disk is full."
+msgstr ""
+
+#: core/encoder.py:196
+msgid "Writing to this location is not allowed."
+msgstr ""
+
+#: core/encoder.py:473
+#, python-brace-format
+msgid "Output path identical to the source ({path}). Empty suffix and same container — encoding refused to avoid corrupting the source file."
+msgstr ""
+
+#. -itsoffset is an ffmpeg option, keep it as is.
+#: core/encoder.py:525
+#, python-brace-format
+msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
+msgstr ""
+
 #. separator between the first items of a list ("a, b and c").
 #: core/i18n.py:93
 msgctxt "list"

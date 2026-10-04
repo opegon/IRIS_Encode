@@ -258,5 +258,7 @@ def test_une_piste_etiree_encore_externe_reste_refusee(tmp_path, donneur):
     """Le garde-fou vaut toujours : ffmpeg ne sait pas étirer en une passe."""
     dec = decide(_info(tmp_path), _profile())
     dec.external_tracks.append(_piste_etiree(donneur, 1, TrackKind.AUDIO))
-    with pytest.raises(ValueError, match="étirement"):
+    from core.i18n import texte_erreur
+    with pytest.raises(ValueError) as refus:
         build_command(dec, _plat())
+    assert "étirement" in texte_erreur(refus.value)      # ce que voit l'écran

@@ -191,6 +191,49 @@ msgstr "Forcé manuellement (était SKIP)"
 msgid "Forced manually (was DV removal)"
 msgstr "Forcé manuellement (était retrait DV)"
 
+#: core/encoder.py:175
+msgid "This graphics card cannot encode this format. AV1 with NVENC needs an RTX 40 or newer; HEVC and H264 remain available."
+msgstr "Cette carte graphique ne sait pas encoder ce format. L'AV1 par NVENC demande une RTX 40 ou plus récente ; le HEVC et le H264 restent disponibles."
+
+#: core/encoder.py:178
+msgid "NVENC refused: this ffmpeg needs a newer NVIDIA driver than the one installed. Update the driver, or use an ffmpeg built for an older NVENC API."
+msgstr "NVENC refusé : ce ffmpeg exige un pilote NVIDIA plus récent que celui installé. Mettre à jour le pilote, ou prendre un ffmpeg compilé pour une API NVENC plus ancienne."
+
+#: core/encoder.py:182
+msgid "The encoder could not be opened on this computer. If it is AV1: NVENC only encodes it from the RTX 40 series."
+msgstr "L'encodeur n'a pas pu s'ouvrir sur cette machine. Si c'est de l'AV1 : NVENC ne l'encode qu'à partir des RTX 40."
+
+#: core/encoder.py:185
+msgid "The NVIDIA driver cannot be found. Without it, no accelerated encoding is possible."
+msgstr "Le pilote NVIDIA est introuvable. Sans lui, aucun encodage accéléré n'est possible."
+
+#: core/encoder.py:188
+msgid "The requested bitrate is outside what the encoder accepts. Choose a value within the range it announces."
+msgstr "Le débit demandé sort de ce que l'encodeur accepte. Choisissez une valeur dans la plage qu'il annonce."
+
+#: core/encoder.py:191
+msgid "The chosen encoder does not support this channel layout or this pixel format."
+msgstr "L'encodeur choisi ne prend pas cette disposition de canaux ou ce format de pixels."
+
+#: core/encoder.py:194
+msgid "The destination disk is full."
+msgstr "Le disque de destination est plein."
+
+#: core/encoder.py:196
+msgid "Writing to this location is not allowed."
+msgstr "Écriture refusée à cet emplacement."
+
+#: core/encoder.py:473
+#, python-brace-format
+msgid "Output path identical to the source ({path}). Empty suffix and same container — encoding refused to avoid corrupting the source file."
+msgstr "Chemin de sortie identique à la source ({path}). Suffixe vide et conteneur identique — encodage refusé pour éviter la corruption du fichier source."
+
+#. -itsoffset is an ffmpeg option, keep it as is.
+#: core/encoder.py:525
+#, python-brace-format
+msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
+msgstr "La piste « {track} » demande un facteur d'étirement, que ffmpeg ne sait pas appliquer en une passe (-itsoffset ne fait qu'un décalage constant). mkvmerge sait le faire : installez-le pour que la greffe passe par lui."
+
 #. separator between the first items of a list ("a, b and c").
 #: core/i18n.py:93
 msgctxt "list"

@@ -22,6 +22,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
+from core.i18n import texte_erreur
 from core.texte import accorde, pluriel
 from core.decision import (AudioAction, FileDecision, VideoAction,
                            resoudre_sorties)
@@ -449,8 +450,8 @@ class RunScreen(TableNavMixin, Screen):
                                 sous_titres_porteur=porteur)
         except ValueError as e:
             s.state     = FileState.ERROR
-            s.last_line = str(e)
-            s.error_msg = str(e)[:60]
+            s.last_line = texte_erreur(e)
+            s.error_msg = texte_erreur(e)[:60]
             self.app.call_from_thread(self._update_row, next_idx)
             if porteur is not None:
                 porteur.unlink(missing_ok=True)
@@ -1171,7 +1172,8 @@ class RunScreen(TableNavMixin, Screen):
         try:
             cmd = build_mux_command(dec.info.path, dec.external_tracks, sortie)
         except ValueError as e:
-            s.state, s.error_msg, s.last_line = FileState.ERROR, str(e)[:60], str(e)
+            s.state, s.error_msg, s.last_line = (FileState.ERROR,
+                                                 texte_erreur(e)[:60], texte_erreur(e))
             self.app.call_from_thread(self._update_row, index)
             return False
 

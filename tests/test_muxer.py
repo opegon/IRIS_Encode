@@ -404,8 +404,10 @@ def test_encode_refuses_stretch(vf: ExternalTrack):
     """-itsoffset ne fait qu'un décalage constant : il faut le dire, pas mentir."""
     from core.encoder import build_command
     vf.stretch = (24000, 25025)
-    with pytest.raises(ValueError, match="étirement"):
+    from core.i18n import texte_erreur
+    with pytest.raises(ValueError) as refus:
         build_command(_encode_decision([vf]), _plat())
+    assert "étirement" in texte_erreur(refus.value)      # ce que voit l'écran
 
 
 def test_encode_never_uses_mov_text_in_mkv(subs: ExternalTrack):

@@ -20,6 +20,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
 from core import config as cfg_mod
+from core.i18n import texte_erreur
 from core.joiner import (build_join_command, controler, derive_duree,
                          duree_attendue, join_output_path, ordre_naturel)
 from core.muxer import MuxProcess
@@ -267,7 +268,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             cmd = build_join_command(parts, self._output)
         except ValueError as e:
             self._done = True
-            self.app.call_from_thread(self._set, "#join-state", f"✗ {e}")
+            self.app.call_from_thread(self._set, "#join-state", f"✗ {texte_erreur(e)}")
             return
 
         self.app.call_from_thread(

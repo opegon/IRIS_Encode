@@ -15,6 +15,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Label, ProgressBar, Static
 
+from core.i18n import texte_erreur
 from core.texte import pluriel
 from core.decision import FileDecision, force_skip_to_encode
 from core.muxer import MuxProcess, build_mux_command, mux_output_path
@@ -128,7 +129,7 @@ class MuxScreen(Screen[bool]):
         except ValueError as e:
             self._done = True
             self.app.call_from_thread(
-                self._set, "#mux-state", f"✗ {e}")
+                self._set, "#mux-state", f"✗ {texte_erreur(e)}")
             return
 
         self.app.call_from_thread(self._set, "#mux-cmd", commande_courte(cmd))

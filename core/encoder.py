@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Callable, Iterator, Optional
 
 from .decision import AudioAction, DVAction, FileDecision, VideoAction
+from .i18n import N_, ErreurAffichable, _
 from .platform import PlatformProfile
 
 # Chemin de ffmpeg, posé au démarrage. Même raison que pour ffprobe : le
@@ -166,32 +167,33 @@ def parse_progress(line: str, total_duration: float) -> Optional[ProgressInfo]:
 # la dernière ligne, c'est-à-dire la seule qui n'apprend rien. Chaque entrée
 # ci-dessous a été reproduite avant d'être ajoutée.
 #
-# (signature dans la sortie ffmpeg, message rendu à l'utilisateur)
+# (signature dans la sortie ffmpeg, message rendu à l'utilisateur). La
+# signature est le texte anglais de ffmpeg, une donnée ; le message est marqué
+# N_() et traduit au retour de `diagnostiquer`.
 _CAUSES: tuple[tuple[str, str], ...] = (
     ("no capable devices found",
-     "Cette carte graphique ne sait pas encoder ce format. L'AV1 par NVENC "
-     "demande une RTX 40 ou plus récente ; le HEVC et le H264 restent "
-     "disponibles."),
+     N_("This graphics card cannot encode this format. AV1 with NVENC needs an "
+        "RTX 40 or newer; HEVC and H264 remain available.")),
     ("required nvenc api version",
-     "NVENC refusé : ce ffmpeg exige un pilote NVIDIA plus récent que celui "
-     "installé. Mettre à jour le pilote, ou prendre un ffmpeg compilé pour une "
-     "API NVENC plus ancienne."),
+     N_("NVENC refused: this ffmpeg needs a newer NVIDIA driver than the one "
+        "installed. Update the driver, or use an ffmpeg built for an older "
+        "NVENC API.")),
     ("could not open encoder",
-     "L'encodeur n'a pas pu s'ouvrir sur cette machine. Si c'est de l'AV1 : "
-     "NVENC ne l'encode qu'à partir des RTX 40."),
+     N_("The encoder could not be opened on this computer. If it is AV1: NVENC "
+        "only encodes it from the RTX 40 series.")),
     ("cannot load nvcuda",
-     "Le pilote NVIDIA est introuvable. Sans lui, aucun encodage accéléré "
-     "n'est possible."),
+     N_("The NVIDIA driver cannot be found. Without it, no accelerated "
+        "encoding is possible.")),
     ("invalid bit rate",
-     "Le débit demandé sort de ce que l'encodeur accepte. Choisissez une "
-     "valeur dans la plage qu'il annonce."),
+     N_("The requested bitrate is outside what the encoder accepts. Choose a "
+        "value within the range it announces.")),
     ("is not supported by the",
-     "L'encodeur choisi ne prend pas cette disposition de canaux ou ce format "
-     "de pixels."),
+     N_("The chosen encoder does not support this channel layout or this "
+        "pixel format.")),
     ("no space left on device",
-     "Le disque de destination est plein."),
+     N_("The destination disk is full.")),
     ("permission denied",
-     "Écriture refusée à cet emplacement."),
+     N_("Writing to this location is not allowed.")),
 )
 
 
@@ -234,7 +236,7 @@ def diagnostiquer(lignes: list[str]) -> Optional[str]:
     texte = "\n".join(lignes).lower()
     for signature, message in _CAUSES:
         if signature in texte:
-            return message
+            return _(message)
     return None
 
 
@@ -468,11 +470,10 @@ def build_command(
 
     # Garde-fou : ne JAMAIS écraser le fichier source
     if decision.output_path.resolve() == info.path.resolve():
-        raise ValueError(
-            f"Chemin de sortie identique à la source ({info.path}). "
-            f"Suffixe vide et conteneur identique — encodage refusé pour éviter "
-            f"la corruption du fichier source."
-        )
+        raise ErreurAffichable(N_(
+            "Output path identical to the source ({path}). Empty suffix and "
+            "same container — encoding refused to avoid corrupting the source "
+            "file."), path=info.path)
 
     cmd: list[str] = [_ffmpeg_path]
 
@@ -520,12 +521,12 @@ def build_command(
     if stretched:
         # Le mux préalable est censé avoir absorbé ces pistes en amont : y
         # arriver ici signifie qu'il n'a pas eu lieu, faute de mkvmerge.
-        raise ValueError(
-            f"La piste « {stretched[0].source_path.name} » demande un facteur "
-            f"d'étirement, que ffmpeg ne sait pas appliquer en une passe "
-            f"(-itsoffset ne fait qu'un décalage constant). mkvmerge sait le "
-            f"faire : installez-le pour que la greffe passe par lui."
-        )
+        # TRANSLATORS: -itsoffset is an ffmpeg option, keep it as is.
+        raise ErreurAffichable(N_(
+            "The track “{track}” needs a stretch factor, which ffmpeg cannot "
+            "apply in one pass (-itsoffset only shifts by a constant offset). "
+            "mkvmerge can: install it so that the track is added through it."),
+            track=stretched[0].source_path.name)
     for ext in ext_tracks:
         if ext.delay_ms > 0:
             cmd += ["-itsoffset", f"{ext.delay_ms / 1000:.3f}"]

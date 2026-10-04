@@ -110,6 +110,11 @@ def main() -> None:
     print("Vérification des outils :")
 
     cfg = cfg_mod.load()
+    # La langue se charge ici, une fois : tout ce qui suit — preflight,
+    # interface — passe par le catalogue ; ce qui précède reste en anglais
+    # seul, comme les lanceurs (IE-91).
+    from core import i18n
+    i18n.init(cfg.get("app", {}).get("language", ""))
     ok  = run_preflight(cfg)
 
     if not ok:

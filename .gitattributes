@@ -6,3 +6,6 @@
 
 # Icône du lanceur : binaire, aucune normalisation de fins de ligne.
 *.ico binary
+
+# Catalogues compilés (IE-86) : binaires, jamais de conversion de fins de ligne.
+*.mo binary

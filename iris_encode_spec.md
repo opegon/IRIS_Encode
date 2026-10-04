@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.71 — document de référence courant
+**Version** : 0.8.9.72 — document de référence courant
 **Date** : 2026-10-04
 **Statut** : stable
 
@@ -58,7 +58,13 @@ iris_encode/
 │   ├── preview.py                ← lancement mpv (visualisation)
 │   ├── veille.py                 ← veille bloquée pendant les traitements, action d'après lot
 │   ├── meta.py                   ← recherche métadonnées IMDB / AlloCiné
-│   └── opensubtitles.py          ← sous-titres OpenSubtitles.com (API REST v1)
+│   ├── opensubtitles.py          ← sous-titres OpenSubtitles.com (API REST v1)
+│   └── i18n.py                   ← traduction de l'interface (gettext, § 2.1)
+├── locales/
+│   ├── iris_encode.pot           ← textes à traduire, extraits du code
+│   └── fr/LC_MESSAGES/           ← iris_encode.po (traduction) et .mo (compilé, versionné)
+├── outils/
+│   └── i18n.py                   ← extraction, mise à jour, compilation (développement)
 ├── tui/
 │   ├── app.py                    ← application Textual principale
 │   ├── common.py                 ← formatage, styles DV, groupes de footer
@@ -103,6 +109,31 @@ iris_encode/
 │   └── test_updates.py
 └── requirements.txt
 ```
+
+### 2.1 Traduction de l'interface — socle (v0.8.9.72)
+
+`core/i18n.py`, sur le `gettext` de la bibliothèque standard. **L'anglais est
+la langue source** : les textes du code sont en anglais, le français est une
+traduction (`locales/fr/LC_MESSAGES/iris_encode.po`). `main.py` charge la langue
+de `[app] language` juste après la lecture de `config.toml` ; ce qui s'affiche
+avant reste en anglais seul, comme les lanceurs. Une langue sans catalogue, et
+tout message non traduit ou flou, retombe sur l'anglais.
+
+| Élément | Rôle |
+|---|---|
+| `_`, `ngettext`, `pgettext`, `npgettext` | Traduction, pluriels (règle de chaque `.po`), contexte d'un libellé ambigu |
+| `N_` | Marque un texte défini au chargement d'un module (table, `BINDINGS`), traduit à l'affichage |
+| `liste(éléments)` | « a, b and c » / « a, b et c » |
+| `ErreurAffichable(msgid, **params)` | Erreur montrée à l'écran : `str(e)` en anglais pour le journal, `e.message()` traduit |
+| `tui.common.texte_style(gabarit, **champs)` | Phrase traduite dont certains champs (une touche) sont stylés, sans balise dans le message |
+
+Les catalogues compilés (`.mo`) sont **versionnés** et livrés dans la release :
+rien n'est compilé chez l'utilisateur. `outils/i18n.py` (sans dépendance)
+extrait les textes vers le `.pot` (`extraire`), met les `.po` à jour (`maj`,
+traductions gardées, disparus en obsolètes) et compile les `.mo` (`compiler`) ;
+`tout` enchaîne les trois. `tests/test_i18n.py` vérifie que le `.pot` et les `.mo`
+du dépôt sont à jour. Le détail des règles d'écriture est en tête de
+`core/i18n.py`. L'extraction des textes existants suit (IE-87, IE-88).
 
 ---
 
@@ -2803,6 +2834,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.72 | 2026-10-04 | **Socle de la traduction** (§ 2.1, IE-86) : `core/i18n.py` (gettext, anglais source, repli), `locales/` avec le catalogue français et son `.mo` versionné, `outils/i18n.py` sans dépendance (extraction, mise à jour, compilation), `ErreurAffichable`, `liste`, `texte_style` ; `main.py` charge la langue après `config.toml` ; aucun texte encore extrait, rien ne change à l'écran · `tests/test_i18n.py` |
 | 0.8.9.71 | 2026-10-04 | Retrait DV en MKV : le compteur de l'étape audio (« ▶ 3/4 ») se calcule comme ses voisines ; aucun changement visible (clôture d'IE-83) |
 | 0.8.9.70 | 2026-10-04 | **Noms de piste proposés selon la langue de la piste** (IE-113, L-77, § 9.3) : le champ Nom du recalage proposait la même liste française à toute piste ; `muxer.noms_proposes` la tire de la langue de la piste (`fre`, `eng`, sinon Forced/SDH). Données écrites dans le fichier, hors traduction de l'interface · `tests/test_muxer.py` |
 | 0.8.9.69 | 2026-10-04 | **Exemple décimal et nom de touche alignés sur le reste** (IE-113, L-56, L-70) : le point de repère montre « 13:22.5 » (la virgule reste acceptée), la fin de jonction écrit « ⌫ » et non « BACKSPACE » · `tests/test_revue_code.py` |

@@ -7,6 +7,7 @@ codec/débit, groupes de raccourcis standard pour le KeyFooter.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from rich.cells import cell_len
@@ -179,6 +180,32 @@ def colonne_fixe(table, libelle: str, plancher: int, **kw) -> None:
 def libelle_type_piste(kind: TrackKind) -> str:
     """Le type d'une piste greffée, tel que l'affichent les écrans (L-66)."""
     return "audio" if kind == TrackKind.AUDIO else "sous-titre"
+
+
+_CHAMP = re.compile(r"\{\{|\}\}|\{(\w+)\}")
+
+
+def texte_style(gabarit: str, style: str = "", **champs) -> Text:
+    """Un gabarit traduit dont certains champs portent leur propre style.
+
+    `texte_style(_("{key} launches the join."), key=("F2", "bold"))` : la
+    phrase reste entière pour le traducteur, qui peut déplacer `{key}`, et le
+    style ne passe pas par des balises Rich dans le message (L-57, L-65). Un
+    champ vaut un texte, ou un couple (texte, style). `{{` et `}}` donnent des
+    accolades.
+    """
+    t, pos = Text(style=style), 0
+    for m in _CHAMP.finditer(gabarit):
+        t.append(gabarit[pos:m.start()])
+        if m.group(1) is None:
+            t.append(m.group(0)[0])
+        else:
+            v = champs[m.group(1)]
+            texte, st = v if isinstance(v, tuple) else (v, "")
+            t.append(str(texte), style=st)
+        pos = m.end()
+    t.append(gabarit[pos:])
+    return t
 
 
 # Toute cellule de table passe par ici. `tests/test_troncature.py` le vérifie.

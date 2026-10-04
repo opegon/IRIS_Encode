@@ -1,0 +1,22 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: IRIS ENCODE\n"
+"Report-Msgid-Bugs-To: https://github.com/opegon/IRIS_Encode/issues\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#. separator between the first items of a list ("a, b and c").
+#: core/i18n.py:93
+msgctxt "list"
+msgid ", "
+msgstr ", "
+
+#. joins the last item of a list; {items} is "a, b".
+#: core/i18n.py:95
+#, python-brace-format
+msgctxt "list"
+msgid "{items} and {last}"
+msgstr "{items} et {last}"

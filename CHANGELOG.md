@@ -1,5 +1,35 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.72] — 2026-10-04
+
+### Socle de la traduction
+
+IE-86, avec les décisions d'IE-111 prises le 2026-10-04 : `.mo` versionnés,
+outillage maison sans dépendance. Aucun texte n'est encore extrait (IE-87,
+IE-88) : rien ne change à l'écran.
+
+- `core/i18n.py`, sur le `gettext` de la bibliothèque standard. L'anglais est
+  la langue source ; une langue sans catalogue, et tout message non traduit ou
+  flou, retombe sur l'anglais. `_`, `N_`, `ngettext`, `pgettext`, `npgettext`
+  (les noms que connaissent les outils de traduction), `liste()` (« a, b et
+  c »), et `ErreurAffichable` : `str(e)` en anglais pour le journal,
+  `e.message()` traduit pour l'écran. Les règles d'écriture des messages sont
+  en tête du module.
+- `main.py` charge la langue de `[app] language` juste après `config.toml`.
+- `locales/` : `iris_encode.pot`, et le français (`.po` + `.mo` compilé,
+  versionné, livré dans la release). `.gitattributes` : `*.mo` binaire.
+- `outils/i18n.py` : `extraire` (lecture du code par AST, commentaires
+  `# TRANSLATORS:` transmis), `maj` (traductions gardées, messages disparus
+  conservés en obsolètes), `compiler` (format GNU, sans les messages flous
+  ni vides), `tout`. Sorties déterministes. Les catalogues produits donnent
+  les mêmes traductions que le `msgfmt.py` de référence de CPython.
+- `tui/common.texte_style` : une phrase traduite dont certains champs (une
+  touche) portent leur style, sans balise Rich dans le message.
+- `tests/test_i18n.py` : repli sur l'anglais, contexte, règle de pluriel
+  française, erreur affichable, lecture et réécriture des `.po`, fusion,
+  extraction, refus de `_(f"…")` dans tout le code, `.pot` et `.mo` du dépôt à
+  jour, mêmes `{champs}` dans chaque traduction. Spec § 2.1.
+
 ## [v0.8.9.71] — 2026-10-04
 
 ### Compteur d'étapes du retrait DV calculé

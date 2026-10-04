@@ -13,10 +13,23 @@ from textual.widgets import LoadingIndicator, Static
 
 from ..common import raccourcis
 
-from core.meta import MovieMeta, fetch_allocine, fetch_imdb, parse_title
+from core.meta import (Correspondance, MovieMeta, fetch_allocine, fetch_imdb,
+                       parse_title)
 
 
 _LIBELLES = {"allocine": "AlloCiné", "imdb": "IMDB"}
+
+LIBELLES_CORRESPONDANCE: dict[Correspondance, str] = {
+    Correspondance.TITRE_ET_ANNEE: "titre et année",
+    Correspondance.TITRE:          "titre",
+    Correspondance.INCERTAINE:     "incertaine — le titre ne correspond pas",
+}
+
+
+def ligne_correspondance(c: Correspondance) -> Text:
+    """Le libellé de la correspondance, en alerte quand elle est incertaine."""
+    return Text(LIBELLES_CORRESPONDANCE[c],
+                style="bold dark_orange" if c is Correspondance.INCERTAINE else "")
 
 
 class MetaPopup(ModalScreen):
@@ -157,10 +170,8 @@ class MetaPopup(ModalScreen):
         # Le choix parmi les résultats peut se tromper : on dit sur quoi il
         # repose, et le lien en bas de fiche permet de vérifier (UX-24).
         if meta.confiance:
-            incertaine = meta.confiance.startswith("incertaine")
             body.mount(Static("Correspondance", classes="meta-lbl"))
-            body.mount(Static(Text(meta.confiance,
-                                   style="bold dark_orange" if incertaine else ""),
+            body.mount(Static(ligne_correspondance(meta.confiance),
                               classes="meta-val"))
 
         rows = [

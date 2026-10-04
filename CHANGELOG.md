@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.64] — 2026-10-04
+
+### Correspondance de la fiche : une valeur, pas un libellé
+
+IE-113, constat L-23 de l'audit de localisation.
+
+La fiche AlloCiné dit sur quoi repose le choix du film (UX-24). Ce choix était
+un texte (« titre et année », « incertaine — le titre ne correspond pas »), et
+l'écran passait la ligne en orange en testant `startswith("incertaine")` :
+une traduction aurait éteint l'alerte. Rien ne change à l'écran en français.
+
+- `core/meta.Correspondance` : `TITRE_ET_ANNEE`, `TITRE`, `INCERTAINE`.
+  `choisir_allocine` et `MovieMeta.confiance` portent cette valeur.
+- `tui/screens/meta_popup.py` : `LIBELLES_CORRESPONDANCE` et
+  `ligne_correspondance`, seuls à connaître le texte et la couleur.
+- `tests/test_revue_code.py` : niveaux rendus, couleur tirée du niveau, un
+  libellé pour chaque niveau.
+
 ## [v0.8.9.63] — 2026-10-04
 
 ### Couleur « HD audio » lue sur le profil

@@ -934,7 +934,7 @@ _AVATAR = [
 def test_le_titre_original_designe_la_fiche():
     best, confiance = meta_mod.choisir_allocine(_AVATAR, "Avatar Fire and Ash", 2025)
     assert best["entity_id"] == 2
-    assert confiance == "titre et année"
+    assert confiance is meta_mod.Correspondance.TITRE_ET_ANNEE
 
 
 def test_lannee_departage_deux_titres_identiques():
@@ -955,4 +955,15 @@ def test_une_serie_est_retenue():
 def test_un_resultat_sans_rapport_est_dit_incertain():
     best, confiance = meta_mod.choisir_allocine(_AVATAR[:1], "Avatar Fire and Ash", 2025)
     assert best["entity_id"] == 1
-    assert confiance.startswith("incertaine")
+    assert confiance is meta_mod.Correspondance.INCERTAINE
+
+
+def test_la_couleur_de_la_correspondance_suit_le_niveau_pas_le_libelle():
+    """L-23 (IE-113) : l'écran testait `confiance.startswith("incertaine")`.
+    Le niveau est une valeur ; le libellé, traduit, n'y joue plus aucun rôle."""
+    from tui.screens.meta_popup import LIBELLES_CORRESPONDANCE, ligne_correspondance
+    C = meta_mod.Correspondance
+    assert set(LIBELLES_CORRESPONDANCE) == set(C)
+    assert "dark_orange" in str(ligne_correspondance(C.INCERTAINE).style)
+    for sure in (C.TITRE, C.TITRE_ET_ANNEE):
+        assert "dark_orange" not in str(ligne_correspondance(sure).style)

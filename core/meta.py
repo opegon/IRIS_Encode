@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
@@ -51,6 +52,17 @@ def parse_title(path: Path) -> tuple[str, Optional[int]]:
 
 # ─── Données retournées ───────────────────────────────────────────────────────
 
+class Correspondance(Enum):
+    """Sur quoi repose le choix d'une fiche parmi les résultats (UX-24).
+
+    Une valeur, pas un libellé : l'écran en tirait la couleur en testant le
+    début du texte affiché, ce qu'une traduction aurait cassé (L-23).
+    """
+    TITRE_ET_ANNEE = auto()
+    TITRE          = auto()
+    INCERTAINE     = auto()   # le titre ne correspond pas : à vérifier
+
+
 @dataclass
 class MovieMeta:
     source:     str
@@ -66,7 +78,7 @@ class MovieMeta:
     url:        str              = ""
     # Ce qui a fait choisir cette fiche parmi les résultats, quand le choix
     # n'est pas évident — vide si la source a répondu d'un seul résultat sûr.
-    confiance:  str              = ""
+    confiance:  Optional[Correspondance] = None
 
 
 # ─── IMDB : OMDb API (clé config) + suggestions API (fallback) ───────────────
@@ -203,7 +215,8 @@ _RESSEMBLANCE_MIN = 0.8
 
 
 def choisir_allocine(results: list[dict], title: str,
-                     year: Optional[int]) -> tuple[Optional[dict], str]:
+                     year: Optional[int]
+                     ) -> tuple[Optional[dict], Optional[Correspondance]]:
     """Le résultat d'autocomplétion qui correspond au fichier, et pourquoi.
 
     L'ancien choix gardait le premier résultat, sauf si l'année figurait dans
@@ -229,10 +242,11 @@ def choisir_allocine(results: list[dict], title: str,
         if score > score_max:
             meilleur, score_max, sim_max, annee_ok = res, score, sim, meme_annee
     if meilleur is None:
-        return None, ""
+        return None, None
     if sim_max >= _RESSEMBLANCE_MIN:
-        return meilleur, "titre et année" if annee_ok else "titre"
-    return meilleur, "incertaine — le titre ne correspond pas"
+        return meilleur, (Correspondance.TITRE_ET_ANNEE if annee_ok
+                          else Correspondance.TITRE)
+    return meilleur, Correspondance.INCERTAINE
 
 
 def fetch_allocine(title: str, year: Optional[int] = None) -> MovieMeta:

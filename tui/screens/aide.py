@@ -18,12 +18,16 @@ confiance justement parce qu'on ne connaît pas la réponse.
 """
 from __future__ import annotations
 
+import textwrap
+
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Static
+
+from core.i18n import N_, _
 
 from ..common import footer_line2, touche
 from ..widgets.entete import Entete
@@ -342,16 +346,16 @@ class AideScreen(Screen):
         # `priority` : un conteneur défilant étouffe les touches avant que le
         # système de bindings soit consulté — même avertissement qu'en tête de
         # tui/mixins.py.
-        Binding("backspace", "fermer", "Retour", show=True,  priority=True),
-        Binding("escape",    "fermer", "Retour", show=False, priority=True),
-        Binding("h",         "fermer", "Fermer", show=True,  priority=True),
+        Binding("backspace", "fermer", N_("Back"),  show=True,  priority=True),
+        Binding("escape",    "fermer", N_("Back"),  show=False, priority=True),
+        Binding("h",         "fermer", N_("Close"), show=True,  priority=True),
     ]
 
     def compose(self) -> ComposeResult:
         yield Entete()
         with VerticalScroll(id="aide-corps"):
             yield Static(self._contenu(), id="aide-texte", markup=False)
-        yield KeyFooter(actions=[("backspace", "Retour"), ("h", "Fermer")],
+        yield KeyFooter(actions=[("backspace", N_("Back")), ("h", N_("Close"))],
                         nav=footer_line2(nav=True))
 
     def on_mount(self) -> None:
@@ -361,29 +365,30 @@ class AideScreen(Screen):
 
     def _contenu(self) -> Text:
         t = Text()
-        t.append("Guide des touches\n", style="bold")
-        t.append("Chaque touche de chaque écran, avec ce qu'elle fait.\n"
-                 "Cette page est construite à partir des raccourcis\n"
-                 "réellement déclarés : elle ne peut pas être en retard\n"
-                 "sur l'application.\n\n",
+        t.append(_("Key guide") + "\n", style="bold")
+        # Repliée ici, pas dans le message : la page tient en 74 colonnes.
+        t.append(textwrap.fill(_("Every key of every screen, with what it does. "
+                                 "This page is built from the shortcuts actually "
+                                 "declared: it cannot lag behind the "
+                                 "application."), 74) + "\n\n",
                  style="dim")
 
         classes = classes_documentees()
 
         t.append("─" * 74 + "\n", style="dim")
-        t.append("PARTOUT\n", style="bold")
-        t.append("Ces touches répondent sur tous les écrans.\n\n", style="dim")
+        t.append(_("Everywhere").upper() + "\n", style="bold")
+        t.append(_("These keys work on every screen.") + "\n\n", style="dim")
         for cle, action in (("h", "aide"), ("ctrl+home", "accueil"),
                             ("f12", "encodages"), ("f10", "request_quit")):
             self._ligne(t, touche(cle), _COMMUNES[action])
         t.append("\n")
-        t.append("Dans un tableau\n", style="bold")
+        t.append(_("In a table") + "\n", style="bold")
         for cle, action in (("home", "table_home"), ("end", "table_end"),
                             ("pageup", "table_page_up"),
                             ("pagedown", "table_page_down")):
             self._ligne(t, touche(cle), _COMMUNES[action])
         t.append("\n")
-        t.append("Colonnes redimensionnables — accueil, pistes, aperçu\n",
+        t.append(_("Resizable columns — home, tracks, dry run") + "\n",
                  style="bold")
         for cle, action in (("tab", "col_next"), ("shift+tab", "col_prev"),
                             (">", "col_grow"), ("<", "col_shrink")):
@@ -403,7 +408,7 @@ class AideScreen(Screen):
             t.append(f"{titre.upper()}\n", style="bold")
             t.append(f"{resume}\n\n", style="dim")
             for nom_touche, action, libelle in lignes:
-                self._ligne(t, nom_touche, explication(nom, action) or libelle)
+                self._ligne(t, nom_touche, explication(nom, action) or _(libelle))
             t.append("\n")
         return t
 

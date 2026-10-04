@@ -1063,6 +1063,9 @@ msgid "Widen"
 msgstr "Élargir"
 
 #: tui/common.py:391
+#: tui/screens/aide.py:349
+#: tui/screens/aide.py:350
+#: tui/screens/aide.py:358
 #: tui/screens/config.py:62
 #: tui/screens/config.py:63
 #: tui/screens/config.py:102
@@ -1148,6 +1151,42 @@ msgstr "garder"
 #, python-brace-format
 msgid "The columns already take all {width} columns of the terminal — narrow another one ({column} can still be made smaller)."
 msgstr "Les colonnes occupent déjà les {width} colonnes du terminal — rétrécissez-en une autre ({column} reste réglable vers le bas)."
+
+#: tui/screens/aide.py:351
+#: tui/screens/aide.py:358
+#: tui/screens/meta_popup.py:48
+#: tui/screens/meta_popup.py:49
+#: tui/screens/meta_popup.py:137
+#: tui/screens/segments.py:64
+#: tui/screens/segments.py:65
+#: tui/screens/segments.py:66
+#: tui/screens/segments.py:106
+msgid "Close"
+msgstr "Fermer"
+
+#: tui/screens/aide.py:368
+msgid "Key guide"
+msgstr "Guide des touches"
+
+#: tui/screens/aide.py:370
+msgid "Every key of every screen, with what it does. This page is built from the shortcuts actually declared: it cannot lag behind the application."
+msgstr "Chaque touche de chaque écran, avec ce qu'elle fait. Cette page est construite à partir des raccourcis réellement déclarés : elle ne peut pas être en retard sur l'application."
+
+#: tui/screens/aide.py:379
+msgid "Everywhere"
+msgstr "Partout"
+
+#: tui/screens/aide.py:380
+msgid "These keys work on every screen."
+msgstr "Ces touches répondent sur tous les écrans."
+
+#: tui/screens/aide.py:385
+msgid "In a table"
+msgstr "Dans un tableau"
+
+#: tui/screens/aide.py:391
+msgid "Resizable columns — home, tracks, dry run"
+msgstr "Colonnes redimensionnables — accueil, pistes, aperçu"
 
 #: tui/screens/ancrage.py:64
 #: tui/screens/ancrage.py:89
@@ -2053,16 +2092,6 @@ msgstr "titre"
 #: tui/screens/meta_popup.py:34
 msgid "uncertain — the title does not match"
 msgstr "incertaine — le titre ne correspond pas"
-
-#: tui/screens/meta_popup.py:48
-#: tui/screens/meta_popup.py:49
-#: tui/screens/meta_popup.py:137
-#: tui/screens/segments.py:64
-#: tui/screens/segments.py:65
-#: tui/screens/segments.py:66
-#: tui/screens/segments.py:106
-msgid "Close"
-msgstr "Fermer"
 
 #: tui/screens/meta_popup.py:182
 msgid "Match"

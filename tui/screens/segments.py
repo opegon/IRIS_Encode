@@ -9,6 +9,7 @@ recalage n'a que trois lignes : le détail vit ici.
 """
 from __future__ import annotations
 
+from rich.cells import cell_len
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -17,9 +18,10 @@ from textual.widgets import DataTable, Label, Static
 
 from ..common import raccourcis
 
-from core.sync import Segment, libelle_confiance, mmss
+from core.i18n import _, N_
+from core.sync import Segment, libelle_confiance, mmss, niveau_confiance
 
-_COLUMNS = ["Plage", "Durée", "Décalage", "Écart", "Confiance"]
+_COLUMNS = [N_("Segment"), N_("Duration"), N_("Offset"), N_("Gap"), N_("Confidence")]
 
 
 class SegmentsScreen(ModalScreen[None]):
@@ -59,9 +61,9 @@ class SegmentsScreen(ModalScreen[None]):
     """
 
     BINDINGS = [
-        Binding("escape",    "close", "Fermer", show=False, priority=True),
-        Binding("backspace", "close", "Fermer", show=False, priority=True),
-        Binding("enter",     "close", "Fermer", show=False, priority=True),
+        Binding("escape",    "close", N_("Close"), show=False, priority=True),
+        Binding("backspace", "close", N_("Close"), show=False, priority=True),
+        Binding("enter",     "close", N_("Close"), show=False, priority=True),
     ]
 
     def __init__(self, segments: list[Segment], track_name: str = "") -> None:
@@ -84,15 +86,16 @@ class SegmentsScreen(ModalScreen[None]):
             d = seg.delay_ms - self._segments[i - 1].delay_ms
             ecart = Text(f"{d:+d} ms", style="dark_orange", no_wrap=True)
 
-        niveau = libelle_confiance(seg.confidence)
-        conf = Text(niveau, no_wrap=True,
-                    style="dim" if niveau in ("aucune", "faible") else "")
+        # Le style suit le niveau, pas son libellé (traduit, il ne vaudrait
+        # plus « aucune » ni « faible ») : même famille qu'UX-29.
+        conf = Text(libelle_confiance(seg.confidence), no_wrap=True,
+                    style="dim" if niveau_confiance(seg.confidence) < 2 else "")
         return [plage, duree, delay, ecart, conf]
 
     # ── Composition ───────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
-        titre = "Plages de décalage détectées"
+        titre = _("Detected offset segments")
         if self._track:
             titre += f" — {self._track}"
         with Static(id="segments-box"):
@@ -100,17 +103,18 @@ class SegmentsScreen(ModalScreen[None]):
             yield DataTable(id="segments-table", cursor_type="row",
                             show_header=True, zebra_stripes=True)
             yield Static("", id="segments-note")
-            yield Static(raccourcis([("escape", "Fermer")]), id="segments-hint")
+            yield Static(raccourcis([("escape", N_("Close"))]), id="segments-hint")
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
         rows  = [self._row_cells(i, s) for i, s in enumerate(self._segments)]
 
+        entetes = [_(c) for c in _COLUMNS]
         widths = [
-            max(len(_COLUMNS[i]), max((len(r[i].plain) for r in rows), default=0))
-            for i in range(len(_COLUMNS))
+            max(cell_len(entetes[i]), max((r[i].cell_len for r in rows), default=0))
+            for i in range(len(entetes))
         ]
-        for header, w in zip(_COLUMNS, widths):
+        for header, w in zip(entetes, widths):
             table.add_column(header, width=w)
         for row in rows:
             table.add_row(*row)
@@ -122,11 +126,10 @@ class SegmentsScreen(ModalScreen[None]):
         total = (self._segments[-1].delay_ms - self._segments[0].delay_ms
                  if self._segments else 0)
         return Text(
-            f"Chaque plage est alignée, à son propre décalage — les deux "
-            f"fichiers portent le même contenu\n"
-            f"dans deux montages différents ({total:+d} ms accumulés). "
-            f"Un décalage unique ne peut pas les\n"
-            f"recaler : la greffe demanderait de fabriquer une piste corrigée.",
+            _("Each segment is aligned, at its own offset — both files carry "
+              "the same content in two different cuts ({total} ms accumulated). "
+              "A single offset cannot resync them: adding the track would "
+              "require building a corrected track.").format(total=f"{total:+d}"),
             style="dim",
         )
 

@@ -21,8 +21,7 @@ from textual.widgets import DataTable, Label, Static
 
 from ..common import colonne_fixe, raccourcis
 
-from core.texte import pluriel
-from core.i18n import texte_erreur
+from core.i18n import N_, _, ngettext, texte_erreur
 from core.opensubtitles import Client, ErreurOpenSubtitles, Resultat
 
 
@@ -53,9 +52,9 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
     """
 
     BINDINGS = [
-        Binding("enter",     "download", "Télécharger", show=True, priority=True),
-        Binding("escape",    "cancel",   "Annuler",     show=True, priority=True),
-        Binding("backspace", "cancel",   "Retour",      show=False, priority=True),
+        Binding("enter",     "download", N_("Download"), show=True, priority=True),
+        Binding("escape",    "cancel",   N_("Cancel"),     show=True, priority=True),
+        Binding("backspace", "cancel",   N_("Back"),      show=False, priority=True),
     ]
 
     def __init__(self, video: Path, langues: list[str]) -> None:
@@ -71,18 +70,21 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
             yield Label("OpenSubtitles.com", id="os-title")
             yield Static("", id="os-state", markup=False)
             yield DataTable(id="os-table", cursor_type="row", zebra_stripes=True)
-            yield Static(raccourcis([("enter", "Télécharger"),
-                                     ("escape", "Annuler")]), id="os-hint")
+            yield Static(raccourcis([("enter", N_("Download")),
+                                     ("escape", N_("Cancel"))]), id="os-hint")
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
         # ≡ : déposé pour cette release exacte, donc déjà synchronisé.
         table.add_column("",        width=3,  key="hash")
-        colonne_fixe(table, "Langue",  7,  key="lang")
-        colonne_fixe(table, "Téléch.", 8,  key="count")
-        colonne_fixe(table, "SME",     4,  key="hi")
+        colonne_fixe(table, _("Language"), 7,  key="lang")
+        # TRANSLATORS: column header, short for "downloads"; 8 characters at most.
+        colonne_fixe(table, _("Downl."),   8,  key="count")
+        # TRANSLATORS: column header, subtitles for the deaf and hard of
+        # hearing (French: SME); 4 characters at most.
+        colonne_fixe(table, _("SDH"),      4,  key="hi")
         table.add_column("Release", width=None, key="release")
-        self._etat(f"Recherche pour {self._video.name}…")
+        self._etat(_("Searching for {file}…").format(file=self._video.name))
         self._chercher()
         table.focus()
 
@@ -116,10 +118,13 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
             )
         exacts = sum(r.empreinte for r in resultats)
         if not resultats:
-            self._etat("Aucun sous-titre trouvé dans les langues du profil.")
+            self._etat(_("No subtitle found in the profile's languages."))
         else:
-            self._etat(f"{pluriel(len(resultats), 'résultat')}, dont {exacts} pour cette "
-                       f"release exacte (≡, déjà synchronisés).")
+            # TRANSLATORS: ≡ marks the results made for this exact release.
+            self._etat(ngettext(
+                "{count} result, {exact} for this exact release (≡, already in sync).",
+                "{count} results, {exact} for this exact release (≡, already in sync).",
+                len(resultats)).format(count=len(resultats), exact=exacts))
 
     def _echec(self, message: str) -> None:
         self._occupe = False
@@ -132,7 +137,7 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
         if self._occupe or not (0 <= row < len(self._resultats)):
             return
         self._occupe = True
-        self._etat("Téléchargement…")
+        self._etat(_("Downloading…"))
         self._telecharger(self._resultats[row])
 
     @work(thread=True, exclusive=True, name="os-download")
@@ -145,7 +150,10 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
 
     def _fini(self, chemin: Path, restant) -> None:
         if restant is not None:
-            self.app.notify(f"Sous-titre téléchargé — {pluriel(restant, 'restant')} aujourd'hui.")
+            self.app.notify(ngettext(
+                "Subtitle downloaded — {count} left today.",
+                "Subtitle downloaded — {count} left today.",
+                restant).format(count=restant))
         self.dismiss(chemin)
 
     def action_cancel(self) -> None:

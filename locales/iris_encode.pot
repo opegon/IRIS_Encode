@@ -1047,6 +1047,7 @@ msgid "Widen"
 msgstr ""
 
 #: tui/common.py:391
+#: tui/screens/opensubtitles.py:57
 #: tui/screens/profile_picker.py:61
 #: tui/screens/value_picker.py:53
 msgid "Back"
@@ -1093,6 +1094,71 @@ msgstr ""
 #: tui/mixins.py:287
 #, python-brace-format
 msgid "The columns already take all {width} columns of the terminal — narrow another one ({column} can still be made smaller)."
+msgstr ""
+
+#: tui/screens/ancrage.py:64
+#: tui/screens/ancrage.py:89
+#: tui/screens/confirm.py:72
+#: tui/screens/confirm.py:73
+#: tui/screens/confirm.py:92
+#: tui/screens/confirm.py:110
+#: tui/screens/opensubtitles.py:56
+#: tui/screens/opensubtitles.py:74
+#: tui/screens/options.py:52
+#: tui/screens/options.py:84
+#: tui/screens/profile_picker.py:83
+#: tui/screens/value_picker.py:52
+#: tui/screens/value_picker.py:76
+#: tui/widgets/profile_form.py:211
+msgid "Cancel"
+msgstr ""
+
+#: tui/screens/ancrage.py:65
+#: tui/screens/ancrage.py:88
+#: tui/screens/confirm.py:76
+#: tui/screens/confirm.py:109
+msgid "OK"
+msgstr ""
+
+#: tui/screens/ancrage.py:66
+msgid "Next"
+msgstr ""
+
+#: tui/screens/ancrage.py:67
+msgid "Prev."
+msgstr ""
+
+#: tui/screens/ancrage.py:87
+msgid "Other line"
+msgstr ""
+
+#: tui/screens/ancrage.py:100
+#, python-brace-format
+msgid "Listen to the film at the given point. If this line cannot be found, {key} offers another one."
+msgstr ""
+
+#. examples of time formats, keep them as they are.
+#: tui/screens/ancrage.py:104
+#, python-brace-format
+msgid "Accepted formats: {examples}"
+msgstr ""
+
+#: tui/screens/ancrage.py:112
+msgid "No readable line in this track."
+msgstr ""
+
+#: tui/screens/ancrage.py:119
+#, python-brace-format
+msgid "Line {number} of {total}   ·   written at {time}"
+msgstr ""
+
+#: tui/screens/ancrage.py:148
+msgid "Unreadable time — expected 13:22, 1:13:22 or 802."
+msgstr ""
+
+#: tui/screens/ancrage.py:155
+#, python-brace-format
+msgid "More than five minutes away from {time} — check the time before confirming."
 msgstr ""
 
 #: tui/screens/cles.py:69
@@ -1163,24 +1229,6 @@ msgstr ""
 
 #: tui/screens/config.py:120
 msgid "Actions"
-msgstr ""
-
-#: tui/screens/confirm.py:72
-#: tui/screens/confirm.py:73
-#: tui/screens/confirm.py:92
-#: tui/screens/confirm.py:110
-#: tui/screens/options.py:52
-#: tui/screens/options.py:84
-#: tui/screens/profile_picker.py:83
-#: tui/screens/value_picker.py:52
-#: tui/screens/value_picker.py:76
-#: tui/widgets/profile_form.py:211
-msgid "Cancel"
-msgstr ""
-
-#: tui/screens/confirm.py:76
-#: tui/screens/confirm.py:109
-msgid "OK"
 msgstr ""
 
 #: tui/screens/confirm.py:91
@@ -1271,6 +1319,10 @@ msgstr ""
 #: tui/screens/meta_popup.py:48
 #: tui/screens/meta_popup.py:49
 #: tui/screens/meta_popup.py:137
+#: tui/screens/segments.py:64
+#: tui/screens/segments.py:65
+#: tui/screens/segments.py:66
+#: tui/screens/segments.py:106
 msgid "Close"
 msgstr ""
 
@@ -1311,6 +1363,53 @@ msgstr ""
 #: tui/screens/meta_popup.py:212
 msgid "Cannot fetch the information:"
 msgstr ""
+
+#: tui/screens/opensubtitles.py:55
+#: tui/screens/opensubtitles.py:73
+msgid "Download"
+msgstr ""
+
+#: tui/screens/opensubtitles.py:80
+msgid "Language"
+msgstr ""
+
+#. column header, short for "downloads"; 8 characters at most.
+#: tui/screens/opensubtitles.py:82
+msgid "Downl."
+msgstr ""
+
+#. column header, subtitles for the deaf and hard of hearing (French: SME); 4 characters at most.
+#: tui/screens/opensubtitles.py:85
+msgid "SDH"
+msgstr ""
+
+#: tui/screens/opensubtitles.py:87
+#, python-brace-format
+msgid "Searching for {file}…"
+msgstr ""
+
+#: tui/screens/opensubtitles.py:121
+msgid "No subtitle found in the profile's languages."
+msgstr ""
+
+#. ≡ marks the results made for this exact release.
+#: tui/screens/opensubtitles.py:124
+#, python-brace-format
+msgid "{count} result, {exact} for this exact release (≡, already in sync)."
+msgid_plural "{count} results, {exact} for this exact release (≡, already in sync)."
+msgstr[0] ""
+msgstr[1] ""
+
+#: tui/screens/opensubtitles.py:140
+msgid "Downloading…"
+msgstr ""
+
+#: tui/screens/opensubtitles.py:153
+#, python-brace-format
+msgid "Subtitle downloaded — {count} left today."
+msgid_plural "Subtitle downloaded — {count} left today."
+msgstr[0] ""
+msgstr[1] ""
 
 #: tui/screens/options.py:62
 msgid "Options"
@@ -1373,6 +1472,35 @@ msgstr ""
 
 #: tui/screens/recursive_confirm.py:29
 msgid "Start the scan"
+msgstr ""
+
+#: tui/screens/segments.py:24
+msgid "Segment"
+msgstr ""
+
+#: tui/screens/segments.py:24
+msgid "Duration"
+msgstr ""
+
+#: tui/screens/segments.py:24
+msgid "Offset"
+msgstr ""
+
+#: tui/screens/segments.py:24
+msgid "Gap"
+msgstr ""
+
+#: tui/screens/segments.py:24
+msgid "Confidence"
+msgstr ""
+
+#: tui/screens/segments.py:98
+msgid "Detected offset segments"
+msgstr ""
+
+#: tui/screens/segments.py:129
+#, python-brace-format
+msgid "Each segment is aligned, at its own offset — both files carry the same content in two different cuts ({total} ms accumulated). A single offset cannot resync them: adding the track would require building a corrected track."
 msgstr ""
 
 #: tui/widgets/profile_form.py:41

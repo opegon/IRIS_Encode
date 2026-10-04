@@ -22,9 +22,10 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, Static
 
+from core.i18n import _, N_
 from core.sync import lire_timecode, mmss
 
-from ..common import raccourcis
+from ..common import raccourcis, texte_style
 
 
 class AncrageModal(ModalScreen["tuple[float, float] | None"]):
@@ -60,10 +61,10 @@ class AncrageModal(ModalScreen["tuple[float, float] | None"]):
     """
 
     BINDINGS = [
-        Binding("escape", "annuler",   "Annuler",  show=False, priority=True),
-        Binding("f2",     "valider",   "Valider",  show=False, priority=True),
-        Binding("down",   "suivante",  "Suivante", show=False, priority=True),
-        Binding("up",     "precedente", "Préc.",   show=False, priority=True),
+        Binding("escape", "annuler",   N_("Cancel"),  show=False, priority=True),
+        Binding("f2",     "valider",   N_("OK"),  show=False, priority=True),
+        Binding("down",   "suivante",  N_("Next"), show=False, priority=True),
+        Binding("up",     "precedente", N_("Prev."),   show=False, priority=True),
     ]
 
     def __init__(self, reperes: list[tuple[float, str]],
@@ -83,9 +84,9 @@ class AncrageModal(ModalScreen["tuple[float, float] | None"]):
             yield Label("À quel instant l'entendez-vous ?", classes="anc-label")
             yield Input(placeholder="13:22", id="anc-entendu")
             yield Static("", id="anc-erreur", markup=False)
-            yield Static(raccourcis([("↓/↑", "Autre réplique"),
-                                     ("enter", "Valider"),
-                                     ("escape", "Annuler")]), id="anc-hint")
+            yield Static(raccourcis([("↓/↑", N_("Other line")),
+                                     ("enter", N_("OK")),
+                                     ("escape", N_("Cancel"))]), id="anc-hint")
 
     def on_mount(self) -> None:
         self._afficher()
@@ -95,23 +96,29 @@ class AncrageModal(ModalScreen["tuple[float, float] | None"]):
         t = Text()
         if self._nom:
             t.append(f"{self._nom}\n", style="bold")
-        t.append("Écoutez le film à l'endroit indiqué. Si cette réplique ne se\n"
-                 "retrouve pas, ↓ en propose une autre.\n\n", style="dim")
-        t.append("Formats acceptés : 13:22 · 1:13:22 · 13:22.5 · 802",
+        # Pas de retour à la ligne dans le message : le texte se replie seul (L-54).
+        t.append(_("Listen to the film at the given point. If this line cannot "
+                   "be found, {key} offers another one.").format(key="↓") + "\n\n",
+                 style="dim")
+        # TRANSLATORS: examples of time formats, keep them as they are.
+        t.append(_("Accepted formats: {examples}").format(
+                     examples="13:22 · 1:13:22 · 13:22.5 · 802"),
                  style="dim")
         return t
 
     def _afficher(self) -> None:
         cadre = self.query_one("#anc-replique", Static)
         if not self._reperes:
-            cadre.update(Text("Aucune réplique lisible dans cette piste.",
+            cadre.update(Text(_("No readable line in this track."),
                               style="bold"))
             return
         instant, texte = self._reperes[self._i]
         t = Text()
-        t.append(f"Réplique {self._i + 1} sur {len(self._reperes)}"
-                 f"   ·   écrite à ", style="dim")
-        t.append(mmss(instant), style="bold")
+        # Une phrase entière ; l'instant en gras par le code (L-57).
+        t.append_text(texte_style(
+            _("Line {number} of {total}   ·   written at {time}").format(
+                number=self._i + 1, total=len(self._reperes), time="{time}"),
+            style="dim", time=(mmss(instant), "bold")))
         t.append("\n\n")
         t.append(texte, style="bold")
         cadre.update(t)
@@ -138,15 +145,15 @@ class AncrageModal(ModalScreen["tuple[float, float] | None"]):
             return
         entendu = lire_timecode(self.query_one("#anc-entendu", Input).value)
         if entendu is None:
-            erreur.update("Instant illisible — attendu 13:22, 1:13:22 ou 802.")
+            erreur.update(_("Unreadable time — expected 13:22, 1:13:22 or 802."))
             return
         ecrit = self._reperes[self._i][0]
         # Un écart de plusieurs minutes ne se corrige pas par un décalage : ce
         # serait un autre épisode, ou une erreur de saisie. Le dire plutôt que
         # de lancer une mesure qui n'aboutira pas.
         if abs(entendu - ecrit) > 300:
-            erreur.update(f"Plus de cinq minutes d'écart avec {mmss(ecrit)} — "
-                          f"vérifiez l'instant avant de valider.")
+            erreur.update(_("More than five minutes away from {time} — check "
+                            "the time before confirming.").format(time=mmss(ecrit)))
             return
         self.dismiss((ecrit, entendu))
 

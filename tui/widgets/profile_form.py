@@ -15,6 +15,7 @@ from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Checkbox, Input, Label, Select, Static
 
+from core.i18n import _, N_
 from ..common import raccourcis
 
 
@@ -37,10 +38,10 @@ _BITRATE_720P  = [("1500k", 1500), ("2000k", 2000)]
 _BITRATE_1080P = [("2000k", 2000), ("2200k", 2200), ("2500k", 2500),
                   ("3000k", 3000), ("3500k", 3500), ("5000k", 5000)]
 _BITRATE_4K    = [("3000k", 3000), ("5000k", 5000),
-                  ("8000k ⚠ recommandé", 8000), ("12000k", 12000)]
+                  (N_("8000k ⚠ recommended"), 8000), ("12000k", 12000)]
 _DV_OPTIONS    = [("hdr10", "hdr10"), ("dv", "dv"), ("sdr", "sdr")]
-_HDR10_QUALITY = [("compat (NVENC, rapide)", "compat"),
-                  ("quality (CPU x265, TV-grade)", "quality")]
+_HDR10_QUALITY = [(N_("compat (NVENC, fast)"), "compat"),
+                  (N_("quality (CPU x265, TV-grade)"), "quality")]
 _PRESET        = [("fast", "fast"), ("medium", "medium"), ("slow", "slow")]
 _BR_STEREO     = [("96k", 96), ("128k", 128), ("192k", 192), ("320k", 320)]
 _BR_SURROUND   = [("320k", 320), ("448k", 448), ("640k", 640)]
@@ -50,16 +51,16 @@ _BR_71         = [("448k", 448), ("640k", 640), ("768k", 768)]
 # en silence — l'un l'emportait sans que rien ne l'indique à l'écran.
 # Les valeurs sont des couples (preserve_hd_audio, audio_hd_codec).
 _CONTENEUR = [
-    ("auto — le contenu décide", "auto"),
-    ("mp4 — compatibilité",      "mp4"),
-    ("mkv — tout conserver",     "mkv"),
+    (N_("auto — the content decides"), "auto"),
+    (N_("mp4 — compatibility"),      "mp4"),
+    (N_("mkv — keep everything"),     "mkv"),
 ]
 
 _HD_AUDIO = [
-    ("copier telles quelles",              "copy"),
-    ("→ E-AC3 au débit de la source",      "eac3"),
-    ("→ AC3 au débit de la source",        "ac3"),
-    ("→ forfait 5.1 / 7.1 ci-dessous",     "forfait"),
+    (N_("copy as they are"),              "copy"),
+    (N_("→ E-AC3 at the source bitrate"),      "eac3"),
+    (N_("→ AC3 at the source bitrate"),        "ac3"),
+    (N_("→ fixed 5.1 / 7.1 bitrate below"),     "forfait"),
 ]
 
 _HD_AUDIO_VERS_CLES: dict[str, tuple[bool, str]] = {
@@ -90,7 +91,8 @@ def _hd_audio_cles(branche: str) -> dict[str, Any]:
 
 
 def _opts(pairs):
-    return [(label, val) for label, val in pairs]
+    """Les options d'un champ, libellés traduits (marqués N_ dans les tables)."""
+    return [(_(label), val) for label, val in pairs]
 
 
 # La valeur « rien de choisi » : `Select.NULL` depuis Textual 8, où
@@ -111,9 +113,15 @@ def _avec_valeur(pairs: list, val: Any) -> list:
     restait vide. La valeur du profil s'ajoute à sa place dans l'ordre, sans
     rien retirer de la liste.
     """
-    if any(v == val for _, v in pairs) or not isinstance(val, int):
+    if any(v == val for _l, v in pairs) or not isinstance(val, int):
         return list(pairs)
     return sorted([*pairs, (f"{val}k", val)], key=lambda p: p[1])
+
+
+def _section(titre: str, suite: str = "") -> str:
+    """« ── TITRE suite » : le filet et les capitales se font ici, au rendu ;
+    le message reste en casse normale (L-52). `suite` garde sa casse."""
+    return f"── {titre.upper()}" + (f" {suite}" if suite else "")
 
 
 # ─── Widget formulaire ────────────────────────────────────────────────────────
@@ -195,12 +203,12 @@ class ProfileForm(Widget):
     # footer de l'écran hôte les affiche à sa place tant qu'il est monté :
     # sinon il annonce les touches de l'écran, qui ne répondent plus.
     RACCOURCIS: list[tuple[str, str]] = [
-        ("tab",       "Champ suivant"),
-        ("shift+tab", "Champ précédent"),
-        ("enter",     "Ouvrir une liste"),
-        ("+/-",       "Valeur suiv./préc."),
-        ("ctrl+s",    "Enregistrer"),
-        ("escape",    "Annuler"),
+        ("tab",       N_("Next field")),
+        ("shift+tab", N_("Previous field")),
+        ("enter",     N_("Open a list")),
+        ("+/-",       N_("Next/prev value")),
+        ("ctrl+s",    N_("Save")),
+        ("escape",    N_("Cancel")),
     ]
 
     def __init__(self, *, name=None, id=None, classes=None, disabled=False):
@@ -215,41 +223,41 @@ class ProfileForm(Widget):
 
     def compose(self) -> ComposeResult:
         # ── Identifiant ───────────────────────────────────────────────────────
-        yield Static("── IDENTIFIANT", classes="section-hdr")
+        yield Static(_section(_("Identifier")), classes="section-hdr")
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Identifiant", classes="form-lbl")
-                yield Input(placeholder="mon_profil", id="field-id",
+                yield Label(_("Identifier"), classes="form-lbl")
+                yield Input(placeholder=_("my_profile"), id="field-id",
                             classes="form-ctrl")
             with Widget(classes="form-cell"):
                 pass   # colonne droite vide
 
         # ── Quand réencoder ───────────────────────────────────────────────────
-        yield Static("── QUAND RÉENCODER", classes="section-hdr")
+        yield Static(_section(_("When to re-encode")), classes="section-hdr")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Débit 720p (kbps)", classes="form-lbl")
+                yield Label(_("Bitrate 720p (kbps)"), classes="form-lbl")
                 yield Select(_opts(_BITRATE_720P),  id="field-720p",   classes="form-ctrl")
             with Widget(classes="form-cell"):
-                yield Label("Débit 1080p (kbps)", classes="form-lbl")
+                yield Label(_("Bitrate 1080p (kbps)"), classes="form-lbl")
                 yield Select(_opts(_BITRATE_1080P), id="field-1080p",  classes="form-ctrl")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Débit 4K (kbps)", classes="form-lbl")
+                yield Label(_("Bitrate 4K (kbps)"), classes="form-lbl")
                 yield Select(_opts(_BITRATE_4K),    id="field-4k",     classes="form-ctrl")
             with Widget(classes="form-cell"):
-                yield Checkbox("garder la 4K (sinon → 1080p)", id="field-keep4k")
+                yield Checkbox(_("keep 4K (otherwise → 1080p)"), id="field-keep4k")
 
         yield Static("", id="cons-seuils", classes="consequence")
 
         # ── Comment encoder ───────────────────────────────────────────────────
-        yield Static("── COMMENT ENCODER", classes="section-hdr")
+        yield Static(_section(_("How to encode")), classes="section-hdr")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Preset",      classes="form-lbl")
+                yield Label(_("Preset"),      classes="form-lbl")
                 yield Select(_opts(_PRESET),        id="field-preset", classes="form-ctrl")
             with Widget(classes="form-cell"):
                 pass
@@ -257,24 +265,25 @@ class ProfileForm(Widget):
         yield Static("", id="cons-preset", classes="consequence")
 
         # ── Dolby Vision ──────────────────────────────────────────────────────
-        yield Static("── DOLBY VISION", classes="section-hdr")
+        yield Static(_section("Dolby Vision"), classes="section-hdr")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Traitement",  classes="form-lbl")
+                yield Label(_("Handling"),  classes="form-lbl")
                 yield Select(_opts(_DV_OPTIONS),    id="field-dv",     classes="form-ctrl")
             with Widget(classes="form-cell"):
-                yield Label("Mode HDR10",  classes="form-lbl")
+                yield Label(_("HDR10 mode"),  classes="form-lbl")
                 yield Select(_opts(_HDR10_QUALITY), id="field-hdr10q", classes="form-ctrl")
 
         yield Static("", id="cons-dv", classes="consequence")
 
         # ── Audio sans perte ──────────────────────────────────────────────────
-        yield Static("── AUDIO SANS PERTE (TrueHD, DTS-HD MA)", classes="section-hdr")
+        yield Static(_section(_("Lossless audio"), "(TrueHD, DTS-HD MA)"),
+                     classes="section-hdr")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Traitement",  classes="form-lbl")
+                yield Label(_("Handling"),  classes="form-lbl")
                 yield Select(_opts(_HD_AUDIO), id="field-hdaudio", classes="form-ctrl")
             with Widget(classes="form-cell"):
                 pass
@@ -282,11 +291,11 @@ class ProfileForm(Widget):
         yield Static("", id="cons-hdaudio-suite", classes="consequence")
 
         # ── Conteneur ─────────────────────────────────────────────────────────
-        yield Static("── CONTENEUR DE SORTIE", classes="section-hdr")
+        yield Static(_section(_("Output container")), classes="section-hdr")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Conteneur",   classes="form-lbl")
+                yield Label(_("Container"),   classes="form-lbl")
                 yield Select(_opts(_CONTENEUR), id="field-conteneur",
                              classes="form-ctrl")
             with Widget(classes="form-cell"):
@@ -297,14 +306,14 @@ class ProfileForm(Widget):
         yield Static("", id="cons-hdaudio", classes="consequence")
 
         # ── Autres pistes ─────────────────────────────────────────────────────
-        yield Static("── AUTRES PISTES AUDIO", classes="section-hdr")
+        yield Static(_section(_("Other audio tracks")), classes="section-hdr")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Langues",     classes="form-lbl")
+                yield Label(_("Languages"),     classes="form-lbl")
                 yield Input(placeholder="fre, eng", id="field-langs", classes="form-ctrl")
             with Widget(classes="form-cell"):
-                yield Checkbox("copier AAC / AC3 / E-AC3 sans transcoder",
+                yield Checkbox(_("copy AAC / AC3 / E-AC3 without transcoding"),
                                id="field-copy-compat")
 
         # Les sous-titres ont leur propre liste : un rip streaming en embarque
@@ -312,13 +321,14 @@ class ProfileForm(Widget):
         # mêmes en sous-titres. Vide = toutes, comme avant l'existence de la clé.
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Langues sous-titres", classes="form-lbl")
-                yield Input(placeholder="fre, eng — vide : toutes",
+                yield Label(_("Subtitle languages"), classes="form-lbl")
+                # TRANSLATORS: fre, eng are language codes, keep them.
+                yield Input(placeholder=_("fre, eng — empty: all"),
                             id="field-sublangs", classes="form-ctrl")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
-                yield Label("Stéréo (kbps)", classes="form-lbl")
+                yield Label(_("Stereo (kbps)"), classes="form-lbl")
                 yield Select(_opts(_BR_STEREO),  id="field-stereo", classes="form-ctrl")
             with Widget(classes="form-cell"):
                 yield Label("5.1 (kbps)",  classes="form-lbl")
@@ -334,10 +344,10 @@ class ProfileForm(Widget):
         yield Static("", id="cons-pistes", classes="consequence")
 
         # ── Fichier source ────────────────────────────────────────────────────
-        yield Static("── FICHIER SOURCE", classes="section-hdr")
+        yield Static(_section(_("Source file")), classes="section-hdr")
 
         with Widget(classes="check-row"):
-            yield Checkbox("supprimer la source après un encodage réussi",
+            yield Checkbox(_("delete the source after a successful encoding"),
                            id="field-delsrc")
 
         yield Static("", id="cons-source", classes="consequence")
@@ -351,35 +361,35 @@ class ProfileForm(Widget):
     # ── Conséquences ──────────────────────────────────────────────────────────
 
     _PRESET_TXT = {
-        "fast":   "le plus rapide, qualité moindre à débit égal.",
-        "medium": "compromis par défaut.",
-        "slow":   "meilleure qualité à débit égal, environ 30 % plus lent.",
+        "fast":   N_("the fastest, lower quality at equal bitrate."),
+        "medium": N_("default compromise."),
+        "slow":   N_("better quality at equal bitrate, about 30 % slower."),
     }
 
     _CONTENEUR_TXT = {
-        "auto": ("Le contenu décide : MP4 quand tout y tient, MKV dès qu'un "
-                 "sous-titre image, un sous-titre stylé ou une piste sans "
-                 "perte s'y trouve."),
-        "mp4":  ("Les sous-titres image (PGS, VobSub) sont écartés — le MP4 ne "
-                 "les porte pas — et la décision les affiche. S'ils sont les "
-                 "seuls du fichier, c'est le conteneur qui cède : mieux vaut "
-                 "un MKV qu'une sortie sans sous-titres."),
-        "mkv":  ("Tout est conservé, y compris les sous-titres image et les "
-                 "pistes sans perte. Certains lecteurs digèrent mal le MKV."),
+        "auto": N_("The content decides: MP4 when everything fits, MKV as soon "
+                   "as there is an image subtitle, a styled subtitle or a "
+                   "lossless track."),
+        "mp4":  N_("Image subtitles (PGS, VobSub) are discarded — MP4 cannot "
+                   "carry them — and the decision shows it. If they are the "
+                   "file's only ones, the container gives way: better an MKV "
+                   "than an output without subtitles."),
+        "mkv":  N_("Everything is kept, including image subtitles and lossless "
+                   "tracks. Some players handle MKV poorly."),
     }
 
     _HD_AUDIO_TXT = {
-        "copy": ("La piste est recopiée intacte. Elle impose le conteneur MKV, "
-                 "et la plupart des lecteurs ne la décodent pas : le serveur "
-                 "transcodera à chaque lecture."),
-        "eac3": ("Un TrueHD à 3 500 kbps ressort en E-AC3 à 3 500 kbps — le "
-                 "débit de la piste, plafonné à 6 144 kbps. Décodé nativement "
-                 "par les téléviseurs récents, et le MP4 l'accepte."),
-        "ac3":  ("Repli universel, mais l'AC3 plafonne à 640 kbps : l'encodeur "
-                 "ramène en silence toute demande supérieure."),
-        "forfait": ("Les débits 5.1 et 7.1 ci-dessous s'appliquent. Convient à "
-                    "une piste déjà compressée, jette beaucoup sur une source "
-                    "sans perte."),
+        "copy": N_("The track is copied untouched. It forces the MKV container, "
+                   "and most players cannot decode it: the server will "
+                   "transcode it at every playback."),
+        "eac3": N_("A TrueHD at 3,500 kbps comes out as E-AC3 at 3,500 kbps — "
+                   "the track's bitrate, capped at 6,144 kbps. Decoded natively "
+                   "by recent TVs, and MP4 accepts it."),
+        "ac3":  N_("Universal fallback, but AC3 is capped at 640 kbps: the "
+                   "encoder silently brings down any higher request."),
+        "forfait": N_("The 5.1 and 7.1 bitrates below apply. Fine for an "
+                      "already compressed track, throws a lot away from a "
+                      "lossless source."),
     }
 
     def _txt(self, wid: str, defaut=None):
@@ -411,55 +421,56 @@ class ProfileForm(Widget):
         k7  = self._txt("#field-720p", 1500)
         garde = self._chk("#field-keep4k")
         self._pose("#cons-seuils",
-                   f"Un fichier dont le débit vidéo est sous le seuil de sa "
-                   f"résolution n'est pas réencodé. Au-dessus, il est ramené à "
-                   f"{k4}k en 4K, {k10}k en 1080p, {k7}k en 720p.\n"
-                   + ("Une source 4K reste en 4K." if garde
-                      else "Une source 4K est ramenée en 1080p."))
+                   _("A file whose video bitrate is below the threshold of its "
+                     "resolution is not re-encoded. Above it, it is brought "
+                     "down to {k4}k in 4K, {k1080}k in 1080p, {k720}k in "
+                     "720p.").format(k4=k4, k1080=k10, k720=k7) + "\n"
+                   + (_("A 4K source stays in 4K.") if garde
+                      else _("A 4K source is brought down to 1080p.")))
 
         preset = self._txt("#field-preset", "medium")
         self._pose("#cons-preset",
-                   f"Ne s'applique qu'aux fichiers réellement réencodés — "
-                   f"{self._PRESET_TXT.get(preset, '')}")
+                   _("Only applies to files that are actually re-encoded — "
+                     "{effect}").format(effect=_(self._PRESET_TXT.get(preset, ""))))
 
         dv  = self._txt("#field-dv", "hdr10")
         hq  = self._txt("#field-hdr10q", "compat")
         if dv == "hdr10":
-            txt = ("Le Dolby Vision est retiré. Sur un profil 8.1 ou 7 que rien "
-                   "n'oblige par ailleurs à réencoder, le retrait se fait par "
-                   "remux : quelques minutes, image intacte, HDR10+ conservé.")
+            txt = _("Dolby Vision is removed. On a profile 8.1 or 7 that "
+                    "nothing else requires re-encoding, the removal is a remux: "
+                    "a few minutes, picture untouched, HDR10+ kept.")
             if hq == "quality":
-                txt += ("\nMode quality : libx265 sur processeur — de l'ordre de "
-                        "70 heures pour un film 4K. À réserver au 1080p.")
+                # TRANSLATORS: "quality" is the value of the HDR10 mode setting.
+                txt += "\n" + _("Quality mode: libx265 on the processor — around "
+                                "70 hours for a 4K film. Keep it for 1080p.")
         elif dv == "dv":
-            txt = ("Le Dolby Vision est conservé tel quel. Aucun retrait, donc "
-                   "aucun remux : un fichier que rien n'oblige à réencoder est "
-                   "laissé intact.")
+            txt = _("Dolby Vision is kept as it is. No removal, so no remux: a "
+                    "file that nothing requires re-encoding is left untouched.")
         else:
-            txt = ("Conversion vers SDR par tone mapping. Opération processeur, "
-                   "lente, et l'image perd sa plage dynamique étendue.")
+            txt = _("Conversion to SDR by tone mapping. Processor-bound, slow, "
+                    "and the picture loses its high dynamic range.")
         self._pose("#cons-dv", txt)
 
         self._pose("#cons-hdaudio",
-                   self._HD_AUDIO_TXT.get(self._txt("#field-hdaudio", "forfait"), ""))
+                   _(self._HD_AUDIO_TXT.get(self._txt("#field-hdaudio", "forfait"), "")))
 
         self._pose("#cons-hdaudio-suite", "")
         self._pose("#cons-conteneur",
-                   self._CONTENEUR_TXT.get(self._txt("#field-conteneur", "auto"), ""))
+                   _(self._CONTENEUR_TXT.get(self._txt("#field-conteneur", "auto"), "")))
 
         self._pose("#cons-pistes",
-                   "Les pistes AAC, AC3 et E-AC3 sont recopiées sans être "
-                   "retouchées ; les forfaits ne concernent que les autres."
+                   _("AAC, AC3 and E-AC3 tracks are copied untouched; the "
+                     "fixed bitrates only apply to the others.")
                    if self._chk("#field-copy-compat") else
-                   "Toutes les pistes sont transcodées aux forfaits ci-dessus, "
-                   "y compris celles qui étaient déjà au bon format.")
+                   _("All tracks are transcoded at the fixed bitrates above, "
+                     "including those already in the right format."))
 
         supprime = self._chk("#field-delsrc")
         self._pose("#cons-source",
-                   "La source est supprimée dès que l'encodage réussit. "
-                   "Irréversible — aucune corbeille."
+                   _("The source is deleted as soon as the encoding succeeds. "
+                     "Irreversible — no recycle bin.")
                    if supprime else
-                   "La source est conservée à côté du fichier produit.",
+                   _("The source is kept next to the produced file."),
                    alerte=supprime)
 
     @on(Select.Changed)
@@ -584,14 +595,15 @@ class ProfileForm(Widget):
         if self._is_new:
             pid = self.query_one("#field-id", Input).value.strip()
             if not pid:
-                errors.append("L'identifiant ne peut pas être vide.")
+                errors.append(_("The identifier cannot be empty."))
             elif not all(c.isalnum() or c in "-_" for c in pid):
-                errors.append("Identifiant : caractères autorisés a-z, 0-9, - _")
+                errors.append(_("Identifier: allowed characters a-z, 0-9, - _"))
             elif len(pid) > 32:
-                errors.append("Identifiant : 32 caractères maximum.")
+                errors.append(_("Identifier: 32 characters at most."))
             elif pid in self._ids_pris:
                 # Sans ce refus, l'enregistrement écrasait le profil du même nom.
-                errors.append(f"Le profil « {pid} » existe déjà.")
+                errors.append(_("The profile “{profile}” already exists.").format(
+                    profile=pid))
         return errors
 
     # ── Clavier ───────────────────────────────────────────────────────────────
@@ -623,7 +635,7 @@ class ProfileForm(Widget):
                 continue
             if widget is not focused:
                 continue
-            vals = [v for _, v in opts]
+            vals = [v for _l, v in opts]
             cur  = widget.value
             if cur in vals:
                 widget.value = vals[(vals.index(cur) + delta) % len(vals)]

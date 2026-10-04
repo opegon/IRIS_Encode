@@ -969,6 +969,7 @@ msgid "Dolby V."
 msgstr ""
 
 #: tui/common.py:522
+#: tui/widgets/profile_form.py:260
 msgid "Preset"
 msgstr ""
 
@@ -1007,4 +1008,263 @@ msgstr ""
 
 #: tui/widgets/entete.py:56
 msgid "Help"
+msgstr ""
+
+#: tui/widgets/profile_form.py:41
+msgid "8000k ⚠ recommended"
+msgstr ""
+
+#: tui/widgets/profile_form.py:43
+msgid "compat (NVENC, fast)"
+msgstr ""
+
+#: tui/widgets/profile_form.py:44
+msgid "quality (CPU x265, TV-grade)"
+msgstr ""
+
+#: tui/widgets/profile_form.py:54
+msgid "auto — the content decides"
+msgstr ""
+
+#: tui/widgets/profile_form.py:55
+msgid "mp4 — compatibility"
+msgstr ""
+
+#: tui/widgets/profile_form.py:56
+msgid "mkv — keep everything"
+msgstr ""
+
+#: tui/widgets/profile_form.py:60
+msgid "copy as they are"
+msgstr ""
+
+#: tui/widgets/profile_form.py:61
+msgid "→ E-AC3 at the source bitrate"
+msgstr ""
+
+#: tui/widgets/profile_form.py:62
+msgid "→ AC3 at the source bitrate"
+msgstr ""
+
+#: tui/widgets/profile_form.py:63
+msgid "→ fixed 5.1 / 7.1 bitrate below"
+msgstr ""
+
+#: tui/widgets/profile_form.py:206
+msgid "Next field"
+msgstr ""
+
+#: tui/widgets/profile_form.py:207
+msgid "Previous field"
+msgstr ""
+
+#: tui/widgets/profile_form.py:208
+msgid "Open a list"
+msgstr ""
+
+#: tui/widgets/profile_form.py:209
+msgid "Next/prev value"
+msgstr ""
+
+#: tui/widgets/profile_form.py:210
+msgid "Save"
+msgstr ""
+
+#: tui/widgets/profile_form.py:211
+msgid "Cancel"
+msgstr ""
+
+#: tui/widgets/profile_form.py:226
+#: tui/widgets/profile_form.py:229
+msgid "Identifier"
+msgstr ""
+
+#: tui/widgets/profile_form.py:230
+msgid "my_profile"
+msgstr ""
+
+#: tui/widgets/profile_form.py:236
+msgid "When to re-encode"
+msgstr ""
+
+#: tui/widgets/profile_form.py:240
+msgid "Bitrate 720p (kbps)"
+msgstr ""
+
+#: tui/widgets/profile_form.py:243
+msgid "Bitrate 1080p (kbps)"
+msgstr ""
+
+#: tui/widgets/profile_form.py:248
+msgid "Bitrate 4K (kbps)"
+msgstr ""
+
+#: tui/widgets/profile_form.py:251
+msgid "keep 4K (otherwise → 1080p)"
+msgstr ""
+
+#: tui/widgets/profile_form.py:256
+msgid "How to encode"
+msgstr ""
+
+#: tui/widgets/profile_form.py:272
+#: tui/widgets/profile_form.py:286
+msgid "Handling"
+msgstr ""
+
+#: tui/widgets/profile_form.py:275
+msgid "HDR10 mode"
+msgstr ""
+
+#: tui/widgets/profile_form.py:281
+msgid "Lossless audio"
+msgstr ""
+
+#: tui/widgets/profile_form.py:294
+msgid "Output container"
+msgstr ""
+
+#: tui/widgets/profile_form.py:298
+msgid "Container"
+msgstr ""
+
+#: tui/widgets/profile_form.py:309
+msgid "Other audio tracks"
+msgstr ""
+
+#: tui/widgets/profile_form.py:313
+msgid "Languages"
+msgstr ""
+
+#: tui/widgets/profile_form.py:316
+msgid "copy AAC / AC3 / E-AC3 without transcoding"
+msgstr ""
+
+#: tui/widgets/profile_form.py:324
+msgid "Subtitle languages"
+msgstr ""
+
+#. fre, eng are language codes, keep them.
+#: tui/widgets/profile_form.py:326
+msgid "fre, eng — empty: all"
+msgstr ""
+
+#: tui/widgets/profile_form.py:331
+msgid "Stereo (kbps)"
+msgstr ""
+
+#: tui/widgets/profile_form.py:347
+msgid "Source file"
+msgstr ""
+
+#: tui/widgets/profile_form.py:350
+msgid "delete the source after a successful encoding"
+msgstr ""
+
+#: tui/widgets/profile_form.py:364
+msgid "the fastest, lower quality at equal bitrate."
+msgstr ""
+
+#: tui/widgets/profile_form.py:365
+msgid "default compromise."
+msgstr ""
+
+#: tui/widgets/profile_form.py:366
+msgid "better quality at equal bitrate, about 30 % slower."
+msgstr ""
+
+#: tui/widgets/profile_form.py:370
+msgid "The content decides: MP4 when everything fits, MKV as soon as there is an image subtitle, a styled subtitle or a lossless track."
+msgstr ""
+
+#: tui/widgets/profile_form.py:373
+msgid "Image subtitles (PGS, VobSub) are discarded — MP4 cannot carry them — and the decision shows it. If they are the file's only ones, the container gives way: better an MKV than an output without subtitles."
+msgstr ""
+
+#: tui/widgets/profile_form.py:377
+msgid "Everything is kept, including image subtitles and lossless tracks. Some players handle MKV poorly."
+msgstr ""
+
+#: tui/widgets/profile_form.py:382
+msgid "The track is copied untouched. It forces the MKV container, and most players cannot decode it: the server will transcode it at every playback."
+msgstr ""
+
+#: tui/widgets/profile_form.py:385
+msgid "A TrueHD at 3,500 kbps comes out as E-AC3 at 3,500 kbps — the track's bitrate, capped at 6,144 kbps. Decoded natively by recent TVs, and MP4 accepts it."
+msgstr ""
+
+#: tui/widgets/profile_form.py:388
+msgid "Universal fallback, but AC3 is capped at 640 kbps: the encoder silently brings down any higher request."
+msgstr ""
+
+#: tui/widgets/profile_form.py:390
+msgid "The 5.1 and 7.1 bitrates below apply. Fine for an already compressed track, throws a lot away from a lossless source."
+msgstr ""
+
+#: tui/widgets/profile_form.py:424
+#, python-brace-format
+msgid "A file whose video bitrate is below the threshold of its resolution is not re-encoded. Above it, it is brought down to {k4}k in 4K, {k1080}k in 1080p, {k720}k in 720p."
+msgstr ""
+
+#: tui/widgets/profile_form.py:428
+msgid "A 4K source stays in 4K."
+msgstr ""
+
+#: tui/widgets/profile_form.py:429
+msgid "A 4K source is brought down to 1080p."
+msgstr ""
+
+#: tui/widgets/profile_form.py:433
+#, python-brace-format
+msgid "Only applies to files that are actually re-encoded — {effect}"
+msgstr ""
+
+#: tui/widgets/profile_form.py:439
+msgid "Dolby Vision is removed. On a profile 8.1 or 7 that nothing else requires re-encoding, the removal is a remux: a few minutes, picture untouched, HDR10+ kept."
+msgstr ""
+
+#. "quality" is the value of the HDR10 mode setting.
+#: tui/widgets/profile_form.py:444
+msgid "Quality mode: libx265 on the processor — around 70 hours for a 4K film. Keep it for 1080p."
+msgstr ""
+
+#: tui/widgets/profile_form.py:447
+msgid "Dolby Vision is kept as it is. No removal, so no remux: a file that nothing requires re-encoding is left untouched."
+msgstr ""
+
+#: tui/widgets/profile_form.py:450
+msgid "Conversion to SDR by tone mapping. Processor-bound, slow, and the picture loses its high dynamic range."
+msgstr ""
+
+#: tui/widgets/profile_form.py:462
+msgid "AAC, AC3 and E-AC3 tracks are copied untouched; the fixed bitrates only apply to the others."
+msgstr ""
+
+#: tui/widgets/profile_form.py:465
+msgid "All tracks are transcoded at the fixed bitrates above, including those already in the right format."
+msgstr ""
+
+#: tui/widgets/profile_form.py:470
+msgid "The source is deleted as soon as the encoding succeeds. Irreversible — no recycle bin."
+msgstr ""
+
+#: tui/widgets/profile_form.py:473
+msgid "The source is kept next to the produced file."
+msgstr ""
+
+#: tui/widgets/profile_form.py:598
+msgid "The identifier cannot be empty."
+msgstr ""
+
+#: tui/widgets/profile_form.py:600
+msgid "Identifier: allowed characters a-z, 0-9, - _"
+msgstr ""
+
+#: tui/widgets/profile_form.py:602
+msgid "Identifier: 32 characters at most."
+msgstr ""
+
+#: tui/widgets/profile_form.py:605
+#, python-brace-format
+msgid "The profile “{profile}” already exists."
 msgstr ""

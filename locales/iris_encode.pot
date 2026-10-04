@@ -54,7 +54,9 @@ msgid "OMDb answered {status}."
 msgstr ""
 
 #. {error} is OMDb's own message, in English (L-08).
+#. {error} is OMDb's own message, in English.
 #: core/cles.py:135
+#: core/meta.py:135
 #, python-brace-format
 msgid "OMDb: “{error}”"
 msgstr ""
@@ -302,6 +304,32 @@ msgstr ""
 #: core/joiner.py:213
 #, python-brace-format
 msgid "Output path identical to one of the parts ({file}). Join refused to avoid corrupting the source file."
+msgstr ""
+
+#: core/meta.py:136
+msgid "result not found"
+msgstr ""
+
+#: core/meta.py:183
+msgid "Unexpected IMDB answer"
+msgstr ""
+
+#: core/meta.py:196
+#, python-brace-format
+msgid "No IMDB result for “{title}”"
+msgstr ""
+
+#: core/meta.py:212
+msgid "Rating and synopsis available with an OMDb key (omdbapi.com — free)."
+msgstr ""
+
+#: core/meta.py:293
+#, python-brace-format
+msgid "No AlloCiné result for “{title}”"
+msgstr ""
+
+#: core/meta.py:309
+msgid "Cannot read the AlloCiné data (no JSON-LD)"
 msgstr ""
 
 #: tui/screens/cles.py:99

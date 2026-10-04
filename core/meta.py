@@ -7,6 +7,8 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
+from .i18n import N_, ErreurAffichable, _
+
 
 # ─── Nettoyage nom de fichier ─────────────────────────────────────────────────
 
@@ -129,7 +131,9 @@ def _fetch_imdb_omdb(title: str, year: Optional[int], key: str) -> MovieMeta:
     r.raise_for_status()
     d = r.json()
     if d.get("Response") == "False":
-        raise RuntimeError(f"OMDb : {d.get('Error', 'résultat introuvable')}")
+        # TRANSLATORS: {error} is OMDb's own message, in English.
+        raise ErreurAffichable(N_("OMDb: “{error}”"),
+                               error=d.get("Error") or _("result not found"))
 
     kind = NATURE_OMDB.get(d.get("Type", "movie"), Nature.FILM)
 
@@ -176,7 +180,7 @@ def _fetch_imdb_suggestions(title: str, year: Optional[int]) -> MovieMeta:
     # Réponse JSONP : imdb$xxx(data)
     m = _re.search(r"\((.+)\)$", r.text, _re.DOTALL)
     if not m:
-        raise RuntimeError("Réponse IMDB inattendue")
+        raise ErreurAffichable(N_("Unexpected IMDB answer"))
     results = json.loads(m.group(1)).get("d", [])
 
     best = None
@@ -189,7 +193,7 @@ def _fetch_imdb_suggestions(title: str, year: Optional[int]) -> MovieMeta:
             best = res
             break
     if not best:
-        raise RuntimeError(f"Aucun résultat IMDB pour « {title} »")
+        raise ErreurAffichable(N_("No IMDB result for “{title}”"), title=title)
 
     kind  = NATURE_IMDB.get(best.get("qid", "movie"), Nature.FILM)
     stars = [s.strip() for s in best.get("s", "").split(",") if s.strip()]
@@ -205,7 +209,8 @@ def _fetch_imdb_suggestions(title: str, year: Optional[int]) -> MovieMeta:
         genres     = [],
         directors  = [],
         cast       = stars,
-        synopsis   = "Note et synopsis disponibles avec une clé OMDb (omdbapi.com — gratuit).",
+        synopsis   = _("Rating and synopsis available with an OMDb key "
+                       "(omdbapi.com — free)."),
         url        = f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else "",
     )
 
@@ -285,7 +290,7 @@ def fetch_allocine(title: str, year: Optional[int] = None) -> MovieMeta:
 
     best, confiance = choisir_allocine(results, title, year)
     if best is None:
-        raise RuntimeError(f"Aucun résultat AlloCiné pour « {title} »")
+        raise ErreurAffichable(N_("No AlloCiné result for “{title}”"), title=title)
 
     entity_id   = best["entity_id"]
     is_serie    = best["entity_type"] in ("series", "tvseries")
@@ -301,7 +306,7 @@ def fetch_allocine(title: str, year: Optional[int] = None) -> MovieMeta:
 
     ld_tag = soup.find("script", {"type": "application/ld+json"})
     if not ld_tag:
-        raise RuntimeError("Impossible de lire les données AlloCiné (JSON-LD absent)")
+        raise ErreurAffichable(N_("Cannot read the AlloCiné data (no JSON-LD)"))
     data = json.loads(ld_tag.string)
 
     # Réalisateurs

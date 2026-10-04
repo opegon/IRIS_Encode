@@ -13,6 +13,7 @@ from textual.widgets import LoadingIndicator, Static
 
 from ..common import raccourcis
 
+from core.i18n import texte_erreur
 from core.meta import (Correspondance, MovieMeta, Nature, fetch_allocine,
                        fetch_imdb, parse_title)
 
@@ -155,7 +156,7 @@ class MetaPopup(ModalScreen):
                 meta = fetch_allocine(title, year)
             self.app.call_from_thread(self._show_result, meta, epoque)
         except Exception as exc:
-            self.app.call_from_thread(self._show_error, str(exc), epoque)
+            self.app.call_from_thread(self._show_error, texte_erreur(exc), epoque)
 
     def _show_result(self, meta: MovieMeta, epoque: int) -> None:
         if epoque != self._epoque:

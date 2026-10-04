@@ -54,7 +54,9 @@ msgid "OMDb answered {status}."
 msgstr "OMDb a répondu {status}."
 
 #. {error} is OMDb's own message, in English (L-08).
+#. {error} is OMDb's own message, in English.
 #: core/cles.py:135
+#: core/meta.py:135
 #, python-brace-format
 msgid "OMDb: “{error}”"
 msgstr "OMDb : {error}"
@@ -303,6 +305,32 @@ msgstr "Jonction : la même partie est présente deux fois."
 #, python-brace-format
 msgid "Output path identical to one of the parts ({file}). Join refused to avoid corrupting the source file."
 msgstr "Chemin de sortie identique à une partie ({file}). Jonction refusée pour éviter la corruption du fichier source."
+
+#: core/meta.py:136
+msgid "result not found"
+msgstr "résultat introuvable"
+
+#: core/meta.py:183
+msgid "Unexpected IMDB answer"
+msgstr "Réponse IMDB inattendue"
+
+#: core/meta.py:196
+#, python-brace-format
+msgid "No IMDB result for “{title}”"
+msgstr "Aucun résultat IMDB pour « {title} »"
+
+#: core/meta.py:212
+msgid "Rating and synopsis available with an OMDb key (omdbapi.com — free)."
+msgstr "Note et synopsis disponibles avec une clé OMDb (omdbapi.com — gratuit)."
+
+#: core/meta.py:293
+#, python-brace-format
+msgid "No AlloCiné result for “{title}”"
+msgstr "Aucun résultat AlloCiné pour « {title} »"
+
+#: core/meta.py:309
+msgid "Cannot read the AlloCiné data (no JSON-LD)"
+msgstr "Impossible de lire les données AlloCiné (JSON-LD absent)"
 
 #: tui/screens/cles.py:99
 #, python-brace-format

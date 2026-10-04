@@ -280,7 +280,9 @@ def test_un_module_qui_traduit_n_ecrase_pas_underscore():
     for f in sorted([*RACINE.joinpath("core").rglob("*.py"),
                      *RACINE.joinpath("tui").rglob("*.py")]):
         arbre = ast.parse(f.read_text(encoding="utf-8"))
-        importe = any(isinstance(n, ast.ImportFrom) and n.module == "core.i18n"
+        # `from core.i18n import _` comme `from .i18n import _`.
+        importe = any(isinstance(n, ast.ImportFrom)
+                      and (n.module or "").split(".")[-1] == "i18n"
                       and any(a.name == "_" for a in n.names)
                       for n in ast.walk(arbre))
         if not importe:

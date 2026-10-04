@@ -147,19 +147,25 @@ def test_independent_sync_per_track(tmp_path: Path, vf: ExternalTrack, subs: Ext
 
 def test_output_equal_to_source_is_refused(tmp_path: Path, vf: ExternalTrack):
     src = tmp_path / "Film.mkv"
-    with pytest.raises(ValueError, match="identique à la source"):
+    from core.i18n import texte_erreur
+    with pytest.raises(ValueError) as refus:
         muxer.build_mux_command(src, [vf], src)
+    assert "identique à la source" in texte_erreur(refus.value)
 
 
 def test_missing_language_is_refused(tmp_path: Path, vf: ExternalTrack):
     vf.language = ""
-    with pytest.raises(ValueError, match="Langue manquante"):
+    from core.i18n import texte_erreur
+    with pytest.raises(ValueError) as refus:
         muxer.build_mux_command(tmp_path / "Film.mkv", [vf], tmp_path / "out.mkv")
+    assert "Langue manquante" in texte_erreur(refus.value)
 
 
 def test_empty_track_list_is_refused(tmp_path: Path):
-    with pytest.raises(ValueError, match="Aucune piste"):
+    from core.i18n import texte_erreur
+    with pytest.raises(ValueError) as refus:
         muxer.build_mux_command(tmp_path / "Film.mkv", [], tmp_path / "out.mkv")
+    assert "Aucune piste" in texte_erreur(refus.value)
 
 
 def test_mux_output_path_never_equals_source(tmp_path: Path):

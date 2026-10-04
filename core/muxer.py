@@ -19,6 +19,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
+from .i18n import N_, ErreurAffichable, _
 from .scanner import (MARQUE_IRIS, normalize_language, stem_sans_groupe,
                       stem_sans_suffixe_produit)
 
@@ -88,8 +89,11 @@ class IdentifiedTrack:
 
     def display(self) -> str:
         lang = self.language or "?"
-        name = f" « {self.track_name} »" if self.track_name else ""
-        return f"{self.codec} {lang}{name}"
+        if not self.track_name:
+            return f"{self.codec} {lang}"
+        # TRANSLATORS: a track: codec, language code, then the track's name.
+        return _("{codec} {language} “{name}”").format(
+            codec=self.codec, language=lang, name=self.track_name)
 
 
 @dataclass
@@ -328,19 +332,22 @@ def build_mux_command(
     Lève ValueError si la sortie écrase la source ou si une langue manque.
     """
     if not tracks:
-        raise ValueError("Aucune piste externe à greffer.")
+        raise ErreurAffichable(N_("No external track to add."))
 
     if output.resolve() == source.resolve():
-        raise ValueError(
-            f"Chemin de sortie identique à la source ({source}). "
-            f"Mux refusé pour éviter la corruption du fichier source."
+        raise ErreurAffichable(N_(
+            "Output path identical to the source ({path}). Mux refused to "
+            "avoid corrupting the source file."), path=source
         )
 
     for t in tracks:
         if not t.language:
-            raise ValueError(
-                f"Langue manquante pour la piste {t.source_tid} de {t.source_path.name}. "
-                f"Sans langue, la piste apparaît en « und » dans tous les lecteurs."
+            # TRANSLATORS: "und" is the code players show for an unknown
+            # language; keep it as is.
+            raise ErreurAffichable(N_(
+                "Missing language for track {track} of {file}. Without a "
+                "language, the track shows as “und” in every player."),
+                track=t.source_tid, file=t.source_path.name
             )
 
     cmd = [_mkvmerge_path, "--gui-mode", "-o", str(output), str(source)]
@@ -424,16 +431,16 @@ def build_strip_command(
     - `sous_titres` : index ffmpeg des sous-titres à garder. `None` = tous.
     """
     if output.resolve() == source.resolve():
-        raise ValueError(
-            f"Chemin de sortie identique à la source ({source}). "
-            f"Remux refusé pour éviter la corruption du fichier source."
+        raise ErreurAffichable(N_(
+            "Output path identical to the source ({path}). Remux refused to "
+            "avoid corrupting the source file."), path=source
         )
 
     cmd = [_mkvmerge_path, "--gui-mode", "-o", str(output)]
     if fps:
         # ffprobe donne "24/1" ou "24000/1001" ; mkvmerge accepte la fraction,
         # mais "24/1p" se lit plus mal que "24p" dans le journal.
-        num, _, den = fps.partition("/")
+        num, _sep, den = fps.partition("/")
         cmd += ["--default-duration",
                 f"0:{num}p" if den in ("", "1") else f"0:{fps}p"]
     cmd += [str(video), "--no-video"]

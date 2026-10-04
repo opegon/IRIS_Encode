@@ -332,6 +332,32 @@ msgstr "Aucun résultat AlloCiné pour « {title} »"
 msgid "Cannot read the AlloCiné data (no JSON-LD)"
 msgstr "Impossible de lire les données AlloCiné (JSON-LD absent)"
 
+#. a track: codec, language code, then the track's name.
+#: core/muxer.py:95
+#, python-brace-format
+msgid "{codec} {language} “{name}”"
+msgstr "{codec} {language} « {name} »"
+
+#: core/muxer.py:335
+msgid "No external track to add."
+msgstr "Aucune piste externe à greffer."
+
+#: core/muxer.py:338
+#, python-brace-format
+msgid "Output path identical to the source ({path}). Mux refused to avoid corrupting the source file."
+msgstr "Chemin de sortie identique à la source ({path}). Mux refusé pour éviter la corruption du fichier source."
+
+#. "und" is the code players show for an unknown language; keep it as is.
+#: core/muxer.py:347
+#, python-brace-format
+msgid "Missing language for track {track} of {file}. Without a language, the track shows as “und” in every player."
+msgstr "Langue manquante pour la piste {track} de {file}. Sans langue, la piste apparaît en « und » dans tous les lecteurs."
+
+#: core/muxer.py:434
+#, python-brace-format
+msgid "Output path identical to the source ({path}). Remux refused to avoid corrupting the source file."
+msgstr "Chemin de sortie identique à la source ({path}). Remux refusé pour éviter la corruption du fichier source."
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."

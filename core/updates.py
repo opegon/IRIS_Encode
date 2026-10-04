@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
+from .i18n import _, pgettext
+
 # Une interrogation par jour suffit : ces outils sortent au mieux
 # mensuellement, et l'API GitHub n'autorise que 60 appels par heure sans jeton.
 CACHE_TTL_SECONDS = 24 * 3600
@@ -39,8 +41,10 @@ class Update:
     url:       str
 
     def label(self) -> str:
-        actuel = self.installed or "inconnue"
-        return f"{self.tool} : {actuel} → {self.latest}"
+        # TRANSLATORS: an installed version that could not be read.
+        actuel = self.installed or pgettext("version", "unknown")
+        return _("{tool}: {installed} → {latest}").format(
+            tool=self.tool, installed=actuel, latest=self.latest)
 
 
 # ─── Comparaison de versions ──────────────────────────────────────────────────

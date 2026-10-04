@@ -837,6 +837,47 @@ msgstr ""
 msgid "no audio in the video to serve as reference"
 msgstr ""
 
+#. an installed version that could not be read.
+#: core/updates.py:45
+msgctxt "version"
+msgid "unknown"
+msgstr ""
+
+#: core/updates.py:46
+#, python-brace-format
+msgid "{tool}: {installed} → {latest}"
+msgstr ""
+
+#: core/veille.py:41
+msgid "do nothing"
+msgstr ""
+
+#: core/veille.py:42
+msgid "sleep"
+msgstr ""
+
+#: core/veille.py:43
+msgid "hibernate"
+msgstr ""
+
+#: core/veille.py:44
+msgid "shut down"
+msgstr ""
+
+#: core/veille.py:194
+#, python-brace-format
+msgid "sleep was refused (error {code})"
+msgstr ""
+
+#: core/veille.py:199
+#, python-brace-format
+msgid "unknown action: {action}"
+msgstr ""
+
+#: core/veille.py:272
+msgid "unavailable on this system"
+msgstr ""
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."

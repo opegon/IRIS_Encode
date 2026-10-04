@@ -28,16 +28,20 @@ import platform
 import subprocess
 import threading
 
+from .i18n import N_, _
+
 log = logging.getLogger(__name__)
 
 # Ce que la machine fait une fois le lot fini, si on l'a demandé. Le choix vit
 # dans `[energie] action_fin` ; l'interrupteur, lui, est propre à chaque lot.
 # « rien » est le défaut : la machine ne change d'état que si on l'a choisi.
+# Les clés sont des valeurs de config.toml : elles ne se traduisent pas
+# (IE-71 point 5). Les libellés, marqués ici, le sont à l'affichage.
 ACTIONS_FIN: dict[str, str] = {
-    "rien":             "ne rien faire",
-    "veille":           "mise en veille",
-    "veille_prolongee": "veille prolongée",
-    "arret":            "arrêt",
+    "rien":             N_("do nothing"),
+    "veille":           N_("sleep"),
+    "veille_prolongee": N_("hibernate"),
+    "arret":            N_("shut down"),
 }
 ACTION_FIN_DEFAUT = "rien"
 
@@ -52,7 +56,7 @@ def disponible() -> bool:
 
 def libelle_action(action: str) -> str:
     """« mise en veille », « arrêt »… ; l'action par défaut si inconnue."""
-    return ACTIONS_FIN.get(action, ACTIONS_FIN[ACTION_FIN_DEFAUT])
+    return _(ACTIONS_FIN.get(action, ACTIONS_FIN[ACTION_FIN_DEFAUT]))
 
 
 # ─── Le moteur Windows ────────────────────────────────────────────────────────
@@ -187,12 +191,12 @@ class _MoteurWindows:
             # passe mal ses arguments — pas de l'appel direct.
             if powrprof.SetSuspendState(False, False, False):
                 return None
-            return (f"la mise en veille a été refusée (erreur "
-                    f"{self._ct.get_last_error()})")
+            return _("sleep was refused (error {code})").format(
+                code=self._ct.get_last_error())
         cmd = {"veille_prolongee": ["shutdown", "/h"],
                "arret":            ["shutdown", "/s", "/t", "0"]}.get(action)
         if cmd is None:
-            return f"action inconnue : {action}"
+            return _("unknown action: {action}").format(action=action)
         try:
             # shutdown.exe écrit dans la page de code OEM de la console.
             r = subprocess.run(cmd, stdin=subprocess.DEVNULL,
@@ -265,6 +269,6 @@ class GardeVeille:
             return None
         moteur = self._le_moteur()
         if moteur is None:
-            return "indisponible sur ce système"
-        log.info("veille : fin de lot, %s", libelle_action(action))
+            return _("unavailable on this system")
+        log.info("veille : fin de lot, %s", action)   # le journal garde la clé
         return moteur.executer(action)

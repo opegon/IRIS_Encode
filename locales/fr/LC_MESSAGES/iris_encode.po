@@ -837,6 +837,47 @@ msgstr "aucune réplique lisible — format inconnu ou fichier vide"
 msgid "no audio in the video to serve as reference"
 msgstr "aucun audio dans la vidéo pour servir de référence"
 
+#. an installed version that could not be read.
+#: core/updates.py:45
+msgctxt "version"
+msgid "unknown"
+msgstr "inconnue"
+
+#: core/updates.py:46
+#, python-brace-format
+msgid "{tool}: {installed} → {latest}"
+msgstr "{tool} : {installed} → {latest}"
+
+#: core/veille.py:41
+msgid "do nothing"
+msgstr "ne rien faire"
+
+#: core/veille.py:42
+msgid "sleep"
+msgstr "mise en veille"
+
+#: core/veille.py:43
+msgid "hibernate"
+msgstr "veille prolongée"
+
+#: core/veille.py:44
+msgid "shut down"
+msgstr "arrêt"
+
+#: core/veille.py:194
+#, python-brace-format
+msgid "sleep was refused (error {code})"
+msgstr "la mise en veille a été refusée (erreur {code})"
+
+#: core/veille.py:199
+#, python-brace-format
+msgid "unknown action: {action}"
+msgstr "action inconnue : {action}"
+
+#: core/veille.py:272
+msgid "unavailable on this system"
+msgstr "indisponible sur ce système"
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."

@@ -804,7 +804,7 @@ class RunScreen(TableNavMixin, Screen):
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
-                    "▶ 3/4 Transcodage des pistes audio…")
+                    f"▶ 3/{n_etapes} Transcodage des pistes audio…")
                 s.percent = -1
                 self.app.call_from_thread(self._update_row, index)
 

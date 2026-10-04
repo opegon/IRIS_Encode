@@ -1,5 +1,16 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.71] — 2026-10-04
+
+### Compteur d'étapes du retrait DV calculé
+
+Clôture d'IE-83. L'audit de localisation avait signalé « ▶ 3/4 Transcodage des
+pistes audio… » écrit en dur dans `tui/screens/run.py`, quand les étapes
+voisines calculent leur total. Ce n'était pas un défaut : l'étape n'existe que
+sur le chemin MKV, où le total vaut toujours 4. Le compteur se calcule
+désormais comme les autres (`n_etapes`), pour ne pas mentir si le nombre
+d'étapes change. Aucun changement visible.
+
 ## [v0.8.9.70] — 2026-10-04
 
 ### Noms de piste proposés selon la langue de la piste

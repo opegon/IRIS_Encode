@@ -1070,6 +1070,8 @@ msgstr ""
 #: tui/screens/mux_run.py:46
 #: tui/screens/opensubtitles.py:57
 #: tui/screens/profile_picker.py:61
+#: tui/screens/tracks.py:135
+#: tui/screens/tracks.py:136
 #: tui/screens/value_picker.py:53
 #: tui/screens/wizard.py:149
 #: tui/screens/wizard.py:150
@@ -1081,12 +1083,14 @@ msgstr ""
 #: tui/screens/dryrun.py:98
 #: tui/screens/join.py:61
 #: tui/screens/mux_run.py:49
+#: tui/screens/tracks.py:139
 #: tui/screens/wizard.py:151
 msgid "Home"
 msgstr ""
 
 #. "Dolby V." is short for Dolby Vision; keep it short.
 #: tui/common.py:521
+#: tui/screens/tracks.py:130
 msgid "Profile"
 msgstr ""
 
@@ -1105,6 +1109,7 @@ msgid "HD audio"
 msgstr ""
 
 #: tui/common.py:522
+#: tui/screens/tracks.py:145
 msgid "Source"
 msgstr ""
 
@@ -1117,6 +1122,9 @@ msgid "del."
 msgstr ""
 
 #: tui/common.py:552
+#: tui/screens/tracks.py:429
+#: tui/screens/tracks.py:435
+#: tui/screens/tracks.py:705
 msgctxt "source file"
 msgid "keep"
 msgstr ""
@@ -1154,6 +1162,7 @@ msgstr ""
 #: tui/screens/confirm.py:109
 #: tui/screens/donor_picker.py:224
 #: tui/screens/donor_picker.py:241
+#: tui/screens/tracks.py:127
 msgid "OK"
 msgstr ""
 
@@ -1240,6 +1249,7 @@ msgstr ""
 
 #: tui/screens/cles.py:120
 #: tui/screens/options.py:82
+#: tui/screens/tracks.py:124
 #: tui/widgets/profile_form.py:206
 msgid "Next field"
 msgstr ""
@@ -1421,6 +1431,7 @@ msgstr ""
 
 #: tui/screens/donor_picker.py:223
 #: tui/screens/dryrun.py:88
+#: tui/screens/tracks.py:122
 msgid "Toggle"
 msgstr ""
 
@@ -1433,6 +1444,7 @@ msgid "Select"
 msgstr ""
 
 #: tui/screens/donor_picker.py:250
+#: tui/screens/tracks.py:258
 #: tui/screens/wizard.py:289
 msgid "Track"
 msgstr ""
@@ -1444,6 +1456,7 @@ msgstr ""
 
 #: tui/screens/donor_picker.py:253
 #: tui/screens/opensubtitles.py:80
+#: tui/screens/tracks.py:261
 #: tui/screens/wizard.py:291
 msgid "Language"
 msgstr ""
@@ -1459,18 +1472,23 @@ msgstr ""
 
 #: tui/screens/dryrun.py:91
 #: tui/screens/mux_run.py:44
+#: tui/screens/tracks.py:129
 #: tui/screens/wizard.py:147
 msgid "Encode"
 msgstr ""
 
 #: tui/screens/dryrun.py:92
 #: tui/screens/dryrun.py:386
+#: tui/screens/tracks.py:131
+#: tui/screens/tracks.py:145
+#: tui/screens/tracks.py:678
 #: tui/screens/wizard.py:142
 #: tui/screens/wizard.py:489
 msgid "Codec"
 msgstr ""
 
 #: tui/screens/dryrun.py:93
+#: tui/screens/tracks.py:132
 #: tui/screens/wizard.py:143
 msgid "Bitrate"
 msgstr ""
@@ -1516,6 +1534,7 @@ msgstr ""
 
 #: tui/screens/dryrun.py:289
 #: tui/screens/mux_run.py:43
+#: tui/screens/tracks.py:128
 msgid "Dry run"
 msgstr ""
 
@@ -1527,6 +1546,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: tui/screens/dryrun.py:291
+#: tui/screens/tracks.py:482
 #, python-brace-format
 msgid "Col: {column}"
 msgstr ""
@@ -1936,6 +1956,181 @@ msgstr ""
 msgid "Each segment is aligned, at its own offset — both files carry the same content in two different cuts ({total} ms accumulated). A single offset cannot resync them: adding the track would require building a corrected track."
 msgstr ""
 
+#: tui/screens/tracks.py:71
+#: tui/screens/wizard.py:274
+msgid "Video"
+msgstr ""
+
+#: tui/screens/tracks.py:71
+msgid "Audio"
+msgstr ""
+
+#: tui/screens/tracks.py:71
+msgid "Subtitles"
+msgstr ""
+
+#. section of the tracks taken from another file.
+#: tui/screens/tracks.py:73
+msgid "External"
+msgstr ""
+
+#: tui/screens/tracks.py:109
+msgid "Field"
+msgstr ""
+
+#: tui/screens/tracks.py:109
+msgid "Value"
+msgstr ""
+
+#: tui/screens/tracks.py:110
+msgid "List of choices"
+msgstr ""
+
+#: tui/screens/tracks.py:111
+msgid "on a track: confirm"
+msgstr ""
+
+#: tui/screens/tracks.py:115
+msgid "Select / deselect"
+msgstr ""
+
+#: tui/screens/tracks.py:116
+msgid "Confirm the selection"
+msgstr ""
+
+#: tui/screens/tracks.py:123
+msgid "Prev. field"
+msgstr ""
+
+#: tui/screens/tracks.py:125
+msgid "Next value"
+msgstr ""
+
+#: tui/screens/tracks.py:126
+msgid "Prev. value"
+msgstr ""
+
+#: tui/screens/tracks.py:133
+msgid "Del./keep source"
+msgstr ""
+
+#: tui/screens/tracks.py:134
+msgid "External track"
+msgstr ""
+
+#: tui/screens/tracks.py:145
+msgid "Format"
+msgstr ""
+
+#: tui/screens/tracks.py:146
+msgid "Title"
+msgstr ""
+
+#: tui/screens/tracks.py:268
+msgid "Decision / Target"
+msgstr ""
+
+#: tui/screens/tracks.py:288
+#: tui/screens/tracks.py:325
+msgctxt "track"
+msgid "default"
+msgstr ""
+
+#: tui/screens/tracks.py:290
+#: tui/screens/tracks.py:326
+msgid "selected"
+msgstr ""
+
+#: tui/screens/tracks.py:311
+msgid "(none)"
+msgstr ""
+
+#: tui/screens/tracks.py:320
+msgid "image"
+msgstr ""
+
+#: tui/screens/tracks.py:320
+msgid "text"
+msgstr ""
+
+#. {kind} is "audio" or "subtitle".
+#: tui/screens/tracks.py:359
+#: tui/screens/wizard.py:310
+#, python-brace-format
+msgid "added {kind}"
+msgstr ""
+
+#: tui/screens/tracks.py:424
+msgid "dovi_tool missing"
+msgstr ""
+
+#: tui/screens/tracks.py:428
+#: tui/screens/tracks.py:432
+#: tui/screens/tracks.py:704
+msgctxt "source file"
+msgid "delete"
+msgstr ""
+
+#: tui/screens/tracks.py:429
+msgid "(profile)"
+msgstr ""
+
+#: tui/screens/tracks.py:476
+msgid "video modified"
+msgstr ""
+
+#: tui/screens/tracks.py:478
+#, python-brace-format
+msgid "Profile: {profile}"
+msgstr ""
+
+#: tui/screens/tracks.py:479
+#, python-brace-format
+msgid "Audio: {selected}/{total}"
+msgstr ""
+
+#: tui/screens/tracks.py:480
+#, python-brace-format
+msgid "Subtitles: {selected}/{total}"
+msgstr ""
+
+#: tui/screens/tracks.py:622
+msgid "mkvmerge missing — run the preflight again to install it."
+msgstr ""
+
+#: tui/screens/tracks.py:706
+#, python-brace-format
+msgid "Profile ({action})"
+msgstr ""
+
+#: tui/screens/tracks.py:707
+msgid "Keep the original"
+msgstr ""
+
+#: tui/screens/tracks.py:707
+msgid "Delete the original"
+msgstr ""
+
+#: tui/screens/tracks.py:713
+msgid "Original file"
+msgstr ""
+
+#: tui/screens/tracks.py:782
+msgid "Go back to Home?"
+msgstr ""
+
+#: tui/screens/tracks.py:783
+msgid "The selected tracks and the chosen codec will be lost."
+msgstr ""
+
+#: tui/screens/tracks.py:784
+msgid "Go back"
+msgstr ""
+
+#: tui/screens/tracks.py:784
+msgid "Stay"
+msgstr ""
+
 #: tui/screens/wizard.py:77
 #: tui/screens/wizard.py:293
 msgid "Decision"
@@ -2038,19 +2233,9 @@ msgstr ""
 msgid "Output"
 msgstr ""
 
-#: tui/screens/wizard.py:274
-msgid "Video"
-msgstr ""
-
 #: tui/screens/wizard.py:280
 #, python-brace-format
 msgid "{bitrate}k targeted"
-msgstr ""
-
-#. {kind} is "audio" or "subtitle".
-#: tui/screens/wizard.py:310
-#, python-brace-format
-msgid "added {kind}"
 msgstr ""
 
 #: tui/screens/wizard.py:332

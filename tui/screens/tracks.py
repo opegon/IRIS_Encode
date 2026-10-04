@@ -20,6 +20,7 @@ Tab/Shift+Tab → colonne suivante/précédente  |  < / > → rétrécir/élargi
 """
 from __future__ import annotations
 
+from rich.cells import cell_len
 from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
@@ -30,7 +31,7 @@ from textual.widgets import DataTable, Static
 
 import core.config as cfg_mod
 from core import dovi
-from core.i18n import _
+from core.i18n import N_, _, pgettext
 from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
@@ -66,8 +67,15 @@ from .value_picker import ValuePickerScreen
 # Le trait décoratif part donc dans les autres cellules — la ligne se lit comme
 # une règle en travers de la table — et la colonne prend la largeur du plus long
 # intitulé, jamais moins.
-SECTIONS: tuple[str, ...] = ("VIDÉO", "AUDIO", "SOUS-TITRES", "EXTERNES")
-_W_IDX: int = max(10, *(len(s) for s in SECTIONS))
+# Intitulés en capitales au rendu : la capitale est décorative (L-52).
+SECTIONS: tuple[str, ...] = (N_("Video"), N_("Audio"), N_("Subtitles"),
+                             # TRANSLATORS: section of the tracks taken from another file.
+                             N_("External"))
+
+
+def _w_idx() -> int:
+    """Largeur de la colonne « Piste » : le plus long intitulé affiché."""
+    return max(10, *(cell_len(_(s).upper()) for s in SECTIONS))
 
 
 # ── Types de lignes ───────────────────────────────────────────────────────────
@@ -94,43 +102,49 @@ _ACTION_SHORT: dict[VideoAction, str] = {
 }
 _DV_SHORT: dict[DVAction, str] = {DVAction.NONE: "—", **DV_SORTIE}
 
-# Hints contextuels affichés dans la barre du bas selon la ligne courante
-_HINT_VIDEO = raccourcis([("←/→", "Champ"), ("+/-", "Valeur"),
-                          ("enter", "Liste de choix"),
-                          ("enter", "sur une piste : Valider")])
-_HINT_TRACK = raccourcis([("space", "Sélectionner / désélectionner"),
-                          ("enter", "Valider la sélection")])
+# Hints contextuels affichés dans la barre du bas selon la ligne courante.
+# Rendus à l'appel : `raccourcis` traduit, et la langue n'est pas chargée à
+# l'import (L-39).
+def _hint_video() -> str:
+    return raccourcis([("←/→", N_("Field")), ("+/-", N_("Value")),
+                       ("enter", N_("List of choices")),
+                       ("enter", N_("on a track: confirm"))])
+
+
+def _hint_track() -> str:
+    return raccourcis([("space", N_("Select / deselect")),
+                       ("enter", N_("Confirm the selection"))])
 
 
 class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | None"]):
 
     BINDINGS = [
-        Binding("space",     "toggle_row",    "Sélect",               show=True),
-        Binding("left",      "field_prev",    "Champ préc.",          show=False),
-        Binding("right",     "field_next",    "Champ suiv.",          show=False),
-        Binding("+",         "val_up",        "Valeur suiv.",         show=False),
-        Binding("-",         "val_down",      "Valeur préc.",         show=False),
-        Binding("enter",     "enter_action",  "Valider",              show=True, priority=True),
-        Binding("f1",        "dryrun",        "Aperçu",               show=True),
-        Binding("f2",        "run",           "Encoder",              show=True),
-        Binding("f4",        "change_profile","Profil",               show=True),
-        Binding("f6",        "open_codec",    "Codec",                show=True),
-        Binding("f7",        "open_bitrate",  "Débit",                show=True),
-        Binding("f8",        "toggle_delete", "Suppr./garder source", show=True),
-        Binding("f9",        "add_external",  "Piste externe",        show=True),
-        Binding("backspace", "dismiss_cancel","Retour",               show=True),
-        Binding("escape",    "dismiss_cancel","Retour",               show=False, priority=True),
+        Binding("space",     "toggle_row",    N_("Toggle"),               show=True),
+        Binding("left",      "field_prev",    N_("Prev. field"),          show=False),
+        Binding("right",     "field_next",    N_("Next field"),           show=False),
+        Binding("+",         "val_up",        N_("Next value"),           show=False),
+        Binding("-",         "val_down",      N_("Prev. value"),          show=False),
+        Binding("enter",     "enter_action",  N_("OK"),                   show=True, priority=True),
+        Binding("f1",        "dryrun",        N_("Dry run"),              show=True),
+        Binding("f2",        "run",           N_("Encode"),               show=True),
+        Binding("f4",        "change_profile",N_("Profile"),              show=True),
+        Binding("f6",        "open_codec",    N_("Codec"),                show=True),
+        Binding("f7",        "open_bitrate",  N_("Bitrate"),              show=True),
+        Binding("f8",        "toggle_delete", N_("Del./keep source"),     show=True),
+        Binding("f9",        "add_external",  N_("External track"),       show=True),
+        Binding("backspace", "dismiss_cancel",N_("Back"),                 show=True),
+        Binding("escape",    "dismiss_cancel",N_("Back"),                 show=False, priority=True),
         # `priority` : un DataTable etouffe la touche avant les bindings —
         # meme avertissement qu'en tete de tui/mixins.py.
-        Binding("ctrl+home", "accueil",   "Accueil",       show=True,
+        Binding("ctrl+home", "accueil",   N_("Home"),       show=True,
                 priority=True),
     ]
 
     # Colonnes redimensionnables (ColumnResizeMixin)
     RESIZE_COLS   = ["codec", "fmt", "src", "titre"]
-    RESIZE_LABELS = {"codec": "Codec", "fmt": "Format", "src": "Source",
-                     "titre": "Titre"}
-    # case (7) + Piste (_W_IDX) + Langue (8), hors cycle, leurs marges, barre
+    RESIZE_LABELS = {"codec": N_("Codec"), "fmt": N_("Format"), "src": N_("Source"),
+                     "titre": N_("Title")}
+    # case (7) + Piste (_w_idx(), 11 en français) + Langue (8), hors cycle, leurs marges, barre
     # de défilement. « Décision / Cible » suit son contenu et n'y est pas.
     RESIZE_FIXE   = 26 + 3 * 2 + 2
 
@@ -200,7 +214,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield DataTable(id="tracks-table", cursor_type="row",
                         zebra_stripes=False, show_header=True)
-        yield Static(_HINT_TRACK, id="hint-bar")
+        yield Static(_hint_track(), id="hint-bar")
         yield KeyFooter(
             actions=actions_ecran(self),
             nav=footer_line2(back=True, nav=True, resize=True, accueil=True),
@@ -225,7 +239,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         w    = self._resize_widths()
         # « Décision / Cible » s'ajuste à son contenu : le trait n'a pas de
         # largeur à suivre, il prend celle du plus long libellé qu'on y écrit.
-        largeurs = [7, _W_IDX, self.resize_largeur("codec", w["codec"]), self.resize_largeur("fmt", w["fmt"]), 8,
+        largeurs = [7, _w_idx(), self.resize_largeur("codec", w["codec"]), self.resize_largeur("fmt", w["fmt"]), 8,
                     self.resize_largeur("src", w["src"]), self.resize_largeur("titre", w["titre"]), 24]
         cells = [Text(titre, style="bold dim") if i == 1
                  else Text("─" * n, style="dim")
@@ -241,25 +255,25 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         widths = cfg_mod.get_tracks_column_widths(self.app.cfg)  # type: ignore[attr-defined]
 
         table.add_column("",                          width=7,                          key="check")
-        colonne_fixe(table, "Piste",                     _W_IDX,                     key="idx")
+        colonne_fixe(table, _("Track"),                  _w_idx(),                   key="idx")
         table.add_column(self.resize_header("codec"), width=self.resize_largeur("codec", widths["codec"]), key="codec")
         table.add_column(self.resize_header("fmt"),   width=self.resize_largeur("fmt", widths["fmt"]),   key="fmt")
-        colonne_fixe(table, "Langue",                    8,                          key="lang")
+        colonne_fixe(table, _("Language"),               8,                          key="lang")
         # « Source » portait deux sens : le motif de sélection pour l'audio
         # (« défaut », « sélectionné ») et le titre déclaré pour les
         # sous-titres (« QoQ-Team »). Les deux comptent — ce sont deux
         # colonnes, pas deux usages d'une seule.
         table.add_column(self.resize_header("src"),   width=self.resize_largeur("src", widths["src"]),   key="src")
         table.add_column(self.resize_header("titre"), width=self.resize_largeur("titre", widths["titre"]), key="titre")
-        table.add_column("Décision / Cible",          width=None,                       key="dec")
+        table.add_column(_("Decision / Target"),      width=None,                       key="dec")
         self._rows = []
 
         # ── Section VIDÉO ─────────────────────────────────────────────────────
-        self._ligne_section(table, "VIDÉO", "__sec_video__")
+        self._ligne_section(table, _(SECTIONS[0]).upper(), "__sec_video__")
         self._add_video_row(table)
 
         # ── Section AUDIO ─────────────────────────────────────────────────────
-        self._ligne_section(table, "AUDIO", "__sec_audio__")
+        self._ligne_section(table, _(SECTIONS[1]).upper(), "__sec_audio__")
         for ad in self._decision.audio:
             t   = ad.track
             idx = t.index
@@ -271,9 +285,9 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             if excl:
                 reason = _(EXCLU_MANUELLEMENT)
             elif idx == 0:
-                reason = "défaut"
+                reason = pgettext("track", "default")
             else:
-                reason = "sélectionné"
+                reason = _("selected")
 
             table.add_row(
                 self._check_text(_ROW_AUDIO, idx),
@@ -290,11 +304,11 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             self._rows.append((_ROW_AUDIO, idx))
 
         # ── Section SOUS-TITRES ───────────────────────────────────────────────
-        self._ligne_section(table, "SOUS-TITRES", "__sec_subs__")
+        self._ligne_section(table, _(SECTIONS[2]).upper(), "__sec_subs__")
         subs = self._decision.info.subtitle_tracks
         if not subs:
             table.add_row(
-                Text(""), Text("  (aucun)", style="dim italic"),
+                Text(""), Text("  " + _("(none)"), style="dim italic"),
                 Text(""), Text(""), Text(""), Text(""), Text(""), Text(""),
                 key="__no_subs__",
             )
@@ -303,12 +317,13 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             for st in subs:
                 sel   = st.index in self._sel_subs
                 style = "" if sel else "dim"
-                type_str = "image" if st.is_image_based else "texte"
+                type_str = _("image") if st.is_image_based else _("text")
                 cont_str = f"{libelle_copie()} {'MKV' if st.is_image_based else 'MP4'}"
 
                 # Raison simplifiée pour l'affichage
                 if sel:
-                    reason = "défaut" if st.index == 0 else "sélectionné"
+                    reason = (pgettext("track", "default") if st.index == 0
+                              else _("selected"))
                 else:
                     reason = _(EXCLU_MANUELLEMENT)
 
@@ -329,7 +344,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         # ── Section PISTES EXTERNES ───────────────────────────────────────────
         ext = self._decision.external_tracks
         if ext:
-            self._ligne_section(table, "EXTERNES", "__sec_ext__")
+            self._ligne_section(table, _(SECTIONS[3]).upper(), "__sec_ext__")
             for i, et in enumerate(ext):
                 kind = libelle_type_piste(et.kind)
                 table.add_row(
@@ -341,7 +356,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                             style="" if et.language else "bold dark_orange"),
                     cellule(et.source_path.name),
                     cellule(et.track_name or "—"),
-                    cellule(f"→ greffe {kind}", style="green"),
+                    cellule("→ " + _("added {kind}").format(kind=kind), style="green"),
                     key=f"e:{i}",
                 )
                 self._rows.append((_ROW_EXTERNAL, i))
@@ -406,16 +421,19 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             # Avertissement si HDR10 demandé mais dovi_tool absent → qualité dégradée
             if dv == DVAction.HDR10 and not self._dovi_available():
                 dec_txt.append("  ")
-                dec_txt.append("⚠ dovi_tool absent", style="bold dark_orange")
+                dec_txt.append("⚠ " + _("dovi_tool missing"), style="bold dark_orange")
         # Champ original
         if self._ov_delete is None:
             del_profile = self._decision.profile.data.get("delete_source", False)
-            orig_lbl = ("⚠ supprimer" if del_profile else "○ garder") + " (profil)"
+            orig_lbl = (("⚠ " + pgettext("source file", "delete")) if del_profile
+                        else ("○ " + pgettext("source file", "keep"))) + " " + _("(profile)")
             orig_sty = "bold dark_orange" if del_profile else "green"
         elif del_src:
-            orig_lbl, orig_sty = "⚠ SUPPRIMER", "bold dark_orange"
+            orig_lbl = "⚠ " + pgettext("source file", "delete").upper()
+            orig_sty = "bold dark_orange"
         else:
-            orig_lbl, orig_sty = "○ GARDER", "bold green"
+            orig_lbl = "○ " + pgettext("source file", "keep").upper()
+            orig_sty = "bold green"
         dec_txt.append("  ·  ")
         dec_txt.append_text(_f("orig", orig_lbl, orig_sty))
 
@@ -455,16 +473,18 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         prof_id = self._decision.profile.id
         n_a     = len(self._sel_audio);  tot_a = len(self._decision.audio)
         n_s     = len(self._sel_subs);   tot_s = len(self._decision.info.subtitle_tracks)
-        ovr_str = "★ vidéo modifiée" if self._has_override() else ""
+        ovr_str = "★ " + _("video modified") if self._has_override() else ""
         self.query_one("#status-bar", Static).update(barre_etat(
-            "", fname, f"Profil : {prof_id}", f"Audio : {n_a}/{tot_a}",
-            f"Sous-titres : {n_s}/{tot_s}", ovr_str,
-            f"Col : {self.resize_col_label}  </>",
+            "", fname, _("Profile: {profile}").format(profile=prof_id),
+            _("Audio: {selected}/{total}").format(selected=n_a, total=tot_a),
+            _("Subtitles: {selected}/{total}").format(selected=n_s, total=tot_s),
+            ovr_str,
+            _("Col: {column}").format(column=self.resize_col_label) + "  </>",
         ))
 
     def _update_hint_bar(self) -> None:
         """Aide contextuelle : contrôles d'édition sur la ligne vidéo, sélection sinon."""
-        hint = _HINT_VIDEO if self._on_video_row() else _HINT_TRACK
+        hint = _hint_video() if self._on_video_row() else _hint_track()
         self.query_one("#hint-bar", Static).update(hint)
 
     @on(DataTable.RowHighlighted)
@@ -599,7 +619,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         if not getattr(self.app, "mkvmerge_available", False):
             self.app.bell()
             self.query_one("#hint-bar", Static).update(
-                "mkvmerge absent — relancez le preflight pour l'installer."
+                _("mkvmerge missing — run the preflight again to install it.")
             )
             return
 
@@ -655,7 +675,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 if nxt == VideoAction.ENCODE_AV1 and s._ov_bitrate is None:
                     s._ov_bitrate = 1500 * 1000
                 s._update_video_row(); s._update_status()
-            cfg = ("Codec", codec_picker_opts(getattr(self.app, "platform", None)),
+            cfg = (_("Codec"), codec_picker_opts(getattr(self.app, "platform", None)),
                    current, apply_action)
 
         elif field == "bitrate":
@@ -681,14 +701,16 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             cfg = ("Dolby Vision", opts, current, apply_dv)
 
         elif field == "orig":
-            del_lbl = "supprimer" if profile_del else "garder"
-            opts    = [f"Profil ({del_lbl})", "Garder l'original", "Supprimer l'original"]
+            del_lbl = (pgettext("source file", "delete") if profile_del
+                       else pgettext("source file", "keep"))
+            opts    = [_("Profile ({action})").format(action=del_lbl),
+                       _("Keep the original"), _("Delete the original")]
             current = 0 if self._ov_delete is None else (2 if self._ov_delete else 1)
             def apply_orig(idx, s=self):
                 if idx is None: return
                 s._ov_delete = None if idx == 0 else (idx == 2)
                 s._update_video_row(); s._update_status()
-            cfg = ("Fichier original", opts, current, apply_orig)
+            cfg = (_("Original file"), opts, current, apply_orig)
 
         if cfg:
             title, opts, cur, callback = cfg
@@ -757,6 +779,6 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 retour_accueil(self.app)
 
         self.app.push_screen(ConfirmModal(
-            "Revenir à l'accueil ?",
-            "Les pistes sélectionnées et le codec choisi seront perdus.",
-            confirm_label="Revenir", cancel_label="Rester", danger=True), _apres)
+            _("Go back to Home?"),
+            _("The selected tracks and the chosen codec will be lost."),
+            confirm_label=_("Go back"), cancel_label=_("Stay"), danger=True), _apres)

@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .i18n import _, ngettext, pgettext
+
 import tomli_w
 
 APP_DIR       = Path(__file__).resolve().parent.parent
@@ -128,8 +130,11 @@ class Profile:
             "1080p":    f'{self.data.get("bitrate_1080p_kbps", "?")}k',
             "4k":       f'{self.data.get("bitrate_4k_kbps", "?")}k' + (" ✓" if k4 else ""),
             "preset":   self.data.get("preset_encoder", "?"),
-            "hd_audio": "oui" if self.data.get("preserve_hd_audio") else "non",
-            "del_src":  "⚠ oui" if del_ else "non",
+            "hd_audio": (pgettext("profile value", "yes")
+                         if self.data.get("preserve_hd_audio")
+                         else pgettext("profile value", "no")),
+            "del_src":  ("⚠ " + pgettext("profile value", "yes") if del_
+                         else pgettext("profile value", "no")),
         }
 
     def as_toml_dict(self) -> dict[str, Any]:
@@ -195,14 +200,16 @@ def load_all() -> dict[str, "Profile"]:
         # session tient sur les profils livrés, chargés en mémoire seulement.
         livres = _profils_livres()
         if livres is not None:
-            print(f"⚠  profiles.toml illisible ({e}). "
-                  f"Session tenue sur les {len(livres)} profils livrés — "
-                  f"votre fichier n'a pas été touché.")
+            print("⚠  " + ngettext(
+                "profiles.toml unreadable ({error}). Session running on the "
+                "{count} built-in profile — your file was not touched.",
+                "profiles.toml unreadable ({error}). Session running on the "
+                "{count} built-in profiles — your file was not touched.",
+                len(livres)).format(error=e, count=len(livres)))
             return livres
-        print(
-            f"⚠  profiles.toml illisible ({e}). "
-            f"Chargement du profil [{PROFIL_DEFAUT_ID}] intégré."
-        )
+        print("⚠  " + _("profiles.toml unreadable ({error}). Loading the "
+                        "built-in profile [{profile}].").format(
+                            error=e, profile=PROFIL_DEFAUT_ID))
         return _plancher()
 
     migre = _migrer_noms(raw)

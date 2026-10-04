@@ -608,6 +608,30 @@ msgstr ""
 msgid "in mpv: Ctrl++ / Ctrl+- shift the audio by 100 ms steps"
 msgstr ""
 
+#: core/profiles.py:133
+#: core/profiles.py:136
+msgctxt "profile value"
+msgid "yes"
+msgstr ""
+
+#: core/profiles.py:135
+#: core/profiles.py:137
+msgctxt "profile value"
+msgid "no"
+msgstr ""
+
+#: core/profiles.py:203
+#, python-brace-format
+msgid "profiles.toml unreadable ({error}). Session running on the {count} built-in profile — your file was not touched."
+msgid_plural "profiles.toml unreadable ({error}). Session running on the {count} built-in profiles — your file was not touched."
+msgstr[0] ""
+msgstr[1] ""
+
+#: core/profiles.py:210
+#, python-brace-format
+msgid "profiles.toml unreadable ({error}). Loading the built-in profile [{profile}]."
+msgstr ""
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."

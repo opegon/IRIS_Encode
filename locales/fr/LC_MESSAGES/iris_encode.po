@@ -608,6 +608,30 @@ msgstr "dans mpv : z / Z décalent les sous-titres par pas de 100 ms"
 msgid "in mpv: Ctrl++ / Ctrl+- shift the audio by 100 ms steps"
 msgstr "dans mpv : Ctrl++ / Ctrl+- décalent l'audio par pas de 100 ms"
 
+#: core/profiles.py:133
+#: core/profiles.py:136
+msgctxt "profile value"
+msgid "yes"
+msgstr "oui"
+
+#: core/profiles.py:135
+#: core/profiles.py:137
+msgctxt "profile value"
+msgid "no"
+msgstr "non"
+
+#: core/profiles.py:203
+#, python-brace-format
+msgid "profiles.toml unreadable ({error}). Session running on the {count} built-in profile — your file was not touched."
+msgid_plural "profiles.toml unreadable ({error}). Session running on the {count} built-in profiles — your file was not touched."
+msgstr[0] "profiles.toml illisible ({error}). Session tenue sur le {count} profil livré — votre fichier n'a pas été touché."
+msgstr[1] "profiles.toml illisible ({error}). Session tenue sur les {count} profils livrés — votre fichier n'a pas été touché."
+
+#: core/profiles.py:210
+#, python-brace-format
+msgid "profiles.toml unreadable ({error}). Loading the built-in profile [{profile}]."
+msgstr "profiles.toml illisible ({error}). Chargement du profil [{profile}] intégré."
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."

@@ -38,12 +38,21 @@ def test_aucun_ancien_separateur_dans_les_textes_affiches():
 # ── Accords (UX-15) ───────────────────────────────────────────────────────────
 
 def test_accords():
-    from core.texte import accorde, pluriel
-    assert pluriel(0, "fichier") == "0 fichier"
-    assert pluriel(1, "piste greffée") == "1 piste greffée"
-    assert pluriel(3, "piste greffée") == "3 pistes greffées"
-    assert pluriel(2, "piste audio", "pistes audio") == "2 pistes audio"
-    assert accorde(1, "terminé") == "terminé" and accorde(4, "terminé") == "terminés"
+    """Les cas d'UX-15, par `ngettext` et le catalogue français depuis que
+    `core/texte.py` est retiré (IE-88, L-37) : singulier jusqu'à 1."""
+    from core.i18n import ngettext
+
+    def n(sing, plur, k, **kw):
+        return ngettext(sing, plur, k).format(count=k, **kw)
+
+    assert n("{count} file", "{count} files", 0) == "0 fichier"
+    assert n("{count} added track", "{count} added tracks", 1) == "1 piste greffée"
+    assert n("{count} added track", "{count} added tracks", 3) == "3 pistes greffées"
+    assert n("{count} audio track", "{count} audio tracks", 2) == "2 pistes audio"
+    assert ngettext("{done}/{total} done", "{done}/{total} done", 1).format(
+        done=1, total=1) == "1/1 terminé"
+    assert ngettext("{done}/{total} done", "{done}/{total} done", 4).format(
+        done=4, total=4) == "4/4 terminés"
 
 
 def test_plus_de_marque_de_pluriel_entre_parentheses():

@@ -1228,6 +1228,14 @@ msgstr ""
 msgid "Prev."
 msgstr ""
 
+#: tui/screens/ancrage.py:81
+msgid "Anchor point"
+msgstr ""
+
+#: tui/screens/ancrage.py:84
+msgid "When do you hear it?"
+msgstr ""
+
 #: tui/screens/ancrage.py:87
 msgid "Other line"
 msgstr ""

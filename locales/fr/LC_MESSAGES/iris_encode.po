@@ -1228,6 +1228,14 @@ msgstr "Suivante"
 msgid "Prev."
 msgstr "Préc."
 
+#: tui/screens/ancrage.py:81
+msgid "Anchor point"
+msgstr "Point de repère"
+
+#: tui/screens/ancrage.py:84
+msgid "When do you hear it?"
+msgstr "À quel instant l'entendez-vous ?"
+
 #: tui/screens/ancrage.py:87
 msgid "Other line"
 msgstr "Autre réplique"

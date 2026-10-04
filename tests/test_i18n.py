@@ -229,14 +229,16 @@ def test_texte_style_garde_la_phrase_entiere():
 
 # ─── Glossaire (IE-85) ────────────────────────────────────────────────────────
 
-def test_core_n_accorde_plus_par_texte_py():
-    """IE-87 : les pluriels de `core/` passent par `ngettext` ; `core/texte.py`
-    code la règle française et ne survit que pour `tui/` (IE-88)."""
-    fautes = [f.name for f in RACINE.joinpath("core").glob("*.py")
-              if f.name != "texte.py"
-              and any(isinstance(n, ast.ImportFrom)
-                      and (n.module or "").split(".")[-1] == "texte"
-                      for n in ast.walk(ast.parse(f.read_text(encoding="utf-8"))))]
+def test_plus_aucun_accord_par_texte_py():
+    """IE-87 puis IE-88 : les pluriels passent par `ngettext`. `core/texte.py`,
+    qui codait la règle française, est retiré (L-37) et ne doit pas revenir."""
+    assert not RACINE.joinpath("core", "texte.py").exists()
+    fautes = [str(f.relative_to(RACINE))
+              for f in [*RACINE.joinpath("core").glob("*.py"),
+                        *RACINE.joinpath("tui").rglob("*.py")]
+              if any(isinstance(n, ast.ImportFrom)
+                     and (n.module or "").split(".")[-1] == "texte"
+                     for n in ast.walk(ast.parse(f.read_text(encoding="utf-8"))))]
     assert not fautes, fautes
 
 
@@ -302,6 +304,58 @@ def test_un_module_qui_traduit_n_ecrase_pas_underscore():
             if (isinstance(n, ast.Name) and n.id == "_" and isinstance(n.ctx, ast.Store)
                     or isinstance(n, ast.arg) and n.arg == "_"):
                 fautes.append(f"{f.relative_to(RACINE)}:{n.lineno}")
+    assert not fautes, fautes
+
+
+def test_aucun_texte_francais_en_dur_dans_tui():
+    """IE-88 : le français de l'interface vit dans le catalogue, plus dans le
+    code. Un littéral accentué hors de `_()`/`N_()` est un texte oublié.
+
+    Hors champ : docstrings, CSS, journaux (`_LOG.…`), noms de minuteries
+    (`name=`), noms propres — et les explications du guide (`aide.py`), qui
+    relèvent d'IE-89."""
+    traduction = {"_", "N_", "Nn_", "ngettext", "pgettext", "npgettext"}
+    ignores_module = {("aide.py", "_COMMUNES"), ("aide.py", "_PAR_ECRAN"),
+                      ("aide.py", "_ORDRE")}                  # IE-89
+    noms_propres = {"AlloCiné"}
+    accent = __import__("re").compile(r"[À-ÿ]")
+    fautes = []
+    for f in sorted(RACINE.joinpath("tui").rglob("*.py")):
+        arbre = ast.parse(f.read_text(encoding="utf-8"))
+        exclus: set[int] = set()
+
+        def exclure(noeud):
+            exclus.update(id(s) for s in ast.walk(noeud))
+
+        for n in ast.walk(arbre):
+            corps = getattr(n, "body", None)
+            if (isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                               ast.AsyncFunctionDef))
+                    and corps and isinstance(corps[0], ast.Expr)
+                    and isinstance(corps[0].value, ast.Constant)):
+                exclure(corps[0])
+            if isinstance(n, ast.Call):
+                fn = n.func
+                nom = fn.id if isinstance(fn, ast.Name) else getattr(fn, "attr", "")
+                base = fn.value.id if (isinstance(fn, ast.Attribute)
+                                       and isinstance(fn.value, ast.Name)) else ""
+                if nom in traduction or base.lstrip("_").lower().startswith("log"):
+                    exclure(n)
+                for k in n.keywords:
+                    if k.arg == "name":
+                        exclure(k.value)
+            if isinstance(n, (ast.Assign, ast.AnnAssign)):
+                cibles = n.targets if isinstance(n, ast.Assign) else [n.target]
+                for c in cibles:
+                    if isinstance(c, ast.Name) and (
+                            c.id in ("CSS", "DEFAULT_CSS")
+                            or (f.name, c.id) in ignores_module):
+                        exclure(n)
+        for n in ast.walk(arbre):
+            if (id(n) not in exclus and isinstance(n, ast.Constant)
+                    and isinstance(n.value, str) and accent.search(n.value)
+                    and n.value not in noms_propres):
+                fautes.append(f"{f.relative_to(RACINE)}:{n.lineno} {n.value[:50]!r}")
     assert not fautes, fautes
 
 

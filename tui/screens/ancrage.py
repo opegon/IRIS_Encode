@@ -78,10 +78,10 @@ class AncrageModal(ModalScreen["tuple[float, float] | None"]):
 
     def compose(self) -> ComposeResult:
         with Static(id="anc-box"):
-            yield Label("Point de repère", id="anc-title")
+            yield Label(_("Anchor point"), id="anc-title")
             yield Static(self._note(), id="anc-note", markup=False)
             yield Static("", id="anc-replique", markup=False)
-            yield Label("À quel instant l'entendez-vous ?", classes="anc-label")
+            yield Label(_("When do you hear it?"), classes="anc-label")
             yield Input(placeholder="13:22", id="anc-entendu")
             yield Static("", id="anc-erreur", markup=False)
             yield Static(raccourcis([("↓/↑", N_("Other line")),

@@ -906,35 +906,43 @@ msgid "Target bitrate"
 msgstr ""
 
 #: tui/common.py:377
+#: tui/mixins.py:35
 msgid "Start"
 msgstr ""
 
 #: tui/common.py:378
+#: tui/mixins.py:36
 msgid "End"
 msgstr ""
 
 #: tui/common.py:379
+#: tui/mixins.py:37
 msgid "Page ↑"
 msgstr ""
 
 #: tui/common.py:380
+#: tui/mixins.py:38
 msgid "Page ↓"
 msgstr ""
 
 #. "Col" is short for column; keep these labels short.
 #: tui/common.py:385
+#: tui/mixins.py:139
 msgid "Prev col"
 msgstr ""
 
 #: tui/common.py:386
+#: tui/mixins.py:140
 msgid "Next col"
 msgstr ""
 
 #: tui/common.py:387
+#: tui/mixins.py:141
 msgid "Narrow"
 msgstr ""
 
 #: tui/common.py:388
+#: tui/mixins.py:142
 msgid "Widen"
 msgstr ""
 
@@ -981,6 +989,11 @@ msgstr ""
 #: tui/common.py:552
 msgctxt "source file"
 msgid "keep"
+msgstr ""
+
+#: tui/mixins.py:287
+#, python-brace-format
+msgid "The columns already take all {width} columns of the terminal — narrow another one ({column} can still be made smaller)."
 msgstr ""
 
 #: tui/screens/cles.py:99

@@ -13,6 +13,8 @@ from textual.binding import Binding
 from textual.events import Key
 from textual.widgets import DataTable
 
+from core.i18n import _, N_
+
 
 class TableNavMixin:
     """
@@ -30,10 +32,10 @@ class TableNavMixin:
     """
 
     BINDINGS = [
-        Binding("home",     "table_home",      "Début",   show=False),
-        Binding("end",      "table_end",       "Fin",     show=False),
-        Binding("pageup",   "table_page_up",   "Page ↑",  show=False),
-        Binding("pagedown", "table_page_down", "Page ↓",  show=False),
+        Binding("home",     "table_home",      N_("Start"),   show=False),
+        Binding("end",      "table_end",       N_("End"),     show=False),
+        Binding("pageup",   "table_page_up",   N_("Page ↑"),  show=False),
+        Binding("pagedown", "table_page_down", N_("Page ↓"),  show=False),
     ]
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -101,7 +103,7 @@ class ColumnResizeMixin:
 
     L'écran hôte déclare :
       RESIZE_COLS   — clés des colonnes redimensionnables (ordre de cycle)
-      RESIZE_LABELS — clé → libellé d'en-tête
+      RESIZE_LABELS — clé → libellé d'en-tête, marqué N_() (traduit ici)
       RESIZE_MIN    — (optionnel) plancher par colonne, défaut RESIZE_MIN_DEFAULT
 
     et implémente :
@@ -134,10 +136,10 @@ class ColumnResizeMixin:
     BARRE_DEFILEMENT:   int            = 2
 
     BINDINGS = [
-        Binding("shift+tab", "col_prev",   "Col préc.", show=True, priority=True),
-        Binding("tab",       "col_next",   "Col suiv.", show=True, priority=True),
-        Binding("<",         "col_shrink", "Rétrécir",  show=True),
-        Binding(">",         "col_grow",   "Élargir",   show=True),
+        Binding("shift+tab", "col_prev",   N_("Prev col"), show=True, priority=True),
+        Binding("tab",       "col_next",   N_("Next col"), show=True, priority=True),
+        Binding("<",         "col_shrink", N_("Narrow"),  show=True),
+        Binding(">",         "col_grow",   N_("Widen"),   show=True),
     ]
 
     _resize_col_idx: int = 0
@@ -177,7 +179,7 @@ class ColumnResizeMixin:
 
     @property
     def resize_col_label(self) -> str:
-        return self.RESIZE_LABELS[self.resize_col_key]
+        return _(self.RESIZE_LABELS[self.resize_col_key])
 
     def resize_header(self, key: str) -> Text:
         """En-tête de colonne, en vidéo inverse sur la colonne active.
@@ -186,7 +188,7 @@ class ColumnResizeMixin:
         réserver, faute de quoi il était rogné : neuf colonnes de moins pour
         le nom de fichier sur l'accueil (UX-19). Un style ne coûte rien.
         """
-        label = self.RESIZE_LABELS[key]
+        label = _(self.RESIZE_LABELS[key])
         return Text(label, style="reverse" if key == self.resize_col_key else "")
 
     def resize_plancher(self, key: str) -> int:
@@ -282,9 +284,9 @@ class ColumnResizeMixin:
         """
         try:
             self.notify(                          # type: ignore[attr-defined]
-                f"Les colonnes occupent déjà les {place} colonnes du terminal — "
-                f"rétrécissez-en une autre ({self.resize_col_label} reste "
-                f"réglable vers le bas).",
+                _("The columns already take all {width} columns of the "
+                  "terminal — narrow another one ({column} can still be made "
+                  "smaller).").format(width=place, column=self.resize_col_label),
                 severity="warning", timeout=4,
             )
         except Exception:

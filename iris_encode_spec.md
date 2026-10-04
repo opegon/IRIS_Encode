@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.74 — document de référence courant
-**Date** : 2026-10-04
+**Version** : 0.8.9.75 — document de référence courant
+**Date** : 2026-10-05
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -137,9 +137,13 @@ traductions gardées, disparus en obsolètes) et compile les `.mo` (`compiler`) 
 du dépôt sont à jour. Le détail des règles d'écriture est en tête de
 `core/i18n.py`. **Les textes de `core/` sont extraits (v0.8.9.74)** : raisons
 de décision, diagnostics, refus, mesures, console du preflight (dont la lettre
-du « oui », `o` en français, `y` toujours accepté). Ceux de `tui/` suivent
-(IE-88) ; `core/texte.py`, qui code la règle de pluriel française, ne sert plus
-qu'à eux. Les tests chargent le français (`tests/conftest.py`, smoke, captures) :
+du « oui », `o` en français, `y` toujours accepté). **Ceux de `tui/` aussi
+(v0.8.9.75)** : écrans, modales, en-têtes, notifications ; les descriptions
+de touches (`BINDINGS`, listes du pied de page) sont marquées `N_()` et
+traduites au rendu, dans le footer et `raccourci`. Restent en français les
+explications du guide des touches (`aide.py`, IE-89). `core/texte.py` est
+retiré : tous les pluriels passent par `ngettext`.
+`tests/test_i18n.py` refuse un littéral accentué hors de `_()` dans `tui/`. Les tests chargent le français (`tests/conftest.py`, smoke, captures) :
 un test qui vérifie un message français vérifie aussi sa traduction.
 
 Le **glossaire** (`locales/glossaire.fr.csv`, colonnes `source`, `target`,
@@ -2846,6 +2850,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.75 | 2026-10-05 | **Textes de `tui/` extraits** (§ 2.1, IE-88) : environ 575 messages, français repris à l'identique (phrases autrefois coupées à la main repliées d'elles-mêmes) ; descriptions de touches marquées `N_()` et traduites au rendu ; largeurs d'en-têtes sur le texte affiché, en cellules ; capitales décoratives au rendu ; `core/texte.py` retiré · `tests/test_i18n.py` (garde-fou du français en dur dans `tui/`) |
 | 0.8.9.74 | 2026-10-04 | **Textes de `core/` extraits** (§ 2.1, IE-87) : messages en anglais source, français au catalogue à l'identique (181 messages) ; erreurs affichées en `ErreurAffichable`, montrées par `texte_erreur` ; pluriels par `ngettext` ; niveaux de confiance, oui/non des profils et actions d'après lot traduits à l'affichage ; lettre du « oui » de la console au catalogue · `tests/test_i18n.py` |
 | 0.8.9.73 | 2026-10-04 | **Glossaire anglais → français** (§ 2.1, IE-85) : `locales/glossaire.fr.csv`, un terme = une traduction, termes à ne pas traduire ; arbitrages de l'utilisateur (SKIP invariant, Dry run, Guided, « lossless » gardé) au wiki, page `localisation` · `tests/test_i18n.py` |
 | 0.8.9.72 | 2026-10-04 | **Socle de la traduction** (§ 2.1, IE-86) : `core/i18n.py` (gettext, anglais source, repli), `locales/` avec le catalogue français et son `.mo` versionné, `outils/i18n.py` sans dépendance (extraction, mise à jour, compilation), `ErreurAffichable`, `liste`, `texte_style` ; `main.py` charge la langue après `config.toml` ; aucun texte encore extrait, rien ne change à l'écran · `tests/test_i18n.py` |

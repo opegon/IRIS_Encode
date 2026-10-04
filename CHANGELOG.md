@@ -1,5 +1,39 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.75] — 2026-10-05
+
+### Textes de `tui/` extraits pour la traduction
+
+IE-88. Chaque texte que l'interface affiche est désormais un message anglais,
+avec sa traduction française au catalogue : environ **575 messages** de plus
+(756 en tout). Le français reste celui d'avant, à quelques exceptions près :
+des phrases autrefois coupées à la main (`\n`) se replient d'elles-mêmes, et
+quelques pluriels s'accordent mieux (« … et 1 autre »).
+
+- **Fichiers traités** : tous les écrans, modales et widgets de `tui/`
+  (accueil, pistes, recalage, assistant, aperçu, file d'encodage, mux,
+  jonction, profils, fiche, OpenSubtitles, point de repère, plages, guide) et
+  `tui/common.py`, `tui/mixins.py`, `tui/app.py`. Pour `tui/screens/aide.py`,
+  seuls les touches et le cadre : les explications du guide relèvent d'IE-89.
+- **Descriptions de touches** (`BINDINGS`, listes du pied de page) : écrites
+  en anglais, marquées `N_()`, traduites au rendu en un seul endroit (footer,
+  `raccourci`) (L-39). Les bandeaux d'aide calculés à l'import (pistes,
+  recalage) le sont maintenant à l'appel : ils restaient en français.
+- **Largeurs** : en-têtes et intitulés mesurés sur le texte affiché, en
+  cellules d'écran (L-46) ; colonne Piste des pistes et colonnes des volumes
+  relevées à leur en-tête traduit ; capitales décoratives posées au rendu
+  (L-52) ; libellés alignés de l'assistant calculés dans la langue (L-83).
+- **Corrections au passage** : le type d'une piste greffée (« sous-titre »)
+  restait en français ; l'assistant disait « E pour encoder », la touche est
+  F2 ; l'écran du point de repère avait deux libellés oubliés ; deux
+  variables locales `_` masquaient la traduction dans le recalage.
+- `core/texte.py` est retiré : tous les pluriels passent par `ngettext` (L-37).
+- **Tests** : nouveau garde-fou `test_aucun_texte_francais_en_dur_dans_tui`
+  (un littéral accentué hors de `_()` dans `tui/` échoue) ; les tests qui
+  comparaient une table source comparent au texte affiché.
+- La palette de commandes de Textual (Ctrl+P) reste en anglais : ses textes
+  ne sont pas les nôtres.
+
 ## [v0.8.9.74] — 2026-10-04
 
 ### Textes de `core/` extraits pour la traduction

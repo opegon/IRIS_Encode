@@ -20,13 +20,13 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
 from core import config as cfg_mod
-from core.i18n import texte_erreur
+from core.i18n import N_, _, ngettext, texte_erreur
 from core.joiner import (build_join_command, controler, derive_duree,
                          duree_attendue, join_output_path, ordre_naturel)
 from core.muxer import MuxProcess
 from core.scanner import VideoInfo
 
-from ..common import barre_etat, actions_ecran, cellule, fmt_duration, footer_line2, retour_accueil, touche
+from ..common import barre_etat, actions_ecran, cellule, fmt_duration, footer_line2, largeur_entete, retour_accueil, touche
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
@@ -35,7 +35,8 @@ from ..widgets.footer import KeyFooter
 # lit sur l'accueil au montage (voir `_largeur_fichier`). Les autres colonnes
 # portent des libellés bornés, le nom est le seul qui déborde vraiment.
 _COLUMNS: list[tuple[str, int | None]] = [
-    ("#", 3), ("Fichier", None), ("Durée", 9), ("Pistes", 12), ("Jonction", 22),
+    ("#", 3), (N_("File"), None), (N_("Duration"), 9), (N_("Tracks"), 12),
+    (N_("Join"), 22),
 ]
 
 
@@ -52,12 +53,12 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         # Séquences VT standard, toujours transmises — voir le commentaire des
         # bindings de tui/screens/sync.py. `priority` parce qu'un DataTable
         # focalisé étouffe les touches avant le système de bindings.
-        Binding("ctrl+up",   "monter",    "Monter",    show=True, priority=True),
-        Binding("ctrl+down", "descendre", "Descendre", show=True, priority=True),
-        Binding("f2",        "coller",    "Joindre",   show=True),
-        Binding("backspace", "go_back",   "Retour",    show=True),
-        Binding("escape",    "go_back",   "Retour",    show=False, priority=True),
-        Binding("ctrl+home", "accueil",   "Accueil",   show=True, priority=True),
+        Binding("ctrl+up",   "monter",    N_("Move up"),    show=True, priority=True),
+        Binding("ctrl+down", "descendre", N_("Move down"), show=True, priority=True),
+        Binding("f2",        "coller",    N_("Join"),   show=True),
+        Binding("backspace", "go_back",   N_("Back"),    show=True),
+        Binding("escape",    "go_back",   N_("Back"),    show=False, priority=True),
+        Binding("ctrl+home", "accueil",   N_("Home"),   show=True, priority=True),
     ]
 
     DEFAULT_CSS = """
@@ -115,9 +116,10 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         table = self.query_one(DataTable)
         self._largeur_nom = self._largeur_fichier()
         for titre, largeur in _COLUMNS:
+            titre = _(titre)
             table.add_column(titre,
                              width=self._largeur_nom if largeur is None
-                             else largeur)
+                             else largeur_entete(titre, largeur))
         self._peupler()
         table.focus()
 
@@ -162,12 +164,13 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         ses codecs et sa définition ; les suivantes doivent s'y conformer.
         """
         if rang == 0:
-            return cellule("référence", style="dim")
+            # TRANSLATORS: the first part, the one the others must match.
+            return cellule(_("reference"), style="dim")
         ctrl = controler([self._infos[0], info])
         if ctrl.blocages:
-            return cellule("✗ incompatible", style="bold dark_orange")
+            return cellule("✗ " + _("incompatible"), style="bold dark_orange")
         if ctrl.avertissements:
-            return cellule("✓ avec réserve", style="dark_orange")
+            return cellule("✓ " + _("with reservations"), style="dark_orange")
         return cellule("✓")
 
     # ── Bandeaux ──────────────────────────────────────────────────────────────
@@ -180,11 +183,12 @@ class JoinScreen(TableNavMixin, Screen[bool]):
 
     def _maj_bandeaux(self) -> None:
         self._set("#status-bar", barre_etat(
-            "Jonction", f"{len(self._infos)} parties", self._output.name))
+            _("Join"), ngettext("{count} part", "{count} parts", len(self._infos))
+            .format(count=len(self._infos)), self._output.name))
         self._set("#join-total",
-                  f"Durée attendue du tout : "
-                  f"{fmt_duration(duree_attendue(self._infos))}")
-        self._set("#join-out", f"Sortie : {self._output.name}")
+                  _("Expected total duration: {duration}").format(
+                      duration=fmt_duration(duree_attendue(self._infos))))
+        self._set("#join-out", _("Output: {file}").format(file=self._output.name))
 
         if self._lance:
             return                      # le collage parle, on ne le recouvre pas
@@ -192,16 +196,17 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         ctrl = controler(self._infos)
         if ctrl.blocages:
             self._set("#join-state",
-                      "✗ Jonction impossible en l'état :\n  · "
+                      "✗ " + _("Join impossible as it is:") + "\n  · "
                       + "\n  · ".join(ctrl.blocages[:2]))
         elif ctrl.avertissements:
             self._set("#join-state",
-                      "⚠ Jonction possible, avec réserve :\n  · "
+                      "⚠ " + _("Join possible, with reservations:") + "\n  · "
                       + "\n  · ".join(ctrl.avertissements[:2]))
         else:
             self._set("#join-state",
-                      "Ordre à vérifier — Ctrl+↑/↓ déplacent la partie "
-                      "sous le curseur.\nF2 lance la jonction.")
+                      _("Order to check — {keys} move the part under the "
+                        "cursor.").format(keys=touche("ctrl+up") + "/↓") + "\n"
+                      + _("{key} starts the join.").format(key=touche("f2")))
 
     def _set_progress(self, pct: int) -> None:
         try:
@@ -239,23 +244,24 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         if self._lance:
             self.app.bell()
             self._set("#join-state",
-                      "Jonction déjà terminée." if self._done
-                      else "Jonction en cours…")
+                      _("Join already done.") if self._done
+                      else _("Join in progress…"))
             return
 
         ctrl = controler(self._infos)
         if not ctrl.collable:
             self.app.bell()
             self._set("#join-state",
-                      "✗ Jonction refusée — les parties ne s'apparient pas :\n  · "
+                      "✗ " + _("Join refused — the parts do not match:") + "\n  · "
                       + "\n  · ".join(ctrl.blocages[:2]))
             return
 
         if self._output.exists():
             self.app.bell()
             self._set("#join-state",
-                      f"✗ {self._output.name} existe déjà. "
-                      f"Le renommer ou l'effacer (Ctrl+D) avant de rejoindre.")
+                      "✗ " + _("{file} already exists. Rename or delete it ({key}) "
+                               "before joining again.").format(
+                                   file=self._output.name, key=touche("ctrl+d")))
             return
 
         self._lance = True
@@ -273,7 +279,9 @@ class JoinScreen(TableNavMixin, Screen[bool]):
 
         self.app.call_from_thread(
             self._set, "#join-state",
-            f"▶ Jonction lancée — {len(parts)} parties, copie du conteneur en cours…")
+            "▶ " + ngettext("Join started — {count} part, copying the container…",
+                            "Join started — {count} parts, copying the container…",
+                            len(parts)).format(count=len(parts)))
 
         proc = MuxProcess(cmd)
         self._process = proc
@@ -283,7 +291,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             if pct is not None:
                 self.app.call_from_thread(self._set_progress, pct)
                 self.app.call_from_thread(
-                    self._set, "#join-state", f"▶ Jonction — {pct}%")
+                    self._set, "#join-state", "▶ " + _("Join — {percent}%").format(percent=pct))
 
         rc            = proc.wait()
         self._ok      = rc == 0
@@ -291,9 +299,9 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         self._process = None
 
         if not self._ok:
-            detail = proc.errors[0] if proc.errors else f"code {rc}"
+            detail = proc.errors[0] if proc.errors else _("code {code}").format(code=rc)
             self.app.call_from_thread(
-                self._set, "#join-state", f"✗ Échec de la jonction : {detail}")
+                self._set, "#join-state", "✗ " + _("Join failed: {detail}").format(detail=detail))
             return
 
         self.app.call_from_thread(self._set_progress, 100)
@@ -312,20 +320,24 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         try:
             obtenue = scanner.scan(self._output).duration
         except Exception as e:
-            return (f"✓ Jonction terminée — {self._output.name}, mais relecture "
-                    f"impossible ({texte_erreur(e)}) : vérifier sa durée avant de l'encoder.")
+            return "✓ " + _("Join done — {file}, but cannot be read back ({error}): "
+                            "check its duration before encoding it.").format(
+                                file=self._output.name, error=texte_erreur(e))
 
         ecart = derive_duree(attendue, obtenue)
         if ecart is not None:
-            return (f"⚠ {self._output.name} dure {fmt_duration(obtenue)} pour "
-                    f"{fmt_duration(attendue)} attendues ({ecart:+.0f} s).\n"
-                    f"La jonction est peut-être incomplète — la vérifier avant "
-                    f"de l'encoder.")
+            # TRANSLATORS: {expected} is a duration ("1:52:10").
+            return ("⚠ " + _("{file} lasts {duration} for {expected} expected "
+                             "({gap} s).").format(
+                                 file=self._output.name, duration=fmt_duration(obtenue),
+                                 expected=fmt_duration(attendue), gap=f"{ecart:+.0f}")
+                    + "\n" + _("The join may be incomplete — check it before "
+                               "encoding it."))
 
-        return (f"✓ Terminé — {self._output.name}, {fmt_duration(obtenue)}. "
-                f"Les parties sont conservées.\n"
-                f"{touche('backspace')} revient au dossier, où le fichier se travaille "
-                f"comme n'importe quel autre.")
+        return ("✓ " + _("Done — {file}, {duration}. The parts are kept.").format(
+                    file=self._output.name, duration=fmt_duration(obtenue))
+                + "\n" + _("{key} goes back to the folder, where the file can be "
+                           "handled like any other.").format(key=touche("backspace")))
 
     # ── Sortie ────────────────────────────────────────────────────────────────
 

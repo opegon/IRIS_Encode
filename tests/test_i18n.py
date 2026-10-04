@@ -336,7 +336,8 @@ def test_un_module_importe_ce_qu_il_appelle():
     fonctions de traduction et d'affichage appelées doivent être importées
     ou définies dans le module."""
     noms = {"_", "N_", "Nn_", "ngettext", "pgettext", "npgettext",
-            "texte_erreur", "touche", "texte_style", "raccourcis", "colonne_fixe"}
+            "texte_erreur", "touche", "texte_style", "raccourcis", "colonne_fixe",
+            "largeur_entete", "libelle_ecartee", "libelle_copie"}
     fautes = []
     for f in sorted([*RACINE.joinpath("core").rglob("*.py"),
                      *RACINE.joinpath("tui").rglob("*.py")]):

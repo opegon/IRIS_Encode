@@ -781,6 +781,7 @@ msgid "ffmpeg failed: {error}"
 msgstr "ffmpeg a échoué : {error}"
 
 #: core/sync.py:1372
+#: tui/screens/join.py:302
 #: tui/screens/mux_run.py:159
 #, python-brace-format
 msgid "code {code}"
@@ -1049,6 +1050,8 @@ msgstr "Élargir"
 
 #: tui/common.py:391
 #: tui/screens/donor_picker.py:226
+#: tui/screens/join.py:59
+#: tui/screens/join.py:60
 #: tui/screens/mux_run.py:45
 #: tui/screens/mux_run.py:46
 #: tui/screens/opensubtitles.py:57
@@ -1058,6 +1061,7 @@ msgid "Back"
 msgstr "Retour"
 
 #: tui/common.py:395
+#: tui/screens/join.py:61
 #: tui/screens/mux_run.py:49
 msgid "Home"
 msgstr "Accueil"
@@ -1296,6 +1300,7 @@ msgid "Donor file"
 msgstr "Fichier donneur"
 
 #: tui/screens/donor_picker.py:135
+#: tui/screens/join.py:38
 msgid "File"
 msgstr "Fichier"
 
@@ -1350,6 +1355,137 @@ msgstr "Maintenant"
 #, python-brace-format
 msgid "{action} in {seconds} s"
 msgstr "{action} dans {seconds} s"
+
+#: tui/screens/join.py:38
+#: tui/screens/segments.py:24
+msgid "Duration"
+msgstr "Durée"
+
+#: tui/screens/join.py:38
+msgid "Tracks"
+msgstr "Pistes"
+
+#: tui/screens/join.py:39
+#: tui/screens/join.py:58
+#: tui/screens/join.py:186
+msgid "Join"
+msgstr "Jonction"
+
+#: tui/screens/join.py:56
+msgid "Move up"
+msgstr "Monter"
+
+#: tui/screens/join.py:57
+msgid "Move down"
+msgstr "Descendre"
+
+#. the first part, the one the others must match.
+#: tui/screens/join.py:168
+msgid "reference"
+msgstr "référence"
+
+#: tui/screens/join.py:171
+msgid "incompatible"
+msgstr "incompatible"
+
+#: tui/screens/join.py:173
+msgid "with reservations"
+msgstr "avec réserve"
+
+#: tui/screens/join.py:186
+#, python-brace-format
+msgid "{count} part"
+msgid_plural "{count} parts"
+msgstr[0] "{count} partie"
+msgstr[1] "{count} parties"
+
+#: tui/screens/join.py:189
+#, python-brace-format
+msgid "Expected total duration: {duration}"
+msgstr "Durée attendue du tout : {duration}"
+
+#: tui/screens/join.py:191
+#: tui/screens/mux_run.py:110
+#, python-brace-format
+msgid "Output: {file}"
+msgstr "Sortie : {file}"
+
+#: tui/screens/join.py:199
+msgid "Join impossible as it is:"
+msgstr "Jonction impossible en l'état :"
+
+#: tui/screens/join.py:203
+msgid "Join possible, with reservations:"
+msgstr "Jonction possible, avec réserve :"
+
+#: tui/screens/join.py:207
+#, python-brace-format
+msgid "Order to check — {keys} move the part under the cursor."
+msgstr "Ordre à vérifier — {keys} déplacent la partie sous le curseur."
+
+#: tui/screens/join.py:209
+#, python-brace-format
+msgid "{key} starts the join."
+msgstr "{key} lance la jonction."
+
+#: tui/screens/join.py:247
+msgid "Join already done."
+msgstr "Jonction déjà terminée."
+
+#: tui/screens/join.py:248
+msgid "Join in progress…"
+msgstr "Jonction en cours…"
+
+#: tui/screens/join.py:255
+msgid "Join refused — the parts do not match:"
+msgstr "Jonction refusée — les parties ne s'apparient pas :"
+
+#: tui/screens/join.py:262
+#, python-brace-format
+msgid "{file} already exists. Rename or delete it ({key}) before joining again."
+msgstr "{file} existe déjà. Le renommer ou l'effacer ({key}) avant de rejoindre."
+
+#: tui/screens/join.py:282
+#, python-brace-format
+msgid "Join started — {count} part, copying the container…"
+msgid_plural "Join started — {count} parts, copying the container…"
+msgstr[0] "Jonction lancée — {count} partie, copie du conteneur en cours…"
+msgstr[1] "Jonction lancée — {count} parties, copie du conteneur en cours…"
+
+#: tui/screens/join.py:294
+#, python-brace-format
+msgid "Join — {percent}%"
+msgstr "Jonction — {percent}%"
+
+#: tui/screens/join.py:304
+#, python-brace-format
+msgid "Join failed: {detail}"
+msgstr "Échec de la jonction : {detail}"
+
+#: tui/screens/join.py:323
+#, python-brace-format
+msgid "Join done — {file}, but cannot be read back ({error}): check its duration before encoding it."
+msgstr "Jonction terminée — {file}, mais relecture impossible ({error}) : vérifier sa durée avant de l'encoder."
+
+#. {expected} is a duration ("1:52:10").
+#: tui/screens/join.py:330
+#, python-brace-format
+msgid "{file} lasts {duration} for {expected} expected ({gap} s)."
+msgstr "{file} dure {duration} pour {expected} attendues ({gap} s)."
+
+#: tui/screens/join.py:334
+msgid "The join may be incomplete — check it before encoding it."
+msgstr "La jonction est peut-être incomplète — la vérifier avant de l'encoder."
+
+#: tui/screens/join.py:337
+#, python-brace-format
+msgid "Done — {file}, {duration}. The parts are kept."
+msgstr "Terminé — {file}, {duration}. Les parties sont conservées."
+
+#: tui/screens/join.py:339
+#, python-brace-format
+msgid "{key} goes back to the folder, where the file can be handled like any other."
+msgstr "{key} revient au dossier, où le fichier se travaille comme n'importe quel autre."
 
 #: tui/screens/meta_popup.py:24
 msgid "Film"
@@ -1441,11 +1577,6 @@ msgid "{count} added track"
 msgid_plural "{count} added tracks"
 msgstr[0] "{count} piste greffée"
 msgstr[1] "{count} pistes greffées"
-
-#: tui/screens/mux_run.py:110
-#, python-brace-format
-msgid "Output: {file}"
-msgstr "Sortie : {file}"
 
 #: tui/screens/mux_run.py:139
 msgid "Mux started — copying the container…"
@@ -1593,10 +1724,6 @@ msgstr "Lancer l'analyse"
 #: tui/screens/segments.py:24
 msgid "Segment"
 msgstr "Plage"
-
-#: tui/screens/segments.py:24
-msgid "Duration"
-msgstr "Durée"
 
 #: tui/screens/segments.py:24
 msgid "Offset"

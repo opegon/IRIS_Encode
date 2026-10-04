@@ -16,6 +16,7 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
+from core.i18n import _, N_
 from ..common import (PROFIL_COLONNES, cellules_profil, largeurs_colonnes, profil_colonnes,
                       raccourcis)
 
@@ -57,20 +58,20 @@ class ProfilePickerScreen(ModalScreen[str | None]):
     BINDINGS = [
         Binding("enter",     "select", "Choisir", show=False, priority=True),
         Binding("escape",    "cancel", "Annuler", show=False, priority=True),
-        Binding("backspace", "cancel", "Retour",  show=False, priority=True),
+        Binding("backspace", "cancel", N_("Back"),  show=False, priority=True),
     ]
 
     def __init__(
         self,
         profiles:   dict[str, "Profile"],
         current_id: str,
-        title:      str = "Sélectionner un profil",
+        title:      str | None = None,        # défaut : « Sélectionner un profil »
     ) -> None:
         super().__init__()
         self._profiles   = profiles
         self._names      = list(profiles.keys())
         self._current_id = current_id
-        self._title      = title
+        self._title      = title or _("Select a profile")
 
     # ── Composition ───────────────────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ class ProfilePickerScreen(ModalScreen[str | None]):
             yield Label(self._title, id="profile-picker-title")
             yield DataTable(id="profile-picker-table", cursor_type="row",
                             show_header=True, zebra_stripes=True)
-            yield Static(raccourcis([("enter", "Choisir"), ("escape", "Annuler")]),
+            yield Static(raccourcis([("enter", N_("Choose")), ("escape", N_("Cancel"))]),
                          id="profile-picker-hint")
 
     def on_mount(self) -> None:

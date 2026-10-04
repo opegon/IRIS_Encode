@@ -1047,6 +1047,8 @@ msgid "Widen"
 msgstr "Élargir"
 
 #: tui/common.py:391
+#: tui/screens/profile_picker.py:61
+#: tui/screens/value_picker.py:53
 msgid "Back"
 msgstr "Retour"
 
@@ -1106,6 +1108,11 @@ msgstr "Actions"
 #: tui/screens/confirm.py:73
 #: tui/screens/confirm.py:92
 #: tui/screens/confirm.py:110
+#: tui/screens/options.py:52
+#: tui/screens/options.py:84
+#: tui/screens/profile_picker.py:83
+#: tui/screens/value_picker.py:52
+#: tui/screens/value_picker.py:76
 #: tui/widgets/profile_form.py:211
 msgid "Cancel"
 msgstr "Annuler"
@@ -1120,6 +1127,9 @@ msgid "Confirm"
 msgstr "Confirmer"
 
 #: tui/screens/confirm.py:109
+#: tui/screens/profile_picker.py:83
+#: tui/screens/value_picker.py:51
+#: tui/screens/value_picker.py:76
 msgid "Choose"
 msgstr "Choisir"
 
@@ -1150,6 +1160,65 @@ msgstr "Supprimer le fichier"
 #: tui/screens/delete_confirm.py:30
 msgid "Delete"
 msgstr "Supprimer"
+
+#: tui/screens/fin_lot.py:27
+msgid "All tasks are done."
+msgstr "Tous les traitements sont terminés."
+
+#: tui/screens/fin_lot.py:28
+msgid "Now"
+msgstr "Maintenant"
+
+#. {action} is "Sleep", "Shut down"… (capitalized by the code), {seconds} the countdown.
+#: tui/screens/fin_lot.py:36
+#, python-brace-format
+msgid "{action} in {seconds} s"
+msgstr "{action} dans {seconds} s"
+
+#: tui/screens/options.py:51
+#: tui/screens/options.py:83
+#: tui/widgets/profile_form.py:210
+msgid "Save"
+msgstr "Enregistrer"
+
+#: tui/screens/options.py:62
+msgid "Options"
+msgstr "Options"
+
+#: tui/screens/options.py:63
+msgid "Power"
+msgstr "Énergie"
+
+#: tui/screens/options.py:64
+msgid "Block sleep while tasks run"
+msgstr "Bloquer la mise en veille pendant les traitements"
+
+#: tui/screens/options.py:67
+msgid "Encoding, mux, join, measurement or resync. The screen can still turn off."
+msgstr "Encodage, mux, jonction, mesure ou recalage. L'écran peut toujours s'éteindre."
+
+#: tui/screens/options.py:69
+#, python-brace-format
+msgid "After the batch ({key} during encoding)"
+msgstr "Après le lot ({key} pendant l'encodage)"
+
+#: tui/screens/options.py:76
+#, python-brace-format
+msgid "Preceded by a {seconds} s countdown, can be cancelled."
+msgstr "Précédée d'un compte à rebours de {seconds} s, annulable."
+
+#: tui/screens/options.py:80
+msgid "No effect on this system: Windows only."
+msgstr "Sans effet sur ce système : Windows seulement."
+
+#: tui/screens/options.py:82
+#: tui/widgets/profile_form.py:206
+msgid "Next field"
+msgstr "Champ suivant"
+
+#: tui/screens/profile_picker.py:74
+msgid "Select a profile"
+msgstr "Sélectionner un profil"
 
 #: tui/screens/quit.py:21
 msgid "Quit IRIS ENCODE?"
@@ -1220,10 +1289,6 @@ msgstr "→ AC3 au débit de la source"
 msgid "→ fixed 5.1 / 7.1 bitrate below"
 msgstr "→ forfait 5.1 / 7.1 ci-dessous"
 
-#: tui/widgets/profile_form.py:206
-msgid "Next field"
-msgstr "Champ suivant"
-
 #: tui/widgets/profile_form.py:207
 msgid "Previous field"
 msgstr "Champ précédent"
@@ -1235,10 +1300,6 @@ msgstr "Ouvrir une liste"
 #: tui/widgets/profile_form.py:209
 msgid "Next/prev value"
 msgstr "Valeur suiv./préc."
-
-#: tui/widgets/profile_form.py:210
-msgid "Save"
-msgstr "Enregistrer"
 
 #: tui/widgets/profile_form.py:226
 #: tui/widgets/profile_form.py:229

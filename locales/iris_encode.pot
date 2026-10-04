@@ -1047,6 +1047,8 @@ msgid "Widen"
 msgstr ""
 
 #: tui/common.py:391
+#: tui/screens/profile_picker.py:61
+#: tui/screens/value_picker.py:53
 msgid "Back"
 msgstr ""
 
@@ -1106,6 +1108,11 @@ msgstr ""
 #: tui/screens/confirm.py:73
 #: tui/screens/confirm.py:92
 #: tui/screens/confirm.py:110
+#: tui/screens/options.py:52
+#: tui/screens/options.py:84
+#: tui/screens/profile_picker.py:83
+#: tui/screens/value_picker.py:52
+#: tui/screens/value_picker.py:76
 #: tui/widgets/profile_form.py:211
 msgid "Cancel"
 msgstr ""
@@ -1120,6 +1127,9 @@ msgid "Confirm"
 msgstr ""
 
 #: tui/screens/confirm.py:109
+#: tui/screens/profile_picker.py:83
+#: tui/screens/value_picker.py:51
+#: tui/screens/value_picker.py:76
 msgid "Choose"
 msgstr ""
 
@@ -1149,6 +1159,65 @@ msgstr ""
 
 #: tui/screens/delete_confirm.py:30
 msgid "Delete"
+msgstr ""
+
+#: tui/screens/fin_lot.py:27
+msgid "All tasks are done."
+msgstr ""
+
+#: tui/screens/fin_lot.py:28
+msgid "Now"
+msgstr ""
+
+#. {action} is "Sleep", "Shut down"… (capitalized by the code), {seconds} the countdown.
+#: tui/screens/fin_lot.py:36
+#, python-brace-format
+msgid "{action} in {seconds} s"
+msgstr ""
+
+#: tui/screens/options.py:51
+#: tui/screens/options.py:83
+#: tui/widgets/profile_form.py:210
+msgid "Save"
+msgstr ""
+
+#: tui/screens/options.py:62
+msgid "Options"
+msgstr ""
+
+#: tui/screens/options.py:63
+msgid "Power"
+msgstr ""
+
+#: tui/screens/options.py:64
+msgid "Block sleep while tasks run"
+msgstr ""
+
+#: tui/screens/options.py:67
+msgid "Encoding, mux, join, measurement or resync. The screen can still turn off."
+msgstr ""
+
+#: tui/screens/options.py:69
+#, python-brace-format
+msgid "After the batch ({key} during encoding)"
+msgstr ""
+
+#: tui/screens/options.py:76
+#, python-brace-format
+msgid "Preceded by a {seconds} s countdown, can be cancelled."
+msgstr ""
+
+#: tui/screens/options.py:80
+msgid "No effect on this system: Windows only."
+msgstr ""
+
+#: tui/screens/options.py:82
+#: tui/widgets/profile_form.py:206
+msgid "Next field"
+msgstr ""
+
+#: tui/screens/profile_picker.py:74
+msgid "Select a profile"
 msgstr ""
 
 #: tui/screens/quit.py:21
@@ -1220,10 +1289,6 @@ msgstr ""
 msgid "→ fixed 5.1 / 7.1 bitrate below"
 msgstr ""
 
-#: tui/widgets/profile_form.py:206
-msgid "Next field"
-msgstr ""
-
 #: tui/widgets/profile_form.py:207
 msgid "Previous field"
 msgstr ""
@@ -1234,10 +1299,6 @@ msgstr ""
 
 #: tui/widgets/profile_form.py:209
 msgid "Next/prev value"
-msgstr ""
-
-#: tui/widgets/profile_form.py:210
-msgid "Save"
 msgstr ""
 
 #: tui/widgets/profile_form.py:226

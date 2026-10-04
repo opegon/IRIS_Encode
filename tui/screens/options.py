@@ -16,6 +16,7 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Checkbox, Label, RadioButton, RadioSet, Static
 
+from core.i18n import _, N_
 from core import config as cfg_mod
 from core import veille
 
@@ -47,8 +48,8 @@ class OptionsScreen(ModalScreen[bool]):
     """
 
     BINDINGS = [
-        Binding("ctrl+s", "enregistrer", "Enregistrer", show=False, priority=True),
-        Binding("escape", "annuler",     "Annuler",     show=False, priority=True),
+        Binding("ctrl+s", "enregistrer", N_("Save"), show=False, priority=True),
+        Binding("escape", "annuler",     N_("Cancel"),     show=False, priority=True),
     ]
 
     @property
@@ -58,28 +59,29 @@ class OptionsScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
         action = cfg_mod.get_action_fin(self._cfg)
         with Vertical(id="options-panel"):
-            yield Label("Options", id="options-titre")
-            yield Static("Énergie", classes="options-section")
-            yield Checkbox("Bloquer la mise en veille pendant les traitements",
+            yield Label(_("Options"), id="options-titre")
+            yield Static(_("Power"), classes="options-section")
+            yield Checkbox(_("Block sleep while tasks run"),
                            cfg_mod.get_empecher_veille(self._cfg),
                            id="options-veille")
-            yield Static("Encodage, mux, jonction, mesure ou recalage. L'écran "
-                         "peut toujours s'éteindre.", classes="options-note")
-            yield Static(f"Après le lot ({touche('e')} pendant l'encodage)",
+            yield Static(_("Encoding, mux, join, measurement or resync. The "
+                           "screen can still turn off."), classes="options-note")
+            yield Static(_("After the batch ({key} during encoding)").format(
+                             key=touche("e")),
                          classes="options-section")
             with RadioSet(id="options-fin"):
                 for cle, libelle in veille.ACTIONS_FIN.items():
-                    yield RadioButton(libelle.capitalize(), value=cle == action,
+                    yield RadioButton(_(libelle).capitalize(), value=cle == action,
                                       id=f"fin-{cle}")
-            yield Static(f"Précédée d'un compte à rebours de "
-                         f"{veille.COMPTE_A_REBOURS_S} s, annulable.",
+            yield Static(_("Preceded by a {seconds} s countdown, can be "
+                           "cancelled.").format(seconds=veille.COMPTE_A_REBOURS_S),
                          classes="options-note")
             if not veille.disponible():
-                yield Static("Sans effet sur ce système : Windows seulement.",
+                yield Static(_("No effect on this system: Windows only."),
                              classes="options-note")
-            yield Static(raccourcis([("tab", "Champ suivant"),
-                                     ("ctrl+s", "Enregistrer"),
-                                     ("escape", "Annuler")]), id="options-hint")
+            yield Static(raccourcis([("tab", N_("Next field")),
+                                     ("ctrl+s", N_("Save")),
+                                     ("escape", N_("Cancel"))]), id="options-hint")
 
     def on_mount(self) -> None:
         self.query_one("#options-veille", Checkbox).focus()

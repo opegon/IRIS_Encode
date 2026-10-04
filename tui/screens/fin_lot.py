@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from core.veille import COMPTE_A_REBOURS_S, libelle_action
 
+from core.i18n import _
 from .confirm import ConfirmModal
 
 
@@ -23,15 +24,17 @@ class FinDeLotModal(ConfirmModal):
         self._reste   = COMPTE_A_REBOURS_S if delai is None else delai
         super().__init__(
             title=self._titre(),
-            body="Tous les traitements sont terminés.",
-            confirm_label="Maintenant",
-            cancel_label="Annuler",
+            body=_("All tasks are done."),
+            confirm_label=_("Now"),
             danger=True,
             focus_confirm=False,
         )
 
     def _titre(self) -> str:
-        return f"{self._libelle.capitalize()} dans {self._reste} s"
+        # TRANSLATORS: {action} is "Sleep", "Shut down"… (capitalized by the
+        # code), {seconds} the countdown.
+        return _("{action} in {seconds} s").format(
+            action=self._libelle.capitalize(), seconds=self._reste)
 
     def on_mount(self) -> None:
         super().on_mount()

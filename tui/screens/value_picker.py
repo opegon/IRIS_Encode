@@ -11,6 +11,7 @@ from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
+from core.i18n import N_
 from ..common import raccourcis
 
 
@@ -47,9 +48,9 @@ class ValuePickerScreen(ModalScreen[int | None]):
     """
 
     BINDINGS = [
-        Binding("enter",     "select",  "Choisir",  show=True, priority=True),
-        Binding("escape",    "cancel",  "Annuler",  show=True, priority=True),
-        Binding("backspace", "cancel",  "Retour",   show=False, priority=True),
+        Binding("enter",     "select",  N_("Choose"),  show=True, priority=True),
+        Binding("escape",    "cancel",  N_("Cancel"),  show=True, priority=True),
+        Binding("backspace", "cancel",  N_("Back"),   show=False, priority=True),
     ]
 
     def __init__(
@@ -72,7 +73,7 @@ class ValuePickerScreen(ModalScreen[int | None]):
             yield Label(self._title, id="picker-title")
             yield DataTable(id="picker-table", cursor_type="row",
                             show_header=False, zebra_stripes=True)
-            yield Static(raccourcis([("enter", "Choisir"), ("escape", "Annuler")]),
+            yield Static(raccourcis([("enter", N_("Choose")), ("escape", N_("Cancel"))]),
                          id="picker-hint")
 
     def on_mount(self) -> None:

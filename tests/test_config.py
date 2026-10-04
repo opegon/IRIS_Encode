@@ -123,6 +123,36 @@ def test_lalerte_suppression_lit_le_profil_pas_le_libelle():
     assert "dark_orange" not in str(cellules_profil("b", gar, False)[-1].style)
 
 
+def test_la_couleur_hd_audio_lit_le_profil_pas_le_libelle():
+    """L-43 (IE-113) : récidive d'UX-29 sur la colonne HD audio. Le libellé
+    traduit (« yes ») ne doit pas éteindre la colonne."""
+    from core.profiles import Profile
+    from tui.common import cellules_profil
+
+    def profil(preserve: bool, libelle: str) -> Profile:
+        p = Profile.__new__(Profile)
+        p.data = {"preserve_hd_audio": preserve}
+        champs = Profile.summary_fields(p) | {"hd_audio": libelle}
+        p.summary_fields = lambda: champs
+        return p
+
+    assert "dim" not in str(cellules_profil("a", profil(True, "yes"), False)[5].style)
+    assert "dim" in str(cellules_profil("b", profil(False, "no"), False)[5].style)
+
+
+def test_aucune_couleur_ne_se_decide_sur_oui_ou_non():
+    """L-43 : plus aucune comparaison à « oui »/« non » affichés."""
+    import re
+    from pathlib import Path
+    racine = Path(__file__).resolve().parent.parent
+    motif = re.compile(r"""(==|!=|\bin)\s*["'](⚠ )?(oui|non)["']""")
+    fautifs = [f"{p.relative_to(racine)}:{n}"
+               for d in ("core", "tui") for p in (racine / d).rglob("*.py")
+               for n, l in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
+               if motif.search(l)]
+    assert not fautifs, fautifs
+
+
 def test_choix_et_gestion_des_profils_ont_une_seule_presentation():
     """UX-13 : mêmes en-têtes, même 4K, même nom, des deux côtés."""
     import inspect

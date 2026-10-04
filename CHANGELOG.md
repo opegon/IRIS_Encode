@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.63] — 2026-10-04
+
+### Couleur « HD audio » lue sur le profil
+
+Premier point d'IE-113, les corrections à faire avant d'extraire les textes
+pour la traduction (audit de localisation, constat L-43).
+
+Dans les tableaux de profils (choix et gestion), la colonne « HD audio »
+s'allumait quand son libellé valait « oui » : la récidive d'UX-29, sur une
+autre colonne. Traduit en « yes », le libellé l'aurait éteinte. Aucun
+changement visible en français.
+
+- `tui/common.cellules_profil` lit `preserve_hd_audio`, comme la colonne
+  Source lit `delete_source`.
+- `tests/test_config.py` : la couleur suit le profil quel que soit le
+  libellé, et plus aucune comparaison à « oui »/« non » dans `core/` et
+  `tui/`.
+
 ## [v0.8.9.62] — 2026-10-04
 
 ### Sous-titre forcé désynchronisé en MP4

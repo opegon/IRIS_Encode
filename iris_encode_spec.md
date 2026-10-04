@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.62 — document de référence courant
-**Date** : 2026-10-03
+**Version** : 0.8.9.63 — document de référence courant
+**Date** : 2026-10-04
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -2802,6 +2802,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.63 | 2026-10-04 | **Couleur « HD audio » lue sur le profil** (IE-113, L-43) : la colonne s'allumait en comparant le libellé à « oui », récidive d'UX-29 qu'une traduction aurait éteinte ; elle lit `preserve_hd_audio` · `tests/test_config.py` |
 | 0.8.9.62 | 2026-10-04 | **Sous-titre texte en MP4 : plus de temps écrasés après un long silence** (§ 8.6) : ffmpeg perd les temps d'un `mov_text` après plus de 2³¹ µs de silence ; `core/sous_titres.py` intercale des répliques invisibles dans un Matroska porteur, lu par l'encodage, le retrait et le réencodage DV · `tests/test_sous_titres_mp4.py` |
 | 0.8.9.61 | 2026-10-04 | **Réencodage DV forcé depuis l'assistant** (§ 14.0) : `F2` sur un SKIP le force au lieu de le laisser « ignoré » ; `decision.choisir_codec`, règle unique du codec choisi à la main (assistant, aperçu, pistes, coche), connaît `ENCODE_DV` et reprend le débit de la source · `tests/test_dv_reencodage.py` |
 | 0.8.9.60 | 2026-10-04 | **Une vidéo recopiée n'échoue plus sur « copy indisponible ici »** (§ 14.7) : le contrôle des encodeurs sondés lisait `-c:v copy` comme un encodeur ; `encoder.encodeur_a_controler` l'en exclut · `tests/test_capacites.py` |

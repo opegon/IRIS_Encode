@@ -474,6 +474,7 @@ def cellules_profil(nom: str, prof, actif: bool) -> list[Text]:
     f      = prof.summary_fields()
     garde  = prof.data.get("keep_4k", False)
     suppr  = prof.data.get("delete_source", False)
+    hd     = prof.data.get("preserve_hd_audio", False)
     return [
         Text(f"{nom} ✓" if actif else nom,
              style="bold green" if actif else "bold", no_wrap=True),
@@ -483,9 +484,9 @@ def cellules_profil(nom: str, prof, actif: bool) -> list[Text]:
          if garde else Text("→ 1080p", style="dim", no_wrap=True)),
         Text(f["dv"], style=DV_VALUE_STYLES.get(f["dv"], ""), no_wrap=True),
         Text(f["preset"], no_wrap=True),
-        Text(f["hd_audio"], style="" if f["hd_audio"] == "oui" else "dim",
-             no_wrap=True),
-        # Lu sur le booléen du profil, pas sur un libellé (UX-29).
+        # Ces deux colonnes se lisent sur les booléens du profil, pas sur un
+        # libellé (UX-29, L-43).
+        Text(f["hd_audio"], style="" if hd else "dim", no_wrap=True),
         (Text("⚠ suppr.", style="bold dark_orange", no_wrap=True) if suppr
          else Text("garder", style="dim", no_wrap=True)),
     ]

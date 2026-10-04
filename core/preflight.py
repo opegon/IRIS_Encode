@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from .i18n import _, pgettext
+
 APP_DIR     = Path(__file__).resolve().parent.parent
 DATA_DIR    = APP_DIR / "data"
 CACHE_FILE  = DATA_DIR / "ffmpeg_releases_cache.toml"
@@ -43,6 +45,26 @@ def _is_windows() -> bool:
 
 def _exe(name: str) -> str:
     return name + ".exe" if _is_windows() else name
+
+
+def _dire(texte: str, marque: str = "") -> None:
+    """Une ligne de la console. L'indentation et la marque (✓ ✗ ↑) restent
+    hors du message traduit (L-30)."""
+    print(f"  {marque} {texte}" if marque else f"  {texte}")
+
+
+def _oui_non(question: str) -> bool:
+    """Une question oui/non ; non par défaut. La lettre du oui vient du
+    catalogue, avec l'invite (L-29) ; « y » est toujours accepté, pour qui
+    tape l'anglais sur une console traduite."""
+    # TRANSLATORS: the key that answers "yes" to a console question, one
+    # lowercase letter ("o" in French).
+    oui = pgettext("yes key", "y")
+    # TRANSLATORS: console question, then the keys: yes (lowercase) / No
+    # (default, uppercase).
+    invite = pgettext("console prompt", "{question} ({yes}/N): ").format(
+        question=question, yes=oui)
+    return _ask(f"  {invite}") in {oui, "y"}
 
 
 def _ask(prompt: str) -> str:
@@ -155,15 +177,16 @@ def _download(url: str, expected_sha256: str = "") -> Optional[bytes]:
         r.raise_for_status()
         data = r.content
     except Exception as e:
-        print(f"  ✗ Téléchargement échoué : {e}")
+        _dire(_("Download failed: {error}").format(error=e), "✗")
         return None
 
     if expected_sha256:
         got = _sha256(data)
         if got != expected_sha256.lower():
-            print("  ✗ Empreinte SHA256 incorrecte — téléchargement rejeté.")
-            print(f"    attendu : {expected_sha256.lower()}")
-            print(f"    obtenu  : {got}")
+            _dire(_("Wrong SHA256 checksum — download rejected."), "✗")
+            # TRANSLATORS: "expected" and "got" lines are aligned on their colon.
+            print("    " + _("expected: {value}").format(value=expected_sha256.lower()))
+            print("    " + _("got:      {value}").format(value=got))
             return None
     return data
 
@@ -181,10 +204,10 @@ def _install_from_zip(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
                     target.write_bytes(zf.read(member))
                     if not _is_windows():
                         target.chmod(0o755)
-                    print(f"  ✓ Installé : {target}")
+                    _dire(_("Installed: {path}").format(path=target), "✓")
                     installed += 1
     except zipfile.BadZipFile:
-        print("  ✗ Archive invalide (non ZIP).")
+        _dire(_("Invalid archive (not a ZIP)."), "✗")
         return False
     return installed > 0
 
@@ -218,7 +241,7 @@ def poser(nom: str, data: bytes, bin_dir: Path) -> bool:
         dest.write_bytes(data)
         if not _is_windows():
             dest.chmod(0o755)
-        print(f"  ✓ Installé : {dest}")
+        _dire(_("Installed: {path}").format(path=dest), "✓")
         return True
     if nom == "mpv":
         return _install_from_7z(data, bin_dir, {_exe("mpv")})
@@ -229,7 +252,7 @@ def poser(nom: str, data: bytes, bin_dir: Path) -> bool:
 
 
 def install_ffmpeg(bin_dir: Path, fetch_url: str) -> bool:
-    print(f"  Téléchargement depuis {fetch_url}")
+    _dire(_("Downloading from {url}").format(url=fetch_url))
     data = _download(fetch_url)
     if data is None:
         return False
@@ -242,9 +265,9 @@ def install_dovi_tool(bin_dir: Path, releases: dict) -> bool:
     info   = releases.get("dovi_tool", {}).get(os_key, {})
     url    = info.get("url", "")
     if not url:
-        print("  ✗ URL dovi_tool introuvable dans les sources.")
+        _dire(_("{tool} URL not found in the sources.").format(tool="dovi_tool"), "✗")
         return False
-    print(f"  Téléchargement depuis {url}")
+    _dire(_("Downloading from {url}").format(url=url))
     data = _download(url)
     if data is None:
         return False
@@ -273,10 +296,10 @@ def _install_from_7z(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
                 stdin=subprocess.DEVNULL, capture_output=True, timeout=300,
             )
         except (OSError, subprocess.SubprocessError) as e:
-            print(f"  ✗ Extraction impossible ({e}) — tar introuvable ?")
+            _dire(_("Extraction impossible ({error}) — tar not found?").format(error=e), "✗")
             return False
         if r.returncode != 0:
-            print("  ✗ Archive 7z illisible par tar.")
+            _dire(_("7z archive unreadable by tar."), "✗")
             return False
 
         for found in extract_dir.rglob("*"):
@@ -285,7 +308,7 @@ def _install_from_7z(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
                 shutil.copy2(found, target)
                 if not _is_windows():
                     target.chmod(0o755)
-                print(f"  ✓ Installé : {target}")
+                _dire(_("Installed: {path}").format(path=target), "✓")
                 installed += 1
     return installed > 0
 
@@ -298,14 +321,14 @@ def install_mpv(bin_dir: Path, releases: dict) -> bool:
     versions de Windows. Sous Linux, mpv passe par le gestionnaire de paquets.
     """
     if not _is_windows():
-        print("  Sous Linux, installez mpv via votre gestionnaire de paquets.")
+        _dire(_("On Linux, install {tool} with your package manager.").format(tool="mpv"))
         return False
     info = releases.get("mpv", {}).get("windows", {})
     url  = info.get("url", "")
     if not url:
-        print("  ✗ URL mpv introuvable dans les sources.")
+        _dire(_("{tool} URL not found in the sources.").format(tool="mpv"), "✗")
         return False
-    print(f"  Téléchargement depuis {url}")
+    _dire(_("Downloading from {url}").format(url=url))
     data = _download(url, info.get("sha256", ""))
     if data is None:
         return False
@@ -321,14 +344,14 @@ def install_mkvtoolnix(bin_dir: Path, releases: dict) -> bool:
     mkvtoolnix s'installe par le gestionnaire de paquets.
     """
     if not _is_windows():
-        print("  Sous Linux, installez mkvtoolnix via votre gestionnaire de paquets.")
+        _dire(_("On Linux, install {tool} with your package manager.").format(tool="mkvtoolnix"))
         return False
     info = releases.get("mkvtoolnix", {}).get("windows", {})
     url  = info.get("url", "")
     if not url:
-        print("  ✗ URL mkvtoolnix introuvable dans les sources.")
+        _dire(_("{tool} URL not found in the sources.").format(tool="mkvtoolnix"), "✗")
         return False
-    print(f"  Téléchargement depuis {url}")
+    _dire(_("Downloading from {url}").format(url=url))
     data = _download(url, info.get("sha256", ""))
     if data is None:
         return False
@@ -339,7 +362,8 @@ def print_status(statuses: list[ToolStatus]) -> None:
     for s in statuses:
         icon = "✓" if s.found else "✗"
         ver  = f" — {s.version}" if s.version else ""
-        opt  = " (optionnel)" if s.name in OPTIONAL_TOOLS and not s.found else ""
+        opt  = (" (" + _("optional") + ")"
+                if s.name in OPTIONAL_TOOLS and not s.found else "")
         print(f"  [{icon}] {s.name:<12}{ver}{opt}")
 
 
@@ -368,15 +392,15 @@ def run_preflight(cfg: dict) -> bool:
     if not missing_essential:
         # ffmpeg OK — proposer les outils optionnels absents
         if missing_dovi:
-            print("  dovi_tool absent (optionnel — nécessaire pour le Dolby Vision).")
+            _dire(_("dovi_tool missing (optional — needed for Dolby Vision)."))
             _offer_dovi_install(bin_dir)
             print()
         if missing_mkvmerge:
-            print("  mkvmerge absent (optionnel — nécessaire pour ajouter des pistes externes).")
+            _dire(_("mkvmerge missing (optional — needed to add external tracks)."))
             _offer_mkvmerge_install(bin_dir)
             print()
         if missing_mpv:
-            print("  mpv absent (optionnel — sert à contrôler un recalage à l'œil).")
+            _dire(_("mpv missing (optional — used to check a resync by eye)."))
             _offer_mpv_install(bin_dir)
             print()
         check_for_updates(cfg, statuses, bin_dir)
@@ -386,15 +410,14 @@ def run_preflight(cfg: dict) -> bool:
     auto_install = cfg.get("ffmpeg", {}).get("auto_install", True)
 
     if not fetch_url:
-        print(
-            "  ✗ Aucune URL de téléchargement configurée.\n"
-            "    Renseignez config.toml > [ffmpeg] > fetch_url"
-        )
+        _dire(_("No download URL configured."), "✗")
+        # TRANSLATORS: config.toml > [ffmpeg] > fetch_url is a settings key,
+        # keep it as is.
+        print("    " + _("Fill in config.toml > [ffmpeg] > fetch_url"))
         return False
 
     if auto_install:
-        answer = _ask("  Télécharger et installer ffmpeg dans ./bin/ ? (o/N) : ")
-        if answer == "o":
+        if _oui_non(_("Download and install ffmpeg into ./bin/?")):
             ok = install_ffmpeg(bin_dir, fetch_url)
             if ok:
                 # Recheck
@@ -403,47 +426,41 @@ def run_preflight(cfg: dict) -> bool:
                 return len(missing) == 0
         return False
 
-    print("  Installez ffmpeg manuellement dans ./bin/ ou ajoutez-le au PATH.")
+    _dire(_("Install ffmpeg manually into ./bin/ or add it to the PATH."))
     return False
 
 
 def _offer_dovi_install(bin_dir: Path) -> None:
     """Propose l'installation de dovi_tool si absent (optionnel)."""
     releases = _load_releases()
-    answer   = _ask(
-        "  Télécharger et installer dovi_tool (Dolby Vision) dans ./bin/ ? (o/N) : ")
-    if answer == "o":
+    if _oui_non(_("Download and install dovi_tool (Dolby Vision) into ./bin/?")):
         ok = install_dovi_tool(bin_dir, releases)
         if not ok:
-            print("  ✗ Installation dovi_tool échouée — fonctionnalité Dolby Vision indisponible.")
+            _dire(_("dovi_tool installation failed — Dolby Vision features unavailable."), "✗")
     else:
-        print("  dovi_tool ignoré — les fichiers Dolby Vision ne seront pas traités de façon optimale.")
+        _dire(_("dovi_tool skipped — Dolby Vision files will not be handled optimally."))
 
 
 def _offer_mkvmerge_install(bin_dir: Path) -> None:
     """Propose l'installation de mkvmerge si absent (optionnel)."""
     releases = _load_releases()
-    answer   = _ask(
-        "  Télécharger et installer mkvmerge (pistes externes) dans ./bin/ ? (o/N) : ")
-    if answer == "o":
+    if _oui_non(_("Download and install mkvmerge (external tracks) into ./bin/?")):
         ok = install_mkvtoolnix(bin_dir, releases)
         if not ok:
-            print("  ✗ Installation mkvmerge échouée — ajout de pistes externes indisponible.")
+            _dire(_("mkvmerge installation failed — adding external tracks unavailable."), "✗")
     else:
-        print("  mkvmerge ignoré — l'ajout de pistes audio/sous-titres externes sera indisponible.")
+        _dire(_("mkvmerge skipped — adding external audio/subtitle tracks will be unavailable."))
 
 
 def _offer_mpv_install(bin_dir: Path) -> None:
     """Propose l'installation de mpv si absent (optionnel)."""
     releases = _load_releases()
-    answer   = _ask(
-        "  Télécharger et installer mpv (contrôle du recalage) dans ./bin/ ? (o/N) : ")
-    if answer == "o":
+    if _oui_non(_("Download and install mpv (resync check) into ./bin/?")):
         ok = install_mpv(bin_dir, releases)
         if not ok:
-            print("  ✗ Installation mpv échouée — le recalage restera réglable à l'aveugle.")
+            _dire(_("mpv installation failed — the resync can only be set blind."), "✗")
     else:
-        print("  mpv ignoré — vous ne pourrez pas contrôler un recalage à l'œil.")
+        _dire(_("mpv skipped — you will not be able to check a resync by eye."))
 
 
 OUTILS_INSTALLABLES = frozenset({"ffmpeg", "mkvmerge", "dovi_tool", "mpv"})
@@ -466,7 +483,7 @@ def _installer_for(name: str):
         return None
 
     def _installer(bin_dir: Path, url: str) -> bool:
-        print(f"  Téléchargement depuis {url}")
+        _dire(_("Downloading from {url}").format(url=url))
         data = _download(url)
         if data is None:
             return False
@@ -496,7 +513,7 @@ def check_for_updates(cfg: dict, statuses: list[ToolStatus],
 
     releases = updates.load_cache(CACHE_FILE)
     if releases is None:
-        print("  Vérification des mises à jour…")
+        _dire(_("Checking for updates…"))
         releases = updates.fetch_latest()
         if releases:
             updates.save_cache(CACHE_FILE, releases)
@@ -517,24 +534,23 @@ def check_for_updates(cfg: dict, statuses: list[ToolStatus],
 
     print()
     for u in en_retard:
-        print(f"  ↑ {u.label()}")
-    answer = _ask("  Mettre à jour ces outils ? (o/N) : ")
-    if answer != "o":
-        print("  Mise à jour ignorée — les versions installées restent en place.")
+        _dire(u.label(), "↑")
+    if not _oui_non(_("Update these tools?")):
+        _dire(_("Update skipped — the installed versions stay in place."))
         return
 
     for u in en_retard:
         installer = _installer_for(u.tool)
         if installer is None:
             continue
-        print(f"  {u.tool} : téléchargement de {u.latest}…")
+        _dire(_("{tool}: downloading {version}…").format(tool=u.tool, version=u.latest))
         try:
             ok = installer(bin_dir, u.url)
         except Exception as e:
             ok = False
-            print(f"  ✗ {e}")
+            _dire(str(e), "✗")
         if not ok:
-            print(f"  ✗ Mise à jour de {u.tool} échouée — version précédente conservée.")
+            _dire(_("{tool} update failed — previous version kept.").format(tool=u.tool), "✗")
 
 
 def get_tool_path(name: str, bin_dir: Path) -> Optional[str]:

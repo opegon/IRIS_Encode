@@ -427,6 +427,172 @@ msgstr "NVENC refusé : ce ffmpeg exige le pilote NVIDIA {driver} ou plus récen
 msgid "NVENC refused: this ffmpeg needs a newer NVIDIA driver (NVENC API {required}, the installed driver provides {found}). Update the driver, or use an ffmpeg built for an older API. Until then, encoding with the graphics card is refused."
 msgstr "NVENC refusé : ce ffmpeg exige un pilote NVIDIA plus récent (API NVENC {required}, le pilote installé fournit la {found}). Mettre à jour le pilote, ou prendre un ffmpeg compilé pour une API plus ancienne. D'ici là, les encodages par la carte graphique sont refusés."
 
+#. the key that answers "yes" to a console question, one lowercase letter ("o" in French).
+#: core/preflight.py:62
+msgctxt "yes key"
+msgid "y"
+msgstr "o"
+
+#. console question, then the keys: yes (lowercase) / No (default, uppercase).
+#: core/preflight.py:65
+#, python-brace-format
+msgctxt "console prompt"
+msgid "{question} ({yes}/N): "
+msgstr "{question} ({yes}/N) : "
+
+#: core/preflight.py:180
+#, python-brace-format
+msgid "Download failed: {error}"
+msgstr "Téléchargement échoué : {error}"
+
+#: core/preflight.py:186
+msgid "Wrong SHA256 checksum — download rejected."
+msgstr "Empreinte SHA256 incorrecte — téléchargement rejeté."
+
+#. "expected" and "got" lines are aligned on their colon.
+#: core/preflight.py:188
+#, python-brace-format
+msgid "expected: {value}"
+msgstr "attendu : {value}"
+
+#: core/preflight.py:189
+#, python-brace-format
+msgid "got:      {value}"
+msgstr "obtenu  : {value}"
+
+#: core/preflight.py:207
+#: core/preflight.py:244
+#: core/preflight.py:311
+#, python-brace-format
+msgid "Installed: {path}"
+msgstr "Installé : {path}"
+
+#: core/preflight.py:210
+msgid "Invalid archive (not a ZIP)."
+msgstr "Archive invalide (non ZIP)."
+
+#: core/preflight.py:255
+#: core/preflight.py:270
+#: core/preflight.py:331
+#: core/preflight.py:354
+#: core/preflight.py:486
+#, python-brace-format
+msgid "Downloading from {url}"
+msgstr "Téléchargement depuis {url}"
+
+#: core/preflight.py:268
+#: core/preflight.py:329
+#: core/preflight.py:352
+#, python-brace-format
+msgid "{tool} URL not found in the sources."
+msgstr "URL {tool} introuvable dans les sources."
+
+#: core/preflight.py:299
+#, python-brace-format
+msgid "Extraction impossible ({error}) — tar not found?"
+msgstr "Extraction impossible ({error}) — tar introuvable ?"
+
+#: core/preflight.py:302
+msgid "7z archive unreadable by tar."
+msgstr "Archive 7z illisible par tar."
+
+#: core/preflight.py:324
+#: core/preflight.py:347
+#, python-brace-format
+msgid "On Linux, install {tool} with your package manager."
+msgstr "Sous Linux, installez {tool} via votre gestionnaire de paquets."
+
+#: core/preflight.py:365
+msgid "optional"
+msgstr "optionnel"
+
+#: core/preflight.py:395
+msgid "dovi_tool missing (optional — needed for Dolby Vision)."
+msgstr "dovi_tool absent (optionnel — nécessaire pour le Dolby Vision)."
+
+#: core/preflight.py:399
+msgid "mkvmerge missing (optional — needed to add external tracks)."
+msgstr "mkvmerge absent (optionnel — nécessaire pour ajouter des pistes externes)."
+
+#: core/preflight.py:403
+msgid "mpv missing (optional — used to check a resync by eye)."
+msgstr "mpv absent (optionnel — sert à contrôler un recalage à l'œil)."
+
+#: core/preflight.py:413
+msgid "No download URL configured."
+msgstr "Aucune URL de téléchargement configurée."
+
+#. config.toml > [ffmpeg] > fetch_url is a settings key, keep it as is.
+#: core/preflight.py:416
+msgid "Fill in config.toml > [ffmpeg] > fetch_url"
+msgstr "Renseignez config.toml > [ffmpeg] > fetch_url"
+
+#: core/preflight.py:420
+msgid "Download and install ffmpeg into ./bin/?"
+msgstr "Télécharger et installer ffmpeg dans ./bin/ ?"
+
+#: core/preflight.py:429
+msgid "Install ffmpeg manually into ./bin/ or add it to the PATH."
+msgstr "Installez ffmpeg manuellement dans ./bin/ ou ajoutez-le au PATH."
+
+#: core/preflight.py:436
+msgid "Download and install dovi_tool (Dolby Vision) into ./bin/?"
+msgstr "Télécharger et installer dovi_tool (Dolby Vision) dans ./bin/ ?"
+
+#: core/preflight.py:439
+msgid "dovi_tool installation failed — Dolby Vision features unavailable."
+msgstr "Installation dovi_tool échouée — fonctionnalité Dolby Vision indisponible."
+
+#: core/preflight.py:441
+msgid "dovi_tool skipped — Dolby Vision files will not be handled optimally."
+msgstr "dovi_tool ignoré — les fichiers Dolby Vision ne seront pas traités de façon optimale."
+
+#: core/preflight.py:447
+msgid "Download and install mkvmerge (external tracks) into ./bin/?"
+msgstr "Télécharger et installer mkvmerge (pistes externes) dans ./bin/ ?"
+
+#: core/preflight.py:450
+msgid "mkvmerge installation failed — adding external tracks unavailable."
+msgstr "Installation mkvmerge échouée — ajout de pistes externes indisponible."
+
+#: core/preflight.py:452
+msgid "mkvmerge skipped — adding external audio/subtitle tracks will be unavailable."
+msgstr "mkvmerge ignoré — l'ajout de pistes audio/sous-titres externes sera indisponible."
+
+#: core/preflight.py:458
+msgid "Download and install mpv (resync check) into ./bin/?"
+msgstr "Télécharger et installer mpv (contrôle du recalage) dans ./bin/ ?"
+
+#: core/preflight.py:461
+msgid "mpv installation failed — the resync can only be set blind."
+msgstr "Installation mpv échouée — le recalage restera réglable à l'aveugle."
+
+#: core/preflight.py:463
+msgid "mpv skipped — you will not be able to check a resync by eye."
+msgstr "mpv ignoré — vous ne pourrez pas contrôler un recalage à l'œil."
+
+#: core/preflight.py:516
+msgid "Checking for updates…"
+msgstr "Vérification des mises à jour…"
+
+#: core/preflight.py:538
+msgid "Update these tools?"
+msgstr "Mettre à jour ces outils ?"
+
+#: core/preflight.py:539
+msgid "Update skipped — the installed versions stay in place."
+msgstr "Mise à jour ignorée — les versions installées restent en place."
+
+#: core/preflight.py:546
+#, python-brace-format
+msgid "{tool}: downloading {version}…"
+msgstr "{tool} : téléchargement de {version}…"
+
+#: core/preflight.py:553
+#, python-brace-format
+msgid "{tool} update failed — previous version kept."
+msgstr "Mise à jour de {tool} échouée — version précédente conservée."
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."

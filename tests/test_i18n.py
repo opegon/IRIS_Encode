@@ -300,3 +300,20 @@ def test_une_erreur_brute_se_montre_telle_quelle():
     e = i18n.ErreurAffichable.brute("Quota {exceeded}")
     assert str(e) == "Quota {exceeded}"
     assert i18n.texte_erreur(e) == "Quota {exceeded}"
+
+
+def test_la_console_accepte_la_lettre_de_sa_langue_et_y(monkeypatch):
+    """L-29 : « (o/N) » testait `answer == "o"` en dur. La lettre vient du
+    catalogue avec l'invite, et « y » est toujours compris."""
+    from core import preflight
+    i18n.init("fr")                                   # le vrai catalogue livré
+    invites = []
+    for tape, attendu in (("o", True), ("y", True), ("n", False), ("", False)):
+        monkeypatch.setattr(preflight, "_ask",
+                            lambda p, t=tape: invites.append(p) or t)
+        assert preflight._oui_non("Mettre à jour ces outils ?") is attendu
+    assert invites[0] == "  Mettre à jour ces outils ? (o/N) : "     # le français d'avant
+    i18n.init("en")
+    monkeypatch.setattr(preflight, "_ask", lambda p: invites.append(p) or "y")
+    assert preflight._oui_non("Update these tools?")
+    assert invites[-1] == "  Update these tools? (y/N): "

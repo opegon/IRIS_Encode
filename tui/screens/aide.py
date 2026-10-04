@@ -113,7 +113,7 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "val_down":       "Valeur précédente.",
         "enter_action":   "Ouvre la liste des valeurs possibles pour le champ "
                           "actif.",
-        "dryrun":         "Dry-run sur ce seul fichier.",
+        "dryrun":         "Aperçu de ce seul fichier.",
         "run":            "Ajoute ce fichier à la file d'encodage.",
         "change_profile": "Change le profil, ce qui recalcule la décision.",
         "open_codec":     "Choisit le codec de sortie.",
@@ -164,7 +164,7 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                            "recherche se fait autour. Sous-titres uniquement : sur "
                            "une piste audio, il n'y a aucun texte à proposer.",
         "remove_track":    "Retire la piste de la liste des greffes.",
-        "dryrun":          "Dry-run sur le fichier cible.",
+        "dryrun":          "Aperçu du fichier cible.",
         "run":             "Ajoute le fichier, pistes greffées, à la file "
                            "d'encodage.",
         "run_mux":         "Muxe sans réencoder : bien plus rapide, quand la vidéo "

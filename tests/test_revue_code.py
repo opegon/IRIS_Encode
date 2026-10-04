@@ -981,3 +981,27 @@ def test_la_nature_de_la_fiche_est_une_valeur_pas_un_libelle():
     assert set(LIBELLES_NATURE) == set(N)
     assert meta_mod.NATURE_IMDB["tvMiniSeries"] is N.MINI_SERIE
     assert meta_mod.NATURE_ALLOCINE["TVSeries"] is N.SERIE
+
+
+def test_laperçu_n_affiche_ni_nom_d_enumeration_ni_dry_run():
+    """L-68 (IE-113) : la raison écrite par l'aperçu montrait `ENCODE_H264`,
+    et l'écran s'appelait « dry-run » ici, « aperçu » là."""
+    from core.decision import VideoAction, decide
+    from core.profiles import Profile
+    from core.scanner import VideoInfo
+    from tui.screens.dryrun import DryrunScreen
+    from tui.screens.aide import _COMMUNES, _PAR_ECRAN
+
+    info = VideoInfo(path=Path("Film.mkv"), width=1920, height=1080,
+                     bitrate=20_000_000, codec="hevc", duration=60.0,
+                     frame_count=0, dv_profile=None)
+    dec = decide(info, Profile(id="p", data={"bitrate_1080p_kbps": 2500}))
+    DryrunScreen._apply_codec(None, dec, VideoAction.ENCODE_H264)
+    raisons = [dec.video.reason]
+    DryrunScreen._apply_bitrate(None, dec, 3_000_000)
+    raisons.append(dec.video.reason)
+    for raison in raisons:
+        assert "ENCODE_" not in raison and "dry-run" not in raison.lower()
+    textes = list(_COMMUNES.values()) + [t for e in _PAR_ECRAN.values()
+                                          for t in e.values()]
+    assert not [t for t in textes if "dry-run" in t.lower()]

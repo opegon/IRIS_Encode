@@ -351,7 +351,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
         dec.video = dc_replace(
             choisir_codec(dec, new_action),
-            reason         = f"Modifié manuellement (dry-run) : {new_action.name}",
+            reason         = "Choisi dans l'aperçu",
         )
 
     def _apply_bitrate(self, dec: FileDecision, new_bitrate_bps: int) -> None:
@@ -361,7 +361,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         dec.video = dc_replace(
             dec.video,
             target_bitrate = new_bitrate_bps,
-            reason         = f"Débit modifié manuellement (aperçu) : {new_bitrate_bps // 1000}k",
+            reason         = "Débit choisi dans l'aperçu",
         )
 
     def action_open_codec(self) -> None:

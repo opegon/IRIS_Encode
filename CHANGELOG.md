@@ -1,5 +1,24 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.66] — 2026-10-04
+
+### L'aperçu ne montre plus de nom interne
+
+IE-113, constat L-68 de l'audit de localisation.
+
+Changer le codec d'un fichier dans l'aperçu écrivait la raison « Modifié
+manuellement (dry-run) : ENCODE_H264 » : le nom d'une valeur du code, montré
+tel quel, et l'écran nommé « dry-run » alors que partout ailleurs il
+s'appelle « Aperçu ». Le débit, lui, disait « (aperçu) ».
+
+- `tui/screens/dryrun.py` : « Choisi dans l'aperçu » et « Débit choisi dans
+  l'aperçu », sur le modèle de l'assistant. La nouvelle décision se lit déjà
+  dans les colonnes Action et Débit cible.
+- Guide embarqué : « Aperçu de ce seul fichier », « Aperçu du fichier
+  cible » au lieu de « Dry-run sur… ».
+- `tests/test_revue_code.py` : ni nom d'énumération ni « dry-run » dans ce
+  que l'aperçu écrit ou que le guide affiche.
+
 ## [v0.8.9.65] — 2026-10-04
 
 ### Nature de la fiche : une valeur, pas un libellé

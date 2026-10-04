@@ -34,6 +34,10 @@ from textual.widgets import DataTable
 from main import force_utf8_output
 from tui.app import IrisEncodeApp
 
+# Comme `main.py` : la langue avant l'interface (voir smoke_tui.py).
+from core import i18n
+i18n.init("fr")
+
 force_utf8_output()
 
 SIZE     = (160, 45)

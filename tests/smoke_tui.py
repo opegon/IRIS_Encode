@@ -22,6 +22,12 @@ from core.decision import VideoAction
 from main import force_utf8_output
 from tui.app import IrisEncodeApp
 
+# L'application ne charge pas sa langue elle-même : `main.py` le fait, juste
+# après config.toml. Le smoke la construit directement, il fait donc pareil —
+# et vérifie l'interface française, celle de l'utilisateur.
+from core import i18n
+i18n.init("fr")
+
 # Ce harnais affiche des symboles absents du cp1252 : sans ca, il meurt sur un
 # UnicodeEncodeError des que sa sortie est redirigee (pipe, fichier, Git Bash).
 force_utf8_output()

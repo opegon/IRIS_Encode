@@ -417,6 +417,16 @@ msgstr ""
 msgid "Daily download quota used up."
 msgstr ""
 
+#: core/platform.py:132
+#, python-brace-format
+msgid "NVENC refused: this ffmpeg needs NVIDIA driver {driver} or newer (NVENC API {required}, the installed driver provides {found}). Update the driver, or use an ffmpeg built for an older API. Until then, encoding with the graphics card is refused."
+msgstr ""
+
+#: core/platform.py:138
+#, python-brace-format
+msgid "NVENC refused: this ffmpeg needs a newer NVIDIA driver (NVENC API {required}, the installed driver provides {found}). Update the driver, or use an ffmpeg built for an older API. Until then, encoding with the graphics card is refused."
+msgstr ""
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."

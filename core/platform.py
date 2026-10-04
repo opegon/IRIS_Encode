@@ -12,6 +12,8 @@ import subprocess
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from .i18n import _
+
 
 class OS(Enum):
     WINDOWS = auto()
@@ -102,7 +104,7 @@ def sonder_encodeurs(encodeurs: list[str], ffmpeg_path: str = "ffmpeg",
         resultats = list(pool.map(essai, encodeurs))
     if refus is not None:
         refus.update({nom: err for nom, ok, err in resultats if not ok})
-    return frozenset(nom for nom, ok, _ in resultats if ok)
+    return frozenset(nom for nom, ok, _err in resultats if ok)
 
 
 def alerte_pilote_nvenc(sortie: str) -> str | None:
@@ -124,13 +126,20 @@ def alerte_pilote_nvenc(sortie: str) -> str | None:
         return None
     pilote = re.search(r"minimum required Nvidia driver for nvenc is (\S+)",
                        sortie, re.IGNORECASE)
-    exige = f"le pilote NVIDIA {pilote.group(1)} ou plus récent" if pilote \
-        else "un pilote NVIDIA plus récent"
-    return (f"NVENC refusé : ce ffmpeg exige {exige} (API NVENC "
-            f"{api.group(1)}, le pilote installé fournit la {api.group(2)}). "
-            f"Mettre à jour le pilote, ou prendre un ffmpeg compilé pour une "
-            f"API plus ancienne. D'ici là, les encodages par la carte "
-            f"graphique sont refusés.")
+    # Deux phrases entières, avec ou sans version connue : le morceau
+    # « le pilote … ou plus récent » s'accordait mal hors du français (L-28).
+    if pilote:
+        return _("NVENC refused: this ffmpeg needs NVIDIA driver {driver} or "
+                 "newer (NVENC API {required}, the installed driver provides "
+                 "{found}). Update the driver, or use an ffmpeg built for an "
+                 "older API. Until then, encoding with the graphics card is "
+                 "refused.").format(driver=pilote.group(1),
+                                    required=api.group(1), found=api.group(2))
+    return _("NVENC refused: this ffmpeg needs a newer NVIDIA driver (NVENC API "
+             "{required}, the installed driver provides {found}). Update the "
+             "driver, or use an ffmpeg built for an older API. Until then, "
+             "encoding with the graphics card is refused.").format(
+                 required=api.group(1), found=api.group(2))
 
 
 def _detect_os() -> OS:

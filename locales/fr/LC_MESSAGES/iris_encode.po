@@ -632,6 +632,211 @@ msgstr[1] "profiles.toml illisible ({error}). Session tenue sur les {count} prof
 msgid "profiles.toml unreadable ({error}). Loading the built-in profile [{profile}]."
 msgstr "profiles.toml illisible ({error}). Chargement du profil [{profile}] intégré."
 
+#. confidence levels of a measurement, shown alone in a column or after the word "confidence".
+#: core/sync.py:91
+msgctxt "confidence level"
+msgid "none"
+msgstr "aucune"
+
+#: core/sync.py:92
+msgctxt "confidence level"
+msgid "low"
+msgstr "faible"
+
+#: core/sync.py:93
+msgctxt "confidence level"
+msgid "medium"
+msgstr "moyenne"
+
+#: core/sync.py:94
+msgctxt "confidence level"
+msgid "excellent"
+msgstr "excellente"
+
+#: core/sync.py:229
+#, python-brace-format
+msgid "failure — {reason}"
+msgstr "échec — {reason}"
+
+#: core/sync.py:233
+#, python-brace-format
+msgid "{offset} (confidence {level})"
+msgstr "{offset} (confiance {level})"
+
+#: core/sync.py:235
+#, python-brace-format
+msgid "{label} — to check"
+msgstr "{label} — à vérifier"
+
+#: core/sync.py:239
+#, python-brace-format
+msgid "thirds agree within {spread} ms"
+msgstr "tiers concordants à {spread} ms près"
+
+#: core/sync.py:241
+#, python-brace-format
+msgid "thirds disagree ({spread} ms apart)"
+msgstr "tiers discordants ({spread} ms d'écart)"
+
+#. measurement summary; {cross_check} is "thirds agree…", {count} the number of cues found, {speech} a percentage.
+#: core/sync.py:248
+#, python-brace-format
+msgid "confidence {level} ({value} for {required} required) · {cross_check} · {count} cue · speech {speech}"
+msgid_plural "confidence {level} ({value} for {required} required) · {cross_check} · {count} cues · speech {speech}"
+msgstr[0] "confiance {level} ({value} pour {required} requis) · {cross_check} · {count} repère · parole {speech}"
+msgstr[1] "confiance {level} ({value} pour {required} requis) · {cross_check} · {count} repères · parole {speech}"
+
+#: core/sync.py:261
+msgid "check before muxing"
+msgstr "contrôlez avant de muxer"
+
+#: core/sync.py:266
+#, python-brace-format
+msgid "best candidate {offset} ms"
+msgstr "meilleur candidat {offset} ms"
+
+#: core/sync.py:268
+#, python-brace-format
+msgid "Measurement refused — {reason}"
+msgstr "Mesure refusée — {reason}"
+
+#: core/sync.py:275
+#, python-brace-format
+msgid "segments (ms): {offsets}   —   {key} for details"
+msgstr "plages (ms) : {offsets}   —   {key} pour le détail"
+
+#: core/sync.py:285
+#, python-brace-format
+msgid "different cut — {count} segment, aligned at its own offset"
+msgid_plural "different cut — {count} segments, each aligned but at its own offset"
+msgstr[0] "montage différent — {count} plage, alignée à son propre décalage"
+msgstr[1] "montage différent — {count} plages, chacune alignée mais à un décalage propre"
+
+#: core/sync.py:290
+msgid "too few cues: very short subtitle, or misread format"
+msgstr "trop peu de repères : sous-titre très court, ou format mal lu"
+
+#: core/sync.py:294
+msgid "the soundtrack saturates speech detection — continuous music or ambience; the candidate below may be right anyway"
+msgstr "la bande-son sature la détection de parole — musique ou ambiance continue ; le candidat ci-dessous est peut-être bon malgré tout"
+
+#: core/sync.py:297
+msgid "almost no speech detected — wrong audio track?"
+msgstr "presque aucune parole détectée — mauvaise piste audio ?"
+
+#: core/sync.py:298
+msgid "no common alignment: different cut, or subtitle from another version"
+msgstr "aucun alignement commun : montage différent, ou sous-titre d'une autre version"
+
+#: core/sync.py:690
+#, python-brace-format
+msgid "{time}: negative jump ({jump} ms), ignored"
+msgstr "{time} : saut négatif ({jump} ms), ignoré"
+
+#: core/sync.py:701
+#, python-brace-format
+msgid "{time}: no silence found, insertion on the estimated boundary"
+msgstr "{time} : aucun silence trouvé, insertion sur la frontière estimée"
+
+#: core/sync.py:718
+#, python-brace-format
+msgid "{time}: insertion point before the previous one, moved by {shift} s"
+msgstr "{time} : point d'insertion en retrait sur le précédent, repoussé de {shift} s"
+
+#: core/sync.py:747
+msgid "No insertion to apply."
+msgstr "Aucune insertion à appliquer."
+
+#: core/sync.py:759
+#, python-brace-format
+msgid "Insertion points not increasing: {position} s after {previous} s."
+msgstr "Points d'insertion non croissants : {position} s après {previous} s."
+
+#: core/sync.py:1266
+#, python-brace-format
+msgid "medium correlation ({value}) — check the result before muxing"
+msgstr "corrélation moyenne ({value}) — contrôlez le résultat avant de muxer"
+
+#: core/sync.py:1284
+msgid "no usable audio"
+msgstr "aucun audio exploitable"
+
+#: core/sync.py:1300
+#, python-brace-format
+msgid "durations {gap} apart — check that it is the same cut"
+msgstr "durées écartées de {gap} — vérifiez qu'il s'agit bien du même montage"
+
+#: core/sync.py:1323
+msgid "no usable audio in the donor"
+msgstr "aucun audio exploitable dans le donneur"
+
+#: core/sync.py:1327
+msgid "no usable insertion"
+msgstr "aucune insertion exploitable"
+
+#: core/sync.py:1349
+#: core/sync.py:1373
+#, python-brace-format
+msgid "ffmpeg failed: {error}"
+msgstr "ffmpeg a échoué : {error}"
+
+#: core/sync.py:1372
+#, python-brace-format
+msgid "code {code}"
+msgstr "code {code}"
+
+#: core/sync.py:1427
+msgid "embedded track without a track index"
+msgstr "piste embarquée sans index de piste"
+
+#: core/sync.py:1431
+msgid "image subtitle — no text to correlate"
+msgstr "sous-titre image — aucun texte à corréler"
+
+#: core/sync.py:1435
+msgid "no readable subtitle line"
+msgstr "aucune réplique lisible"
+
+#: core/sync.py:1440
+msgid "no audio in the video"
+msgstr "aucun audio dans la vidéo"
+
+#: core/sync.py:1452
+msgid "offset taken from the anchor point — no step detected beyond"
+msgstr "décalage repris du point d'ancrage — aucun palier détecté au-delà"
+
+#: core/sync.py:1458
+#, python-brace-format
+msgid "the given point says {given} ms, the analysis finds {found} — check both moments"
+msgstr "le point donné annonce {given} ms, l'analyse trouve {found} — vérifiez les deux instants"
+
+#: core/sync.py:1465
+msgid "constant offset confirmed around the anchor point"
+msgstr "décalage constant confirmé autour du point d'ancrage"
+
+#: core/sync.py:1470
+#, python-brace-format
+msgid "{count} segment detected around the anchor point — different cut"
+msgid_plural "{count} segments detected around the anchor point — different cut"
+msgstr[0] "{count} plage détectée autour du point d'ancrage — montage différent"
+msgstr[1] "{count} plages détectées autour du point d'ancrage — montage différent"
+
+#: core/sync.py:1514
+msgid "embedded track without a track index — cannot extract it"
+msgstr "piste embarquée sans index de piste — impossible de l'extraire"
+
+#: core/sync.py:1519
+msgid "image subtitle (PGS, VobSub) — no text to correlate"
+msgstr "sous-titre image (PGS, VobSub) — aucun texte à corréler"
+
+#: core/sync.py:1525
+msgid "no readable subtitle line — unknown format or empty file"
+msgstr "aucune réplique lisible — format inconnu ou fichier vide"
+
+#: core/sync.py:1532
+msgid "no audio in the video to serve as reference"
+msgstr "aucun audio dans la vidéo pour servir de référence"
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."

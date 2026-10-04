@@ -880,15 +880,19 @@ def test_le_plan_croissant_survit_a_la_commande():
 
 def test_retime_command_refuse_un_point_en_retrait():
     """Le garde-fou : mieux vaut ne pas fabriquer la commande qu'une piste fausse."""
-    with pytest.raises(ValueError, match="non croissants"):
+    from core.i18n import texte_erreur
+    with pytest.raises(ValueError) as refus:
         sync.build_retime_command(Path("vf.mkv"), 0,
                                   [(500.0, 2.0), (100.0, 2.0)],
                                   Path("out.mka"))
+    assert "non croissants" in texte_erreur(refus.value)
 
 
 def test_retime_command_refuse_deux_points_identiques():
     """Égalité comprise : `atrim=start=100:end=100` est un segment vide."""
-    with pytest.raises(ValueError, match="non croissants"):
+    from core.i18n import texte_erreur
+    with pytest.raises(ValueError) as refus:
         sync.build_retime_command(Path("vf.mkv"), 0,
                                   [(100.0, 2.0), (100.0, 2.0)],
                                   Path("out.mka"))
+    assert "non croissants" in texte_erreur(refus.value)

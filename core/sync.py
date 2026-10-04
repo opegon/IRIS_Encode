@@ -26,6 +26,8 @@ from typing import Callable, Optional
 
 import numpy as np
 
+from .i18n import N_, ErreurAffichable, _, ngettext, pgettext
+
 # Rapporte l'avancement entre 0 et 1
 Progress = Callable[[float], None]
 
@@ -66,19 +68,31 @@ MIN_CONFIDENCE  = 0.25    # en dessous : on refuse plutôt que de mentir
 # comparant au seuil, qui varie avec le nombre de repères (voir
 # `confidence_floor`). Le libellé est donc **relatif au seuil** — c'est la
 # seule façon qu'il soit vrai d'une mesure à l'autre.
-NIVEAUX_CONFIANCE = ("aucune", "faible", "moyenne", "excellente")
+
+
+def niveau_confiance(confidence: float, seuil: float = MIN_CONFIDENCE) -> int:
+    """0 aucune, 1 faible, 2 moyenne, 3 excellente. Sous le seuil (0 et 1),
+    la mesure est refusée."""
+    seuil = seuil or MIN_CONFIDENCE
+    if confidence < seuil / 2:
+        return 0
+    if confidence < seuil:
+        return 1
+    if confidence < seuil * 1.5:
+        return 2
+    return 3
 
 
 def libelle_confiance(confidence: float, seuil: float = MIN_CONFIDENCE) -> str:
-    """Confiance en mots. Sous le seuil, la mesure est refusée."""
-    seuil = seuil or MIN_CONFIDENCE
-    if confidence < seuil / 2:
-        return NIVEAUX_CONFIANCE[0]
-    if confidence < seuil:
-        return NIVEAUX_CONFIANCE[1]
-    if confidence < seuil * 1.5:
-        return NIVEAUX_CONFIANCE[2]
-    return NIVEAUX_CONFIANCE[3]
+    """Le niveau en mots. Un niveau, pas un adjectif accordé à « confiance » :
+    le mot s'affiche aussi seul, en colonne (L-33)."""
+    # TRANSLATORS: confidence levels of a measurement, shown alone in a
+    # column or after the word "confidence".
+    return (pgettext("confidence level", "none"),
+            pgettext("confidence level", "low"),
+            pgettext("confidence level", "medium"),
+            pgettext("confidence level", "excellent"))[
+                niveau_confiance(confidence, seuil)]
 SURE_CONFIDENCE = 0.40    # en dessous : on propose, mais on dit de vérifier
 # Garde-fou contre une courbe plate dont l'argmax ne veut rien dire. Bas
 # volontairement : la saillance est bruitée, elle ne sert qu'aux cas dégénérés.
@@ -212,45 +226,55 @@ class SyncResult:
 
     def label(self) -> str:
         if not self.ok:
-            return f"échec — {self.reason}"
-        out = f"{self.delay_ms:+d} ms"
+            return _("failure — {reason}").format(reason=self.reason)
+        decalage = f"{self.delay_ms:+d} ms"
         if self.stretch:
-            out += f" ×{self.stretch[0]}/{self.stretch[1]}"
-        out += (f" (confiance "
-                f"{libelle_confiance(self.confidence, self.floor)})")
-        return out if self.sure else f"{out} — à vérifier"
+            decalage += f" ×{self.stretch[0]}/{self.stretch[1]}"
+        out = _("{offset} (confidence {level})").format(
+            offset=decalage, level=libelle_confiance(self.confidence, self.floor))
+        return out if self.sure else _("{label} — to check").format(label=out)
 
     def report(self) -> str:
         """Compte rendu détaillé, lisible dans la TUI."""
-        recoupe = (f"tiers concordants à {self.dispersion_ms} ms près"
+        recoupe = (_("thirds agree within {spread} ms").format(spread=self.dispersion_ms)
                    if self.cross_checked
-                   else f"tiers discordants ({self.dispersion_ms} ms d'écart)")
+                   else _("thirds disagree ({spread} ms apart)").format(
+                       spread=self.dispersion_ms))
         # Le mot d'abord, les nombres ensuite : ce panneau existe pour qu'un
         # refus soit analysable, mais personne ne devrait avoir à traduire
         # « 0,09 » de tête.
-        mesures = (f"confiance "
-                   f"{libelle_confiance(self.confidence, self.floor)}"
-                   f" ({self.confidence:.2f} pour {self.floor:.2f} requis)"
-                   f" · {recoupe}"
-                   f" · {self.n_events} repères"
-                   f" · parole {self.speech_ratio:.0%}")
+        # TRANSLATORS: measurement summary; {cross_check} is "thirds agree…",
+        # {count} the number of cues found, {speech} a percentage.
+        mesures = ngettext(
+            "confidence {level} ({value} for {required} required) · "
+            "{cross_check} · {count} cue · speech {speech}",
+            "confidence {level} ({value} for {required} required) · "
+            "{cross_check} · {count} cues · speech {speech}",
+            self.n_events).format(
+                level=libelle_confiance(self.confidence, self.floor),
+                value=f"{self.confidence:.2f}", required=f"{self.floor:.2f}",
+                cross_check=recoupe, count=self.n_events,
+                speech=f"{self.speech_ratio:.0%}")
         if self.ok:
             head = f"{'✓' if self.sure else '⚠'} {self.label()}"
             if not self.sure:
-                head += "  → contrôlez avant de muxer"
+                head += "  → " + _("check before muxing")
             if self.warning:
                 head = f"⚠ {self.label()}  → {self.warning}"
             return f"{head}\n{mesures}"
 
-        candidat = f"meilleur candidat {self.best_delay_ms:+d} ms"
+        candidat = _("best candidate {offset} ms").format(
+            offset=f"{self.best_delay_ms:+d}")
+        refus = "✗ " + _("Measurement refused — {reason}").format(reason=self.reason)
         if self.segments:
             # Une ligne, quel que soit le nombre de plages : le détail tient
             # dans son propre écran, le bandeau n'a que trois lignes.
             paliers = " · ".join(f"{s.delay_ms:+d}" for s in self.segments)
-            return (f"✗ Mesure refusée — {self.reason}\n"
-                    f"{mesures}\n"
-                    f"plages (ms) : {paliers}   —   G pour le détail")
-        return f"✗ Mesure refusée — {self.reason}\n{mesures} · {candidat}"
+            # TRANSLATORS: {key} is the key that opens the segments screen.
+            return (f"{refus}\n{mesures}\n"
+                    + _("segments (ms): {offsets}   —   {key} for details")
+                    .format(offsets=paliers, key="G"))
+        return f"{refus}\n{mesures} · {candidat}"
 
     def diagnosis(self) -> str:
         """Piste la plus probable derrière un refus."""
@@ -258,21 +282,21 @@ class SyncResult:
             return ""
         if self.segments:
             # Constat, pas hypothèse : chaque plage a été vérifiée isolément.
-            return (f"montage différent — {len(self.segments)} plages, chacune "
-                    f"alignée mais à un décalage propre")
+            return ngettext(
+                "different cut — {count} segment, aligned at its own offset",
+                "different cut — {count} segments, each aligned but at its own "
+                "offset", len(self.segments)).format(count=len(self.segments))
         if self.n_events < 20:
-            return ("trop peu de repères : sous-titre très court, ou format "
-                    "mal lu")
+            return _("too few cues: very short subtitle, or misread format")
         # Dans un film, la parole occupe 30 à 50 % du temps. Nettement au-delà,
         # c'est le VAD qui déborde sur la musique, pas le film qui bavarde.
         if self.speech_ratio > 0.60:
-            return ("la bande-son sature la détection de parole — musique ou "
-                    "ambiance continue ; le candidat ci-dessous est peut-être "
-                    "bon malgré tout")
+            return _("the soundtrack saturates speech detection — continuous "
+                     "music or ambience; the candidate below may be right anyway")
         if self.speech_ratio < 0.05:
-            return "presque aucune parole détectée — mauvaise piste audio ?"
-        return ("aucun alignement commun : montage différent, ou sous-titre "
-                "d'une autre version")
+            return _("almost no speech detected — wrong audio track?")
+        return _("no common alignment: different cut, or subtitle from another "
+                 "version")
 
 
 # ─── Décodage et enveloppe d'énergie ──────────────────────────────────────────
@@ -663,7 +687,8 @@ def plan_inserts(envelope: np.ndarray,
         if saut <= 0:
             # Le donneur est plus long ici : il faudrait le recouper, ce qui
             # supprimerait du contenu. On préfère s'abstenir.
-            approx.append(f"{mmss(gauche.end_s)} : saut négatif ({saut} ms), ignoré")
+            approx.append(_("{time}: negative jump ({jump} ms), ignored").format(
+                time=mmss(gauche.end_s), jump=saut))
             continue
         centre = int((gauche.end_s - gauche.delay_ms / 1000.0) * 1000 / BIN_MS)
         besoin = int(saut / BIN_MS)
@@ -673,8 +698,8 @@ def plan_inserts(envelope: np.ndarray,
             # Sans silence où se loger, on pose quand même : allonger une
             # pause au mauvais endroit s'entend, mais n'efface rien.
             debut = centre
-            approx.append(f"{mmss(gauche.end_s)} : aucun silence trouvé, "
-                          f"insertion sur la frontière estimée")
+            approx.append(_("{time}: no silence found, insertion on the "
+                            "estimated boundary").format(time=mmss(gauche.end_s)))
 
         # Les positions doivent croître, et rien ici ne l'assurait. Chaque
         # frontière cherche son silence pour elle dans ±15 s, et `find_silence`
@@ -690,8 +715,9 @@ def plan_inserts(envelope: np.ndarray,
         # de taille.
         if debut <= precedent:
             recul = (precedent + 1 - debut) * BIN_MS / 1000.0
-            approx.append(f"{mmss(gauche.end_s)} : point d'insertion en retrait "
-                          f"sur le précédent, repoussé de {recul:.2f} s")
+            approx.append(_("{time}: insertion point before the previous one, "
+                            "moved by {shift} s").format(
+                                time=mmss(gauche.end_s), shift=f"{recul:.2f}"))
             debut = precedent + 1
         precedent = debut
         inserts.append((debut * BIN_MS / 1000.0, saut / 1000.0))
@@ -718,7 +744,7 @@ def build_retime_command(donor: Path, audio_index: int,
     Lève ValueError sinon : un `atrim` à l'envers ne se voit nulle part en aval.
     """
     if not inserts:
-        raise ValueError("Aucune insertion à appliquer.")
+        raise ErreurAffichable(N_("No insertion to apply."))
 
     src = f"[0:a:{audio_index}]"
     filtres, etiquettes = [], []
@@ -730,9 +756,10 @@ def build_retime_command(donor: Path, audio_index: int,
         # positions sorti deux fois. Rien en aval ne le détecte — mieux vaut ne
         # pas fabriquer la commande que rendre une piste fausse.
         if position <= precedent:
-            raise ValueError(
-                f"Points d'insertion non croissants : {position:.3f} s après "
-                f"{precedent:.3f} s.")
+            raise ErreurAffichable(N_(
+                "Insertion points not increasing: {position} s after "
+                "{previous} s."), position=f"{position:.3f}",
+                previous=f"{precedent:.3f}")
         filtres.append(f"{src}atrim=start={precedent:.3f}:end={position:.3f},"
                        f"asetpts=PTS-STARTPTS[k{k}]")
         filtres.append(f"{src}atrim=start=0:end={duree:.3f},"
@@ -848,7 +875,7 @@ def _cross_validate(ref: np.ndarray, sig: np.ndarray,
     lags = []
     for k in range(3):
         a, b = k * n // 3, (k + 1) * n // 3
-        seg_lag, _, _ = _best_lag(ref[a:b], sig[a:b])
+        seg_lag, _conf, _sal = _best_lag(ref[a:b], sig[a:b])
         lags.append(seg_lag)
 
     dispersion = (max(lags) - min(lags)) * BIN_MS
@@ -937,7 +964,7 @@ def _lag_borne(x: np.ndarray, y: np.ndarray, max_lag_s: float,
     meilleur, d = scores[0]
     if abs(d - centre) >= m - pas:
         return None, 0.0                 # collé à la borne : pas de pic
-    saillance = meilleur - float(np.median([c for c, _ in scores]))
+    saillance = meilleur - float(np.median([c for c, _lag in scores]))
     return int(round(d * BIN_MS)), saillance
 
 
@@ -1048,7 +1075,7 @@ def _segments_par_accord(ref: np.ndarray, sig: np.ndarray, *,
 
     return [Segment(start_s=a * BIN_MS / 1000, end_s=b * BIN_MS / 1000,
                     delay_ms=lag, confidence=sal)
-            for a, b, lag, sal, _ in runs]
+            for a, b, lag, sal, _x in runs]
 
 
 def _segment_lags(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
@@ -1075,7 +1102,7 @@ def _segment_lags(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
     coarse: list[tuple[int, int, int, float]] = []
     for k in range(windows):
         a, b = k * n // windows, (k + 1) * n // windows
-        lag, conf, _ = _best_lag(ref[a:b], sig[a:b])
+        lag, conf, _sal = _best_lag(ref[a:b], sig[a:b])
         coarse.append((a, b, lag, conf))
 
     # 2. Fusion des fenêtres voisines qui s'accordent. Même tolérance que le
@@ -1120,7 +1147,7 @@ def _segment_lags(ref: np.ndarray, sig: np.ndarray) -> list[Segment]:
     for run in runs:
         a, b = run[0], run[1]
         if b - a >= _MIN_SEGMENT_BINS:
-            lag, conf, _ = _best_lag(ref[a:b], sig[a:b])
+            lag, conf, _sal = _best_lag(ref[a:b], sig[a:b])
             run[2], run[3] = lag, conf
 
     return [Segment(start_s=a * BIN_MS / 1000, end_s=b * BIN_MS / 1000,
@@ -1236,8 +1263,8 @@ def _finish(lag: int, ratio: tuple[int, int], conf: float, salience: float,
         confidence=conf, ok=True, **common,
     )
     if not res.sure:
-        res.reason = (f"corrélation moyenne ({conf:.2f}) — contrôlez le "
-                      f"résultat avant de muxer")
+        res.reason = _("medium correlation ({value}) — check the result "
+                       "before muxing").format(value=f"{conf:.2f}")
     return res
 
 
@@ -1254,7 +1281,7 @@ def measure_audio(target: Path, donor: Path, donor_track: int = 0,
         (lambda f: progress(DECODE_SHARE / 2 + f / 2)) if progress else None,
         expected)
     if ref.size == 0 or sig.size == 0:
-        return SyncResult(0, None, 0.0, False, "aucun audio exploitable")
+        return SyncResult(0, None, 0.0, False, _("no usable audio"))
 
     mask   = _speech_mask(ref)
     speech = float(mask.mean())
@@ -1270,8 +1297,8 @@ def measure_audio(target: Path, donor: Path, donor_track: int = 0,
                   n_events=_count_speech_blocks(mask),
                   agreed=agreed, dispersion_ms=dispersion, segments=segments)
     if res.ok and ratio == (1, 1) and drift > MAX_DURATION_DRIFT:
-        res.warning = (f"durées écartées de {drift:.0%} — vérifiez qu'il "
-                       f"s'agit bien du même montage")
+        res.warning = _("durations {gap} apart — check that it is the same "
+                        "cut").format(gap=f"{drift:.0%}")
     return res
 
 
@@ -1293,14 +1320,14 @@ def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
         donor, audio_index,
         (lambda f: progress(f * DECODE_SHARE)) if progress else None)
     if envelope.size == 0:
-        return None, ["aucun audio exploitable dans le donneur"]
+        return None, [_("no usable audio in the donor")]
 
     inserts, approx = plan_inserts(envelope, segments)
     if not inserts:
-        return None, approx or ["aucune insertion exploitable"]
+        return None, approx or [_("no usable insertion")]
 
     # Durée attendue en sortie : l'enveloppe du donneur, allongée des insertions
-    duree = envelope.size * BIN_MS / 1000.0 + sum(d for _, d in inserts)
+    duree = envelope.size * BIN_MS / 1000.0 + sum(d for _pos, d in inserts)
 
     cmd = build_retime_command(donor, audio_index, inserts, out, bitrate_kbps)
     try:
@@ -1319,7 +1346,7 @@ def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
                                 stderr=subprocess.STDOUT, bufsize=1,
                                 encoding="utf-8", errors="replace")
     except (OSError, subprocess.SubprocessError) as e:
-        return None, [f"ffmpeg a échoué : {e}"]
+        return None, [_("ffmpeg failed: {error}").format(error=e)]
 
     # Ce que `-progress` écrit tient en `clé=valeur` ; tout le reste vient de
     # `-v error`. On ne garde que la fin : le message utile est le dernier, et
@@ -1342,7 +1369,8 @@ def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
     code = proc.wait()
 
     if code != 0 or not out.exists() or out.stat().st_size == 0:
-        return None, [f"ffmpeg a échoué : {erreurs[-1] if erreurs else f'code {code}'}"]
+        detail = erreurs[-1] if erreurs else _("code {code}").format(code=code)
+        return None, [_("ffmpeg failed: {error}").format(error=detail)]
 
     if progress:
         progress(1.0)
@@ -1396,20 +1424,20 @@ def measure_with_anchor(video: Path, subtitle: Path, *,
     if subtitle.suffix.lower() not in _TEXT_SUB_EXT:
         if donor_track is None:
             return SyncResult(0, None, 0.0, False,
-                              "piste embarquée sans index de piste")
+                              _("embedded track without a track index"))
         path = extract_subtitle(subtitle, donor_track)
         if path is None:
             return SyncResult(0, None, 0.0, False,
-                              "sous-titre image — aucun texte à corréler")
+                              _("image subtitle — no text to correlate"))
 
     cues = read_cues(path)
     if not cues:
-        return SyncResult(0, None, 0.0, False, "aucune réplique lisible")
+        return SyncResult(0, None, 0.0, False, _("no readable subtitle line"))
 
     envelope = _decode_envelope(video, 0, progress,
                                 int(duration * 1000 / BIN_MS))
     if envelope.size == 0:
-        return SyncResult(0, None, 0.0, False, "aucun audio dans la vidéo")
+        return SyncResult(0, None, 0.0, False, _("no audio in the video"))
 
     ref    = _speech_mask(envelope)
     sig    = _cue_mask(cues, ref.size, (1, 1))
@@ -1421,24 +1449,29 @@ def measure_with_anchor(video: Path, subtitle: Path, *,
         # Rien de structuré : le point donné reste la meilleure réponse, et
         # c'est l'utilisateur qui l'a mesuré. On le rend tel quel.
         return SyncResult(centre, None, MIN_CONFIDENCE, True,
-                          "décalage repris du point d'ancrage — aucun palier "
-                          "détecté au-delà", floor=MIN_CONFIDENCE)
+                          _("offset taken from the anchor point — no step "
+                            "detected beyond"), floor=MIN_CONFIDENCE)
 
     if not accord_avec_ancre(segments, centre):
         trouves = ", ".join(f"{s.delay_ms:+d} ms" for s in segments[:3])
         return SyncResult(0, None, 0.0, False,
-                          f"le point donné annonce {centre:+d} ms, l'analyse "
-                          f"trouve {trouves} — vérifiez les deux instants",
+                          _("the given point says {given} ms, the analysis "
+                            "finds {found} — check both moments").format(
+                                given=f"{centre:+d}", found=trouves),
                           floor=MIN_CONFIDENCE)
 
     if len(segments) == 1:
         return SyncResult(segments[0].delay_ms, None, segments[0].confidence,
-                          True, "décalage constant confirmé autour du point "
-                          "d'ancrage", floor=MIN_CONFIDENCE, segments=[])
+                          True, _("constant offset confirmed around the "
+                                  "anchor point"),
+                          floor=MIN_CONFIDENCE, segments=[])
 
     return SyncResult(centre, None, MIN_CONFIDENCE, False,
-                      f"{len(segments)} plages détectées autour du point "
-                      f"d'ancrage — montage différent",
+                      ngettext("{count} segment detected around the anchor "
+                               "point — different cut",
+                               "{count} segments detected around the anchor "
+                               "point — different cut",
+                               len(segments)).format(count=len(segments)),
                       floor=MIN_CONFIDENCE, segments=segments)
 
 
@@ -1478,25 +1511,25 @@ def measure_subtitle(video: Path, subtitle: Path,
     if subtitle.suffix.lower() not in _TEXT_SUB_EXT:
         if donor_track is None:
             return SyncResult(0, None, 0.0, False,
-                              "piste embarquée sans index de piste — "
-                              "impossible de l'extraire")
+                              _("embedded track without a track index — "
+                                "cannot extract it"))
         path = extract_subtitle(subtitle, donor_track)
         if path is None:
             return SyncResult(0, None, 0.0, False,
-                              "sous-titre image (PGS, VobSub) — aucun texte "
-                              "à corréler")
+                              _("image subtitle (PGS, VobSub) — no text to "
+                                "correlate"))
 
     cues = read_cues(path)
     if not cues:
         return SyncResult(0, None, 0.0, False,
-                          "aucune réplique lisible — format inconnu ou "
-                          "fichier vide")
+                          _("no readable subtitle line — unknown format or "
+                            "empty file"))
 
     envelope = _decode_envelope(
         video, 0, progress, int(duration * 1000 / BIN_MS))
     if envelope.size == 0:
         return SyncResult(0, None, 0.0, False,
-                          "aucun audio dans la vidéo pour servir de référence")
+                          _("no audio in the video to serve as reference"))
 
     ref    = _speech_mask(envelope)
     n_bins = ref.size

@@ -632,6 +632,211 @@ msgstr[1] ""
 msgid "profiles.toml unreadable ({error}). Loading the built-in profile [{profile}]."
 msgstr ""
 
+#. confidence levels of a measurement, shown alone in a column or after the word "confidence".
+#: core/sync.py:91
+msgctxt "confidence level"
+msgid "none"
+msgstr ""
+
+#: core/sync.py:92
+msgctxt "confidence level"
+msgid "low"
+msgstr ""
+
+#: core/sync.py:93
+msgctxt "confidence level"
+msgid "medium"
+msgstr ""
+
+#: core/sync.py:94
+msgctxt "confidence level"
+msgid "excellent"
+msgstr ""
+
+#: core/sync.py:229
+#, python-brace-format
+msgid "failure — {reason}"
+msgstr ""
+
+#: core/sync.py:233
+#, python-brace-format
+msgid "{offset} (confidence {level})"
+msgstr ""
+
+#: core/sync.py:235
+#, python-brace-format
+msgid "{label} — to check"
+msgstr ""
+
+#: core/sync.py:239
+#, python-brace-format
+msgid "thirds agree within {spread} ms"
+msgstr ""
+
+#: core/sync.py:241
+#, python-brace-format
+msgid "thirds disagree ({spread} ms apart)"
+msgstr ""
+
+#. measurement summary; {cross_check} is "thirds agree…", {count} the number of cues found, {speech} a percentage.
+#: core/sync.py:248
+#, python-brace-format
+msgid "confidence {level} ({value} for {required} required) · {cross_check} · {count} cue · speech {speech}"
+msgid_plural "confidence {level} ({value} for {required} required) · {cross_check} · {count} cues · speech {speech}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: core/sync.py:261
+msgid "check before muxing"
+msgstr ""
+
+#: core/sync.py:266
+#, python-brace-format
+msgid "best candidate {offset} ms"
+msgstr ""
+
+#: core/sync.py:268
+#, python-brace-format
+msgid "Measurement refused — {reason}"
+msgstr ""
+
+#: core/sync.py:275
+#, python-brace-format
+msgid "segments (ms): {offsets}   —   {key} for details"
+msgstr ""
+
+#: core/sync.py:285
+#, python-brace-format
+msgid "different cut — {count} segment, aligned at its own offset"
+msgid_plural "different cut — {count} segments, each aligned but at its own offset"
+msgstr[0] ""
+msgstr[1] ""
+
+#: core/sync.py:290
+msgid "too few cues: very short subtitle, or misread format"
+msgstr ""
+
+#: core/sync.py:294
+msgid "the soundtrack saturates speech detection — continuous music or ambience; the candidate below may be right anyway"
+msgstr ""
+
+#: core/sync.py:297
+msgid "almost no speech detected — wrong audio track?"
+msgstr ""
+
+#: core/sync.py:298
+msgid "no common alignment: different cut, or subtitle from another version"
+msgstr ""
+
+#: core/sync.py:690
+#, python-brace-format
+msgid "{time}: negative jump ({jump} ms), ignored"
+msgstr ""
+
+#: core/sync.py:701
+#, python-brace-format
+msgid "{time}: no silence found, insertion on the estimated boundary"
+msgstr ""
+
+#: core/sync.py:718
+#, python-brace-format
+msgid "{time}: insertion point before the previous one, moved by {shift} s"
+msgstr ""
+
+#: core/sync.py:747
+msgid "No insertion to apply."
+msgstr ""
+
+#: core/sync.py:759
+#, python-brace-format
+msgid "Insertion points not increasing: {position} s after {previous} s."
+msgstr ""
+
+#: core/sync.py:1266
+#, python-brace-format
+msgid "medium correlation ({value}) — check the result before muxing"
+msgstr ""
+
+#: core/sync.py:1284
+msgid "no usable audio"
+msgstr ""
+
+#: core/sync.py:1300
+#, python-brace-format
+msgid "durations {gap} apart — check that it is the same cut"
+msgstr ""
+
+#: core/sync.py:1323
+msgid "no usable audio in the donor"
+msgstr ""
+
+#: core/sync.py:1327
+msgid "no usable insertion"
+msgstr ""
+
+#: core/sync.py:1349
+#: core/sync.py:1373
+#, python-brace-format
+msgid "ffmpeg failed: {error}"
+msgstr ""
+
+#: core/sync.py:1372
+#, python-brace-format
+msgid "code {code}"
+msgstr ""
+
+#: core/sync.py:1427
+msgid "embedded track without a track index"
+msgstr ""
+
+#: core/sync.py:1431
+msgid "image subtitle — no text to correlate"
+msgstr ""
+
+#: core/sync.py:1435
+msgid "no readable subtitle line"
+msgstr ""
+
+#: core/sync.py:1440
+msgid "no audio in the video"
+msgstr ""
+
+#: core/sync.py:1452
+msgid "offset taken from the anchor point — no step detected beyond"
+msgstr ""
+
+#: core/sync.py:1458
+#, python-brace-format
+msgid "the given point says {given} ms, the analysis finds {found} — check both moments"
+msgstr ""
+
+#: core/sync.py:1465
+msgid "constant offset confirmed around the anchor point"
+msgstr ""
+
+#: core/sync.py:1470
+#, python-brace-format
+msgid "{count} segment detected around the anchor point — different cut"
+msgid_plural "{count} segments detected around the anchor point — different cut"
+msgstr[0] ""
+msgstr[1] ""
+
+#: core/sync.py:1514
+msgid "embedded track without a track index — cannot extract it"
+msgstr ""
+
+#: core/sync.py:1519
+msgid "image subtitle (PGS, VobSub) — no text to correlate"
+msgstr ""
+
+#: core/sync.py:1525
+msgid "no readable subtitle line — unknown format or empty file"
+msgstr ""
+
+#: core/sync.py:1532
+msgid "no audio in the video to serve as reference"
+msgstr ""
+
 #: tui/screens/cles.py:99
 #, python-brace-format
 msgid "{usage} — {without_key}."

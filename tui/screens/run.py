@@ -26,7 +26,7 @@ from core.decision import (AudioAction, FileDecision, VideoAction,
                            resoudre_sorties)
 from core.encoder import (
     EncoderProcess, audio_pass_needed, audio_prepass_needed,
-    build_audio_command, build_command, diagnostiquer, encodeur_de,
+    build_audio_command, build_command, diagnostiquer, encodeur_a_controler,
     pistes_audio_vides,
 )
 from core.muxer import (
@@ -451,7 +451,7 @@ class RunScreen(TableNavMixin, Screen):
         # Le sondage du démarrage a déjà répondu : inutile de lancer ffmpeg
         # pour apprendre ce qu'on sait, ni de laisser l'utilisateur lire
         # « Error opening output files » à la place de la cause.
-        choisi = encodeur_de(cmd)
+        choisi = encodeur_a_controler(cmd)
         if choisi and self._platform.peut_encoder(choisi) is False:
             s.state     = FileState.ERROR
             s.error_msg = f"{choisi} indisponible ici"[:60]

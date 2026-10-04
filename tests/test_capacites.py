@@ -23,7 +23,7 @@ from dataclasses import replace
 import pytest
 
 from core.decision import VideoAction
-from core.encoder import diagnostiquer, encodeur_de
+from core.encoder import diagnostiquer, encodeur_a_controler, encodeur_de
 from core.platform import GPU, OS, PlatformProfile
 
 _PLAT = PlatformProfile(os=OS.WINDOWS, gpu=GPU.NVIDIA, hwaccel="cuda",
@@ -242,3 +242,15 @@ def test_la_sonde_rend_la_sortie_des_refus():
     ok = sonder_encodeurs(["encodeur_inexistant"], str(ffmpeg), refus)
     assert "encodeur_inexistant" not in ok
     assert refus.get("encodeur_inexistant"), "la sortie d'erreur doit être gardée"
+
+
+def test_une_video_recopiee_n_est_pas_confrontee_au_sondage():
+    """Un DV conservé recopie la vidéo : « copy indisponible ici » arrêtait le
+    fichier avant ffmpeg, alors qu'il n'y a rien à encoder."""
+    cmd = ["ffmpeg", "-i", "film.mkv", "-c:v", "copy", "sortie.mkv"]
+    assert encodeur_de(cmd) == "copy"
+    assert encodeur_a_controler(cmd) is None
+
+
+def test_un_vrai_encodeur_reste_controle(tmp_path):
+    assert encodeur_a_controler(_cmd(VideoAction.ENCODE_HEVC, tmp_path)) == "hevc_nvenc"

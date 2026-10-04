@@ -1141,11 +1141,20 @@ def force_skip_to_encode(dec: FileDecision) -> FileDecision:
     forced_dv = dec.video.dv_action
     if sub_1080 and forced_dv == DVAction.DV:
         forced_dv = DVAction.HDR10
+    # Le DV conservé se réencode quand il le peut, comme dans `decide_video`.
+    # Sans cela, la coche promettait un encodage et livrait une simple copie
+    # du flux, sous un nom `.hevc-iris`.
+    if (forced_dv == DVAction.DV and forced_act == VideoAction.ENCODE_HEVC
+            and peut_reencoder_en_dv(dec.info, dec.video.target_width,
+                                     dec.video.target_height)):
+        forced_act = VideoAction.ENCODE_DV
+    suffix = (SUFFIX_DV_COPIE if video_recopiee(forced_act, forced_dv)
+              else SUFFIX_BY_ACTION[forced_act])
     return dc_replace(dec, video=dc_replace(
         dec.video,
         action        = forced_act,
         target_bitrate= dec.info.bitrate,
-        output_suffix = SUFFIX_BY_ACTION[forced_act],
+        output_suffix = suffix,
         dv_action     = forced_dv,
         reason        = ("Forcé manuellement (était SKIP)"
                          if dec.video.action == VideoAction.SKIP

@@ -1,5 +1,51 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.60] — 2026-10-04
+
+### « copy indisponible ici » sur une vidéo recopiée
+
+Avant de lancer ffmpeg, la file confronte l'encodeur vidéo de la commande aux
+encodeurs sondés au démarrage. Une vidéo recopiée (Dolby Vision conservé sans
+réencodage) porte `-c:v copy` : `copy` n'étant pas un encodeur sondé, le
+fichier tombait en échec avant même de commencer.
+
+- `encoder.encodeur_a_controler` rend l'encodeur à contrôler, ou rien quand
+  la vidéo est recopiée ; `RunScreen` s'en sert à la place d'`encodeur_de`.
+- `tests/test_capacites.py`.
+
+## [v0.8.9.59] — 2026-10-04
+
+### Une source Dolby Vision forcée se réencode en DV
+
+*Premier Contact* (DV 8.1, « 4KLight » à 3 Mb/s) passe en SKIP sous
+`cinema_4k_dv_quality`, dont la cible 4K est de 12 Mb/s : c'est voulu. Mais
+cochée pour forcer l'encodage, la ligne annonçait « → DV (copie) » : le flux
+vidéo était recopié, sans réencodage, sous un nom `.hevc-iris`.
+
+- `force_skip_to_encode` (`core/decision.py`) applique la même règle que
+  `decide_video` : DV conservé, sortie HEVC et `peut_reencoder_en_dv` vrai →
+  `ENCODE_DV`, au débit de la source. La ligne affiche « → HEVC → DV ».
+- Quand le réencodage DV est impossible (outils absents, profil 5, 8.4), la
+  copie reste, mais avec le suffixe de copie `.dv-iris`.
+- `tests/test_dv_reencodage.py`. Spec § 14, GUIDE.
+
+## [v0.8.9.58] — 2026-10-04
+
+### Un lot part dans l'ordre alphabétique
+
+Les fichiers d'un lot s'affichaient et s'encodaient dans un ordre sans
+rapport avec la liste du navigateur. La sélection est un ensemble
+(`BrowserScreen._selected`) : l'aperçu (`F1`), l'encodage (`F2`) et le collage
+(`J`) le parcouraient tel quel, donc dans l'ordre des hachages, différent
+d'une session à l'autre.
+
+- `BrowserScreen._cochees` rend les décisions cochées triées comme le tableau
+  (même tri que `FileNavigator.list_videos`). Les trois actions passent par
+  lui.
+- La file conserve cet ordre ; un ajout à un lot en cours se place à la suite,
+  et `Ctrl+↑/↓` réordonnent toujours.
+- `tests/test_ordre_lot.py`. Spec § 14.7, GUIDE.
+
 ## [v0.8.9.57] — 2026-10-03
 
 ### Réencodage Dolby Vision en MP4 (IE-108)

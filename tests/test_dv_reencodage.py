@@ -214,3 +214,24 @@ def test_choisir_hevc_sur_une_decision_dv_ne_fait_pas_perdre_le_dv():
 def test_la_nouvelle_action_a_un_libelle_sur_l_ecran_des_pistes():
     from tui.screens.tracks import _ACTION_SHORT
     assert VideoAction.ENCODE_DV in _ACTION_SHORT
+
+
+# ─── Une ligne SKIP cochée (force_skip_to_encode) ────────────────────────────
+
+def test_une_source_dv_sous_la_cible_forcee_est_reencodee_en_dv():
+    """« 4KLight » à 3 Mb/s, sous les 12 Mb/s du profil : SKIP. Cochée, elle
+    doit partir en réencodage DV, pas en copie du flux."""
+    dec = decide(_source(h=1606, bitrate=3_000_000), _profil())
+    assert dec.video.action is VideoAction.SKIP
+    v = D.force_skip_to_encode(dec).video
+    assert v.action is VideoAction.ENCODE_DV
+    assert v.target_bitrate == 3_000_000
+    assert v.label() == "→ HEVC → DV"
+
+
+def test_forcee_sans_les_outils_la_copie_porte_le_suffixe_de_copie():
+    D.set_strip_dv_available(False)
+    dec = decide(_source(bitrate=3_000_000), _profil())
+    v = D.force_skip_to_encode(dec).video
+    assert video_recopiee(v.action, v.dv_action)
+    assert v.output_suffix == SUFFIX_DV_COPIE

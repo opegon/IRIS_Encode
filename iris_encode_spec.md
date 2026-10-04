@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.57 — document de référence courant
+**Version** : 0.8.9.60 — document de référence courant
 **Date** : 2026-10-03
 **Statut** : stable
 
@@ -1745,6 +1745,8 @@ Conventions transverses :
   Le choix n'est jamais retiré du picker — une carte se remplace, un pilote se
   met à jour — mais il est annoté « ✗ indisponible ici », et le lancement
   refuse en nommant la cause plutôt que de laisser ffmpeg échouer.
+  Une vidéo recopiée (`-c:v copy`) n'est pas contrôlée : `copy` n'est pas un
+  encodeur (`encodeur_a_controler`, v0.8.9.60).
   La sonde garde la sortie d'erreur des refus (`refus=`) : si ffmpeg y dit que
   le pilote est trop ancien pour son API NVENC, `alerte_pilote_nvenc()` en tire
   un message (pilote exigé, API exigée et fournie), rangé dans
@@ -1998,7 +2000,10 @@ n'est à réencoder.
 réencodage par `force_skip_to_encode()`. `_row_cells()` rend alors la décision
 forcée, en `bold dark_orange`, avec l'estimation et l'ETA qui vont avec ;
 `_update_row_check()` redessine la ligne entière pour ces deux actions, et la
-coche (`Espace`, `A`) le notifie.
+coche (`Espace`, `A`) le notifie. Une source Dolby Vision forcée sous un profil
+`dolby_vision = "dv"` part en `ENCODE_DV` (§ 7.4) quand `peut_reencoder_en_dv`
+l'accepte, au débit de la source ; sinon en copie du flux, suffixe `.dv-iris`
+(v0.8.9.59).
 
 **Retour d'un encodage** (v0.8.9.8) — `RunScreen` inscrit ses statuts dans
 `app.lots_encodes` au montage. `BrowserScreen.on_screen_resume()` les consomme :
@@ -2334,6 +2339,9 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   **copiée** (réglages figés à l'ajout), puis `RunScreen.ajouter()` si un lot
   tourne, sinon un nouveau lot qui s'affiche. Hors accueil,
   `confier_a_la_file()` ramène d'abord la navigation à la liste des fichiers.
+  Les fichiers cochés partent dans l'ordre alphabétique du tableau
+  (`BrowserScreen._cochees`, même tri que `list_videos`, v0.8.9.58) ; un
+  ajout à un lot en cours se place à la suite.
   L'ajout et le choix du fichier suivant se font sous un verrou : sans lui, un
   ajout tombé entre « plus rien » et « lot fini » serait perdu. Aucun appel au
   fil principal sous verrou. `⌫`, `Esc` et `Ctrl+Home` rendent la navigation
@@ -2768,6 +2776,9 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.60 | 2026-10-04 | **Une vidéo recopiée n'échoue plus sur « copy indisponible ici »** (§ 14.7) : le contrôle des encodeurs sondés lisait `-c:v copy` comme un encodeur ; `encoder.encodeur_a_controler` l'en exclut · `tests/test_capacites.py` |
+| 0.8.9.59 | 2026-10-04 | **Une ligne DV forcée se réencode en DV** (§ 14) : `force_skip_to_encode` passait en `ENCODE_HEVC`, donc en copie du flux nommée `.hevc-iris` ; il retient désormais `ENCODE_DV` quand la source s'y prête · `tests/test_dv_reencodage.py` |
+| 0.8.9.58 | 2026-10-04 | **Le lot suit l'ordre alphabétique** (§ 14.7) : l'aperçu, `F2` et le collage parcouraient la sélection — un ensemble — dans l'ordre des hachages ; `BrowserScreen._cochees` la rend triée comme le tableau · `tests/test_ordre_lot.py` |
 | 0.8.9.57 | 2026-10-03 | **Réencodage DV en MP4** (§ 7.4, IE-108) : `ENCODE_DV` ne force plus le Matroska ; MP4 `hvc1` dès que le contenu le permet — mkvmerge recompose un MKV, que ffmpeg remuxe avec `-strict unofficial` pour garder la boîte `dvcC` (`dovi.build_dv_mp4_remux`, étape 7 de `_encode_dv`) ; profil 7 inclus, converti en 8.1 · mesuré sur un extrait DV 8.1 : `dvcC` P8 compat. 1, RPU de 2 270 images intact · `tests/test_dv_reencodage.py` |
 | 0.8.9.56 | 2026-10-03 | **Profils livrés `serie_*` renommés `series_*`** (§ 6, IE-112) : noms neutres, non traduits ; migration du `profiles.toml` existant au chargement (seulement si le nouveau nom est libre, ordre et réglages conservés, profils de l'utilisateur intouchés) et du profil actif mémorisé · `tests/test_migration_profils.py` |
 | 0.8.9.55 | 2026-10-03 | **Tolérance de ±10 % sur le débit cible** (§ 8.1) : le CAS 1 ne se déclenche qu'au-delà de la cible + 10 % (`TOLERANCE_DEBIT_PCT`) ; une sortie VBR qui dépasse légèrement sa cible n'est plus reproposée au réencodage · `tests/test_tolerance_debit.py` |

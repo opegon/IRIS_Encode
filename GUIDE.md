@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.57
+**Version** : 0.8.9.60
 **Date** : 2026-10-03
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -130,7 +130,10 @@ Un fichier `SKIP` est déjà assez compressé — le cocher quand même le force
 l'encodage au débit de la source. **La colonne le montre dès la coche** : la
 décision forcée remplace `← SKIP`, en orange, et un message le rappelle. Même
 chose pour une ligne `→ HDR10` (retrait du Dolby Vision) : cochée, elle est
-réencodée. `F1` et `F2` sans rien de coché le disent au lieu de ne rien faire.
+réencodée. Une source Dolby Vision cochée sous un profil qui garde le DV est
+réencodée en gardant le DV (`→ HEVC → DV`), au débit de la source.
+`F1` et `F2` sans rien de coché le disent au lieu de ne rien faire.
+Les fichiers cochés partent dans l'ordre alphabétique de la liste.
 
 **Filtrer la liste.** `L` ne montre qu'un type d'image ; le choix ne propose
 que les types présents dans le dossier, avec leur nombre. `Z` masque les

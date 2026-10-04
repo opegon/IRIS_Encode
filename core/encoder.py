@@ -215,6 +215,16 @@ def encodeur_de(cmd: list[str]) -> Optional[str]:
         return None
 
 
+def encodeur_a_controler(cmd: list[str]) -> Optional[str]:
+    """Encodeur à confronter au sondage du démarrage, ou None.
+
+    `copy` n'est pas un encodeur : une vidéo recopiée (Dolby Vision conservé)
+    échouait sur « copy indisponible ici » avant même de lancer ffmpeg.
+    """
+    encodeur = encodeur_de(cmd)
+    return None if encodeur == "copy" else encodeur
+
+
 def diagnostiquer(lignes: list[str]) -> Optional[str]:
     """Cause lisible d'un échec, cherchée dans toute la sortie de ffmpeg.
 

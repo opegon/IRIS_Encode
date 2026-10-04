@@ -1210,12 +1210,18 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                      f"la ligne, {touche('a')} coche tout.")
         self.notify(texte, severity="warning", timeout=4)
 
+    def _cochees(self) -> list[FileDecision]:
+        """Les décisions cochées, dans l'ordre du tableau : alphabétique.
+
+        `_selected` est un ensemble : le parcourir tel quel donnait l'ordre des
+        hachages, et un lot partait — et s'affichait — dans un ordre que rien
+        ne permettait de suivre. Même tri que `list_videos`.
+        """
+        return [self._decisions[p] for p in sorted(self._selected)
+                if p in self._decisions]
+
     def action_open_dryrun(self) -> None:
-        decisions = [
-            force_skip_to_encode(self._decisions[p])
-            for p in self._selected
-            if p in self._decisions
-        ]
+        decisions = [force_skip_to_encode(d) for d in self._cochees()]
         if not decisions:
             self._refus_sans_selection("Aperçu")
             return
@@ -1223,11 +1229,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self.app.push_screen(DryrunScreen(decisions))
 
     def action_open_run(self) -> None:
-        decisions = [
-            force_skip_to_encode(self._decisions[p])
-            for p in self._selected
-            if p in self._decisions
-        ]
+        decisions = [force_skip_to_encode(d) for d in self._cochees()]
         if not decisions:
             self._refus_sans_selection("Encoder")
             return
@@ -1256,8 +1258,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         """
         from core.joiner import MIN_PARTIES
 
-        infos = [self._decisions[p].info
-                 for p in self._selected if p in self._decisions]
+        infos = [d.info for d in self._cochees()]
         if len(infos) < MIN_PARTIES:
             self.app.bell()
             self._flash_status(

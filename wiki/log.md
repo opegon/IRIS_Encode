@@ -218,3 +218,9 @@ Jellyfin transcode, vidéo jugée anamorphique. `scale` compensait l'arrondi par
 SAR de 192079:192000 et 959:960 ; `setsar=1` ajouté. Source :
 [[source-2026-10-06-sar-scale]]. Pages touchées : [[ffmpeg]], [[jellyfin]],
 [[pieges-et-lecons]].
+
+## [2026-10-06] ingest | Retrait DV en MP4 confirmé sur le G3 (IE-72)
+
+L'utilisateur confirme que la correction d'IE-69 tient sur le téléviseur. Question
+retirée de [[questions-ouvertes]]. Source : `raw/2026-10-06-declaration-ie72.md`.
+Pages touchées : [[lg-oled-g3]].

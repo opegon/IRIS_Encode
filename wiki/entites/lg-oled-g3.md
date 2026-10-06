@@ -1,7 +1,7 @@
 ---
 type: entite
 categorie: materiel
-maj: 2026-10-03
+maj: 2026-10-06
 sources:
   - "[[source-2026-09-24-utilisateur]]"
   - "[[source-2026-09-30-hev1-hvc1]]"
@@ -36,7 +36,7 @@ principale des fichiers produits. Place dans la chaîne : [[chaine-de-diffusion]
 - **Son sans image, puis plantage quelques dizaines de secondes plus tard**,
   sur des fichiers issus du retrait du Dolby Vision (2026-09-24). Cause
   trouvée côté MP4 : horodatages perdus ([[hdr-dolby-vision#Retrait du RPU]]).
-  Confirmation sur le téléviseur en attente ([[questions-ouvertes]]).
+  Correction confirmée sur le téléviseur le 2026-10-06 (IE-72).
 - Refus de fichiers dont la vidéo ne démarre pas à zéro (`-itsoffset`
   négatif), corrigé en v0.8.1.0 ([[conteneurs#Horodatages]]).
 

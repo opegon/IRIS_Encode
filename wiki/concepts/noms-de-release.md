@@ -48,7 +48,7 @@ propriétés. Règles d'IRIS : spec § 8.7.
   comportement voulu, comme pour `HDR10+`. *(corrigé en v0.8.9.48, IE-81)*
 - Un titre peut finir comme une marque : `Film-Iris`. La marque `-iris`
   d'IRIS est donc sensible à la casse.
-- **Un tiret final n'annonce pas toujours un groupe** : `Spider-Man`,
+- **Un tiret final n'annonce pas toujours un groupe** : `Titre-Film`,
   `Titre - Sous-titre` sont des titres, `DTS-HD` et `WEB-DL` des marques. Le
   groupe n'est retiré que si le reste du nom porte une marque de release et
   que le dernier terme n'en est pas une.

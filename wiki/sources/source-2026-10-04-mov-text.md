@@ -13,7 +13,7 @@ ingere: 2026-10-04
   d'une piste `mov_text` après un silence de plus de 2 147,48 s (2³¹ µs),
   avant la première réplique ou entre deux. Toutes les répliques suivantes se
   collent au début. Code retour nul, aucun message.
-- Touche surtout les pistes **forcées** : *Premier Contact* ouvre la sienne à
+- Touche surtout les pistes **forcées** : *Film J* ouvre la sienne à
   53 min 51 s, et elle s'affichait dès les premières images.
 - Le Matroska garde les temps. Une réplique invisible (espace insécable, 1 ms)
   toutes les 1 800 s de silence suffit.

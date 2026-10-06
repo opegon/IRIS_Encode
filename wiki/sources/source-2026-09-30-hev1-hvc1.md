@@ -11,7 +11,7 @@ ingere: 2026-09-30
 
 Quatre fichiers, deux paires ne différant que par l'étiquette HEVC : les
 quatre en **lecture directe** via Jellyfin, sauts quasi instantanés, HDR10
-reconnu sur Project Hail Mary — y compris en 8 bits.
+reconnu sur Film L — y compris en 8 bits.
 
 ## Pages alimentées
 

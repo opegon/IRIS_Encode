@@ -164,7 +164,7 @@ n'existe que pour être encodé ensuite (§ 2.1bis).
 détaché par un tiret — `Film.1080p.x265-GROUPE`, `Film 1080p - GROUPE` —
 signe la source ; la sortie le perd : `Film.1080p.hevc-iris.mkv`. Il ne part
 que si le reste du nom porte une marque de release (`1080p`, `x265`, `HDR`,
-`BluRay`, `MULTi`…) et s'il n'en est pas une lui-même : `Spider-Man.mkv`,
+`BluRay`, `MULTi`…) et s'il n'en est pas une lui-même : `Titre-Film.mkv`,
 `Titre - Sous-titre.mkv`, `Film.1080p.DTS-HD.mkv` gardent leur fin.
 
 > Depuis la v0.8.8.11, les anciens noms (`_[hevc]`, `_[av1]`…) ne sont plus

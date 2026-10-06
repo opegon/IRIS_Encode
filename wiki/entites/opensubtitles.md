@@ -22,7 +22,7 @@ un `.srt` à greffer ([[sous-titres]]).
   64 premiers et 64 derniers Kio, modulo 2⁶⁴, sur 16 chiffres hexadécimaux.
   Aucune sous 128 Kio. Même algorithme que l'extension Kodi officielle.
 - **50 résultats par page.** La première page seule cachait des sous-titres
-  français derrière des anglais plus téléchargés (Inception : 44 résultats
+  français derrière des anglais plus téléchargés (Film Q : 44 résultats
   lus sur 72, contre 64 sur 5 pages). *(mesuré)*
 - Paramètres de requête **triés**, sinon l'API redirige. *(mesuré)*
 - Codes de langue propres à l'API, à traduire depuis l'ISO 639-2.

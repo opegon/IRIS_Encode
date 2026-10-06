@@ -32,7 +32,7 @@ en SRT sans OCR.
 ## Ce que portent les releases
 
 Les rips Blu-ray MULTi doublent souvent chaque sous-titre en SRT et en PGS.
-Relevé sur Starship Troopers et Watchmen *(mesuré)* :
+Relevé sur Film B et Film A *(mesuré)* :
 
 ```
 SRT fre  default FORCED  « FR Forced : SRT »
@@ -47,7 +47,7 @@ Un rip streaming peut embarquer **43 sous-titres** : sans filtre, tous
 traversent la chaîne. La clé `subtitle_languages` du profil trie (43 → 4 sur
 le fichier de test). *(mesuré, v0.8.2.0)*
 
-Colossus n'a qu'un sous-titre, image : l'écarter reviendrait à perdre les
+Film E n'a qu'un sous-titre, image : l'écarter reviendrait à perdre les
 sous-titres, donc la sortie reste en MKV.
 
 ## Drapeaux par défaut et forcé

@@ -1,8 +1,8 @@
-# 2026-10-01 — Audio mal entrelacée : *L'Ombre d'un doute*
+# 2026-10-01 — Audio mal entrelacée : *Film K*
 
 Fichiers, dans `resources_files/` :
 
-- source `L.Ombre.D.Un.Doute.(Shadow.of.a.Doubt).1943.BD.Remux.1080p.MULTi.VFF.VC-1.DTS-HD.DTS.2.0-DiY.mkv`
+- source `Titre.Film.K.(Movie.Title.K).1943.BD.Remux.1080p.MULTi.VFF.VC-1.DTS-HD.DTS.2.0-DiY.mkv`
   (VC-1, DTS 2.0 fre, DTS-HD MA 2.0 eng, 3 PGS, 3 SRT dont un forcé par défaut) ;
 - sortie IRIS `….VC-1.AAC.2.0-DiY.hevc.IRIS.mkv` (HEVC Main, 2 AAC 2.0, mêmes
   sous-titres recopiés), muxée par Lavf62.12.103.

@@ -1076,7 +1076,7 @@ quoi `-iris` passerait pour un groupe. Trois gardes : le terme est un mot
 seul (sans espace, point ni crochet) ; il n'est ni une marque ni un morceau
 de marque (`Film.1080p-x265`, `Film.DTS-HD`, `Film.WEB-DL` le gardent) ; le
 reste du nom porte au moins une marque de `scanner.JETONS_RELEASE`
-(définition, codec, HDR, audio, langue, source) — sans elle, `Spider-Man` ou
+(définition, codec, HDR, audio, langue, source) — sans elle, `Titre-Film` ou
 `Titre - Sous-titre` sont des titres. Le retrait vaut pour les trois
 sorties : encodage (`FileDecision.output_path`), greffe
 (`muxer.mux_output_path`) et jonction (`joiner.join_output_path`).
@@ -1313,7 +1313,7 @@ recalage suivent sans rien savoir de sa provenance.
 | Décision | Raison |
 |---|---|
 | **Deux recherches fusionnées** | Par empreinte (`moviehash`) : sous-titres déposés pour cette release exacte, donc synchronisés — marqués `≡`, classés en tête. Par nom (`meta.parse_title`, plus `season_number`/`episode_number` sur un `SxxEyy`, sinon `year`) : rattrape un fichier réencodé, dont l'empreinte n'est plus celle de sa release. Fusion par `file_id`. Tri : release exacte, puis langue dans l'ordre du profil, puis téléchargements. |
-| **Pages lues jusqu'à 5** | L'API rend 50 résultats par page ; la première seule perdait des sous-titres français derrière des anglais plus téléchargés (Inception : 44 résultats lus sur 72, contre 64 après). Au-delà de 250, la liste ne se lit plus. |
+| **Pages lues jusqu'à 5** | L'API rend 50 résultats par page ; la première seule perdait des sous-titres français derrière des anglais plus téléchargés (Film Q : 44 résultats lus sur 72, contre 64 après). Au-delà de 250, la liste ne se lit plus. |
 | **Langues du profil** | `subtitle_languages` (ISO 639-2) traduites au format de l'API ; `fre`/`eng` si le profil n'en dit rien. Paramètres triés : l'API redirige une requête qui ne l'est pas. |
 | **Dossier temporaire** | `<tmp>/iris_opensubtitles/<stem>.<file_id>.<code>.srt`. Le fichier ne sert qu'à la greffe : rien ne s'ajoute à la médiathèque, aucun lecteur ne l'affichera en double. La langue en dernier fragment est lue par `muxer.guess_language`. |
 | **Sous-titres en plusieurs CD écartés** | Ils ne se greffent pas sur un fichier unique. |
@@ -1677,7 +1677,7 @@ dernière, et y prend les sous-titres. Lus avec la vidéo, ils rendaient un
 fichier dont l'audio s'interrompait : le muxeur écrivait des centaines de
 secondes de vidéo seule, puis l'audio en bloc. Le fichier reste lisible par
 ffmpeg et mpv, mais un lecteur matériel s'arrête quand l'audio manque, et les
-sauts font perdre le son. Mesuré sur *L'Ombre d'un doute* (DTS-HD MA, ffmpeg
+sauts font perdre le son. Mesuré sur *Film K* (DTS-HD MA, ffmpeg
 8.1) : aucun audio entre 31,9 s et 122,6 s du fichier, jusqu'à 1 150 s de
 retard plus loin. `-max_interleave_delta 0` répare aussi, mais le muxeur garde
 alors en mémoire tout ce qui précède la réplique suivante de la piste la plus
@@ -1755,8 +1755,8 @@ mobile de `[stats.encode_speed]`, qui nourrit la colonne « ETA ».
 source, épisode…) et retourne `(titre, année)`.
 
 ```python
-parse_title(Path("The.Batman.2022.2160p.BluRay.mkv"))
-# → ("The Batman", 2022)
+parse_title(Path("Titre.Film.2022.2160p.BluRay.mkv"))
+# → ("Titre Film", 2022)
 ```
 
 ### 13.2 IMDB — deux modes
@@ -2949,7 +2949,7 @@ python -m pytest tests/
 | 0.8.8.11 | 2026-09-23 | **Nommage des sorties à la manière des releases** (§ 8.7, § 15.2) : les marques se séparent par des points et toute sortie finit par `.IRIS`, précédée de sa caractéristique — `.HEVC.IRIS`, `.H264.IRIS`, `.AV1.IRIS`, `.DV.IRIS`, `.HDR10.IRIS`, et `.MUX.IRIS` / `.JOIN.IRIS` pour la greffe et le collage · une caractéristique que le nom annonce déjà n'est pas répétée (`suffixe_sans_redite`) · le filtre ne regarde plus que la marque `.IRIS` finale, `MUX` et `JOIN` exceptés ; les noms `_[…]` ne sont plus reconnus · `scanner.suffixes_produits` disparaît · `tests/test_nom_iris.py` |
 | 0.8.8.10 | 2026-09-02 | **La colonne Audio d'un retrait de RPU dit ce que le fichier contiendra** : `audio_summary` faisait une exception pour `STRIP_DV` et affichait toutes les pistes de la source — vrai jusqu'à la v0.8.8.0, où le retrait a appris à appliquer la décision audio (Matroska produit à part pour les transcodées, `--audio-tracks` pour les exclues). Depuis, c'est l'exception qui promettait des pistes que le fichier n'aurait pas, avec un commentaire affirmant l'inverse du code · `tests/test_strip_dv.py` verrouille le sens neuf |
 | 0.8.8.9 | 2026-09-02 | **Une sortie SDR perd aussi sa profondeur** (§ 8.7) : les marques HDR partaient déjà, celle de la profondeur restait — or le tone mapping finit sur `format=yuv420p`, le fichier ressort en 8 bits et un `10bits` dans son nom promet une précision qu'il n'a plus. `10bit`, `10bits`, `10 bits`, `10-bit` partent avec le reste ; en sortie HDR10 la profondeur reste vraie (`yuv420p10le`) et n'est pas touchée · `Dolby Video` rejoint les marques Dolby Vision reconnues |
-| 0.8.8.8 | 2026-09-02 | **`UHD` est une marque de définition comme les autres** (§ 8.7) : `Blade.Runner.2049.2160p.UHD.BluRay` rabattu en 1080p ressortait `1080p.UHD.BluRay` — une moitié corrigée, l'autre toujours fausse. `UHD` rejoint `JETONS_RESOLUTION_4K`, et la fusion des marques voisines devenues identiques rend `1080p.BluRay` là où deux substitutions auraient écrit `1080p.1080p.BluRay` |
+| 0.8.8.8 | 2026-09-02 | **`UHD` est une marque de définition comme les autres** (§ 8.7) : `Titre.Film.2017.2160p.UHD.BluRay` rabattu en 1080p ressortait `1080p.UHD.BluRay` — une moitié corrigée, l'autre toujours fausse. `UHD` rejoint `JETONS_RESOLUTION_4K`, et la fusion des marques voisines devenues identiques rend `1080p.BluRay` là où deux substitutions auraient écrit `1080p.1080p.BluRay` |
 | 0.8.8.7 | 2026-09-02 | **Le nom de sortie dit le HDR et l'audio de sortie** (§ 8.7) : un `Film.2160p.DV` ramené en HDR10 n'est plus du Dolby Vision, un `Film.TrueHD.7.1` sorti en E-AC3 5.1 annonce un format absent du fichier · `dv_action` décide des marques HDR — `DV`, `DoVi`, `Dolby Vision`, `HDR`, `HDR10` deviennent `HDR10` en sortie HDR10, deux marques voisines devenues la même étant fondues, et partent toutes en sortie SDR, `HDR10+` compris ; `HDR10+` survit au passage en HDR10, que le retrait du RPU laisse intact · la marque audio de la famille transcodée devient l'étiquette du codec écrit (mêmes jetons que les titres de pistes), avec la disposition qui se replie et la mention `Atmos` que la conversion emporte ; une famille qu'une autre piste conserve n'est pas touchée · SKIP est écarté d'un bloc, sa seule sortie étant une greffe `_[mux]` que mkvmerge recopie sans rien convertir · les quatre réécritures se composent dans `_stem_a_jour()` et partagent une seule machinerie de marques (`stem_marques_retirees`, `stem_marques_remplacees`) — trois expressions régulières presque identiques dans un même fichier étaient le début d'une divergence · `tests/test_hdr_audio_nom.py` |
 | 0.8.8.6 | 2026-09-02 | **Le nom de sortie dit le codec de sortie** (§ 8.7) : un `Film.1080p.x264` réencodé en HEVC ressortait `Film.1080p.x264_[hevc]` — deux codecs annoncés, dont un que le fichier n'a plus. `scanner.stem_sans_marque_codec()` retire `x264`, `x265`, `H264`, `H265` (avec ou sans point), `HEVC`, `AV1` et `VP9`, prises comme mot entier — `AV1ator` et `MVP9` intacts — avec leur paire de crochets ou de parenthèses, la ponctuation se recollant derrière (`Film.1080p.x265-GROUP` → `Film.1080p-GROUP_[hevc]`) · une marque juste part aussi : à côté de `_[hevc]`, un `x265` répète la même chose deux fois · le retrait ne joue que pour `ACTIONS_CODEC_NOMME` et hors vidéo recopiée — un remux HDR10 et un DV copié sortent dans le codec de la source, que `_[hdr10]` et `_[dv]` ne nomment pas · `tests/test_codec_nom.py` |
 | 0.8.8.5 | 2026-09-02 | **Le nom de sortie dit la définition de sortie** (§ 8.7) : un `Film.2160p.BluRay` rabattu en 1080p ressortait `Film.2160p.BluRay_[hevc]` — le nom promettait une définition que le fichier n'a plus, et dans une médiathèque c'est le nom qu'on regarde pour choisir. `scanner.stem_resolution_ramenee()` remplace la marque de la source par celle de la sortie — `2160p`, `4K`, `4KLight` avec ou sans séparateur → `1080p` — prise comme mot entier, le `4K` de `H4K` et le `2160` de `3840x2160` restant intacts · la substitution ne touche que le nom du fichier produit, jamais la source, et ne joue que si la définition baisse vraiment : `keep_4k` et une vidéo recopiée (DV conservé, `-c:v copy`) gardent leur marque, y écrire `1080p` serait le mensonge que ce renommage supprime · `tests/test_resolution_nom.py` |

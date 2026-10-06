@@ -4,7 +4,7 @@ maj: 2026-10-01
 ingere: 2026-10-01
 ---
 
-# Source : audio mal entrelacée sur *L'Ombre d'un doute*
+# Source : audio mal entrelacée sur *Film K*
 
 **Où** : [[2026-10-01-entrelacement-audio]]
 **Nature** : symptôme rapporté par l'utilisateur, relevés ffprobe et reproduction mesurés ici

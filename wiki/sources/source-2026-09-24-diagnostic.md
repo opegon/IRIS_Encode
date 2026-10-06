@@ -19,7 +19,7 @@ inventaire des profils DV et des sous-titres de `resources_files`.
 - Le chemin MKV (dovi_tool + mkvmerge) est sain : paquets identiques à la
   source, NAL 62 en moins.
 - Le chemin MP4 d'alors écrivait PTS = DTS : ordre d'affichage faux. Corrigé
-  en v0.8.8.15 par `dovi_rpu=strip=1`, vérifié sur 90 s de Kingdom.
+  en v0.8.8.15 par `dovi_rpu=strip=1`, vérifié sur 90 s de Film C.
 - Aucun échantillon de profil 7.
 
 ## Pages alimentées

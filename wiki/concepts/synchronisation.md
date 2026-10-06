@@ -50,7 +50,7 @@ piste corrigée**, greffée ensuite sans décalage.
 
 ### Leçon : la saillance ne se compare pas d'un ratio à l'autre
 
-Sur *The Fall* S02E06, deux pistes alignées à 10 ms près étaient refusées :
+Sur *Nom Série* S02E06, deux pistes alignées à 10 ms près étaient refusées :
 
 | Ratio | Décalage | Corrélation | Saillance |
 |---|---|---|---|

@@ -64,7 +64,7 @@ fait disparaître, et les chapitres avec. *(mesuré, v0.8.2.9)*
 ## Tag HEVC en MP4 : `hev1` ou `hvc1`
 
 ffmpeg écrit **`hev1`** par défaut pour du HEVC en MP4 (paramètres VPS/SPS/PPS
-dans le flux). Les sources WEB-DL MP4 le portent aussi (Avatar). *(mesuré)*
+dans le flux). Les sources WEB-DL MP4 le portent aussi (Film D). *(mesuré)*
 
 `hvc1` (paramètres dans l'en-tête seulement) est exigé par les lecteurs
 Apple. Sur le [[lg-oled-g3|G3]] via Jellyfin, les deux passent en **lecture

@@ -40,8 +40,7 @@ Un flux Dolby Vision HEVC est fait de trois choses :
 
 Le conteneur porte en plus un **enregistrement de configuration DV**
 (`dvcC`/`dvvC` en MP4, `BlockAdditionMapping` en MKV), que ffprobe affiche en
-`DOVI configuration record`. *(mesuré : comptage des NAL sur Kingdom of the
-Planet of the Apes, P8.1)*
+`DOVI configuration record`. *(mesuré : comptage des NAL sur Film C, P8.1)*
 
 **En MP4, ffmpeg n'écrit `dvcC` qu'avec `-strict unofficial`.** Sans l'option,
 une copie `-c copy` garde le RPU dans le flux mais perd l'enregistrement : pas
@@ -76,8 +75,8 @@ la couche de base.
 
 Un profil 8 sans compatibilité annoncée n'est pas deviné.
 
-Relevé sur `resources_files` : Kingdom, Starship Troopers et Watchmen en
-**P8.1** ; Good Luck Have Fun Don't Die en **P5**. Aucun échantillon P7.
+Relevé sur `resources_files` : Film C, Film B et Film A en
+**P8.1** ; Film H en **P5**. Aucun échantillon P7.
 
 ## Trois traitements
 
@@ -101,13 +100,13 @@ Deux chemins selon le conteneur :
 **Le piège du MP4 (v0.8.1.20 à v0.8.8.14).** Le MP4 était recomposé par
 ffmpeg à partir du **flux brut** Annex-B. Un flux brut ne porte aucun
 horodatage : ffmpeg écrivait PTS = DTS sur chaque image (« pts has no value »,
-1 444 fois sur une minute d'Avatar). Pour un flux à images B
+1 444 fois sur une minute du Film D). Pour un flux à images B
 (`has_b_frames=4`), cela donne un ordre d'affichage faux et une cadence
 irrégulière (0,035 s au lieu de 0,0417 s). Symptôme sur le téléviseur : le son
 sans l'image, puis un plantage. *(mesuré ; symptôme observé)*
 
 Le filtre `dovi_rpu=strip=1` (ffmpeg **7.1+**) retire les NAL 62 **et**
-l'enregistrement de configuration DV. Vérifié sur Kingdom (90 s) : 2 157 images
+l'enregistrement de configuration DV. Vérifié sur Film C (90 s) : 2 157 images
 sur 2 157, horodatages identiques à la source, 0 NAL 62/63, SEI HDR10/HDR10+
 conservés, décodage complet sans erreur. *(mesuré, ffmpeg 8.1.2)*
 

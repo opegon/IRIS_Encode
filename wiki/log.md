@@ -112,7 +112,7 @@ est captée par Windows Terminal — la bascule prend `F12`. Pages touchées :
 
 ## [2026-09-30] ingest | `hev1` contre `hvc1` sur le G3
 
-IE-74 : deux paires (Seven Nation Army SDR, Project Hail Mary HDR10 8 bits),
+IE-74 : deux paires (Clip musical SDR, Film L HDR10 8 bits),
 original `hev1` et copie `hvc1` ; les quatre en lecture directe via Jellyfin,
 sauts quasi instantanés. Question retirée. Pages touchées : [[conteneurs]],
 [[lg-oled-g3]], [[questions-ouvertes]].
@@ -135,7 +135,7 @@ qu'« Auto » laisse passer. Pages touchées : [[sous-titres]], [[jellyfin]],
 
 ## [2026-10-01] ingest | Audio mal entrelacée (v0.8.9.41)
 
-*L'Ombre d'un doute* : lecture arrêtée à 32 s, son perdu après un saut. Fichier
+*Film K* : lecture arrêtée à 32 s, son perdu après un saut. Fichier
 complet et décodable, mais audio écrite par blocs, jusqu'à ~1 150 s de la vidéo
 correspondante. Cause reproduite : audio d'une seconde entrée, sous-titres
 clairsemés lus avec la vidéo. Parade : entrée dédiée aux sous-titres.
@@ -197,7 +197,7 @@ Mesuré sur l'extrait Apes : `hvc1`, `dvcC` P8 compat. 1, RPU intact
 
 ## [2026-10-04] ingest | `mov_text` désynchronisé après un long silence (v0.8.9.62)
 
-VF forcée de *Premier Contact* affichée dès les premières images : le muxeur
+VF forcée de *Film J* affichée dès les premières images : le muxeur
 MP4 de ffmpeg écrase les temps d'un `mov_text` après plus de 2³¹ µs de
 silence. Seuil mesuré, MKV indemne, contournement par répliques invisibles.
 Source : [[source-2026-10-04-mov-text]]. Pages touchées : [[sous-titres]],
@@ -213,7 +213,7 @@ Source : [[source-2026-10-04-localisation]]. Pages touchées : [[localisation]].
 
 ## [2026-10-06] ingest | SAR non carré après `scale` (v0.8.9.79)
 
-*Spider-Man* 3832×1600 ramené en 1080p, puis un 1918×802 H264 réencodé en HEVC :
+*Titre-Film* 3832×1600 ramené en 1080p, puis un 1918×802 H264 réencodé en HEVC :
 Jellyfin transcode, vidéo jugée anamorphique. `scale` compensait l'arrondi par un
 SAR de 192079:192000 et 959:960 ; `setsar=1` ajouté. Source :
 [[source-2026-10-06-sar-scale]]. Pages touchées : [[ffmpeg]], [[jellyfin]],

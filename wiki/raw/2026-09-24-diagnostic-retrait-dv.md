@@ -7,7 +7,7 @@ Outils : ffmpeg/ffprobe 8.1.2 essentials (`bin/`), mkvmerge v102.0, dovi_tool 57
 
 ## Sortie MKV existante (produite le 2026-08-27, mkvmerge v101)
 
-Source : `Kingdom.of.the.Planet.of.the.Apes.2024.MULTi.VFF.4K.2160p.HDR10Plus.DV.WEBRip.DDP.Atmos.7.1.x265.mkv`
+Source : `Film.C.2024.MULTi.VFF.4K.2160p.HDR10Plus.DV.WEBRip.DDP.Atmos.7.1.x265.mkv`
 Sortie : même nom `_[hdr10].mkv`
 
 - ffprobe, source : hevc Main 10, level 150, `yuv420p10le`, bt2020nc / smpte2084 / bt2020,
@@ -20,9 +20,9 @@ Sortie : même nom `_[hdr10].mkv`
 - 14 premiers paquets vidéo (pts,dts) identiques entre source et sortie :
   `0.000,N/A K | 0.208,N/A | 0.125,0.000 | 0.042,0.042 | 0.083,0.083 | 0.167,0.125 | 0.417,0.167 | …`
 
-## Chemin MP4 d'alors (flux brut → ffmpeg), rejoué sur 60 s d'Avatar
+## Chemin MP4 d'alors (flux brut → ffmpeg), rejoué sur 60 s du Film D
 
-Source : `Avatar.Fire.and.Ash.2025.MULTi.VF2.2160p.HDR.DV.WEB-DL.Dolby.Atmos.7.1.H265-Slay3R.mp4`
+Source : `Film.D.2025.MULTi.VF2.2160p.HDR.DV.WEB-DL.Dolby.Atmos.7.1.H265-Slay3R.mp4`
 (`hev1`, `has_b_frames=4`, level 150, 24/1).
 
 ```
@@ -36,7 +36,7 @@ ffmpeg -y -r 24/1 -i a_nodv.hevc -i <source> -map 0:v:0 -map 1:a? -c copy
 - Paquets de la sortie : `0.000,0.000 K | 0.034993,0.034993 | 0.076660,0.076660 | 0.118327,0.118327 | …`
   (PTS = DTS, pas de 0,0417 s).
 
-## Filtre `dovi_rpu=strip=1`, 60 s d'Avatar
+## Filtre `dovi_rpu=strip=1`, 60 s du Film D
 
 ```
 ffmpeg -i <source> -t 60 -map 0:v:0 -map 0:a -c copy -bsf:v dovi_rpu=strip=1 -movflags +faststart a_bsf.mp4
@@ -46,7 +46,7 @@ ffmpeg -i <source> -t 60 -map 0:v:0 -map 0:a -c copy -bsf:v dovi_rpu=strip=1 -mo
 - NAL 62 et 63 restants : 0 et 0.
 - `ffmpeg -h bsf=dovi_rpu` : options `strip` (booléen), `compression` ; codecs pris en charge : hevc, av1.
 
-## Nouveau chemin MP4 (v0.8.8.15), 90 s de Kingdom
+## Nouveau chemin MP4 (v0.8.8.15), 90 s de Film C
 
 Décision réelle, profil `cinema_4k_hdr_basic` : `STRIP_DV`, conteneur `.mp4`, `DV:P8.1`.
 
@@ -62,18 +62,18 @@ Décision réelle, profil `cinema_4k_hdr_basic` : `STRIP_DV`, conteneur `.mp4`, 
 
 | Fichier | Profil | compat |
 |---|---|---|
-| Kingdom of the Planet of the Apes | 8 | 1 |
-| Starship Troopers (4KLight) | 8 | 1 |
-| Watchmen | 8 | 1 |
-| Good Luck Have Fun Don't Die | 5 | 0 |
-| Avatar Fire and Ash | DV (MP4, hev1) | — |
+| Film C | 8 | 1 |
+| Film B (4KLight) | 8 | 1 |
+| Film A | 8 | 1 |
+| Film H | 5 | 0 |
+| Film D | DV (MP4, hev1) | — |
 
 ## Pistes de sous-titres relevées (mkvmerge -J)
 
-Starship Troopers et Watchmen, identiques :
+Film B et Film A, identiques :
 `SRT fre default+forced « FR Forced : SRT »`, `SRT fre « FR Full : SRT »`, `SRT eng « ENG Full : SRT »`,
 `PGS fre forced « FR Forced : PGS »`, `PGS fre « FR Full : PGS »`, `PGS eng « ENG Full : PGS »`.
-Watchmen porte en plus un TrueHD 5.1 anglais.
+Film A porte en plus un TrueHD 5.1 anglais.
 
 ## Aide de dovi_tool
 

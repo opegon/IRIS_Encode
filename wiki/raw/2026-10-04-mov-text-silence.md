@@ -1,6 +1,6 @@
 # 2026-10-04 — `mov_text` : un long silence efface les temps en MP4
 
-Fichier : *Premier Contact* (`resources_files/`, MKV, 4 SRT + 4 PGS). Sortie
+Fichier : *Film J* (`resources_files/`, MKV, 4 SRT + 4 PGS). Sortie
 d'IRIS v0.8.9.60 en MP4, vidéo recopiée, 4 SRT convertis en `mov_text`.
 
 Déclaration de l'utilisateur, telle quelle :

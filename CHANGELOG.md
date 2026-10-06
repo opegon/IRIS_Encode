@@ -13,7 +13,7 @@ Une dimension impaire, refusée par l'encodeur, perd un pixel.
 
 ### Une vidéo redimensionnée n'est plus « anamorphique »
 
-*Spider-Man* (3832×1600) sorti en 1080p était transcodé par Jellyfin : le
+*Titre-Film* (3832×1600) sorti en 1080p était transcodé par Jellyfin : le
 lecteur ne prend pas les vidéos anamorphiques. Le fichier n'en était pas une,
 mais presque : `scale` arrondit la hauteur à 802 et compense l'écart par des
 pixels de 192079:192000 au lieu de 1:1. Le redimensionnement pose désormais
@@ -35,7 +35,7 @@ La règle vaut pour toutes les marques réécrites (définition, HDR, audio).
 
 ### Une 4K recadrée était prise pour un 1080p
 
-Avec `movie_hdr` (`keep_4k = false`), *Spider-Man.…2160p.4Klight.HDR.DV* se
+Avec `movie_hdr` (`keep_4k = false`), *Titre-Film.…2160p.4Klight.HDR.DV* se
 voyait proposer une sortie nommée `2160p.4Klight` — et ce n'était pas que le
 nom : la vidéo, en 3832×1600 (scope recadré), n'atteignait ni les 3840 px de
 large ni les 2160 de haut exigés pour être une 4K. Rattachée au « presque
@@ -337,7 +337,7 @@ changement visible en français.
 
 ### Sous-titre forcé désynchronisé en MP4
 
-La VF forcée de *Premier Contact*, sortie en MP4, s'affichait dès les
+La VF forcée de *Film J*, sortie en MP4, s'affichait dès les
 premières images. Sa première réplique est à 53 min 51 s ; dans la sortie,
 à 0 s, et toutes les suivantes collées derrière.
 
@@ -365,7 +365,7 @@ Matroska n'a pas le défaut. Une piste forcée y tombe presque toujours.
 
 ### Forcer un réencodage Dolby Vision depuis l'assistant
 
-*Premier Contact* (DV 8.1, 3 Mb/s) restait en SKIP dans l'assistant, quoi
+*Film J* (DV 8.1, 3 Mb/s) restait en SKIP dans l'assistant, quoi
 qu'on fasse :
 
 - **`F2` à l'étape 4 ne forçait rien.** La décision SKIP partait telle quelle
@@ -398,7 +398,7 @@ fichier tombait en échec avant même de commencer.
 
 ### Une source Dolby Vision forcée se réencode en DV
 
-*Premier Contact* (DV 8.1, « 4KLight » à 3 Mb/s) passe en SKIP sous
+*Film J* (DV 8.1, « 4KLight » à 3 Mb/s) passe en SKIP sous
 `cinema_4k_dv_quality`, dont la cible 4K est de 12 Mb/s : c'est voulu. Mais
 cochée pour forcer l'encodage, la ligne annonçait « → DV (copie) » : le flux
 vidéo était recopié, sans réencodage, sous un nom `.hevc-iris`.
@@ -598,7 +598,7 @@ wiki `hdr-dolby-vision`.
 ### `HDR10Plus` et `HDR10P` valent `HDR10+` dans les noms
 
 Les releases écrivent le HDR10+ de trois façons ; seule `HDR10+` était
-reconnue (IE-81, relevé sur Kingdom of the Planet of the Apes).
+reconnue (IE-81, relevé sur Film C).
 
 - Une sortie SDR retire désormais `HDR10Plus` / `HDR10P` comme `HDR10+` :
   le nom n'annonce plus un HDR10+ que le tone mapping a fait disparaître.
@@ -680,7 +680,7 @@ marque `.IRIS`, en capitales, criait plus qu'elle ne signait.
 - Le **groupe de la release part**, pour un encodage, une greffe ou une
   jonction. Seulement d'un nom qui porte une marque de release (`1080p`,
   `x265`, `HDR`, `BluRay`, `MULTi`…), et si le dernier terme n'en est pas
-  une : `Spider-Man.mkv`, `Titre - Sous-titre.mkv` et `Film.DTS-HD.mkv`
+  une : `Titre-Film.mkv`, `Titre - Sous-titre.mkv` et `Film.DTS-HD.mkv`
   gardent leur fin.
 - L'ancienne marque **`.IRIS` n'est plus reconnue** : ces sorties
   redeviennent des sources ordinaires, et un réencodage garde leur `.IRIS`
@@ -749,7 +749,7 @@ le pli, sans signe qu'il fallait défiler.
 
 ### L'audio ne s'interrompt plus quand elle vient d'une autre entrée
 
-*L'Ombre d'un doute* (VC-1, DTS-HD MA, PGS + SRT) : la lecture s'arrêtait à
+*Film K* (VC-1, DTS-HD MA, PGS + SRT) : la lecture s'arrêtait à
 32 s, et un saut faisait perdre la synchronisation et le son. Le fichier était
 complet, et ffmpeg comme mpv le lisaient sans erreur, mais l'audio était mal
 entrelacée. Le muxeur avait écrit la vidéo seule de 31,9 s à 122,6 s, puis
@@ -777,7 +777,7 @@ lus dans la même entrée que la vidéo. Reproduit sur 300 s de la source :
 ### Un PGS forcé doublé par un SRT forcé n'est plus gardé
 
 Les rips Blu-ray MULTi portent souvent le même sous-titre forcé deux fois, en
-SRT et en PGS (Starship Troopers, Watchmen). Jellyfin incruste un sous-titre
+SRT et en PGS (Film B, Film A). Jellyfin incruste un sous-titre
 image, donc transcode la vidéo, et peut choisir le PGS d'office à cause de son
 drapeau. Décision de l'utilisateur (IE-73) : on ne le lui laisse pas.
 
@@ -923,7 +923,7 @@ d'UX-13. Le script de captures cherchait le fichier donneur sans son icône
 
 ### La fiche AlloCiné désigne le bon film
 
-« Avatar.Fire.and.Ash.2025… » ouvrait « L'île des souvenirs (2025) », une
+« Film.D.2025… » ouvrait « Autre Film (2025) », une
 fiche réduite au titre (UX-24). Le choix parmi les résultats d'autocomplétion
 gardait le premier, sauf si l'année figurait dans le libellé — elle n'y figure
 jamais, elle est dans `data.year` —, et AlloCiné place en tête un film mis en
@@ -935,8 +935,8 @@ le code n'acceptait que `tvseries`.
 - La fiche dit sur quoi repose le choix — « titre et année », « titre », ou
   « incertaine » en orange — et garde son lien en bas pour vérifier.
 
-Éprouvé contre AlloCiné : Avatar : de Feu et de Cendres (2025), Heat (1995),
-Bienvenue au Gondwana (2016), fiches complètes.
+Éprouvé contre AlloCiné : Film D (2025), Film O (1995),
+Film P (2016), fiches complètes.
 
 `core/meta.py` (`choisir_allocine`, `MovieMeta.confiance`),
 `tui/screens/meta_popup.py`, `tests/test_revue_code.py`.
@@ -1624,14 +1624,13 @@ image, et le téléviseur plantait quelques dizaines de secondes plus tard.
 La cause : le MP4 était recomposé par ffmpeg à partir du flux brut que
 produit `dovi_tool remove`. Un flux Annex-B ne porte aucun horodatage, et
 ffmpeg écrivait PTS = DTS sur **chaque** image (« pts has no value », 1444
-fois sur une minute d'Avatar). Pour un flux à images B, c'est un ordre
+fois sur une minute du Film D). Pour un flux à images B, c'est un ordre
 d'affichage faux et une cadence irrégulière. Avec `container = "auto"`, ce
 chemin était le cas courant : une source WEB-DL en E-AC3 + SubRip sort en
 MP4.
 
 Le MP4 passe maintenant en **une seule passe ffmpeg depuis la source**, avec
-le filtre `dovi_rpu=strip=1` (ffmpeg 7.1+). Mesuré sur Kingdom of the Planet
-of the Apes (P8.1, HDR10+) : horodatages identiques à ceux de la source, 2157
+le filtre `dovi_rpu=strip=1` (ffmpeg 7.1+). Mesuré sur Film C (P8.1, HDR10+) : horodatages identiques à ceux de la source, 2157
 images sur 2157, plus aucun NAL de RPU, configuration DV retirée, SEI HDR10 et
 HDR10+ conservés, décodage complet sans erreur. Le chemin n'écrit plus
 d'intermédiaire : il gagne deux recopies du film.
@@ -1744,7 +1743,7 @@ vaut annonce du HDR10.
 
 **Le filtre ne regarde plus qu'une marque.** `deja_produit` écarte tout nom
 qui finit par `.IRIS` — compteur `(n)` admis, casse exigée pour qu'un
-`Hotel.Iris` reste un film —, `.MUX.IRIS` et `.JOIN.IRIS` exceptés : on les
+`Titre.Iris` reste un film —, `.MUX.IRIS` et `.JOIN.IRIS` exceptés : on les
 encode ensuite. Réencoder une sortie remplace sa marque au lieu de l'empiler
 (`Film.AV1.IRIS` → `Film.HEVC.IRIS`, `Film.JOIN.IRIS` → `Film.JOIN.HEVC.IRIS`).
 
@@ -1801,8 +1800,8 @@ nom qui l'écrit ainsi ne dit rien d'autre.
 ### `UHD` est une marque de définition comme les autres
 
 Relevé sur un vrai nom de release :
-`Blade.Runner.2049.2160p.UHD.BluRay…` rabattu en 1080p ressortait
-`Blade.Runner.2049.1080p.UHD.BluRay…` — une moitié du nom corrigée, l'autre
+`Titre.Film.2017.2160p.UHD.BluRay…` rabattu en 1080p ressortait
+`Titre.Film.2017.1080p.UHD.BluRay…` — une moitié du nom corrigée, l'autre
 toujours fausse, ce qui est pire qu'un nom entièrement faux : il a l'air
 juste.
 
@@ -3138,7 +3137,7 @@ réponse.
 ### Une piste alignée n'est plus refusée par la mesure
 
 Le classement des ratios d'étirement se faisait à la saillance seule, qui n'est
-pas comparable d'un ratio à l'autre. Sur *The Fall* S02E06, un ratio PAL
+pas comparable d'un ratio à l'autre. Sur *Nom Série* S02E06, un ratio PAL
 l'emportait à 160 secondes de la vérité, sur une corrélation de 0.26, pendant
 que le vrai alignement — −10 ms, corrélation 0.83 — était écarté. La
 corrélation choisit désormais le ratio.
@@ -3240,7 +3239,7 @@ threads, passait au début sur le code défectueux — un `dump` réel dure quel
 microsecondes et huit threads peuvent se croiser sans se superposer. Une pause
 rend désormais le chevauchement certain en l'absence de verrou.
 
-677 tests, smoke TUI vert, et la mesure réelle sur *The Fall* rend toujours
+677 tests, smoke TUI vert, et la mesure réelle sur *Nom Série* rend toujours
 −10 ms à confiance excellente.
 
 ## [v0.8.3.11] — 2026-08-29
@@ -3341,7 +3340,7 @@ ne déclenche jamais rien, et ne le dit pas.
 
 ### Une piste audio alignée était refusée par la mesure
 
-Signalé sur *The Fall* S02E06 : le sous-titre se mesurait bien (−13 170 ms),
+Signalé sur *Nom Série* S02E06 : le sous-titre se mesurait bien (−13 170 ms),
 la piste audio VF était rejetée — alors que les deux fichiers durent 1:29:40 et
 1:29:38, à deux secondes près.
 
@@ -3965,7 +3964,7 @@ passe de 2 à 1 876 paquets, avec sa langue, son titre et les six sous-titres.
 IE-12 et IE-16 avaient diagnostiqué un « mauvais entrelacement » et cherché la
 cause dans la durée du film et le nombre de pistes. Le fichier n'était pas mal
 entrelacé : **il n'avait pas de piste anglaise**, et les sondages ne trouvaient
-donc aucun paquet audio. Mars Express, réencodé avec huit sous-titres, sortait
+donc aucun paquet audio. Film M, réencodé avec huit sous-titres, sortait
 propre parce que tous ses sous-titres ouvrent tôt.
 
 ## [v0.8.2.5] — 2026-08-28
@@ -4204,7 +4203,7 @@ Matroska audio, que le remux prend comme seconde entrée. Elle n'existe que
 lorsqu'une piste est réellement à transcoder. En MP4, il n'y a jamais d'étape
 supplémentaire : ffmpeg recompose déjà le fichier et transcode au passage.
 
-Vérifié sur un extrait de 60 s de `Watchmen` 2160p DV P8.1, profil
+Vérifié sur un extrait de 60 s de `Film A` 2160p DV P8.1, profil
 `cinema_4k_basic` : ce que l'écran annonce et ce que `ffprobe` lit dans la
 sortie coïncident piste par piste, titres compris — `ac3 6ch fre « FR VFF :
 AC3 5.1 »` recopié, `eac3 6ch eng 3501k « ENG VO : E-AC3 5.1 »` transcodé, six
@@ -4376,10 +4375,10 @@ Relevé sur le dossier de travail en mode `mp4` :
 
 | Fichier | Sortie | Écartés |
 |---|---|---|
-| Watchmen | MP4 | 3 PGS, doublés par 3 SubRip de mêmes langues |
-| Starship Troopers | MP4 | 3 PGS, doublés |
-| The Zookeeper's Wife | MP4 | 1 VobSub anglais ; le SubRip néerlandais reste |
-| **Colossus** | **MKV** | aucun — son unique sous-titre est une piste image |
+| Film A | MP4 | 3 PGS, doublés par 3 SubRip de mêmes langues |
+| Film B | MP4 | 3 PGS, doublés |
+| Film F | MP4 | 1 VobSub anglais ; le SubRip néerlandais reste |
+| **Film E** | **MKV** | aucun — son unique sous-titre est une piste image |
 
 ### Le retrait de Dolby Vision sait sortir en MP4
 
@@ -4466,12 +4465,12 @@ La notice ne montre désormais que ce que la barre d'état n'a pas déjà dit :
 
 | Dossier courant | Fichier survolé | Notice |
 |---|---|---|
-| `D:\films` | `D:\films\Watchmen.mkv` | `Watchmen.mkv` |
-| `D:\films` | `D:\films\2009\Watchmen.mkv` | `2009\Watchmen.mkv` |
+| `D:\films` | `D:\films\Film A.mkv` | `Film A.mkv` |
+| `D:\films` | `D:\films\2009\Film A.mkv` | `2009\Film A.mkv` |
 | `D:\films` | `C:\ailleurs\Autre.mkv` | chemin complet |
 | `D:
 ilms` | `D:
-ilms9\Watchmen.mkv` | `2009\Watchmen.mkv` |
+ilms9\Film A.mkv` | `2009\Film A.mkv` |
 | `D:
 ilms` | `C:illeurs\Autre.mkv` | chemin complet |
 
@@ -4894,14 +4893,14 @@ Relevé sur le dossier de travail :
 
 | Fichier | Conteneur | Vidéo réelle | Écart |
 |---|---|---|---|
-| Watchmen (TrueHD + AC3) | 9 611k | **5 364k** | **−44 %** |
-| Kingdom of the Planet of the Apes | 5 658k | **4 248k** | −25 % |
-| Colossus (DTS-HD MA) | 12 241k | **10 209k** | −17 % |
-| The Zookeeper's Wife | 11 528k | **9 608k** | −17 % |
-| Starship Troopers | 8 148k | **6 784k** | −17 % |
+| Film A (TrueHD + AC3) | 9 611k | **5 364k** | **−44 %** |
+| Film C | 5 658k | **4 248k** | −25 % |
+| Film E (DTS-HD MA) | 12 241k | **10 209k** | −17 % |
+| Film F | 11 528k | **9 608k** | −17 % |
+| Film B | 8 148k | **6 784k** | −17 % |
 
 Conséquence concrète, avec le profil `cinema_4k_basic` inchangé (seuil 4K à
-8 000k) : **Watchmen et Starship Troopers ne partent plus en réencodage** —
+8 000k) : **Film A et Film B ne partent plus en réencodage** —
 leur vidéo est sous le seuil. Ils basculent sur le retrait de Dolby Vision,
 soit quelques minutes et une image intacte au lieu d'heures de GPU et d'une
 image dégradée.
@@ -4949,10 +4948,10 @@ Mesuré sur les fichiers du dossier de travail :
 
 | Source | `none` | `eac3` |
 |---|---|---|
-| Watchmen — TrueHD 5.1 @ 3 501 887 | ac3 448k | **eac3 3501k** |
-| Colossus — DTS-HD MA 2.0 @ 2 008 937 | aac 192k | **eac3 2008k** |
-| The Zookeeper's Wife — DTS 5.1 @ 1 536 000 | ac3 448k | **eac3 1536k** |
-| Pilgrimage — DTS 5.1 @ 768 000 | ac3 448k | **eac3 768k** |
+| Film A — TrueHD 5.1 @ 3 501 887 | ac3 448k | **eac3 3501k** |
+| Film E — DTS-HD MA 2.0 @ 2 008 937 | aac 192k | **eac3 2008k** |
+| Film F — DTS 5.1 @ 1 536 000 | ac3 448k | **eac3 1536k** |
+| Film G — DTS 5.1 @ 768 000 | ac3 448k | **eac3 768k** |
 
 ### DTS-HD MA reconnu comme sans perte
 
@@ -4993,7 +4992,7 @@ l'utilisateur au moment de choisir sa piste.
 | `DTS-HD MA 7.1` | `E-AC3 5.1` |
 | `English` | inchangé |
 
-Vérifié sur un extrait réel de Watchmen : le fichier produit porte bien
+Vérifié sur un extrait réel de Film A : le fichier produit porte bien
 `ENG VO : E-AC3 5.1`, et la piste AC3 recopiée garde son titre d'origine.
 
 ## [v0.8.1.6] — 2026-08-27
@@ -5003,7 +5002,7 @@ Vérifié sur un extrait réel de Watchmen : le fichier produit porte bien
 Un fichier Dolby Vision **profil 8.1** porte une couche de base qui *est* du
 HDR10 : le RPU n'est qu'un jeu de NAL en plus. Jusqu'ici, demander « DV → HDR10 »
 passait forcément par un réencodage — qui dégrade l'image, coûte des heures, et
-détruit le HDR10+ au passage. Mesuré sur *La Planète des singes* (4K, 2 h 24) :
+détruit le HDR10+ au passage. Mesuré sur *Film C* (4K, 2 h 24) :
 1 h 40 en NVENC, **74 h** en libx265.
 
 - **`VideoAction.STRIP_DV`.** Quand le profil demande du HDR10 et que le fichier

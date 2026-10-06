@@ -312,11 +312,8 @@ def test_aucun_texte_francais_en_dur_dans_tui():
     code. Un littéral accentué hors de `_()`/`N_()` est un texte oublié.
 
     Hors champ : docstrings, CSS, journaux (`_LOG.…`), noms de minuteries
-    (`name=`), noms propres — et les explications du guide (`aide.py`), qui
-    relèvent d'IE-89."""
+    (`name=`), noms propres. Le guide (`aide.py`) y est soumis depuis IE-89."""
     traduction = {"_", "N_", "Nn_", "ngettext", "pgettext", "npgettext"}
-    ignores_module = {("aide.py", "_COMMUNES"), ("aide.py", "_PAR_ECRAN"),
-                      ("aide.py", "_ORDRE")}                  # IE-89
     noms_propres = {"AlloCiné"}
     accent = __import__("re").compile(r"[À-ÿ]")
     fautes = []
@@ -348,8 +345,7 @@ def test_aucun_texte_francais_en_dur_dans_tui():
                 cibles = n.targets if isinstance(n, ast.Assign) else [n.target]
                 for c in cibles:
                     if isinstance(c, ast.Name) and (
-                            c.id in ("CSS", "DEFAULT_CSS")
-                            or (f.name, c.id) in ignores_module):
+                            c.id in ("CSS", "DEFAULT_CSS")):
                         exclure(n)
         for n in ast.walk(arbre):
             if (id(n) not in exclus and isinstance(n, ast.Constant)

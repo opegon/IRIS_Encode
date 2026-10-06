@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.81] — 2026-10-06
+
+### Le guide des touches suit la langue de l'application (IE-89)
+
+Les explications du guide (`H`), les titres et résumés de ses sections passent
+par le catalogue : 113 messages, écrits en anglais dans le code et traduits
+au rendu. Le guide français reste identique au caractère près.
+
+Une explication qui cite un libellé de l'interface (« ← écartée »,
+« ⚠ SUPPRIMER », l'étape « Lancer », « Ne rien faire ») ou une touche le
+reçoit en paramètre, avec la traduction de l'écran : le guide anglais ne
+citera pas un libellé qui n'existe qu'en français. Les touches citées (W, F5,
+U, E, X) sont lues dans les déclarations des écrans, plus recopiées.
+
+Le repli des lignes compte en cellules de terminal : un caractère pleine
+chasse en occupe deux, et la colonne des touches reste alignée.
+
 ## [v0.8.9.80] — 2026-10-06
 
 ### Une source qui tient dans la cible n'est plus agrandie

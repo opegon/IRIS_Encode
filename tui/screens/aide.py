@@ -18,8 +18,7 @@ confiance justement parce qu'on ne connaît pas la réponse.
 """
 from __future__ import annotations
 
-import textwrap
-
+from rich.cells import cell_len
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -27,9 +26,9 @@ from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Static
 
-from core.i18n import N_, _
+from core.i18n import N_, _, pgettext
 
-from ..common import footer_line2, touche
+from ..common import footer_line2, libelle_ecartee, touche
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 
@@ -42,235 +41,273 @@ _CADRE = {"app.focus_next", "app.focus_previous", "screen.copy_text"}
 #
 # La clé est le **nom de l'action**, pas la touche : une touche qu'on déplace
 # emporte son explication avec elle.
+#
+# Textes source marqués `N_()`, traduits au rendu par `explication()` (L-53).
+# Un libellé ou une touche que l'explication cite est un paramètre (L-55),
+# rempli par `_parametres()` avec le libellé traduit et la notation de
+# `touche()` : le guide cite ce que l'écran affiche, dans toutes les langues.
 
 _COMMUNES: dict[str, str] = {
-    "table_home":      "Première ligne du tableau.",
-    "table_end":       "Dernière ligne du tableau.",
-    "table_page_up":   "Recule d'un écran de lignes.",
-    "table_page_down": "Avance d'un écran de lignes.",
-    "col_prev":        "Sélectionne la colonne précédente pour la redimensionner.",
-    "col_next":        "Sélectionne la colonne suivante. L'en-tête de la colonne "
-                       "active est surligné.",
-    "col_shrink":      "Rétrécit la colonne active de deux caractères. Un plancher "
-                       "l'empêche de descendre sous ce que son contenu exige.",
-    "col_grow":        "Élargit la colonne active. S'arrête à la largeur du "
-                       "terminal : au-delà, les dernières colonnes sortiraient de "
-                       "l'écran sans que rien ne le dise.",
-    "accueil":         "Retourne directement à la liste des volumes, sans "
-                       "remonter les écrans un par un. Demande confirmation si "
-                       "un travail est en cours.",
-    "aide":            "Ouvre ce guide.",
-    "request_quit":    "Quitte l'application, après confirmation.",
-    "encodages":       "Passe des fichiers à la file d'encodage, et retour. "
-                       "L'encodage continue pendant qu'on navigue ; l'en-tête "
-                       "l'annonce.",
+    "table_home":      N_("First row of the table."),
+    "table_end":       N_("Last row of the table."),
+    "table_page_up":   N_("Moves back one screen of rows."),
+    "table_page_down": N_("Moves forward one screen of rows."),
+    "col_prev":        N_("Selects the previous column for resizing."),
+    "col_next":        N_("Selects the next column. The header of the active "
+                          "column is highlighted."),
+    "col_shrink":      N_("Narrows the active column by two characters. A "
+                          "floor keeps it from going below what its content "
+                          "requires."),
+    "col_grow":        N_("Widens the active column. Stops at the width of "
+                          "the terminal: beyond it, the last columns would "
+                          "leave the screen without anything saying so."),
+    "accueil":         N_("Goes straight back to the list of volumes, without "
+                          "going back up the screens one by one. Asks for "
+                          "confirmation if work is in progress."),
+    "aide":            N_("Opens this guide."),
+    "request_quit":    N_("Quits the application, after confirmation."),
+    "encodages":       N_("Switches from the files to the encoding queue, and "
+                          "back. Encoding continues while you navigate; the "
+                          "header says so."),
 }
 
 _PAR_ECRAN: dict[str, dict[str, str]] = {
     "BrowserScreen": {
-        "toggle_select":       "Coche ou décoche le fichier sous le curseur. Seuls "
-                               "les fichiers cochés partent en aperçu ou en "
-                               "encodage.",
-        "select_all":          "Coche tous les fichiers du dossier.",
-        "select_none":         "Décoche tout.",
-        "enter_dir":           "Ouvre le dossier sous le curseur. Sur un fichier : "
-                               "ouvre l'écran des pistes en mode manuel, "
-                               "l'assistant en mode assistant.",
-        "go_up":               "Remonte au dossier parent.",
-        "open_tracks":         "Ouvre l'écran des pistes du fichier sous le "
-                               "curseur — quel que soit le mode.",
-        "toggle_wizard":       "Bascule entre le mode manuel et l'assistant. Le "
-                               "mode actif est nommé dans la barre de profil et "
-                               "dans le pied de page, dont la couleur change.",
-        "play":                "Lit le fichier dans mpv, si mpv est installé.",
-        "delete_file":         "Supprime le fichier sous le curseur, après "
-                               "confirmation.",
-        "open_dryrun":         "Aperçu : montre ce qui serait fait, sans rien "
-                               "faire.",
-        "open_run":            "Ajoute les fichiers cochés à la file d'encodage, "
-                               "qui démarre si elle était vide.",
-        "recursive_run":       "Encode toute l'arborescence sous le dossier "
-                               "courant, selon le profil actif.",
-        "open_profile_picker": "Change le profil actif.",
-        "open_config":         "Gère les profils : créer, éditer, supprimer.",
-        "join_parts":          "Joint les fichiers cochés bout à bout en un "
-                               "seul, sans réencoder — un film livré en part1 / "
-                               "part2. L'ordre proposé vient des noms et se "
-                               "corrige avant de lancer. Le fichier produit "
-                               "porte « .join-iris » et s'encode ensuite comme "
-                               "n'importe quel autre.",
-        "open_fiche":          "Ouvre la fiche du film : AlloCiné, puis IMDB "
-                               "avec Tab.",
-        "filtre_type":         "Ne montre qu'un type d'image : Dolby Vision, un "
-                               "profil DV, HDR sans DV ou SDR. Une ligne cochée "
-                               "reste visible.",
-        "masquer_skip":        "Masque ou réaffiche les fichiers SKIP. Une ligne "
-                               "cochée reste visible.",
+        "toggle_select":       N_("Checks or unchecks the file under the "
+                                  "cursor. Only checked files go to dry run or "
+                                  "encoding."),
+        "select_all":          N_("Checks every file in the folder."),
+        "select_none":         N_("Unchecks everything."),
+        "enter_dir":           N_("Opens the folder under the cursor. On a "
+                                  "file: opens the tracks screen in manual "
+                                  "mode, the guided mode in guided mode."),
+        "go_up":               N_("Goes up to the parent folder."),
+        "open_tracks":         N_("Opens the tracks screen of the file under "
+                                  "the cursor — whatever the mode."),
+        "toggle_wizard":       N_("Switches between manual and guided mode. "
+                                  "The active mode is named in the profile bar "
+                                  "and in the footer, whose color changes."),
+        "play":                N_("Plays the file in mpv, if mpv is installed."),
+        "delete_file":         N_("Deletes the file under the cursor, after "
+                                  "confirmation."),
+        "open_dryrun":         N_("Dry run: shows what would be done, without "
+                                  "doing anything."),
+        "open_run":            N_("Adds the checked files to the encoding "
+                                  "queue, which starts if it was empty."),
+        "recursive_run":       N_("Encodes the whole tree under the current "
+                                  "folder, with the active profile."),
+        "open_profile_picker": N_("Changes the active profile."),
+        "open_config":         N_("Manages the profiles: create, edit, "
+                                  "delete."),
+        "join_parts":          N_("Joins the checked files end to end into "
+                                  "one, without re-encoding — a film delivered "
+                                  "as part1 / part2. The proposed order comes "
+                                  "from the names and can be corrected before "
+                                  "launching. The resulting file carries "
+                                  "“.join-iris” and is then encoded like any "
+                                  "other."),
+        # TRANSLATORS: {key_tab} is the key that switches to IMDB.
+        "open_fiche":          N_("Opens the film's info sheet: AlloCiné, then "
+                                  "IMDB with {key_tab}."),
+        "filtre_type":         N_("Shows only one image type: Dolby Vision, one "
+                                  "DV profile, HDR without DV, or SDR. A checked "
+                                  "row stays visible."),
+        "masquer_skip":        N_("Hides or shows again the SKIP files. A "
+                                  "checked row stays visible."),
     },
     "TracksScreen": {
-        "toggle_row":     "Garde ou écarte la piste sous le curseur. Une piste "
-                          "écartée porte « ← écartée » dans la colonne Décision.",
-        "field_prev":     "Champ précédent sur la ligne vidéo (action, débit, "
-                          "Dolby Vision, sort de l'original).",
-        "field_next":     "Champ suivant. Le champ actif est encadré ◄ ►.",
-        "val_up":         "Valeur suivante du champ actif.",
-        "val_down":       "Valeur précédente.",
-        "enter_action":   "Ouvre la liste des valeurs possibles pour le champ "
-                          "actif.",
-        "dryrun":         "Aperçu de ce seul fichier.",
-        "run":            "Ajoute ce fichier à la file d'encodage.",
-        "change_profile": "Change le profil, ce qui recalcule la décision.",
-        "open_codec":     "Choisit le codec de sortie.",
-        "open_bitrate":   "Choisit le débit vidéo cible.",
-        "toggle_delete":  "Supprimer ou garder le fichier source après un encodage "
-                          "réussi. « ⚠ SUPPRIMER » s'affiche en orange.",
-        "add_external":   "Ajoute une piste venue d'un autre fichier : une VF, des "
-                          "sous-titres. Ouvre l'écran de recalage.",
-        "dismiss_cancel": "Revient à l'accueil sans appliquer les changements.",
+        # TRANSLATORS: {discarded} and {decision} are labels of the tracks
+        # screen, quoted as displayed.
+        "toggle_row":     N_("Keeps or discards the track under the cursor. A "
+                             "discarded track shows “{discarded}” in the "
+                             "{decision} column."),
+        "field_prev":     N_("Previous field on the video row (action, "
+                             "bitrate, Dolby Vision, fate of the original)."),
+        "field_next":     N_("Next field. The active field is framed ◄ ►."),
+        "val_up":         N_("Next value of the active field."),
+        "val_down":       N_("Previous value."),
+        "enter_action":   N_("Opens the list of possible values for the "
+                             "active field."),
+        "dryrun":         N_("Dry run of this file only."),
+        "run":            N_("Adds this file to the encoding queue."),
+        "change_profile": N_("Changes the profile, which recomputes the "
+                             "decision."),
+        "open_codec":     N_("Chooses the output codec."),
+        "open_bitrate":   N_("Chooses the target video bitrate."),
+        # TRANSLATORS: {delete_flag} is the warning shown on the tracks screen.
+        "toggle_delete":  N_("Deletes or keeps the source file after a "
+                             "successful encode. “{delete_flag}” is shown in "
+                             "orange."),
+        "add_external":   N_("Adds a track taken from another file: a dub, "
+                             "subtitles. Opens the sync screen."),
+        "dismiss_cancel": N_("Returns to the home screen without applying the "
+                             "changes."),
     },
     "SyncScreen": {
-        "field_prev":      "Champ précédent : décalage, étirement, langue, nom, "
-                           "défaut, forcé.",
-        "field_next":      "Champ suivant. Le champ actif est en surbrillance.",
-        "val_up":          "Sur le décalage : +100 ms. Sur les autres champs : "
-                           "valeur suivante.",
-        "val_down":        "Sur le décalage : −100 ms. Sinon : valeur précédente.",
-        "jump_up":         "Décalage +1 s — le pas grossier, pour dégrossir.",
-        "jump_down":       "Décalage −1 s.",
-        "fine_up":         "Décalage +10 ms — le pas fin, pour finir d'approcher "
-                           "une valeur mesurée. La combinaison Ctrl et + est liée "
-                           "aussi, mais tous les terminaux ne la transmettent "
-                           "pas.",
-        "fine_down":       "Décalage −10 ms.",
-        "open_picker":     "Ouvre la liste des valeurs du champ actif.",
-        "measure":         "Mesure le décalage par corrélation audio. Compte "
-                           "plusieurs minutes : les deux pistes sont décodées en "
-                           "entier. Le résultat est recoupé sur les trois tiers du "
-                           "film avant d'être accepté.",
-        "preview":         "Ouvre mpv au décalage courant, pour juger à l'oreille.",
-        "sample":          "Produit un court extrait avec toutes les pistes, à lire "
-                           "dans son lecteur habituel — le contrôle le plus sûr "
-                           "avant de muxer.",
-        "apply_candidate": "Applique quand même la valeur d'une mesure refusée. À "
-                           "contrôler ensuite : elle a été refusée pour une raison.",
-        "show_segments":   "Montre les plages de décalage quand la mesure a "
-                           "constaté un montage différent. Consultatif : rien n'est "
-                           "appliqué.",
-        "apply_segments":  "Recale la piste sur ces plages. Un .srt est réécrit ; "
-                           "une piste audio est rallongée aux points de bascule, "
-                           "puis réencodée.",
-        "copy_delay":      "Reprend sur cette piste le décalage d'une autre — utile "
-                           "quand une VF et ses sous-titres viennent du même "
-                           "fichier.",
-        "ancrer":          "Donne un point de repère quand la mesure refuse. "
-                           "L'application propose une réplique et son horodatage ; "
-                           "vous indiquez l'instant où vous l'entendez, et la "
-                           "recherche se fait autour. Sous-titres uniquement : sur "
-                           "une piste audio, il n'y a aucun texte à proposer.",
-        "remove_track":    "Retire la piste de la liste des greffes.",
-        "dryrun":          "Aperçu du fichier cible.",
-        "run":             "Ajoute le fichier, pistes greffées, à la file "
-                           "d'encodage.",
-        "run_mux":         "Muxe sans réencoder : bien plus rapide, quand la vidéo "
-                           "n'a pas besoin d'être retouchée.",
-        "add_track":       "Ajoute une autre piste externe.",
-        "go_back":         "Revient à l'écran des pistes.",
+        "field_prev":      N_("Previous field: offset, stretch, language, "
+                              "name, default, forced."),
+        "field_next":      N_("Next field. The active field is highlighted."),
+        "val_up":          N_("On the offset: +100 ms. On the other fields: "
+                              "next value."),
+        "val_down":        N_("On the offset: −100 ms. Otherwise: previous "
+                              "value."),
+        "jump_up":         N_("Offset +1 s — the coarse step, to get close."),
+        "jump_down":       N_("Offset −1 s."),
+        "fine_up":         N_("Offset +10 ms — the fine step, to close in on a "
+                              "measured value. The Ctrl and + combination is "
+                              "bound too, but not every terminal passes it "
+                              "on."),
+        "fine_down":       N_("Offset −10 ms."),
+        "open_picker":     N_("Opens the list of values of the active field."),
+        "measure":         N_("Measures the offset by audio correlation. Takes "
+                              "several minutes: both tracks are decoded in "
+                              "full. The result is cross-checked on the three "
+                              "thirds of the film before being accepted."),
+        "preview":         N_("Opens mpv at the current offset, to judge by "
+                              "ear."),
+        "sample":          N_("Produces a short excerpt with all the tracks, "
+                              "to play in your usual player — the safest check "
+                              "before muxing."),
+        "apply_candidate": N_("Applies the value of a refused measurement "
+                              "anyway. Check it afterwards: it was refused for "
+                              "a reason."),
+        "show_segments":   N_("Shows the offset ranges when the measurement "
+                              "found a different cut. Advisory: nothing is "
+                              "applied."),
+        "apply_segments":  N_("Syncs the track on these ranges. An .srt is "
+                              "rewritten; an audio track is lengthened at the "
+                              "switch points, then re-encoded."),
+        "copy_delay":      N_("Copies onto this track the offset of another — "
+                              "useful when a dub and its subtitles come from "
+                              "the same file."),
+        "ancrer":          N_("Gives a reference point when the measurement "
+                              "refuses. The application suggests a line and "
+                              "its timestamp; you give the moment you hear "
+                              "it, and the search is done around it. Subtitles "
+                              "only: an audio track has no text to suggest."),
+        "remove_track":    N_("Removes the track from the list of grafts."),
+        "dryrun":          N_("Dry run of the target file."),
+        "run":             N_("Adds the file, with its grafted tracks, to the "
+                              "encoding queue."),
+        "run_mux":         N_("Muxes without re-encoding: much faster, when "
+                              "the video does not need to be touched."),
+        "add_track":       N_("Adds another external track."),
+        "go_back":         N_("Returns to the tracks screen."),
     },
     "DryrunScreen": {
-        "toggle_select": "Coche ou décoche une ligne.",
-        "run":           "Ajoute les lignes cochées à la file d'encodage.",
-        "open_codec":    "Change le codec de la ligne sous le curseur.",
-        "open_bitrate":  "Change son débit cible.",
-        "go_back":       "Revient à l'écran précédent.",
+        "toggle_select": N_("Checks or unchecks a row."),
+        "run":           N_("Adds the checked rows to the encoding queue."),
+        "open_codec":    N_("Changes the codec of the row under the cursor."),
+        "open_bitrate":  N_("Changes its target bitrate."),
+        "go_back":       N_("Returns to the previous screen."),
     },
     "RunScreen": {
-        "pause_resume": "Suspend ou reprend l'encodage en cours.",
-        "skip_current": "Abandonne le fichier en cours et passe au suivant.",
-        "monter":       "Avance d'un rang le fichier en attente sous le curseur.",
-        "descendre":    "Recule d'un rang le fichier en attente sous le curseur.",
-        "retirer":      "Retire de la file le fichier en attente sous le curseur.",
-        "arreter_tout": "Arrête le fichier en cours et vide la file, après "
-                        "confirmation. La sortie partielle est effacée.",
-        "apres_lot":    "Coche ou décoche l'action d'après lot : mise en "
-                        "veille, veille prolongée ou arrêt, selon les options "
-                        "(F5, U). Par défaut, les options disent « Ne rien "
-                        "faire » et la touche n'arme rien. Elle part quand plus rien ne tourne, après "
-                        "un compte à rebours de 60 s qu'on peut annuler. "
-                        "Décochée à chaque nouveau lot ; un lot arrêté par X "
-                        "ne déclenche rien.",
-        "go_back":      "Revient aux fichiers sans rien arrêter : l'encodage "
-                        "continue, F12 le rouvre.",
+        "pause_resume": N_("Pauses or resumes the current encode."),
+        "skip_current": N_("Abandons the current file and moves to the next."),
+        "monter":       N_("Moves the waiting file under the cursor up one "
+                           "place."),
+        "descendre":    N_("Moves the waiting file under the cursor down one "
+                           "place."),
+        "retirer":      N_("Removes the waiting file under the cursor from the "
+                           "queue."),
+        "arreter_tout": N_("Stops the current file and empties the queue, "
+                           "after confirmation. The partial output is "
+                           "deleted."),
+        # TRANSLATORS: {key_options_screen} then {key_options} open the
+        # options; {do_nothing} is the option label; {key_stop_all} stops the
+        # batch.
+        "apres_lot":    N_("Checks or unchecks the after-batch action: sleep, "
+                           "hibernate or shut down, as set in the options "
+                           "({key_options_screen}, {key_options}). By default "
+                           "the options say “{do_nothing}” and the key arms "
+                           "nothing. It fires when nothing is running any "
+                           "more, after a 60 s countdown that can be "
+                           "cancelled. Unchecked at each new batch; a batch "
+                           "stopped by {key_stop_all} triggers nothing."),
+        # TRANSLATORS: {key_queue} reopens the encoding queue.
+        "go_back":      N_("Returns to the files without stopping anything: "
+                           "encoding continues, {key_queue} reopens it."),
     },
     "MuxScreen": {
-        "dryrun":  "Aperçu de l'encodage du fichier produit par le mux.",
-        "encode":  "Ajoute le fichier produit par le mux à la file d'encodage.",
-        "go_back": "Revient à l'écran précédent.",
+        "dryrun":  N_("Dry run of the encode of the file produced by the "
+                      "mux."),
+        "encode":  N_("Adds the file produced by the mux to the encoding "
+                      "queue."),
+        "go_back": N_("Returns to the previous screen."),
     },
     "JoinScreen": {
-        "monter":    "Fait monter d'un rang la partie sous le curseur. C'est "
-                     "l'ordre du tableau qui sera joint — le vérifier avant de "
-                     "lancer : deux parties inversées donnent un fichier de la "
-                     "bonne durée, et faux.",
-        "descendre": "Fait descendre d'un rang la partie sous le curseur.",
-        "coller":    "Lance la jonction. Refusée si les parties ne s'apparient "
-                     "pas — codec vidéo, définition ou format audio "
-                     "différents — ou si le fichier de sortie existe déjà.",
-        "go_back":   "Revient à l'accueil. Une jonction en cours est interrompue "
-                     "et son fichier partiel effacé.",
+        "monter":    N_("Moves the part under the cursor up one place. The "
+                        "order of the table is the one that will be joined — "
+                        "check it before launching: two swapped parts give a "
+                        "file of the right length, and wrong."),
+        "descendre": N_("Moves the part under the cursor down one place."),
+        "coller":    N_("Starts the join. Refused if the parts do not match — "
+                        "different video codec, resolution or audio format — "
+                        "or if the output file already exists."),
+        "go_back":   N_("Returns to the home screen. A join in progress is "
+                        "interrupted and its partial file deleted."),
     },
     "ConfigScreen": {
-        "cles":           "Saisit ou change les clés d'API (OpenSubtitles, "
-                          "OMDb), vérifiées auprès du service avant d'être "
-                          "enregistrées.",
-        "options":        "Ouvre les options : bloquer la mise en veille "
-                          "pendant les traitements (activé par défaut), et "
-                          "l'action d'après lot que coche E pendant "
-                          "l'encodage.",
-        "activate":       "Rend actif le profil sous le curseur.",
-        "new_profile":    "Crée un profil.",
-        "edit_focused":   "Édite le profil sous le curseur.",
-        "copy_focused":   "Crée un profil à partir de celui sous le curseur : "
-                          "mêmes réglages, nom à choisir.",
-        "delete_focused": "Supprime le profil. Les profils fournis avec "
-                          "l'application sont protégés.",
-        "go_back":        "Revient à l'accueil.",
+        "cles":           N_("Enters or changes the API keys (OpenSubtitles, "
+                             "OMDb), checked with the service before being "
+                             "saved."),
+        # TRANSLATORS: {key_after_batch} is the key of the encoding screen.
+        "options":        N_("Opens the options: block sleep during "
+                             "processing (on by default), and the after-batch "
+                             "action that {key_after_batch} checks during "
+                             "encoding."),
+        "activate":       N_("Makes the profile under the cursor active."),
+        "new_profile":    N_("Creates a profile."),
+        "edit_focused":   N_("Edits the profile under the cursor."),
+        "copy_focused":   N_("Creates a profile from the one under the cursor: "
+                             "same settings, name to choose."),
+        "delete_focused": N_("Deletes the profile. The profiles shipped with "
+                             "the application are protected."),
+        "go_back":        N_("Returns to the home screen."),
     },
     "WizardScreen": {
-        "suivant":  "Passe à l'étape suivante. À l'étape « Lancer », déclenche le "
-                    "choix recommandé ; à la fin, revient à l'accueil.",
-        "basculer": "Garde ou écarte la piste sous le curseur (étape 2).",
-        "codec":    "Change le codec de sortie (étape 2).",
-        "debit":    "Change le débit cible (étape 2).",
-        "donneur":  "Présente un fichier donneur (étape 3). La mesure du décalage "
-                    "est lancée et appliquée aussitôt.",
-        "retirer":  "Retire la dernière piste ajoutée (étape 3).",
-        "muxer":    "Muxe sans réencoder (étape 4).",
-        "encoder":  "Réencode (étape 4).",
-        "retour":   "Revient à l'étape précédente ; à la première, quitte "
-                    "l'assistant.",
+        # TRANSLATORS: {launch} is the name of the last step but one.
+        "suivant":  N_("Moves to the next step. At the “{launch}” step, "
+                       "triggers the recommended choice; at the end, returns "
+                       "to the home screen."),
+        "basculer": N_("Keeps or discards the track under the cursor (step "
+                       "2)."),
+        "codec":    N_("Changes the output codec (step 2)."),
+        "debit":    N_("Changes the target bitrate (step 2)."),
+        "donneur":  N_("Presents a donor file (step 3). The offset "
+                       "measurement is started and applied at once."),
+        "retirer":  N_("Removes the last added track (step 3)."),
+        "muxer":    N_("Muxes without re-encoding (step 4)."),
+        "encoder":  N_("Re-encodes (step 4)."),
+        "retour":   N_("Returns to the previous step; at the first, leaves "
+                       "guided mode."),
     },
 }
 
 # Ordre de présentation : celui du parcours, pas celui des imports.
+# Les titres reprennent les `msgid` des écrans eux-mêmes (« Home », « Tracks »…) :
+# le guide et l'écran ne peuvent pas porter deux noms différents (L-53).
 _ORDRE: list[tuple[str, str, str]] = [
-    ("BrowserScreen", "Accueil",
-     "Parcourir, choisir les fichiers, lancer."),
-    ("WizardScreen", "Assistant",
-     "Un fichier, cinq étapes. Activé par W depuis l'accueil."),
-    ("TracksScreen", "Pistes",
-     "Ce que deviendra chaque piste du fichier."),
-    ("SyncScreen", "Recalage",
-     "Greffer une piste venue d'ailleurs, et la remettre à l'heure."),
-    ("DryrunScreen", "Aperçu",
-     "Ce qui serait fait, sans rien faire."),
-    ("RunScreen", "Encodage",
-     "L'encodage en cours."),
-    ("MuxScreen", "Mux",
-     "Le mux en cours, et ce qu'on peut en faire ensuite."),
-    ("JoinScreen", "Jonction",
-     "Recoudre les parties d'un même film en un seul fichier."),
-    ("ConfigScreen", "Profils",
-     "Créer et régler les profils d'encodage."),
+    ("BrowserScreen", N_("Home"),
+     N_("Browse, choose the files, launch.")),
+    # TRANSLATORS: {key_mode} is the home screen key that turns guided mode on.
+    ("WizardScreen", N_("Guided"),
+     N_("One file, five steps. Turned on by {key_mode} from the home "
+        "screen.")),
+    ("TracksScreen", N_("Tracks"),
+     N_("What each track of the file will become.")),
+    ("SyncScreen", N_("Sync"),
+     N_("Graft a track from elsewhere, and put it back in time.")),
+    ("DryrunScreen", N_("Dry run"),
+     N_("What would be done, without doing anything.")),
+    ("RunScreen", N_("Encoding"),
+     N_("The encode in progress.")),
+    ("MuxScreen", N_("Muxing"),
+     N_("The mux in progress, and what can be done with it next.")),
+    ("JoinScreen", N_("Join"),
+     N_("Sew the parts of one film back into a single file.")),
+    ("ConfigScreen", N_("Profiles"),
+     N_("Create and set up the encoding profiles.")),
 ]
 
 
@@ -322,9 +359,56 @@ def touches_de(classe: type) -> list[tuple[str, str, str]]:
     return sortie
 
 
+def _cle(ecran: str, action: str) -> str:
+    """La touche d'une action, lue dans les `BINDINGS` : le guide cite la
+    touche que l'écran déclare, pas une lettre recopiée à côté."""
+    for k, a, _l in touches_de(classes_documentees()[ecran]):
+        if a == action:
+            return k
+    raise KeyError(f"{ecran}.{action}")
+
+
+def _parametres() -> dict[str, str]:
+    """Les libellés et touches que les explications citent (L-55), traduits."""
+    from core.veille import ACTIONS_FIN
+
+    return {
+        "discarded":          libelle_ecartee(),
+        "decision":           _("Decision"),
+        "delete_flag":        "⚠ " + pgettext("source file", "delete").upper(),
+        "do_nothing":         _(ACTIONS_FIN["rien"]).capitalize(),
+        "launch":             _("Launch"),
+        "key_tab":            touche("tab"),
+        "key_queue":          touche("f12"),
+        "key_mode":           _cle("BrowserScreen", "toggle_wizard"),
+        "key_options_screen": _cle("BrowserScreen", "open_config"),
+        "key_options":        _cle("ConfigScreen", "options"),
+        "key_after_batch":    _cle("RunScreen", "apres_lot"),
+        "key_stop_all":       _cle("RunScreen", "arreter_tout"),
+    }
+
+
 def explication(ecran: str, action: str) -> str:
-    """Ce que fait une action, sur cet écran. Vide si personne ne l'a écrit."""
-    return _PAR_ECRAN.get(ecran, {}).get(action) or _COMMUNES.get(action, "")
+    """Ce que fait une action, sur cet écran, traduit. Vide si personne ne
+    l'a écrit."""
+    texte = _PAR_ECRAN.get(ecran, {}).get(action) or _COMMUNES.get(action, "")
+    return _(texte).format(**_parametres()) if texte else ""
+
+
+def _replier(texte: str, largeur: int) -> list[str]:
+    """Replie aux espaces, en **cellules** de terminal et non en caractères
+    (L-54) : un glyphe pleine chasse en occupe deux. Un mot plus large que la
+    ligne la prend seul."""
+    lignes, ligne = [], ""
+    for mot in texte.split():
+        if ligne and cell_len(ligne) + 1 + cell_len(mot) > largeur:
+            lignes.append(ligne)
+            ligne = mot
+        else:
+            ligne = f"{ligne} {mot}" if ligne else mot
+    if ligne:
+        lignes.append(ligne)
+    return lignes
 
 
 # ─── L'écran ──────────────────────────────────────────────────────────────────
@@ -367,11 +451,11 @@ class AideScreen(Screen):
         t = Text()
         t.append(_("Key guide") + "\n", style="bold")
         # Repliée ici, pas dans le message : la page tient en 74 colonnes.
-        t.append(textwrap.fill(_("Every key of every screen, with what it does. "
-                                 "This page is built from the shortcuts actually "
-                                 "declared: it cannot lag behind the "
-                                 "application."), 74) + "\n\n",
-                 style="dim")
+        t.append("\n".join(_replier(_("Every key of every screen, with what it "
+                                      "does. This page is built from the "
+                                      "shortcuts actually declared: it cannot "
+                                      "lag behind the application."), 74))
+                 + "\n\n", style="dim")
 
         classes = classes_documentees()
 
@@ -380,19 +464,19 @@ class AideScreen(Screen):
         t.append(_("These keys work on every screen.") + "\n\n", style="dim")
         for cle, action in (("h", "aide"), ("ctrl+home", "accueil"),
                             ("f12", "encodages"), ("f10", "request_quit")):
-            self._ligne(t, touche(cle), _COMMUNES[action])
+            self._ligne(t, touche(cle), _(_COMMUNES[action]))
         t.append("\n")
         t.append(_("In a table") + "\n", style="bold")
         for cle, action in (("home", "table_home"), ("end", "table_end"),
                             ("pageup", "table_page_up"),
                             ("pagedown", "table_page_down")):
-            self._ligne(t, touche(cle), _COMMUNES[action])
+            self._ligne(t, touche(cle), _(_COMMUNES[action]))
         t.append("\n")
         t.append(_("Resizable columns — home, tracks, dry run") + "\n",
                  style="bold")
         for cle, action in (("tab", "col_next"), ("shift+tab", "col_prev"),
                             (">", "col_grow"), ("<", "col_shrink")):
-            self._ligne(t, touche(cle), _COMMUNES[action])
+            self._ligne(t, touche(cle), _(_COMMUNES[action]))
         t.append("\n")
 
         deja = set(_COMMUNES)
@@ -405,8 +489,8 @@ class AideScreen(Screen):
             if not lignes:
                 continue
             t.append("─" * 74 + "\n", style="dim")
-            t.append(f"{titre.upper()}\n", style="bold")
-            t.append(f"{resume}\n\n", style="dim")
+            t.append(f"{_(titre).upper()}\n", style="bold")
+            t.append(f"{_(resume).format(**_parametres())}\n\n", style="dim")
             for nom_touche, action, libelle in lignes:
                 self._ligne(t, nom_touche, explication(nom, action) or _(libelle))
             t.append("\n")
@@ -421,19 +505,10 @@ class AideScreen(Screen):
         explication longue.
         """
         marge = 14
-        largeur = 74 - marge
-        mots, ligne, lignes = texte.split(), "", []
-        for mot in mots:
-            if ligne and len(ligne) + 1 + len(mot) > largeur:
-                lignes.append(ligne)
-                ligne = mot
-            else:
-                ligne = f"{ligne} {mot}".strip()
-        if ligne:
-            lignes.append(ligne)
-        for i, l in enumerate(lignes or [""]):
+        for i, l in enumerate(_replier(texte, 74 - marge) or [""]):
             if i == 0:
-                t.append(f"  {touche:<{marge - 2}}", style="bold yellow")
+                bourrage = " " * max(1, marge - 2 - cell_len(touche))
+                t.append(f"  {touche}{bourrage}", style="bold yellow")
             else:
                 t.append(" " * marge)
             t.append(l + "\n")

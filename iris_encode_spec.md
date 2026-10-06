@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.80 — document de référence courant
+**Version** : 0.8.9.81 — document de référence courant
 **Date** : 2026-10-06
 **Statut** : stable
 
@@ -140,8 +140,12 @@ de décision, diagnostics, refus, mesures, console du preflight (dont la lettre
 du « oui », `o` en français, `y` toujours accepté). **Ceux de `tui/` aussi
 (v0.8.9.75)** : écrans, modales, en-têtes, notifications ; les descriptions
 de touches (`BINDINGS`, listes du pied de page) sont marquées `N_()` et
-traduites au rendu, dans le footer et `raccourci`. Restent en français les
-explications du guide des touches (`aide.py`, IE-89). `core/texte.py` est
+traduites au rendu, dans le footer et `raccourci`. **Le guide des touches
+aussi (v0.8.9.81)** : explications, titres et résumés d'écran de `aide.py`
+marqués `N_()`, traduits au rendu ; les titres reprennent les `msgid` des
+écrans ; un libellé ou une touche cités sont des paramètres (`{discarded}`,
+`{key_mode}`…), la touche lue dans les `BINDINGS` ; repli en cellules
+(`cell_len`). `core/texte.py` est
 retiré : tous les pluriels passent par `ngettext`.
 `tests/test_i18n.py` refuse un littéral accentué hors de `_()` dans `tui/`. Les tests chargent le français (`tests/conftest.py`, smoke, captures) :
 un test qui vérifie un message français vérifie aussi sa traduction.
@@ -2859,6 +2863,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.81 | 2026-10-06 | **Guide des touches traduit** (§ 2.1, IE-89) : 113 messages, rendu français identique à l'octet ; libellés et touches cités en paramètres, touches lues dans les `BINDINGS` ; repli en cellules · `tests/test_aide.py` (traduction exigée, paramètres fournis), exception d'IE-88 retirée de `tests/test_i18n.py` |
 | 0.8.9.80 | 2026-10-06 | **Pas d'agrandissement** (§ 8.1) : `scale` n'est posé que si la source dépasse la cible — un 1918×802 réencodé sortait étiré en 1920×802. Une dimension impaire perd un pixel (`trunc(iw/2)*2`) · `tests/test_resolution_nom.py` |
 | 0.8.9.79 | 2026-10-06 | **Pixels carrés après redimensionnement** (§ 8.1) : `scale` rattrapait l'arrondi de la hauteur par un SAR — 3832×1600 → 1920×802 en 192079:192000, 1918×802 → 1920×802 en 959:960 — et Jellyfin transcodait la vidéo, prise pour anamorphique. Le filtre vidéo pose `setsar=1` après `scale` · `tests/test_resolution_nom.py` |
 | 0.8.9.78 | 2026-10-06 | **Une marque dite une seule fois** (§ 8.7) : `Film 4K DV HDR10 2160p` ramené en 1080p sortait `1080p … 1080p` — seules les marques voisines étaient fondues. `stem_marques_remplacees` remplace la première marque et retire les suivantes (résolution, HDR, audio) · `tests/test_resolution_nom.py` |

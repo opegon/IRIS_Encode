@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from core import i18n
 from tui.common import TOUCHES as _TOUCHES, touche as _touche
 from tui.screens import aide
 
@@ -89,11 +90,53 @@ def test_le_contenu_nomme_chaque_ecran_et_reste_lisible():
     """Le rendu lui-même, pas seulement les données qui le nourrissent."""
     texte = aide.AideScreen()._contenu().plain
     for _, titre, _ in aide._ORDRE:
-        assert titre.upper() in texte, titre
+        assert i18n._(titre).upper() in texte, titre
     assert "PARTOUT" in texte
     # Rien ne doit déborder : la colonne de gauche fait 14, le total 74.
     trop = [l for l in texte.splitlines() if len(l) > 74]
     assert not trop, f"lignes trop longues : {trop[:3]}"
+
+
+def _textes_du_guide() -> list[str]:
+    textes = list(aide._COMMUNES.values())
+    for par_action in aide._PAR_ECRAN.values():
+        textes += par_action.values()
+    for _, titre, resume in aide._ORDRE:
+        textes += [titre, resume]
+    return textes
+
+
+def test_le_guide_est_traduit():
+    """IE-89 : le guide suit la langue de l'application. Une explication que
+    le catalogue ne traduit pas resterait en anglais au milieu du français."""
+    muets = [t for t in _textes_du_guide() if i18n._(t) == t]
+    assert not muets, muets[:3]
+
+
+def test_les_libelles_cites_sont_ceux_de_l_ecran():
+    """L-55 : une explication cite un libellé ou une touche par paramètre,
+    jamais recopié. Tout paramètre du texte source est fourni au rendu, et
+    la traduction n'en invente ni n'en perd aucun."""
+    import string
+    fournis = set(aide._parametres())
+
+    def noms(texte):
+        return {n for _, n, _, _ in string.Formatter().parse(texte) if n}
+
+    for t in _textes_du_guide():
+        assert noms(t) <= fournis, t
+        assert noms(i18n._(t)) == noms(t), t
+    p = aide._parametres()
+    assert p["discarded"] == "← écartée"
+    assert p["key_after_batch"] == "E" and p["key_mode"] == "W"
+
+
+def test_le_repli_compte_en_cellules():
+    """L-54 : un glyphe pleine chasse occupe deux colonnes ; compté pour un,
+    la ligne déborderait."""
+    from rich.cells import cell_len
+    lignes = aide._replier("漢字 " * 30, 20)
+    assert all(cell_len(l) <= 20 for l in lignes)
 
 
 def test_une_explication_longue_saligne_sous_elle_meme():

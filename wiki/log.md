@@ -222,5 +222,5 @@ SAR de 192079:192000 et 959:960 ; `setsar=1` ajouté. Source :
 ## [2026-10-06] ingest | Retrait DV en MP4 confirmé sur le G3 (IE-72)
 
 L'utilisateur confirme que la correction d'IE-69 tient sur le téléviseur. Question
-retirée de [[questions-ouvertes]]. Source : `raw/2026-10-06-declaration-ie72.md`.
+retirée de [[questions-ouvertes]]. Source : [[2026-10-06-declaration-ie72]].
 Pages touchées : [[lg-oled-g3]].

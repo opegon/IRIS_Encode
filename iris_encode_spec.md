@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.77 — document de référence courant
+**Version** : 0.8.9.78 — document de référence courant
 **Date** : 2026-10-06
 **Statut** : stable
 
@@ -1135,8 +1135,8 @@ ne nomme pas. Un nom fait des seules marques est rendu tel quel.
 
 **La marque HDR suit le sort du Dolby Vision.** `dv_action` décide seul :
 ramené en HDR10, `DV`, `DoVi`, `Dolby Vision`, `HDR` et `HDR10` deviennent
-`HDR10`, deux marques voisines devenues la même étant fondues en une
-(`Film.DV.HDR10` → `Film.HDR10`) ; ramené en SDR, elles partent toutes,
+`HDR10`, seule la première étant réécrite et les suivantes retirées
+(`Film.DV.HDR10` → `Film.HDR10`, `Film 4K DV 2160p` → `Film 1080p DV`) ; ramené en SDR, elles partent toutes,
 `HDR10+` et la profondeur (`10bit`, `10bits`, `10 bits`) comprises, et rien
 ne les remplace — une sortie SDR ne s'annonce pas, et le tone mapping finit
 sur `format=yuv420p` : le fichier ressort en 8 bits. En sortie HDR10 la
@@ -2857,6 +2857,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.78 | 2026-10-06 | **Une marque dite une seule fois** (§ 8.7) : `Film 4K DV HDR10 2160p` ramené en 1080p sortait `1080p … 1080p` — seules les marques voisines étaient fondues. `stem_marques_remplacees` remplace la première marque et retire les suivantes (résolution, HDR, audio) · `tests/test_resolution_nom.py` |
 | 0.8.9.77 | 2026-10-06 | **4K recadrée prise pour un 1080p** (§ 8.1) : une source 3832×1600 n'atteignait ni 3840 ni 2160, gardait sa définition sous `keep_4k = false` et sortait nommée `2160p.4Klight` · seuils 4K à 3200 px de large ou 1700 de haut (`VideoInfo.is_4k`), partagés par `_resolve_limits` et `resolution_label` · `tests/test_resolution_nom.py` |
 | 0.8.9.76 | 2026-10-05 | **Version de ffmpeg mal lue** (§ 3, IE-115) : un build BtbN (`n8.1.3-…`) se lisait « 1.3 », et toute 8.x paraissait plus récente · `tests/test_updates.py` |
 | 0.8.9.75 | 2026-10-05 | **Textes de `tui/` extraits** (§ 2.1, IE-88) : environ 575 messages, français repris à l'identique (phrases autrefois coupées à la main repliées d'elles-mêmes) ; descriptions de touches marquées `N_()` et traduites au rendu ; largeurs d'en-têtes sur le texte affiché, en cellules ; capitales décoratives au rendu ; `core/texte.py` retiré · `tests/test_i18n.py` (garde-fou du français en dur dans `tui/`) |

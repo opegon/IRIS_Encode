@@ -81,9 +81,17 @@ def test_ce_qui_n_est_pas_une_marque_de_resolution_ne_bouge_pas(stem):
     assert stem_resolution_ramenee(stem, "1080p") == stem
 
 
-def test_toutes_les_occurrences_partent():
-    """Certains noms portent la marque dans le titre du dossier repris."""
-    assert stem_resolution_ramenee("4K.Film.2160p", "1080p") == "1080p.Film.1080p"
+@pytest.mark.parametrize("stem, attendu", [
+    # Certains noms portent la marque dans le titre du dossier repris.
+    ("4K.Film.2160p",                 "1080p.Film"),
+    ("Film (2023) 4K DV HDR10 2160p", "Film (2023) 1080p DV HDR10"),
+    ("Film.4K.DV.2160p.WEB-DL",       "Film.1080p.DV.WEB-DL"),
+    ("Film [4K] DV [2160p]",          "Film [1080p] DV"),
+])
+def test_une_marque_eloignee_n_est_pas_dite_deux_fois(stem, attendu):
+    """La première marque est remplacée, les autres partent : `1080p … 1080p`
+    disait deux fois la définition."""
+    assert stem_resolution_ramenee(stem, "1080p") == attendu
 
 
 # ─── Ce que produit une décision ─────────────────────────────────────────────

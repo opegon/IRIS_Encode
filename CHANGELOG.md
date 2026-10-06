@@ -1,5 +1,15 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.78] — 2026-10-06
+
+### La définition n'est plus dite deux fois dans le nom
+
+`Film (2023) 4K DV HDR10 2160p` ramené en 1080p sortait
+`Film (2023) 1080p DV HDR10 1080p` : les deux marques étaient bien remplacées,
+mais le doublon n'était fondu que si elles se suivaient. Désormais seule la
+première marque est remplacée, les suivantes partent — `… 1080p DV HDR10`.
+La règle vaut pour toutes les marques réécrites (définition, HDR, audio).
+
 ## [v0.8.9.77] — 2026-10-06
 
 ### Une 4K recadrée était prise pour un 1080p

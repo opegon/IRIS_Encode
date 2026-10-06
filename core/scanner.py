@@ -152,17 +152,28 @@ def stem_marques_remplacees(stem: str, jetons: tuple[str, ...],
     """Le stem dont ces marques annoncent la sortie, non la source.
 
     La ponctuation et les crochets éventuels sont conservés — la marque
-    change, pas la structure du nom. Deux marques voisines qui deviennent la
-    même sont fondues en une : `DV.HDR10` ramené en HDR10 donne `HDR10`, pas
-    `HDR10.HDR10`.
+    change, pas la structure du nom. Seule la première marque est remplacée,
+    les suivantes partent : `DV.HDR10` ramené en HDR10 donne `HDR10`, pas
+    `HDR10.HDR10`, et `Film 4K DV 2160p` ramené en 1080p donne `Film 1080p DV`,
+    pas `Film 1080p DV 1080p` — le nom ne dit la définition qu'une fois.
     """
+    vues = 0
+
     def _sub(m: re.Match) -> str:
+        nonlocal vues
+        vues += 1
+        if vues > 1:
+            return m.group("apres") if m.group("avant") else ""
         if m.group("ouvre"):
             ferme = "]" if m.group("ouvre") == "[" else ")"
             return f"{m['avant']}{m['ouvre']}{remplacement}{ferme}{m['apres']}"
         return f"{m['avant']}{remplacement}{m['apres']}"
 
     ecrit = _re_marques(jetons).sub(_sub, stem)
+    if vues > 1:
+        # Une marque retirée en fin de nom laisse le séparateur qui l'attendait,
+        # comme dans `stem_marques_retirees`.
+        ecrit = ecrit.rstrip(" ._-")
     double = re.escape(remplacement)
     return re.sub(rf"{double}(?:[ ._-]+{double})+", remplacement, ecrit,
                   flags=re.IGNORECASE)

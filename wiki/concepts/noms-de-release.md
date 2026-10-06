@@ -35,6 +35,9 @@ propriétés. Règles d'IRIS : spec § 8.7.
   un `.MA` orphelin.
 - **Séparateurs interchangeables** : `DTS-HD.MA`, `DTS-HD-MA`, `DTS HD MA`.
 - **`HDR10+`** ne doit pas perdre son `HDR10` en gardant son `+`.
+- **Une marque dite une fois** : en réécrivant, seule la première marque est
+  remplacée, les autres partent — `Film 4K DV 2160p` → `Film 1080p DV`, pas
+  `1080p … 1080p`.
 - **Crochets et parenthèses** partent avec la marque : `Film [hevc]` ne doit
   pas laisser `Film []`.
 - **Fin de nom** : retirer deux marques finales laisse un séparateur nu

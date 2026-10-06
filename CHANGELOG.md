@@ -1,5 +1,17 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.79] — 2026-10-06
+
+### Une vidéo redimensionnée n'est plus « anamorphique »
+
+*Spider-Man* (3832×1600) sorti en 1080p était transcodé par Jellyfin : le
+lecteur ne prend pas les vidéos anamorphiques. Le fichier n'en était pas une,
+mais presque : `scale` arrondit la hauteur à 802 et compense l'écart par des
+pixels de 192079:192000 au lieu de 1:1. Le redimensionnement pose désormais
+`setsar=1` — pixels carrés, proportions faussées de moins de 0,05 %.
+Même défaut, même remède, pour un 1918×802 H264 réencodé en HEVC : étiré à
+1920 de large, il ressortait en pixels de 959:960.
+
 ## [v0.8.9.78] — 2026-10-06
 
 ### La définition n'est plus dite deux fois dans le nom

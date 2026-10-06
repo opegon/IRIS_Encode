@@ -1,7 +1,8 @@
 ---
 type: synthese
-maj: 2026-10-04
+maj: 2026-10-06
 sources:
+  - "[[source-2026-10-06-sar-scale]]"
   - "[[source-2026-10-04-mov-text]]"
   - "[[source-2026-10-01-entrelacement]]"
   - "[[source-2026-09-26-nvenc-pilote]]"
@@ -53,6 +54,7 @@ une ligne de moins dans une liste.
 | Tous les fichiers « illisibles » sur installation neuve | ffprobe appelé par son nom, absent du `PATH` | [[sous-processus]] |
 | Piste audio transcodée vide | décodage sans perte et sous-titre tardif dans le même appel | [[audio|Audio]] |
 | Lecture arrêtée à 32 s sur TV, son perdu après un saut | audio d'une 2ᵉ entrée, sous-titres clairsemés lus avec la vidéo : audio écrite par blocs *(mesuré, v0.8.9.41)* | [[audio|Audio]] |
+| Jellyfin transcode une sortie redimensionnée, « anamorphique » | `scale` compense l'arrondi par un SAR ≠ 1:1 *(mesuré, v0.8.9.79)* | [[ffmpeg]] |
 | Réglage 48 kHz sur la mauvaise piste | `-ar:1` au lieu de `-ar:a:1` | [[audio|Audio]] |
 | DTS-HD MA traité comme un DTS | famille dans `profile`, pas dans `codec_name` | [[audio|Audio]] |
 | Métadonnées HDR10 jamais injectées | `dovi_tool info` rend du JSON | [[dovi-tool]] |

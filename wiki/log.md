@@ -210,3 +210,11 @@ traduit jamais, noms de piste selon la langue de la piste, console de démarrage
 en anglais seul, arbitrages du glossaire (SKIP invariant, Dry run, Guided,
 « lossless » gardé). Glossaire dans `locales/glossaire.fr.csv`.
 Source : [[source-2026-10-04-localisation]]. Pages touchées : [[localisation]].
+
+## [2026-10-06] ingest | SAR non carré après `scale` (v0.8.9.79)
+
+*Spider-Man* 3832×1600 ramené en 1080p, puis un 1918×802 H264 réencodé en HEVC :
+Jellyfin transcode, vidéo jugée anamorphique. `scale` compensait l'arrondi par un
+SAR de 192079:192000 et 959:960 ; `setsar=1` ajouté. Source :
+[[source-2026-10-06-sar-scale]]. Pages touchées : [[ffmpeg]], [[jellyfin]],
+[[pieges-et-lecons]].

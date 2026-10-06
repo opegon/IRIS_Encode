@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-10-04
+maj: 2026-10-06
 sources:
+  - "[[source-2026-10-06-sar-scale]]"
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -79,6 +80,9 @@ sans libx265 : `ffmpeg -encoders | findstr x265`.
 - **`mov_text` après un silence de plus de 2³¹ µs** (35 min 47 s) : temps
   écrasés à l'écriture en MP4/MOV, en 8.1.2 comme en 8.1.3. Le MKV n'a pas
   le défaut. *(mesuré, [[sous-titres#Long silence en MP4]])*
+- **`scale` avec `force_original_aspect_ratio` rattrape l'arrondi par un SAR** :
+  3832×1600 → 1920×802 en 192079:192000, 1918×802 → 1920×802 en 959:960.
+  Ajouter `setsar=1` pour des pixels carrés. *(mesuré, [[jellyfin]])*
 - Chapitres d'un MP4 : piste `bin_data` (voir [[conteneurs#Chapitres]]).
 - Écrit **`hev1`** par défaut pour du HEVC en MP4 ; `-tag:v hvc1` le change sans toucher au flux, et IRIS le passe depuis la v0.8.9.39 ([[conteneurs]]).
 - Lit `stdin` pour son clavier interactif (`q` l'arrête) : voir [[sous-processus]].

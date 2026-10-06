@@ -581,10 +581,14 @@ def build_command(
 
     # ── Filtre vidéo ──────────────────────────────────────────────────────────
     if not preserve_video:
+        # `scale` rattrape l'arrondi de la hauteur par un SAR : 3832x1600 donne
+        # 1920x802 en 192079:192000. Jellyfin y voit une vidéo anamorphique et
+        # la transcode. `setsar=1` rend des pixels carrés (écart < 0,05 %).
         scale = (
             f"scale={vid.target_width}:{vid.target_height}"
             ":force_original_aspect_ratio=decrease"
             ":force_divisible_by=2"
+            ",setsar=1"
         )
         vf = f"{scale},{_SDR_TONEMAP_FILTER}" if vid.dv_action == DVAction.SDR else scale
         cmd += ["-vf", vf]

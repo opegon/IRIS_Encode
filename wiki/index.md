@@ -1,6 +1,6 @@
 ---
 type: index
-maj: 2026-10-01
+maj: 2026-10-06
 ---
 
 # Index du wiki IRIS ENCODE
@@ -57,6 +57,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-09-24-mise-a-jour]] | Relevés d'`updater.py` : cmd.exe et les `.bat` réécrits, essai réel contre GitHub |
 | [[source-2026-09-26-nvenc-pilote]] | NVENC refusé après réinstallation : API NVENC du build contre version du pilote |
 | [[source-2026-09-30-hev1-hvc1]] | `hev1` contre `hvc1` sur le G3 : les deux en lecture directe |
+| [[source-2026-10-06-sar-scale]] | SAR non carré après `scale`, transcodage Jellyfin « anamorphique » |
 | [[source-2026-09-30-lecture]] | Politique du PGS forcé, réglage de débit du client webOS |
 | [[source-2026-10-01-entrelacement]] | Audio écrite par blocs loin de la vidéo : arrêt à 32 s sur TV |
 | [[source-2026-10-03-dv81-mp4]] | DV 8.1 en MP4 `hvc1` lu en direct sur le G3 ; `dvh1` et MKV refusés |
@@ -76,4 +77,5 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-01-entrelacement-audio]] | *L'Ombre d'un doute* : relevés d'entrelacement, variantes ffmpeg mesurées |
 | [[2026-10-03-essai-dv81-mp4]] | Essai DV 8.1 MP4/MKV sur le G3 : citations de l'utilisateur, variantes audio |
 | [[2026-10-04-mov-text-silence]] | *Premier Contact* : VF forcée désynchronisée, seuil mesuré, contournement |
+| [[2026-10-06-sar-scale]] | Transcodage « anamorphique » de deux sorties ; SAR mesurés avec et sans `setsar=1` |
 | [[2026-10-04-decisions-localisation]] | Choix de l'utilisateur après l'audit de localisation : citations et options retenues |

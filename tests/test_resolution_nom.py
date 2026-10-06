@@ -157,3 +157,20 @@ def test_un_nom_sans_marque_de_resolution_ne_gagne_rien(tmp_path):
     """On remplace une marque existante, on n'en ajoute pas."""
     dec = decide(_source(tmp_path, "Le Nom du film (2017)"), _profile())
     assert dec.output_path.stem == "Le Nom du film (2017).hevc-iris"
+
+
+def test_un_4k_recadre_rabattu_garde_des_pixels_carres(tmp_path):
+    """`scale` rattrape l'arrondi de 3832x1600 → 1920x802 par un SAR de
+    192079:192000 ; Jellyfin prend le fichier pour anamorphique et transcode."""
+    from core.encoder import build_command
+    from core.platform import GPU, OS, PlatformProfile
+    plat = PlatformProfile(os=OS.WINDOWS, gpu=GPU.NVIDIA, hwaccel="cuda",
+                           encoder_hevc="hevc_nvenc", encoder_h264="h264_nvenc",
+                           encoder_av1="av1_nvenc")
+    dec = decide(_source(tmp_path, "Film.2160p", largeur=3832, hauteur=1600,
+                         bitrate=8_312_000), _profile())
+    cmd = build_command(dec, plat)
+    vf = cmd[cmd.index("-vf") + 1]
+    assert vf.split(",")[:2] == [
+        "scale=1920:1080:force_original_aspect_ratio=decrease"
+        ":force_divisible_by=2", "setsar=1"]

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.78 — document de référence courant
+**Version** : 0.8.9.79 — document de référence courant
 **Date** : 2026-10-06
 **Statut** : stable
 
@@ -816,6 +816,8 @@ Une source est **4K** dès qu'elle atteint 3200 px de large ou 1700 px de haut
 (`VideoInfo.is_4k`, les seuils du « presque 1080p » à l'échelle) : un scope recadré
 en 3832×1600 n'a ni 3840 de large ni 2160 de haut, et passait pour un 1080p gardé
 à sa définition. Sans `keep_4k`, il est rabattu en 1920×1080 comme toute 4K.
+
+**Pixels carrés** : le filtre `scale=W:H:force_original_aspect_ratio=decrease:force_divisible_by=2` est suivi de `setsar=1`. Sans lui, `scale` rattrape l'arrondi par un SAR (3832×1600 → 1920×802 en 192079:192000 ; 1918×802, étiré à 1920, en 959:960) et Jellyfin transcode une vidéo qu'il croit anamorphique. Le filtre s'applique à tout réencodage, y compris quand la cible dépasse la source.
 
 **Force SKIP → encode (browser)** : un fichier SKIP sélectionné manuellement pour le run
 est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans gonflement.
@@ -2857,6 +2859,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.79 | 2026-10-06 | **Pixels carrés après redimensionnement** (§ 8.1) : `scale` rattrapait l'arrondi de la hauteur par un SAR — 3832×1600 → 1920×802 en 192079:192000, 1918×802 → 1920×802 en 959:960 — et Jellyfin transcodait la vidéo, prise pour anamorphique. Le filtre vidéo pose `setsar=1` après `scale` · `tests/test_resolution_nom.py` |
 | 0.8.9.78 | 2026-10-06 | **Une marque dite une seule fois** (§ 8.7) : `Film 4K DV HDR10 2160p` ramené en 1080p sortait `1080p … 1080p` — seules les marques voisines étaient fondues. `stem_marques_remplacees` remplace la première marque et retire les suivantes (résolution, HDR, audio) · `tests/test_resolution_nom.py` |
 | 0.8.9.77 | 2026-10-06 | **4K recadrée prise pour un 1080p** (§ 8.1) : une source 3832×1600 n'atteignait ni 3840 ni 2160, gardait sa définition sous `keep_4k = false` et sortait nommée `2160p.4Klight` · seuils 4K à 3200 px de large ou 1700 de haut (`VideoInfo.is_4k`), partagés par `_resolve_limits` et `resolution_label` · `tests/test_resolution_nom.py` |
 | 0.8.9.76 | 2026-10-05 | **Version de ffmpeg mal lue** (§ 3, IE-115) : un build BtbN (`n8.1.3-…`) se lisait « 1.3 », et toute 8.x paraissait plus récente · `tests/test_updates.py` |

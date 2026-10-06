@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: materiel
-maj: 2026-09-30
+maj: 2026-10-06
 sources:
+  - "[[source-2026-10-06-sar-scale]]"
   - "[[source-2026-09-30-lecture]]"
   - "[[source-2026-09-24-utilisateur]]"
   - "[[source-readme]]"
@@ -30,7 +31,9 @@ Tout format que le client ne déclare pas lisible déclenche un transcodage,
   complet ([[sous-titres]]) ;
 - audio sans perte, ou DTS pour le [[lg-oled-g3]] ([[audio]]) ;
 - Dolby Vision profil 8 vers le client webOS : remux HLS ;
-- débit au-dessus de la limite du client.
+- débit au-dessus de la limite du client ;
+- vidéo **anamorphique** — tout SAR différent de 1:1, même 959:960 *(observé,
+  sur deux sorties d'IRIS avant v0.8.9.79 ; [[ffmpeg]])*.
 
 Qu'un PGS marqué forcé soit choisi d'office à côté d'un SRT forcé de même
 langue est **supposé**, pas observé : IRIS ne lui en laisse plus l'occasion

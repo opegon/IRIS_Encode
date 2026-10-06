@@ -755,9 +755,8 @@ def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, int]:
     bucket_h        : hauteur de référence pour le calcul du bitrate (720/1080/2160).
     """
     keep_4k      = profile.get("keep_4k", False)
-    is_4k_source = info.height >= 2160 or info.width >= 3840
 
-    if is_4k_source:
+    if info.is_4k:
         if keep_4k:
             return info.width, info.height, 2160
         return 1920, 1080, 1080

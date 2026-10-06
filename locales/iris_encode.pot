@@ -107,90 +107,90 @@ msgctxt "track action"
 msgid "copy"
 msgstr ""
 
-#: core/decision.py:821
+#: core/decision.py:820
 #, python-brace-format
 msgid "{reason} · DV preserved, RPU reinjected"
 msgstr ""
 
-#: core/decision.py:823
+#: core/decision.py:822
 #, python-brace-format
 msgid "{reason} · DV kept → video copied"
 msgstr ""
 
-#: core/decision.py:830
+#: core/decision.py:829
 #, python-brace-format
 msgid "Bitrate {bitrate}k > {target}k target +{tolerance} %"
 msgstr ""
 
-#: core/decision.py:844
+#: core/decision.py:843
 #, python-brace-format
 msgid "Resolution {width}x{height} > {max_width}x{max_height}"
 msgstr ""
 
-#: core/decision.py:858
+#: core/decision.py:857
 #, python-brace-format
 msgid "Codec {codec} not supported by the playback chain"
 msgstr ""
 
-#: core/decision.py:874
+#: core/decision.py:873
 #, python-brace-format
 msgid "{dv} → HDR10 without re-encoding"
 msgstr ""
 
-#: core/decision.py:885
+#: core/decision.py:884
 #, python-brace-format
 msgid "Bitrate within target ±{tolerance} %, resolution OK, codec {codec}"
 msgstr ""
 
-#: core/decision.py:888
+#: core/decision.py:887
 #, python-brace-format
 msgid "Bitrate OK, resolution OK, codec {codec}"
 msgstr ""
 
-#: core/decision.py:1048
+#: core/decision.py:1047
 msgid "manual selection"
 msgstr ""
 
-#: core/decision.py:1051
+#: core/decision.py:1050
 msgid "original track (index 0)"
 msgstr ""
 
-#: core/decision.py:1054
+#: core/decision.py:1053
 #, python-brace-format
 msgid "language {language}"
 msgstr ""
 
-#: core/decision.py:1057
+#: core/decision.py:1056
 #, python-brace-format
 msgid "language {language} not kept"
 msgstr ""
 
 #. "lossless", "copy" and the profile key preserve_hd_audio stay in English (glossary).
-#: core/decision.py:1076
+#: core/decision.py:1075
 #, python-brace-format
 msgid "{reason} · lossless + preserve_hd_audio → copy"
 msgstr ""
 
-#: core/decision.py:1084
+#: core/decision.py:1083
 #, python-brace-format
 msgid "{reason} · lossless → {codec}"
 msgstr ""
 
-#: core/decision.py:1094
+#: core/decision.py:1093
 #, python-brace-format
 msgid "{reason} · {codec} compatible → copy"
 msgstr ""
 
-#: core/decision.py:1103
+#: core/decision.py:1102
 #, python-brace-format
 msgid "{reason} · → {codec}"
 msgstr ""
 
-#: core/decision.py:1210
+#: core/decision.py:1209
 msgid "Forced manually (was SKIP)"
 msgstr ""
 
-#: core/decision.py:1212
+#: core/decision.py:1211
 msgid "Forced manually (was DV removal)"
 msgstr ""
 

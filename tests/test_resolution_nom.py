@@ -98,6 +98,19 @@ def test_un_4k_rabattu_en_1080p_sort_sous_1080p(tmp_path, nom):
     assert "1080p" in dec.output_path.stem
 
 
+def test_un_4k_recadre_est_rabattu_en_1080p(tmp_path):
+    """Un scope recadré en 3832x1600 n'atteint ni 3840 ni 2160 : il passait
+    pour un 1080p, gardait sa définition et sortait nommé `2160p.4Klight`."""
+    nom = "Spider-Man.2026.MULTi.TRUEFRENCH.2160p.4Klight.HDR.DV.WEB-DL.H265-Slay3R"
+    dec = decide(_source(tmp_path, nom, largeur=3832, hauteur=1600,
+                         bitrate=8_312_000), _profile())
+    assert (dec.video.target_width, dec.video.target_height) == (1920, 1080)
+    assert dec.info.resolution_label == "4K"
+    assert "2160p" not in dec.output_path.stem
+    assert "4Klight" not in dec.output_path.stem
+    assert ".1080p." in dec.output_path.stem
+
+
 def test_la_source_n_est_pas_renommee(tmp_path):
     """La substitution ne vaut que pour le fichier produit."""
     info = _source(tmp_path, "Film.2160p")

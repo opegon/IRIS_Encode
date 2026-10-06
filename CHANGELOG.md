@@ -1,5 +1,17 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.77] — 2026-10-06
+
+### Une 4K recadrée était prise pour un 1080p
+
+Avec `movie_hdr` (`keep_4k = false`), *Spider-Man.…2160p.4Klight.HDR.DV* se
+voyait proposer une sortie nommée `2160p.4Klight` — et ce n'était pas que le
+nom : la vidéo, en 3832×1600 (scope recadré), n'atteignait ni les 3840 px de
+large ni les 2160 de haut exigés pour être une 4K. Rattachée au « presque
+1080p », elle gardait sa définition d'origine, encodée au débit du 1080p.
+Une source est désormais 4K dès 3200 px de large ou 1700 de haut ; elle sort
+en 1920×1080 (environ 1920×800 pour ce scope) et son nom dit `1080p`.
+
 ## [v0.8.9.76] — 2026-10-05
 
 ### Version de ffmpeg mal lue au démarrage

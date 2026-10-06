@@ -427,8 +427,20 @@ class VideoInfo:
         return deja_produit(self.path.stem)
 
     @property
+    def is_4k(self) -> bool:
+        """Vrai pour une source 4K, recadrée comprise.
+
+        Un film scope recadré sort en 3832x1600 : ni ses 3840 de large ni ses
+        2160 de haut. Exiger l'une des deux le faisait passer pour un 1080p,
+        gardé tel quel et nommé `2160p`. Les seuils sont ceux du « presque
+        1080p » (`near_1080p_min_*`) ramenés à l'échelle : 5/6 de la largeur,
+        ~4/5 de la hauteur — hors de portée de toute source HD, 2K DCI compris.
+        """
+        return self.width >= 3200 or self.height >= 1700
+
+    @property
     def resolution_label(self) -> str:
-        if self.height >= 2160 or self.width >= 3840:
+        if self.is_4k:
             return "4K"
         if self.height >= 1080 or self.width >= 1920:
             return "1080p"

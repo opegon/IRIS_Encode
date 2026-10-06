@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.76 — document de référence courant
-**Date** : 2026-10-05
+**Version** : 0.8.9.77 — document de référence courant
+**Date** : 2026-10-06
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -811,6 +811,11 @@ Le seuil bitrate est calculé sur la **résolution cible** (après `keep_4k`), p
 résolution source. Les seuils de rattachement au bucket 1080p sont paramétrables via
 `[decision] near_1080p_min_width / near_1080p_min_height` : une source 1920×822 tombe
 en bucket 1080p bien qu'elle soit techniquement sous-1080p.
+
+Une source est **4K** dès qu'elle atteint 3200 px de large ou 1700 px de haut
+(`VideoInfo.is_4k`, les seuils du « presque 1080p » à l'échelle) : un scope recadré
+en 3832×1600 n'a ni 3840 de large ni 2160 de haut, et passait pour un 1080p gardé
+à sa définition. Sans `keep_4k`, il est rabattu en 1920×1080 comme toute 4K.
 
 **Force SKIP → encode (browser)** : un fichier SKIP sélectionné manuellement pour le run
 est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans gonflement.
@@ -2852,6 +2857,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.77 | 2026-10-06 | **4K recadrée prise pour un 1080p** (§ 8.1) : une source 3832×1600 n'atteignait ni 3840 ni 2160, gardait sa définition sous `keep_4k = false` et sortait nommée `2160p.4Klight` · seuils 4K à 3200 px de large ou 1700 de haut (`VideoInfo.is_4k`), partagés par `_resolve_limits` et `resolution_label` · `tests/test_resolution_nom.py` |
 | 0.8.9.76 | 2026-10-05 | **Version de ffmpeg mal lue** (§ 3, IE-115) : un build BtbN (`n8.1.3-…`) se lisait « 1.3 », et toute 8.x paraissait plus récente · `tests/test_updates.py` |
 | 0.8.9.75 | 2026-10-05 | **Textes de `tui/` extraits** (§ 2.1, IE-88) : environ 575 messages, français repris à l'identique (phrases autrefois coupées à la main repliées d'elles-mêmes) ; descriptions de touches marquées `N_()` et traduites au rendu ; largeurs d'en-têtes sur le texte affiché, en cellules ; capitales décoratives au rendu ; `core/texte.py` retiré · `tests/test_i18n.py` (garde-fou du français en dur dans `tui/`) |
 | 0.8.9.74 | 2026-10-04 | **Textes de `core/` extraits** (§ 2.1, IE-87) : messages en anglais source, français au catalogue à l'identique (181 messages) ; erreurs affichées en `ErreurAffichable`, montrées par `texte_erreur` ; pluriels par `ngettext` ; niveaux de confiance, oui/non des profils et actions d'après lot traduits à l'affichage ; lettre du « oui » de la console au catalogue · `tests/test_i18n.py` |

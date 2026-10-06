@@ -116,6 +116,9 @@ Le débit vidéo est rarement annoncé directement, voir [[ffprobe]].
 Une source 1920×822 (cinémascope) est rattachée au palier 1080p : réglable par
 `[decision] near_1080p_min_width / near_1080p_min_height`.
 
+Une source est 4K dès 3200 px de large ou 1700 de haut (`VideoInfo.is_4k`) : les
+WEB-DL scope recadrés sortent en 3832×1600, sous les 3840×2160 nominaux.
+
 ## Voir aussi
 
 [[ffmpeg]] · [[ffprobe]] · [[hdr-dolby-vision]] · [[chaine-de-diffusion]] · [[noms-de-release]]

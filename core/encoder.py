@@ -584,14 +584,22 @@ def build_command(
         # `scale` rattrape l'arrondi de la hauteur par un SAR : 3832x1600 donne
         # 1920x802 en 192079:192000. Jellyfin y voit une vidéo anamorphique et
         # la transcode. `setsar=1` rend des pixels carrés (écart < 0,05 %).
-        scale = (
-            f"scale={vid.target_width}:{vid.target_height}"
-            ":force_original_aspect_ratio=decrease"
-            ":force_divisible_by=2"
-            ",setsar=1"
-        )
-        vf = f"{scale},{_SDR_TONEMAP_FILTER}" if vid.dv_action == DVAction.SDR else scale
-        cmd += ["-vf", vf]
+        # Une source qui tient dans la cible n'est pas agrandie (1918x802 sortait
+        # en 1920x802) ; une dimension impaire, que le 4:2:0 refuse, perd un pixel.
+        filtres = []
+        if info.width > vid.target_width or info.height > vid.target_height:
+            filtres.append(
+                f"scale={vid.target_width}:{vid.target_height}"
+                ":force_original_aspect_ratio=decrease"
+                ":force_divisible_by=2"
+                ",setsar=1"
+            )
+        elif info.width % 2 or info.height % 2:
+            filtres.append("scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1")
+        if vid.dv_action == DVAction.SDR:
+            filtres.append(_SDR_TONEMAP_FILTER)
+        if filtres:
+            cmd += ["-vf", ",".join(filtres)]
 
     # ── Encodeur vidéo ────────────────────────────────────────────────────────
     # DV : copy flux vidéo DV intégralement (preserve_video)

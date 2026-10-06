@@ -19,6 +19,8 @@ from pathlib import Path
 import pytest
 
 from core.decision import VideoAction, decide
+from core.encoder import build_command
+from core.platform import GPU, OS, PlatformProfile
 from core.profiles import Profile
 from core.scanner import (AudioTrack, VideoInfo, stem_resolution_ramenee)
 
@@ -159,18 +161,39 @@ def test_un_nom_sans_marque_de_resolution_ne_gagne_rien(tmp_path):
     assert dec.output_path.stem == "Le Nom du film (2017).hevc-iris"
 
 
+
+# ─── Le filtre de redimensionnement ──────────────────────────────────────────
+
+_PLAT = PlatformProfile(os=OS.WINDOWS, gpu=GPU.NVIDIA, hwaccel="cuda",
+                        encoder_hevc="hevc_nvenc", encoder_h264="h264_nvenc",
+                        encoder_av1="av1_nvenc")
+
+
+def _filtre(tmp_path, largeur, hauteur, codec="hevc", bitrate=8_312_000):
+    info = _source(tmp_path, "Film.2160p", largeur=largeur, hauteur=hauteur,
+                   bitrate=bitrate)
+    info.codec = codec
+    dec = decide(info, _profile())
+    assert dec.video.action == VideoAction.ENCODE_HEVC
+    cmd = build_command(dec, _PLAT)
+    return cmd[cmd.index("-vf") + 1] if "-vf" in cmd else None
+
+
 def test_un_4k_recadre_rabattu_garde_des_pixels_carres(tmp_path):
     """`scale` rattrape l'arrondi de 3832x1600 → 1920x802 par un SAR de
     192079:192000 ; Jellyfin prend le fichier pour anamorphique et transcode."""
-    from core.encoder import build_command
-    from core.platform import GPU, OS, PlatformProfile
-    plat = PlatformProfile(os=OS.WINDOWS, gpu=GPU.NVIDIA, hwaccel="cuda",
-                           encoder_hevc="hevc_nvenc", encoder_h264="h264_nvenc",
-                           encoder_av1="av1_nvenc")
-    dec = decide(_source(tmp_path, "Film.2160p", largeur=3832, hauteur=1600,
-                         bitrate=8_312_000), _profile())
-    cmd = build_command(dec, plat)
-    vf = cmd[cmd.index("-vf") + 1]
-    assert vf.split(",")[:2] == [
+    assert _filtre(tmp_path, 3832, 1600).split(",")[:2] == [
         "scale=1920:1080:force_original_aspect_ratio=decrease"
         ":force_divisible_by=2", "setsar=1"]
+
+
+def test_une_source_qui_tient_dans_la_cible_n_est_pas_agrandie(tmp_path):
+    """1918x802 en H264 vers HEVC était étiré à 1920x802, en pixels de 959:960
+    — Jellyfin transcodait. Il garde sa définition."""
+    assert _filtre(tmp_path, 1918, 802, codec="h264", bitrate=10_000_000) is None
+
+
+def test_une_dimension_impaire_perd_un_pixel_sans_agrandissement(tmp_path):
+    """Le 4:2:0 exige des dimensions paires : 1917x801 sort en 1916x800."""
+    assert _filtre(tmp_path, 1917, 801, codec="h264", bitrate=10_000_000) == (
+        "scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1")

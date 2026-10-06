@@ -83,6 +83,8 @@ sans libx265 : `ffmpeg -encoders | findstr x265`.
 - **`scale` avec `force_original_aspect_ratio` rattrape l'arrondi par un SAR** :
   3832×1600 → 1920×802 en 192079:192000, 1918×802 → 1920×802 en 959:960.
   Ajouter `setsar=1` pour des pixels carrés. *(mesuré, [[jellyfin]])*
+  `decrease` **agrandit** aussi une source plus petite que la boîte : ne poser
+  `scale` que si la source la dépasse. *(mesuré)*
 - Chapitres d'un MP4 : piste `bin_data` (voir [[conteneurs#Chapitres]]).
 - Écrit **`hev1`** par défaut pour du HEVC en MP4 ; `-tag:v hvc1` le change sans toucher au flux, et IRIS le passe depuis la v0.8.9.39 ([[conteneurs]]).
 - Lit `stdin` pour son clavier interactif (`q` l'arrête) : voir [[sous-processus]].

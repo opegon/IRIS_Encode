@@ -1,5 +1,14 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.80] — 2026-10-06
+
+### Une source qui tient dans la cible n'est plus agrandie
+
+Le 1918×802 de la version précédente sortait en 1920×802 : le redimensionnement
+s'appliquait à tout réencodage, y compris pour agrandir de deux pixels. Il n'est
+plus posé que si la source dépasse la cible ; sinon la définition est gardée.
+Une dimension impaire, refusée par l'encodeur, perd un pixel.
+
 ## [v0.8.9.79] — 2026-10-06
 
 ### Une vidéo redimensionnée n'est plus « anamorphique »

@@ -307,17 +307,32 @@ def test_un_module_qui_traduit_n_ecrase_pas_underscore():
     assert not fautes, fautes
 
 
-def test_aucun_texte_francais_en_dur_dans_tui():
+_TRADUCTION = {"_", "N_", "Nn_", "ngettext", "pgettext", "npgettext"}
+# Une expression régulière lit des noms de fichiers ou des réponses d'outils.
+_REGEX = {"compile", "search", "match", "fullmatch", "findall", "sub", "split"}
+
+
+def _sources_affichees() -> list[Path]:
+    return sorted([*RACINE.joinpath("core").rglob("*.py"),
+                   *RACINE.joinpath("tui").rglob("*.py")])
+
+
+def test_aucun_texte_francais_en_dur_dans_tui_ni_core():
     """IE-88 : le français de l'interface vit dans le catalogue, plus dans le
     code. Un littéral accentué hors de `_()`/`N_()` est un texte oublié.
+    `core/` y est soumis depuis IE-94 : ses erreurs remontent à l'écran.
 
     Hors champ : docstrings, CSS, journaux (`_LOG.…`), noms de minuteries
     (`name=`), noms propres. Le guide (`aide.py`) y est soumis depuis IE-89."""
-    traduction = {"_", "N_", "Nn_", "ngettext", "pgettext", "npgettext"}
-    noms_propres = {"AlloCiné"}
-    accent = __import__("re").compile(r"[À-ÿ]")
+    traduction = _TRADUCTION | _REGEX
+    # Des données, pas l'interface : un nom de piste proposé selon la langue
+    # **de la piste** (`core/muxer.py`, L-77) et un mot reconnu dans le titre
+    # d'une piste (`core/scanner.py`).
+    noms_propres = {"AlloCiné", "Forcés", "forcé"}
+    # Lettres accentuées, sans `×` ni `÷` (U+00D7, U+00F7) : `+120 ms ×25/24`.
+    accent = __import__("re").compile(r"[À-ÖØ-öø-ÿ]")
     fautes = []
-    for f in sorted(RACINE.joinpath("tui").rglob("*.py")):
+    for f in _sources_affichees():
         arbre = ast.parse(f.read_text(encoding="utf-8"))
         exclus: set[int] = set()
 
@@ -353,6 +368,128 @@ def test_aucun_texte_francais_en_dur_dans_tui():
                     and n.value not in noms_propres):
                 fautes.append(f"{f.relative_to(RACINE)}:{n.lineno} {n.value[:50]!r}")
     assert not fautes, fautes
+
+
+# Fonction d'affichage → position de l'argument qui porte le texte montré.
+_AFFICHAGE: dict[str, tuple[int | None, str | None]] = {
+    "notify":           (0, "message"),
+    "Static":           (0, None),
+    "Label":            (0, None),
+    "Button":           (0, "label"),
+    "Text":             (0, None),
+    "add_column":       (0, "label"),
+    "colonne_fixe":     (1, None),
+    "Binding":          (2, "description"),
+    "ErreurAffichable": (0, None),
+    "_flash_status":    (0, None),
+    "_set_hint":        (0, None),
+}
+
+
+def _invariants() -> list[str]:
+    """Les termes que le glossaire déclare intraduisibles, du plus long au plus
+    court (« DTS-HD MA » avant « DTS »)."""
+    import csv
+    with open(RACINE / "locales" / "glossaire.fr.csv", encoding="utf-8",
+              newline="") as f:
+        termes = [l["source"] for l in csv.DictReader(f)
+                  if l["explanation"].startswith("Do not translate")]
+    # Les unités restent écrites comme dans la source (wiki `localisation`).
+    termes += ["kbps", "ms"]
+    return sorted(termes, key=len, reverse=True)
+
+
+def _textes_en_dur(code: str) -> list[tuple[int, str, str]]:
+    """(ligne, fonction, texte) de chaque littéral à mots passé en dur à une
+    fonction d'affichage. Les termes intraduisibles du glossaire et ce qui n'a
+    pas de mot (`—`, `0:00`, `%`) ne comptent pas."""
+    import re
+    invariants = [re.compile(r"(?i)(?<![\w.])" + re.escape(t) + r"(?![\w])")
+                  for t in _invariants()]
+    # Un mot ; pas une extension de domaine (`OpenSubtitles.com`).
+    mot = re.compile(r"(?<![\w.])[A-Za-zÀ-ÿ]{2,}")
+    trouves = []
+    for n in ast.walk(ast.parse(code)):
+        if not isinstance(n, ast.Call):
+            continue
+        fn = n.func
+        nom = fn.id if isinstance(fn, ast.Name) else getattr(fn, "attr", "")
+        if nom not in _AFFICHAGE:
+            continue
+        pos, cle = _AFFICHAGE[nom]
+        args = [n.args[pos]] if pos is not None and len(n.args) > pos else []
+        args += [k.value for k in n.keywords if k.arg == cle]
+        for a in args:
+            if not (isinstance(a, ast.Constant) and isinstance(a.value, str)):
+                continue                     # traduit, ou calculé : hors champ
+            reste = a.value
+            for t in invariants:
+                reste = t.sub("", reste)
+            if mot.search(reste):
+                trouves.append((n.lineno, nom, a.value))
+    return trouves
+
+
+def test_aucun_texte_en_dur_aux_points_d_affichage():
+    """IE-94 : le pendant anglais du test des accents. Un texte passé tel quel
+    à une fonction qui l'affiche (`notify`, `Static`, `Binding`…) échappe au
+    catalogue, quelle que soit sa langue."""
+    fautes = [f"{f.relative_to(RACINE)}:{ligne} {nom}({texte[:50]!r})"
+              for f in _sources_affichees()
+              for ligne, nom, texte in _textes_en_dur(f.read_text(encoding="utf-8"))]
+    assert not fautes, fautes
+
+
+def test_le_garde_fou_des_points_d_affichage_mord():
+    """Le garde-fou du garde-fou : un texte en dur est attrapé, un terme
+    intraduisible, un texte traduit ou sans mot ne l'est pas."""
+    code = ('self.notify("File saved")\n'
+            'Binding("f2", "go", "Start now")\n'
+            'Binding("f3", "mux", _("Mux"))\n'
+            'Text("HEVC → DTS-HD MA")\n'
+            'Static("—")\n'
+            'colonne_fixe(t, "Codec", 8)\n'
+            'Label("5.1 (kbps)")\n'
+            'Label("Jonction")\n')
+    assert [(l, n, t) for l, n, t in _textes_en_dur(code)] == [
+        (1, "notify", "File saved"), (2, "Binding", "Start now"),
+        (6, "colonne_fixe", "Codec"), (8, "Label", "Jonction")]
+
+
+def _comparaisons_a_un_texte_traduit(code: str) -> list[int]:
+    """Lignes où un texte traduit sert d'opérande à une comparaison."""
+    def traduit(n) -> bool:
+        if not isinstance(n, ast.Call):
+            return False
+        fn = n.func
+        nom = fn.id if isinstance(fn, ast.Name) else getattr(fn, "attr", "")
+        return nom in _TRADUCTION
+    lignes = []
+    for n in ast.walk(ast.parse(code)):
+        if isinstance(n, ast.Compare) and any(
+                traduit(o) for o in (n.left, *n.comparators)):
+            lignes.append(n.lineno)
+        elif (isinstance(n, ast.Call)
+              and getattr(n.func, "attr", "") in ("startswith", "endswith")
+              and (traduit(n.func.value) or any(traduit(a) for a in n.args))):
+            lignes.append(n.lineno)
+    return lignes
+
+
+def test_aucune_decision_ne_depend_d_un_texte_traduit():
+    """L-23, L-43 en règle générale (IE-94) : la couleur de la fiche se
+    décidait sur « incertaine », celle de la colonne HD audio sur « oui ».
+    Traduits, les tests ne répondaient plus. On compare des valeurs, jamais
+    ce qu'on affiche."""
+    fautes = [f"{f.relative_to(RACINE)}:{l}" for f in _sources_affichees()
+              for l in _comparaisons_a_un_texte_traduit(
+                  f.read_text(encoding="utf-8"))]
+    assert not fautes, fautes
+    assert _comparaisons_a_un_texte_traduit(
+        'if x == _("yes"): pass\n'
+        'ok = "a" in ngettext("a", "b", n)\n'
+        'f = t.startswith(_("uncertain"))\n'
+        'g = _(t).upper()\n') == [1, 2, 3]
 
 
 def test_une_erreur_brute_se_montre_telle_quelle():

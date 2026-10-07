@@ -1108,8 +1108,8 @@ msgstr "Élargir"
 #: tui/screens/mux_run.py:46
 #: tui/screens/opensubtitles.py:57
 #: tui/screens/profile_picker.py:61
-#: tui/screens/sync.py:190
-#: tui/screens/sync.py:191
+#: tui/screens/sync.py:197
+#: tui/screens/sync.py:198
 #: tui/screens/tracks.py:135
 #: tui/screens/tracks.py:136
 #: tui/screens/value_picker.py:53
@@ -1126,7 +1126,7 @@ msgstr "Retour"
 #: tui/screens/join.py:61
 #: tui/screens/mux_run.py:49
 #: tui/screens/run.py:91
-#: tui/screens/sync.py:194
+#: tui/screens/sync.py:201
 #: tui/screens/tracks.py:139
 #: tui/screens/wizard.py:151
 msgid "Home"
@@ -1157,7 +1157,7 @@ msgid "HD audio"
 msgstr "HD audio"
 
 #: tui/common.py:529
-#: tui/screens/sync.py:285
+#: tui/screens/sync.py:292
 #: tui/screens/tracks.py:145
 msgid "Source"
 msgstr "Source"
@@ -1638,7 +1638,7 @@ msgid "What each track of the file will become."
 msgstr "Ce que deviendra chaque piste du fichier."
 
 #: tui/screens/aide.py:301
-#: tui/screens/sync.py:293
+#: tui/screens/sync.py:297
 msgid "Sync"
 msgstr "Recalage"
 
@@ -1653,7 +1653,7 @@ msgstr "Greffer une piste venue d'ailleurs, et la remettre à l'heure."
 #: tui/screens/browser.py:1237
 #: tui/screens/dryrun.py:289
 #: tui/screens/mux_run.py:43
-#: tui/screens/sync.py:186
+#: tui/screens/sync.py:193
 #: tui/screens/tracks.py:128
 msgid "Dry run"
 msgstr "Aperçu"
@@ -1682,6 +1682,7 @@ msgstr "Le mux en cours, et ce qu'on peut en faire ensuite."
 #: tui/screens/aide.py:309
 #: tui/screens/join.py:39
 #: tui/screens/join.py:58
+#: tui/screens/join.py:107
 #: tui/screens/join.py:186
 msgid "Join"
 msgstr "Jonction"
@@ -1722,7 +1723,7 @@ msgstr "Lancer"
 #: tui/screens/aide.py:444
 #: tui/screens/meta_popup.py:48
 #: tui/screens/meta_popup.py:49
-#: tui/screens/meta_popup.py:137
+#: tui/screens/meta_popup.py:138
 #: tui/screens/segments.py:64
 #: tui/screens/segments.py:65
 #: tui/screens/segments.py:66
@@ -1769,6 +1770,7 @@ msgstr "Colonnes redimensionnables — accueil, pistes, aperçu"
 #: tui/screens/opensubtitles.py:74
 #: tui/screens/options.py:58
 #: tui/screens/options.py:98
+#: tui/screens/profile_picker.py:60
 #: tui/screens/profile_picker.py:83
 #: tui/screens/value_picker.py:52
 #: tui/screens/value_picker.py:76
@@ -1818,7 +1820,7 @@ msgid "Accepted formats: {examples}"
 msgstr "Formats acceptés : {examples}"
 
 #: tui/screens/ancrage.py:112
-#: tui/screens/sync.py:684
+#: tui/screens/sync.py:688
 msgid "No readable line in this track."
 msgstr "Aucune réplique lisible dans cette piste."
 
@@ -1890,8 +1892,8 @@ msgstr "Mode"
 
 #: tui/screens/browser.py:269
 #: tui/screens/browser.py:457
-#: tui/screens/sync.py:134
-#: tui/screens/sync.py:172
+#: tui/screens/sync.py:141
+#: tui/screens/sync.py:179
 msgid "Play"
 msgstr "Visualiser"
 
@@ -1937,7 +1939,7 @@ msgstr "Masquer SKIP"
 #: tui/screens/browser.py:1245
 #: tui/screens/dryrun.py:91
 #: tui/screens/mux_run.py:44
-#: tui/screens/sync.py:187
+#: tui/screens/sync.py:194
 #: tui/screens/tracks.py:129
 #: tui/screens/wizard.py:147
 msgid "Encode"
@@ -1984,12 +1986,14 @@ msgid "Bitrate"
 msgstr "Débit"
 
 #: tui/screens/browser.py:290
+#: tui/screens/donor_picker.py:252
 #: tui/screens/dryrun.py:92
 #: tui/screens/dryrun.py:386
 #: tui/screens/tracks.py:131
 #: tui/screens/tracks.py:145
 #: tui/screens/tracks.py:678
 #: tui/screens/wizard.py:142
+#: tui/screens/wizard.py:290
 #: tui/screens/wizard.py:489
 msgid "Codec"
 msgstr "Codec"
@@ -2124,7 +2128,7 @@ msgid "Analyzing… {done} / {total}"
 msgstr "Analyse en cours… {done} / {total}"
 
 #: tui/screens/browser.py:945
-#: tui/screens/sync.py:933
+#: tui/screens/sync.py:937
 msgid "mpv missing — run the preflight again to install it."
 msgstr "mpv absent — relancez le preflight pour l'installer."
 
@@ -2223,7 +2227,7 @@ msgstr "Vérifier et enregistrer"
 
 #: tui/screens/cles.py:120
 #: tui/screens/options.py:96
-#: tui/screens/sync.py:150
+#: tui/screens/sync.py:157
 #: tui/screens/tracks.py:124
 #: tui/widgets/profile_form.py:206
 msgid "Next field"
@@ -2263,8 +2267,8 @@ msgid "Edit"
 msgstr "Éditer"
 
 #: tui/screens/config.py:53
-#: tui/screens/sync.py:135
-#: tui/screens/sync.py:181
+#: tui/screens/sync.py:142
+#: tui/screens/sync.py:188
 msgid "Copy"
 msgstr "Copier"
 
@@ -2343,6 +2347,7 @@ msgid "Confirm"
 msgstr "Confirmer"
 
 #: tui/screens/confirm.py:109
+#: tui/screens/profile_picker.py:59
 #: tui/screens/profile_picker.py:83
 #: tui/screens/value_picker.py:51
 #: tui/screens/value_picker.py:76
@@ -2392,14 +2397,14 @@ msgid "Select"
 msgstr "Sélectionner"
 
 #: tui/screens/donor_picker.py:250
-#: tui/screens/sync.py:286
+#: tui/screens/sync.py:293
 #: tui/screens/tracks.py:258
 #: tui/screens/wizard.py:289
 msgid "Track"
 msgstr "Piste"
 
 #: tui/screens/donor_picker.py:251
-#: tui/screens/meta_popup.py:187
+#: tui/screens/meta_popup.py:188
 msgid "Type"
 msgstr "Type"
 
@@ -2639,37 +2644,41 @@ msgstr "titre"
 msgid "uncertain — the title does not match"
 msgstr "incertaine — le titre ne correspond pas"
 
-#: tui/screens/meta_popup.py:182
+#: tui/screens/meta_popup.py:51
+msgid "Switch source"
+msgstr "Changer de source"
+
+#: tui/screens/meta_popup.py:183
 msgid "Match"
 msgstr "Correspondance"
 
-#: tui/screens/meta_popup.py:188
+#: tui/screens/meta_popup.py:189
 msgid "Year"
 msgstr "Année"
 
-#: tui/screens/meta_popup.py:189
+#: tui/screens/meta_popup.py:190
 msgid "Rating"
 msgstr "Note"
 
-#: tui/screens/meta_popup.py:190
+#: tui/screens/meta_popup.py:191
 msgid "Genres"
 msgstr "Genres"
 
-#: tui/screens/meta_popup.py:192
+#: tui/screens/meta_popup.py:193
 msgid "Director"
 msgid_plural "Directors"
 msgstr[0] "Réalisateur"
 msgstr[1] "Réalisateurs"
 
-#: tui/screens/meta_popup.py:194
+#: tui/screens/meta_popup.py:195
 msgid "Cast"
 msgstr "Casting"
 
-#: tui/screens/meta_popup.py:201
+#: tui/screens/meta_popup.py:202
 msgid "Synopsis"
 msgstr "Synopsis"
 
-#: tui/screens/meta_popup.py:212
+#: tui/screens/meta_popup.py:213
 msgid "Cannot fetch the information:"
 msgstr "Impossible de récupérer les informations :"
 
@@ -2844,8 +2853,8 @@ msgid "After the batch"
 msgstr "Après le lot"
 
 #: tui/screens/run.py:84
-#: tui/screens/sync.py:137
-#: tui/screens/sync.py:183
+#: tui/screens/sync.py:144
+#: tui/screens/sync.py:190
 #: tui/screens/wizard.py:145
 msgid "Remove"
 msgstr "Retirer"
@@ -3253,393 +3262,393 @@ msgstr "non"
 msgid "yes"
 msgstr "oui"
 
-#: tui/screens/sync.py:106
-#: tui/screens/sync.py:107
-#: tui/screens/sync.py:108
-#: tui/screens/sync.py:109
-#: tui/screens/sync.py:110
-#: tui/screens/sync.py:111
-#: tui/screens/sync.py:170
+#: tui/screens/sync.py:113
+#: tui/screens/sync.py:114
+#: tui/screens/sync.py:115
+#: tui/screens/sync.py:116
+#: tui/screens/sync.py:117
+#: tui/screens/sync.py:118
+#: tui/screens/sync.py:177
 msgid "List"
 msgstr "Liste"
 
-#: tui/screens/sync.py:107
-#: tui/screens/sync.py:108
-#: tui/screens/sync.py:109
+#: tui/screens/sync.py:114
+#: tui/screens/sync.py:115
+#: tui/screens/sync.py:116
 msgid "Step through values"
 msgstr "Valeur suivante"
 
-#: tui/screens/sync.py:110
-#: tui/screens/sync.py:111
+#: tui/screens/sync.py:117
+#: tui/screens/sync.py:118
 msgid "Switch"
 msgstr "Bascule"
 
-#: tui/screens/sync.py:125
+#: tui/screens/sync.py:132
 #, python-brace-format
 msgid "{field}: {keys}"
 msgstr "{field} : {keys}"
 
-#: tui/screens/sync.py:127
+#: tui/screens/sync.py:134
 msgid "Other field"
 msgstr "Autre champ"
 
-#: tui/screens/sync.py:134
-#: tui/screens/sync.py:171
+#: tui/screens/sync.py:141
+#: tui/screens/sync.py:178
 msgid "Measure"
 msgstr "Mesurer"
 
-#: tui/screens/sync.py:135
+#: tui/screens/sync.py:142
 msgid "Check sample"
 msgstr "Extrait de contrôle"
 
-#: tui/screens/sync.py:136
-#: tui/screens/sync.py:182
+#: tui/screens/sync.py:143
+#: tui/screens/sync.py:189
 msgid "Anchor"
 msgstr "Repère"
 
-#: tui/screens/sync.py:136
-#: tui/screens/sync.py:189
+#: tui/screens/sync.py:143
+#: tui/screens/sync.py:196
 #: tui/screens/wizard.py:144
 msgid "Add"
 msgstr "Ajouter"
 
-#: tui/screens/sync.py:141
+#: tui/screens/sync.py:148
 #, python-brace-format
 msgid "Missing language — +/- or {key} to choose it. Without it, the track would come out as “und”."
 msgstr "Langue manquante — +/- ou {key} pour la choisir. Sans elle, la piste sortirait en « und »."
 
-#: tui/screens/sync.py:149
+#: tui/screens/sync.py:156
 #: tui/screens/tracks.py:123
 msgid "Prev. field"
 msgstr "Champ préc."
 
-#: tui/screens/sync.py:153
+#: tui/screens/sync.py:160
 #: tui/screens/tracks.py:125
 msgid "Next value"
 msgstr "Valeur suiv."
 
-#: tui/screens/sync.py:154
+#: tui/screens/sync.py:161
 #: tui/screens/tracks.py:126
 msgid "Prev. value"
 msgstr "Valeur préc."
 
-#: tui/screens/sync.py:173
+#: tui/screens/sync.py:180
 msgid "Sample"
 msgstr "Extrait"
 
-#: tui/screens/sync.py:177
+#: tui/screens/sync.py:184
 msgid "Force"
 msgstr "Forcer"
 
-#: tui/screens/sync.py:178
+#: tui/screens/sync.py:185
 msgid "Segments"
 msgstr "Plages"
 
-#: tui/screens/sync.py:180
+#: tui/screens/sync.py:187
 msgid "Apply"
 msgstr "Appliquer"
 
-#: tui/screens/sync.py:188
+#: tui/screens/sync.py:195
 #: tui/screens/wizard.py:148
 msgid "Mux"
 msgstr "Muxer"
 
-#: tui/screens/sync.py:257
-#: tui/screens/sync.py:561
+#: tui/screens/sync.py:264
+#: tui/screens/sync.py:565
 msgid "Measurement in progress"
 msgstr "Mesure en cours"
 
-#: tui/screens/sync.py:331
+#: tui/screens/sync.py:335
 #: tui/screens/wizard.py:354
 msgid "measured"
 msgstr "mesuré"
 
-#: tui/screens/sync.py:332
+#: tui/screens/sync.py:336
 msgid "manual"
 msgstr "manuel"
 
-#: tui/screens/sync.py:334
+#: tui/screens/sync.py:338
 #, python-brace-format
 msgid "copied from #{number}"
 msgstr "repris de #{number}"
 
-#: tui/screens/sync.py:363
+#: tui/screens/sync.py:367
 #, python-brace-format
 msgid "{count} track without a language"
 msgid_plural "{count} tracks without a language"
 msgstr[0] "{count} piste sans langue"
 msgstr[1] "{count} pistes sans langue"
 
-#: tui/screens/sync.py:368
+#: tui/screens/sync.py:372
 #, python-brace-format
 msgid "{count} track to add"
 msgid_plural "{count} tracks to add"
 msgstr[0] "{count} piste à greffer"
 msgstr[1] "{count} pistes à greffer"
 
-#: tui/screens/sync.py:369
+#: tui/screens/sync.py:373
 #, python-brace-format
 msgid "Field: {field}"
 msgstr "Champ : {field}"
 
-#: tui/screens/sync.py:530
+#: tui/screens/sync.py:534
 msgid "A measurement is already running — let it finish."
 msgstr "Une mesure est déjà en cours — laissez-la finir."
 
-#: tui/screens/sync.py:533
+#: tui/screens/sync.py:537
 #, python-brace-format
 msgid "Measuring “{file}”"
 msgstr "Mesure de « {file} »"
 
-#: tui/screens/sync.py:535
+#: tui/screens/sync.py:539
 msgid "Decoding the movie's audio — for a feature-length movie, allow several tens of seconds."
 msgstr "Décodage de l'audio du film — sur un long métrage, comptez plusieurs dizaines de secondes."
 
-#: tui/screens/sync.py:539
-#: tui/screens/sync.py:696
+#: tui/screens/sync.py:543
+#: tui/screens/sync.py:700
 msgid "measuring…"
 msgstr "mesure…"
 
-#: tui/screens/sync.py:588
-#: tui/screens/sync.py:718
+#: tui/screens/sync.py:592
+#: tui/screens/sync.py:722
 #, python-brace-format
 msgid "cannot measure: {error}"
 msgstr "mesure impossible : {error}"
 
-#: tui/screens/sync.py:600
-#: tui/screens/sync.py:856
+#: tui/screens/sync.py:604
+#: tui/screens/sync.py:860
 msgid "failed"
 msgstr "échec"
 
-#: tui/screens/sync.py:612
+#: tui/screens/sync.py:616
 #, python-brace-format
 msgid "{key} applies {delay} ms anyway — check it in a player."
 msgstr "{key} applique quand même {delay} ms — à vérifier dans un lecteur."
 
-#: tui/screens/sync.py:642
+#: tui/screens/sync.py:646
 #, python-brace-format
 msgid "{count} subtitle from the same file resynced by the same amount — {key} to copy from another one."
 msgid_plural "{count} subtitles from the same file resynced by the same amount — {key} to copy from another one."
 msgstr[0] "{count} sous-titre du même fichier recalé d'autant — {key} pour en reprendre un autre."
 msgstr[1] "{count} sous-titres du même fichier recalés d'autant — {key} pour en reprendre un autre."
 
-#: tui/screens/sync.py:659
+#: tui/screens/sync.py:663
 #, python-brace-format
 msgid "The anchor point is for subtitles: an audio track is measured directly with {key}."
 msgstr "Le point de repère sert aux sous-titres : une piste audio se mesure directement avec {key}."
 
-#: tui/screens/sync.py:674
+#: tui/screens/sync.py:678
 msgid "Image subtitle (PGS, VobSub): no text to offer as an anchor."
 msgstr "Sous-titre image (PGS, VobSub) : aucun texte à proposer comme repère."
 
-#: tui/screens/sync.py:680
+#: tui/screens/sync.py:684
 #, python-brace-format
 msgid "Cannot read the subtitle lines: {error}"
 msgstr "Lecture des répliques impossible : {error}"
 
-#: tui/screens/sync.py:692
+#: tui/screens/sync.py:696
 #, python-brace-format
 msgid "Searching around {offset} s."
 msgstr "Recherche autour de {offset} s."
 
-#: tui/screens/sync.py:694
+#: tui/screens/sync.py:698
 msgid "Decoding the movie's audio — allow several tens of seconds."
 msgstr "Décodage de l'audio du film — comptez plusieurs dizaines de secondes."
 
-#: tui/screens/sync.py:741
+#: tui/screens/sync.py:745
 #, python-brace-format
 msgid "No candidate pending — run a measurement with {key} first."
 msgstr "Aucun candidat en attente — lancez d'abord une mesure avec {key}."
 
-#: tui/screens/sync.py:748
+#: tui/screens/sync.py:752
 msgid "The measured track has been removed — the candidate no longer applies to anything."
 msgstr "La piste mesurée a été retirée — le candidat ne s'applique plus à rien."
 
-#: tui/screens/sync.py:760
+#: tui/screens/sync.py:764
 #, python-brace-format
 msgid "Candidate applied: {delay} ms — not confirmed by the measurement, check it in a player before muxing."
 msgstr "Candidat appliqué : {delay} ms — non confirmé par la mesure, vérifiez dans un lecteur avant de muxer."
 
-#: tui/screens/sync.py:775
+#: tui/screens/sync.py:779
 msgid "No segment to show — they only appear after a measurement that found a different cut."
 msgstr "Aucune plage à montrer — elles n'apparaissent qu'après une mesure ayant constaté un montage différent."
 
-#: tui/screens/sync.py:799
+#: tui/screens/sync.py:803
 #, python-brace-format
 msgid "No known segment — first measure the donor's audio track with {key}."
 msgstr "Aucune plage connue — mesurez d'abord la piste audio du donneur avec {key}."
 
-#: tui/screens/sync.py:804
+#: tui/screens/sync.py:808
 msgid "An operation is already running — let it finish."
 msgstr "Une opération est déjà en cours — laissez-la finir."
 
-#: tui/screens/sync.py:817
+#: tui/screens/sync.py:821
 #, python-brace-format
 msgid "Resyncing “{file}” over {count} segment."
 msgid_plural "Resyncing “{file}” over {count} segments."
 msgstr[0] "Recalage de « {file} » sur {count} plage."
 msgstr[1] "Recalage de « {file} » sur {count} plages."
 
-#: tui/screens/sync.py:821
+#: tui/screens/sync.py:825
 msgid "Decoding then re-encoding the track — allow a handful of minutes."
 msgstr "Décodage puis réencodage de la piste — comptez une poignée de minutes."
 
-#: tui/screens/sync.py:823
+#: tui/screens/sync.py:827
 msgid "resyncing…"
 msgstr "recalage…"
 
-#: tui/screens/sync.py:824
+#: tui/screens/sync.py:828
 msgid "Resync in progress"
 msgstr "Recalage en cours"
 
-#: tui/screens/sync.py:857
+#: tui/screens/sync.py:861
 msgid "Cannot resync."
 msgstr "Recalage impossible."
 
-#: tui/screens/sync.py:871
+#: tui/screens/sync.py:875
 msgid "Track resynced — offset now zero."
 msgstr "Piste recalée — décalage nul désormais."
 
-#: tui/screens/sync.py:873
-#: tui/screens/sync.py:915
+#: tui/screens/sync.py:877
+#: tui/screens/sync.py:919
 #, python-brace-format
 msgid "{play_key} to check in mpv, {sample_key} for a muxed sample."
 msgstr "{play_key} pour contrôler dans mpv, {sample_key} pour un extrait muxé."
 
-#: tui/screens/sync.py:888
+#: tui/screens/sync.py:892
 msgid "Cannot extract — image subtitle (PGS, VobSub) or unreadable track."
 msgstr "Extraction impossible — sous-titre image (PGS, VobSub) ou piste illisible."
 
-#: tui/screens/sync.py:896
+#: tui/screens/sync.py:900
 #, python-brace-format
 msgid "Cannot correct: {error}"
 msgstr "Correction impossible : {error}"
 
-#: tui/screens/sync.py:909
+#: tui/screens/sync.py:913
 #, python-brace-format
 msgid "Subtitle resynced over {count} segment ({steps} ms) — offset now zero."
 msgid_plural "Subtitle resynced over {count} segments ({steps} ms) — offset now zero."
 msgstr[0] "Sous-titre recalé sur {count} plage ({steps} ms) — décalage nul désormais."
 msgstr[1] "Sous-titre recalé sur {count} plages ({steps} ms) — décalage nul désormais."
 
-#: tui/screens/sync.py:957
+#: tui/screens/sync.py:961
 #, python-brace-format
 msgid "Cannot start mpv: {error}"
 msgstr "Lancement de mpv impossible : {error}"
 
-#: tui/screens/sync.py:962
+#: tui/screens/sync.py:966
 #, python-brace-format
 msgid "mpv opened with {delay} ms."
 msgstr "mpv ouvert avec {delay} ms."
 
-#: tui/screens/sync.py:963
+#: tui/screens/sync.py:967
 msgid "The stretch cannot be previewed — mpv can only apply a constant offset."
 msgstr "L'étirement n'est pas prévisualisable — mpv ne sait appliquer qu'un décalage constant."
 
-#: tui/screens/sync.py:965
+#: tui/screens/sync.py:969
 #, python-brace-format
 msgid "{keys}, then enter the value here."
 msgstr "{keys}, puis reportez la valeur ici."
 
-#: tui/screens/sync.py:968
+#: tui/screens/sync.py:972
 #, python-brace-format
 msgid "mpv opened with {delay} ms applied."
 msgstr "mpv ouvert avec {delay} ms appliqués."
 
-#: tui/screens/sync.py:970
+#: tui/screens/sync.py:974
 msgid "Then enter the corrected value in this screen."
 msgstr "Reportez ensuite la valeur corrigée dans cet écran."
 
-#: tui/screens/sync.py:983
+#: tui/screens/sync.py:987
 msgid "An operation is already running."
 msgstr "Une opération est déjà en cours."
 
-#: tui/screens/sync.py:989
+#: tui/screens/sync.py:993
 msgid "Building the check sample…"
 msgstr "Construction de l'extrait de contrôle…"
 
-#: tui/screens/sync.py:1024
+#: tui/screens/sync.py:1028
 #, python-brace-format
 msgid "Cannot build the sample: {error}"
 msgstr "Extrait impossible : {error}"
 
-#: tui/screens/sync.py:1032
+#: tui/screens/sync.py:1036
 #, python-brace-format
 msgid "Sample ready: {path}"
 msgstr "Extrait prêt : {path}"
 
-#: tui/screens/sync.py:1033
+#: tui/screens/sync.py:1037
 #, python-brace-format
 msgid "mpv could not open it: {error}"
 msgstr "mpv n'a pas pu l'ouvrir : {error}"
 
-#: tui/screens/sync.py:1037
+#: tui/screens/sync.py:1041
 #, python-brace-format
 msgid "Sample opened in mpv — windows at {times}."
 msgstr "Extrait ouvert dans mpv — fenêtres à {times}."
 
-#: tui/screens/sync.py:1038
+#: tui/screens/sync.py:1042
 #, python-brace-format
 msgid "This is the actual mux result: what you hear is what {key} will produce."
 msgstr "C'est le résultat réel du mux : ce que vous entendez est ce que produira {key}."
 
-#: tui/screens/sync.py:1041
+#: tui/screens/sync.py:1045
 #, python-brace-format
 msgid "Sample ready (mpv missing): {path}"
 msgstr "Extrait prêt (mpv absent) : {path}"
 
-#: tui/screens/sync.py:1042
+#: tui/screens/sync.py:1046
 #, python-brace-format
 msgid "Windows at {times}."
 msgstr "Fenêtres à {times}."
 
-#: tui/screens/sync.py:1076
+#: tui/screens/sync.py:1080
 msgid "Copy the offset from"
 msgstr "Reprendre le décalage de"
 
-#: tui/screens/sync.py:1088
+#: tui/screens/sync.py:1092
 msgid "Measurement in progress — wait for it to finish before adding a track."
 msgstr "Mesure en cours — attendez sa fin avant d'ajouter une piste."
 
-#: tui/screens/sync.py:1124
+#: tui/screens/sync.py:1128
 #, python-brace-format
 msgid "No track to add — add one with {key}."
 msgstr "Aucune piste à greffer — ajoutez-en une avec {key}."
 
-#: tui/screens/sync.py:1135
+#: tui/screens/sync.py:1139
 #, python-brace-format
 msgid "Cannot mux: “{file}” has no language. Choose it with +/- or {key}."
 msgstr "Mux impossible : « {file} » n'a pas de langue. Choisissez-la avec +/- ou {key}."
 
-#: tui/screens/sync.py:1179
+#: tui/screens/sync.py:1183
 #, python-brace-format
 msgid "“{file}” needs a stretch: mkvmerge will add the tracks just before encoding, then ffmpeg will encode the result. The intermediate file is temporary."
 msgstr "« {file} » demande un étirement : mkvmerge greffera les pistes juste avant l'encodage, puis ffmpeg encodera le résultat. Le fichier intermédiaire est temporaire."
 
-#: tui/screens/sync.py:1187
+#: tui/screens/sync.py:1191
 #, python-brace-format
 msgid "“{file}” needs a stretch, which ffmpeg cannot apply in one pass. Only mkvmerge can — run the preflight again to install it."
 msgstr "« {file} » demande un étirement, que ffmpeg ne sait pas appliquer en une passe. Seul mkvmerge en est capable — relancez le preflight pour l'installer."
 
-#: tui/screens/sync.py:1220
+#: tui/screens/sync.py:1224
 msgid "Measurement in progress — wait for it to finish before going back. The gauge shows how far it has got."
 msgstr "Mesure en cours — attendez sa fin avant de revenir. La jauge indique où elle en est."
 
-#: tui/screens/sync.py:1240
+#: tui/screens/sync.py:1244
 #: tui/screens/tracks.py:782
 msgid "Go back to Home?"
 msgstr "Revenir à l'accueil ?"
 
-#: tui/screens/sync.py:1241
+#: tui/screens/sync.py:1245
 msgid "The added tracks and their resync will be lost."
 msgstr "Les pistes greffées et leur recalage seront perdus."
 
-#: tui/screens/sync.py:1242
+#: tui/screens/sync.py:1246
 #: tui/screens/tracks.py:784
 msgid "Go back"
 msgstr "Revenir"
 
-#: tui/screens/sync.py:1242
+#: tui/screens/sync.py:1246
 #: tui/screens/tracks.py:784
 msgid "Stay"
 msgstr "Rester"

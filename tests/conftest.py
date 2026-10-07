@@ -22,6 +22,15 @@ from core import i18n
 # français vérifie aussi que sa traduction n'a pas bougé.
 i18n.init("fr")
 
+@pytest.fixture(params=["en", "fr"])
+def langue(request):
+    """IE-94 : un test qui la demande tourne dans chaque langue livrée ; le
+    français ci-dessus est rétabli après."""
+    i18n.init(request.param)
+    yield request.param
+    i18n.init("fr")
+
+
 # (module, nom de la variable) — l'état global que l'application pose.
 _GLOBALES = [
     ("core.muxer",    "_mkvmerge_path"),

@@ -287,7 +287,7 @@ class WizardScreen(TableNavMixin, Screen):
         table = self.query_one(DataTable)
         table.add_column("", width=3)
         colonne_fixe(table, _("Track"),    14)
-        colonne_fixe(table, "Codec",    12)
+        colonne_fixe(table, _("Codec"),    12)
         colonne_fixe(table, _("Language"),   8)
         colonne_fixe(table, _("Name"),      30)
         table.add_column(_("Decision"), width=None)

@@ -48,7 +48,8 @@ class MetaPopup(ModalScreen):
         Binding("escape", "dismiss",        N_("Close"),  show=True),
         Binding("i",      "dismiss",        N_("Close"),  show=False),
         # `priority` : sans elle, Tab déplace le focus au lieu de basculer.
-        Binding("tab",    "changer_source", "Source",  show=False, priority=True),
+        Binding("tab",    "changer_source", N_("Switch source"), show=False,
+                priority=True),
     ]
 
     DEFAULT_CSS = """

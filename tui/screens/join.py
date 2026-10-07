@@ -104,7 +104,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             yield Static("", id="join-total", markup=False)
             yield Static("", id="join-out", markup=False)
             with Static(id="join-bar-row"):
-                yield Label("Jonction", id="join-label")
+                yield Label(_("Join"), id="join-label")
                 yield ProgressBar(total=100, show_eta=False, id="join-bar")
             yield Static("", id="join-state", markup=False)
         yield KeyFooter(

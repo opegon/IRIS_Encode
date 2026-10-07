@@ -115,6 +115,27 @@ pour tout nouveau texte :
 Un `msgid` modifié perd sa traduction : il faut reporter le `msgstr` français
 sur le nouveau texte, et retirer l'ancienne entrée devenue obsolète (`#~`).
 
+## Tests
+
+Livrés le 2026-10-07 (IE-94, v0.8.9.87). Ce qui tient la localisation :
+
+- `tests/smoke_tui.py` tourne **en anglais puis en français**, un processus par
+  langue (`smoke_tui.py fr` pour une seule) ; ses attentes passent par `_()` ;
+- `tests/shots_tui.py --langue en` : captures dans `_shots/en/` ;
+- le guide des touches (`test_aide.py`) et les planchers de colonnes
+  (`test_troncature.py`) sont vérifiés dans chaque langue — fixture `langue` de
+  `tests/conftest.py`, à demander par tout test qui rend du texte ;
+- `test_i18n.py`, règles structurelles : aucun littéral à mots passé en dur à
+  un point d'affichage (`notify`, `Static`, `Label`, `Button`, `Text`,
+  `add_column`, `colonne_fixe`, `Binding`, `ErreurAffichable`) sauf les termes
+  « Do not translate » du glossaire et les unités ; aucun littéral accentué
+  hors `_()` dans `core/` comme dans `tui/` ; aucune comparaison à un texte
+  traduit.
+
+Le test des accents ne voyait que le français : le contrôle des points
+d'affichage a trouvé « Jonction », « Choisir » et « Annuler », sans accent,
+affichés tels quels dans l'interface anglaise.
+
 ## Voir aussi
 
 - [[noms-de-release]] — les marques, qui ne se traduisent pas

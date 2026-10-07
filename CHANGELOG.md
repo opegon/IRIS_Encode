@@ -1,5 +1,21 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.87] — 2026-10-07
+
+### Tests de la localisation (IE-94)
+
+L'interface est maintenant vérifiée dans ses deux langues. Le parcours
+automatique de l'application (`tests/smoke_tui.py`) tourne en anglais puis en
+français ; les captures d'écran se prennent dans la langue voulue
+(`--langue en`) ; le guide des touches et les largeurs de colonnes sont testés
+dans chaque langue.
+
+De nouveaux contrôles empêchent qu'un texte échappe à la traduction. Ils ont
+trouvé trois textes français affichés tels quels dans l'interface anglaise,
+corrigés : « Jonction » sur la barre de progression du collage, « Choisir » et
+« Annuler » dans le choix du profil. La colonne « Sync » du recalage s'élargit
+d'un caractère pour tenir « copied from #10 ».
+
 ## [v0.8.9.86] — 2026-10-07
 
 ### Les fichiers Jellyfin partent avec la source (IE-116)

@@ -86,12 +86,12 @@ def test_le_guide_ecrit_les_touches_comme_le_pied_de_page():
     assert aide._lisible("shift+tab") == "⇧Tab"
 
 
-def test_le_contenu_nomme_chaque_ecran_et_reste_lisible():
+def test_le_contenu_nomme_chaque_ecran_et_reste_lisible(langue):
     """Le rendu lui-même, pas seulement les données qui le nourrissent."""
     texte = aide.AideScreen()._contenu().plain
     for _, titre, _ in aide._ORDRE:
         assert i18n._(titre).upper() in texte, titre
-    assert "PARTOUT" in texte
+    assert {"en": "EVERYWHERE", "fr": "PARTOUT"}[langue] in texte
     # Rien ne doit déborder : la colonne de gauche fait 14, le total 74.
     trop = [l for l in texte.splitlines() if len(l) > 74]
     assert not trop, f"lignes trop longues : {trop[:3]}"
@@ -113,7 +113,7 @@ def test_le_guide_est_traduit():
     assert not muets, muets[:3]
 
 
-def test_les_libelles_cites_sont_ceux_de_l_ecran():
+def test_les_libelles_cites_sont_ceux_de_l_ecran(langue):
     """L-55 : une explication cite un libellé ou une touche par paramètre,
     jamais recopié. Tout paramètre du texte source est fourni au rendu, et
     la traduction n'en invente ni n'en perd aucun."""
@@ -127,7 +127,7 @@ def test_les_libelles_cites_sont_ceux_de_l_ecran():
         assert noms(t) <= fournis, t
         assert noms(i18n._(t)) == noms(t), t
     p = aide._parametres()
-    assert p["discarded"] == "← écartée"
+    assert p["discarded"] == {"en": "← discarded", "fr": "← écartée"}[langue]
     assert p["key_after_batch"] == "E" and p["key_mode"] == "W"
 
 

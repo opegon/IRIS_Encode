@@ -2,7 +2,11 @@
 tests/shots_tui.py — Inventaire visuel des écrans (export SVG).
 
 Pas un test pytest : à lancer manuellement depuis la racine du projet
-    python tests/shots_tui.py [dossier_de_sortie]
+    python tests/shots_tui.py [--langue en|fr] [dossier_de_sortie]
+
+Langue par défaut : `fr` ; sortie par défaut : `_shots/<langue>/`. En anglais,
+c'est là que se voient les troncatures d'un texte plus long que le français
+(IE-93, IE-94).
 
 Pilote l'application en headless (Textual run_test) et exporte chaque écran
 en SVG à taille fixe (160x45), pour disposer d'un inventaire fidèle du rendu
@@ -34,15 +38,25 @@ from textual.widgets import DataTable
 from main import force_utf8_output
 from tui.app import IrisEncodeApp
 
-# Comme `main.py` : la langue avant l'interface (voir smoke_tui.py).
+# Comme `main.py` : la langue avant l'interface, une fois. `smoke_tui`,
+# importé plus bas pour ses jeux de fichiers, n'en charge plus aucune.
 from core import i18n
-i18n.init("fr")
+
+_ARGS = sys.argv[1:]
+LANGUE = "fr"
+if "--langue" in _ARGS:
+    _k = _ARGS.index("--langue")
+    LANGUE = _ARGS[_k + 1]
+    del _ARGS[_k:_k + 2]
+if LANGUE not in ("en", "fr"):
+    sys.exit(f"langue inconnue : {LANGUE} (attendu : en, fr)")
+i18n.init(LANGUE)
 
 force_utf8_output()
 
 SIZE     = (160, 45)
 ROOT     = Path(__file__).resolve().parent.parent
-OUT_DIR  = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "_shots"
+OUT_DIR  = Path(_ARGS[0]) if _ARGS else ROOT / "_shots" / LANGUE
 REAL_DIR = ROOT / "resources_files"
 
 # (slug, libellé, classe d'écran, état, détail)

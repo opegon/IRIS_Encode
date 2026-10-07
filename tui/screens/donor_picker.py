@@ -249,7 +249,7 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
         table.add_column("",       width=5,  key="check")
         colonne_fixe(table, _("Track"),  6,  key="tid")
         colonne_fixe(table, _("Type"),   11, key="kind")
-        colonne_fixe(table, "Codec",  14, key="codec")
+        colonne_fixe(table, _("Codec"), 14, key="codec")
         colonne_fixe(table, _("Language"), 8,  key="lang")
         table.add_column(_("Name"), width=None, key="name")
 

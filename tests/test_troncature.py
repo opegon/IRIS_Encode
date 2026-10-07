@@ -59,7 +59,7 @@ def _libelles_decision() -> list[str]:
 
 
 @pytest.mark.parametrize("colonne", ["decision", "action"])
-def test_le_plancher_tient_le_plus_long_libelle(colonne):
+def test_le_plancher_tient_le_plus_long_libelle(colonne, langue):
     """
     Le plancher d'une colonne énumérable n'est pas une question de goût.
 
@@ -181,7 +181,7 @@ def _ecrans_redimensionnables():
 
 @pytest.mark.parametrize("ecran", _ecrans_redimensionnables(),
                          ids=lambda c: c.__name__)
-def test_toute_colonne_tient_son_entete_marque(ecran):
+def test_toute_colonne_tient_son_entete_marque(ecran, langue):
     """
     UX-27 : les planchers ne voyaient que le contenu. Textual rogne un en-tête
     trop long sans ellipse — « Dolby V. ◄► » en 8, « Débit ◄► » en 6. Le
@@ -196,6 +196,30 @@ def test_toute_colonne_tient_son_entete_marque(ecran):
         assert entete.plain == _(ecran.RESIZE_LABELS[cle])
         assert e.resize_plancher(cle) >= len(entete), (ecran.__name__, entete)
         assert e.resize_largeur(cle, 1) >= len(entete)
+
+
+def test_les_colonnes_du_recalage_tiennent_leurs_valeurs(langue):
+    """L-10, IE-94 : une valeur plus longue dans une langue que dans l'autre.
+    La colonne « Sync » tenait « mesuré » et coupait « measured » en « meas » :
+    ses cellules se réécrivent sans recalcul de largeur, l'ellipse ne vient
+    pas. Chaque valeur possible tient son plancher, dans chaque langue."""
+    from tui.common import libelle_type_piste
+    from core.muxer import TrackKind
+    from tui.screens import sync
+
+    valeurs = {
+        "tid": [f"{libelle_type_piste(k)} #99" for k in TrackKind],
+        "stretch": list(sync._STRETCH_LABELS.values()),
+        "delay": ["-99999 ms"],
+        "default": [_(b) for b in sync._BOOLS],
+        "forced": [_(b) for b in sync._BOOLS],
+        "origin": [_("measured"), _("manual"), _("measuring…"), _("failed"),
+                   _("resyncing…"),
+                   _("copied from #{number}").format(number=10)],
+    }
+    for cle, possibles in valeurs.items():
+        plus_long = max(possibles, key=len)
+        assert sync._PLANCHERS[cle] >= len(plus_long), (cle, plus_long)
 
 
 def test_retrecir_sarrete_a_lentete():

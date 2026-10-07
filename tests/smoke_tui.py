@@ -2,7 +2,8 @@
 tests/smoke_tui.py — Smoke test TUI headless (Textual run_test).
 
 Pas un test pytest : à lancer manuellement depuis la racine du projet
-    python tests/smoke_tui.py
+    python tests/smoke_tui.py          # anglais puis français
+    python tests/smoke_tui.py fr       # une seule langue
 Vérifie la navigation entre écrans, les modales de confirmation,
 le resize de colonnes et le scan parallèle du browser.
 """
@@ -24,9 +25,13 @@ from tui.app import IrisEncodeApp
 
 # L'application ne charge pas sa langue elle-même : `main.py` le fait, juste
 # après config.toml. Le smoke la construit directement, il fait donc pareil —
-# et vérifie l'interface française, celle de l'utilisateur.
+# dans `__main__` seulement : `shots_tui.py` importe ce module et choisit la
+# sienne (IE-94). Les textes attendus passent par `_()`, donc valent dans la
+# langue chargée.
 from core import i18n
-i18n.init("fr")
+from core.i18n import _
+
+LANGUES = ("en", "fr")
 
 # Ce harnais affiche des symboles absents du cp1252 : sans ca, il meurt sur un
 # UnicodeEncodeError des que sa sortie est redirigee (pipe, fichier, Git Bash).
@@ -441,7 +446,7 @@ async def scenario_external_tracks() -> None:
             while sync._field_idx != 0:              # revient sur Decalage
                 await pilot.press("left")
                 await pilot.pause(0.1)
-            for _ in range(8):                       # 8 x +100 ms
+            for _i in range(8):                       # 8 x +100 ms
                 await pilot.press("plus")
             await pilot.press("shift+up")            # +1 s
             await pilot.pause(0.3)
@@ -516,7 +521,7 @@ async def scenario_external_tracks() -> None:
             preview_mod.set_mpv_path(None)
             try:
                 await pilot.press("k")
-                for _ in range(40):
+                for _i in range(40):
                     await pilot.pause(0.5)
                     if not sync._sampling:
                         break
@@ -692,7 +697,7 @@ async def scenario_measure() -> None:
 
             # 'm' : la mesure tourne dans un thread, on lui laisse le temps
             await pilot.press("m")
-            for _ in range(40):
+            for _i in range(40):
                 await pilot.pause(0.5)
                 if not sync_scr._measuring:
                     break
@@ -713,7 +718,7 @@ async def scenario_measure() -> None:
             sync_scr.query_one(DataTable).move_cursor(row=1)
             await pilot.pause(0.3)
             await pilot.press("m")
-            for _ in range(40):
+            for _i in range(40):
                 await pilot.pause(0.5)
                 if not sync_scr._measuring:
                     break
@@ -752,10 +757,10 @@ async def scenario_wizard() -> None:
 
             assert app.wizard_mode is True, "l'assistant est le mode d'entree"
             barre = str(app.screen.query_one("#profile-bar", Static).render())
-            assert "Assistant" in barre, f"mode absent de la barre -> {barre[:80]!r}"
+            assert _("Guided") in barre, f"mode absent de la barre -> {barre[:80]!r}"
             from tui.widgets.footer import KeyFooter
             pied = app.screen.query_one(KeyFooter)
-            assert "Assistant" in str(pied.query_one("#footer-body", Static).render()),                 "le footer doit nommer le mode"
+            assert _("Guided") in str(pied.query_one("#footer-body", Static).render()),                 "le footer doit nommer le mode"
             assert pied.has_class("assistant"), "le footer doit changer de couleur"
             # Le jaune des touches se noie dans l'accent : elles passent au
             # blanc, sinon le footer devient illisible la ou il compte le plus.
@@ -790,8 +795,8 @@ async def scenario_wizard() -> None:
             assert wiz._etape.name == "LANCER", wiz._etape
             # Le pied de page porte seul les touches (UX-11)
             aide = str(wiz.query_one("#footer-body", Static).render())
-            assert "Muxer" in aide and "Encoder" in aide, aide
-            assert "Lancer le recommandé" in aide, aide
+            assert _("Mux") in aide and _("Encode") in aide, aide
+            assert _("Run the recommended one") in aide, aide
             print("[15d] Etape 4 : mux et encodage tous deux offerts")
 
             # Le fichier traite est rappele sur chaque etape, pas seulement
@@ -812,12 +817,13 @@ async def scenario_wizard() -> None:
             await pilot.press("f3")
             await pilot.pause(0.5)
             assert type(app.screen).__name__ == "WizardScreen", type(app.screen).__name__
-            assert "Rien a muxer" in str(
-                wiz.query_one("#wiz-hint", Static).render()).replace("à", "a")
+            refus = _("Nothing to mux: no external track to add. {key} to "
+                      "encode.").split("{key}")[0]
+            assert refus in str(wiz.query_one("#wiz-hint", Static).render()), refus
             print("[15e] F3 sans piste externe : refus explicite")
 
             # ⌫ remonte les etapes, puis rend la main a l'accueil
-            for _ in range(4):
+            for _i in range(4):
                 await pilot.press("backspace")
                 await pilot.pause(0.3)
             assert type(app.screen).__name__ == "BrowserScreen", type(app.screen).__name__
@@ -836,9 +842,9 @@ async def scenario_wizard() -> None:
             await pilot.pause(0.4)
             assert app.wizard_mode is False
             barre = str(app.screen.query_one("#profile-bar", Static).render())
-            assert "Manuel" in barre, barre[:80]
+            assert _("Manual") in barre, barre[:80]
             pied = app.screen.query_one(KeyFooter)
-            assert "Manuel" in str(pied.query_one("#footer-body", Static).render())
+            assert _("Manual") in str(pied.query_one("#footer-body", Static).render())
             assert not pied.has_class("assistant"),                 "le manuel garde le code couleur par defaut"
             styles = _styles_du_footer(pied)
             assert "yellow" in styles, styles
@@ -931,10 +937,13 @@ async def scenario_accueil() -> None:
             await pilot.pause(0.3)
             assert type(app.screen).__name__ == "AideScreen", type(app.screen).__name__
             texte = app.screen._contenu().plain
-            for attendu in ("PARTOUT", "ACCUEIL", "RECALAGE", "ASSISTANT",
-                            "Mesure le decalage par correlation audio"
-                            .replace("decalage", "décalage")
-                            .replace("correlation", "corrélation")):
+            mesure = _("Measures the offset by audio correlation. Takes "
+                       "several minutes: both tracks are decoded in full. The "
+                       "result is cross-checked on the three thirds of the "
+                       "movie before being accepted.")
+            for attendu in (*(_(t).upper() for t in
+                              ("Everywhere", "Home", "Sync", "Guided")),
+                            mesure.split(".")[0]):
                 assert attendu in texte, attendu
             await pilot.press("h")            # h referme
             await pilot.pause(0.3)
@@ -1048,7 +1057,7 @@ async def scenario_collage() -> None:
                 return
 
             await pilot.press("f2")
-            for _ in range(20):              # le collage de 3 clips d'1 s est bref
+            for _i in range(20):              # le collage de 3 clips d'1 s est bref
                 await pilot.pause(0.5)
                 if join._done:
                     break
@@ -1160,7 +1169,9 @@ async def scenario_opensubtitles() -> None:
                 await pilot.pause(0.6)
                 assert type(app.screen).__name__ == "OpenSubtitlesScreen", type(app.screen).__name__
                 etat = str(app.screen.query_one("#os-state", Static).render())
-                assert "Clé d'API absente" in etat, etat
+                absente = _("API key missing — enter it from the profile "
+                            "management (F5, then K “API keys”).").split(" — ")[0]
+                assert absente in etat, etat
                 await pilot.press("escape")
                 await pilot.pause(0.4)
                 assert type(app.screen).__name__ == "DonorFileScreen", type(app.screen).__name__
@@ -1202,4 +1213,19 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    demandees = sys.argv[1:] or list(LANGUES)
+    inconnues = [l for l in demandees if l not in LANGUES]
+    if inconnues:
+        sys.exit(f"langue inconnue : {inconnues} (attendu : {', '.join(LANGUES)})")
+    if len(demandees) == 1:
+        i18n.init(demandees[0])
+        print(f"== smoke — langue « {demandees[0]} » ==")
+        asyncio.run(main())
+    else:
+        # Un processus par langue, comme un vrai démarrage : la langue se
+        # charge une fois, avant l'interface.
+        for langue in demandees:
+            rc = subprocess.run([sys.executable, __file__, langue]).returncode
+            if rc:
+                sys.exit(f"SMOKE ECHOUE en « {langue} »")
+        print(f"SMOKE OK dans {len(demandees)} langues")

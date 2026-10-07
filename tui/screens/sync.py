@@ -91,6 +91,13 @@ _BOOLS = [N_("no"), N_("yes")]
 # En dessous, deux pistes d'un même rip s'affichaient à l'identique.
 _NAME_WIDTH = 26
 
+# Planchers des colonnes : la plus longue valeur, dans chaque langue livrée
+# (`tests/test_troncature.py`, IE-94). Une cellule réécrite en place ne
+# recalcule pas sa largeur : trop courte, « measured » sortait « meas ».
+_PLANCHERS = {"tid": 14, "delay": 12, "stretch": 11, "lang": 8,
+              "name": _NAME_WIDTH, "default": 8, "forced": 7,
+              "origin": 15}       # « copied from #10 »
+
 # Trois pas pour le décalage. Le pas fin sert à finir le travail : une mesure
 # rend souvent la bonne valeur à quelques dizaines de millisecondes près, et
 # 100 ms est alors trop gros pour s'en approcher.
@@ -283,14 +290,11 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         # Les champs éditables portent le nom que leur donne `_FIELD_LABELS` :
         # un en-tête, un libellé (L-79).
         colonne_fixe(table, _("Source"), 28, key="src")
-        colonne_fixe(table, _("Track"),  14, key="tid")
-        for champ, plancher in (("delay", 12), ("stretch", 11), ("lang", 8),
-                                ("name", _NAME_WIDTH), ("default", 8),
-                                ("forced", 7)):
-            colonne_fixe(table, _(_FIELD_LABELS[champ]), plancher, key=champ)
-        # Plancher : la plus longue valeur, « copied from #9 » ; la cellule est
-        # réécrite sans recalcul de largeur (« measured » tronqué en « meas »).
-        colonne_fixe(table, _("Sync"), 14, key="origin")
+        colonne_fixe(table, _("Track"), _PLANCHERS["tid"], key="tid")
+        for champ in _FIELDS:
+            colonne_fixe(table, _(_FIELD_LABELS[champ]), _PLANCHERS[champ],
+                         key=champ)
+        colonne_fixe(table, _("Sync"), _PLANCHERS["origin"], key="origin")
 
         for i, t in enumerate(self._tracks):
             table.add_row(*self._row(i), key=str(i))

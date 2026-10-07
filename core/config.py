@@ -195,7 +195,7 @@ def get_active_profile(cfg: dict[str, Any], profile_ids) -> str:
     """
     ids = list(profile_ids)
     if not ids:
-        raise ValueError("aucun profil à activer")
+        raise ValueError("no profile to activate")
     retenu = cfg.get("app", {}).get("active_profile", "")
     if retenu not in ids:
         # Profil livré renommé depuis (IE-112) : `profiles.load_all` a migré

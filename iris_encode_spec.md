@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.86 — document de référence courant
+**Version** : 0.8.9.87 — document de référence courant
 **Date** : 2026-10-07
 **Statut** : stable
 
@@ -2840,8 +2840,10 @@ licence, accès aux sources) — à décider sciemment.
 
 | Fichier | Portée |
 |---|---|
-| `tests/smoke_tui.py` | Parcours TUI headless de bout en bout (14 scénarios) — **à lancer après toute modification d'écran** |
-| `tests/shots_tui.py` | Inventaire visuel : exporte chaque écran en SVG (rendu réel, pas maquette) |
+| `tests/smoke_tui.py` | Parcours TUI headless de bout en bout (14 scénarios), **en anglais puis en français**, un processus par langue — **à lancer après toute modification d'écran** |
+| `tests/shots_tui.py` | Inventaire visuel : exporte chaque écran en SVG (rendu réel, pas maquette), dans la langue demandée |
+| `tests/test_i18n.py` | Socle de la traduction ; règles structurelles : aucun texte en dur aux points d'affichage (`notify`, `Static`, `Binding`…) hors termes intraduisibles du glossaire, aucun texte accentué hors `_()` dans `core/` et `tui/`, aucune comparaison à un texte traduit |
+| `tests/test_troncature.py` | Planchers de colonnes : chaque valeur possible tient, **dans chaque langue** |
 | `tests/test_deps.py` | Cohérence des listes de dépendances |
 | `tests/test_dovi.py` | Wrapper dovi_tool |
 | `tests/test_muxer.py` | Génération des commandes mkvmerge, parsing `--gui-mode` |
@@ -2851,8 +2853,9 @@ licence, accès aux sources) — à décider sciemment.
 | `tests/test_veille.py` | Veille bloquée pendant un lot, action d'après lot (moteur Windows simulé) |
 
 ```bash
-python tests/smoke_tui.py     # headless, encode réellement de petits clips
-python tests/shots_tui.py     # inventaire visuel -> _shots/*.svg
+python tests/smoke_tui.py     # headless, encode réellement de petits clips, en + fr
+python tests/smoke_tui.py fr  # une seule langue
+python tests/shots_tui.py --langue en   # inventaire visuel -> _shots/en/*.svg
 python -m pytest tests/
 ```
 
@@ -2903,6 +2906,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.87 | 2026-10-07 | **Tests de la localisation** (§ 18, IE-94) : smoke dans les deux langues, captures avec `--langue`, guide et planchers de colonnes testés dans chaque langue, garde-fous structurels (textes en dur aux points d'affichage, accents dans `core/`, comparaisons à un texte traduit) · corrigés : « Jonction », « Choisir », « Annuler » affichés en dur ; colonne « Sync » à 15 |
 | 0.8.9.86 | 2026-10-07 | **Annexes Jellyfin supprimées avec la source** (§ 14.7, IE-116) : `<nom>.nfo` et `<nom>-*.jpg|png…` partent avec la source après encodage (`delete_source`) et avec `Ctrl+D`, que la confirmation liste ; sous-titres externes, fichiers du dossier et sortie conservés · `core/annexes.py`, `tests/test_annexes.py` |
 | 0.8.9.85 | 2026-10-07 | **Relecture de l'anglais source** (IE-93) : termes du glossaire partout (*segment*, *anchor point*, *added track*, *check sample*), orthographe US (*movie*, *canceled*, *Analyzing*), noms d'écrans capitalisés (« the Tracks screen ») ; traductions françaises reportées · colonne « Sync » du recalage à largeur plancher, libellés du formulaire de profil élargis d'un caractère |
 | 0.8.9.84 | 2026-10-07 | **Choix de la langue** (§ 2.1, IE-92) : section de l'écran Options, une langue par catalogue livré, nommée dans sa langue ; détection de la langue de Windows au premier lancement (`[app] language` vide par défaut), anglais si elle n'est pas traduite ; effet au redémarrage, annoncé · panneau Options défilant · `tests/test_choix_langue.py` |

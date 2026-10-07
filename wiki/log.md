@@ -258,3 +258,9 @@ Format des `.nfo` et images que Jellyfin dépose à côté d'une vidéo, relevé
 deux dossiers de la bibliothèque. Choix de l'utilisateur : ils partent avec la
 source (après encodage et `Ctrl+D`), sans option séparée ; les `.srt` restent.
 Pages touchées : [[jellyfin]].
+
+## [2026-10-07] ingest | Tests de la localisation (IE-94)
+
+Smoke, captures, guide et planchers de colonnes dans les deux langues ;
+garde-fous structurels. Trois textes français en dur trouvés et corrigés.
+Pages touchées : [[localisation]].

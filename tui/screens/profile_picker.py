@@ -56,8 +56,8 @@ class ProfilePickerScreen(ModalScreen[str | None]):
     """
 
     BINDINGS = [
-        Binding("enter",     "select", "Choisir", show=False, priority=True),
-        Binding("escape",    "cancel", "Annuler", show=False, priority=True),
+        Binding("enter",     "select", N_("Choose"), show=False, priority=True),
+        Binding("escape",    "cancel", N_("Cancel"), show=False, priority=True),
         Binding("backspace", "cancel", N_("Back"),  show=False, priority=True),
     ]
 

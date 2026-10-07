@@ -151,7 +151,7 @@ def test_une_explication_longue_saligne_sous_elle_meme():
         assert suite.startswith(" " * 14), repr(suite[:20])
 
 
-# ─── GUIDE.md — le guide écrit à la main dérive aussi ────────────────────────
+# ─── GUIDE.md, GUIDE.fr.md — le guide écrit à la main dérive aussi ──────────
 #
 # Le guide embarqué dérive des `BINDINGS` : les tests ci-dessus suffisent à le
 # tenir. `GUIDE.md` est écrit à la main, et rien ne le rattachait au code — il
@@ -162,7 +162,9 @@ def test_une_explication_longue_saligne_sous_elle_meme():
 # par le guide doit exister**. Ils ne prétendent pas vérifier une explication,
 # qui est du texte ; ils attrapent la promesse d'un geste qui ne répond plus.
 
-_GUIDE = Path(__file__).resolve().parent.parent / "GUIDE.md"
+# Un guide par langue (IE-95) : l'anglais, et le français d'origine.
+_RACINE = Path(__file__).resolve().parent.parent
+_GUIDES = {"en": _RACINE / "GUIDE.md", "fr": _RACINE / "GUIDE.fr.md"}
 
 # Les tables de touches du guide, par écran documenté.
 _TABLES_GUIDE = {
@@ -181,8 +183,9 @@ _VERS_TEXTUAL = {_touche(nom).lower(): nom for nom in _TOUCHES}
 _VERS_TEXTUAL.update({
     "espace": "space", "maj+tab": "shift+tab",
     "maj+↑": "shift+up", "maj+↓": "shift+down",
+    "shift+↑": "shift+up", "shift+↓": "shift+down",
     "ctrl+↑": "ctrl+up", "ctrl+↓": "ctrl+down",
-    "↑": "up", "↓": "down",
+    "↑": "up", "↓": "down", "del": "delete",
 })
 
 
@@ -203,16 +206,16 @@ def _touches_reelles(module: str, classe: str) -> set[str]:
     return touches
 
 
-def _touches_annoncees(section: str) -> set[str]:
+def _touches_annoncees(section: str, langue: str = "fr") -> set[str]:
     """Les touches citées dans la table de cette section du guide."""
-    texte = _GUIDE.read_text(encoding="utf-8")
+    texte = _GUIDES[langue].read_text(encoding="utf-8")
     debut = texte.index(f"### {section} ")
     fin   = texte.index("\n### ", debut + 5)
 
     annoncees: set[str] = set()
     for ligne in texte[debut:fin].splitlines():
         cellule = re.match(r"\|\s*(.+?)\s*\|", ligne)
-        if not cellule or "Touche" in cellule.group(1):
+        if not cellule or cellule.group(1) in ("Touche", "Key"):
             continue
         for cite in re.findall(r"`([^`]+)`", cellule.group(1)):
             # « ←/→ », « Ctrl+↑/↓ », « F1 / F2 » : chaque moitié est une touche
@@ -234,32 +237,47 @@ def _resout(annoncee: str) -> set[str]:
     return {c for c in cands if c}
 
 
+@pytest.mark.parametrize("guide", sorted(_GUIDES))
 @pytest.mark.parametrize("section", sorted(_TABLES_GUIDE))
-def test_le_guide_n_annonce_que_des_touches_qui_repondent(section):
+def test_le_guide_n_annonce_que_des_touches_qui_repondent(section, guide):
     module, classe = _TABLES_GUIDE[section]
     reelles = _touches_reelles(module, classe)
-    fantomes = sorted(a for a in _touches_annoncees(section)
+    fantomes = sorted(a for a in _touches_annoncees(section, guide)
                       if not (_resout(a) & reelles))
     assert not fantomes, (
-        f"GUIDE.md § {section} annonce des touches absentes des BINDINGS de "
-        f"{classe} : {fantomes}")
+        f"{_GUIDES[guide].name} § {section} annonce des touches absentes des "
+        f"BINDINGS de {classe} : {fantomes}")
 
 
-def test_le_guide_documente_bien_des_touches():
+@pytest.mark.parametrize("guide", sorted(_GUIDES))
+def test_le_guide_documente_bien_des_touches(guide):
     """Le garde-fou du garde-fou : un extracteur muet passerait au vert."""
     for section in _TABLES_GUIDE:
-        assert len(_touches_annoncees(section)) >= 3, section
+        assert len(_touches_annoncees(section, guide)) >= 3, (guide, section)
 
 
-def test_l_entete_du_guide_suit_la_version():
+@pytest.mark.parametrize("doc", ["GUIDE.md", "GUIDE.fr.md",
+                                 "README.md", "README.fr.md"])
+def test_l_entete_du_guide_suit_la_version(doc):
     """Règle 5.4 : tout document qui affiche une version la tient à jour.
 
     Le guide était resté en 0.8.1.23 pendant quinze incréments — assez pour
-    qu'on ne sache plus ce qu'il décrit.
+    qu'on ne sache plus ce qu'il décrit. Depuis IE-95, chaque document existe
+    en deux langues : les deux suivent.
     """
     import version as version_mod
 
-    entete = _GUIDE.read_text(encoding="utf-8").splitlines()[2]
+    entete = (_RACINE / doc).read_text(encoding="utf-8").splitlines()[2]
     assert version_mod.__version__ in entete, (
-        f"GUIDE.md annonce « {entete} » pour une application en "
+        f"{doc} annonce « {entete} » pour une application en "
         f"{version_mod.__version__}")
+
+
+@pytest.mark.parametrize("doc,autre", [("GUIDE.md", "GUIDE.fr.md"),
+                                       ("GUIDE.fr.md", "GUIDE.md"),
+                                       ("README.md", "README.fr.md"),
+                                       ("README.fr.md", "README.md")])
+def test_chaque_document_renvoie_a_sa_traduction(doc, autre):
+    """IE-95 : le lien croisé en tête, pour qui arrive sur la mauvaise langue."""
+    tete = "\n".join((_RACINE / doc).read_text(encoding="utf-8").splitlines()[:8])
+    assert f"]({autre})" in tete, doc

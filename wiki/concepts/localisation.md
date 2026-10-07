@@ -136,6 +136,20 @@ Le test des accents ne voyait que le français : le contrôle des points
 d'affichage a trouvé « Jonction », « Choisir » et « Annuler », sans accent,
 affichés tels quels dans l'interface anglaise.
 
+## Documentation
+
+Livrée le 2026-10-07 (IE-95, v0.8.9.88). `README.md` et `GUIDE.md` en anglais,
+`README.fr.md` et `GUIDE.fr.md` en français (renommés par `git mv`, l'historique
+suit), lien croisé en tête de chacun. La version anglaise cite les libellés de
+l'interface anglaise, pas une retraduction du français : « confidence
+excellent », « different cut — N segments », « Dry run ». La spec (§ 2.1), le
+wiki et le `CHANGELOG.md` restent en français : documentation de développement.
+`install.txt`, livré avec les lanceurs, est en anglais.
+
+La relecture a montré que le guide français avait dérivé en plusieurs points
+(touches `F7`/`F8` de la fiche, colonne « Raison » disparue, profils renommés) :
+la traduction est aussi un audit de la documentation.
+
 ## Voir aussi
 
 - [[noms-de-release]] — les marques, qui ne se traduisent pas

@@ -264,3 +264,8 @@ Pages touchées : [[jellyfin]].
 Smoke, captures, guide et planchers de colonnes dans les deux langues ;
 garde-fous structurels. Trois textes français en dur trouvés et corrigés.
 Pages touchées : [[localisation]].
+
+## [2026-10-07] ingest | Documentation en deux langues (IE-95)
+
+README et GUIDE en anglais, versions françaises en `.fr.md`. Dérives du guide
+français corrigées au passage. Pages touchées : [[localisation]].

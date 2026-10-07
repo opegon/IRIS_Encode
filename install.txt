@@ -1,26 +1,27 @@
-IRIS ENCODE — installation
+IRIS ENCODE - installation
 
-  1. Double-cliquez launch.bat.
+  1. Double-click launch.bat.
 
-C'est tout.
+That's it.
 
-S'il ne trouve pas de Python 3.11+, il installe le sien : uv, un CPython et un
-environnement .venv, dans ce dossier. Deux à trois minutes et environ 140 Mo la
-premiere fois, aucun droit administrateur, rien d'ecrit ailleurs.
+If it finds no Python 3.11+, it installs its own: uv, a CPython and a .venv
+environment, in this folder. Two to three minutes and about 140 MB the first
+time, no administrator rights, nothing written anywhere else.
 
-ffmpeg, mkvmerge et dovi_tool arrivent de la meme facon, dans bin/, a la
-premiere execution qui en a besoin.
+ffmpeg, mkvmerge and dovi_tool arrive the same way, in bin/, the first time
+they are needed.
 
-Reconstruire l'environnement, si quelque chose s'est mal passe :
+To rebuild the environment, if something went wrong:
   powershell -ExecutionPolicy Bypass -File bootstrap.ps1 -Force
 
-Si Windows annonce "os error 4551" : Smart App Control (actif par defaut sur une
-installation neuve de Windows 11) refuse un binaire sans reputation etablie.
-Installez Python 3.12 depuis python.org - binaires signes - et relancez
-launch.bat, il le prendra. Details : README.md, chapitre 1.4.
+If Windows reports "os error 4551": Smart App Control (on by default on a fresh
+Windows 11 install) refuses a binary without an established reputation.
+Install Python 3.12 from python.org - signed binaries - and run launch.bat
+again, it will pick it. Details: README.md, chapter 1.4.
 
-Installer Python soi-meme reste possible et n'est pas necessaire :
-  https://www.python.org/downloads/   (cocher "Add Python to PATH")
+Installing Python yourself remains possible and is not needed:
+  https://www.python.org/downloads/   (check "Add Python to PATH")
   pip install -r requirements.txt
 
-Details : README.md, chapitre 1.
+Details: README.md, chapter 1.
+En francais : README.fr.md, chapitre 1.

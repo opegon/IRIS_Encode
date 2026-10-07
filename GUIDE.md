@@ -1,860 +1,860 @@
-# IRIS ENCODE — Guide d'utilisation
+# IRIS ENCODE — User guide
 
-**Version** : 0.8.9.87
-**Date** : 2026-10-05
+**Version**: 0.8.9.88
+**Date**: 2026-10-07
 
-Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
+*[Version française : GUIDE.fr.md](GUIDE.fr.md)*
+
+Installation: see [`README.md`](README.md). Internals: see `iris_encode_spec.md`
+(in French).
 
 ---
 
-## 0. Ouvrir l'application
+## 0. Opening the application
 
-**Le raccourci « IRIS ENCODE » du Bureau**, s'il a été créé. C'est le seul
-chemin qui garantit le bon terminal : un raccourci visant `launch.bat`
-directement ouvre la console héritée de Windows, au rendu dégradé — bordures
-approximatives, glyphes manquants.
+**The "IRIS ENCODE" shortcut on the Desktop**, if it has been created. It is the
+only way that guarantees the right terminal: a shortcut aimed straight at
+`launch.bat` opens the legacy Windows console, with degraded rendering —
+approximate borders, missing glyphs.
 
-Pour le créer, une fois l'installation faite : double-clic sur
-**`launcher\build.bat`**, qui compile le lanceur et propose le raccourci.
-Détail et alternative sans exécutable au **README § 5.1**.
+To create it, once installed: double-click **`launcher\build.bat`**, which
+compiles the launcher and offers the shortcut. Details, and an alternative
+without an executable, in **README § 5.1**.
 
-À défaut, `launch.bat` fonctionne — de préférence lancé *depuis* Windows
-Terminal plutôt qu'au double-clic.
+Otherwise `launch.bat` works — preferably started *from* Windows Terminal
+rather than by double-click.
 
-**Quand une nouvelle version est publiée**, le lancement le dit avant d'ouvrir
-l'application :
+**When a new version is published**, startup says so before opening the
+application:
 
 ```
   Update available: v0.8.9.1 → v0.9.0.0
   Install now? [Y/n]
 ```
 
-Le lanceur parle anglais, l'application n'étant pas encore chargée. `Entrée` (ou `o`, `y`) installe, puis l'application redémarre sur la version neuve ; `n`
-remet à plus tard (la question revient au lancement suivant). Vos réglages,
-vos profils et les outils de `bin/` ne sont jamais touchés. Hors ligne, rien ne
-s'affiche. Pour installer sans question ou ne plus rien vérifier : `app =
-"auto"` ou `app = "off"` sous `[updates]` dans `config.toml`. Détail au
-**README § 5.2**.
+`Enter` (or `y`) installs, then the application restarts on the new version;
+`n` postpones (the question comes back at the next start). Your settings, your
+profiles and the tools in `bin/` are never touched. Offline, nothing is shown.
+To install without asking, or to check nothing anymore: `app = "auto"` or
+`app = "off"` under `[updates]` in `config.toml`. Details in **README § 5.2**.
+
+**The interface language** is set in the options (`F5`, then `U`, § 2.7) and
+takes effect at the next start.
 
 ---
 
-## 1. Le parcours en trois temps
+## 1. The path in three steps
 
 ```
-Browser  ──F1──>  Aperçu  ──F2──>  Encodage
-   │                                  
-   └──T──>  Pistes  ──F9──>  Recalage  ──F3──>  Mux
+Home  ──F1──>  Dry run  ──F2──>  Encoding
+  │
+  └──T──>  Tracks  ──F9──>  Sync  ──F3──>  Mux
 ```
 
-**Toujours passer par l'aperçu.** Il montre ce qui *va* se produire — codec,
-débit, conteneur, taille estimée, durée d'encodage — avant d'y consacrer des
-heures. C'est là qu'on repère un conteneur inattendu ou un fichier qui n'aurait
-pas dû être sélectionné.
+**Always go through the dry run.** It shows what *will* happen — codec,
+bitrate, container, estimated size, encoding time — before you spend hours on
+it. That is where you spot an unexpected container or a file that should not
+have been checked.
 
-Deux opérations distinctes, à ne pas confondre :
+Two different operations, not to be confused:
 
-| | Ce que ça fait | Quand |
+| | What it does | When |
 |---|---|---|
-| **Encoder** (`F2`) | Réencode la vidéo, absorbe les pistes greffées dans la même passe | On veut réduire la taille |
-| **Muxer** (`F3`) | Greffe les pistes sans toucher à la vidéo | On veut juste ajouter une VF |
+| **Encode** (`F2`) | Re-encodes the video, takes in the added tracks in the same pass | You want a smaller file |
+| **Mux** (`F3`) | Adds the tracks without touching the video | You just want to add a dub |
 
-Muxer n'est **pas** une étape préalable à l'encodage : `F2` fait les deux en
-une passe. Voir § 4.6 pour la seule exception.
-
----
-
-## 1bis. L'assistant
-
-L'application s'ouvre en **mode assistant** : un fichier à la fois, cinq étapes,
-`↵` pour avancer et `⌫` pour revenir.
-
-Le mode se lit à trois endroits, parce qu'il change ce que fait `↵` sur un
-fichier : la barre de profil (`[W] Assistant`), le libellé de la touche `W` dans
-le pied de page, et **la couleur de ce pied de page** — le mode manuel garde le
-bleu habituel, l'assistant prend l'accent du thème.
-
-`W` bascule entre assistant et parcours libre. Le choix tient pour la session.
-
-Dans la liste, `↵` sur un fichier ouvre le parcours :
-
-| Étape | Ce qu'on y fait |
-|---|---|
-| 1 — Fichier | Vérifier le fichier et le profil actif |
-| 2 — Décision | Codec (`F6`), débit (`F7`), pistes à garder (`Espace`) — tout sur le même écran, et le nom du fichier qui sortira |
-| 3 — Pistes externes | `F9` présente un fichier portant une VF ou des sous-titres, `D` retire la dernière |
-| 4 — Lancer | `↵` prend le choix recommandé ; `F3` force le mux, `F2` force l'encodage — même d'un fichier en `SKIP`, au débit de la source, en gardant le Dolby Vision si le profil le garde |
-| 5 — Terminé | Le résultat, `↵` ramène à la liste |
-
-**La mesure du décalage est automatique.** Dès qu'une piste est ajoutée, elle
-est mesurée, et le décalage trouvé sur l'audio est reporté sur les sous-titres
-venus du même fichier. Vous n'avez rien à lancer.
-
-Si la mesure échoue — montage différent, piste trop courte — le décalage reste à
-zéro et l'assistant le dit. Passez alors par le parcours libre (`W`), où l'écran
-de recalage offre `G`, `P`, `C` (§ 4.5) et le point de repère `R` (§ 4.5bis).
-
-**En mode manuel**, `↵` sur un fichier ouvre l'écran des pistes, et le parcours
-reste celui décrit ci-dessous.
+Muxing is **not** a step before encoding: `F2` does both in one pass. See § 4.6
+for the only exception.
 
 ---
 
-## 2. Écran par écran
+## 1bis. Guided mode
 
-### 2.1 Browser — navigation et sélection
+The application opens in **guided mode**: one file at a time, five steps, `↵`
+to move on and `⌫` to go back.
 
-Le point d'entrée. Une ligne par fichier, avec sa décision d'encodage calculée
-d'après le profil actif.
+The mode shows in three places, because it changes what `↵` does on a file:
+the profile bar (`W Guided`), the label of the `W` key in the footer, and **the
+color of that footer** — manual mode keeps the usual blue, guided mode takes
+the theme's accent.
 
-| Touche | Action |
+`W` switches between guided and manual mode. The choice holds for the session.
+
+In the list, `↵` on a file opens the path:
+
+| Step | What you do there |
 |---|---|
-| `↵` | Sur un dossier : l'ouvrir. Sur un fichier : **ouvrir l'assistant**, ou l'écran des pistes en mode manuel |
-| `W` | Basculer **assistant / manuel** — change ce que fait `↵` sur un fichier |
-| `⌫` | Remonter |
-| `Espace` | Cocher / décocher le fichier |
-| `A` / `N` | Tout cocher / tout décocher |
-| `T` | Écran des pistes du fichier sous le curseur, quel que soit le mode |
-| `V` | Ouvrir dans mpv |
-| `Ctrl+D` | **Supprimer définitivement** le fichier, avec son `.nfo` et ses images Jellyfin (confirmation, pas de corbeille) |
-| `F1` / `F2` | Aperçu / Encoder la sélection |
-| `R` | Encoder récursivement le dossier sous le curseur |
-| `F4` / `F5` | Choisir un profil / gérer les profils |
-| `J` | **Joindre** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
-| `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |
-| `L` | **Filtrer** par type d'image : Dolby Vision (tous profils ou un seul), HDR sans DV, SDR |
-| `Z` | Masquer / afficher les fichiers `SKIP` |
-| `Tab` / `Maj+Tab` | Colonne suivante / précédente |
-| `<` / `>` | Rétrécir / élargir la colonne choisie (largeurs mémorisées) |
+| 1 — File | Check the file and the active profile |
+| 2 — Decision | Codec (`F6`), bitrate (`F7`), tracks to keep (`Space`) — all on the same screen, with the name of the file that will come out and the reason for the video decision |
+| 3 — External tracks | `F9` presents a file carrying a dub or subtitles, `D` removes the last one |
+| 4 — Launch | `↵` takes the recommended choice; `F3` forces the mux, `F2` forces the encode — even of a `SKIP` file, at the source bitrate, keeping Dolby Vision if the profile keeps it |
+| 5 — Done | The result; `↵` goes back to the list |
 
-La colonne **Décision** dit ce qui sera fait : `HEVC`, `H264`, `AV1` ou `SKIP`.
-Un fichier `SKIP` est déjà assez compressé — le cocher quand même le force à
-l'encodage au débit de la source. **La colonne le montre dès la coche** : la
-décision forcée remplace `← SKIP`, en orange, et un message le rappelle. Même
-chose pour une ligne `→ HDR10` (retrait du Dolby Vision) : cochée, elle est
-réencodée. Une source Dolby Vision cochée sous un profil qui garde le DV est
-réencodée en gardant le DV (`→ HEVC → DV`), au débit de la source.
-`F1` et `F2` sans rien de coché le disent au lieu de ne rien faire.
-Les fichiers cochés partent dans l'ordre alphabétique de la liste.
+**The offset measurement is automatic.** As soon as a track is added, it is
+measured, and the offset found on the audio is carried over to the subtitles
+from the same file. There is nothing to start.
 
-**Filtrer la liste.** `L` ne montre qu'un type d'image ; le choix ne propose
-que les types présents dans le dossier, avec leur nombre. `Z` masque les
-fichiers `SKIP`. Les deux se cumulent, tiennent d'un dossier à l'autre pendant
-la session, et la barre d'état dit combien de fichiers sont masqués. Les
-dossiers restent affichés. **Une ligne cochée ne se masque jamais** : ce qui
-partira à l'encodage reste sous les yeux. `A` ne coche que ce qui est visible.
+If the measurement fails — different cut, track too short — the offset stays at
+zero and guided mode says so. Then use manual mode (`W`), where the Sync screen
+offers `G`, `P`, `C` (§ 4.5) and the anchor point `R` (§ 4.5bis).
 
-**Au retour d'un encodage**, la liste est relue — les sorties apparaissent — et
-les fichiers réussis sont décochés. Un fichier en échec ou interrompu reste
-coché, prêt à relancer.
-
-**Ce que l'application a encodé se reconnaît à son nom.** Toute sortie finit
-par `-iris`, précédée de ce que le traitement a fait : `Film.2160p.hevc-iris.mkv`,
-`Film.720p.h264-iris.mp4`, `Film.av1-iris.mkv`, `Film.dv-iris.mkv` (Dolby Vision
-conservé), `Film.hdr10-iris.mkv` (RPU retiré). Une caractéristique que le nom
-porte déjà n'est pas répétée — `Film.2160p.DV` sort `Film.2160p.DV-iris`. Ces
-fichiers sont grisés dans la liste et écartés du scan récursif et de `A` : les
-reproposer reviendrait à offrir de réencoder par-dessus un fichier déjà traité,
-avec la perte de génération que cela implique.
-
-Un `.mux-iris` fait exception et **reste proposé** : ce n'est pas un encodage
-mais une greffe de pistes, et l'encoder ensuite est un enchaînement normal. Un
-`.join-iris` aussi, et pour une raison plus forte encore : un fichier collé
-n'existe que pour être encodé ensuite (§ 2.1bis).
-
-**Le groupe de la release ne suit pas.** Le dernier terme d'un nom de release,
-détaché par un tiret — `Film.1080p.x265-GROUPE`, `Film 1080p - GROUPE` —
-signe la source ; la sortie le perd : `Film.1080p.hevc-iris.mkv`. Il ne part
-que si le reste du nom porte une marque de release (`1080p`, `x265`, `HDR`,
-`BluRay`, `MULTi`…) et s'il n'en est pas une lui-même : `Titre-Film.mkv`,
-`Titre - Sous-titre.mkv`, `Film.1080p.DTS-HD.mkv` gardent leur fin.
-
-> Depuis la v0.8.8.11, les anciens noms (`_[hevc]`, `_[av1]`…) ne sont plus
-> reconnus : ils se traitent comme des sources ordinaires. Réencodé, un
-> `Film_[hevc]` sort `Film.hevc-iris`.
-
-> Depuis la v0.8.9.44, la marque est `-iris` (elle était `.IRIS`). Les
-> sorties à l'ancienne marque ne sont plus reconnues : elles redeviennent des
-> sources, et un réencodage garde leur `.IRIS` dans le nom —
-> `Film.1080p.hevc.IRIS` sort `Film.1080p.IRIS.hevc-iris`.
-
-> Avant la v0.8.5.1, seuls `_[hevc]` et `_[H264]` étaient reconnus. Une sortie
-> AV1 reparaissait donc dans la liste, et comme l'AV1 n'est pas un codec que la
-> chaîne sait relire, elle était classée « à réencoder en HEVC » — avec, sur un
-> profil `⚠ suppr.`, l'effacement de l'AV1 d'origine.
-
-### 2.1bis Jonction — recoudre un film livré en parties
-
-Un film en `part1` / `part2` ne s'encode pas tel quel : chaque partie prise
-seule sortirait de son côté, et vous auriez deux fichiers là où il en faut un.
-`J`, sur l'accueil, recoud d'abord — ensuite le fichier se travaille comme
-n'importe quel autre.
-
-**Cocher les parties avec `Espace`** (deux au minimum), puis `J`.
-
-| Touche | Action |
-|---|---|
-| `Ctrl+↑` / `Ctrl+↓` | Déplacer d'un rang la partie sous le curseur |
-| `F2` | Joindre — lancer la jonction |
-| `⌫` | Retour à l'accueil — une jonction en cours est interrompue et son fichier partiel effacé |
-
-**L'ordre est la seule chose à vérifier.** Il est déduit des noms, et les
-nombres y comptent comme des nombres : `part10` arrive bien après `part2`, là
-où un tri alphabétique le glisserait entre `part1` et `part2`. Le tableau est
-ce qui sera collé — s'il est faux, `Ctrl+↑/↓` le corrigent. Deux parties
-inversées produisent un fichier de la **bonne durée**, donc faux sans que rien
-ne vous le signale.
-
-La colonne **Jonction** dit, ligne par ligne, si la partie s'apparie sur la
-première :
-
-| Ce qui s'affiche | Ce que ça veut dire |
-|---|---|
-| **référence** | La première partie. C'est elle qui donne au fichier produit ses codecs, sa définition et son jeu de pistes |
-| **✓** | Elle s'y colle sans rien perdre |
-| **✓ avec réserve** | Elle s'y colle, mais elle porte plus (ou moins) de pistes audio ou de sous-titres : seuls les rangs communs survivront. Le détail s'affiche sous le tableau |
-| **✗ incompatible** | Codec vidéo, définition ou format audio différents — `F2` est refusé |
-
-La colonne du nom de fichier est aussi large que celle de l'accueil : si vous
-l'y avez élargie (`Tab` puis `>`), l'écran de jonction en profite.
-
-La jonction **ne réencode rien** : mkvmerge recale les horodatages de chaque
-partie sur la fin de la précédente. C'est une copie disque — comptez le temps
-d'écrire la somme des parties, et prévoyez la place, les originaux restant en
-place.
-
-**Rien n'est effacé.** Les parties sont conservées ; `Ctrl+D` sur l'accueil
-reste le seul geste qui supprime. Le fichier produit s'appelle
-`<nom commun>.join-iris.mkv` — `Film part1.mkv` + `Film part2.mkv` donnent
-`Film.join-iris.mkv` — et la jonction refuse d'écraser un fichier existant.
-
-À la fin, l'écran compare la durée obtenue à la somme des parties. Un écart
-est annoncé plutôt que passé sous silence : un mkvmerge interrompu laisse un
-fichier lisible et **court**, qui passerait sinon pour une jonction réussie.
-
-`⌫` ramène à l'accueil, où le fichier collé apparaît avec sa décision — à
-partir de là, `F1`, `F2`, `T` et le reste valent pour lui comme pour les
-autres.
-
-### 2.2 Pistes — choisir ce qu'on garde
-
-Depuis le browser par `T`. Une ligne par piste audio et sous-titre, plus une
-ligne vidéo en tête.
-
-| Touche | Action |
-|---|---|
-| `Espace` | Garder / écarter la piste |
-| `↵` | Valider le choix de la ligne |
-| `←/→` `+/-` | Sur la ligne vidéo : changer codec, débit, traitement Dolby Vision |
-| `F6` / `F7` | Codec / débit cible |
-| `F8` | Supprimer ou garder le fichier source après encodage (supprimé, il emporte son `.nfo` et ses images Jellyfin, pas ses `.srt`) |
-| `F9` | **Greffer une piste externe** — mène au choix du donneur |
-| `F4` | Changer de profil |
-| `F1` / `F2` | Aperçu / Encoder ce seul fichier, sans repasser par la liste |
-
-Écarter tous les sous-titres image (PGS, VobSub) libère le conteneur MP4 ;
-en garder un impose le MKV.
-
-Un PGS qu'un SRT de même langue et de même nature double arrive **décoché** :
-Jellyfin l'incrusterait, donc transcoderait, pour afficher ce que le SRT dit
-déjà. Un SRT forcé ne double qu'un PGS forcé, un SRT complet qu'un PGS complet.
-Seul de sa langue et de sa nature, le PGS reste coché. Le recocher à la main suffit à le garder.
-
-### 2.3 Choix du donneur
-
-Après `F9`. On choisit d'abord le fichier qui porte la piste à greffer, puis
-ses pistes dans ce fichier. Le fichier de travail est exclu de la liste.
-
-`↵` choisit le fichier, puis `Espace` coche les pistes à greffer et `↵` valide.
-`Esc` annule. Une piste seule est présélectionnée. Plusieurs donneurs
-s'enchaînent sans quitter l'écran suivant.
-
-**Pas de sous-titre sur le disque ? `O` le cherche sur OpenSubtitles.com**,
-dans les langues de sous-titres du profil. Les lignes marquées `≡` ont été
-déposées pour cette release exacte : elles sont déjà synchronisées, prenez-les
-en priorité. `SME` signale un sous-titre pour sourds et malentendants. `↵`
-télécharge la ligne ; le fichier revient ici comme si vous l'aviez choisi, et
-la suite est la même — piste présélectionnée, langue déduite, recalage.
-
-Il faut une clé d'application et un compte (gratuits, 20 téléchargements par
-jour). Au lancement, si la clé manque, une fenêtre la demande : **Obtenir une
-clé** ouvre opensubtitles.com/consumers, on colle la clé, l'identifiant et le
-mot de passe, **Vérifier et enregistrer** (ou `Ctrl+S`) les vérifie auprès d'OpenSubtitles et les enregistre.
-Pour les saisir ou les changer plus tard : `F5`, puis `K` (§ 2.7).
-
-Sans eux, l'écran dit ce qui manque. Le `.srt` est écrit dans le dossier
-temporaire, pas à côté du film : il n'existe que pour la greffe.
-
-**Lisez la colonne Nom jusqu'au bout.** Un rip livre couramment six pistes
-françaises : France et Canada, chacune en normal, `(forced)` et `(SDH)`. Elles
-ont le même codec et la même langue — **le nom est la seule chose qui les
-sépare**, et il est affiché en entier.
-
-Une piste `(forced)` ne contient que les répliques en langue étrangère :
-vingt-trois sur un épisode. Choisie par erreur, elle apparaît dans le lecteur
-et n'affiche presque jamais rien. C'est en général la **première** de la liste.
-
-### 2.4 Recalage — l'écran qui demande le plus d'attention
-
-Une ligne par piste greffée. Les champs se parcourent avec `←/→`, les valeurs
-se changent avec `+/-`.
-
-**La première ligne du bandeau dit ce que fait le champ sous le curseur**, et
-elle ne s'efface jamais — ni pour un avertissement, ni pour un compte rendu de
-mesure, qui prennent les lignes suivantes. C'est là qu'on lit quelles touches
-modifient la valeur affichée, et elles diffèrent d'un champ à l'autre : seul le
-décalage a trois pas, les autres champs font défiler leurs valeurs.
-
-| Touche | Action |
-|---|---|
-| `←/→` | Champ précédent / suivant |
-| `Ctrl+↑/↓` | ±10 ms sur le décalage — pour finir d'approcher une valeur mesurée |
-| `+/-` | ±100 ms sur le décalage, valeur suivante sur les autres champs |
-| `Maj+↑/↓` | ±1 s sur le décalage |
-| `↵` | Liste de valeurs du champ courant |
-| `M` | **Mesurer** le décalage automatiquement |
-| `F` | Forcer le candidat d'une mesure refusée |
-| `G` | Détail des **plages** détectées |
-| `P` | **Appliquer les plages** à la piste sous le curseur |
-| `C` | Reprendre le décalage d'une autre piste |
-| `R` | **Point de repère** — quand la mesure ne conclut pas (§ 4.5bis) |
-| `V` | Contrôler dans mpv |
-| `K` | Extrait de contrôle réellement muxé |
-| `D` | Retirer la piste |
-| `F9` | Ajouter une autre piste |
-| `F1` `F2` `F3` | Aperçu / Encoder / Muxer |
-
-**La langue est obligatoire.** Sans elle, la piste sortirait en « und » dans
-tous les lecteurs, et le mux est refusé. L'écran ouvre directement sur ce champ
-quand une piste en manque.
-
-**Le report est automatique.** Une mesure réussie sur une piste audio
-s'applique aussitôt aux sous-titres venus du **même fichier** : leur bon
-décalage *est* celui de l'audio, puisqu'ils ont été écrits sur son timing. Le
-bandeau annonce combien de pistes ont suivi, et leur colonne d'origine affiche
-« repris de #N ».
-
-Deux pistes ne suivent jamais : celles d'un **autre fichier**, et celles que
-vous avez déjà mesurées ou réglées à la main — une décision prise ne s'écrase
-pas. `C` sert pour ces cas-là.
-
-### 2.5 Aperçu — ce qui sera fait
-
-| Touche | Action |
-|---|---|
-| `Espace` | Inclure / exclure la ligne |
-| `F6` / `F7` | Changer codec / débit **de cette ligne seulement** |
-| `F2` | Lancer l'encodage — `↵` ne lance rien, par sécurité |
-
-Les colonnes **Estim. (Δ%)** et **ETA** — la durée d'encodage prévue —
-reposent sur une moyenne
-mobile de vitesse relevée à chaque encodage : elles s'affinent à l'usage et
-sont approximatives aux premières passes.
-
-### 2.6 Encodage — la file
-
-**L'encodage ne bloque plus la navigation.** `F2` — depuis l'accueil, l'aperçu,
-les pistes, le recalage ou l'assistant — met les fichiers dans **une file**, qui
-démarre dès qu'elle a une entrée et les traite dans l'ordre. Pendant qu'elle
-tourne, revenez aux fichiers (`⌫` ou `F12`), choisissez-en d'autres et `F2` :
-ils s'ajoutent à la suite. `F12` bascule entre les fichiers et la file. Tant
-qu'un lot existe, l'en-tête l'annonce au centre, sur tous les écrans :
-« F12 Encodages en cours · 1/3 · 42 % », puis « F12 Lot terminé » ; depuis la
-file, « F12 Fichiers ».
-
-- Un fichier déjà dans la file est refusé, avec un message.
-- Chaque fichier garde les réglages qu'il avait au moment de l'ajout : changer
-  de profil ensuite ne le touche pas.
-- Les fichiers confiés se décochent sur l'accueil.
-- Un fichier en file ou en cours ne peut pas être supprimé (`Ctrl+D`).
-- Quitter (`F10`) dit combien de fichiers attendent encore.
-
-| Touche | Action |
-|---|---|
-| `P` | Pause / reprendre |
-| `S` | Passer le fichier en cours, sans annuler le reste |
-| `Ctrl+↑` / `Ctrl+↓` | Avancer / reculer d'un rang le fichier en attente sous le curseur |
-| `Suppr` | Retirer de la file le fichier en attente sous le curseur |
-| `X` | **Arrêter tout** — le fichier en cours et la file ; confirmation demandée |
-| `E` | **Après le lot** — mettre en veille, en veille prolongée ou éteindre la machine une fois tout fini |
-| `⌫` / `Esc` / `F12` | Revenir aux fichiers — **l'encodage continue** |
-
-Une fois le lot fini, le pied de page ne garde que la navigation, et la zone du
-bas fait le bilan : réussis, en échec, ignorés, puis le chemin de chaque
-fichier produit. Si vous étiez dans les fichiers, une notification l'annonce ;
-le bilan attend que vous l'ayez vu (`F12`), puis s'efface quand vous quittez la
-vue. Un nouvel ajout démarre un nouveau lot.
-
-**La machine ne se met plus en veille pendant un traitement** — encodage, mux,
-jonction, mesure ou recalage. L'en-tête affiche alors « ☾ veille bloquée ».
-L'écran peut toujours s'éteindre, et une veille demandée à la main (menu
-Démarrer, capot fermé) passe quand même. Se désactive dans les options
-(`F5`, `U`).
-
-**Après le lot** (`E`) : une fois **tous** les traitements finis, la machine
-se met en veille, en veille prolongée ou s'éteint — au choix, dans les
-options. Par défaut, les options disent **« Ne rien faire »** : `E` n'arme
-alors rien et rappelle où choisir une action. L'en-tête l'annonce (« ☾ … · puis arrêt »). Un compte à rebours de
-60 s le précède : `↵` sur « Annuler » (présélectionné) ou `Esc` l'arrête.
-L'interrupteur repart décoché à chaque nouveau lot, et un lot arrêté par `X`
-ne déclenche rien. Windows seulement.
-
-### 2.7 Profils (`F5`)
-
-`N` crée, `E` édite, `C` copie, `D` supprime, `↵` active. La copie ouvre le
-formulaire avec les réglages du profil sous le curseur et un nom libre
-(`<nom>_copie`) : on modifie ce qui change, `Ctrl+S` enregistre le nouveau profil. `U` ouvre les **options** :
-bloquer la mise en veille pendant les traitements (activé par défaut), et ce
-que fait la machine après un lot dont on a coché « Après le lot » (« Ne rien
-faire » par défaut, mise en veille, veille prolongée ou arrêt), et la
-**langue de l'interface** : chaque langue disponible y figure sous son propre
-nom (« English », « Français »). Le changement prend effet au prochain
-lancement. Au tout premier lancement, IRIS ENCODE prend la langue de Windows
-si elle est traduite, sinon l'anglais. `K` ouvre les **clés d'API**
-des services en ligne — OpenSubtitles et OMDb (fiche IMDB complète) : chaque
-service a son bouton vers la page qui délivre la clé, et une clé est vérifiée
-auprès du service avant d'être enregistrée. La même fenêtre s'ouvre au
-lancement tant qu'une clé manque ; « Ne plus demander » l'écarte pour ce
-service. La liste est exactement celle
-de `profiles.toml`, dans l'ordre du fichier : vous pouvez l'éditer à la main,
-l'application ne rajoute ni ne réordonne rien. Tous les profils s'effacent,
-sauf le dernier de la liste. Renommer un profil se fait dans le fichier : le
-champ **Nom** du formulaire ne se saisit qu'à la création. Un profil marqué `⚠ suppr.` efface le fichier
-source après un encodage réussi — à vérifier avant de lancer un lot.
+**In manual mode**, `↵` on a file opens the Tracks screen, and the path is the
+one described below.
 
 ---
 
-## 3. Cas d'usage
+## 2. Screen by screen
 
-### 3.1 Ajouter une VF et ses sous-titres à une VO
+### 2.1 Home — browsing and selection
 
-**Avant tout, regardez ce que la cible contient déjà.** Un rip streaming
-embarque souvent trente sous-titres, français compris : il n'y a alors qu'une
-piste audio à greffer, et aucun recalage de sous-titre à faire. L'écran des
-pistes (`T`) les liste toutes.
+The entry point. One row per file, with its encoding decision computed from the
+active profile.
 
-1. Browser : curseur sur le film, `T`.
-2. `F9`, choisir le fichier qui porte la VF, puis ses pistes.
-3. Sur l'écran de recalage, curseur sur la piste **audio**, `M`.
-4. **Les sous-titres se recalent après l'audio, jamais avant** : c'est sa
-   mesure qui leur sert de référence. Selon ce qu'elle a rendu —
+| Key | Action |
+|---|---|
+| `↵` | On a folder: open it. On a file: **open guided mode**, or the Tracks screen in manual mode |
+| `W` | Switch **guided / manual** — changes what `↵` does on a file |
+| `⌫` | Go up |
+| `Space` | Check / uncheck the file |
+| `A` / `N` | Check all / uncheck all |
+| `T` | Tracks screen of the file under the cursor, whatever the mode |
+| `V` | Open in mpv |
+| `Ctrl+D` | **Delete permanently** the file, with its `.nfo` and images created by Jellyfin (confirmation, no recycle bin) |
+| `F1` / `F2` | Dry run / Encode the checked files |
+| `R` | Encode the folder under the cursor, recursively |
+| `F4` / `F5` | Choose a profile / manage profiles |
+| `J` | **Join** the checked files end to end into one (§ 2.1bis) |
+| `I` | Movie Info card: AlloCiné, then IMDB with `Tab` |
+| `L` | **Filter** by picture type: Dolby Vision (all profiles or one), HDR without DV, SDR |
+| `Z` | Hide / show the `SKIP` files |
+| `Tab` / `Shift+Tab` | Next / previous column |
+| `<` / `>` | Narrow / widen the chosen column (widths remembered) |
 
-   | Résultat de la mesure | Sur chaque sous-titre |
+The **Decision** column says what will be done: `HEVC`, `H264`, `AV1` or
+`SKIP`. A `SKIP` file is already compressed enough — checking it anyway forces
+it to be encoded at the source bitrate. **The column shows it as soon as you
+check it**: the forced decision replaces `← SKIP`, in orange, and a message
+recalls it. Same for a `→ HDR10` row (Dolby Vision removal): checked, it is
+re-encoded. A Dolby Vision source checked under a profile that keeps DV is
+re-encoded keeping DV (`→ HEVC → DV`), at the source bitrate. `F1` and `F2`
+with nothing checked say so instead of doing nothing. Checked files go in the
+alphabetical order of the list.
+
+**Filtering the list.** `L` shows only one picture type; the choice only offers
+the types present in the folder, with their count. `Z` hides the `SKIP` files.
+Both add up, hold from one folder to the next during the session, and the
+status bar says how many files are hidden. Folders stay visible. **A checked
+row is never hidden**: what will go to encoding stays in sight. `A` only checks
+what is visible.
+
+**When coming back from an encode**, the list is read again — the outputs
+appear — and the files that succeeded are unchecked. A file that failed or was
+interrupted stays checked, ready to run again.
+
+**What the application has encoded is recognized by its name.** Every output
+ends with `-iris`, preceded by what the processing did: `Movie.2160p.hevc-iris.mkv`,
+`Movie.720p.h264-iris.mp4`, `Movie.av1-iris.mkv`, `Movie.dv-iris.mkv` (Dolby
+Vision kept), `Movie.hdr10-iris.mkv` (RPU removed). A characteristic the name
+already carries is not repeated — `Movie.2160p.DV` comes out as
+`Movie.2160p.DV-iris`. These files are grayed out in the list and left out of
+the recursive scan and of `A`: offering them again would mean offering to
+re-encode over a file already processed, with the generation loss that implies.
+
+A `.mux-iris` is the exception and **stays offered**: it is not an encode but
+added tracks, and encoding it afterwards is a normal sequence. So is a
+`.join-iris`, for an even stronger reason: a joined file only exists to be
+encoded next (§ 2.1bis).
+
+**The release group does not follow.** The last token of a release name,
+detached by a dash — `Movie.1080p.x265-GROUP`, `Movie 1080p - GROUP` — signs
+the source; the output loses it: `Movie.1080p.hevc-iris.mkv`. It is only
+dropped if the rest of the name carries a release tag (`1080p`, `x265`, `HDR`,
+`BluRay`, `MULTi`…) and if it is not a tag itself: `Title-Movie.mkv`,
+`Title - Subtitle.mkv`, `Movie.1080p.DTS-HD.mkv` keep their ending.
+
+> Since v0.8.8.11, the old names (`_[hevc]`, `_[av1]`…) are no longer
+> recognized: they are treated as ordinary sources. Re-encoded, a
+> `Movie_[hevc]` comes out as `Movie.hevc-iris`.
+
+> Since v0.8.9.44, the tag is `-iris` (it used to be `.IRIS`). Outputs with the
+> old tag are no longer recognized: they become sources again, and a re-encode
+> keeps their `.IRIS` in the name — `Movie.1080p.hevc.IRIS` comes out as
+> `Movie.1080p.IRIS.hevc-iris`.
+
+> Before v0.8.5.1, only `_[hevc]` and `_[H264]` were recognized. An AV1 output
+> therefore showed up in the list again, and since AV1 is not a codec the chain
+> can play back, it was classed "to re-encode in HEVC" — with, on a
+> `⚠ del.` profile, the original AV1 deleted.
+
+### 2.1bis Join — putting a movie delivered in parts back together
+
+A movie in `part1` / `part2` cannot be encoded as it is: each part taken alone
+would come out on its own, and you would have two files where one is needed.
+`J`, on the Home screen, joins first — then the file is handled like any other.
+
+**Check the parts with `Space`** (at least two), then `J`.
+
+| Key | Action |
+|---|---|
+| `Ctrl+↑` / `Ctrl+↓` | Move the part under the cursor up / down one place |
+| `F2` | Join — start the join |
+| `⌫` | Back to Home — a join in progress is interrupted and its partial file deleted |
+
+**The order is the only thing to check.** It is deduced from the names, and
+numbers count as numbers: `part10` comes well after `part2`, where an
+alphabetical sort would slip it between `part1` and `part2`. The table is what
+will be joined — if it is wrong, `Ctrl+↑/↓` fix it. Two swapped parts produce a
+file of the **right length**, hence wrong without anything telling you.
+
+The **Join** column says, row by row, whether the part matches the first one:
+
+| What is shown | What it means |
+|---|---|
+| **reference** | The first part. It gives the produced file its codecs, its resolution and its set of tracks |
+| **✓** | It joins without losing anything |
+| **✓ with reservations** | It joins, but carries more (or fewer) audio or subtitle tracks: only the common positions will survive. Details show under the table |
+| **✗ incompatible** | Different video codec, resolution or audio format — `F2` is refused |
+
+The file name column is as wide as on the Home screen: if you widened it there
+(`Tab` then `>`), the Join screen benefits.
+
+Joining **re-encodes nothing**: mkvmerge shifts the timestamps of each part to
+the end of the previous one. It is a disk copy — allow the time to write the
+sum of the parts, and plan the space, since the originals stay in place.
+
+**Nothing is deleted.** The parts are kept; `Ctrl+D` on the Home screen
+remains the only action that deletes. The produced file is named
+`<common name>.join-iris.mkv` — `Movie part1.mkv` + `Movie part2.mkv` give
+`Movie.join-iris.mkv` — and the join refuses to overwrite an existing file.
+
+At the end, the screen compares the length obtained with the sum of the parts.
+A gap is announced rather than passed over: an interrupted mkvmerge leaves a
+playable and **short** file, which would otherwise pass for a successful join.
+
+`⌫` goes back to Home, where the joined file appears with its decision — from
+there, `F1`, `F2`, `T` and the rest work on it as on the others.
+
+### 2.2 Tracks — choosing what to keep
+
+From the Home screen with `T`. One row per audio and subtitle track, plus a
+video row at the top.
+
+| Key | Action |
+|---|---|
+| `Space` | Keep / discard the track |
+| `↵` | Confirm the row's choice |
+| `←/→` `+/-` | On the video row: change codec, bitrate, Dolby Vision handling |
+| `F6` / `F7` | Codec / target bitrate |
+| `F8` | Delete or keep the source file after encoding (deleted, it takes its `.nfo` and Jellyfin images along, not its `.srt`) |
+| `F9` | **Add an external track** — leads to the donor file choice |
+| `F4` | Change profile |
+| `F1` / `F2` | Dry run / Encode this file only, without going back to the list |
+
+Discarding every image subtitle (PGS, VobSub) frees the MP4 container; keeping
+one forces MKV.
+
+A PGS doubled by an SRT of the same language and kind arrives **unchecked**:
+Jellyfin would burn it in, hence transcode, to show what the SRT already says.
+A forced SRT only doubles a forced PGS, a full SRT a full PGS. Alone in its
+language and kind, the PGS stays checked. Checking it again by hand is enough
+to keep it.
+
+### 2.3 Donor file choice
+
+After `F9`. You first choose the file that carries the track to add, then its
+tracks within that file. The working file is left out of the list.
+
+`↵` chooses the file, then `Space` checks the tracks to add and `↵` confirms.
+`Esc` cancels. A single track is preselected. Several donors can follow one
+another without leaving the next screen.
+
+**No subtitle on disk? `O` searches OpenSubtitles.com**, in the profile's
+subtitle languages. Rows marked `≡` were uploaded for this exact release: they
+are already in sync, take them first. `SDH` flags a subtitle for the deaf and
+hard of hearing. `↵` downloads the row; the file comes back here as if you had
+chosen it, and the rest is the same — track preselected, language deduced,
+resync.
+
+You need an application key and an account (free, 20 downloads a day). At
+startup, if the key is missing, a window asks for it: **Get a key** opens
+opensubtitles.com/consumers, you paste the key, the username and the password,
+and **Check and save** (or `Ctrl+S`) checks them with OpenSubtitles and saves
+them. To enter or change them later: `F5`, then `K` (§ 2.7).
+
+Without them, the screen says what is missing. The `.srt` is written to the
+temporary folder, not next to the movie: it only exists for the added track.
+
+**Read the Name column to the end.** A rip commonly carries six French tracks:
+France and Canada, each as normal, `(forced)` and `(SDH)`. They have the same
+codec and the same language — **the name is the only thing that tells them
+apart**, and it is shown in full.
+
+A `(forced)` track only holds the lines in a foreign language: twenty-three on
+an episode. Chosen by mistake, it shows up in the player and almost never
+displays anything. It is usually the **first** in the list.
+
+### 2.4 Sync — the screen that asks for the most attention
+
+One row per added track. Fields are walked with `←/→`, values changed with
+`+/-`.
+
+**The first line of the banner says what the field under the cursor does**,
+and it is never cleared — not for a warning, not for a measurement report,
+which take the following lines. That is where you read which keys change the
+value shown, and they differ from one field to the next: only the offset has
+three steps, the other fields cycle through their values.
+
+| Key | Action |
+|---|---|
+| `←/→` | Previous / next field |
+| `Ctrl+↑/↓` | ±10 ms on the offset — to close in on a measured value |
+| `+/-` | ±100 ms on the offset, next value on the other fields |
+| `Shift+↑/↓` | ±1 s on the offset |
+| `↵` | List of values of the current field |
+| `M` | **Measure** the offset automatically |
+| `F` | Force the candidate of a refused measurement |
+| `G` | Details of the detected **segments** |
+| `P` | **Apply the segments** to the track under the cursor |
+| `C` | Copy the offset of another track |
+| `R` | **Anchor point** — when the measurement does not conclude (§ 4.5bis) |
+| `V` | Check in mpv |
+| `K` | Check sample, actually muxed |
+| `D` | Remove the track |
+| `F9` | Add another track |
+| `F1` `F2` `F3` | Dry run / Encode / Mux |
+
+**The language is required.** Without it, the track would come out as "und" in
+every player, and the mux is refused. The screen opens directly on that field
+when a track lacks it.
+
+**Carrying over is automatic.** A successful measurement on an audio track
+applies at once to the subtitles from the **same file**: their right offset
+*is* the audio's, since they were written on its timing. The banner says how
+many tracks followed, and their Sync column shows "copied from #N".
+
+Two kinds of track never follow: those from **another file**, and those you
+have already measured or set by hand — a decision made is not overwritten. `C`
+is there for those cases.
+
+### 2.5 Dry run — what will be done
+
+| Key | Action |
+|---|---|
+| `Space` | Include / exclude the row |
+| `F6` / `F7` | Change the codec / bitrate **of this row only** |
+| `F2` | Start encoding — `↵` starts nothing, on purpose |
+
+The **Est. (Δ%)** and **ETA** columns — the expected encoding time — rest on a
+moving average of the speed measured at each encode: they improve with use and
+are approximate on the first runs.
+
+### 2.6 Encoding — the queue
+
+**Encoding no longer blocks navigation.** `F2` — from Home, the dry run,
+Tracks, Sync or guided mode — puts the files in **a queue**, which starts as
+soon as it has an entry and processes them in order. While it runs, go back to
+the files (`⌫` or `F12`), choose others and `F2`: they are added after the
+others. `F12` switches between the files and the queue. As long as a batch
+exists, the header shows it in the middle, on every screen: "F12 Encoding in
+progress · 1/3 · 42%", then "F12 Batch done"; from the queue, "F12 Files".
+
+- A file already in the queue is refused, with a message.
+- Each file keeps the settings it had when added: changing profile afterwards
+  does not affect it.
+- Files handed to the queue are unchecked on the Home screen.
+- A file waiting or running cannot be deleted (`Ctrl+D`).
+- Quitting (`F10`) says how many files are still waiting.
+
+| Key | Action |
+|---|---|
+| `P` | Pause / resume |
+| `S` | Skip the current file, without canceling the rest |
+| `Ctrl+↑` / `Ctrl+↓` | Move the waiting file under the cursor up / down one place |
+| `Del` | Remove the waiting file under the cursor from the queue |
+| `X` | **Stop all** — the current file and the queue; asks for confirmation |
+| `E` | **After the batch** — sleep, hibernate or shut down the machine once everything is done |
+| `⌫` / `Esc` / `F12` | Back to the files — **encoding continues** |
+
+Once the batch is done, the footer keeps only navigation, and the bottom area
+gives the summary: succeeded, failed, skipped, then the path of each produced
+file. If you were in the files, a notification announces it; the summary waits
+until you have seen it (`F12`), then clears when you leave the view. A new
+addition starts a new batch.
+
+**The machine no longer sleeps during processing** — encoding, mux, join,
+measurement or resync. The header then shows "☾ sleep blocked". The screen
+can still turn off, and a sleep requested by hand (Start menu, lid closed) still
+goes through. It can be turned off in the options (`F5`, `U`).
+
+**After the batch** (`E`): once **all** processing is done, the machine
+sleeps, hibernates or shuts down — your choice, in the options. By default the
+options say **"do nothing"**: `E` then arms nothing and recalls where to choose
+an action. The header announces it ("☾ … · then shut down"). A 60 s countdown
+comes first: `↵` on "Cancel" (preselected) or `Esc` stops it. The switch starts
+unchecked at each new batch, and a batch stopped by `X` triggers nothing.
+Windows only.
+
+### 2.7 Profiles (`F5`)
+
+`N` creates, `E` edits, `C` copies, `D` deletes, `↵` activates. Copying opens
+the form with the settings of the profile under the cursor and a free name
+(`<name>_copie` — a profile name is an identifier, the same in every language):
+change what differs, `Ctrl+S` saves the new profile.
+
+`U` opens the **options**: block sleep while tasks run (on by default), what
+the machine does after a batch whose "After the batch" is checked ("do
+nothing" by default, sleep, hibernate or shut down), and the **interface
+language**: each available language is listed under its own name ("English",
+"Français"). The change takes effect at the next start. On the very first
+start, IRIS ENCODE takes the Windows language if it is translated, English
+otherwise.
+
+`K` opens the **API keys** of the online services — OpenSubtitles and OMDb
+(full IMDB Info card): each service has its button to the page that issues the
+key, and a key is checked with the service before being saved. The same window
+opens at startup as long as a key is missing; "Do not ask again" dismisses it
+for that service.
+
+The list is exactly that of `profiles.toml`, in the file's order: you can edit
+it by hand, the application adds or reorders nothing. Every profile can be
+deleted except the last one in the list. Renaming a profile is done in the
+file: the form's **Identifier** field can only be typed at creation. A profile
+marked `⚠ del.` deletes the source file after a successful encode — check it
+before starting a batch.
+
+---
+
+## 3. Use cases
+
+### 3.1 Adding a dub and its subtitles to an original version
+
+**First of all, look at what the target already contains.** A streaming rip
+often carries thirty subtitles, French included: then there is only one audio
+track to add, and no subtitle resync to do. The Tracks screen (`T`) lists them
+all.
+
+1. Home: cursor on the movie, `T`.
+2. `F9`, choose the file carrying the dub, then its tracks.
+3. On the Sync screen, cursor on the **audio** track, `M`.
+4. **Subtitles are resynced after the audio, never before**: its measurement is
+   their reference. Depending on what it gave —
+
+   | Measurement result | On each subtitle |
    |---|---|
-   | `✓` ou `⚠` (§ 4.1, § 4.2) | **rien — le report est automatique** |
-   | `✗ montage différent — N plages` (§ 4.5) | `P` — et `P` aussi sur l'audio |
-   | `✗ trop peu de repères` (§ 4.3) | rien, sauf autre donneur → `C` |
-   | `✗ sous-titre image` (§ 4.4) | rien, sauf autre donneur → `C` |
-   | `✗ aucun alignement commun` (§ 4.5bis) | `R` — donner un point de repère |
+   | `✓` or `⚠` (§ 4.1, § 4.2) | **nothing — carrying over is automatic** |
+   | `✗ different cut — N segments` (§ 4.5) | `P` — and `P` on the audio too |
+   | `✗ too few subtitle lines` (§ 4.3) | nothing, unless another donor → `C` |
+   | `✗ image subtitle` (§ 4.4) | nothing, unless another donor → `C` |
+   | `✗ no common alignment` (§ 4.5bis) | `R` — give an anchor point |
 
-   Une mesure réussie se **reporte d'elle-même** sur les sous-titres venus du
-   même fichier : leur colonne d'origine passe à « repris de #N ». C'est
-   voulu — des sous-titres livrés avec une VF sont écrits sur le timing de
-   cette VF, donc leur bon décalage **est** le sien.
+   A successful measurement **carries over by itself** to the subtitles from
+   the same file: their Sync column turns to "copied from #N". This is
+   intended — subtitles delivered with a dub are written on that dub's timing,
+   so their right offset **is** its offset.
 
-   Le report ne touche jamais une piste que vous avez déjà réglée, ni une
-   piste venue d'un autre fichier. Pour celles-là, `C` reste là.
-5. Renseigner la **langue** de chaque piste si elle manque.
-6. `V` ou `K` pour contrôler.
-7. `F3` pour muxer sans réencoder, ou `F2` pour réencoder aussi la vidéo.
+   Carrying over never touches a track you have already set, nor a track from
+   another file. For those, `C` is there.
+5. Fill in the **language** of each track if it is missing.
+6. `V` or `K` to check.
+7. `F3` to mux without re-encoding, or `F2` to re-encode the video too.
 
-### 3.2 Réencoder toute une arborescence selon le profil
+### 3.2 Re-encoding a whole folder tree with the profile
 
-Pour une saison entière, ou une bibliothèque rangée en sous-dossiers.
+For a whole season, or a library sorted into subfolders.
 
-1. Placez le curseur **sur un dossier** — `R` ne fait rien sur un fichier.
-2. `R`, puis confirmez. Tous les fichiers vidéo du dossier **et de ses
-   sous-dossiers**, sans limite de profondeur, sont analysés avec le profil
-   actif.
-3. L'aperçu s'ouvre sur le résultat. `Espace` retire une ligne, `F6` et `F7`
-   changent le codec ou le débit **de cette ligne seulement**.
-4. `F2` lance.
+1. Put the cursor **on a folder** — `R` does nothing on a file.
+2. `R`, then confirm. Every video file in the folder **and its subfolders**,
+   with no depth limit, is analyzed with the active profile.
+3. The dry run opens on the result. `Space` removes a row, `F6` and `F7`
+   change the codec or bitrate **of that row only**.
+4. `F2` starts.
 
-Deux choses à savoir avant de lancer :
+Two things to know before starting:
 
-- **Les fichiers déjà assez compressés sont écartés** de la liste. L'aperçu ne
-  montre que ce qui sera réellement encodé — si un fichier manque, c'est qu'il
-  n'avait rien à gagner.
-- **Aucune sélection manuelle de pistes.** Les décisions viennent du profil, y
-  compris le sort des langues. Vérifiez-les sur un fichier seul (`T`) avant de
-  lancer un lot.
+- **Files already compressed enough are left out** of the list. The dry run
+  only shows what will really be encoded — if a file is missing, it had nothing
+  to gain.
+- **No manual track selection.** Decisions come from the profile, including
+  what happens to each language. Check them on a single file (`T`) before
+  starting a batch.
 
-Un profil marqué `⚠ suppr.` efface chaque source après un encodage réussi. Sur
-une arborescence entière, relisez ce point deux fois.
+A profile marked `⚠ del.` deletes each source after a successful encode. On a
+whole folder tree, read this twice.
 
-### 3.3 Rendre lisible un 4K Dolby Vision qui bloque à la lecture
+### 3.3 Making a 4K Dolby Vision that stalls at playback playable
 
-Certains lecteurs — dont les clients webOS — refusent la lecture directe d'un
-Dolby Vision profil 8 et basculent en transcodage, avec des coupures de son.
-Retirer le DV **améliore** la lecture, contrairement à ce qu'on croirait.
+Some players — webOS clients among them — refuse direct play of a Dolby Vision
+profile 8 and fall back to transcoding, with audio dropouts. Removing DV
+**improves** playback, contrary to what one might think.
 
-Avec un profil réglé sur `dolby_vision = hdr10` (`F5`, champ **DV**), une source
-DV que le profil n'a aucune raison de réencoder sort en `.hdr10-iris.mkv` ou
-`.hdr10-iris.mp4`, selon ce que ses pistes permettent :
+With a profile set to `dolby_vision = hdr10` (`F5`, **Dolby Vision** section,
+**Handling** field), a DV source the profile has no reason to re-encode comes
+out as `.hdr10-iris.mkv` or `.hdr10-iris.mp4`, depending on what its tracks
+allow:
 
-- le RPU est retiré, **aucune image n'est recalculée** ;
-- le HDR10+ éventuel survit, ce qu'aucun réencodage ne permet ;
-- comptez deux à trois minutes pour un film de 15 Go, contre plusieurs heures.
+- the RPU is removed, **no picture is recomputed**;
+- any HDR10+ survives, which no re-encode allows;
+- allow two to three minutes for a 15 GB movie, instead of several hours.
 
-La colonne **Décision** affiche `→ HDR10` sur ces fichiers. C'est le cas le plus
-rentable de l'application : beaucoup gagné, presque rien dépensé.
+The **Decision** column shows `→ HDR10` on these files. It is the most
+rewarding case in the application: a lot gained, almost nothing spent.
 
-### 3.4 Alléger un Dolby Vision sans le perdre
+### 3.4 Slimming down a Dolby Vision without losing it
 
-Un profil réglé sur `dolby_vision = dv` (`F5`, champ **DV**) garde le Dolby
-Vision. Jusqu'à la v0.8.8.0 il gardait aussi le débit : la vidéo était recopiée
-telle quelle, et un film de 60 Mb/s ressortait à 60 Mb/s. Désormais
-l'application sort les métadonnées DV avant l'encodage et les remet après.
+A profile set to `dolby_vision = dv` (`F5`, **Dolby Vision** section,
+**Handling** field) keeps Dolby Vision. Up to v0.8.8.0 it also kept the
+bitrate: the video was copied as it was, and a 60 Mb/s movie came out at
+60 Mb/s. Now the application takes the DV metadata out before encoding and puts
+it back afterwards.
 
-La colonne **Décision** distingue les deux cas :
+The **Decision** column tells the two cases apart:
 
-| Ce qui s'affiche | Ce qui se passe |
+| What is shown | What happens |
 |---|---|
-| `→ HEVC → DV` | la vidéo est réencodée au débit du profil, le Dolby Vision est conservé |
-| `→ DV (copie)` | la vidéo est recopiée — le débit du profil ne s'applique pas |
+| `→ HEVC → DV` | the video is re-encoded at the profile's bitrate, Dolby Vision is kept |
+| `→ DV (copy)` | the video is copied — the profile's bitrate does not apply |
 
-Quand vous voyez `→ DV (copie)`, la colonne **Raison** dit pourquoi. Trois
-causes possibles :
+When you see `→ DV (copy)`, step 2 of guided mode gives the reason under the
+video row. Three possible causes:
 
-- **le profil demande un downscale** (`keep_4k` décoché sur une source 4K). Les
-  métadonnées DV décrivent le cadrage image par image : redimensionner les rend
-  fausses. Cochez `keep_4k` pour que le réencodage soit possible.
-- **la source est en Dolby Vision profil 5 ou 8.4.** Leur couche de base n'est
-  pas du HDR10 ; il n'y a rien à quoi rattacher les métadonnées. Rien à faire —
-  sinon passer le profil en `hdr10` ou `sdr` si la taille prime.
-- **dovi_tool ou mkvmerge manquent.** Relancez le preflight.
+- **the profile asks for a downscale** (`keep_4k` unchecked on a 4K source).
+  DV metadata describes the framing picture by picture: resizing makes it
+  wrong. Check `keep_4k` so that re-encoding becomes possible.
+- **the source is Dolby Vision profile 5 or 8.4.** Their base layer is not
+  HDR10; there is nothing to attach the metadata to. Nothing to do — except set
+  the profile to `hdr10` or `sdr` if size comes first.
+- **dovi_tool or mkvmerge is missing.** Run the preflight again.
 
-À savoir avant de lancer un lot :
+Before starting a batch, know that:
 
-- **la sortie est toujours un `.mkv`**, même si le profil demande du MP4 — le
-  MP4 ne porte pas ces métadonnées sans réécriture ;
-- **comptez deux fois la taille de la vidéo encodée en espace disque
-  temporaire**, à côté du fichier source. Les fichiers sont effacés à la fin,
-  que l'encodage réussisse ou non ;
-- **l'encodage est plus long** qu'un encodage ordinaire : trois passes sur le
-  flux s'ajoutent à l'encodage lui-même.
+- **the output is always an `.mkv`**, even if the profile asks for MP4 — MP4
+  cannot carry this metadata without rewriting;
+- **allow twice the size of the encoded video in temporary disk space**, next
+  to the source file. The files are deleted at the end, whether the encode
+  succeeds or not;
+- **encoding takes longer** than an ordinary encode: three passes over the
+  stream add to the encode itself.
 
-> Le premier fichier produit mérite un contrôle sur votre téléviseur : la chaîne
-> est vérifiée sur des extraits courts, pas encore sur un film entier.
+> The first file produced deserves a check on your TV: the chain is verified
+> on short excerpts, not yet on a whole movie.
 
-### 3.5 Ne garder que certaines langues
+### 3.5 Keeping only some languages
 
-Un rip streaming embarque couramment deux pistes audio et **quarante
-sous-titres**. Le profil décide ce qui traverse.
+A streaming rip commonly carries two audio tracks and **forty subtitles**. The
+profile decides what goes through.
 
-`F5`, puis `E` sur le profil :
+`F5`, then `E` on the profile:
 
-| Champ | Effet |
+| Field | Effect |
 |---|---|
-| **Langues** | Pistes audio conservées, par code ISO — `fre, eng` |
-| **Langues sous-titres** | Idem pour les sous-titres. **Vide = toutes** |
+| **Languages** | Audio tracks kept, by ISO code — `fre, eng` |
+| **Subtitle languages** | Same for subtitles. **Empty = all** |
 
-Les deux jeux de codes ISO sont réconciliés : écrire `fre` retient aussi les
-pistes étiquetées `fra`, et de même pour `ger`/`deu`, `dut`/`nld`, `cze`/`ces`.
+The two sets of ISO codes are reconciled: writing `fre` also keeps tracks
+labeled `fra`, and the same for `ger`/`deu`, `dut`/`nld`, `cze`/`ces`.
 
-La première piste audio est toujours gardée, quelle que soit sa langue : c'est
-la piste d'origine, et la perdre serait perdre le film.
+The first audio track is always kept, whatever its language: it is the
+original track, and losing it would mean losing the movie.
 
-Pour un contrôle piste par piste sur un seul fichier, `T` puis `Espace` — le
-profil ne décide que du cas général.
+For track-by-track control on a single file, `T` then `Space` — the profile
+only decides the general case.
 
-### 3.6 Recaler un sous-titre trouvé sur internet
+### 3.6 Resyncing a subtitle found on the internet
 
-Un `.srt` téléchargé n'est presque jamais synchronisé sur votre fichier.
+A downloaded `.srt` is almost never in sync with your file.
 
-1. Sur le film, `T` puis `F9`, et choisissez le `.srt`.
-2. Sur l'écran de recalage, `M` sur la ligne du sous-titre.
-3. Selon ce que la mesure rend, voir § 4 — et si elle ne conclut pas du tout,
-   `R` donne un point de repère (§ 4.5bis).
-4. `V` pour contrôler à l'œil, `K` pour un extrait réellement muxé.
-5. `F3` muxe sans réencoder — quelques minutes, image intacte.
+1. On the movie, `T` then `F9`, and choose the `.srt`.
+2. On the Sync screen, `M` on the subtitle row.
+3. Depending on what the measurement gives, see § 4 — and if it does not
+   conclude at all, `R` gives an anchor point (§ 4.5bis).
+4. `V` to check by eye, `K` for a check sample actually muxed.
+5. `F3` muxes without re-encoding — a few minutes, picture untouched.
 
-Un sous-titre est corrigé **exactement** : il n'y a que des nombres à décaler,
-rien à rééchantillonner. C'est ce qui rend ce cas beaucoup plus sûr qu'un
-recalage audio.
+A subtitle is corrected **exactly**: there are only numbers to shift, nothing
+to resample. That is what makes this case much safer than an audio resync.
 
 ---
 
-## 4. Les cas rencontrés
+## 4. Cases met in practice
 
-### 4.1 « ✓ +2450 ms (confiance excellente) »
+### 4.1 "✓ +2450 ms (confidence excellent)"
 
-Le cas nominal. Le décalage est posé. Un contrôle `V` reste une bonne habitude
-mais n'est pas indispensable.
+The nominal case. The offset is set. A `V` check remains a good habit but is not
+essential.
 
-La confiance se lit en mots — **aucune**, **faible**, **moyenne**,
-**excellente** — et non en nombres : le seuil d'acceptation varie avec le
-nombre de répliques mesurées, si bien qu'un même chiffre n'a pas le même sens
-d'une mesure à l'autre. « Moyenne » ou « excellente » signifie que la mesure a
-été retenue ; « faible » ou « aucune », qu'elle a été refusée.
+Confidence reads in words — **none**, **low**, **medium**, **excellent** — not
+in numbers: the acceptance threshold varies with the number of subtitle lines
+measured, so the same figure does not mean the same thing from one measurement
+to another. "Medium" or "excellent" means the measurement was accepted; "low"
+or "none", that it was refused.
 
-**Les sous-titres ne sont pas recalés pour autant** : la mesure ne vaut que
-pour la ligne sur laquelle elle a tourné. Curseur sur chaque sous-titre, `C`,
-puis choisir la piste audio (§ 3, étape 4).
+A successful measurement on the audio carries over to the subtitles of the same
+file (§ 2.4). A subtitle from another file keeps its own offset: cursor on it,
+`C`, then choose the audio track (§ 3.1, step 4).
 
-### 4.2 « ⚠ … — à vérifier »
+### 4.2 "⚠ … — to check"
 
-La corrélation est moyenne et les tiers n'ont pas tranché. La valeur est
-appliquée mais **contrôlez avant de muxer** : `V` pour l'oreille, `K` pour un
-extrait réellement muxé.
+The correlation is medium and the thirds of the movie did not settle it. The
+value is applied but **check before muxing**: `V` by ear, `K` for a check sample
+actually muxed.
 
-### 4.2bis « ⚠ … → durées écartées de N % »
+### 4.2bis "⚠ … durations … apart — check that it is the same cut"
 
-La mesure a trouvé un décalage cohérent, mais les deux fichiers ne durent pas
-la même chose à plus de **6 %** près. C'est beaucoup : deux copies d'un même
-film ne diffèrent que par leurs génériques.
+The measurement found a consistent offset, but the two files differ in length
+by more than **6 %**. That is a lot: two copies of the same movie only differ
+by their credits.
 
-Le décalage trouvé peut être juste — un donneur amputé de son générique de fin
-reste alignable sur toute sa longueur. Il peut aussi signaler que vous avez
-pris **le mauvais fichier**, ou une autre version du film. `K` tranche en
-quelques minutes : un extrait muxé en fin de film montre immédiatement si
-l'alignement tient jusqu'au bout.
+The offset found may be right — a donor missing its end credits stays alignable
+over its whole length. It may also mean you took **the wrong file**, or another
+version of the movie. `K` settles it in a few minutes: a check sample muxed at
+the end of the movie immediately shows whether the alignment holds to the end.
 
-> Cet avertissement existait depuis longtemps mais **n'était affiché nulle
-> part** avant la v0.8.5.1 : il était rangé avec les messages d'échec, que
-> l'application ne lit que sur une mesure refusée. Un donneur d'un autre
-> montage passait donc en silence.
+> This warning existed for a long time but **was shown nowhere** before
+> v0.8.5.1: it was filed with the failure messages, which the application only
+> reads on a refused measurement. A donor from another cut therefore went
+> through silently.
 
-### 4.3 « ✗ trop peu de repères »
+### 4.3 "✗ too few subtitle lines"
 
-Le sous-titre est trop court pour être mesuré — typiquement une piste de
-**forcés**, qui ne contient que quelques répliques. Ce n'est pas une erreur.
-Utilisez `C` pour reprendre le décalage de la piste audio.
+The subtitle is too short to be measured — typically a **forced** track, which
+only holds a few lines. It is not an error. Use `C` to copy the offset of the
+audio track.
 
-### 4.4 « ✗ sous-titre image (PGS, VobSub) »
+### 4.4 "✗ image subtitle (PGS, VobSub)"
 
-Ces sous-titres sont des images, sans texte à corréler. Aucune mesure n'est
-possible ; réglez le décalage à la main ou par `C`.
+These subtitles are pictures, with no text to correlate. No measurement is
+possible; set the offset by hand or with `C`.
 
-### 4.5 « ✗ montage différent — N plages »
+### 4.5 "✗ different cut — N segments"
 
-Les deux fichiers portent le même contenu dans deux montages différents —
-typiquement un rip broadcast, dont les coupures publicitaires décalent tout ce
-qui suit, face à un rip streaming.
+The two files carry the same content in two different cuts — typically a
+broadcast rip, whose commercial breaks shift everything that follows, against
+a streaming rip.
 
-**Procédure :**
+**Procedure:**
 
-1. `G` pour voir les plages. Des paliers réguliers (par exemple cinq fois
-   +2 000 ms) confirment le diagnostic ; des valeurs erratiques signifient
-   plutôt que les fichiers n'ont rien à voir.
-2. Curseur sur la piste **audio**, `P`. Le recalage prend quelques minutes —
-   décodage puis réencodage, avec barre de progression.
-3. Curseur sur chaque **sous-titre**, `P`. Instantané.
-4. `V` ou `K` pour contrôler, puis `F2` ou `F3`.
+1. `G` to see the segments. Regular steps (for example five times +2,000 ms)
+   confirm the diagnosis; erratic values rather mean the files have nothing to
+   do with each other.
+2. Cursor on the **audio** track, `P`. The resync takes a few minutes —
+   decoding then re-encoding, with a progress bar.
+3. Cursor on each **subtitle**, `P`. Instant.
+4. `V` or `K` to check, then `F2` or `F3`.
 
-Les plages restent en mémoire tant qu'aucune nouvelle mesure n'est lancée :
-une seule détection, sur l'audio, sert aux trois pistes. C'est le chemin le plus
-sûr — le signal d'une piste audio est dense, celui d'un sous-titre est creux.
-L'application sait tout de même retrouver des plages sur un sous-titre seul,
-mais elle y arrive moins souvent ; si elle n'y parvient pas, `R` (§ 4.5bis).
+The segments stay in memory as long as no new measurement is started: a single
+detection, on the audio, serves all three tracks. It is the safest way — the
+signal of an audio track is dense, that of a subtitle is sparse. The
+application can still find segments on a subtitle alone, but succeeds less
+often; if it does not, `R` (§ 4.5bis).
 
-Si le compte rendu signale « aucun silence trouvé » sur une frontière,
-l'insertion a été posée sur la position estimée. Rien n'est perdu, mais cette
-zone mérite une écoute.
+If the report says "no silence found, insertion on the estimated boundary" on a
+boundary, the insertion was placed at the estimated position. Nothing is lost,
+but that area deserves a listen.
 
-Si le compte rendu signale « point d'insertion en retrait sur le précédent,
-repoussé de N s », deux frontières étaient trop proches pour que le silence de
-chacune tienne : la seconde a été décalée juste après la première. La durée
-insérée est intacte, seul son emplacement bouge — écoutez cette jonction.
+If the report says "insertion point before the previous one, moved by N s",
+two boundaries were too close for each one's silence to hold: the second was
+moved just after the first. The inserted duration is intact, only its place
+moves — listen to that junction.
 
-> **Sur une piste audio produite par `P` avant la v0.8.4.5** : deux points
-> d'insertion pouvaient se croiser, et le passage compris entre eux se
-> retrouvait alors **deux fois** dans la piste. Le fichier passait tous les
-> contrôles. Si vous entendez une réplique répétée sur une greffe ancienne,
-> c'est cela : relancez `P` avec cette version.
+> **On an audio track produced by `P` before v0.8.4.5**: two insertion points
+> could cross, and the passage between them then ended up **twice** in the
+> track. The file passed every check. If you hear a repeated line on an old
+> added track, that is why: run `P` again with this version.
 
-> **Le recalage se figeait parfois** avant la v0.8.4.4 — barre d'avancement
-> bloquée, sans message, sans autre issue que de quitter l'application. C'était
-> ffmpeg suspendu sur un tube d'erreur plein. Corrigé.
+> **The resync sometimes froze** before v0.8.4.4 — progress bar stuck, no
+> message, no way out but quitting the application. It was ffmpeg hanging on a
+> full error pipe. Fixed.
 
-### 4.5bis Rien n'y fait — le point de repère (`R`)
+### 4.5bis Nothing works — the anchor point (`R`)
 
-Certains sous-titres ne se mesurent pas, quel que soit le réglage. Le cas
-typique : un `.srt` communautaire dont **l'adaptation du texte diffère de celle
-du doublage**. Les répliques sont découpées et condensées autrement, donc leur
-rythme ne décalque pas celui de la parole — mesuré sur un cas réel, la
-corrélation y plafonne à moins de la moitié du seuil *même parfaitement
-alignée*.
+Some subtitles cannot be measured, whatever the setting. The typical case: a
+community `.srt` whose **text adaptation differs from the dub's**. Lines are
+split and condensed differently, so their rhythm does not trace that of the
+speech — measured on a real case, the correlation tops out at less than half
+the threshold *even when perfectly aligned*.
 
-La corrélation reste pourtant utilisable si on lui dit **où** chercher.
+The correlation can still be used if it is told **where** to look.
 
-1. `R` **propose une réplique** et l'instant où elle est écrite. `↓` et `↑` en
-   proposent une autre, si celle-ci ne se retrouve pas.
-2. Écoutez le film à cet endroit, et donnez l'instant où vous l'entendez
-   réellement. Formats acceptés : `13:22`, `1:13:22`, `13:22.5`, `802`.
-3. La recherche se centre sur l'écart entre les deux. Elle retrouve alors le
-   décalage, et les plages s'il y a plusieurs coupures.
+1. `R` **suggests a subtitle line** and the moment it is written for. `↓` and
+   `↑` suggest another one, if this one cannot be found.
+2. Listen to the movie at that point, and give the moment you actually hear it.
+   Accepted formats: `13:22`, `1:13:22`, `13:22.5`, `802`.
+3. The search centers on the gap between the two. It then finds the offset,
+   and the segments if there are several cuts.
 
-Si l'analyse trouve un décalage **très différent** de celui que vous avez
-donné, elle le dit et n'applique rien : c'est le signe que l'un des deux
-instants est faux. Revérifiez-les plutôt que d'insister.
+If the analysis finds an offset **very different** from the one you gave, it
+says so and applies nothing: it is the sign that one of the two moments is
+wrong. Check them again rather than insisting.
 
-### 4.6 « demande un facteur d'étirement »
+### 4.6 "needs a stretch factor"
 
-Une source PAL accélérée (25 vs 23,976 images/s) dérive au lieu d'être
-simplement décalée. mkvmerge sait l'étirer, ffmpeg non : la greffe passe
-automatiquement par un mux préalable juste avant l'encodage. Rien à faire, sauf
-si mkvmerge est absent — dans ce cas, relancez le preflight pour l'installer.
+A sped-up PAL source (25 vs 23.976 frames/s) drifts instead of being simply
+offset. mkvmerge can stretch it, ffmpeg cannot: the added track goes
+automatically through a pre-mux just before encoding. Nothing to do, unless
+mkvmerge is missing — then run the preflight again to install it.
 
-Un étirement ne se prévisualise pas dans mpv (`audio-delay` ne fait qu'un
-décalage constant) : utilisez `K`, qui produit deux fenêtres, début et fin, la
-dérive s'accumulant.
+A stretch cannot be previewed in mpv (`audio-delay` only applies a constant
+offset): use `K`, which produces two windows, start and end, since the drift
+builds up.
 
-> **Vérifiez les fichiers produits par ce chemin avant la v0.8.4.3.** La piste
-> greffée était bien muxée dans l'intermédiaire, puis **perdue** au moment du
-> réencodage : l'application annonçait un succès et rendait un fichier sans la
-> VF qu'on venait de recaler. Rien ne le signalait. Si un fichier étiré vous
-> semble amputé, il l'est — refaites la greffe.
+> **Check the files produced by this path before v0.8.4.3.** The added track
+> was muxed into the intermediate file, then **lost** during re-encoding: the
+> application reported success and returned a file without the dub you had just
+> resynced. Nothing flagged it. If a stretched file seems to be missing a track,
+> it is — add it again.
 
-### 4.7 Le fichier produit ne se lit pas sur le téléviseur
+### 4.7 The produced file does not play on the TV
 
-Corrigé en v0.8.1.0 : un décalage négatif déplaçait toute la vidéo hors de
-zéro, ce que les décodeurs matériels refusent parfois alors que mpv et VLC le
-normalisent en silence. Si le problème persiste sur un fichier plus ancien,
-réencodez-le avec cette version.
+Fixed in v0.8.1.0: a negative offset moved the whole video away from zero,
+which hardware decoders sometimes refuse while mpv and VLC silently normalize
+it. If the problem persists on an older file, re-encode it with this version.
 
-### 4.8 La suppression échoue sous Windows
+### 4.8 Deleting fails on Windows
 
-`Ctrl+D` sur un fichier encore ouvert dans mpv échoue : Windows le tient
-verrouillé. Fermez le lecteur et recommencez.
+`Ctrl+D` on a file still open in mpv fails: Windows keeps it locked. Close the
+player and try again.
 
-### 4.9 « → HDR10 » sur un fichier qui n'a rien à réencoder
+### 4.9 "→ HDR10" on a file that has nothing to re-encode
 
-La décision **`→ HDR10`**, en vert, n'est pas un encodage : c'est un retrait du
-Dolby Vision. Elle apparaît quand le fichier est en DV **profil 8.1** (ou 7),
-que le profil actif demande `dolby_vision = "hdr10"`, et qu'il n'y a par
-ailleurs rien à réencoder — débit sous le seuil, résolution dans les clous.
+The **`→ HDR10`** decision, in green, is not an encode: it is a Dolby Vision
+removal. It appears when the file is DV **profile 8.1** (or 7), the active
+profile asks for `dolby_vision = "hdr10"`, and there is otherwise nothing to
+re-encode — bitrate under the threshold, resolution within bounds.
 
-En 8.1, la couche de base *est* déjà du HDR10 : il suffit d'en retirer les
-métadonnées Dolby Vision. L'image ressort **identique au bit près**, le HDR10+
-éventuel est conservé, et un film 4K de 5,7 Go y passe en un peu plus de deux
-minutes — contre plusieurs heures pour un réencodage, qui abîmerait l'image et
-perdrait le HDR10+. La sortie est un `<nom>.hdr10-iris.mkv` ou `.mp4` portant
-les pistes retenues de la source ; un profil 7 sort toujours en MKV.
+In 8.1, the base layer already *is* HDR10: removing the Dolby Vision metadata
+is enough. The picture comes out **bit-identical**, any HDR10+ is kept, and a
+5.7 GB 4K movie goes through in a little over two minutes — instead of several
+hours for a re-encode, which would damage the picture and lose the HDR10+. The
+output is a `<name>.hdr10-iris.mkv` or `.mp4` carrying the source tracks that
+were kept; a profile 7 always comes out as MKV.
 
-> **MP4 produits avant la v0.8.8.15 : à refaire.** Leur vidéo avait perdu ses
-> horodatages. Sur téléviseur, la lecture démarrait sur le son seul, sans
-> image, puis plantait. Relancez le retrait depuis la source ; les `.mkv` ne
-> sont pas concernés.
+> **MP4 files produced before v0.8.8.15: redo them.** Their video had lost its
+> timestamps. On a TV, playback started with sound only, no picture, then
+> crashed. Run the removal again from the source; `.mkv` files are not
+> affected.
 
-Pour réencoder quand même, `F6` sur la ligne force le codec : la décision
-repart du débit source.
+To re-encode anyway, `F6` on the row forces the codec: the decision starts again
+from the source bitrate.
 
-Rien ne s'affiche si `dovi_tool` ou mkvmerge manque — le fichier reste en
-`← SKIP` plutôt que de promettre une opération impossible.
+Nothing is shown if `dovi_tool` or mkvmerge is missing — the file stays at
+`← SKIP` rather than promising an impossible operation.
 
-### 4.10 La colonne « Débit » ne dit pas la même chose que mon explorateur
+### 4.10 The "Bitrate" column does not say the same as my file explorer
 
-La colonne affiche le **débit vidéo seul**, tandis qu'un explorateur de
-fichiers ou MediaInfo montre le débit du conteneur — audio et sous-titres
-compris. Sur un film porteur d'une piste TrueHD, l'écart dépasse 40 %.
+The column shows the **video bitrate alone**, while a file explorer or
+MediaInfo shows the container bitrate — audio and subtitles included. On a
+movie carrying a TrueHD track, the gap exceeds 40 %.
 
-C'est voulu : le seuil que tu fixes dans un profil est un débit vidéo, et
-c'est un débit vidéo que reçoit l'encodeur. Comparer un total à un seuil vidéo
-enverrait au réencodage des fichiers dont l'image tient largement en dessous.
+This is intended: the threshold you set in a profile is a video bitrate, and a
+video bitrate is what the encoder receives. Comparing a total with a video
+threshold would send to re-encoding files whose picture sits well below it.
 
-Pour retrouver le débit total, additionne les pistes : l'écran Pistes (`↵`)
-donne le détail de chacune.
+To get the total bitrate back, add up the tracks: the Tracks screen (`T`) gives
+the details of each one.
 
-### 4.11 Une piste TrueHD ou DTS sort trop dégradée
+### 4.11 A TrueHD or DTS track comes out too degraded
 
-Par défaut, une piste transcodée suit le forfait du profil : 448 kbps en AC3
-pour du 5.1. C'est correct pour une source déjà compressée, généreux pour rien
-sur un TrueHD à 3,5 Mbps.
+By default, a transcoded track follows the profile's fixed rate: 448 kbps in
+AC3 for 5.1. That is right for an already compressed source, and a needless
+loss on a 3.5 Mbps TrueHD.
 
-Le champ **« TrueHD/DTS → débit source »** de l'écran Profils (`F5`, puis
-éditer) change la règle pour ces pistes :
+The **Handling** field of the **Lossless audio** section of the profile form
+(`F5`, then edit) changes the rule for these tracks:
 
-- **`none`** — le forfait s'applique, comportement d'origine.
-- **`ac3`** — transcodage au débit de la source, plafonné à **640 kbps** :
-  c'est le maximum de l'AC3, l'encodeur ramène tout le reste sans le dire.
-- **`eac3`** — transcodage au débit de la source, plafonné à **6 144 kbps**.
-  Un TrueHD à 3 501 kbps ressort en E-AC3 à 3 501 kbps.
+- **`→ fixed 5.1 / 7.1 bitrate below`** — the fixed rate applies, the original
+  behavior.
+- **`→ AC3 at the source bitrate`** — capped at **640 kbps**: that is the AC3
+  maximum, the encoder silently brings everything else down.
+- **`→ E-AC3 at the source bitrate`** — capped at **6,144 kbps**. A TrueHD at
+  3,501 kbps comes out as E-AC3 at 3,501 kbps.
+- **`copy as they are`** — the track is kept lossless (`preserve_hd_audio`),
+  which forces MKV.
 
-L'E-AC3 est le bon choix pour un téléviseur récent : il est décodé nativement
-et transporté en eARC vers une barre de son. L'AC3 reste le repli universel.
+E-AC3 is the right choice for a recent TV: it is decoded natively and carried
+over eARC to a soundbar. AC3 remains the universal fallback.
 
-Une limite à connaître : les encodeurs AC3 et E-AC3 ne dépassent pas le 5.1,
-une source 7.1 est donc repliée — la décision l'affiche (« → eac3 5.1 »).
+A limit to know: the AC3 and E-AC3 encoders do not go beyond 5.1, so a 7.1
+source is folded down — the decision shows it ("→ eac3 5.1").
 
-Le titre de la piste est corrigé au passage : « ENG VO : TrueHD 5.1 » devient
-« ENG VO : E-AC3 5.1 », et la mention Atmos disparaît puisqu'elle ne survit pas
-à la conversion. Un titre qui ne parle pas du format (« English ») est laissé
-tel quel.
+The track title is fixed along the way: "ENG VO : TrueHD 5.1" becomes
+"ENG VO : E-AC3 5.1", and the Atmos mention disappears since it does not
+survive the conversion. A title that does not mention the format ("English")
+is left as it is.
 
-Si tu veux au contraire garder la piste intacte, c'est `preserve_hd_audio`
-qu'il faut cocher : la copie sans perte l'emporte sur ce réglage.
+### 4.12 "libx265 unavailable here" on a 4K profile
 
-### 4.12 « libx265 indisponible ici » sur un profil 4K
+The HDR10 **quality** mode (`hdr10_quality = "quality"`, field **HDR10 mode**
+of the profile form) encodes on the **processor**, with libx265: that is what
+lets it inject the static HDR10 metadata some TVs expect, which no graphics
+card encoder exposes.
 
-Le profil `cinema_4k_quality` encode sur **processeur**, avec libx265 : c'est
-ce qui lui permet d'injecter les métadonnées HDR10 statiques qu'attendent
-certains téléviseurs, et qu'aucun encodeur de carte graphique n'expose.
+Before v0.8.4.3, the application only checked the card's three encoders at
+startup, and treated as unavailable anything it had not tried. On a machine
+with a graphics card — so on almost all of them — the profile was refused
+before even starting, in the name of a test that had not taken place. It works
+now.
 
-Avant la v0.8.4.3, l'application ne vérifiait au lancement que les trois
-encodeurs de la carte, et tenait pour indisponible tout ce qu'elle n'avait pas
-essayé. Sur une machine équipée d'une carte graphique — donc sur presque
-toutes — le profil était refusé avant même de commencer, au nom d'une mesure
-qui n'avait pas eu lieu. Il fonctionne désormais.
+If the message persists, your ffmpeg really is built without libx265:
+`ffmpeg -encoders | findstr x265` confirms it. Then switch the profile to the
+**compat** mode, which goes through the card.
 
-Si le message persiste, c'est que votre ffmpeg est réellement construit sans
-libx265 : `ffmpeg -encoders | findstr x265` le confirme. Utilisez alors
-`cinema_4k_hd`, qui passe par la carte.
+### 4.13 "NVENC refused: this ffmpeg needs NVIDIA driver …"
 
-### 4.13 « NVENC refusé : ce ffmpeg exige le pilote NVIDIA … »
+At startup, a "Graphics card" alert announces that HEVC, H264 and AV1 through
+the card are all unavailable. Each ffmpeg is compiled for a version of the
+NVENC interface, which requires a minimum driver: an ffmpeg newer than the
+driver refuses the whole card. The ffmpeg version number is not enough to
+predict it (8.1.2 from gyan.dev requires driver 610, 8.1.3 from BtbN is happy
+with 597).
 
-Au lancement, une alerte « Carte graphique » annonce que HEVC, H264 et AV1 par
-la carte sont tous indisponibles. Chaque ffmpeg est compilé pour une version de
-l'interface NVENC, qui exige un pilote minimal : un ffmpeg plus récent que le
-pilote refuse toute la carte. Le numéro de ffmpeg ne suffit pas à le prévoir
-(8.1.2 de gyan.dev exige le pilote 610, 8.1.3 de BtbN se contente du 597).
-
-Deux sorties : mettre à jour le pilote NVIDIA à la version indiquée, ou
-installer un ffmpeg plus ancien. L'application prend le ffmpeg du `PATH` avant
-celui de `bin/`. Pour tester un ffmpeg :
+Two ways out: update the NVIDIA driver to the version shown, or install an
+older ffmpeg. The application takes the ffmpeg on the `PATH` before the one in
+`bin/`. To test an ffmpeg:
 
 ```
 ffmpeg -v error -f lavfi -i testsrc2=d=1 -c:v hevc_nvenc -f null -
 ```
 
-Aucune sortie : il fonctionne.
+No output: it works.
 
-### 4.14 Un outil optionnel manque
+### 4.14 An optional tool is missing
 
-`dovi_tool`, `mkvmerge` et `mpv` sont optionnels : leur absence désactive une
-fonction sans bloquer le lancement. Le preflight propose de les installer à
-chaque démarrage ; répondez `o`, ou placez les binaires dans `bin/`.
+`dovi_tool`, `mkvmerge` and `mpv` are optional: when one is missing, a feature
+is turned off without blocking startup. The preflight offers to install them at
+each start; answer `y`, or put the binaries in `bin/`.
 
 ---
 
-## 5. Conventions communes à tous les écrans
+## 5. Conventions shared by all screens
 
-- `⌫` ou `Esc` reviennent en arrière, partout.
-- `Ctrl+Home` **ramène à la liste des volumes** — la racine — depuis
-  n'importe quel écran : aperçu, encodage, mux, assistant, profils, pistes,
-  recalage, et l'accueil lui-même. C'est ce qui permet d'enchaîner plusieurs
-  fichiers sans remonter la pile un écran à la fois. La sélection est vidée. Depuis les **pistes** et le **recalage**, une confirmation est demandée :
-  ces deux écrans portent un travail que le retour ne conserve pas — une
-  sélection, une greffe, une mesure. Depuis l'**encodage** en cours aussi :
-  confirmer arrête le lot entier et efface la sortie partielle. `Home` seule garde son rôle, aller à la
-  première ligne de la table.
-- `F10` quitte, toujours en dernier dans le pied de page. La confirmation dit
-  ce qui tourne — encodage, mux, jonction, mesure — et ce que quitter lui fait,
-  ou « Aucun traitement en cours ». Un encodage, un mux ou une jonction est
-  arrêté et sa sortie partielle effacée.
-- `Début` `Fin` `Page ↑` `Page ↓` naviguent dans les tables.
-- Le pied de page range les raccourcis par rôle, du haut vers le bas :
-  **propres à l'écran**, puis **globaux** (navigation, retour), puis les
-  **touches de fonction** `F1` à `F10`, toujours en dernière ligne. Chaque
-  bande s'enroule sur autant de lignes que la largeur l'impose ; aucun
-  raccourci n'est masqué, même sur un écran étroit.
-- Les largeurs de colonnes sont mémorisées dans `config.toml`, **sauf sur
-  l'écran d'accueil** : celui-ci repart des valeurs par défaut à chaque
-  lancement, pour offrir la même disposition d'une session à l'autre. Le
-  redimensionnement y reste actif pendant la session.
-- Les erreurs de scan sont journalisées dans
-  `~/.iris_encode/iris_encode.log`.
-- **Le lancement interroge le réseau une fois par jour** pour comparer vos
-  outils aux dernières versions publiées. Pour le couper, mettez
-  `check_on_startup = false` sous `[updates]` dans `config.toml` — et non sous
-  `[ffmpeg]`, qui n'est pas la bonne section. Le réglage n'a d'effet que depuis
-  la **v0.8.5.2** : il était jusque-là lu au mauvais endroit, donc sans jamais
-  rien changer. Hors ligne, le lancement se poursuit sans attendre.
+- `⌫` or `Esc` go back, everywhere.
+- `Ctrl+Home` **goes back to the list of volumes** — the root — from any
+  screen: dry run, encoding, mux, guided mode, profiles, Tracks, Sync, and the
+  Home screen itself. That is what lets you work through several files without
+  climbing back up one screen at a time. The selection is cleared. From
+  **Tracks** and **Sync**, a confirmation is asked: those two screens hold work
+  that going back does not keep — a selection, added tracks, a measurement.
+  From a running **encode** as well: confirming stops the whole batch and
+  deletes the partial output. `Home` alone keeps its role, going to the first
+  row of the table.
+- `F10` quits, always last in the footer. The confirmation says what is running
+  — encode, mux, join, measurement — and what quitting does to it, or "No task
+  in progress." An encode, a mux or a join is stopped and its partial output
+  deleted.
+- `Home` `End` `PgUp` `PgDn` move through tables.
+- The footer sorts the shortcuts by role, top to bottom: **the screen's own**,
+  then **global** ones (navigation, back), then the **function keys** `F1` to
+  `F10`, always on the last line. Each band wraps onto as many lines as the
+  width requires; no shortcut is hidden, even on a narrow screen.
+- Column widths are remembered in `config.toml`, **except on the Home screen**:
+  it starts from the default values at each start, to give the same layout from
+  one session to the next. Resizing still works during the session.
+- Scan errors are logged to `~/.iris_encode/iris_encode.log`.
+- **Startup queries the network once a day** to compare your tools with the
+  latest published versions. To turn it off, set `check_on_startup = false`
+  under `[updates]` in `config.toml` — not under `[ffmpeg]`, which is the wrong
+  section. The setting only has an effect since **v0.8.5.2**: until then it was
+  read from the wrong place, so it never changed anything. Offline, startup
+  carries on without waiting.
+- **The key guide** (`H`) lists every key of every screen, built from the keys
+  the application actually declares, in the interface language.

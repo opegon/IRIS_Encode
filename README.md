@@ -1,373 +1,377 @@
-# IRIS ENCODE — Guide d'installation
+# IRIS ENCODE — Installation guide
 
-**Version** : 0.8.9.87 — Windows (support macOS/Linux prévu)
+**Version**: 0.8.9.88 — Windows (macOS/Linux support planned)
 
-> Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
-> au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`. Ce que
-> le projet a appris sur les formats, les outils et la chaîne de lecture : `wiki/`.
+*[Version française : README.fr.md](README.fr.md)*
+
+> This document introduces the project, then covers **installation**. For
+> day-to-day use — procedures screen by screen, cases met in practice — see
+> [`GUIDE.md`](GUIDE.md). What the project has learned about formats, tools and
+> the playback chain lives in `wiki/` (in French).
 
 ---
 
-## Pourquoi cet outil
+## Why this tool
 
-Une bibliothèque de films doit aujourd'hui atteindre plusieurs écrans, et chacun
-n'accepte qu'un sous-ensemble différent des formats qu'un fichier peut contenir.
-La réponse évidente — tout réencoder vers le plus petit dénominateur commun —
-coûte des heures de calcul par film et dégrade une image qui, le plus souvent,
-n'avait aucun besoin d'être retouchée. IRIS ENCODE part de l'hypothèse inverse :
-**décider ce qu'il faut toucher, et ne toucher que cela.**
+A movie library today has to reach several screens, and each one accepts a
+different subset of the formats a file can carry. The obvious answer —
+re-encode everything down to the lowest common denominator — costs hours of
+computing per movie and degrades a picture that, most of the time, had no need
+to be touched. IRIS ENCODE starts from the opposite assumption: **decide what
+needs touching, and touch only that.**
 
-### La chaîne de diffusion et ses contraintes
+### The playback chain and its constraints
 
-| Maillon | Ce qu'il impose |
+| Link | What it imposes |
 |---|---|
-| **Serveur Jellyfin** | Tout format non reconnu par le client déclenche un transcodage à chaque lecture. Le vrai coût d'un mauvais format se paie à l'usage, pas une fois. |
-| **Téléviseur LG OLED (webOS)** | Aucun format audio sans perte — ni TrueHD, ni DTS-HD MA. Le conteneur MKV est capricieux, le Dolby Vision profil 8 déclenche un remux HLS avec coupures audio, le DTS gèle au saut sur les modèles 2023. |
-| **Barre de son en eARC** | Elle décode tout, mais dès que le téléviseur mixe ses propres haut-parleurs avec elle, c'est lui qui décode : aucun train binaire sans perte ne l'atteint. |
-| **Clients iOS (Swiftfin)** | Permissifs via VLCKit, qui lit le MKV et le DTS. Le lecteur natif d'Apple est plus strict et ne sait pas changer de piste audio — donc inutilisable sur un fichier multilingue. |
-| **Sous-titres image (PGS, VobSub)** | Aucun client ne peut les recevoir tels quels : le serveur les incruste, ce qui force un transcodage vidéo complet. |
+| **Jellyfin server** | Any format the client does not declare playable triggers a transcode on every playback. The real cost of a bad format is paid on every viewing, not once. |
+| **LG OLED TV (webOS)** | No lossless audio format — neither TrueHD nor DTS-HD MA. The MKV container is unreliable, Dolby Vision profile 8 triggers an HLS remux with audio dropouts, DTS freezes on seek on the 2023 models. |
+| **Soundbar over eARC** | It decodes everything, but as soon as the TV mixes its own speakers with it, the TV does the decoding: no lossless bitstream reaches the bar. |
+| **iOS clients (Swiftfin)** | Permissive through VLCKit, which plays MKV and DTS. Apple's native player is stricter and cannot switch audio tracks — so it is useless on a multi-language file. |
+| **Image subtitles (PGS, VobSub)** | No client can receive them as they are: the server burns them in, which forces a full video transcode. |
 
-L'intersection de ces contraintes est étroite : **HEVC en HDR10, audio E-AC3,
-sous-titres texte**. C'est le seul jeu de formats que toute la chaîne accepte
-sans qu'aucune machine n'ait à retoucher quoi que ce soit.
+The intersection of these constraints is narrow: **HEVC in HDR10, E-AC3
+audio, text subtitles**. It is the only set of formats the whole chain accepts
+without any machine having to rework anything.
 
-### Les choix qui en découlent
+### The choices that follow
 
-- **Ne pas réencoder par défaut.** Un fichier dont le débit vidéo, la résolution
-  et le codec sont déjà dans les clous est laissé intact. Le débit comparé au
-  seuil est celui de la vidéo seule — celui du conteneur, audio compris,
-  enverrait au réencodage des fichiers dont l'image tient largement en dessous.
-- **Retirer le Dolby Vision plutôt que de le convertir.** Sur un profil 8.1, la
-  couche de base *est* du HDR10 : retirer les métadonnées suffit. Quelques
-  minutes, une image identique au bit près, contre des heures de réencodage pour
-  un résultat dégradé.
-- **Transcoder l'audio au débit de la source**, plutôt qu'à un forfait qui jette
-  bien plus que nécessaire sur une piste HD.
-- **Laisser le conteneur suivre le contenu.** MP4 quand tout y tient, MKV quand
-  quelque chose serait perdu.
-- **Un profil par destination.** Les seuils, les langues conservées et le
-  traitement du Dolby Vision se règlent par profil, parce qu'un salon et un
-  téléphone ne demandent pas le même fichier.
+- **Do not re-encode by default.** A file whose video bitrate, resolution and
+  codec are already within bounds is left untouched. The bitrate compared to
+  the threshold is that of the video alone — the container's, audio included,
+  would send to re-encoding files whose picture sits well below it.
+- **Remove Dolby Vision rather than convert it.** On a profile 8.1, the base
+  layer *is* HDR10: removing the metadata is enough. A few minutes, a
+  bit-identical picture, instead of hours of re-encoding for a degraded result.
+- **Transcode audio at the source bitrate**, rather than at a fixed rate that
+  throws away far more than needed on an HD track.
+- **Let the container follow the content.** MP4 when everything fits, MKV when
+  something would be lost.
+- **One profile per destination.** Thresholds, kept languages and the handling
+  of Dolby Vision are set per profile, because a living room and a phone do not
+  call for the same file.
 
-Le reste de l'outil découle de là : une interface qui **montre sa décision avant
-de l'appliquer**, fichier par fichier, et qui permet de la contredire.
+The rest of the tool follows from there: an interface that **shows its decision
+before applying it**, file by file, and lets you overrule it.
 
-## Comment IRIS décide, fichier par fichier
+## How IRIS decides, file by file
 
-Chaque fichier passe par le même arbre de décision. Le profil choisi fixe les
-seuils (clés entre crochets) ; l'écran des pistes et la touche de codec
-permettent de contredire chaque branche avant l'encodage. Les schémas suivent
-`core/decision.py` et `core/encoder.py`.
+Every file goes through the same decision tree. The chosen profile sets the
+thresholds (keys in square brackets); the Tracks screen and the codec key let
+you overrule each branch before encoding. The diagrams follow
+`core/decision.py` and `core/encoder.py`.
 
-### Vue d'ensemble
+### Overview
 
 ```mermaid
 flowchart LR
-    F["Fichier source"] --> S["Analyse ffprobe<br/>codec, définition, débit vidéo,<br/>HDR, profil Dolby Vision,<br/>pistes audio et sous-titres"]
-    S --> P["Profil choisi"]
-    P --> V["① Vidéo et Dolby Vision"]
-    P --> A["② Audio, piste par piste"]
-    P --> T["③ Sous-titres"]
-    V --> C["④ Conteneur MP4 ou MKV"]
+    F["Source file"] --> S["ffprobe analysis<br/>codec, resolution, video bitrate,<br/>HDR, Dolby Vision profile,<br/>audio and subtitle tracks"]
+    S --> P["Chosen profile"]
+    P --> V["① Video and Dolby Vision"]
+    P --> A["② Audio, track by track"]
+    P --> T["③ Subtitles"]
+    V --> C["④ MP4 or MKV container"]
     A --> C
     T --> C
-    C --> N["⑤ Nom de sortie"]
-    N --> X{"Chemin d'exécution"}
-    X -->|"encodage, copie DV"| X1["ffmpeg"]
-    X -->|"réencodage DV"| X2["ffmpeg + dovi_tool<br/>+ mkvmerge (+ ffmpeg en MP4)"]
-    X -->|"retrait DV"| X3["dovi_tool + mkvmerge<br/>ou ffmpeg (MP4)"]
-    X -->|"SKIP"| X4["rien, ou greffe de<br/>pistes externes (.mux-iris)"]
+    C --> N["⑤ Output name"]
+    N --> X{"Execution path"}
+    X -->|"encode, DV copy"| X1["ffmpeg"]
+    X -->|"DV re-encode"| X2["ffmpeg + dovi_tool<br/>+ mkvmerge (+ ffmpeg for MP4)"]
+    X -->|"DV removal"| X3["dovi_tool + mkvmerge<br/>or ffmpeg (MP4)"]
+    X -->|"SKIP"| X4["nothing, or adding<br/>external tracks (.mux-iris)"]
 ```
 
-### ① Vidéo et Dolby Vision
+### ① Video and Dolby Vision
 
-D'abord la cible : la définition de sortie et le palier de débit qui s'y
-applique.
+First the target: the output resolution and the bitrate tier that applies to
+it.
 
 ```mermaid
 flowchart TD
-    D0{"Source 4K ?<br/>(≥ 2160 de haut ou ≥ 3840 de large)"}
-    D0 -->|"oui, keep_4k = true"| D1["Garde sa définition<br/>palier 4K [bitrate_4k_kbps]"]
-    D0 -->|"oui, keep_4k = false"| D2["Ramenée en 1080p<br/>palier 1080p [bitrate_1080p_kbps]"]
-    D0 -->|non| D3{"≈ 1080p ?<br/>(≥ 1600 de large ou ≥ 850 de haut,<br/>sources rognées comprises)"}
-    D3 -->|oui| D4["Garde sa définition<br/>palier 1080p"]
-    D3 -->|non| D5["Plafonnée en 720p<br/>palier 720p [bitrate_720p_kbps]"]
-    D1 --> K["Codec cible : HEVC"]
+    D0{"4K source?<br/>(≥ 2160 high or ≥ 3840 wide)"}
+    D0 -->|"yes, keep_4k = true"| D1["Keeps its resolution<br/>4K tier [bitrate_4k_kbps]"]
+    D0 -->|"yes, keep_4k = false"| D2["Brought down to 1080p<br/>1080p tier [bitrate_1080p_kbps]"]
+    D0 -->|no| D3{"≈ 1080p?<br/>(≥ 1600 wide or ≥ 850 high,<br/>cropped sources included)"}
+    D3 -->|yes| D4["Keeps its resolution<br/>1080p tier"]
+    D3 -->|no| D5["Capped at 720p<br/>720p tier [bitrate_720p_kbps]"]
+    D1 --> K["Target codec: HEVC"]
     D2 --> K
     D4 --> K
-    D5 --> K2["Codec cible : H264<br/>(compresse mieux sous 1080p)"]
+    D5 --> K2["Target codec: H264<br/>(compresses better below 1080p)"]
 ```
 
-Puis l'arbre lui-même. Les trois premières questions décident s'il faut
-réencoder ; la suite dit comment.
+Then the tree itself. The first three questions decide whether to re-encode;
+the rest says how.
 
 ```mermaid
 flowchart TD
-    Q1{"Débit vidéo > cible du palier + 10 % ?"}
-    Q1 -->|oui| E1["Réencoder<br/>au débit cible"]
-    Q1 -->|non| Q2{"Définition > cible ?"}
-    Q2 -->|oui| E2["Réencoder<br/>au débit de la source"]
-    Q2 -->|non| Q3{"Codec hors H264 / HEVC ?<br/>(MPEG-2, VC-1, AV1, VP9…)"}
-    Q3 -->|oui| E2
-    Q3 -->|non| Q4{"Dolby Vision<br/>et dolby_vision = hdr10 ?"}
-    Q4 -->|"oui, profil 8.1 ou 7,<br/>dovi_tool et mkvmerge présents"| STRIP["RETRAIT DV · .hdr10-iris<br/>RPU retiré, image identique au bit près,<br/>HDR10+ conservé, aucun réencodage"]
-    Q4 -->|non| SKIP["SKIP<br/>fichier laissé tel quel"]
+    Q1{"Video bitrate > tier target + 10 %?"}
+    Q1 -->|yes| E1["Re-encode<br/>at the target bitrate"]
+    Q1 -->|no| Q2{"Resolution > target?"}
+    Q2 -->|yes| E2["Re-encode<br/>at the source bitrate"]
+    Q2 -->|no| Q3{"Codec other than H264 / HEVC?<br/>(MPEG-2, VC-1, AV1, VP9…)"}
+    Q3 -->|yes| E2
+    Q3 -->|no| Q4{"Dolby Vision<br/>and dolby_vision = hdr10?"}
+    Q4 -->|"yes, profile 8.1 or 7,<br/>dovi_tool and mkvmerge present"| STRIP["DV REMOVAL · .hdr10-iris<br/>RPU removed, bit-identical picture,<br/>HDR10+ kept, no re-encoding"]
+    Q4 -->|no| SKIP["SKIP<br/>file left as it is"]
 
-    E1 --> DV{"Source Dolby Vision ?<br/>que demande [dolby_vision] ?"}
+    E1 --> DV{"Dolby Vision source?<br/>what does [dolby_vision] ask?"}
     E2 --> DV
-    DV -->|"pas de DV, source HDR"| H0["Encodage HDR conservé<br/>HEVC / AV1 en 10 bits<br/>(H264 reste en 8 bits)"]
-    DV -->|"pas de DV, source SDR"| S0["Encodage standard<br/>NVENC, sinon libx265 / x264<br/>(VideoToolbox sur macOS)"]
-    DV -->|"dv"| R{"HEVC, même définition,<br/>profil 8.1 ou 7,<br/>dovi_tool et mkvmerge ?"}
-    R -->|oui| EDV["RÉENCODAGE DV · .dv-iris<br/>RPU extrait, vidéo encodée,<br/>RPU réinjecté (P7 converti en 8.1)"]
-    R -->|non| CDV["COPIE DV · .dv-iris<br/>vidéo recopiée : débit et<br/>définition restent ceux de la source"]
+    DV -->|"no DV, HDR source"| H0["HDR encode kept<br/>HEVC / AV1 in 10 bits<br/>(H264 stays 8 bits)"]
+    DV -->|"no DV, SDR source"| S0["Standard encode<br/>NVENC, otherwise libx265 / x264<br/>(VideoToolbox on macOS)"]
+    DV -->|"dv"| R{"HEVC, same resolution,<br/>profile 8.1 or 7,<br/>dovi_tool and mkvmerge?"}
+    R -->|yes| EDV["DV RE-ENCODE · .dv-iris<br/>RPU extracted, video encoded,<br/>RPU re-injected (P7 converted to 8.1)"]
+    R -->|no| CDV["DV COPY · .dv-iris<br/>video copied: bitrate and<br/>resolution stay those of the source"]
     DV -->|"hdr10"| H10{"[hdr10_quality]"}
-    H10 -->|compat| H1["NVENC 10 bits<br/>RPU perdu, HDR10"]
-    H10 -->|quality| H2["libx265 sur processeur<br/>métadonnées HDR10 réinjectées"]
-    DV -->|"sdr (défaut)"| SDR["Tone mapping vers SDR<br/>processeur, 8 bits, lent ⚠"]
+    H10 -->|compat| H1["NVENC 10 bits<br/>RPU lost, HDR10"]
+    H10 -->|quality| H2["libx265 on the processor<br/>HDR10 metadata re-injected"]
+    DV -->|"sdr (default)"| SDR["Tone mapping to SDR<br/>processor, 8 bits, slow ⚠"]
 ```
 
-L'AV1 n'est jamais choisi d'office : il se demande à la main, fichier par
-fichier. Une source Dolby Vision que rien ne pousse au réencodage reste en
-SKIP, Dolby Vision compris, sauf retrait possible.
+AV1 is never chosen automatically: you ask for it by hand, file by file. A
+Dolby Vision source that nothing pushes to re-encoding stays SKIP, Dolby Vision
+included, unless removal is possible.
 
-### ② Audio, piste par piste
+### ② Audio, track by track
 
 ```mermaid
 flowchart TD
-    A0{"Sélection manuelle<br/>dans l'écran des pistes ?"}
-    A0 -->|oui| A1["Gardée ou exclue<br/>selon la sélection"]
-    A0 -->|non| A2{"Première piste<br/>de la source ?"}
-    A2 -->|oui| A3["Gardée, toujours<br/>(version originale)"]
-    A2 -->|non| A4{"Langue dans<br/>[audio_languages] ?"}
-    A4 -->|non| AX["Exclue"]
-    A4 -->|oui| A3
+    A0{"Manual selection<br/>on the Tracks screen?"}
+    A0 -->|yes| A1["Kept or excluded<br/>as selected"]
+    A0 -->|no| A2{"First track<br/>of the source?"}
+    A2 -->|yes| A3["Always kept<br/>(original version)"]
+    A2 -->|no| A4{"Language in<br/>[audio_languages]?"}
+    A4 -->|no| AX["Excluded"]
+    A4 -->|yes| A3
     A1 --> B0
-    A3 --> B0{"Sans perte ?<br/>TrueHD, DTS-HD MA, MLP"}
-    B0 -->|"oui, preserve_hd_audio = true"| CP1["Copie<br/>(impose le MKV)"]
-    B0 -->|"oui, sinon"| TR["Transcodage"]
-    B0 -->|non| B1{"AAC, AC3, E-AC3<br/>et audio_copy_compatible ?"}
-    B1 -->|oui| CP2["Copie"]
-    B1 -->|"non (DTS, FLAC, Opus…)"| TR
-    TR --> T0{"[audio_hd_codec] = ac3 / eac3<br/>et piste TrueHD ou DTS<br/>de débit connu ?"}
-    T0 -->|oui| T1["Au débit de la source<br/>plafonné : AC3 640k, E-AC3 1024k"]
-    T0 -->|non| T2{"Canaux ?"}
+    A3 --> B0{"Lossless?<br/>TrueHD, DTS-HD MA, MLP"}
+    B0 -->|"yes, preserve_hd_audio = true"| CP1["Copy<br/>(forces MKV)"]
+    B0 -->|"yes, otherwise"| TR["Transcode"]
+    B0 -->|no| B1{"AAC, AC3, E-AC3<br/>and audio_copy_compatible?"}
+    B1 -->|yes| CP2["Copy"]
+    B1 -->|"no (DTS, FLAC, Opus…)"| TR
+    TR --> T0{"[audio_hd_codec] = ac3 / eac3<br/>and a TrueHD or DTS track<br/>of known bitrate?"}
+    T0 -->|yes| T1["At the source bitrate<br/>capped: AC3 640k, E-AC3 1024k"]
+    T0 -->|no| T2{"Channels?"}
     T2 -->|mono| T3["AAC 64k"]
-    T2 -->|stéréo| T4["AAC [audio_stereo_kbps]"]
-    T2 -->|"jusqu'à 5.1"| T5["AC3 [audio_surround_kbps]"]
+    T2 -->|stereo| T4["AAC [audio_stereo_kbps]"]
+    T2 -->|"up to 5.1"| T5["AC3 [audio_surround_kbps]"]
     T2 -->|7.1| T6["AC3 5.1 [audio_surround_7_1_kbps]"]
 ```
 
-Un transcodage ne sort jamais au-delà du 5.1, et le titre de la piste est
-réécrit pour ne pas annoncer un format disparu (« TrueHD 7.1 Atmos » devient
-« E-AC3 5.1 »). Une piste sans perte transcodée dans un fichier qui garde des
-sous-titres passe par une **passe audio préalable** : sans elle, ffmpeg rend
-une piste vide sans signaler d'erreur.
+A transcode never goes beyond 5.1, and the track title is rewritten so as not
+to announce a format that is gone ("TrueHD 7.1 Atmos" becomes "E-AC3 5.1"). A
+lossless track transcoded in a file that keeps subtitles goes through a
+**separate audio pass** first: without it, ffmpeg produces an empty track
+without reporting any error.
 
-### ③ Sous-titres
+### ③ Subtitles
 
 ```mermaid
 flowchart TD
-    S0{"Sélection manuelle ?"}
-    S0 -->|oui| S1["Respectée telle quelle"]
-    S0 -->|non| S2{"[subtitle_languages]<br/>défini ?"}
-    S2 -->|oui| S3["Seules ces langues<br/>sont gardées"]
-    S2 -->|non| S4["Toutes gardées"]
+    S0{"Manual selection?"}
+    S0 -->|yes| S1["Followed as it is"]
+    S0 -->|no| S2{"[subtitle_languages]<br/>set?"}
+    S2 -->|yes| S3["Only these languages<br/>are kept"]
+    S2 -->|no| S4["All kept"]
     S3 --> S5
-    S4 --> S5{"Sous-titre image (PGS)<br/>doublé par un texte (SRT)<br/>de même langue et même nature<br/>(forcé / complet) ?"}
-    S5 -->|oui| S6["PGS décoché :<br/>Jellyfin l'incrusterait<br/>et transcoderait la vidéo"]
-    S5 -->|non| S7["Gardé"]
+    S4 --> S5{"Image subtitle (PGS)<br/>doubled by a text one (SRT)<br/>of the same language and kind<br/>(forced / full)?"}
+    S5 -->|yes| S6["PGS unchecked:<br/>Jellyfin would burn it in<br/>and transcode the video"]
+    S5 -->|no| S7["Kept"]
 ```
 
-### ④ Conteneur
+### ④ Container
 
 ```mermaid
 flowchart TD
-    C0{"[container] = mkv ?"}
-    C0 -->|oui| MKV["MKV"]
-    C0 -->|non| C1{"Retrait DV<br/>d'un profil 7 ?"}
-    C1 -->|oui| MKV
-    C1 -->|non| C2{"Audio sans perte copié, ou piste<br/>greffée que le MP4 ne porte pas ?"}
-    C2 -->|oui| MKV
-    C2 -->|non| C3{"Sous-titre image (PGS, VobSub)<br/>ou stylé (ASS) gardé ?"}
-    C3 -->|non| MP4["MP4<br/>HEVC étiqueté hvc1,<br/>sous-titres en mov_text"]
-    C3 -->|oui| C4{"[container] = mp4<br/>et d'autres sous-titres texte ?"}
-    C4 -->|oui| C5["Sous-titres image écartés,<br/>listés à l'écran"] --> MP4
-    C4 -->|"non (auto, ou seuls sous-titres)"| MKV
+    C0{"[container] = mkv?"}
+    C0 -->|yes| MKV["MKV"]
+    C0 -->|no| C1{"DV removal<br/>of a profile 7?"}
+    C1 -->|yes| MKV
+    C1 -->|no| C2{"Lossless audio copied, or an added<br/>track that MP4 cannot carry?"}
+    C2 -->|yes| MKV
+    C2 -->|no| C3{"Image (PGS, VobSub)<br/>or styled (ASS) subtitle kept?"}
+    C3 -->|no| MP4["MP4<br/>HEVC tagged hvc1,<br/>subtitles as mov_text"]
+    C3 -->|yes| C4{"[container] = mp4<br/>and other text subtitles?"}
+    C4 -->|yes| C5["Image subtitles discarded,<br/>listed on screen"] --> MP4
+    C4 -->|"no (auto, or only subtitles)"| MKV
 ```
 
-En `auto`, le conteneur suit le contenu : MP4 quand tout y tient, MKV quand
-quelque chose y serait perdu. Une piste n'est jamais sacrifiée en silence.
+In `auto`, the container follows the content: MP4 when everything fits, MKV
+when something would be lost. A track is never sacrificed silently.
 
-### ⑤ Nom de sortie
+### ⑤ Output name
 
-| Traitement | Suffixe | Exemple |
+| Processing | Suffix | Example |
 |---|---|---|
-| Encodage HEVC / H264 / AV1 | `.hevc-iris` · `.h264-iris` · `.av1-iris` | `Film.2160p.x265-GRP.mkv` → `Film.1080p.hevc-iris.mp4` |
-| Dolby Vision conservé (réencodé ou copié) | `.dv-iris` | `Film.2160p.DV.mkv` → `Film.2160p.DV-iris.mp4` |
-| Retrait du Dolby Vision | `.hdr10-iris` | `Film.2160p.DV.mkv` → `Film.2160p.HDR10-iris.mp4` |
-| SKIP avec pistes greffées | `.mux-iris` | `Film.mkv` → `Film.mux-iris.mkv` |
+| HEVC / H264 / AV1 encode | `.hevc-iris` · `.h264-iris` · `.av1-iris` | `Movie.2160p.x265-GRP.mkv` → `Movie.1080p.hevc-iris.mp4` |
+| Dolby Vision kept (re-encoded or copied) | `.dv-iris` | `Movie.2160p.DV.mkv` → `Movie.2160p.DV-iris.mp4` |
+| Dolby Vision removal | `.hdr10-iris` | `Movie.2160p.DV.mkv` → `Movie.2160p.HDR10-iris.mp4` |
+| SKIP with added tracks | `.mux-iris` | `Movie.mkv` → `Movie.mux-iris.mkv` |
 
-Le nom dit ce que le fichier **est**, pas ce qu'était la source : les marques
-de codec, de définition (`2160p` → `1080p`), de HDR (`DV` → `HDR10`, toutes
-retirées en SDR) et d'audio (`TrueHD.7.1` → `E-AC3.5.1`) sont réécrites, le
-groupe de la release est retiré, et une caractéristique déjà annoncée n'est
-pas répétée. Rien n'est jamais écrasé : une collision donne `(2)`.
-
----
-
-## Prérequis
-
-| Composant | Version minimale | Obligatoire |
-|-----------|-----------------|-------------|
-| Windows   | 10 / 11         | ✓           |
-| Python    | 3.11            | ✓ (auto-installable) |
-| ffmpeg    | 7.x             | ✓ (auto-installable) |
-| ffprobe   | 7.x             | ✓ (inclus avec ffmpeg) |
-| dovi_tool | 2.x             | ✗ (optionnel — Dolby Vision) |
-| mkvmerge  | 99.x            | ✗ (optionnel — greffe de pistes externes) |
-| mpv       | récent          | ✗ (optionnel — visualisation) |
-| GPU NVIDIA | driver récent  | ✗ (recommandé — encodage accéléré CUDA) |
+The name says what the file **is**, not what the source was: the codec,
+resolution (`2160p` → `1080p`), HDR (`DV` → `HDR10`, all removed in SDR) and
+audio (`TrueHD.7.1` → `E-AC3.5.1`) tags are rewritten, the release group is
+dropped, and a characteristic already stated is not repeated. Nothing is ever
+overwritten: a collision gives `(2)`.
 
 ---
 
-## 1. Installer Python et ses dépendances
+## Requirements
 
-### 1.1 Ne rien faire (recommandé)
+| Component | Minimum version | Required |
+|-----------|-----------------|----------|
+| Windows   | 10 / 11         | ✓        |
+| Python    | 3.11            | ✓ (installed automatically if needed) |
+| ffmpeg    | 7.x             | ✓ (installed automatically if needed) |
+| ffprobe   | 7.x             | ✓ (comes with ffmpeg) |
+| dovi_tool | 2.x             | ✗ (optional — Dolby Vision) |
+| mkvmerge  | 99.x            | ✗ (optional — adding external tracks) |
+| mpv       | recent          | ✗ (optional — playback) |
+| NVIDIA GPU | recent driver  | ✗ (recommended — hardware encoding) |
 
-Double-cliquez **`launch.bat`**. S'il ne trouve pas de Python 3.11+ utilisable,
-il installe le sien et vous n'avez rien d'autre à faire :
+---
+
+## 1. Install Python and its dependencies
+
+### 1.1 Do nothing (recommended)
+
+Double-click **`launch.bat`**. If it finds no usable Python 3.11+, it installs
+its own and there is nothing else to do:
 
 ```
- [INFO] Aucun Python 3.11+ utilisable — installation de l'environnement.
- Aucun droit administrateur n'est requis ; tout est écrit dans ce dossier.
+ [INFO] No usable Python 3.11+ found - setting up the environment.
+ No administrator rights needed; everything is written to this folder.
 
-  Téléchargement de uv (x86_64-pc-windows-msvc)…
-  uv installé : bin\uv.exe
+  IRIS ENCODE — Python environment setup
+  Downloading uv (x86_64-pc-windows-msvc)…
+  uv installed: bin\uv.exe
   Python 3.12…
-  Environnement .venv…
-  Dépendances (requirements.txt)…
+  .venv environment…
+  Dependencies (requirements.txt)…
 
-  Prêt — Python 3.12.14 dans .venv
+  Ready — Python 3.12.14 in .venv
 ```
 
-Comptez deux à trois minutes et environ 140 Mo la première fois. Les fois
-suivantes, `launch.bat` constate que tout est en place et démarre aussitôt.
+Allow two to three minutes and about 140 MB the first time. On later runs,
+`launch.bat` finds everything in place and starts right away.
 
-**Aucun droit administrateur n'est requis, et rien n'est écrit hors du dossier
-de l'application** — ni dans le PATH, ni dans le registre, ni dans les dossiers
-système. Copier le dossier sur une clé, c'est copier l'installation entière :
+**No administrator rights are needed, and nothing is written outside the
+application folder** — not to the PATH, not to the registry, not to system
+folders. Copying the folder to a USB stick copies the whole installation:
 
-| Ce qui arrive | Où |
+| What arrives | Where |
 |---|---|
-| `uv`, l'exécutable qui va chercher le reste | `bin\uv.exe` |
-| L'interpréteur CPython | `bin\python\` |
-| L'environnement et ses bibliothèques | `.venv\` |
+| `uv`, the executable that fetches the rest | `bin\uv.exe` |
+| The CPython interpreter | `bin\python\` |
+| The environment and its libraries | `.venv\` |
 
-C'est la convention que suit déjà le reste de l'outillage : ffmpeg, mkvmerge et
-dovi_tool arrivent dans `bin/` de la même façon (chapitre 3). Python faisait
-exception pour une raison mécanique — le code qui télécharge les outils *est*
-du Python, et ne pouvait pas s'exécuter avant lui. C'est ce que `bootstrap.ps1`
-corrige, en PowerShell.
+This is the convention the rest of the tooling already follows: ffmpeg,
+mkvmerge and dovi_tool arrive in `bin/` the same way (chapter 3). Python was the
+exception for a mechanical reason — the code that downloads the tools *is*
+Python, and could not run before it. `bootstrap.ps1` fixes that, in PowerShell.
 
-### 1.2 Quel interpréteur `launch.bat` retient
+### 1.2 Which interpreter `launch.bat` picks
 
-Dans cet ordre, le premier qui convient :
+In this order, the first that fits:
 
-1. **`.venv\` local**, s'il est complet — le seul dont les versions de
-   bibliothèques soient connues ;
-2. **le Python du PATH**, s'il annonce 3.11 ou mieux — évite le téléchargement ;
-3. **`bootstrap.ps1`** — installe uv, un CPython et le `.venv`.
+1. **the local `.venv\`**, if complete — the only one whose library versions
+   are known;
+2. **the Python on the PATH**, if it reports 3.11 or later — avoids the
+   download;
+3. **`bootstrap.ps1`** — installs uv, a CPython and the `.venv`.
 
-Un Python système qui convient est *utilisé*, jamais remplacé. À l'inverse, si
-`pip` échoue sur ce Python-là (poste verrouillé, dépôt interne, permissions),
-`launch.bat` bascule tout seul sur l'environnement isolé plutôt que de s'arrêter.
+A suitable system Python is *used*, never replaced. Conversely, if `pip` fails
+on that Python (locked-down machine, internal package index, permissions),
+`launch.bat` switches to the isolated environment on its own instead of
+stopping.
 
-### 1.3 Reconstruire l'environnement
+### 1.3 Rebuild the environment
 
-Si quelque chose s'est mal passé, ou après une mise à jour de
-`requirements.txt` :
+If something went wrong, or after an update of `requirements.txt`:
 
 ```
 powershell -ExecutionPolicy Bypass -File bootstrap.ps1 -Force
 ```
 
-`-Force` reconstruit `.venv` de zéro. Sans lui, le script constate et ne
-retélécharge rien : il est fait pour être relancé sans conséquence.
+`-Force` rebuilds `.venv` from scratch. Without it, the script checks and
+downloads nothing again: it is safe to run as often as you like.
 
-### 1.4 Si Windows bloque un fichier (erreur 4551)
+### 1.4 If Windows blocks a file (error 4551)
 
-Sur une installation *propre* de Windows 11, **Smart App Control** est actif par
-défaut. Il refuse d'exécuter les binaires dont la réputation n'est pas établie,
-et le signale par `os error 4551`. `bootstrap.ps1` reconnaît ce blocage et le
-nomme.
+On a *clean* Windows 11 installation, **Smart App Control** is on by default.
+It refuses to run binaries without an established reputation, and reports it
+as `os error 4551`. `bootstrap.ps1` recognizes this block and names it.
 
-Depuis la v0.8.4.2 il ne devrait plus le rencontrer : le `.venv` est construit
-par le module `venv` de l'interpréteur, dont le lanceur est un fichier connu.
-S'il survient malgré tout, deux issues :
+Since v0.8.4.2 it should no longer hit it: the `.venv` is built by the
+interpreter's own `venv` module, whose launcher is a known file. If it happens
+anyway, two ways out:
 
-- **installer Python 3.12 depuis python.org** (chapitre 2) : ces binaires sont
-  signés par la Python Software Foundation, et `launch.bat` les retiendra ;
-- **désactiver Smart App Control** — *Sécurité Windows* → *Contrôle des
-  applications et du navigateur*. À savoir avant de le faire : la désactivation
-  est **définitive**, seule une réinstallation de Windows le réactive.
+- **install Python 3.12 from python.org** (chapter 2): those binaries are
+  signed by the Python Software Foundation, and `launch.bat` will pick them;
+- **turn off Smart App Control** — *Windows Security* → *App & browser
+  control*. Know this before doing it: turning it off is **permanent**, only a
+  Windows reinstall turns it back on.
 
 ---
 
-## 2. Installer Python à la main (facultatif)
+## 2. Install Python by hand (optional)
 
-Rien n'oblige à passer par le chapitre 1. Un Python installé classiquement est
-reconnu et utilisé tel quel.
+Nothing forces you through chapter 1. A conventionally installed Python is
+recognized and used as it is.
 
-Rendez-vous sur **https://www.python.org/downloads/** et téléchargez la dernière
-version **3.11 ou supérieure**. Cochez impérativement, avant *Install Now* :
+Go to **https://www.python.org/downloads/** and download the latest version,
+**3.11 or later**. Before *Install Now*, be sure to check:
 
 ```
 ☑  Add Python X.XX to PATH
 ```
 
-Sans cette case, `launch.bat` ne le verra pas — et installera le sien.
+Without this box, `launch.bat` will not see it — and will install its own.
 
-Puis, dans le dossier de l'application :
+Then, in the application folder:
 
 ```
 pip install -r requirements.txt
 ```
 
-| Bibliothèque    | Rôle |
+| Library         | Role |
 |-----------------|------|
-| `textual`       | Interface TUI (Terminal User Interface) |
-| `rich`          | Rendu console enrichi (couleurs, tableaux) |
-| `tomli-w`       | Écriture de fichiers TOML (config, profils) |
-| `requests`      | Téléchargement automatique de ffmpeg |
-| `beautifulsoup4`| Scraping IMDB (F8) et AlloCiné (F7) pour les métadonnées |
-| `numpy`         | Corrélation audio pour le recalage des pistes greffées |
+| `textual`       | Terminal user interface (TUI) |
+| `rich`          | Rich console rendering (colors, tables) |
+| `tomli-w`       | Writing TOML files (settings, profiles) |
+| `requests`      | Automatic download of ffmpeg and the other tools |
+| `beautifulsoup4`| AlloCiné and IMDB lookups for the Info card (`I`) |
+| `numpy`         | Audio correlation to resync added tracks |
 
-Si `pip` est introuvable : `python -m pip install -r requirements.txt`. Sur un
-poste à permissions restreintes : `pip install --user -r requirements.txt` —
-ou, plus simplement, laissez le chapitre 1 faire le travail.
+If `pip` is not found: `python -m pip install -r requirements.txt`. On a
+machine with restricted permissions: `pip install --user -r requirements.txt` —
+or, more simply, let chapter 1 do the work.
 
 ---
 
-## 3. Installer ffmpeg
+## 3. Install ffmpeg
 
-ffmpeg est le moteur d'encodage vidéo. IRIS ENCODE le détecte et propose de le télécharger automatiquement s'il est absent.
+ffmpeg is the video encoding engine. IRIS ENCODE detects it and offers to
+download it if it is missing.
 
-### Option A — Installation automatique (recommandée)
+### Option A — Automatic installation (recommended)
 
-Lancez IRIS ENCODE (`launch.bat`). Si ffmpeg est absent, le programme propose :
+Start IRIS ENCODE (`launch.bat`). If ffmpeg is missing, the program offers:
 
 ```
-[✗] ffmpeg   introuvable
-    Télécharger et installer dans ./bin/ ? (o/N)
+  [✗] ffmpeg
+  Download and install ffmpeg into ./bin/? (y/N):
 ```
 
-Répondez `o`. Le téléchargement (~30 Mo) s'effectue depuis **gyan.dev** (source officielle Windows) et ffmpeg est extrait dans le dossier `bin/` à côté de `launch.bat`.
+Answer `y`. The download (~30 MB) comes from **gyan.dev** (official Windows
+source) and ffmpeg is extracted into the `bin/` folder next to `launch.bat`.
 
-### Option B — Installation manuelle dans `bin/`
+### Option B — Manual installation into `bin/`
 
-1. Téléchargez **ffmpeg-release-essentials.zip** depuis : https://www.gyan.dev/ffmpeg/builds/
-2. Extrayez les fichiers `ffmpeg.exe` et `ffprobe.exe` depuis le sous-dossier `bin/` de l'archive
-3. Placez-les dans le dossier `bin/` d'IRIS ENCODE :
+1. Download **ffmpeg-release-essentials.zip** from: https://www.gyan.dev/ffmpeg/builds/
+2. Extract `ffmpeg.exe` and `ffprobe.exe` from the archive's `bin/` subfolder
+3. Put them in the IRIS ENCODE `bin/` folder:
    ```
    iris_encode/
    └── bin/
@@ -375,48 +379,49 @@ Répondez `o`. Le téléchargement (~30 Mo) s'effectue depuis **gyan.dev** (sour
        └── ffprobe.exe
    ```
 
-### Option C — ffmpeg déjà installé dans le PATH
+### Option C — ffmpeg already on the PATH
 
-Si ffmpeg est déjà installé sur le système (accessible via `ffmpeg` dans un terminal), IRIS ENCODE le détecte automatiquement — aucune action requise.
+If ffmpeg is already installed on the system (`ffmpeg` works in a terminal),
+IRIS ENCODE detects it — nothing to do.
 
 ---
 
-## 4. (Optionnel) Installer les outils complémentaires
+## 4. (Optional) Install the additional tools
 
-Trois outils sont optionnels. Aucun n'est nécessaire pour encoder : leur absence
-désactive une fonction, elle ne bloque jamais le lancement.
+Three tools are optional. None is needed to encode: when one is missing, a
+feature is turned off; startup is never blocked.
 
-| Outil | Nécessaire pour | Taille |
+| Tool | Needed for | Size |
 |---|---|---|
-| `dovi_tool` | contenus **Dolby Vision** (probe RPU, métadonnées HDR10) | ~2 Mo |
-| `mkvmerge` | **greffe de pistes externes** (VF, sous-titres), **jonction de parties** (`J`) et extraits de contrôle | ~22 Mo |
-| `mpv` | **visualisation** d'un fichier ou d'un recalage | ~50 Mo |
+| `dovi_tool` | **Dolby Vision** content (RPU probe, HDR10 metadata) | ~2 MB |
+| `mkvmerge` | **adding external tracks** (dubs, subtitles), **joining parts** (`J`) and check samples | ~22 MB |
+| `mpv` | **playing** a file or checking a resync | ~50 MB |
 
-### Option A — Installation automatique (recommandée)
+### Option A — Automatic installation (recommended)
 
-Au premier lancement, IRIS ENCODE propose d'installer chaque outil manquant :
+On first start, IRIS ENCODE offers to install each missing tool:
 
 ```
-  dovi_tool absent (optionnel — nécessaire pour le Dolby Vision).
-  Télécharger et installer dovi_tool (Dolby Vision) dans ./bin/ ? (o/N) :
+  dovi_tool missing (optional — needed for Dolby Vision).
+  Download and install dovi_tool (Dolby Vision) into ./bin/? (y/N):
 ```
 
-Répondez `o`. Le binaire est téléchargé depuis la source officielle, vérifié par son
-empreinte SHA256, puis extrait dans `bin/`.
+Answer `y`. The binary is downloaded from its official source, checked against
+its SHA256 fingerprint, then extracted into `bin/`.
 
-> `mpv` n'est publié qu'en archive `.7z` : l'extraction passe par le `tar` livré avec
-> Windows 10/11, sans dépendance supplémentaire.
+> `mpv` is only published as a `.7z` archive: extraction goes through the
+> `tar` that ships with Windows 10/11, with no extra dependency.
 
-### Option B — Installation manuelle dans `bin/`
+### Option B — Manual installation into `bin/`
 
-Téléchargez les binaires Windows et placez les exécutables directement dans `bin/`
-(sans sous-dossier) :
+Download the Windows binaries and put the executables directly in `bin/` (no
+subfolder):
 
-| Outil | Source |
+| Tool | Source |
 |---|---|
 | `dovi_tool.exe` | https://github.com/quietvoid/dovi_tool/releases |
-| `mkvmerge.exe` | https://mkvtoolnix.download/downloads.html (archive ZIP 64-bit) |
-| `mpv.exe` | https://mpv.io/installation/ (build Windows portable) |
+| `mkvmerge.exe` | https://mkvtoolnix.download/downloads.html (64-bit ZIP archive) |
+| `mpv.exe` | https://mpv.io/installation/ (portable Windows build) |
 
 ```
 iris_encode/
@@ -426,260 +431,278 @@ iris_encode/
     └── mpv.exe
 ```
 
-> Un outil déjà présent dans le PATH système est détecté automatiquement — rien à faire.
+> A tool already on the system PATH is detected automatically — nothing to do.
 
 ---
 
-## 5. Lancer IRIS ENCODE
+## 5. Start IRIS ENCODE
 
-Double-cliquez sur **`launch.bat`** ou exécutez dans un terminal :
+Double-click **`launch.bat`** or run in a terminal:
 
 ```
 launch.bat
 ```
 
-Le lanceur vérifie, et installe ce qui manque :
-- une version plus récente d'IRIS ENCODE, publiée sur GitHub — il propose de
-  l'installer (§ 5.2) ;
-- un Python 3.11+ utilisable — sinon il en installe un (chapitre 1) ;
-- les dépendances Python listées dans `requirements.txt` ;
-- ffmpeg / ffprobe, téléchargés dans `bin/` au premier besoin ;
-- la validité de la configuration.
+The launcher checks, and installs what is missing:
+- a newer IRIS ENCODE published on GitHub — it offers to install it (§ 5.2);
+- a usable Python 3.11+ — otherwise it installs one (chapter 1);
+- the Python dependencies listed in `requirements.txt`;
+- ffmpeg / ffprobe, downloaded into `bin/` when first needed;
+- the validity of the settings.
 
-Le premier lancement est le plus long : il télécharge ce qui manque. Les
-suivants démarrent en quelques secondes.
+The first start is the longest: it downloads what is missing. Later ones take a
+few seconds.
 
-**Une dernière étape, une fois que tout tourne** : le § 5.1 fabrique un
-raccourci « IRIS ENCODE » sur le Bureau, qui ouvre l'application dans
-Windows Terminal — le seul hôte au rendu correct (chapitre 10). C'est
-l'usage courant ensuite ; `launch.bat` reste là pour le dépannage.
+**One last step, once everything runs**: § 5.1 makes an "IRIS ENCODE" shortcut
+on the Desktop, which opens the application in Windows Terminal — the only host
+that renders it correctly (chapter 10). That is how you use it from then on;
+`launch.bat` stays there for troubleshooting.
 
-### 5.1 Raccourci Bureau : IRIS_Encode.exe (optionnel)
+The interface language is set in the options (`F5`, then `U`). On the very
+first start, IRIS ENCODE takes the Windows display language if it is
+translated, English otherwise.
 
-Un raccourci qui pointe directement sur `launch.bat` s'ouvre dans la console
-héritée (conhost), au rendu dégradé (chapitre 10). Le dépôt fournit de quoi
-compiler un petit lanceur natif dont c'est la seule fonction : ouvrir
-`launch.bat` dans **Windows Terminal** — et, à défaut, dans une console
-classique.
+### 5.1 Desktop shortcut: IRIS_Encode.exe (optional)
 
-1. Double-cliquer sur **`launcher\build.bat`**.
-2. Le script décode l'icône (`launcher\iris.ico.b64` → `iris.ico`, via
-   `certutil`, livré avec Windows), compile `launcher\IrisEncodeLauncher.cs`
-   avec le compilateur C# livré lui aussi avec Windows (le `csc.exe` du
-   .NET Framework 4.x — rien à installer) et produit **`IRIS_Encode.exe`**
-   à la racine du projet, icône comprise.
-3. Il propose ensuite de créer le raccourci « IRIS ENCODE » sur le Bureau.
+A shortcut pointing straight at `launch.bat` opens in the legacy console
+(conhost), with degraded rendering (chapter 10). The repository provides what
+is needed to compile a small native launcher whose only job is to open
+`launch.bat` in **Windows Terminal** — and, failing that, in a classic console.
 
-Le binaire n'est **pas versionné** : un `.exe` dans un dépôt est invérifiable,
-chacun compile le sien depuis le source — une trentaine de lignes, qui font
-foi. Après une mise à jour du lanceur, relancer `launcher\build.bat` suffit.
+1. Double-click **`launcher\build.bat`**.
+2. The script decodes the icon (`launcher\iris.ico.b64` → `iris.ico`, through
+   `certutil`, which ships with Windows), compiles `launcher\IrisEncodeLauncher.cs`
+   with the C# compiler that also ships with Windows (the .NET Framework 4.x
+   `csc.exe` — nothing to install) and produces **`IRIS_Encode.exe`** at the
+   project root, icon included.
+3. It then offers to create the "IRIS ENCODE" shortcut on the Desktop.
 
-> Sur une installation *propre* de Windows 11, **Smart App Control** peut
-> refuser un exécutable sans réputation, même compilé localement — même
-> famille de blocages qu'au chapitre 1.4. Dans ce cas, un raccourci `.lnk`
-> sans `.exe` rend le même service, avec cette cible :
-> `wt.exe -d "C:\chemin\vers\iris_encode" cmd /c launch.bat`
-> (icône au choix via *Propriétés* → *Changer d'icône* →
-> `launcher\iris.ico`, présent après un passage de `build.bat`).
+The binary is **not versioned**: an `.exe` in a repository cannot be checked,
+so everyone compiles their own from the source — about thirty lines, which are
+the reference. After an update of the launcher, running `launcher\build.bat`
+again is enough.
 
-### 5.2 Mises à jour
+> On a *clean* Windows 11 installation, **Smart App Control** may refuse an
+> executable without reputation, even one compiled locally — the same family of
+> blocks as in chapter 1.4. In that case, a `.lnk` shortcut without an `.exe`
+> does the same job, with this target:
+> `wt.exe -d "C:\path\to\iris_encode" cmd /c launch.bat`
+> (icon of your choice through *Properties* → *Change Icon* →
+> `launcher\iris.ico`, present once `build.bat` has run).
 
-À chaque lancement — au plus une interrogation de GitHub par heure — le lanceur
-compare votre version à la **dernière release publiée** (celle marquée
-« Latest »), jamais à un état intermédiaire du code. Si elle est plus récente :
+### 5.2 Updates
+
+On every start — at most one query to GitHub per hour — the launcher compares
+your version with the **latest published release** (the one marked "Latest"),
+never with an intermediate state of the code. If it is newer:
 
 ```
   Update available: v0.8.9.1 → v0.9.0.0
   Install now? [Y/n]
 ```
 
-Les lanceurs s'affichent en anglais : ils tournent avant que la langue de l'application soit connue. `Entrée` (ou `o`, `oui`, `y`) télécharge l'archive, vérifie son empreinte SHA256, remplace
-les fichiers de l'application et relance IRIS ENCODE sur la version neuve.
-`n` remet à plus tard. Un échec (réseau, archive refusée) n'empêche jamais le
-démarrage : la version en place s'ouvre, et la précédente est restaurée si le
-remplacement avait commencé.
+The launchers are in English: they run before the application's language is
+known. `Enter` (or `y`, `o`, `oui`) downloads the archive, checks its SHA256
+fingerprint, replaces the application files and restarts IRIS ENCODE on the
+new version. `n` postpones. A failure (network, archive rejected) never
+prevents startup: the installed version opens, and the previous one is
+restored if the replacement had begun.
 
-**Ce qui n'est jamais touché** : `config.toml`, `profiles.toml`, `bin/`,
-`.venv/`. La version remplacée est gardée dans `.iris_update/sauvegarde/`
-jusqu'à la mise à jour suivante.
+**What is never touched**: `config.toml`, `profiles.toml`, `bin/`, `.venv/`.
+The replaced version is kept in `.iris_update/sauvegarde/` until the next
+update.
 
-| `config.toml`, `[updates] app =` | Effet |
+| `config.toml`, `[updates] app =` | Effect |
 |---|---|
-| `"ask"` (défaut) | demander, `O` présélectionné |
-| `"auto"` | installer sans demander |
-| `"off"` | ne rien vérifier, aucun appel réseau |
+| `"ask"` (default) | ask, `Y` preselected |
+| `"auto"` | install without asking |
+| `"off"` | check nothing, no network call |
 
-Un dossier cloné avec git (présence de `.git/`) n'est jamais mis à jour de
-cette façon : `git pull` s'en charge. Si le lanceur Bureau a changé, relancez
-`launcher\build.bat` comme indiqué à l'écran.
+A folder cloned with git (a `.git/` is present) is never updated this way:
+`git pull` takes care of it. If the Desktop launcher has changed, run
+`launcher\build.bat` again as shown on screen.
 
-> **Depuis une version antérieure à la v0.8.9.1**, la mise à jour se fait une
-> dernière fois à la main : téléchargez l'archive de la release et extrayez-la
-> par-dessus le dossier. Les suivantes se font seules.
+> **From a version older than v0.8.9.1**, the update is done by hand one last
+> time: download the release archive and extract it over the folder. Later ones
+> happen on their own.
 
 ---
 
-## 6. Structure des fichiers
+## 6. File layout
 
 ```
 iris_encode/
-├── launch.bat          ← Point d'entrée Windows (double-clic)
-├── IRIS_Encode.exe     ← Lanceur Bureau, compilé par launcher\build.bat (auto)
-├── bootstrap.ps1       ← Installe Python et ses dépendances, sans droits admin
-├── updater.py          ← Mise à jour depuis la release GitHub (appelé par launch.bat)
-├── main.py             ← Point d'entrée Python
-├── config.toml         ← Configuration générale (éditable)
-├── profiles.toml       ← Profils d'encodage (éditable)
-├── requirements.txt    ← Dépendances Python
-├── version.py          ← Version de l'application (source unique)
-├── LICENSE             ← Licence GPL-3.0-or-later
-├── .venv/              ← Environnement Python local (auto)
-├── .iris_update/       ← Cache, sauvegarde et manifeste des mises à jour (auto)
+├── launch.bat          ← Windows entry point (double-click)
+├── IRIS_Encode.exe     ← Desktop launcher, compiled by launcher\build.bat (auto)
+├── bootstrap.ps1       ← Installs Python and its dependencies, no admin rights
+├── updater.py          ← Update from the GitHub release (called by launch.bat)
+├── main.py             ← Python entry point
+├── config.toml         ← General settings (editable)
+├── profiles.toml       ← Encoding profiles (editable)
+├── requirements.txt    ← Python dependencies
+├── version.py          ← Application version (single source)
+├── LICENSE             ← GPL-3.0-or-later license
+├── README.md           ← This guide (README.fr.md: French)
+├── GUIDE.md            ← User guide (GUIDE.fr.md: French)
+├── .venv/              ← Local Python environment (auto)
+├── .iris_update/       ← Update cache, backup and manifest (auto)
 ├── bin/                ← uv / python / ffmpeg / ffprobe / dovi_tool / mkvmerge / mpv (auto)
-├── data/               ← Sources de téléchargement (embarquées)
-├── launcher/           ← Lanceur Bureau : source C#, icône, build.bat
-├── core/               ← Logique métier
-├── tui/                ← Interface utilisateur
-├── locales/            ← Traductions de l'interface (.po, .mo compilés)
-├── outils/             ← Outils de développement (traductions)
-├── tests/              ← Tests et smoke test TUI
-└── logger/             ← Module de journalisation
+├── data/               ← Download sources (shipped)
+├── launcher/           ← Desktop launcher: C# source, icon, build.bat
+├── core/               ← Business logic
+├── tui/                ← User interface
+├── locales/            ← Interface translations (.po, compiled .mo)
+├── outils/             ← Development tools (translations)
+├── tests/              ← Tests and TUI smoke test
+└── logger/             ← Logging module
 ```
 
 ---
 
-## 7. Personnalisation
+## 7. Customization
 
-Les fichiers `config.toml` et `profiles.toml` sont éditables à la main avec n'importe quel éditeur de texte (Notepad, VS Code, etc.).
+`config.toml` and `profiles.toml` can be edited by hand with any text editor
+(Notepad, VS Code, etc.).
 
-**`config.toml`** — largeurs des colonnes, langue, chemins, clé OMDb :
+**`config.toml`** — column widths, language, paths, online service keys:
 ```toml
+[app]
+language = "en"       # interface language: "en", "fr" (also in F5, then U)
+
 [tui.browser.columns]
-# La colonne "fichier" s'étend automatiquement à l'espace disponible
-taille       = 8      # largeur de la colonne taille fichier
-resolution   = 12     # largeur de la colonne résolution
-audio        = 20     # largeur de la colonne pistes audio
-decision     = 12     # largeur de la colonne décision
+# The "file" column stretches to the space available
+taille       = 8      # file size column width
+resolution   = 12     # resolution column width
+audio        = 20     # audio tracks column width
+decision     = 12     # decision column width
 
 [meta]
-omdb_api_key = ""     # clé gratuite sur omdbapi.com (données IMDB complètes)
+omdb_api_key = ""     # free key at omdbapi.com (full IMDB data)
 
-[opensubtitles]       # sous-titres depuis F9, touche O (voir GUIDE § 2.3)
-api_key  = ""         # clé d'application : opensubtitles.com/consumers
-username = ""         # compte, exigé pour télécharger (20 / jour gratuit)
+[opensubtitles]       # subtitles from F9, key O (see GUIDE § 2.3)
+api_key  = ""         # application key: opensubtitles.com/consumers
+username = ""         # account, required to download (20 / day free)
 password = ""
 ```
 
-**`profiles.toml`** — profils d'encodage (bitrate, résolution, audio, Dolby Vision) :
+The setting keys (`taille`, `resolution`…) are identifiers: they are written as
+shown, whatever the interface language.
+
+**`profiles.toml`** — encoding profiles (bitrate, resolution, audio, Dolby
+Vision):
 ```toml
 [series_basic]
 bitrate_1080p_kbps = 2500
 keep_4k            = false
-dolby_vision       = "hdr"
+dolby_vision       = "hdr10"
 ```
 
 ---
 
-## 8. Raccourcis clavier (écran Browser)
+## 8. Keyboard shortcuts (Home screen)
 
-| Touche | Action |
-|--------|--------|
-| `Space` | Sélectionner / désélectionner un fichier |
-| `A` / `N` | Tout sélectionner / Aucun |
-| `Enter` | Entrer dans un dossier |
-| `Backspace` | Remonter d'un niveau |
-| `T` | Sélection manuelle des pistes (audio, sous-titres) |
-| `F1` | Aperçu — ce qui sera fait, sans rien faire |
-| `F2` | Encoder la sélection |
-| `R` | Encoder le dossier sélectionné et tous ses sous-dossiers |
-| `F4` | Changer de profil d'encodage |
-| `F5` | Gérer les profils (créer `N`, éditer `E`, supprimer `D`) |
-| `J` | Joindre les fichiers sélectionnés bout à bout en un seul (`part1` + `part2`) |
-| `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |
-| `Tab` / `Shift+Tab` | Colonne suivante / précédente (redimensionnement) |
-| `<` / `>` | Rétrécir / élargir la colonne active |
-| `F10` | Quitter |
+The main ones; the full list, screen by screen, is in [`GUIDE.md`](GUIDE.md)
+§ 2, and `H` shows it inside the application.
 
----
-
-## 9. Métadonnées IMDB (F8)
-
-IMDB bloque le scraping direct. IRIS ENCODE utilise deux modes :
-
-- **Sans clé** : données partielles via l'API de suggestions IMDB (titre, année, type, stars de base)
-- **Avec clé OMDb** : données complètes (note, réalisateur, synopsis, genres)
-
-Pour obtenir une clé gratuite (1 000 req/jour) : au lancement, si elle manque,
-une fenêtre la demande — **Obtenir une clé** ouvre
-[omdbapi.com](https://www.omdbapi.com/apikey.aspx), on colle la clé reçue par
-courriel, et elle est vérifiée avant d'être enregistrée. Plus tard : `F5`, puis
-`K`. `config.toml` n'a pas à être édité à la main.
+| Key | Action |
+|-----|--------|
+| `Space` | Check / uncheck a file |
+| `A` / `N` | Check all / none |
+| `Enter` | Open a folder; on a file, the guided mode (or the Tracks screen in manual mode) |
+| `Backspace` | Go up one level |
+| `W` | Switch between guided and manual mode |
+| `T` | Tracks screen: manual track selection (audio, subtitles) |
+| `F1` | Dry run — what will be done, without doing anything |
+| `F2` | Encode the checked files |
+| `R` | Encode the folder under the cursor and all its subfolders |
+| `F4` | Change the encoding profile |
+| `F5` | Manage profiles (create `N`, edit `E`, delete `D`) |
+| `J` | Join the checked files end to end into one (`part1` + `part2`) |
+| `I` | Movie Info card: AlloCiné, then IMDB with `Tab` |
+| `Tab` / `Shift+Tab` | Next / previous column (resizing) |
+| `<` / `>` | Narrow / widen the active column |
+| `H` | Key guide |
+| `F10` | Quit |
 
 ---
 
-## 10. Terminal recommandé
+## 9. IMDB metadata (`I`, then `Tab`)
 
-IRIS ENCODE utilise Textual pour son interface graphique TUI. Le rendu dépend du **terminal hôte**, pas du shell (cmd ou PowerShell).
+IMDB blocks direct scraping. IRIS ENCODE works in two modes:
 
-| Terminal | Rendu | Notes |
-|----------|-------|-------|
-| **Windows Terminal** | ✓ Optimal | Recommandé — VT100/ANSI complet, Unicode natif |
-| **PowerShell** dans Windows Terminal | ✓ Optimal | Le shell n'a pas d'importance, c'est l'hôte qui compte |
-| **cmd.exe** dans Windows Terminal | ✓ Optimal | Idem |
-| **cmd.exe** fenêtre classique (conhost) | ⚠ Dégradé | Support ANSI partiel, bordures approximatives |
-| **PowerShell** fenêtre classique (conhost) | ⚠ Variable | Même limitation que cmd classique |
+- **Without a key**: partial data through IMDB's suggestion API (title, year,
+  type, main cast)
+- **With an OMDb key**: full data (rating, director, synopsis, genres)
 
-> **Windows Terminal** est disponible gratuitement sur le Microsoft Store
-> et est installé par défaut sur Windows 11.
-> Pour Windows 10 : https://aka.ms/terminal
-
-Un double-clic sur `launch.bat`, ou un raccourci qui le vise directement,
-ouvre la **console héritée** — la ligne dégradée du tableau. C'est la raison
-d'être du raccourci Bureau du § 5.1 : il ne fait rien d'autre que lancer
-l'application *dans le bon hôte*. Si vous ne deviez retenir qu'une chose de ce
-chapitre, c'est celle-là.
+To get a free key (1,000 requests/day): at startup, if it is missing, a window
+asks for it — **Get a key** opens
+[omdbapi.com](https://www.omdbapi.com/apikey.aspx), you paste the key received
+by email, and it is checked before being saved. Later: `F5`, then `K`.
+`config.toml` does not need editing by hand.
 
 ---
 
-## 11. Résolution des problèmes courants
+## 10. Recommended terminal
 
-| Symptôme | Cause probable | Solution |
-|----------|---------------|----------|
-| `python` non reconnu | Python absent du PATH | Réinstaller Python en cochant *Add to PATH* |
-| `pip` non reconnu | pip absent | Utiliser `python -m pip` |
-| Écran noir au lancement | Terminal ne supporte pas l'interface TUI | Utiliser Windows Terminal ou cmd.exe classique |
-| Encodage lent | Pas de GPU NVIDIA détecté | Normal — encodage CPU activé automatiquement |
-| `dovi_tool introuvable` | Optionnel non installé | Voir section 4 — uniquement si fichiers Dolby Vision |
-| Erreur à l'import d'un module | Dépendances manquantes | Relancer `pip install -r requirements.txt` |
-| `os error 4551` à l'installation | Smart App Control refuse un binaire sans réputation | Voir chapitre 1.4 |
-| Windows bloque `IRIS_Encode.exe` | Smart App Control, même cause qu'au 1.4 | Le raccourci `.lnk` sans `.exe` du § 5.1 rend le même service |
-| `csc.exe introuvable` au build | .NET Framework 4.x désactivé | *Fonctionnalités facultatives* de Windows, ou https://aka.ms/net48 |
-| Le raccourci ouvre une console noire | Windows Terminal absent : le lanceur bascule sur `cmd` | Installer Windows Terminal (chapitre 10) |
-| IMDB : note/synopsis absents | Clé OMDb non configurée | Voir section 9 |
+IRIS ENCODE uses Textual for its text interface. Rendering depends on the
+**terminal host**, not on the shell (cmd or PowerShell).
 
----
+| Terminal | Rendering | Notes |
+|----------|-----------|-------|
+| **Windows Terminal** | ✓ Optimal | Recommended — full VT100/ANSI, native Unicode |
+| **PowerShell** in Windows Terminal | ✓ Optimal | The shell does not matter, the host does |
+| **cmd.exe** in Windows Terminal | ✓ Optimal | Same |
+| **cmd.exe** classic window (conhost) | ⚠ Degraded | Partial ANSI support, approximate borders |
+| **PowerShell** classic window (conhost) | ⚠ Variable | Same limitation as classic cmd |
 
-## 12. Désinstallation
+> **Windows Terminal** is free on the Microsoft Store and installed by default
+> on Windows 11. For Windows 10: https://aka.ms/terminal
 
-IRIS ENCODE ne modifie aucun paramètre système. Pour désinstaller :
-
-1. Supprimez le dossier `iris_encode/`
-2. (Optionnel) Désinstallez les bibliothèques Python : `pip uninstall textual rich tomli-w requests beautifulsoup4`
-
-Les fichiers `config.toml` et `profiles.toml` sont supprimés avec le dossier.
-
+A double-click on `launch.bat`, or a shortcut aimed straight at it, opens the
+**legacy console** — the degraded row of the table. That is the reason for the
+Desktop shortcut in § 5.1: it does nothing but start the application *in the
+right host*. If you remember one thing from this chapter, make it that one.
 
 ---
 
-## 13. Licence
+## 11. Troubleshooting
 
-IRIS ENCODE est un logiciel libre, distribué sous **GNU General Public License,
-version 3 ou toute version ultérieure** (GPL-3.0-or-later). Le texte complet est
-dans [`LICENSE`](LICENSE).
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `python` not recognized | Python not on the PATH | Reinstall Python with *Add to PATH* checked |
+| `pip` not recognized | pip missing | Use `python -m pip` |
+| Black screen at startup | The terminal cannot display the TUI | Use Windows Terminal or the classic cmd.exe |
+| Slow encoding | No NVIDIA GPU detected | Normal — processor encoding is used automatically |
+| `dovi_tool missing` | Optional tool not installed | See chapter 4 — only for Dolby Vision files |
+| Error importing a module | Missing dependencies | Run `pip install -r requirements.txt` again |
+| `os error 4551` during installation | Smart App Control rejects a binary without reputation | See chapter 1.4 |
+| Windows blocks `IRIS_Encode.exe` | Smart App Control, same cause as 1.4 | The `.lnk` shortcut without `.exe` from § 5.1 does the same job |
+| `csc.exe` not found during build | .NET Framework 4.x turned off | Windows *Optional features*, or https://aka.ms/net48 |
+| The shortcut opens a black console | Windows Terminal missing: the launcher falls back to `cmd` | Install Windows Terminal (chapter 10) |
+| IMDB: no rating/synopsis | OMDb key not set | See chapter 9 |
 
-Les outils externes (ffmpeg, mkvmerge, mpv, dovi_tool, uv) ne sont pas fournis
-avec IRIS ENCODE : ils sont téléchargés dans `bin/` depuis leurs sources
-officielles et gardent chacun leur propre licence.
+---
+
+## 12. Uninstalling
+
+IRIS ENCODE changes no system setting. To uninstall:
+
+1. Delete the `iris_encode/` folder
+2. (Optional) Uninstall the Python libraries: `pip uninstall textual rich tomli-w requests beautifulsoup4 numpy`
+
+`config.toml` and `profiles.toml` go with the folder.
+
+---
+
+## 13. License
+
+IRIS ENCODE is free software, distributed under the **GNU General Public
+License, version 3 or any later version** (GPL-3.0-or-later). The full text is
+in [`LICENSE`](LICENSE).
+
+The external tools (ffmpeg, mkvmerge, mpv, dovi_tool, uv) are not shipped with
+IRIS ENCODE: they are downloaded into `bin/` from their official sources and
+each keeps its own license.
 
 ---
 

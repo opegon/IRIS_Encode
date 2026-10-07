@@ -1,5 +1,25 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.88] — 2026-10-07
+
+### La documentation en anglais et en français (IE-95)
+
+`README.md` (installation) et `GUIDE.md` (utilisation) sont désormais en
+anglais ; leurs versions françaises deviennent `README.fr.md` et
+`GUIDE.fr.md`. Chaque fichier renvoie à l'autre langue dès sa première ligne.
+La version anglaise cite les écrans et les messages tels que l'interface
+anglaise les affiche. `install.txt`, livré à côté des lanceurs, passe en
+anglais et renvoie au README français.
+
+La relecture a corrigé, dans les deux langues, ce qui ne correspondait plus à
+l'application : la fiche AlloCiné/IMDB s'ouvre par `I` (le README annonçait
+encore `F7`/`F8`) ; la raison d'une décision Dolby Vision se lit à l'étape 2 de
+l'assistant (il n'y a plus de colonne « Raison ») ; le réglage des pistes
+TrueHD/DTS et le mode HDR10 sont cités sous leur nom actuel ; les profils
+`cinema_4k_quality` et `cinema_4k_hd`, qui n'existent plus, ne sont plus
+cités ; une mesure réussie sur l'audio se reporte bien sur les sous-titres du
+même fichier ; l'exemple de `profiles.toml` donne `dolby_vision = "hdr10"`.
+
 ## [v0.8.9.87] — 2026-10-07
 
 ### Tests de la localisation (IE-94)

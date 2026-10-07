@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.87 — document de référence courant
+**Version** : 0.8.9.88 — document de référence courant
 **Date** : 2026-10-07
 **Statut** : stable
 
@@ -30,7 +30,10 @@ Deux familles d'opérations coexistent :
 
 ```
 iris_encode/
-├── GUIDE.md                      ← guide d'utilisation (procédures, cas)
+├── README.md                     ← présentation et installation, en anglais (§ 2.1)
+├── README.fr.md                  ← la même, en français
+├── GUIDE.md                      ← guide d'utilisation (procédures, cas), en anglais
+├── GUIDE.fr.md                   ← le même, en français
 ├── launch.bat                    ← choix de l'interpréteur, point d'entrée Windows
 ├── bootstrap.ps1                 ← installe uv + CPython + .venv, sans droits admin
 ├── main.py                       ← point d'entrée Python (autonome)
@@ -52,6 +55,7 @@ iris_encode/
 │   ├── encoder.py                ← construction commande ffmpeg + exécution
 │   ├── dovi.py                   ← wrapper dovi_tool (probe, RPU, x265-params HDR10)
 │   ├── muxer.py                  ← wrapper mkvmerge (identify, mux, extrait)
+│   ├── annexes.py                ← .nfo et images Jellyfin d'une vidéo (supprimés avec elle)
 │   ├── sous_titres.py            ← sous-titres texte vers MP4 : longs silences comblés
 │   ├── joiner.py                 ← collage bout à bout de plusieurs parties
 │   ├── sync.py                   ← mesure de décalage par corrélation croisée
@@ -111,7 +115,7 @@ iris_encode/
 └── requirements.txt
 ```
 
-### 2.1 Traduction de l'interface — socle (v0.8.9.72)
+### 2.1 Localisation — l'interface en anglais et en français (v0.8.9.72 → v0.8.9.88)
 
 `core/i18n.py`, sur le `gettext` de la bibliothèque standard. **L'anglais est
 la langue source** : les textes du code sont en anglais, le français est une
@@ -155,8 +159,13 @@ marqués `N_()`, traduits au rendu ; les titres reprennent les `msgid` des
 `{key_mode}`…), la touche lue dans les `BINDINGS` ; repli en cellules
 (`cell_len`). `core/texte.py` est
 retiré : tous les pluriels passent par `ngettext`.
-`tests/test_i18n.py` refuse un littéral accentué hors de `_()` dans `tui/`. Les tests chargent le français (`tests/conftest.py`, smoke, captures) :
-un test qui vérifie un message français vérifie aussi sa traduction.
+Les tests chargent le français par défaut (`tests/conftest.py`) : un test qui
+vérifie un message français vérifie aussi sa traduction. Depuis la v0.8.9.87
+(IE-94), ce qui rend du texte se vérifie **dans chaque langue** — fixture
+`langue`, smoke en anglais puis en français, captures `--langue` — et
+`tests/test_i18n.py` refuse, dans `core/` comme dans `tui/`, un texte passé en
+dur à un point d'affichage, un littéral accentué hors `_()` et toute comparaison
+à un texte traduit (§ 18).
 
 **Formats (v0.8.9.82)** : ils suivent `[app] language`, jamais les paramètres
 régionaux de Windows (pas de module `locale`). Seule l'unité d'octets de
@@ -185,6 +194,30 @@ Le **glossaire** (`locales/glossaire.fr.csv`, colonnes `source`, `target`,
 `explanation`) fixe un terme anglais = une traduction, et les termes à ne
 jamais traduire (« Do not translate » : SKIP, noms d'outils et de formats…).
 Ses arbitrages et la politique de traduction sont au wiki, page `localisation`.
+L'anglais source suit l'usage américain (*movie*, *canceled*, *-ize*) et cite
+les écrans par leur nom, capitalisé (« the Tracks screen ») (v0.8.9.85).
+
+**Ce qui ne se traduit pas**, quelle que soit `[app] language` :
+
+| Quoi | Pourquoi |
+|---|---|
+| Termes « Do not translate » du glossaire : `SKIP`, `release`, `lossless` dans une raison, noms de formats (HEVC, DV, TrueHD…), d'outils (ffmpeg, mkvmerge…) et de services | Vocabulaire commun aux deux langues, ou nom propre |
+| Noms de profils, y compris le suffixe `_copie` d'une copie ; clés de `config.toml` et `profiles.toml` | Identifiants, écrits dans des fichiers |
+| Noms de piste proposés au recalage (`VF`, `Forced`, `Forcés`…) | Données écrites dans le fichier produit, choisies selon la langue **de la piste** (L-77) |
+| Codes de langue des pistes (`fre`, `eng`) | Données ISO 639-2 |
+| Unités et formats : `ms`, `s`, `k`, `kbps`, durées, point décimal, `%` | Règles fixes (v0.8.9.82) ; seule l'unité d'octets se traduit |
+| Console avant `main.py` : `launch.bat`, `bootstrap.ps1`, `updater.py`, `launcher/` | Tournent avant que la langue soit connue : anglais seul (v0.8.9.83) |
+| Messages d'un service en ligne (OpenSubtitles, OMDb) | Montrés tels que le service les envoie (`ErreurAffichable.brute`) |
+| Journaux (`~/.iris_encode/iris_encode.log`), `str()` d'une erreur | Destinés au diagnostic, pas à l'écran |
+| `CHANGELOG.md`, cette spec, le wiki | Documentation de développement, en français |
+
+**Documentation utilisateur (v0.8.9.88)** : `README.md` et `GUIDE.md` sont en
+anglais, `README.fr.md` et `GUIDE.fr.md` en français ; chacun renvoie à l'autre
+en tête. Les deux langues sont tenues ensemble : une procédure modifiée l'est
+dans les deux fichiers. L'anglais cite les libellés et messages tels que
+l'interface anglaise les affiche, le français tels que l'interface française
+les affiche. `tests/test_aide.py` vérifie les deux guides (toute touche annoncée
+répond, en-tête à la version courante, lien croisé) et les deux README.
 
 ---
 
@@ -2906,6 +2939,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.88 | 2026-10-07 | **Documentation de la localisation** (§ 2.1, IE-95) : `README.md` et `GUIDE.md` en anglais, versions françaises en `README.fr.md` et `GUIDE.fr.md` (`git mv`), lien croisé en tête ; § 2.1 « Localisation » : ce qui ne se traduit pas, documentation en deux langues · corrigés au passage dans les deux langues : touche de la fiche (`I`, plus `F7`/`F8`), colonne « Raison » disparue, champ audio sans perte et mode HDR10 renommés, profils cités qui n'existent plus, report automatique de la mesure · `install.txt` en anglais · `tests/test_aide.py` vérifie les deux guides et les deux README |
 | 0.8.9.87 | 2026-10-07 | **Tests de la localisation** (§ 18, IE-94) : smoke dans les deux langues, captures avec `--langue`, guide et planchers de colonnes testés dans chaque langue, garde-fous structurels (textes en dur aux points d'affichage, accents dans `core/`, comparaisons à un texte traduit) · corrigés : « Jonction », « Choisir », « Annuler » affichés en dur ; colonne « Sync » à 15 |
 | 0.8.9.86 | 2026-10-07 | **Annexes Jellyfin supprimées avec la source** (§ 14.7, IE-116) : `<nom>.nfo` et `<nom>-*.jpg|png…` partent avec la source après encodage (`delete_source`) et avec `Ctrl+D`, que la confirmation liste ; sous-titres externes, fichiers du dossier et sortie conservés · `core/annexes.py`, `tests/test_annexes.py` |
 | 0.8.9.85 | 2026-10-07 | **Relecture de l'anglais source** (IE-93) : termes du glossaire partout (*segment*, *anchor point*, *added track*, *check sample*), orthographe US (*movie*, *canceled*, *Analyzing*), noms d'écrans capitalisés (« the Tracks screen ») ; traductions françaises reportées · colonne « Sync » du recalage à largeur plancher, libellés du formulaire de profil élargis d'un caractère |

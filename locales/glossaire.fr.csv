@@ -12,6 +12,7 @@ Join,Jonction,"Screen and action: put the parts of one film back together, witho
 Profiles,Profils,Screen: create and edit encoding profiles.
 Info,Fiche,"Movie or series details from AlloCiné or IMDB (I)."
 API keys,Clés d'API,Online service keys (OMDb, OpenSubtitles).
+movie,film,"US English: the source never says ""film"" (except in a release name)."
 decision,décision,"What IRIS will do with a file: encode, remove the RPU, SKIP…"
 profile,profil,A named set of encoding settings (profiles.toml). Profile names are identifiers: never translated.
 track,piste,Audio or subtitle stream of a file.

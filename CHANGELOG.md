@@ -1,5 +1,20 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.85] — 2026-10-07
+
+### Relecture de l'anglais (IE-93)
+
+Les 883 textes anglais de l'interface ont été relus contre le glossaire et
+corrigés en anglais américain : *movie* au lieu de *film*, *canceled*,
+*Analyzing*, *anymore* ; les noms d'écrans prennent une majuscule (« the Tracks
+screen »). Quelques termes s'écartaient du glossaire dans le guide des touches :
+*ranges* et *grafts* deviennent *segments* et *added tracks*, *reference point*
+devient *anchor point*. Les traductions françaises sont inchangées.
+
+Les captures de tous les écrans en anglais ont révélé deux troncatures,
+corrigées : la colonne « Sync » du recalage coupait *measured* en « meas », et
+le libellé « Bitrate 1080p (kbps) » du formulaire de profil touchait son champ.
+
 ## [v0.8.9.84] — 2026-10-07
 
 ### Choisir la langue de l'interface (IE-92)

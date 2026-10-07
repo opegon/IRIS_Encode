@@ -365,17 +365,17 @@ class IrisEncodeApp(App):
         def _reponse(ok) -> None:
             self._decompte = False
             if not ok:
-                self.notify(_("After-batch action cancelled."), timeout=4)
+                self.notify(_("After-batch action canceled."), timeout=4)
                 return
             # `F12` reste actif sous la modale : un traitement a pu repartir.
             if self.natures_en_cours():
                 self.notify(_("A task has resumed: after-batch action "
-                              "cancelled."), severity="warning", timeout=8)
+                              "canceled."), severity="warning", timeout=8)
                 return
             erreur = self.veille.executer_fin(action)
             if erreur:
                 from core.veille import libelle_action
-                self.notify(_("{action} impossible: {error}").format(
+                self.notify(_("Cannot {action}: {error}").format(
                     action=libelle_action(action).capitalize(), error=erreur),
                     severity="error", timeout=15)
 

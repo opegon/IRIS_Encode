@@ -247,9 +247,9 @@ class SyncResult:
         # {count} the number of cues found, {speech} a percentage.
         mesures = ngettext(
             "confidence {level} ({value} for {required} required) · "
-            "{cross_check} · {count} cue · speech {speech}",
+            "{cross_check} · {count} line · speech {speech}",
             "confidence {level} ({value} for {required} required) · "
-            "{cross_check} · {count} cues · speech {speech}",
+            "{cross_check} · {count} lines · speech {speech}",
             self.n_events).format(
                 level=libelle_confiance(self.confidence, self.floor),
                 value=f"{self.confidence:.2f}", required=f"{self.floor:.2f}",
@@ -287,7 +287,7 @@ class SyncResult:
                 "different cut — {count} segments, each aligned but at its own "
                 "offset", len(self.segments)).format(count=len(self.segments))
         if self.n_events < 20:
-            return _("too few cues: very short subtitle, or misread format")
+            return _("too few subtitle lines: very short subtitle, or misread format")
         # Dans un film, la parole occupe 30 à 50 % du temps. Nettement au-delà,
         # c'est le VAD qui déborde sur la musique, pas le film qui bavarde.
         if self.speech_ratio > 0.60:

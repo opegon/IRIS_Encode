@@ -21,7 +21,7 @@ from core.meta import (Correspondance, MovieMeta, Nature, fetch_allocine,
 _LIBELLES = {"allocine": "AlloCiné", "imdb": "IMDB"}
 
 LIBELLES_NATURE: dict[Nature, str] = {
-    Nature.FILM:       N_("Film"),
+    Nature.FILM:       N_("Movie"),
     Nature.SERIE:      N_("Series"),
     Nature.MINI_SERIE: N_("Miniseries"),
     Nature.TELEFILM:   N_("TV movie"),

@@ -79,10 +79,10 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "select_all":          N_("Checks every file in the folder."),
         "select_none":         N_("Unchecks everything."),
         "enter_dir":           N_("Opens the folder under the cursor. On a "
-                                  "file: opens the tracks screen in manual "
+                                  "file: opens the Tracks screen in manual "
                                   "mode, the guided mode in guided mode."),
         "go_up":               N_("Goes up to the parent folder."),
-        "open_tracks":         N_("Opens the tracks screen of the file under "
+        "open_tracks":         N_("Opens the Tracks screen of the file under "
                                   "the cursor — whatever the mode."),
         "toggle_wizard":       N_("Switches between manual and guided mode. "
                                   "The active mode is named in the profile bar "
@@ -100,14 +100,14 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "open_config":         N_("Manages the profiles: create, edit, "
                                   "delete."),
         "join_parts":          N_("Joins the checked files end to end into "
-                                  "one, without re-encoding — a film delivered "
+                                  "one, without re-encoding — a movie delivered "
                                   "as part1 / part2. The proposed order comes "
                                   "from the names and can be corrected before "
                                   "launching. The resulting file carries "
                                   "“.join-iris” and is then encoded like any "
                                   "other."),
         # TRANSLATORS: {key_tab} is the key that switches to IMDB.
-        "open_fiche":          N_("Opens the film's info sheet: AlloCiné, then "
+        "open_fiche":          N_("Opens the movie's Info card: AlloCiné, then "
                                   "IMDB with {key_tab}."),
         "filtre_type":         N_("Shows only one image type: Dolby Vision, one "
                                   "DV profile, HDR without DV, or SDR. A checked "
@@ -139,8 +139,8 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                              "successful encode. “{delete_flag}” is shown in "
                              "orange."),
         "add_external":   N_("Adds a track taken from another file: a dub, "
-                             "subtitles. Opens the sync screen."),
-        "dismiss_cancel": N_("Returns to the home screen without applying the "
+                             "subtitles. Opens the Sync screen."),
+        "dismiss_cancel": N_("Returns to the Home screen without applying the "
                              "changes."),
     },
     "SyncScreen": {
@@ -162,37 +162,38 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "measure":         N_("Measures the offset by audio correlation. Takes "
                               "several minutes: both tracks are decoded in "
                               "full. The result is cross-checked on the three "
-                              "thirds of the film before being accepted."),
+                              "thirds of the movie before being accepted."),
         "preview":         N_("Opens mpv at the current offset, to judge by "
                               "ear."),
-        "sample":          N_("Produces a short excerpt with all the tracks, "
-                              "to play in your usual player — the safest check "
-                              "before muxing."),
+        "sample":          N_("Produces a check sample: a short excerpt "
+                              "with all the tracks, to play in your usual "
+                              "player — the safest check before muxing."),
         "apply_candidate": N_("Applies the value of a refused measurement "
                               "anyway. Check it afterwards: it was refused for "
                               "a reason."),
-        "show_segments":   N_("Shows the offset ranges when the measurement "
+        "show_segments":   N_("Shows the offset segments when the measurement "
                               "found a different cut. Advisory: nothing is "
                               "applied."),
-        "apply_segments":  N_("Syncs the track on these ranges. An .srt is "
-                              "rewritten; an audio track is lengthened at the "
-                              "switch points, then re-encoded."),
+        "apply_segments":  N_("Resyncs the track over these segments. An "
+                              ".srt is rewritten; an audio track is "
+                              "lengthened at the switch points, then "
+                              "re-encoded."),
         "copy_delay":      N_("Copies onto this track the offset of another — "
                               "useful when a dub and its subtitles come from "
                               "the same file."),
-        "ancrer":          N_("Gives a reference point when the measurement "
-                              "refuses. The application suggests a line and "
+        "ancrer":          N_("Gives an anchor point when the measurement "
+                              "is refused. The application suggests a line and "
                               "its timestamp; you give the moment you hear "
                               "it, and the search is done around it. Subtitles "
                               "only: an audio track has no text to suggest."),
-        "remove_track":    N_("Removes the track from the list of grafts."),
+        "remove_track":    N_("Removes the track from the added tracks."),
         "dryrun":          N_("Dry run of the target file."),
-        "run":             N_("Adds the file, with its grafted tracks, to the "
+        "run":             N_("Adds the file, with its added tracks, to the "
                               "encoding queue."),
         "run_mux":         N_("Muxes without re-encoding: much faster, when "
                               "the video does not need to be touched."),
         "add_track":       N_("Adds another external track."),
-        "go_back":         N_("Returns to the tracks screen."),
+        "go_back":         N_("Returns to the Tracks screen."),
     },
     "DryrunScreen": {
         "toggle_select": N_("Checks or unchecks a row."),
@@ -220,9 +221,9 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                            "hibernate or shut down, as set in the options "
                            "({key_options_screen}, {key_options}). By default "
                            "the options say “{do_nothing}” and the key arms "
-                           "nothing. It fires when nothing is running any "
+                           "nothing. It fires when nothing is running any"
                            "more, after a 60 s countdown that can be "
-                           "cancelled. Unchecked at each new batch; a batch "
+                           "canceled. Unchecked at each new batch; a batch "
                            "stopped by {key_stop_all} triggers nothing."),
         # TRANSLATORS: {key_queue} reopens the encoding queue.
         "go_back":      N_("Returns to the files without stopping anything: "
@@ -244,7 +245,7 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "coller":    N_("Starts the join. Refused if the parts do not match — "
                         "different video codec, resolution or audio format — "
                         "or if the output file already exists."),
-        "go_back":   N_("Returns to the home screen. A join in progress is "
+        "go_back":   N_("Returns to the Home screen. A join in progress is "
                         "interrupted and its partial file deleted."),
     },
     "ConfigScreen": {
@@ -263,13 +264,13 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                              "same settings, name to choose."),
         "delete_focused": N_("Deletes the profile. The profiles shipped with "
                              "the application are protected."),
-        "go_back":        N_("Returns to the home screen."),
+        "go_back":        N_("Returns to the Home screen."),
     },
     "WizardScreen": {
         # TRANSLATORS: {launch} is the name of the last step but one.
         "suivant":  N_("Moves to the next step. At the “{launch}” step, "
                        "triggers the recommended choice; at the end, returns "
-                       "to the home screen."),
+                       "to the Home screen."),
         "basculer": N_("Keeps or discards the track under the cursor (step "
                        "2)."),
         "codec":    N_("Changes the output codec (step 2)."),
@@ -292,12 +293,12 @@ _ORDRE: list[tuple[str, str, str]] = [
      N_("Browse, choose the files, launch.")),
     # TRANSLATORS: {key_mode} is the home screen key that turns guided mode on.
     ("WizardScreen", N_("Guided"),
-     N_("One file, five steps. Turned on by {key_mode} from the home "
+     N_("One file, five steps. Turned on by {key_mode} from the Home "
         "screen.")),
     ("TracksScreen", N_("Tracks"),
      N_("What each track of the file will become.")),
     ("SyncScreen", N_("Sync"),
-     N_("Graft a track from elsewhere, and put it back in time.")),
+     N_("Add a track from another file, and put it back in time.")),
     ("DryrunScreen", N_("Dry run"),
      N_("What would be done, without doing anything.")),
     ("RunScreen", N_("Encoding"),
@@ -305,7 +306,7 @@ _ORDRE: list[tuple[str, str, str]] = [
     ("MuxScreen", N_("Muxing"),
      N_("The mux in progress, and what can be done with it next.")),
     ("JoinScreen", N_("Join"),
-     N_("Sew the parts of one film back into a single file.")),
+     N_("Put the parts of one movie back together into a single file.")),
     ("ConfigScreen", N_("Profiles"),
      N_("Create and set up the encoding profiles.")),
 ]
@@ -472,7 +473,7 @@ class AideScreen(Screen):
                             ("pagedown", "table_page_down")):
             self._ligne(t, touche(cle), _(_COMMUNES[action]))
         t.append("\n")
-        t.append(_("Resizable columns — home, tracks, dry run") + "\n",
+        t.append(_("Resizable columns — Home, Tracks, Dry run") + "\n",
                  style="bold")
         for cle, action in (("tab", "col_next"), ("shift+tab", "col_prev"),
                             (">", "col_grow"), ("<", "col_shrink")):

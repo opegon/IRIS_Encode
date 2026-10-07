@@ -493,7 +493,7 @@ class RunScreen(TableNavMixin, Screen):
         # Affiche "Encodage lancé" jusqu'à première ligne
         self.app.call_from_thread(
             self._update_ffmpeg_line,
-            "▶ " + _("Encoding started, initialising…")
+            "▶ " + _("Encoding started, initializing…")
         )
         s.percent = -1  # Force "en cours…" au lieu de "0%"
         self.app.call_from_thread(self._update_row, next_idx)

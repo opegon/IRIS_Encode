@@ -97,7 +97,7 @@ class AncrageModal(ModalScreen["tuple[float, float] | None"]):
         if self._nom:
             t.append(f"{self._nom}\n", style="bold")
         # Pas de retour à la ligne dans le message : le texte se replie seul (L-54).
-        t.append(_("Listen to the film at the given point. If this line cannot "
+        t.append(_("Listen to the movie at the given point. If this line cannot "
                    "be found, {key} offers another one.").format(key="↓") + "\n\n",
                  style="dim")
         # TRANSLATORS: examples of time formats, keep them as they are.

@@ -361,7 +361,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield Static("", id="spacer-1")
         yield Static("", id="profile-bar")
-        analyse = "⏳ " + _("Analysing…")
+        analyse = "⏳ " + _("Analyzing…")
         yield Static(analyse, id="scan-notice", markup=False)
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
         yield KeyFooter(
@@ -800,7 +800,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 self.query_one("#scan-notice", Static).update, msg
             )
 
-        _set_notice("⏳ " + _("Analysing… {done} / {total}").format(done=0, total=total))
+        _set_notice("⏳ " + _("Analyzing… {done} / {total}").format(done=0, total=total))
 
         # Scans ffprobe parallélisés (ordre des résultats préservé par map)
         done = 0
@@ -826,7 +826,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 _LOG.warning("Échec du scan : %s", vpath, exc_info=True)
             with lock:
                 done += 1
-                _set_notice("⏳ " + _("Analysing… {done} / {total}").format(
+                _set_notice("⏳ " + _("Analyzing… {done} / {total}").format(
                     done=done, total=total))
             return dec
 
@@ -1130,7 +1130,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             _("Guided mode — {key} opens the guided path, one file at a "
               "time.").format(key=touche("enter"))
             if app.wizard_mode else                               # type: ignore[attr-defined]
-            _("Manual mode — {key} opens the tracks screen.").format(key=touche("enter")))
+            _("Manual mode — {key} opens the Tracks screen.").format(key=touche("enter")))
 
     def action_open_wizard(self) -> None:
         """Ouvre le parcours guidé sur le fichier sous le curseur."""

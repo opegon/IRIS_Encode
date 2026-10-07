@@ -298,10 +298,10 @@ def _install_from_7z(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
                 stdin=subprocess.DEVNULL, capture_output=True, timeout=300,
             )
         except (OSError, subprocess.SubprocessError) as e:
-            _dire(_("Extraction impossible ({error}) — tar not found?").format(error=e), "✗")
+            _dire(_("Extraction failed ({error}) — tar not found?").format(error=e), "✗")
             return False
         if r.returncode != 0:
-            _dire(_("7z archive unreadable by tar."), "✗")
+            _dire(_("tar cannot read this 7z archive."), "✗")
             return False
 
         for found in extract_dir.rglob("*"):

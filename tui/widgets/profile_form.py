@@ -158,7 +158,7 @@ class ProfileForm(Widget):
         padding-right: 2;
     }
     ProfileForm .form-lbl {
-        width: 20;
+        width: 21;      /* « Bitrate 1080p (kbps) » + une espace */
         padding-top: 1;
         color: $text-muted;
     }
@@ -347,7 +347,7 @@ class ProfileForm(Widget):
         yield Static(_section(_("Source file")), classes="section-hdr")
 
         with Widget(classes="check-row"):
-            yield Checkbox(_("delete the source after a successful encoding"),
+            yield Checkbox(_("delete the source after a successful encode"),
                            id="field-delsrc")
 
         yield Static("", id="cons-source", classes="consequence")
@@ -442,7 +442,7 @@ class ProfileForm(Widget):
             if hq == "quality":
                 # TRANSLATORS: "quality" is the value of the HDR10 mode setting.
                 txt += "\n" + _("Quality mode: libx265 on the processor — around "
-                                "70 hours for a 4K film. Keep it for 1080p.")
+                                "70 hours for a 4K movie. Keep it for 1080p.")
         elif dv == "dv":
             txt = _("Dolby Vision is kept as it is. No removal, so no remux: a "
                     "file that nothing requires re-encoding is left untouched.")

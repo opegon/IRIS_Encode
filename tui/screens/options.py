@@ -80,7 +80,7 @@ class OptionsScreen(ModalScreen[bool]):
                     yield RadioButton(_(libelle).capitalize(), value=cle == action,
                                       id=f"fin-{cle}")
             yield Static(_("Preceded by a {seconds} s countdown, can be "
-                           "cancelled.").format(seconds=veille.COMPTE_A_REBOURS_S),
+                           "canceled.").format(seconds=veille.COMPTE_A_REBOURS_S),
                          classes="options-note")
             if not veille.disponible():
                 yield Static(_("No effect on this system: Windows only."),

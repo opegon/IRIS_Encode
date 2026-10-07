@@ -201,8 +201,8 @@ def build_join_command(parts: list[Path], output: Path) -> list[str]:
     """
     if len(parts) < MIN_PARTIES:
         raise ErreurAffichable(Nn_(
-            "Join: {minimum} parts at least ({count} given).",
-            "Join: {minimum} parts at least ({count} given)."),
+            "Join: at least {minimum} parts ({count} given).",
+            "Join: at least {minimum} parts ({count} given)."),
             minimum=MIN_PARTIES, count=len(parts))
 
     resolus = [p.resolve() for p in parts]

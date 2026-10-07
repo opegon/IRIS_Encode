@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.84 — document de référence courant
+**Version** : 0.8.9.85 — document de référence courant
 **Date** : 2026-10-07
 **Statut** : stable
 
@@ -2894,6 +2894,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.85 | 2026-10-07 | **Relecture de l'anglais source** (IE-93) : termes du glossaire partout (*segment*, *anchor point*, *added track*, *check sample*), orthographe US (*movie*, *canceled*, *Analyzing*), noms d'écrans capitalisés (« the Tracks screen ») ; traductions françaises reportées · colonne « Sync » du recalage à largeur plancher, libellés du formulaire de profil élargis d'un caractère |
 | 0.8.9.84 | 2026-10-07 | **Choix de la langue** (§ 2.1, IE-92) : section de l'écran Options, une langue par catalogue livré, nommée dans sa langue ; détection de la langue de Windows au premier lancement (`[app] language` vide par défaut), anglais si elle n'est pas traduite ; effet au redémarrage, annoncé · panneau Options défilant · `tests/test_choix_langue.py` |
 | 0.8.9.83 | 2026-10-07 | **Lanceurs et console** (§ 2.1, IE-91) : textes affichés de `launch.bat`, `bootstrap.ps1`, `build.bat`, du lanceur C# et d'`updater.py` en anglais (`[Y/n]`, `o`/`oui` acceptés) ; langue chargée avant la bannière ; cadre calculé en cellules · `tests/test_console_anglais.py`, `tests/test_banniere.py` |
 | 0.8.9.82 | 2026-10-07 | **Formats localisés** (§ 2.1, IE-90) : unités d'octets traduites (TB/GB/MB/KB ↔ To/Go/Mo/Ko), point décimal fixe, « 12% » sans espace partout (raisons de décision, barre d'état, volumes, aide du preset) · `tests/test_formats.py` |

@@ -244,3 +244,10 @@ Trois choix de l'utilisateur : langues proposées = catalogues livrés, nommés
 dans leur langue ; anglais si Windows est dans une langue non traduite ; message
 seulement après un changement. Source : [[2026-10-07-decisions-choix-langue]].
 Pages touchées : [[localisation]].
+
+## [2026-10-07] ingest | Anglais source relu (IE-93)
+
+Relecture des 883 messages contre le glossaire et captures de tous les écrans en
+anglais : conventions US et noms d'écrans fixés, deux troncatures propres à
+l'anglais corrigées. Pas de source brute : décisions prises pendant la
+relecture, consignées dans la page. Pages touchées : [[localisation]].

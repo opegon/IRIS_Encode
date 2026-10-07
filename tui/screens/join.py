@@ -196,7 +196,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         ctrl = controler(self._infos)
         if ctrl.blocages:
             self._set("#join-state",
-                      "✗ " + _("Join impossible as it is:") + "\n  · "
+                      "✗ " + _("Cannot join as it is:") + "\n  · "
                       + "\n  · ".join(ctrl.blocages[:2]))
         elif ctrl.avertissements:
             self._set("#join-state",
@@ -327,7 +327,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         ecart = derive_duree(attendue, obtenue)
         if ecart is not None:
             # TRANSLATORS: {expected} is a duration ("1:52:10").
-            return ("⚠ " + _("{file} lasts {duration} for {expected} expected "
+            return ("⚠ " + _("{file} lasts {duration}, {expected} expected "
                              "({gap} s).").format(
                                  file=self._output.name, duration=fmt_duration(obtenue),
                                  expected=fmt_duration(attendue), gap=f"{ecart:+.0f}")

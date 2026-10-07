@@ -95,6 +95,26 @@ malentendants) ↔ **SDH** ; la fiche AlloCiné/IMDB ↔ **Info** ; la greffe d'
 piste ↔ **add**, piste greffée ↔ **added track** ; plage ↔ **segment** ;
 marque ↔ **tag**.
 
+## Anglais source
+
+Relu en entier le 2026-10-07 (IE-93, v0.8.9.85). Conventions retenues, à tenir
+pour tout nouveau texte :
+
+- **anglais américain** : *movie* (jamais *film*, sauf la marque d'un nom de
+  release), *canceled*, *-ize* (*Analyzing*, *initializing*), *anymore* ;
+- un **nom d'écran** prend sa majuscule quand une phrase le cite : « the Tracks
+  screen », « the Home screen », « Resizable columns — Home, Tracks, Dry run » ;
+  l'activité garde la minuscule (« go to dry run ») ;
+- le **terme du glossaire, pas un synonyme** : *segment* (pas *range*), *anchor
+  point* (pas *reference point*), *added track* (pas *graft*), *subtitle line*
+  (pas *cue*), *check sample* ;
+- un texte anglais plus long que le français peut tronquer une colonne dont la
+  largeur suivait l'en-tête français : les captures anglaises
+  (`tests/shots_tui.py` avec la langue forcée à `en`) l'ont montré deux fois.
+
+Un `msgid` modifié perd sa traduction : il faut reporter le `msgstr` français
+sur le nouveau texte, et retirer l'ancienne entrée devenue obsolète (`#~`).
+
 ## Voir aussi
 
 - [[noms-de-release]] — les marques, qui ne se traduisent pas

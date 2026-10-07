@@ -288,7 +288,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                                 ("name", _NAME_WIDTH), ("default", 8),
                                 ("forced", 7)):
             colonne_fixe(table, _(_FIELD_LABELS[champ]), plancher, key=champ)
-        table.add_column(_("Sync"),  width=None, key="origin")
+        # Plancher : la plus longue valeur, « copied from #9 » ; la cellule est
+        # réécrite sans recalcul de largeur (« measured » tronqué en « meas »).
+        colonne_fixe(table, _("Sync"), 14, key="origin")
 
         for i, t in enumerate(self._tracks):
             table.add_row(*self._row(i), key=str(i))
@@ -530,8 +532,9 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._measuring = True
         self._set_hint("⏳ " + _("Measuring “{file}”").format(
                            file=self._tracks[i].source_path.name) + "\n"
-                       + _("Decoding the film's audio — on a feature film, "
-                           "allow several tens of seconds."))
+                       + _("Decoding the movie's audio — for a "
+                           "feature-length movie, allow several tens of "
+                           "seconds."))
         # Visible dans la ligne elle-même : la barre du bas peut passer inaperçue
         self._set_origin_cell(i, Text(_("measuring…"), style="yellow"))
         self._show_bar(True)
@@ -688,7 +691,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self._measuring = True
             self._set_hint("⏳ " + _("Searching around {offset} s.").format(
                                offset=f"{entendu - ecrit:+.1f}") + "\n"
-                           + _("Decoding the film's audio — allow several tens "
+                           + _("Decoding the movie's audio — allow several tens "
                                "of seconds."))
             self._set_origin_cell(i, Text(_("measuring…"), style="yellow"))
             self._show_bar(True)

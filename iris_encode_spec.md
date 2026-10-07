@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.83 — document de référence courant
+**Version** : 0.8.9.84 — document de référence courant
 **Date** : 2026-10-07
 **Statut** : stable
 
@@ -81,7 +81,7 @@ iris_encode/
 │   │   ├── dryrun.py             ← prévisualisation décisions
 │   │   ├── run.py                ← encodage + progression
 │   │   ├── config.py             ← gestion profils (CRUD)
-│   │   ├── options.py            ← options hors profil (énergie)
+│   │   ├── options.py            ← options hors profil (énergie, langue)
 │   │   ├── fin_lot.py            ← compte à rebours avant l'action d'après lot
 │   │   ├── profile_picker.py     ← sélection de profil (table)
 │   │   ├── value_picker.py       ← modal sélection de valeur
@@ -166,6 +166,20 @@ catalogue : point décimal, pourcentage collé au nombre (`12%`), durées
 `H:MM:SS`, symboles `ms`, `s`, `k`, `kbps`, heure de l'en-tête `%H:%M:%S`.
 Le texte de remise du quota OpenSubtitles est celui de l'API.
 `tests/test_formats.py` garde ces règles.
+
+**Choix de la langue (v0.8.9.84)** : section « Langue de l'interface » de
+l'écran Options (`F5`, `U`). Les langues proposées sont l'anglais et chaque
+catalogue compilé livré (`i18n.langues_disponibles`), chacune nommée dans sa
+propre langue par sa traduction (`pgettext("language name", "English")`,
+`i18n.nom_langue`). Le changement s'écrit dans `config.toml` et prend effet au
+lancement suivant ; une notification le dit, dans la langue courante. Valeur
+par défaut de `[app] language` : vide. Au premier lancement,
+`config.assurer_langue` prend la langue d'affichage du système
+(`GetUserDefaultUILanguage` sous Windows, `LC_ALL`/`LC_MESSAGES`/`LANG`
+ailleurs), retenue si elle est traduite — exacte, puis sans variante
+régionale —, sinon l'anglais : jamais un code sans catalogue. Elle est écrite
+aussitôt ; un `config.toml` impossible à écrire n'empêche pas de démarrer.
+`tests/test_choix_langue.py`.
 
 Le **glossaire** (`locales/glossaire.fr.csv`, colonnes `source`, `target`,
 `explanation`) fixe un terme anglais = une traduction, et les termes à ne
@@ -395,7 +409,7 @@ Fichier unique, éditable à la main, dans le dossier de l'application.
 
 ```toml
 [app]
-language = "fr"
+language = "fr"          # vide : celle de Windows au premier lancement (§ 2.1)
 
 [ffmpeg]
 fetch_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
@@ -2880,6 +2894,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.84 | 2026-10-07 | **Choix de la langue** (§ 2.1, IE-92) : section de l'écran Options, une langue par catalogue livré, nommée dans sa langue ; détection de la langue de Windows au premier lancement (`[app] language` vide par défaut), anglais si elle n'est pas traduite ; effet au redémarrage, annoncé · panneau Options défilant · `tests/test_choix_langue.py` |
 | 0.8.9.83 | 2026-10-07 | **Lanceurs et console** (§ 2.1, IE-91) : textes affichés de `launch.bat`, `bootstrap.ps1`, `build.bat`, du lanceur C# et d'`updater.py` en anglais (`[Y/n]`, `o`/`oui` acceptés) ; langue chargée avant la bannière ; cadre calculé en cellules · `tests/test_console_anglais.py`, `tests/test_banniere.py` |
 | 0.8.9.82 | 2026-10-07 | **Formats localisés** (§ 2.1, IE-90) : unités d'octets traduites (TB/GB/MB/KB ↔ To/Go/Mo/Ko), point décimal fixe, « 12% » sans espace partout (raisons de décision, barre d'état, volumes, aide du preset) · `tests/test_formats.py` |
 | 0.8.9.81 | 2026-10-06 | **Guide des touches traduit** (§ 2.1, IE-89) : 113 messages, rendu français identique à l'octet ; libellés et touches cités en paramètres, touches lues dans les `BINDINGS` ; repli en cellules · `tests/test_aide.py` (traduction exigée, paramètres fournis), exception d'IE-88 retirée de `tests/test_i18n.py` |

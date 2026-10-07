@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.84] — 2026-10-07
+
+### Choisir la langue de l'interface (IE-92)
+
+Les options (`F5`, `U`) ont une section « Langue de l'interface ». Chaque
+langue disponible s'y écrit dans sa propre langue (« English », « Français ») :
+on cherche la sienne, pas sa traduction. La liste suit les traductions livrées,
+donc une langue ajoutée plus tard y apparaîtra sans modification du code. Le
+changement prend effet au prochain lancement, et une notification le dit.
+
+Au tout premier lancement, IRIS ENCODE prend la langue d'affichage de Windows
+si elle est traduite, sinon l'anglais, et l'écrit dans `config.toml`. Ensuite,
+seul le réglage choisi compte. Une installation existante, dont `config.toml` dit
+déjà `language = "fr"`, ne change pas.
+
+Le panneau des options défile désormais quand le terminal est trop bas pour
+lui, au lieu de perdre ses dernières lignes.
+
 ## [v0.8.9.83] — 2026-10-07
 
 ### Lanceurs et console en anglais (IE-91)

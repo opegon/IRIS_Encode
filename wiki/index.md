@@ -27,7 +27,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[conteneurs]] | MP4 contre MKV, horodatages, chapitres, `hev1`/`hvc1`, collage |
 | [[synchronisation]] | Décalage, dérive PAL, montages différents, recalage par plages |
 | [[noms-de-release]] | Marques d'un nom de fichier, pièges d'analyse, ce qu'une conversion rend faux |
-| [[localisation]] | Ce qui se traduit ou jamais, formats, noms de piste selon la langue de la piste, glossaire et ses arbitrages |
+| [[localisation]] | Ce qui se traduit ou jamais, formats, choix de la langue, noms de piste selon la langue de la piste, glossaire et ses arbitrages |
 | [[sous-processus]] | Règles pour lancer un outil externe : chemin, `stdin`, UTF-8, tubes, codes retour ; `.bat` réécrit en cours d'exécution |
 
 ## Entités
@@ -78,6 +78,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-03-essai-dv81-mp4]] | Essai DV 8.1 MP4/MKV sur le G3 : citations de l'utilisateur, variantes audio |
 | [[2026-10-04-mov-text-silence]] | *Film J* : VF forcée désynchronisée, seuil mesuré, contournement |
 | [[2026-10-06-sar-scale]] | Transcodage « anamorphique » de deux sorties ; SAR mesurés avec et sans `setsar=1` |
+| [[2026-10-07-decisions-choix-langue]] | Choix de la langue (IE-92) : catalogues présents nommés dans leur langue, anglais par défaut, message au redémarrage |
 | [[2026-10-07-decisions-console]] | Lanceurs et console (IE-91) : langue chargée avant la bannière, `build.bat` inclus |
 | [[2026-10-07-decisions-formats]] | Formats localisés (IE-90) : point fixe, octets TB/GB, « 12% » partout, quota brut |
 | [[2026-10-06-declaration-ie72]] | Retrait DV en MP4 confirmé sur le G3 : citation de l'utilisateur |

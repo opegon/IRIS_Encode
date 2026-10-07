@@ -237,3 +237,10 @@ Deux choix de l'utilisateur : la langue se charge avant la bannière, qui suit
 donc `[app] language` ; `launcher/build.bat` passe en anglais avec les autres
 lanceurs. Source : [[2026-10-07-decisions-console]]. Pages touchées :
 [[localisation]].
+
+## [2026-10-07] ingest | Choix de la langue arbitré (IE-92)
+
+Trois choix de l'utilisateur : langues proposées = catalogues livrés, nommés
+dans leur langue ; anglais si Windows est dans une langue non traduite ; message
+seulement après un changement. Source : [[2026-10-07-decisions-choix-langue]].
+Pages touchées : [[localisation]].

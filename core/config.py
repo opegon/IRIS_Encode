@@ -21,7 +21,10 @@ CONFIG_PATH = APP_DIR / "config.toml"
 
 _DEFAULTS: dict[str, Any] = {
     "app": {
-        "language": "fr",
+        # Langue de l'interface (« en », « fr »…). Vide = jamais choisie :
+        # main.py prend celle de Windows au premier lancement et l'écrit ici
+        # (IE-92) ; ensuite, c'est l'écran Options qui la change.
+        "language": "",
         # Profil sélectionné au dernier lancement. Vide = jamais choisi, on
         # prend alors le premier de profiles.toml.
         "active_profile": "",
@@ -158,6 +161,24 @@ def save(cfg: dict[str, Any]) -> None:
         except BaseException:
             provisoire.unlink(missing_ok=True)
             raise
+
+
+def assurer_langue(cfg: dict[str, Any]) -> str:
+    """La langue de l'interface. Au premier lancement (réglage vide), celle du
+    système, écrite aussitôt dans config.toml (IE-92) : la détection n'a lieu
+    qu'une fois, ensuite le réglage de l'utilisateur prime. Un config.toml
+    impossible à écrire n'empêche pas de démarrer — on redétectera au suivant.
+    """
+    from core import i18n
+    app = cfg.setdefault("app", {})
+    if not app.get("language"):
+        app["language"] = i18n.langue_initiale(i18n.langue_systeme(),
+                                               i18n.langues_disponibles())
+        try:
+            save(cfg)
+        except OSError:
+            pass
+    return app["language"]
 
 
 def get_active_profile(cfg: dict[str, Any], profile_ids) -> str:

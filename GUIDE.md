@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.83
+**Version** : 0.8.9.84
 **Date** : 2026-10-05
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -404,7 +404,11 @@ formulaire avec les réglages du profil sous le curseur et un nom libre
 (`<nom>_copie`) : on modifie ce qui change, `Ctrl+S` enregistre le nouveau profil. `U` ouvre les **options** :
 bloquer la mise en veille pendant les traitements (activé par défaut), et ce
 que fait la machine après un lot dont on a coché « Après le lot » (« Ne rien
-faire » par défaut, mise en veille, veille prolongée ou arrêt). `K` ouvre les **clés d'API**
+faire » par défaut, mise en veille, veille prolongée ou arrêt), et la
+**langue de l'interface** : chaque langue disponible y figure sous son propre
+nom (« English », « Français »). Le changement prend effet au prochain
+lancement. Au tout premier lancement, IRIS ENCODE prend la langue de Windows
+si elle est traduite, sinon l'anglais. `K` ouvre les **clés d'API**
 des services en ligne — OpenSubtitles et OMDb (fiche IMDB complète) : chaque
 service a son bouton vers la page qui délivre la clé, et une clé est vérifiée
 auprès du service avant d'être enregistrée. La même fenêtre s'ouvre au

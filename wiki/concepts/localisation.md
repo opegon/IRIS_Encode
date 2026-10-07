@@ -6,6 +6,7 @@ sources:
   - "[[source-spec]]"
   - "[[2026-10-07-decisions-formats]]"
   - "[[2026-10-07-decisions-console]]"
+  - "[[2026-10-07-decisions-choix-langue]]"
 ---
 
 # Localisation
@@ -60,6 +61,16 @@ identique partout, hors catalogue : **point décimal** (`1.5 Go`), **pourcentage
 collé** au nombre (`12%`, aussi en français), durées `H:MM:SS`, symboles `ms`,
 `s`, `k`, `kbps`. Le texte de remise du quota OpenSubtitles est montré tel que
 l'API l'envoie, en anglais. `tests/test_formats.py` garde ces règles.
+
+## Choix de la langue
+
+Arbitré par l'utilisateur le 2026-10-07 ([[2026-10-07-decisions-choix-langue]]).
+L'écran Options propose l'anglais et chaque catalogue livré, chacun nommé **dans
+sa propre langue** : un nouveau catalogue Weblate s'y ajoute sans code, et son
+traducteur fournit ce nom (message `language name`). Au premier lancement, la
+langue d'affichage de Windows si elle est traduite, sinon l'anglais — jamais un
+code sans catalogue, que l'écran ne saurait montrer coché. Un changement prend
+effet au redémarrage, annoncé par un message ; rien ne relance l'application.
 
 ## Glossaire
 

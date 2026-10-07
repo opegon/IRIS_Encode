@@ -128,7 +128,7 @@ def main() -> None:
     # bannière, preflight, interface — passe par le catalogue ; ce qui précède
     # (version de Python, dépendances, --help, chemin) reste en anglais seul,
     # comme les lanceurs (IE-91). `load()` n'affiche rien.
-    i18n.init(cfg.get("app", {}).get("language", ""))
+    i18n.init(cfg_mod.assurer_langue(cfg))    # premier lancement : celle de Windows
 
     print()
     for ligne in banniere([f"IRIS ENCODE  v{__version__}", _environnement_python()]):

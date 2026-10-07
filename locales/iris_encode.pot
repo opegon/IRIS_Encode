@@ -237,14 +237,20 @@ msgstr ""
 msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
 msgstr ""
 
+#. the name of YOUR language, written in your language ("Français", "Deutsch") — not the word "English" translated. Shown in the language choice of the Options screen.
+#: core/i18n.py:84
+msgctxt "language name"
+msgid "English"
+msgstr ""
+
 #. separator between the first items of a list ("a, b and c").
-#: core/i18n.py:99
+#: core/i18n.py:162
 msgctxt "list"
 msgid ", "
 msgstr ""
 
 #. joins the last item of a list; {items} is "a, b".
-#: core/i18n.py:101
+#: core/i18n.py:164
 #, python-brace-format
 msgctxt "list"
 msgid "{items} and {last}"
@@ -1761,8 +1767,8 @@ msgstr ""
 #: tui/screens/donor_picker.py:242
 #: tui/screens/opensubtitles.py:56
 #: tui/screens/opensubtitles.py:74
-#: tui/screens/options.py:52
-#: tui/screens/options.py:84
+#: tui/screens/options.py:58
+#: tui/screens/options.py:98
 #: tui/screens/profile_picker.py:83
 #: tui/screens/value_picker.py:52
 #: tui/screens/value_picker.py:76
@@ -2177,8 +2183,8 @@ msgstr ""
 
 #: tui/screens/cles.py:69
 #: tui/screens/config.py:259
-#: tui/screens/options.py:51
-#: tui/screens/options.py:83
+#: tui/screens/options.py:57
+#: tui/screens/options.py:97
 #: tui/widgets/profile_form.py:210
 msgid "Save"
 msgstr ""
@@ -2216,7 +2222,7 @@ msgid "Check and save"
 msgstr ""
 
 #: tui/screens/cles.py:120
-#: tui/screens/options.py:82
+#: tui/screens/options.py:96
 #: tui/screens/sync.py:150
 #: tui/screens/tracks.py:124
 #: tui/widgets/profile_form.py:206
@@ -2267,7 +2273,7 @@ msgid "API keys"
 msgstr ""
 
 #: tui/screens/config.py:61
-#: tui/screens/options.py:62
+#: tui/screens/options.py:68
 msgid "Options"
 msgstr ""
 
@@ -2748,30 +2754,42 @@ msgid_plural "Subtitle downloaded — {count} left today."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/options.py:63
+#: tui/screens/options.py:69
 msgid "Power"
 msgstr ""
 
-#: tui/screens/options.py:64
+#: tui/screens/options.py:70
 msgid "Block sleep while tasks run"
 msgstr ""
 
-#: tui/screens/options.py:67
+#: tui/screens/options.py:73
 msgid "Encoding, mux, join, measurement or resync. The screen can still turn off."
 msgstr ""
 
-#: tui/screens/options.py:69
+#: tui/screens/options.py:75
 #, python-brace-format
 msgid "After the batch ({key} during encoding)"
 msgstr ""
 
-#: tui/screens/options.py:76
+#: tui/screens/options.py:82
 #, python-brace-format
 msgid "Preceded by a {seconds} s countdown, can be cancelled."
 msgstr ""
 
-#: tui/screens/options.py:80
+#: tui/screens/options.py:86
 msgid "No effect on this system: Windows only."
+msgstr ""
+
+#: tui/screens/options.py:88
+msgid "Interface language"
+msgstr ""
+
+#: tui/screens/options.py:94
+msgid "Takes effect the next time IRIS ENCODE starts."
+msgstr ""
+
+#: tui/screens/options.py:127
+msgid "Language saved. It takes effect the next time IRIS ENCODE starts."
 msgstr ""
 
 #: tui/screens/profile_picker.py:74

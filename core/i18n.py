@@ -26,6 +26,8 @@ part vers un autre programme, et les journaux.
 from __future__ import annotations
 
 import gettext as _gettext
+import os
+import sys
 from pathlib import Path
 from typing import Iterable
 
@@ -60,6 +62,67 @@ def init(langue: str | None, dossier: Path = LOCALES) -> str:
 def langue() -> str:
     """La langue chargée par `init` (« en » sans catalogue)."""
     return _langue
+
+
+def langues_disponibles(dossier: Path = LOCALES) -> list[str]:
+    """L'anglais source, puis chaque langue dont le catalogue compilé est livré
+    (`locales/<code>/LC_MESSAGES/iris_encode.mo`) : une traduction ajoutée par
+    Weblate s'offre au choix sans toucher au code (IE-92)."""
+    codes = sorted(p.parent.parent.name
+                   for p in dossier.glob(f"*/LC_MESSAGES/{DOMAINE}.mo"))
+    return [LANGUE_SOURCE, *(c for c in codes if c != LANGUE_SOURCE)]
+
+
+def nom_langue(code: str, dossier: Path = LOCALES) -> str:
+    """Le nom d'une langue écrit dans cette langue même (« Français »), tel que
+    sa traduction le donne : on cherche la sienne, pas sa traduction dans la
+    langue courante. Sans catalogue, le code."""
+    if code == _langue:
+        # TRANSLATORS: the name of YOUR language, written in your language
+        # ("Français", "Deutsch") — not the word "English" translated. Shown in
+        # the language choice of the Options screen.
+        return pgettext("language name", "English")
+    try:
+        traduction = _gettext.translation(DOMAINE, dossier, languages=[code])
+    except OSError:
+        return "English" if code == LANGUE_SOURCE else code
+    return traduction.pgettext("language name", "English")
+
+
+def langue_systeme() -> str:
+    """La langue d'affichage du système (« fr_FR »), vide si elle est inconnue.
+
+    Windows : `GetUserDefaultUILanguage`, la langue des menus, pas le format
+    régional. Ailleurs : `LC_ALL`, `LC_MESSAGES`, `LANG`. Du module `locale`,
+    seule la table de correspondance sert : `setlocale` est global au processus
+    (IE-71 point 4).
+    """
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            import locale
+            lcid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
+            return locale.windows_locale.get(lcid, "")
+        except Exception:
+            return ""
+    for variable in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        valeur = os.environ.get(variable, "")
+        if valeur and valeur not in ("C", "POSIX"):
+            return valeur.split(".")[0]
+    return ""
+
+
+def langue_initiale(systeme: str, disponibles: Iterable[str]) -> str:
+    """La langue retenue au premier lancement : celle du système si elle est
+    traduite — exacte, puis sans variante régionale (`fr_CA` → `fr`) —, sinon
+    l'anglais. Jamais un code sans catalogue : l'écran Options doit pouvoir le
+    montrer coché (IE-92)."""
+    dispo = list(disponibles)
+    code  = systeme.strip().replace("-", "_")
+    for candidat in (code, code.split("_")[0].lower()):
+        if candidat and candidat in dispo:
+            return candidat
+    return LANGUE_SOURCE
 
 
 def _(message: str) -> str:

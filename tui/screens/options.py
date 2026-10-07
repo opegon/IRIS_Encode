@@ -1,10 +1,11 @@
 """
 tui/screens/options.py — Les réglages qui ne sont pas ceux d'un profil.
 
-Ouvert depuis la gestion des profils (`F5`, `U`). Pour l'instant, l'énergie :
-bloquer la mise en veille pendant les traitements, et ce que fait la machine
-après un lot dont on a coché « Après le lot » (`core/veille.py`) — par défaut,
-rien.
+Ouvert depuis la gestion des profils (`F5`, `U`). L'énergie : bloquer la mise
+en veille pendant les traitements, et ce que fait la machine après un lot dont
+on a coché « Après le lot » (`core/veille.py`) — par défaut, rien. La langue de
+l'interface (IE-92) : une par catalogue livré, nommée dans sa propre langue ;
+elle prend effet au lancement suivant (IE-71 point 3).
 
 Rend True si quelque chose a été enregistré.
 """
@@ -16,6 +17,7 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Checkbox, Label, RadioButton, RadioSet, Static
 
+from core import i18n
 from core.i18n import _, N_
 from core import config as cfg_mod
 from core import veille
@@ -32,6 +34,10 @@ class OptionsScreen(ModalScreen[bool]):
         width: 76;
         max-width: 96%;
         height: auto;
+        /* La section Langue l'a porté à 32 lignes : il défile au lieu d'être
+           coupé sur un petit terminal. */
+        max-height: 100%;
+        overflow-y: auto;
         background: $surface;
         border: solid $primary;
         padding: 1 2;
@@ -79,6 +85,14 @@ class OptionsScreen(ModalScreen[bool]):
             if not veille.disponible():
                 yield Static(_("No effect on this system: Windows only."),
                              classes="options-note")
+            yield Static(_("Interface language"), classes="options-section")
+            langue = self._langue_reglee()
+            with RadioSet(id="options-langue"):
+                for code in i18n.langues_disponibles():
+                    yield RadioButton(i18n.nom_langue(code), value=code == langue,
+                                      id=f"langue-{code}")
+            yield Static(_("Takes effect the next time IRIS ENCODE starts."),
+                         classes="options-note")
             yield Static(raccourcis([("tab", N_("Next field")),
                                      ("ctrl+s", N_("Save")),
                                      ("escape", N_("Cancel"))]), id="options-hint")
@@ -92,7 +106,26 @@ class OptionsScreen(ModalScreen[bool]):
             return cfg_mod.get_action_fin(self._cfg)
         return bouton.id.removeprefix("fin-")
 
+    def _langue_reglee(self) -> str:
+        """Celle de config.toml ; à défaut (écriture impossible au premier
+        lancement), celle qui est chargée."""
+        return self._cfg.get("app", {}).get("language") or i18n.langue()
+
+    def _langue_choisie(self) -> str:
+        bouton = self.query_one("#options-langue", RadioSet).pressed_button
+        if bouton is None or not bouton.id:
+            return self._langue_reglee()
+        return bouton.id.removeprefix("langue-")
+
     def action_enregistrer(self) -> None:
+        langue = self._langue_choisie()
+        if langue != self._cfg.get("app", {}).get("language"):
+            # Écrit par `set_energie` juste après, qui enregistre tout.
+            self._cfg.setdefault("app", {})["language"] = langue
+            if langue != i18n.langue():
+                # Dans la langue courante : la nouvelle n'est pas chargée.
+                self.app.notify(_("Language saved. It takes effect the next "
+                                  "time IRIS ENCODE starts."), timeout=6)
         cfg_mod.set_energie(self._cfg,
                             self.query_one("#options-veille", Checkbox).value,
                             self._action_choisie())

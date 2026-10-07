@@ -82,4 +82,5 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-07-decisions-console]] | Lanceurs et console (IE-91) : langue chargée avant la bannière, `build.bat` inclus |
 | [[2026-10-07-decisions-formats]] | Formats localisés (IE-90) : point fixe, octets TB/GB, « 12% » partout, quota brut |
 | [[2026-10-06-declaration-ie72]] | Retrait DV en MP4 confirmé sur le G3 : citation de l'utilisateur |
+| [[2026-10-07-declaration-ie79]] | Téléchargement OpenSubtitles vérifié : citation de l'utilisateur |
 | [[2026-10-04-decisions-localisation]] | Choix de l'utilisateur après l'audit de localisation : citations et options retenues |

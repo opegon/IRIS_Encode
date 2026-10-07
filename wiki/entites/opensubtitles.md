@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: service
-maj: 2026-09-24
+maj: 2026-10-07
 sources:
+  - "[[2026-10-07-declaration-ie79]]"
   - "[[source-spec]]"
   - "[[source-changelog]]"
 ---
@@ -36,5 +37,8 @@ un `.srt` à greffer ([[sous-titres]]).
 - Refus : 401 identifiants, 406 quota du jour (avec heure de remise), 429 trop
   de requêtes (`Retry-After`).
 
-Recherche éprouvée contre l'API réelle ; **téléchargement non éprouvé**
-([[questions-ouvertes]]).
+Recherche éprouvée contre l'API réelle. **Téléchargement vérifié par
+l'utilisateur** le 2026-10-07 *(déclaré, sans relevé du parcours :
+[[2026-10-07-declaration-ie79]])*. Les refus 401, 406 et 429 ne sont éprouvés
+que sur des réponses simulées (`tests/test_opensubtitles.py`), jamais provoqués
+contre l'API réelle.

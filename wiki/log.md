@@ -276,3 +276,10 @@ Six lignes gardées hors scope avec leur raison, cinq retirées parce que faites
 l'analyse récursive en parallèle placée en v0.9.0 (IE-117). Fait relevé : pas
 de corbeille Windows sur un partage réseau, d'où le refus d'une corbeille pour
 `Ctrl+D`. Spec § 19. Pages touchées : aucune.
+
+## [2026-10-07] ingest | Téléchargement OpenSubtitles vérifié (IE-79)
+
+L'utilisateur déclare le téléchargement fonctionnel, sans relevé du parcours.
+Question retirée de [[questions-ouvertes]] ; les refus 401/406/429 restent
+éprouvés en simulation seulement. Source : [[2026-10-07-declaration-ie79]].
+Pages touchées : [[opensubtitles]].

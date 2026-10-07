@@ -283,3 +283,11 @@ L'utilisateur déclare le téléchargement fonctionnel, sans relevé du parcours
 Question retirée de [[questions-ouvertes]] ; les refus 401/406/429 restent
 éprouvés en simulation seulement. Source : [[2026-10-07-declaration-ie79]].
 Pages touchées : [[opensubtitles]].
+
+## [2026-10-07] ingest | Piste sans perte vidée : plus reproduite (IE-80)
+
+Défaut du 2026-08-28 rejoué sous ffmpeg 8.1.2 et 8.1.3 : flux synthétiques et
+réels, fichier du signalement, commande complète d'IRIS sans passe — aucune
+piste vidée. Passe préalable gardée par choix de l'utilisateur. Question
+retirée de [[questions-ouvertes]]. Source : [[2026-10-07-piste-vide-ffmpeg-81]].
+Pages touchées : [[audio]], [[pieges-et-lecons]].

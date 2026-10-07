@@ -35,7 +35,6 @@ reporter la réponse dans la page du sujet.
 
 | Question | Pourquoi c'est ouvert |
 |---|---|
-| La passe audio préalable est-elle nécessaire pour toutes les familles sans perte ? | mesurée sur un codec de chaque famille seulement ; filet : contrôle de durée des pistes |
 | Le preflight et la mise à jour (gyan.dev *release*) installent-ils un ffmpeg sans NVENC sous un pilote < 610 ? | gyan.dev 8.1.2 refuse NVENC sous 597 ; sans ffmpeg au `PATH`, `bin/` servirait ([[ffmpeg#NVENC et version du pilote]]). Depuis la v0.8.9.2, le cas est **annoncé** au lancement ; le choix du build téléchargé reste inchangé |
 | Un sous-titre WebVTT d'un MKV muxé par mkvmerge 102 est-il copié par ffmpeg ? | ffprobe 8.1.2 le voit `codec_name=unknown`, sans autre indice (mkvmerge le nomme « WebVTT ») — constaté le 2026-09-30 en UX-21. L'affichage dit désormais « ? » ; l'encodage d'un tel fichier n'a pas été essayé |
 | Le pilote 610 est-il sûr sur un Shadow Power (flux, encodage côté Shadow) ? | Shadow autorise la mise à jour manuelle, ne dit rien de la 610 ; demander au support |

@@ -347,6 +347,13 @@ def audio_prepass_needed(decision) -> bool:
     un codec avec perte qui passe. Elle n'est pas une loi. `pistes_audio_vides`
     est le filet : si le cas se présente hors de ce périmètre, l'encodage
     échoue bruyamment au lieu de rendre un fichier amputé.
+
+    **Plus reproduit en ffmpeg 8.1.2 et 8.1.3** (IE-80, 2026-10-07) : ni sur
+    le fichier qui le déclenchait, ni sur de vrais TrueHD et DTS-HD MA, ni sur
+    MLP, FLAC ou PCM, même avec la commande complète et la passe ôtée. La
+    version de ffmpeg d'août n'a pas été notée. La passe est **gardée**, par
+    choix de l'utilisateur : elle coûte un transcodage audio, et le ffmpeg du
+    `PATH` passe avant celui de `bin/` — il peut être plus ancien.
     """
     if not decision.subtitles_finales:
         return False

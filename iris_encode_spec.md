@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.90 — document de référence courant
+**Version** : 0.8.9.91 — document de référence courant
 **Date** : 2026-10-07
 **Statut** : stable
 
@@ -1738,6 +1738,14 @@ passe d'encodage, une copie ne se perdant jamais. Le coût est un transcodage
 audio, là où la passe vidéo se compte en heures — et il n'est payé que lorsque
 les deux conditions sont réunies.
 
+**Le défaut ne se reproduit plus en ffmpeg 8.1.2 (gyan.dev) ni 8.1.3 (BtbN)**
+(IE-80, 2026-10-07) : ni sur le fichier qui le déclenchait (piste forcée à
+380 s), ni sur de vrais TrueHD et DTS-HD MA, ni sur MLP, FLAC ou PCM, même avec
+la commande complète de `build_command` sans passe préalable. La version de
+ffmpeg du 2026-08-28 n'ayant pas été notée, la correction n'est pas datée. La
+passe est **gardée** (choix de l'utilisateur) : un ffmpeg plus ancien au `PATH`
+reste possible, et elle ne coûte qu'un transcodage audio.
+
 **Les sous-titres de la source ont alors leur propre entrée.** Dès que l'audio
 vient d'une autre entrée que la vidéo (passe audio préalable, ou piste audio
 greffée), `build_command()` rouvre la source en entrée supplémentaire, la
@@ -2949,6 +2957,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.91 | 2026-10-07 | **Passe audio préalable : défaut plus reproduit** (§ 14.7, IE-80) : ffmpeg 8.1.2 et 8.1.3 écrivent la piste sans perte transcodée en entier, fichier du signalement compris ; passe gardée par choix de l'utilisateur ; docstring d'`audio_prepass_needed` · aucun changement de comportement |
 | 0.8.9.90 | 2026-10-07 | **Analyse récursive en parallèle** (§ 15.2, IE-117) : `R` analyse quatre fichiers à la fois, comme l'accueil, et compte sa progression ; `SCAN_WORKERS` passe de `tui/screens/browser.py` à `core/scanner.py` · `tests/test_scan_recursif.py` |
 | 0.8.9.89 | 2026-10-07 | **Hors scope arbitré** (§ 19, IE-82) : six lignes gardées avec leur raison, cinq retirées parce que faites, l'analyse récursive en parallèle entre en v0.9.0 (IE-117) ; aucun changement de code |
 | 0.8.9.88 | 2026-10-07 | **Documentation de la localisation** (§ 2.1, IE-95) : `README.md` et `GUIDE.md` en anglais, versions françaises en `README.fr.md` et `GUIDE.fr.md` (`git mv`), lien croisé en tête ; § 2.1 « Localisation » : ce qui ne se traduit pas, documentation en deux langues · corrigés au passage dans les deux langues : touche de la fiche (`I`, plus `F7`/`F8`), colonne « Raison » disparue, champ audio sans perte et mode HDR10 renommés, profils cités qui n'existent plus, report automatique de la mesure · `install.txt` en anglais · `tests/test_aide.py` vérifie les deux guides et les deux README |

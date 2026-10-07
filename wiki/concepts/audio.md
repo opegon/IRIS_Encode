@@ -1,7 +1,8 @@
 ---
 type: concept
-maj: 2026-10-01
+maj: 2026-10-07
 sources:
+  - "[[2026-10-07-piste-vide-ffmpeg-81]]"
   - "[[source-2026-10-01-entrelacement]]"
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -103,6 +104,13 @@ Voir [[sous-titres#Langues|Sous-titres]] : l'audio a le même piège
   indemne. Facteurs écartés par mesure : codec de sortie, durée, encodage
   matériel, drapeaux, `max_muxing_queue_size`, `max_interleave_delta`,
   `avoid_negative_ts`, `copyts`, `muxdelay`, ordre des `-map`.
+
+  **Plus reproduit en ffmpeg 8.1.2 et 8.1.3** *(mesuré, 2026-10-07)* : ni sur
+  *Watchmen* (piste forcée à 380 s, très probablement le fichier d'origine),
+  ni sur de vrais TrueHD et DTS-HD MA, ni sur MLP, FLAC, PCM synthétiques,
+  même avec la commande complète d'IRIS sans passe. Version de ffmpeg d'août
+  non notée : *supposé* corrigé entre-temps. La passe reste, par choix
+  ([[2026-10-07-piste-vide-ffmpeg-81]]).
 - **Une audio venue d'une autre entrée que la vidéo sortait mal entrelacée.**
   Avec la vidéo encodée depuis l'entrée 0, l'audio recopiée depuis une entrée 1
   (passe préalable ou greffe) et des sous-titres clairsemés mappés depuis

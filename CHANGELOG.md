@@ -1,5 +1,18 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.91] — 2026-10-07
+
+### La piste audio vidée ne se reproduit plus (IE-80)
+
+En août, une piste TrueHD transcodée pouvait sortir vide quand un sous-titre
+tardif était encodé dans le même appel de ffmpeg ; IRIS produit depuis ces
+pistes dans une passe à part. Revérifié aujourd'hui avec les ffmpeg 8.1.2 et
+8.1.3 : le défaut ne se reproduit plus, ni sur le film qui le déclenchait, ni
+sur de vrais TrueHD et DTS-HD MA, ni sur MLP, FLAC ou PCM — même en ôtant la
+passe à part. Elle est gardée : elle ne coûte qu'un transcodage audio, et un
+ffmpeg plus ancien installé sur le système reste possible. Aucun changement de
+comportement.
+
 ## [v0.8.9.90] — 2026-10-07
 
 ### « Encoder le dossier » analyse quatre fichiers à la fois (IE-117)

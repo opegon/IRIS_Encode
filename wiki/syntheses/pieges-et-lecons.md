@@ -52,7 +52,7 @@ une ligne de moins dans une liste.
 | VF disparue de la sortie | `fra` ≠ `fre` | [[sous-titres#Langues|Sous-titres]] |
 | Fichier absent de la liste | sortie ffprobe décodée en cp1252 | [[sous-processus]] |
 | Tous les fichiers « illisibles » sur installation neuve | ffprobe appelé par son nom, absent du `PATH` | [[sous-processus]] |
-| Piste audio transcodée vide | décodage sans perte et sous-titre tardif dans le même appel | [[audio|Audio]] |
+| Piste audio transcodée vide | décodage sans perte et sous-titre tardif dans le même appel *(plus reproduit en ffmpeg 8.1.x, passe gardée)* | [[audio|Audio]] |
 | Lecture arrêtée à 32 s sur TV, son perdu après un saut | audio d'une 2ᵉ entrée, sous-titres clairsemés lus avec la vidéo : audio écrite par blocs *(mesuré, v0.8.9.41)* | [[audio|Audio]] |
 | Jellyfin transcode une sortie redimensionnée, « anamorphique » | `scale` compense l'arrondi par un SAR ≠ 1:1 *(mesuré, v0.8.9.79)* | [[ffmpeg]] |
 | Réglage 48 kHz sur la mauvaise piste | `-ar:1` au lieu de `-ar:a:1` | [[audio|Audio]] |

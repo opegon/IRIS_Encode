@@ -89,7 +89,8 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                                   "and in the footer, whose color changes."),
         "play":                N_("Plays the file in mpv, if mpv is installed."),
         "delete_file":         N_("Deletes the file under the cursor, after "
-                                  "confirmation."),
+                                  "confirmation, with its .nfo and images "
+                                  "created by Jellyfin."),
         "open_dryrun":         N_("Dry run: shows what would be done, without "
                                   "doing anything."),
         "open_run":            N_("Adds the checked files to the encoding "

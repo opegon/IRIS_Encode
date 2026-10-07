@@ -5,7 +5,8 @@ from pathlib import Path
 
 from rich.text import Text
 
-from core.i18n import _
+from core.annexes import annexes_jellyfin
+from core.i18n import _, ngettext
 from ..common import fmt_size, texte_style, touche
 from .confirm import ConfirmModal
 
@@ -16,10 +17,21 @@ class DeleteConfirmModal(ConfirmModal):
     def __init__(self, path: Path) -> None:
         # Phrases traduites, valeurs en gras par le code : pas de balise Rich
         # dans les messages (L-65), donc rien à échapper non plus.
-        body = Text("\n").join([
+        lignes = [
             texte_style(_("File: {name}"), name=(path.name, "bold")),
             texte_style(_("Size: {size}"), size=(fmt_size(path), "bold")),
             texte_style(_("Folder: {folder}"), folder=str(path.parent)),
+        ]
+        # Le .nfo et les images Jellyfin partent avec la vidéo (IE-116) : les
+        # nommer, pour qu'une suppression ne surprenne pas.
+        annexes = annexes_jellyfin(path)
+        if annexes:
+            lignes += [Text(""), Text(ngettext(
+                "Also deleted (created by Jellyfin):",
+                "Also deleted (created by Jellyfin):", len(annexes)))]
+            lignes += [Text(f"  {p.name}", style="dim") for p in annexes]
+        body = Text("\n").join([
+            *lignes,
             Text(""),
             Text(_("Permanent deletion — no recycle bin, no undo."),
                  style="bold dark_orange"),

@@ -1,7 +1,7 @@
 ---
 type: entite
 categorie: materiel
-maj: 2026-10-06
+maj: 2026-10-07
 sources:
   - "[[source-2026-10-06-sar-scale]]"
   - "[[source-2026-09-30-lecture]]"
@@ -38,6 +38,26 @@ Tout format que le client ne déclare pas lisible déclenche un transcodage,
 Qu'un PGS marqué forcé soit choisi d'office à côté d'un SRT forcé de même
 langue est **supposé**, pas observé : IRIS ne lui en laisse plus l'occasion
 ([[sous-titres#Drapeaux par défaut et forcé|Sous-titres]]).
+
+## Fichiers qu'il dépose
+
+Une fois une vidéo référencée, Jellyfin écrit à côté d'elle des fichiers
+nommés sur elle *(observé sur la bibliothèque de l'utilisateur, 2026-10-07)* :
+
+```
+<nom>.mkv
+<nom>.nfo
+<nom>-poster.jpg  <nom>-backdrop.jpg  <nom>-landscape.jpg  <nom>-logo.png
+<nom>-thumb.jpg   (épisodes, et certains films)
+season.nfo        (dossier de saison : à la saison, pas à un épisode)
+```
+
+Films côte à côte dans un dossier commun (`F:\_Aventures\Thunderbirds`) et
+épisodes d'une saison (`S:\_Historiques\Un Village Français\Saison 1`)
+suivent le même format. Quand IRIS supprime une source, ces annexes partent
+avec elle (`core/annexes.py`, IE-116) ; `season.nfo`, les `.srt` et la sortie
+restent — choix de l'utilisateur du 2026-10-07, pas d'option séparée : la
+suppression suit `delete_source`.
 
 ## Diagnostiquer
 

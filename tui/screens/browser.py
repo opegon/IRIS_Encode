@@ -23,6 +23,7 @@ from textual.widgets import DataTable, Static
 from core.i18n import N_, _, ngettext, texte_erreur
 from core import config as cfg_mod
 from core import preview
+from core.annexes import supprimer_annexes
 from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
@@ -982,6 +983,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self.app.bell()
             self._flash_status(_("Cannot delete: {error}").format(error=texte_erreur(e)))
             return
+        # Annoncés par la confirmation : le .nfo et les images Jellyfin (IE-116).
+        supprimer_annexes(path)
 
         self._decisions.pop(path, None)
         self._selected.discard(path)

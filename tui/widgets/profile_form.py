@@ -467,7 +467,8 @@ class ProfileForm(Widget):
 
         supprime = self._chk("#field-delsrc")
         self._pose("#cons-source",
-                   _("The source is deleted as soon as the encoding succeeds. "
+                   _("The source is deleted as soon as the encoding succeeds, "
+                     "with its .nfo and images created by Jellyfin. "
                      "Irreversible — no recycle bin.")
                    if supprime else
                    _("The source is kept next to the produced file."),

@@ -247,6 +247,14 @@ async def scenario_parallel_scan() -> None:
             table.move_cursor(row=0)
             await pilot.pause(0.2)
             cible = scr._rows[0][1]
+            # Annexes Jellyfin (IE-116) : parties avec la video ; le .srt et le
+            # season.nfo restent.
+            annexes = [cible.with_suffix(".nfo"),
+                       cible.with_name(cible.stem + "-thumb.jpg")]
+            gardes = [cible.with_suffix(".fr.srt"),
+                      cible.with_name("season.nfo")]
+            for p in annexes + gardes:
+                p.write_bytes(b"x")
             # 1er passage : Esc annule, le fichier survit
             await pilot.press("ctrl+d")
             await pilot.pause(0.4)
@@ -261,6 +269,10 @@ async def scenario_parallel_scan() -> None:
             await pilot.press("right", "enter")
             await pilot.pause(0.5)
             assert not cible.exists(), f"{cible.name} existe encore"
+            assert not any(p.exists() for p in annexes), "annexe Jellyfin restee"
+            assert all(p.exists() for p in gardes), "srt ou season.nfo supprime"
+            for p in gardes:
+                p.unlink()
             assert table.row_count == 2, f"apres suppression : {table.row_count}"
             assert len(scr._decisions) == 2, f"decisions={len(scr._decisions)}"
             assert cible not in scr._selected

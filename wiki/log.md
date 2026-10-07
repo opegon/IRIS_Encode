@@ -251,3 +251,10 @@ Relecture des 883 messages contre le glossaire et captures de tous les écrans e
 anglais : conventions US et noms d'écrans fixés, deux troncatures propres à
 l'anglais corrigées. Pas de source brute : décisions prises pendant la
 relecture, consignées dans la page. Pages touchées : [[localisation]].
+
+## [2026-10-07] ingest | Annexes Jellyfin d'une vidéo (IE-116)
+
+Format des `.nfo` et images que Jellyfin dépose à côté d'une vidéo, relevé sur
+deux dossiers de la bibliothèque. Choix de l'utilisateur : ils partent avec la
+source (après encodage et `Ctrl+D`), sans option séparée ; les `.srt` restent.
+Pages touchées : [[jellyfin]].

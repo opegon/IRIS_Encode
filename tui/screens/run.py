@@ -23,6 +23,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
 from core.i18n import N_, _, ngettext, texte_erreur
+from core.annexes import supprimer_annexes
 from core.decision import (AudioAction, FileDecision, VideoAction,
                            resoudre_sorties)
 from core.encoder import (
@@ -557,6 +558,9 @@ class RunScreen(TableNavMixin, Screen):
                 dec.info.path.unlink()
             except Exception:
                 pass
+            else:
+                # Son .nfo et ses images Jellyfin ne décrivent plus rien (IE-116).
+                supprimer_annexes(dec.info.path)
 
         # Les pistes audio produites à part ont été recopiées dans la sortie,
         # les sous-titres réécrits aussi.

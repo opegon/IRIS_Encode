@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.85
+**Version** : 0.8.9.86
 **Date** : 2026-10-05
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -114,7 +114,7 @@ d'après le profil actif.
 | `A` / `N` | Tout cocher / tout décocher |
 | `T` | Écran des pistes du fichier sous le curseur, quel que soit le mode |
 | `V` | Ouvrir dans mpv |
-| `Ctrl+D` | **Supprimer définitivement** le fichier (confirmation, pas de corbeille) |
+| `Ctrl+D` | **Supprimer définitivement** le fichier, avec son `.nfo` et ses images Jellyfin (confirmation, pas de corbeille) |
 | `F1` / `F2` | Aperçu / Encoder la sélection |
 | `R` | Encoder récursivement le dossier sous le curseur |
 | `F4` / `F5` | Choisir un profil / gérer les profils |
@@ -245,7 +245,7 @@ ligne vidéo en tête.
 | `↵` | Valider le choix de la ligne |
 | `←/→` `+/-` | Sur la ligne vidéo : changer codec, débit, traitement Dolby Vision |
 | `F6` / `F7` | Codec / débit cible |
-| `F8` | Supprimer ou garder le fichier source après encodage |
+| `F8` | Supprimer ou garder le fichier source après encodage (supprimé, il emporte son `.nfo` et ses images Jellyfin, pas ses `.srt`) |
 | `F9` | **Greffer une piste externe** — mène au choix du donneur |
 | `F4` | Changer de profil |
 | `F1` / `F2` | Aperçu / Encoder ce seul fichier, sans repasser par la liste |

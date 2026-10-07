@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.86] — 2026-10-07
+
+### Les fichiers Jellyfin partent avec la source (IE-116)
+
+Une fois une vidéo référencée, Jellyfin dépose à côté d'elle un `.nfo` et des
+images nommés sur elle (`<nom>.nfo`, `<nom>-poster.jpg`, `<nom>-thumb.jpg`…).
+Quand la source est supprimée après un encodage réussi, ils partent désormais
+avec elle : ils ne décrivaient plus rien, et Jellyfin refait les siens pour le
+nouveau fichier. Il en va de même avec `Ctrl+D` à l'accueil, dont la
+confirmation liste les fichiers qui partiront.
+
+Restent en place : les sous-titres externes (`<nom>.fr.srt`), qui peuvent être
+le seul exemplaire d'un sous-titre ; les fichiers du dossier (`season.nfo`,
+`poster.jpg`, `movie.nfo`), qui servent aussi aux autres vidéos ; le fichier
+produit. Les fichiers d'une autre vidéo au nom voisin (`Film-extended.mkv` à
+côté de `Film.mkv`) ne sont pas touchés.
+
 ## [v0.8.9.85] — 2026-10-07
 
 ### Relecture de l'anglais (IE-93)

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.85 — document de référence courant
+**Version** : 0.8.9.86 — document de référence courant
 **Date** : 2026-10-07
 **Statut** : stable
 
@@ -562,7 +562,7 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 | `bitrate_1080p_kbps` | int | débit cible en bucket 1080p |
 | `bitrate_4k_kbps` | int | débit cible en bucket 4K |
 | `keep_4k` | bool | conserver la 4K, sinon downscale 1080p |
-| `delete_source` | bool | supprimer la source après encodage réussi |
+| `delete_source` | bool | supprimer la source après encodage réussi, avec son `.nfo` et ses images Jellyfin (§ 14.7) |
 | `preset_encoder` | str | `fast` / `medium` / `slow` |
 | `dolby_vision` | str | `hdr10` / `dv` / `sdr` |
 | `hdr10_quality` | str | `"quality"` → libx265 CPU + métadonnées HDR10 propres |
@@ -2199,9 +2199,11 @@ lots automatiques — c'est là qu'il protégeait vraiment (§ 15.2).
 #### Suppression d'un fichier (`Ctrl+D`)
 
 Disponible uniquement sur une ligne **fichier**. Ouvre `DeleteConfirmModal` (nom, taille,
-dossier, avertissement), focus initial sur *Annuler*.
+dossier, annexes Jellyfin qui partiront avec lui, avertissement), focus initial sur
+*Annuler*.
 
-À la confirmation, le fichier est **définitivement supprimé** (pas de corbeille) et sa
+À la confirmation, le fichier est **définitivement supprimé** (pas de corbeille), avec
+ses annexes Jellyfin (§ 14.7, mêmes règles qu'après un encodage), et sa
 ligne retirée sans re-scanner le dossier. Si le dossier se vide, la vue est reconstruite
 pour afficher le placeholder.
 
@@ -2445,7 +2447,14 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
 - Barre individuelle sous le fichier actif, barre globale en pied de liste
 - Zone basse : commande ffmpeg complète + dernière ligne de retour (live)
 - `⏸ Pause` suspend le processus (multiplateforme)
-- Suppression source après succès selon `delete_source` (ou override par fichier)
+- Suppression source après succès selon `delete_source` (ou override par fichier).
+  Ses **annexes Jellyfin** partent avec elle (`core/annexes.py`, v0.8.9.86) :
+  `<nom>.nfo` et `<nom>-*.jpg|jpeg|png|webp`, le format observé sur la
+  bibliothèque. Restent : les fichiers du dossier (`season.nfo`, `poster.jpg`,
+  `movie.nfo`), les sous-titres externes (`<nom>.fr.srt`, parfois seul
+  exemplaire), la sortie et ses propres annexes. Un fichier qui répond aussi
+  au nom plus long d'une autre vidéo du dossier est à celle-ci. Pas de motif
+  `<nom>.*` : la sortie `<nom>.hevc-iris.mkv` y répondrait.
 - En cas d'erreur : fichier marqué ✗, les suivants continuent, source conservée
 - **La file d'encodage** (v0.8.9.34, IE-100). L'écran **est** la file, et il
   vit dans son propre mode Textual (`MODE_ENCODAGES`) ; la navigation a le
@@ -2894,6 +2903,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.86 | 2026-10-07 | **Annexes Jellyfin supprimées avec la source** (§ 14.7, IE-116) : `<nom>.nfo` et `<nom>-*.jpg|png…` partent avec la source après encodage (`delete_source`) et avec `Ctrl+D`, que la confirmation liste ; sous-titres externes, fichiers du dossier et sortie conservés · `core/annexes.py`, `tests/test_annexes.py` |
 | 0.8.9.85 | 2026-10-07 | **Relecture de l'anglais source** (IE-93) : termes du glossaire partout (*segment*, *anchor point*, *added track*, *check sample*), orthographe US (*movie*, *canceled*, *Analyzing*), noms d'écrans capitalisés (« the Tracks screen ») ; traductions françaises reportées · colonne « Sync » du recalage à largeur plancher, libellés du formulaire de profil élargis d'un caractère |
 | 0.8.9.84 | 2026-10-07 | **Choix de la langue** (§ 2.1, IE-92) : section de l'écran Options, une langue par catalogue livré, nommée dans sa langue ; détection de la langue de Windows au premier lancement (`[app] language` vide par défaut), anglais si elle n'est pas traduite ; effet au redémarrage, annoncé · panneau Options défilant · `tests/test_choix_langue.py` |
 | 0.8.9.83 | 2026-10-07 | **Lanceurs et console** (§ 2.1, IE-91) : textes affichés de `launch.bat`, `bootstrap.ps1`, `build.bat`, du lanceur C# et d'`updater.py` en anglais (`[Y/n]`, `o`/`oui` acceptés) ; langue chargée avant la bannière ; cadre calculé en cellules · `tests/test_console_anglais.py`, `tests/test_banniere.py` |

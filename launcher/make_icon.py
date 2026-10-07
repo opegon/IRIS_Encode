@@ -121,12 +121,12 @@ def main() -> None:
         format="ICO",
         sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (24, 24), (16, 16)],
     )
-    print(f"écrit : {dest}")
+    print(f"written: {dest}")
 
     b64 = base64.encodebytes(dest.read_bytes()).decode("ascii")
     dest_b64 = dest.with_suffix(".ico.b64")
     dest_b64.write_text(b64, newline="\n")
-    print(f"écrit : {dest_b64}")
+    print(f"written: {dest_b64}")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.82 — document de référence courant
+**Version** : 0.8.9.83 — document de référence courant
 **Date** : 2026-10-07
 **Statut** : stable
 
@@ -116,8 +116,16 @@ iris_encode/
 `core/i18n.py`, sur le `gettext` de la bibliothèque standard. **L'anglais est
 la langue source** : les textes du code sont en anglais, le français est une
 traduction (`locales/fr/LC_MESSAGES/iris_encode.po`). `main.py` charge la langue
-de `[app] language` juste après la lecture de `config.toml` ; ce qui s'affiche
-avant reste en anglais seul, comme les lanceurs. Une langue sans catalogue, et
+de `[app] language` juste après le contrôle des dépendances et l'analyse des
+arguments, **avant la bannière** : bannière (origine de Python comprise),
+« Checking tools: », preflight et interface passent par le catalogue. Ce qui
+s'affiche avant — version de Python, dépendances manquantes, `--help`, chemin
+introuvable — est en anglais seul, comme tout ce qui tourne avant `main.py`
+(v0.8.9.83) : `launch.bat`, `bootstrap.ps1`, `launcher/` (`build.bat`, le
+lanceur C#) et `updater.py`, dont l'invite `[Y/n]` accepte aussi `o`/`oui`.
+Les `.bat` n'affichent que de l'ASCII (pas de `chcp 65001`). Le cadre de la
+bannière se calcule en cellules depuis son contenu. `tests/test_console_anglais.py`
+garde ces règles. Une langue sans catalogue, et
 tout message non traduit ou flou, retombe sur l'anglais.
 
 | Élément | Rôle |
@@ -264,7 +272,7 @@ avant le bandeau et `main.py`. Il ne lit **que la release GitHub marquée
 2. dossier .git présent           → rien : un clone ne s'écrase pas par une archive
 3. release « Latest »             → cache .iris_update/release.json, 1 h, invalidé si version.py a changé ; délai 8 s
 4. tag ≤ version.py               → rien
-5. "ask" : « Installer maintenant ? [O/n] », Entrée vaut oui ; "auto" : sans question
+5. "ask" : « Install now? [Y/n] », Entrée, o, oui, y, yes valent oui ; "auto" : sans question
 6. archive iris_encode_v….zip     → SHA256 comparé au `digest` publié par GitHub
 7. contrôle de l'archive          → chemins, fichiers personnels, REQUIS, version
 8. sauvegarde, remplacement, retrait de ce qui n'est plus livré (manifeste)
@@ -2872,6 +2880,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.83 | 2026-10-07 | **Lanceurs et console** (§ 2.1, IE-91) : textes affichés de `launch.bat`, `bootstrap.ps1`, `build.bat`, du lanceur C# et d'`updater.py` en anglais (`[Y/n]`, `o`/`oui` acceptés) ; langue chargée avant la bannière ; cadre calculé en cellules · `tests/test_console_anglais.py`, `tests/test_banniere.py` |
 | 0.8.9.82 | 2026-10-07 | **Formats localisés** (§ 2.1, IE-90) : unités d'octets traduites (TB/GB/MB/KB ↔ To/Go/Mo/Ko), point décimal fixe, « 12% » sans espace partout (raisons de décision, barre d'état, volumes, aide du preset) · `tests/test_formats.py` |
 | 0.8.9.81 | 2026-10-06 | **Guide des touches traduit** (§ 2.1, IE-89) : 113 messages, rendu français identique à l'octet ; libellés et touches cités en paramètres, touches lues dans les `BINDINGS` ; repli en cellules · `tests/test_aide.py` (traduction exigée, paramètres fournis), exception d'IE-88 retirée de `tests/test_i18n.py` |
 | 0.8.9.80 | 2026-10-06 | **Pas d'agrandissement** (§ 8.1) : `scale` n'est posé que si la source dépasse la cible — un 1918×802 réencodé sortait étiré en 1920×802. Une dimension impaire perd un pixel (`trunc(iw/2)*2`) · `tests/test_resolution_nom.py` |

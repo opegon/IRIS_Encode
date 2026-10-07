@@ -16,9 +16,9 @@ if exist "%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe" set "CSC=%WINDI
 if not defined CSC if exist "%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe" set "CSC=%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
 if not defined CSC (
     echo.
-    echo  [ERREUR] csc.exe introuvable. Le .NET Framework 4.x est pourtant
-    echo  livré avec Windows 10/11 — activez-le dans « Fonctionnalités
-    echo  facultatives » ou installez-le : https://aka.ms/net48
+    echo  [ERROR] csc.exe not found. The .NET Framework 4.x ships with
+    echo  Windows 10/11 - turn it on in "Optional features", or install
+    echo  it: https://aka.ms/net48
     pause
     exit /b 1
 )
@@ -31,7 +31,7 @@ REM aucun binaire. certutil, livré avec Windows, la décode sur place.
 certutil -f -decode "%~dp0iris.ico.b64" "%~dp0iris.ico" >nul
 if errorlevel 1 (
     echo.
-    echo  [ERREUR] Impossible de décoder l'icône ^(launcher\iris.ico.b64^).
+    echo  [ERROR] Could not decode the icon ^(launcher\iris.ico.b64^).
     pause
     exit /b 1
 )
@@ -39,27 +39,27 @@ if errorlevel 1 (
 "%CSC%" /nologo /target:winexe /win32icon:"%~dp0iris.ico" /reference:System.Windows.Forms.dll /out:"%ROOT%\IRIS_Encode.exe" "%~dp0IrisEncodeLauncher.cs"
 if errorlevel 1 (
     echo.
-    echo  [ERREUR] La compilation a échoué.
+    echo  [ERROR] Compilation failed.
     pause
     exit /b 1
 )
 
 echo.
-echo  IRIS_Encode.exe créé dans :
+echo  IRIS_Encode.exe created in:
 echo  %ROOT%
 echo.
 
-choice /c ON /n /m "Créer un raccourci « IRIS ENCODE » sur le Bureau ? [O/N] "
+choice /c YN /n /m "Create an 'IRIS ENCODE' shortcut on the Desktop? [Y/N] "
 if errorlevel 2 goto :fin
 
 powershell -NoProfile -Command "$s = (New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop') + '\IRIS ENCODE.lnk'); $s.TargetPath = '%ROOT%\IRIS_Encode.exe'; $s.WorkingDirectory = '%ROOT%'; $s.Description = 'IRIS ENCODE'; $s.Save()"
 if errorlevel 1 (
-    echo  [ERREUR] Le raccourci n'a pas pu être créé. Clic droit sur
-    echo  IRIS_Encode.exe ^> « Envoyer vers » ^> « Bureau » fait la même chose.
+    echo  [ERROR] The shortcut could not be created. Right-click
+    echo  IRIS_Encode.exe ^> "Send to" ^> "Desktop" does the same.
     pause
     exit /b 1
 )
-echo  Raccourci créé sur le Bureau.
+echo  Shortcut created on the Desktop.
 
 :fin
 pause

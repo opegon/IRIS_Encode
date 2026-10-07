@@ -10,6 +10,11 @@ import argparse
 import sys
 from pathlib import Path
 
+# Bibliothèque standard seulement : importable avant le contrôle des
+# dépendances. Sans `init`, il rend l'anglais source.
+from core import i18n
+from core.i18n import _, pgettext
+
 
 def force_utf8_output() -> None:
     """Force stdout/stderr en UTF-8.
@@ -28,9 +33,9 @@ def force_utf8_output() -> None:
 def _check_python_version() -> None:
     if sys.version_info < (3, 11):
         print(
-            f"✗ Python 3.11+ requis "
-            f"(version détectée : {sys.version_info.major}.{sys.version_info.minor})\n"
-            "  Téléchargez Python depuis https://python.org"
+            f"✗ Python 3.11+ required "
+            f"(found: {sys.version_info.major}.{sys.version_info.minor})\n"
+            "  Download Python from https://python.org"
         )
         sys.exit(1)
 
@@ -47,8 +52,8 @@ def _ensure_deps() -> None:
             missing.append(pkg)
     if missing:
         print(
-            f"✗ Dépendances manquantes : {', '.join(missing)}\n"
-            "  Installez avec : pip install -r requirements.txt"
+            f"✗ Missing dependencies: {', '.join(missing)}\n"
+            "  Install them with: pip install -r requirements.txt"
         )
         sys.exit(1)
 
@@ -65,8 +70,26 @@ def _environnement_python() -> str:
     v = sys.version_info
     racine = Path(__file__).resolve().parent
     exe    = Path(sys.executable).resolve()
-    origine = ".venv local" if exe.is_relative_to(racine / ".venv") else "système"
+    if exe.is_relative_to(racine / ".venv"):
+        # TRANSLATORS: where the Python interpreter comes from, in the start banner.
+        origine = pgettext("python origin", "local .venv")
+    else:
+        # TRANSLATORS: the Python installed on the computer, in the start banner.
+        origine = pgettext("python origin", "system")
     return f"Python {v.major}.{v.minor}.{v.micro} · {origine}"
+
+
+def banniere(lignes: list[str]) -> list[str]:
+    """Le cadre de la bannière, à la largeur de sa plus longue ligne.
+
+    Largeur comptée en cellules de terminal : une ligne traduite plus longue,
+    ou en pleine chasse, ne crève plus le cadre (L-86). 43 au moins, la largeur
+    d'origine.
+    """
+    from rich.cells import cell_len
+    inner = max(43, max(cell_len(l) for l in lignes) + 4)
+    corps = [f"║  {l}{' ' * (inner - 2 - cell_len(l))}║" for l in lignes]
+    return ["╔" + "═" * inner + "╗", *corps, "╚" + "═" * inner + "╝"]
 
 
 def main() -> None:
@@ -75,24 +98,24 @@ def main() -> None:
     _ensure_deps()
 
     parser = argparse.ArgumentParser(
-        description="IRIS ENCODE — Réencodage vidéo HEVC/H264 avec TUI",
+        description="IRIS ENCODE — HEVC/H264 video re-encoding with a TUI",
     )
     parser.add_argument(
         "path",
         nargs="?",
         default=None,
-        help="Répertoire de travail (défaut : répertoire courant)",
+        help="Working directory (default: current directory)",
     )
     parser.add_argument(
         "--preflight-only",
         action="store_true",
-        help="Vérifier les outils et quitter",
+        help="Check the tools and exit",
     )
     args = parser.parse_args()
 
     start_path = Path(args.path).resolve() if args.path else Path.cwd()
     if not start_path.exists():
-        print(f"✗ Chemin introuvable : {start_path}")
+        print(f"✗ Path not found: {start_path}")
         sys.exit(1)
 
     # ── Preflight ─────────────────────────────────────────────────────────────
@@ -100,29 +123,26 @@ def main() -> None:
     from core.preflight import run_preflight
     from version import __version__
 
-    inner = 43
-    print()
-    print("╔" + "═" * inner + "╗")
-    print(f"║  {f'IRIS ENCODE  v{__version__}':<{inner - 2}}║")
-    print(f"║  {_environnement_python():<{inner - 2}}║")
-    print("╚" + "═" * inner + "╝")
-    print()
-    print("Vérification des outils :")
-
     cfg = cfg_mod.load()
-    # La langue se charge ici, une fois : tout ce qui suit — preflight,
-    # interface — passe par le catalogue ; ce qui précède reste en anglais
-    # seul, comme les lanceurs (IE-91).
-    from core import i18n
+    # La langue se charge ici, une fois, avant la bannière : tout ce qui suit —
+    # bannière, preflight, interface — passe par le catalogue ; ce qui précède
+    # (version de Python, dépendances, --help, chemin) reste en anglais seul,
+    # comme les lanceurs (IE-91). `load()` n'affiche rien.
     i18n.init(cfg.get("app", {}).get("language", ""))
+
+    print()
+    for ligne in banniere([f"IRIS ENCODE  v{__version__}", _environnement_python()]):
+        print(ligne)
+    print()
+    print(_("Checking tools:"))
     ok  = run_preflight(cfg)
 
     if not ok:
-        print("\n✗ Outils manquants. Arrêt.")
+        print("\n✗ " + _("Tools missing. Stopping."))
         sys.exit(1)
 
     if args.preflight_only:
-        print("\n✓ Preflight OK.")
+        print("\n✓ " + _("Preflight OK."))
         sys.exit(0)
 
     # ── Lancement TUI ─────────────────────────────────────────────────────────

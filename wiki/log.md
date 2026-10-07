@@ -230,3 +230,10 @@ Pages touchées : [[lg-oled-g3]].
 Quatre choix de l'utilisateur : point décimal fixe, octets TB/GB/MB/KB en
 anglais, « 12% » sans espace dans toutes les langues, quota OpenSubtitles laissé
 brut. Source : [[2026-10-07-decisions-formats]]. Pages touchées : [[localisation]].
+
+## [2026-10-07] ingest | Lanceurs et console arbitrés (IE-91)
+
+Deux choix de l'utilisateur : la langue se charge avant la bannière, qui suit
+donc `[app] language` ; `launcher/build.bat` passe en anglais avec les autres
+lanceurs. Source : [[2026-10-07-decisions-console]]. Pages touchées :
+[[localisation]].

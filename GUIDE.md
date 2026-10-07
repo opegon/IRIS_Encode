@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.82
+**Version** : 0.8.9.83
 **Date** : 2026-10-05
 
 Installation : voir `README.md`. Fonctionnement interne : voir `iris_encode_spec.md`.
@@ -25,11 +25,11 @@ Terminal plutôt qu'au double-clic.
 l'application :
 
 ```
-  Mise à jour disponible : v0.8.9.1 → v0.9.0.0
-  Installer maintenant ? [O/n]
+  Update available: v0.8.9.1 → v0.9.0.0
+  Install now? [Y/n]
 ```
 
-`Entrée` installe, puis l'application redémarre sur la version neuve ; `n`
+Le lanceur parle anglais, l'application n'étant pas encore chargée. `Entrée` (ou `o`, `y`) installe, puis l'application redémarre sur la version neuve ; `n`
 remet à plus tard (la question revient au lancement suivant). Vos réglages,
 vos profils et les outils de `bin/` ne sont jamais touchés. Hors ligne, rien ne
 s'affiche. Pour installer sans question ou ne plus rien vérifier : `app =

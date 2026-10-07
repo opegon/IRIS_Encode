@@ -1,5 +1,28 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.83] — 2026-10-07
+
+### Lanceurs et console en anglais (IE-91)
+
+Ce qui tourne avant que la langue de l'application soit connue s'affiche en
+anglais : `launch.bat`, `bootstrap.ps1`, `launcher\build.bat`, le message
+d'erreur d'`IRIS_Encode.exe` et la mise à jour automatique. L'invite devient
+« Install now? [Y/n] » et accepte toujours `o` et `oui`. Les `.bat` n'écrivent
+plus que de l'ASCII : sans `chcp 65001`, leurs accents et tirets cadratins
+s'affichaient en caractères parasites dans la console.
+
+`main.py` charge la langue plus tôt, avant la bannière : l'origine de Python
+(« système », « .venv local ») et « Vérification des outils : » suivent la
+langue, au lieu d'un en-tête anglais au-dessus de lignes françaises. Restent en
+anglais la version de Python, les dépendances manquantes, `--help` et le chemin
+introuvable, affichés avant la lecture de `config.toml`.
+
+Le cadre de la bannière prend la largeur de sa plus longue ligne, comptée en
+cellules : une origine traduite plus longue ne le crève plus.
+
+`IRIS_Encode.exe` est à recompiler (`launcher\build.bat`) pour avoir son
+message en anglais ; l'ancien continue de fonctionner.
+
 ## [v0.8.9.82] — 2026-10-07
 
 ### Les formats suivent la langue de l'application (IE-90)

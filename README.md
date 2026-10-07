@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.82 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.83 — Windows (support macOS/Linux prévu)
 
 > Ce document présente le projet puis couvre l'**installation**. Pour l'utilisation
 > au quotidien — procédures par écran et cas rencontrés — voir `GUIDE.md`. Ce que
@@ -489,11 +489,11 @@ compare votre version à la **dernière release publiée** (celle marquée
 « Latest »), jamais à un état intermédiaire du code. Si elle est plus récente :
 
 ```
-  Mise à jour disponible : v0.8.9.1 → v0.9.0.0
-  Installer maintenant ? [O/n]
+  Update available: v0.8.9.1 → v0.9.0.0
+  Install now? [Y/n]
 ```
 
-`Entrée` (ou `O`) télécharge l'archive, vérifie son empreinte SHA256, remplace
+Les lanceurs s'affichent en anglais : ils tournent avant que la langue de l'application soit connue. `Entrée` (ou `o`, `oui`, `y`) télécharge l'archive, vérifie son empreinte SHA256, remplace
 les fichiers de l'application et relance IRIS ENCODE sur la version neuve.
 `n` remet à plus tard. Un échec (réseau, archive refusée) n'empêche jamais le
 démarrage : la version en place s'ouvre, et la précédente est restaurée si le

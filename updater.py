@@ -20,7 +20,7 @@ empêcher l'application de démarrer.
 
 Réglage, `config.toml` :
     [updates]
-    app = "ask"    # "ask" (défaut) : demander, « O » présélectionné
+    app = "ask"    # "ask" (défaut) : demander, « Y » présélectionné
                    # "auto" : installer sans demander ; "off" : ne rien vérifier
 """
 from __future__ import annotations
@@ -67,7 +67,7 @@ def version_locale(racine: Path) -> str:
     texte = (racine / "version.py").read_text(encoding="utf-8")
     m = re.search(r'__version__\s*=\s*"([^"]+)"', texte)
     if not m:
-        raise ErreurMaj("version.py ne déclare pas de version")
+        raise ErreurMaj("version.py does not declare a version")
     return m.group(1)
 
 
@@ -156,16 +156,16 @@ def derniere_release(racine: Path, maintenant: float | None = None,
 def demander(installee: str, disponible: str,
              entree: Callable[[str], str] = input,
              interactif: Callable[[], bool] = lambda: sys.stdin.isatty()) -> bool:
-    """« Installer maintenant ? [O/n] » — Entrée vaut oui.
+    """« Install now? [Y/n] » — Entrée vaut oui, `o`/`oui` aussi.
 
     Sans console pour répondre (lancement non interactif), on ne demande rien
     et on n'installe rien : un « oui » présélectionné n'est pas un consentement.
     """
     if not interactif():
         return False
-    print(f"\n  Mise à jour disponible : v{installee} → {disponible}")
+    print(f"\n  Update available: v{installee} → {disponible}")
     try:
-        reponse = entree("  Installer maintenant ? [O/n] ").strip().lower()
+        reponse = entree("  Install now? [Y/n] ").strip().lower()
     except (EOFError, KeyboardInterrupt):
         return False
     return reponse in ("", "o", "oui", "y", "yes")
@@ -178,7 +178,7 @@ def telecharger(release: dict, dest: Path,
     """Télécharge l'archive et la vérifie contre l'empreinte publiée."""
     attendu = release.get("digest", "")
     if not attendu.startswith("sha256:"):
-        raise ErreurMaj("la release ne publie pas d'empreinte SHA256 — rien n'est installé")
+        raise ErreurMaj("the release publishes no SHA256 digest — nothing installed")
     dest.parent.mkdir(parents=True, exist_ok=True)
     requete = urllib.request.Request(release["url"],
                                      headers={"User-Agent": "iris-encode-updater"})
@@ -189,7 +189,7 @@ def telecharger(release: dict, dest: Path,
             f.write(bloc)
     if empreinte.hexdigest() != attendu.split(":", 1)[1].lower():
         dest.unlink(missing_ok=True)
-        raise ErreurMaj("l'archive téléchargée ne correspond pas à son empreinte")
+        raise ErreurMaj("the downloaded archive does not match its digest")
     return dest
 
 
@@ -207,15 +207,15 @@ def contenu_archive(archive: Path, version_attendue: str) -> list[str]:
         for n in noms:
             p = PurePosixPath(n)
             if p.is_absolute() or ".." in p.parts or ":" in n:
-                raise ErreurMaj(f"chemin refusé dans l'archive : {n}")
+                raise ErreurMaj(f"path refused in the archive: {n}")
             if _protege(n):
-                raise ErreurMaj(f"l'archive voudrait écrire un fichier personnel : {n}")
+                raise ErreurMaj(f"the archive would overwrite a personal file: {n}")
         manquants = REQUIS - set(noms)
         if manquants:
-            raise ErreurMaj(f"archive incomplète, il manque : {', '.join(sorted(manquants))}")
+            raise ErreurMaj(f"incomplete archive, missing: {', '.join(sorted(manquants))}")
         m = re.search(r'__version__\s*=\s*"([^"]+)"', z.read("version.py").decode("utf-8"))
         if not m or version_tuple(m.group(1)) != version_tuple(version_attendue):
-            raise ErreurMaj("la version de l'archive ne correspond pas à la release")
+            raise ErreurMaj("the archive version does not match the release")
     return noms
 
 
@@ -293,10 +293,10 @@ def main(racine: Path | None = None,
         if version_tuple(release["tag"]) <= version_tuple(installee):
             return 0
         if reglage == "ask" and not demander(installee, release["tag"], entree, interactif):
-            print("  Mise à jour remise à plus tard. Réglage : [updates] app dans config.toml.\n")
+            print("  Update postponed. Setting: [updates] app in config.toml.\n")
             return 0
 
-        print(f"  Téléchargement de {release['nom']}…")
+        print(f"  Downloading {release['nom']}…")
         archive = racine / TRAVAIL / release["nom"]
         lanceur_avant = _empreinte(racine / LANCEUR)
         try:
@@ -305,14 +305,14 @@ def main(racine: Path | None = None,
         finally:
             # Acceptée ou refusée, l'archive n'a plus rien à faire sur le disque.
             archive.unlink(missing_ok=True)
-        print(f"  IRIS ENCODE mis à jour en {release['tag']} ({len(ecrits)} fichiers).")
+        print(f"  IRIS ENCODE updated to {release['tag']} ({len(ecrits)} files).")
         if _empreinte(racine / LANCEUR) != lanceur_avant and (racine / "IRIS_Encode.exe").exists():
-            print("  Le lanceur a changé : relancez launcher\\build.bat pour recompiler IRIS_Encode.exe.")
+            print("  The launcher changed: run launcher\\build.bat again to rebuild IRIS_Encode.exe.")
         print()
         return CODE_MIS_A_JOUR
     except Exception as e:
-        print(f"\n  [AVERTISSEMENT] Mise à jour impossible : {e}")
-        print("  IRIS ENCODE démarre dans sa version actuelle.\n")
+        print(f"\n  [WARNING] Update failed: {e}")
+        print("  IRIS ENCODE starts with its current version.\n")
         return 0
 
 

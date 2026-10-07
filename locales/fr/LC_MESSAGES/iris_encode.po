@@ -4191,5 +4191,29 @@ msgstr "Identifiant : 32 caractères maximum."
 msgid "The profile “{profile}” already exists."
 msgstr "Le profil « {profile} » existe déjà."
 
+#. where the Python interpreter comes from, in the start banner.
+#: main.py:75
+msgctxt "python origin"
+msgid "local .venv"
+msgstr ".venv local"
+
+#. the Python installed on the computer, in the start banner.
+#: main.py:78
+msgctxt "python origin"
+msgid "system"
+msgstr "système"
+
+#: main.py:137
+msgid "Checking tools:"
+msgstr "Vérification des outils :"
+
+#: main.py:141
+msgid "Tools missing. Stopping."
+msgstr "Outils manquants. Arrêt."
+
+#: main.py:145
+msgid "Preflight OK."
+msgstr "Preflight OK."
+
 #~ msgid "Back to the list"
 #~ msgstr "Retour à la liste"

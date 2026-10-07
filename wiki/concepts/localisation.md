@@ -5,6 +5,7 @@ sources:
   - "[[source-2026-10-04-localisation]]"
   - "[[source-spec]]"
   - "[[2026-10-07-decisions-formats]]"
+  - "[[2026-10-07-decisions-console]]"
 ---
 
 # Localisation
@@ -32,8 +33,12 @@ même fichier de sortie quelle que soit la langue de l'interface.
   ne jamais le lancer sous une langue traduite.
 - **Lu dans les noms de fichiers** : jetons de release ([[noms-de-release]]).
 - **Journaux** : dans une langue stable, l'anglais du message source.
-- **Avant la configuration** : lanceurs, bannière de `main.py`, `updater.py` —
-  anglais seul (décidé le 2026-10-04).
+- **Avant la configuration** : lanceurs (`launch.bat`, `bootstrap.ps1`,
+  `launcher/`), `updater.py`, et dans `main.py` la version de Python, les
+  dépendances manquantes, `--help`, le chemin introuvable — anglais seul
+  (décidé le 2026-10-04, livré en v0.8.9.83). La **bannière** et « Vérification
+  des outils : », elles, suivent la langue : `main.py` la charge juste avant
+  ([[2026-10-07-decisions-console]]). Les `.bat` n'affichent que de l'ASCII.
 - **Termes techniques et noms propres** : la liste « Do not translate » du
   glossaire.
 

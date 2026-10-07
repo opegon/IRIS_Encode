@@ -12,6 +12,8 @@ import re
 import sys
 from pathlib import Path
 
+import pytest
+
 import main
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -41,12 +43,20 @@ def test_lorigine_suit_lexecutable_reellement_utilise():
     assert main._environnement_python().endswith(attendu)
 
 
-def test_la_ligne_tient_dans_le_cadre():
+@pytest.mark.parametrize("lignes", [
+    ["IRIS ENCODE  v0.8.9.82", "Python 3.12.7 · système"],
+    ["IRIS ENCODE  v0.8.9.82", "Python 3.12.7 · une origine traduite bien plus longue que le cadre"],
+    ["IRIS ENCODE  v0.8.9.82", "Python 3.12.7 · 本地虚拟环境本地虚拟环境本地虚拟环境"],
+])
+def test_le_cadre_suit_sa_plus_longue_ligne(lignes):
     """
-    Le cadre est dessiné à largeur fixe (`inner`). Une ligne trop longue le
-    crève — et c'est la première chose que voit l'utilisateur au lancement.
+    Une ligne trop longue crevait le cadre, dessiné à largeur fixe — et c'est la
+    première chose que voit l'utilisateur au lancement. Le cadre se calcule
+    désormais en cellules depuis son contenu (L-86) : toutes ses lignes ont la
+    même largeur, pleine chasse comprise.
     """
-    src = (ROOT / "main.py").read_text(encoding="utf-8")
-    m = re.search(r"^\s*inner\s*=\s*(\d+)", src, re.M)
-    assert m, "la largeur du cadre a changé de forme"
-    assert len(main._environnement_python()) <= int(m.group(1)) - 2
+    from rich.cells import cell_len
+
+    cadre = main.banniere(lignes)
+    assert {cell_len(l) for l in cadre} == {cell_len(cadre[0])}
+    assert cell_len(cadre[0]) >= 45                    # 43 + les deux coins

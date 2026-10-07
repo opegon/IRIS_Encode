@@ -78,6 +78,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-03-essai-dv81-mp4]] | Essai DV 8.1 MP4/MKV sur le G3 : citations de l'utilisateur, variantes audio |
 | [[2026-10-04-mov-text-silence]] | *Film J* : VF forcée désynchronisée, seuil mesuré, contournement |
 | [[2026-10-06-sar-scale]] | Transcodage « anamorphique » de deux sorties ; SAR mesurés avec et sans `setsar=1` |
+| [[2026-10-07-decisions-console]] | Lanceurs et console (IE-91) : langue chargée avant la bannière, `build.bat` inclus |
 | [[2026-10-07-decisions-formats]] | Formats localisés (IE-90) : point fixe, octets TB/GB, « 12% » partout, quota brut |
 | [[2026-10-06-declaration-ie72]] | Retrait DV en MP4 confirmé sur le G3 : citation de l'utilisateur |
 | [[2026-10-04-decisions-localisation]] | Choix de l'utilisateur après l'audit de localisation : citations et options retenues |

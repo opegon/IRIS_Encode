@@ -27,11 +27,11 @@ static class IrisEncodeLauncher
         if (!File.Exists(Path.Combine(dossier, "launch.bat")))
         {
             MessageBox.Show(
-                "launch.bat est introuvable à côté de l'exécutable :\n\n"
+                "launch.bat was not found next to the executable:\n\n"
                     + dossier
-                    + "\n\nIRIS_Encode.exe doit rester dans le dossier "
-                    + "d'IRIS ENCODE ; sur le Bureau, ne placer qu'un "
-                    + "raccourci vers lui.",
+                    + "\n\nIRIS_Encode.exe must stay in the IRIS ENCODE "
+                    + "folder; put only a shortcut to it on the "
+                    + "Desktop.",
                 "IRIS ENCODE",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);

@@ -4190,3 +4190,27 @@ msgstr ""
 #, python-brace-format
 msgid "The profile “{profile}” already exists."
 msgstr ""
+
+#. where the Python interpreter comes from, in the start banner.
+#: main.py:75
+msgctxt "python origin"
+msgid "local .venv"
+msgstr ""
+
+#. the Python installed on the computer, in the start banner.
+#: main.py:78
+msgctxt "python origin"
+msgid "system"
+msgstr ""
+
+#: main.py:137
+msgid "Checking tools:"
+msgstr ""
+
+#: main.py:141
+msgid "Tools missing. Stopping."
+msgstr ""
+
+#: main.py:145
+msgid "Preflight OK."
+msgstr ""

@@ -104,15 +104,15 @@ function Sortir([string] $message, [string] $sortie = '') {
     # nom de paquet ou une taille. On exige son contexte, ou la phrase même.
     if ($sortie -match "err(or|eur) 4551|contr[oô]le d.application|control policy") {
         Write-Host ''
-        Dire "Windows a bloqué l'exécution d'un fichier (erreur 4551)." 'Yellow'
-        Dire "Smart App Control en est la cause la plus probable : il refuse" 'Yellow'
-        Dire "les binaires sans réputation établie. Deux issues :" 'Yellow'
-        Dire "  - installer Python 3.12 depuis python.org (binaires signés)," 'Yellow'
-        Dire "    puis relancer launch.bat : il prendra ce Python-là ;" 'Yellow'
-        Dire "  - désactiver Smart App Control (Sécurité Windows, rubrique" 'Yellow'
-        Dire "    Contrôle des applications et du navigateur). Attention :" 'Yellow'
-        Dire "    la désactivation est définitive, seule une réinstallation" 'Yellow'
-        Dire "    de Windows le réactive." 'Yellow'
+        Dire "Windows blocked a file from running (error 4551)." 'Yellow'
+        Dire "Smart App Control is the most likely cause: it rejects" 'Yellow'
+        Dire "binaries without an established reputation. Two ways out:" 'Yellow'
+        Dire "  - install Python 3.12 from python.org (signed binaries)," 'Yellow'
+        Dire "    then run launch.bat again: it will pick that Python;" 'Yellow'
+        Dire "  - turn off Smart App Control (Windows Security, section" 'Yellow'
+        Dire "    App & browser control). Beware: turning it off is" 'Yellow'
+        Dire "    permanent, only reinstalling Windows turns it back" 'Yellow'
+        Dire "    on." 'Yellow'
     }
     exit 1
 }
@@ -127,19 +127,19 @@ function Get-InterpreteurGere {
         $py = Join-Path $dossiers[$i].FullName 'python.exe'
         if (Test-Path $py) { return $py }
     }
-    Sortir "Interpréteur introuvable sous $PyDir."
+    Sortir "No interpreter found under $PyDir."
 }
 
 # ── 0. Rien à faire ? ─────────────────────────────────────────────────────────
 
 if (-not $Force -and (Test-EnvComplet)) {
-    Dire "Environnement Python déjà en place." 'DarkGray'
+    Dire "Python environment already in place." 'DarkGray'
     exit 0
 }
 
 Write-Host ''
-Write-Host '  IRIS ENCODE — installation de l''environnement Python' -ForegroundColor Cyan
-Write-Host '  Aucun droit administrateur requis. Tout est écrit sous :' -ForegroundColor DarkGray
+Write-Host '  IRIS ENCODE — Python environment setup' -ForegroundColor Cyan
+Write-Host '  No administrator rights needed. Everything is written under:' -ForegroundColor DarkGray
 Write-Host "  $Racine" -ForegroundColor DarkGray
 Write-Host ''
 
@@ -159,7 +159,7 @@ if (-not (Test-Path $UvExe)) {
     $url = "https://github.com/astral-sh/uv/releases/latest/download/uv-$cible.zip"
     $zip = Join-Path $env:TEMP "uv-$cible.zip"
 
-    Dire "Téléchargement de uv ($cible)…" 'White'
+    Dire "Downloading uv ($cible)…" 'White'
     try {
         # `ProgressPreference` : la barre de progression d'Invoke-WebRequest
         # divise son débit par dix sur PowerShell 5.1. Bug connu, contournement
@@ -169,8 +169,8 @@ if (-not (Test-Path $UvExe)) {
         Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
         $ProgressPreference = $prog
     } catch {
-        Dire "Échec du téléchargement : $($_.Exception.Message)" 'Red'
-        Dire "Vérifiez la connexion, ou installez uv à la main :" 'Yellow'
+        Dire "Download failed: $($_.Exception.Message)" 'Red'
+        Dire "Check the connection, or install uv by hand:" 'Yellow'
         Dire "  https://github.com/astral-sh/uv/releases" 'Yellow'
         exit 1
     }
@@ -184,14 +184,14 @@ if (-not (Test-Path $UvExe)) {
     $trouve = Get-ChildItem -Path $extrait -Filter 'uv.exe' -Recurse |
               Select-Object -First 1
     if (-not $trouve) {
-        Dire "uv.exe absent de l'archive téléchargée." 'Red'
+        Dire "uv.exe is missing from the downloaded archive." 'Red'
         exit 1
     }
     Copy-Item $trouve.FullName $UvExe -Force
     Remove-Item $zip, $extrait -Recurse -Force -ErrorAction SilentlyContinue
-    Dire "uv installé : $UvExe" 'Green'
+    Dire "uv installed: $UvExe" 'Green'
 } else {
-    Dire "uv déjà présent." 'DarkGray'
+    Dire "uv already present." 'DarkGray'
 }
 
 # ── 2. Un CPython, que uv va chercher lui-même ────────────────────────────────
@@ -209,7 +209,7 @@ $env:UV_LINK_MODE = 'copy'
 Dire "Python $PythonDemande…" 'White'
 $etape = Executer $UvExe @('python', 'install', $PythonDemande)
 if ($etape.Code -ne 0) {
-    Sortir "uv n'a pas pu installer Python $PythonDemande." $etape.Sortie
+    Sortir "uv could not install Python $PythonDemande." $etape.Sortie
 }
 
 # ── 3. L'environnement et ses dépendances ─────────────────────────────────────
@@ -230,20 +230,20 @@ if (Test-Path $VenvDir) {
 # pour tout le monde, réputation acquise. uv garnit ensuite ce venv comme avant.
 $BasePy = Get-InterpreteurGere
 
-Dire "Environnement .venv…" 'White'
+Dire ".venv environment…" 'White'
 # Le code de retour ne suffit pas : un exécutable que Windows refuse de lancer
 # ne laisse pas de code à lui, et `$LASTEXITCODE` garde alors sa valeur
 # précédente. On vérifie que le fichier attendu est là.
 $etape = Executer $BasePy @('-m', 'venv', $VenvDir)
 if ($etape.Code -ne 0 -or -not (Test-Path $VenvPy)) {
-    Sortir "Création de l'environnement impossible." $etape.Sortie
+    Sortir "Could not create the environment." $etape.Sortie
 }
 
-Dire "Dépendances (requirements.txt)…" 'White'
+Dire "Dependencies (requirements.txt)…" 'White'
 $etape = Executer $UvExe @('pip', 'install', '--python', $VenvPy,
                            '-r', (Join-Path $Racine 'requirements.txt'))
 if ($etape.Code -ne 0) {
-    Sortir "Installation des dépendances impossible." $etape.Sortie
+    Sortir "Could not install the dependencies." $etape.Sortie
 }
 
 # ── 4. Vérifier plutôt que déduire ────────────────────────────────────────────
@@ -251,12 +251,12 @@ if ($etape.Code -ne 0) {
 # Un code de retour nul ne prouve pas que l'application démarrera : c'est la
 # leçon de `pistes_audio_vides`, et elle vaut ici aussi. On importe.
 if (-not (Test-EnvComplet)) {
-    Dire "L'environnement s'est construit mais une dépendance manque à l'appel." 'Red'
-    Sortir "Relancez avec -Force, ou signalez le cas."
+    Dire "The environment was built, but a dependency is missing." 'Red'
+    Sortir "Run again with -Force, or report the case."
 }
 
 $v = (& $VenvPy --version) -join ''
 Write-Host ''
-Dire "Prêt — $v dans .venv" 'Green'
+Dire "Ready — $v in .venv" 'Green'
 Write-Host ''
 exit 0

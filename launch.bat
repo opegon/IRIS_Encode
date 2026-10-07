@@ -43,13 +43,13 @@ if not defined PY (
 REM --- Aucun interpréteur utilisable : on installe le nôtre ---
 if not defined PY (
     echo.
-    echo  [INFO] Aucun Python 3.11+ utilisable — installation de l'environnement.
-    echo  Aucun droit administrateur n'est requis ; tout est écrit dans ce dossier.
+    echo  [INFO] No usable Python 3.11+ found - setting up the environment.
+    echo  No administrator rights needed; everything is written to this folder.
     echo.
     where powershell >nul 2>&1
     if errorlevel 1 (
-        echo  [ERREUR] PowerShell est introuvable, l'installation automatique
-        echo  ne peut pas se faire. Installez Python 3.11+ manuellement :
+        echo  [ERROR] PowerShell not found, so the automatic setup cannot run.
+        echo  Install Python 3.11+ manually:
         echo  https://www.python.org/downloads/
         pause
         exit /b 1
@@ -57,7 +57,7 @@ if not defined PY (
     powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0bootstrap.ps1"
     if errorlevel 1 (
         echo.
-        echo  [ERREUR] L'installation de l'environnement a échoué.
+        echo  [ERROR] Environment setup failed.
         pause
         exit /b 1
     )
@@ -68,8 +68,8 @@ REM --- Avertissement terminal (Windows Terminal recommandé) ---
 echo %WT_SESSION% >nul 2>&1
 if "%WT_SESSION%"=="" (
     echo.
-    echo  [INFO] Rendu optimal avec Windows Terminal ^(store.microsoft.com^).
-    echo  Le terminal actuel peut afficher des artefacts graphiques.
+    echo  [INFO] Best rendering in Windows Terminal ^(store.microsoft.com^).
+    echo  The current terminal may show graphical glitches.
     echo.
 )
 
@@ -80,14 +80,14 @@ REM ne déclenche pas l'installation, et main.py s'arrête ensuite dessus.
 "%PY%" -c "import textual, rich, requests, tomli_w, bs4, numpy" >nul 2>&1
 if errorlevel 1 (
     echo.
-    echo  [INFO] Dépendances manquantes — installation en cours...
+    echo  [INFO] Missing dependencies - installing...
     "%PY%" -m pip install -q -r "%~dp0requirements.txt"
     if errorlevel 1 (
         echo.
-        echo  [INFO] pip a échoué — bascule sur l'environnement isolé.
+        echo  [INFO] pip failed - switching to the isolated environment.
         powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0bootstrap.ps1"
         if errorlevel 1 (
-            echo  [ERREUR] Impossible de préparer un environnement Python.
+            echo  [ERROR] Could not set up a Python environment.
             pause
             exit /b 1
         )
@@ -141,7 +141,7 @@ REM --- Lancement depuis le dossier du script (portabilité clé USB) ---
 
 if errorlevel 1 (
     echo.
-    echo  [ERREUR] IRIS ENCODE s'est terminé avec une erreur.
+    echo  [ERROR] IRIS ENCODE exited with an error.
     pause
 )
 

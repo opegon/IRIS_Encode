@@ -237,7 +237,7 @@ def test_une_empreinte_fausse_est_refusee(tmp_path, capsys):
     assert updater.main(racine, ouvrir=ouvrir, entree=lambda _: "",
                         interactif=lambda: True) == 0
     assert updater.version_locale(racine) == "0.8.9.0"
-    assert "empreinte" in capsys.readouterr().out
+    assert "digest" in capsys.readouterr().out
 
 
 def test_une_release_sans_empreinte_est_refusee(tmp_path):

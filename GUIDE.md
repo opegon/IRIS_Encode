@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.8.9.89
+**Version**: 0.8.9.90
 **Date**: 2026-10-07
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -464,7 +464,8 @@ For a whole season, or a library sorted into subfolders.
 
 1. Put the cursor **on a folder** — `R` does nothing on a file.
 2. `R`, then confirm. Every video file in the folder **and its subfolders**,
-   with no depth limit, is analyzed with the active profile.
+   with no depth limit, is analyzed with the active profile — four at a time;
+   the status bar counts them ("Analyzing… 12 / 40").
 3. The dry run opens on the result. `Space` removes a row, `F6` and `F7`
    change the codec or bitrate **of that row only**.
 4. `F2` starts.

@@ -1,5 +1,16 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.90] — 2026-10-07
+
+### « Encoder le dossier » analyse quatre fichiers à la fois (IE-117)
+
+`R` analysait les fichiers d'une arborescence un par un. Sur une saison rangée
+dans un partage réseau, chaque analyse attend le disque, et les attentes
+s'additionnaient. Ils sont désormais analysés quatre à la fois, comme sur
+l'accueil, et la barre d'état compte l'avancement au lieu d'un simple
+« Scan récursif de… ». Sur 38 fichiers d'un disque local : 3 s au lieu
+de 8.
+
 ## [v0.8.9.89] — 2026-10-07
 
 ### Ce qui reste hors du périmètre (IE-82)

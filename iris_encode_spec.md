@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.89 — document de référence courant
+**Version** : 0.8.9.90 — document de référence courant
 **Date** : 2026-10-07
 **Statut** : stable
 
@@ -2263,7 +2263,8 @@ affiche le chemin du fichier survolé.
 
 Disponible uniquement sur un **dossier**. `RecursiveConfirmModal` affiche le répertoire
 et le profil actif, puis lance un scan récursif illimité et un aperçu sur les fichiers à
-encoder (SKIP exclus). Décisions automatiques, aucune sélection de pistes.
+encoder (SKIP exclus). Décisions automatiques, aucune sélection de pistes. La barre
+d'état compte les fichiers analysés (« Analyzing… n / total », § 15.2).
 
 ### 14.2 Écran Tracks — pistes et décision vidéo
 
@@ -2748,9 +2749,13 @@ class VideoInfo:
 
 ### 15.2 Scan récursif
 
-`scan_directory_recursive(root)` — tous les fichiers vidéo sous `root`, tous niveaux,
-triés par chemin. Mêmes filtres que `scan_directory` : extensions supportées, exclusion
-de ce que l'application a elle-même encodé.
+`scan_directory_recursive(root, progres=None)` — tous les fichiers vidéo sous `root`,
+tous niveaux, triés par chemin. Mêmes filtres que `scan_directory` : extensions
+supportées, exclusion de ce que l'application a elle-même encodé. Depuis la v0.8.9.90
+(IE-117), les ffprobe tournent à `scanner.SCAN_WORKERS` (4) à la fois, comme sur
+l'accueil ; l'ordre des résultats reste celui du tri, un échec n'arrête pas le reste.
+`progres(fait, total)` est appelé après chaque fichier (sur 38 fichiers locaux :
+8,3 s en série, 3,0 s en parallèle). `tests/test_scan_recursif.py`.
 
 **Cette exclusion tient à une seule marque.** `scanner.deja_produit()` écarte tout
 nom qui finit par `-iris` (compteur de collision `(n)` admis) — donc toute
@@ -2913,7 +2918,7 @@ Retirées le même jour, parce que faites : journal persistant
 reste un module inerte), Python embarqué (`bootstrap.ps1`, § 3.1.1), mise à
 jour des outils au lancement (`core/updates.py`, § 4.4), file multi-dossiers (la
 file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
-2026-09-24). Entrée en v0.9.0 : l'analyse en parallèle du mode récursif (IE-117).
+2026-09-24). Entrée en v0.9.0 : l'analyse en parallèle du mode récursif (IE-117, livrée en v0.8.9.90).
 
 ---
 
@@ -2944,6 +2949,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.90 | 2026-10-07 | **Analyse récursive en parallèle** (§ 15.2, IE-117) : `R` analyse quatre fichiers à la fois, comme l'accueil, et compte sa progression ; `SCAN_WORKERS` passe de `tui/screens/browser.py` à `core/scanner.py` · `tests/test_scan_recursif.py` |
 | 0.8.9.89 | 2026-10-07 | **Hors scope arbitré** (§ 19, IE-82) : six lignes gardées avec leur raison, cinq retirées parce que faites, l'analyse récursive en parallèle entre en v0.9.0 (IE-117) ; aucun changement de code |
 | 0.8.9.88 | 2026-10-07 | **Documentation de la localisation** (§ 2.1, IE-95) : `README.md` et `GUIDE.md` en anglais, versions françaises en `README.fr.md` et `GUIDE.fr.md` (`git mv`), lien croisé en tête ; § 2.1 « Localisation » : ce qui ne se traduit pas, documentation en deux langues · corrigés au passage dans les deux langues : touche de la fiche (`I`, plus `F7`/`F8`), colonne « Raison » disparue, champ audio sans perte et mode HDR10 renommés, profils cités qui n'existent plus, report automatique de la mesure · `install.txt` en anglais · `tests/test_aide.py` vérifie les deux guides et les deux README |
 | 0.8.9.87 | 2026-10-07 | **Tests de la localisation** (§ 18, IE-94) : smoke dans les deux langues, captures avec `--langue`, guide et planchers de colonnes testés dans chaque langue, garde-fous structurels (textes en dur aux points d'affichage, accents dans `core/`, comparaisons à un texte traduit) · corrigés : « Jonction », « Choisir », « Annuler » affichés en dur ; colonne « Sync » à 15 |

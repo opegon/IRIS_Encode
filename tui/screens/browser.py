@@ -30,7 +30,8 @@ from core.decision import (
     AudioAction, FileDecision, VideoAction, decide, force_skip_to_encode,
     video_recopiee,
 )
-from core.scanner import deja_produit, scan, scan_directory_recursive
+from core.scanner import (SCAN_WORKERS, deja_produit, scan,
+                          scan_directory_recursive)
 from ..common import (barre_etat, colonne_fixe,
     touche,
     cellule,
@@ -50,10 +51,6 @@ if TYPE_CHECKING:
     from ..app import IrisEncodeApp
 
 _LOG = logging.getLogger(__name__)
-
-# Nombre max de scans ffprobe simultanés (I/O bound — process externes)
-_SCAN_WORKERS = 4
-
 
 # ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -834,7 +831,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         decisions: list[FileDecision] = []
         if videos:
             with ThreadPoolExecutor(
-                max_workers=min(_SCAN_WORKERS, total), thread_name_prefix="scan"
+                max_workers=min(SCAN_WORKERS, total), thread_name_prefix="scan"
             ) as pool:
                 decisions = [d for d in pool.map(_scan_one, videos) if d is not None]
 
@@ -1317,7 +1314,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self.query_one("#scan-notice", Static).update,
             "⏳ " + _("Recursive scan of {folder}…").format(folder=directory.name),
         )
-        infos     = scan_directory_recursive(directory)
+        def _progres(fait: int, total: int) -> None:
+            self.app.call_from_thread(
+                self.query_one("#scan-notice", Static).update,
+                "⏳ " + _("Analyzing… {done} / {total}").format(
+                    done=fait, total=total))
+
+        infos     = scan_directory_recursive(directory, _progres)
         profile   = self._active_profile()
         decisions = [decide(info, profile) for info in infos]
         decisions = [d for d in decisions if d.video.action != VideoAction.SKIP]

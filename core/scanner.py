@@ -11,11 +11,18 @@ import json
 import logging
 import re
 import subprocess
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 _log = logging.getLogger("iris_encode.scanner")
+
+# Analyses ffprobe simultanées : le travail est fait par des processus
+# externes, l'attente est d'entrée-sortie (un partage réseau surtout). Partagé
+# par l'accueil et le mode récursif.
+SCAN_WORKERS = 4
 
 
 SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
@@ -810,25 +817,45 @@ def scan_directory(directory: Path) -> list[VideoInfo]:
     return results
 
 
-def scan_directory_recursive(root: Path) -> list[VideoInfo]:
+def scan_directory_recursive(
+    root: Path,
+    progres: Callable[[int, int], None] | None = None,
+) -> list[VideoInfo]:
     """
     Scanne récursivement tous les fichiers vidéo sous root (tous niveaux).
     Même filtres que scan_directory : extensions supportées, pas d'encodés.
     Tri par chemin complet pour un ordre prévisible (saison → épisode).
+
+    Les analyses tournent à `SCAN_WORKERS` à la fois, comme sur l'accueil
+    (IE-117) : une à une, une saison sur un partage réseau se comptait en
+    minutes. L'ordre des résultats reste celui du tri. `progres(fait, total)`
+    est appelé après chaque fichier, depuis le fil qui l'a analysé.
     """
-    results: list[VideoInfo] = []
-    for path in sorted(root.rglob("*")):
-        if not path.is_file():
-            continue
-        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
-            continue
-        if deja_produit(path.stem):
-            continue
+    chemins = [p for p in sorted(root.rglob("*"))
+               if p.is_file()
+               and p.suffix.lower() in SUPPORTED_EXTENSIONS
+               and not deja_produit(p.stem)]
+    total, fait = len(chemins), 0
+    verrou = threading.Lock()
+
+    def _un(path: Path) -> VideoInfo | None:
+        nonlocal fait
         try:
-            results.append(scan(path))
+            info = scan(path)
         except Exception as e:
             _log.warning("scan failed for %s: %s", path, e)
-    return results
+            info = None
+        if progres is not None:
+            with verrou:
+                fait += 1
+                progres(fait, total)
+        return info
+
+    if not chemins:
+        return []
+    with ThreadPoolExecutor(max_workers=min(SCAN_WORKERS, total),
+                            thread_name_prefix="scan-rec") as pool:
+        return [i for i in pool.map(_un, chemins) if i is not None]
 
 
 def list_subdirs(directory: Path) -> list[Path]:

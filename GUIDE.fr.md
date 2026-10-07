@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.89
+**Version** : 0.8.9.90
 **Date** : 2026-10-07
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -465,7 +465,7 @@ Pour une saison entière, ou une bibliothèque rangée en sous-dossiers.
 1. Placez le curseur **sur un dossier** — `R` ne fait rien sur un fichier.
 2. `R`, puis confirmez. Tous les fichiers vidéo du dossier **et de ses
    sous-dossiers**, sans limite de profondeur, sont analysés avec le profil
-   actif.
+   actif — quatre à la fois ; la barre d'état les compte (« Analyse en cours… 12 / 40 »).
 3. L'aperçu s'ouvre sur le résultat. `Espace` retire une ligne, `F6` et `F7`
    changent le codec ou le débit **de cette ligne seulement**.
 4. `F2` lance.

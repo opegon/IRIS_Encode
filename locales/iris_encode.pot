@@ -119,7 +119,7 @@ msgstr ""
 
 #: core/decision.py:829
 #, python-brace-format
-msgid "Bitrate {bitrate}k > {target}k target +{tolerance} %"
+msgid "Bitrate {bitrate}k > {target}k target +{tolerance}%"
 msgstr ""
 
 #: core/decision.py:843
@@ -139,7 +139,7 @@ msgstr ""
 
 #: core/decision.py:884
 #, python-brace-format
-msgid "Bitrate within target ±{tolerance} %, resolution OK, codec {codec}"
+msgid "Bitrate within target ±{tolerance}%, resolution OK, codec {codec}"
 msgstr ""
 
 #: core/decision.py:887
@@ -882,7 +882,7 @@ msgstr ""
 
 #: tui/app.py:62
 #: tui/app.py:63
-#: tui/common.py:396
+#: tui/common.py:403
 #: tui/screens/quit.py:23
 msgid "Quit"
 msgstr ""
@@ -925,7 +925,7 @@ msgstr ""
 
 #: tui/app.py:288
 #, python-brace-format
-msgid "Encoding in progress · {done}/{total} · {percent} %"
+msgid "Encoding in progress · {done}/{total} · {percent}%"
 msgstr ""
 
 #: tui/app.py:333
@@ -1002,67 +1002,91 @@ msgctxt "track"
 msgid "discarded"
 msgstr ""
 
-#: tui/common.py:328
+#. terabytes (1024⁴ bytes), as Windows Explorer names them.
+#: tui/common.py:244
+msgctxt "bytes"
+msgid "TB"
+msgstr ""
+
+#. gigabytes (1024³ bytes), as Windows Explorer names them.
+#: tui/common.py:247
+msgctxt "bytes"
+msgid "GB"
+msgstr ""
+
+#. megabytes (1024² bytes), as Windows Explorer names them.
+#: tui/common.py:250
+msgctxt "bytes"
+msgid "MB"
+msgstr ""
+
+#. kilobytes (1024 bytes), as Windows Explorer names them.
+#: tui/common.py:252
+msgctxt "bytes"
+msgid "KB"
+msgstr ""
+
+#: tui/common.py:335
 msgid "AV1  (⚠ very demanding)"
 msgstr ""
 
-#: tui/common.py:349
+#: tui/common.py:356
 msgid "unavailable here"
 msgstr ""
 
-#: tui/common.py:364
+#: tui/common.py:371
 msgid "Bitrate (AV1)"
 msgstr ""
 
-#: tui/common.py:364
+#: tui/common.py:371
 #: tui/screens/dryrun.py:115
 msgid "Target bitrate"
 msgstr ""
 
-#: tui/common.py:377
+#: tui/common.py:384
 #: tui/mixins.py:36
 #: tui/screens/browser.py:464
 msgid "Start"
 msgstr ""
 
-#: tui/common.py:378
+#: tui/common.py:385
 #: tui/mixins.py:37
 #: tui/screens/browser.py:465
 msgid "End"
 msgstr ""
 
-#: tui/common.py:379
+#: tui/common.py:386
 #: tui/mixins.py:38
 msgid "Page ↑"
 msgstr ""
 
-#: tui/common.py:380
+#: tui/common.py:387
 #: tui/mixins.py:39
 msgid "Page ↓"
 msgstr ""
 
 #. "Col" is short for column; keep these labels short.
-#: tui/common.py:385
+#: tui/common.py:392
 #: tui/mixins.py:140
 msgid "Prev col"
 msgstr ""
 
-#: tui/common.py:386
+#: tui/common.py:393
 #: tui/mixins.py:141
 msgid "Next col"
 msgstr ""
 
-#: tui/common.py:387
+#: tui/common.py:394
 #: tui/mixins.py:142
 msgid "Narrow"
 msgstr ""
 
-#: tui/common.py:388
+#: tui/common.py:395
 #: tui/mixins.py:143
 msgid "Widen"
 msgstr ""
 
-#: tui/common.py:391
+#: tui/common.py:398
 #: tui/screens/aide.py:433
 #: tui/screens/aide.py:434
 #: tui/screens/aide.py:442
@@ -1088,7 +1112,7 @@ msgstr ""
 msgid "Back"
 msgstr ""
 
-#: tui/common.py:395
+#: tui/common.py:402
 #: tui/screens/aide.py:291
 #: tui/screens/browser.py:263
 #: tui/screens/config.py:66
@@ -1103,7 +1127,7 @@ msgid "Home"
 msgstr ""
 
 #. "Dolby V." is short for Dolby Vision; keep it short.
-#: tui/common.py:521
+#: tui/common.py:528
 #: tui/screens/browser.py:279
 #: tui/screens/browser.py:376
 #: tui/screens/browser.py:501
@@ -1112,21 +1136,21 @@ msgid "Profile"
 msgstr ""
 
 #. "Dolby V." is short for Dolby Vision; keep it short.
-#: tui/common.py:521
+#: tui/common.py:528
 msgid "Dolby V."
 msgstr ""
 
-#: tui/common.py:522
+#: tui/common.py:529
 #: tui/widgets/profile_form.py:260
 msgid "Preset"
 msgstr ""
 
-#: tui/common.py:522
+#: tui/common.py:529
 #: tui/screens/browser.py:585
 msgid "HD audio"
 msgstr ""
 
-#: tui/common.py:522
+#: tui/common.py:529
 #: tui/screens/sync.py:285
 #: tui/screens/tracks.py:145
 msgid "Source"
@@ -1134,13 +1158,13 @@ msgstr ""
 
 #. profile column Source — "del." = the source is deleted after encoding (keep it short), "keep" = it is kept.
 #. column Actions of the profile list; keep it short.
-#: tui/common.py:550
+#: tui/common.py:557
 #: tui/screens/config.py:123
 msgctxt "source file"
 msgid "del."
 msgstr ""
 
-#: tui/common.py:552
+#: tui/common.py:559
 #: tui/screens/tracks.py:429
 #: tui/screens/tracks.py:435
 #: tui/screens/tracks.py:705
@@ -4068,7 +4092,7 @@ msgid "default compromise."
 msgstr ""
 
 #: tui/widgets/profile_form.py:366
-msgid "better quality at equal bitrate, about 30 % slower."
+msgid "better quality at equal bitrate, about 30% slower."
 msgstr ""
 
 #: tui/widgets/profile_form.py:370

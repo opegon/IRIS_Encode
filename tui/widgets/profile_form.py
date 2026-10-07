@@ -363,7 +363,7 @@ class ProfileForm(Widget):
     _PRESET_TXT = {
         "fast":   N_("the fastest, lower quality at equal bitrate."),
         "medium": N_("default compromise."),
-        "slow":   N_("better quality at equal bitrate, about 30 % slower."),
+        "slow":   N_("better quality at equal bitrate, about 30% slower."),
     }
 
     _CONTENEUR_TXT = {

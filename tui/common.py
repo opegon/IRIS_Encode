@@ -235,14 +235,21 @@ def libelle_ecartee() -> str:
     return f"← {pgettext('track', 'discarded')}"
 
 
+# Multiples de 1024, comme l'Explorateur Windows, qui les nomme pourtant GB :
+# les tailles se comparent à vue. Seule l'unité se traduit ; le point décimal
+# est le même dans toutes les langues (IE-90).
 def fmt_bytes(b: int) -> str:
     if b >= 1_099_511_627_776:
-        return f"{b / 1_099_511_627_776:.1f} To"
+        # TRANSLATORS: terabytes (1024⁴ bytes), as Windows Explorer names them.
+        return f"{b / 1_099_511_627_776:.1f} {pgettext('bytes', 'TB')}"
     if b >= 1_073_741_824:
-        return f"{b / 1_073_741_824:.1f} Go"
+        # TRANSLATORS: gigabytes (1024³ bytes), as Windows Explorer names them.
+        return f"{b / 1_073_741_824:.1f} {pgettext('bytes', 'GB')}"
     if b >= 1_048_576:
-        return f"{b / 1_048_576:.0f} Mo"
-    return f"{b // 1024} Ko"
+        # TRANSLATORS: megabytes (1024² bytes), as Windows Explorer names them.
+        return f"{b / 1_048_576:.0f} {pgettext('bytes', 'MB')}"
+    # TRANSLATORS: kilobytes (1024 bytes), as Windows Explorer names them.
+    return f"{b // 1024} {pgettext('bytes', 'KB')}"
 
 
 def fmt_size(path: Path) -> str:

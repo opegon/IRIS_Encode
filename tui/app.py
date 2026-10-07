@@ -285,7 +285,7 @@ class IrisEncodeApp(App):
         if lot.termine:
             return f"{f12} " + _("Batch done")
         done, total, pct = lot.avancement()
-        return f"{f12} " + _("Encoding in progress · {done}/{total} · {percent} %").format(
+        return f"{f12} " + _("Encoding in progress · {done}/{total} · {percent}%").format(
             done=done, total=total, percent=pct)
 
     # ── Veille (`core/veille.py`) ─────────────────────────────────────────────

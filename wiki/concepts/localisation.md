@@ -1,9 +1,10 @@
 ---
 type: concept
-maj: 2026-10-04
+maj: 2026-10-07
 sources:
   - "[[source-2026-10-04-localisation]]"
   - "[[source-spec]]"
+  - "[[2026-10-07-decisions-formats]]"
 ---
 
 # Localisation
@@ -42,6 +43,18 @@ Le champ Nom du recalage propose des noms **selon la langue de la piste**, pas
 de l'interface (décidé le 2026-10-04) : `fre` → VF, VFF, VFQ, VOSTFR, Forcés,
 Commentaires, SDH ; `eng` → English, Forced, Commentary, SDH ; autre langue →
 Forced, SDH. Ce sont des données écrites dans le fichier ([[sous-titres]]).
+
+## Formats
+
+Arbitrés par l'utilisateur le 2026-10-07 ([[2026-10-07-decisions-formats]]) :
+les formats suivent `[app] language`, jamais les paramètres régionaux de Windows,
+et une seule chose varie d'une langue à l'autre : **l'unité d'octets**
+(TB/GB/MB/KB en anglais, comme l'Explorateur, qui compte pourtant en 1024 ;
+To/Go/Mo/Ko en français), au catalogue sous le contexte `bytes`. Le reste est
+identique partout, hors catalogue : **point décimal** (`1.5 Go`), **pourcentage
+collé** au nombre (`12%`, aussi en français), durées `H:MM:SS`, symboles `ms`,
+`s`, `k`, `kbps`. Le texte de remise du quota OpenSubtitles est montré tel que
+l'API l'envoie, en anglais. `tests/test_formats.py` garde ces règles.
 
 ## Glossaire
 

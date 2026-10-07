@@ -826,7 +826,7 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     if debit_au_dessus_de_la_cible(info.bitrate, target_bps):
         return VideoDecision(
             action=action,
-            reason=_raison(_("Bitrate {bitrate}k > {target}k target +{tolerance} %").format(
+            reason=_raison(_("Bitrate {bitrate}k > {target}k target +{tolerance}%").format(
                 bitrate=info.kbps, target=target_bps // 1000,
                 tolerance=TOLERANCE_DEBIT_PCT)),
             target_bitrate=target_bps,
@@ -881,7 +881,7 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     # SKIP
     return VideoDecision(
         action=VideoAction.SKIP,
-        reason=(_("Bitrate within target ±{tolerance} %, resolution OK, codec {codec}")
+        reason=(_("Bitrate within target ±{tolerance}%, resolution OK, codec {codec}")
                 .format(tolerance=TOLERANCE_DEBIT_PCT, codec=info.codec)
                 if info.bitrate >= target_bps else
                 _("Bitrate OK, resolution OK, codec {codec}").format(codec=info.codec)),

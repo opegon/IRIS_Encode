@@ -50,7 +50,7 @@ def test_au_dela_de_la_tolerance_le_cas_1_s_applique(kbps):
 
 
 def test_la_raison_du_skip_dit_que_le_debit_est_dans_la_tolerance():
-    assert "±10 %" in decide_video(_info(2100), PROFIL).reason
+    assert "±10%" in decide_video(_info(2100), PROFIL).reason
     assert "±" not in decide_video(_info(1800), PROFIL).reason
 
 

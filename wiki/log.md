@@ -224,3 +224,9 @@ SAR de 192079:192000 et 959:960 ; `setsar=1` ajouté. Source :
 L'utilisateur confirme que la correction d'IE-69 tient sur le téléviseur. Question
 retirée de [[questions-ouvertes]]. Source : [[2026-10-06-declaration-ie72]].
 Pages touchées : [[lg-oled-g3]].
+
+## [2026-10-07] ingest | Formats localisés arbitrés (IE-90)
+
+Quatre choix de l'utilisateur : point décimal fixe, octets TB/GB/MB/KB en
+anglais, « 12% » sans espace dans toutes les langues, quota OpenSubtitles laissé
+brut. Source : [[2026-10-07-decisions-formats]]. Pages touchées : [[localisation]].

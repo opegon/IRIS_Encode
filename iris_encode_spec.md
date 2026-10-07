@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.81 — document de référence courant
-**Date** : 2026-10-06
+**Version** : 0.8.9.82 — document de référence courant
+**Date** : 2026-10-07
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -149,6 +149,15 @@ marqués `N_()`, traduits au rendu ; les titres reprennent les `msgid` des
 retiré : tous les pluriels passent par `ngettext`.
 `tests/test_i18n.py` refuse un littéral accentué hors de `_()` dans `tui/`. Les tests chargent le français (`tests/conftest.py`, smoke, captures) :
 un test qui vérifie un message français vérifie aussi sa traduction.
+
+**Formats (v0.8.9.82)** : ils suivent `[app] language`, jamais les paramètres
+régionaux de Windows (pas de module `locale`). Seule l'unité d'octets de
+`fmt_bytes` est traduite (`pgettext("bytes", …)` : TB/GB/MB/KB, To/Go/Mo/Ko en
+français ; multiples de 1024). Identiques dans toutes les langues, hors
+catalogue : point décimal, pourcentage collé au nombre (`12%`), durées
+`H:MM:SS`, symboles `ms`, `s`, `k`, `kbps`, heure de l'en-tête `%H:%M:%S`.
+Le texte de remise du quota OpenSubtitles est celui de l'API.
+`tests/test_formats.py` garde ces règles.
 
 Le **glossaire** (`locales/glossaire.fr.csv`, colonnes `source`, `target`,
 `explanation`) fixe un terme anglais = une traduction, et les termes à ne
@@ -2863,6 +2872,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.82 | 2026-10-07 | **Formats localisés** (§ 2.1, IE-90) : unités d'octets traduites (TB/GB/MB/KB ↔ To/Go/Mo/Ko), point décimal fixe, « 12% » sans espace partout (raisons de décision, barre d'état, volumes, aide du preset) · `tests/test_formats.py` |
 | 0.8.9.81 | 2026-10-06 | **Guide des touches traduit** (§ 2.1, IE-89) : 113 messages, rendu français identique à l'octet ; libellés et touches cités en paramètres, touches lues dans les `BINDINGS` ; repli en cellules · `tests/test_aide.py` (traduction exigée, paramètres fournis), exception d'IE-88 retirée de `tests/test_i18n.py` |
 | 0.8.9.80 | 2026-10-06 | **Pas d'agrandissement** (§ 8.1) : `scale` n'est posé que si la source dépasse la cible — un 1918×802 réencodé sortait étiré en 1920×802. Une dimension impaire perd un pixel (`trunc(iw/2)*2`) · `tests/test_resolution_nom.py` |
 | 0.8.9.79 | 2026-10-06 | **Pixels carrés après redimensionnement** (§ 8.1) : `scale` rattrapait l'arrondi de la hauteur par un SAR — 3832×1600 → 1920×802 en 192079:192000, 1918×802 → 1920×802 en 959:960 — et Jellyfin transcodait la vidéo, prise pour anamorphique. Le filtre vidéo pose `setsar=1` après `scale` · `tests/test_resolution_nom.py` |

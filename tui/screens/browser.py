@@ -84,7 +84,7 @@ def _cellules_volume(volume: Path) -> tuple[Text, Text, Text]:
     return (
         Text(fmt_bytes(usage.free), no_wrap=True),
         Text(fmt_bytes(usage.total), style="dim", no_wrap=True),
-        Text(f"{part:.0f} %", style=style_occupe, no_wrap=True),
+        Text(f"{part:.0f}%", style=style_occupe, no_wrap=True),
     )
 
 

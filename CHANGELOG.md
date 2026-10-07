@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.82] — 2026-10-07
+
+### Les formats suivent la langue de l'application (IE-90)
+
+Les tailles s'écrivent TB, GB, MB, KB en anglais et To, Go, Mo, Ko en
+français. Le calcul est en multiples de 1024, comme dans l'Explorateur Windows,
+qui les nomme pareil : une taille se compare à vue. Jusqu'ici l'unité française
+était en dur, et l'interface anglaise aurait affiché « 1.2 Go ».
+
+Le pourcentage est collé au nombre partout, « 12% » : l'application écrivait
+tantôt « 12% », tantôt « 12 % » (raisons de décision, barre d'état de
+l'encodage, occupation des volumes, aide du preset `slow`).
+
+Ne changent pas, et sont identiques dans les deux langues : le point décimal,
+les durées `H:MM:SS`, les symboles `ms`, `s`, `k`, `kbps`. Le texte de remise
+du quota OpenSubtitles reste celui que l'API envoie.
+
 ## [v0.8.9.81] — 2026-10-06
 
 ### Le guide des touches suit la langue de l'application (IE-89)

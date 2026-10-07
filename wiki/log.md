@@ -269,3 +269,10 @@ Pages touchées : [[localisation]].
 
 README et GUIDE en anglais, versions françaises en `.fr.md`. Dérives du guide
 français corrigées au passage. Pages touchées : [[localisation]].
+
+## [2026-10-07] query | Hors scope de la spec arbitré (IE-82)
+
+Six lignes gardées hors scope avec leur raison, cinq retirées parce que faites,
+l'analyse récursive en parallèle placée en v0.9.0 (IE-117). Fait relevé : pas
+de corbeille Windows sur un partage réseau, d'où le refus d'une corbeille pour
+`Ctrl+D`. Spec § 19. Pages touchées : aucune.

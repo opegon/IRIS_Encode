@@ -1,5 +1,17 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.89] — 2026-10-07
+
+### Ce qui reste hors du périmètre (IE-82)
+
+La liste « hors scope » de la spécification a été revue ligne par ligne. Cinq
+lignes disparaissent parce que c'est déjà fait : le journal des erreurs, le
+Python embarqué, la mise à jour des outils au lancement, la file d'encodage
+multi-dossiers, le Dolby Vision au remux mkvmerge. Six restent hors scope,
+chacune avec sa raison écrite — dont la corbeille pour `Ctrl+D` : Windows n'en
+a pas sur un partage réseau. L'analyse en parallèle du mode récursif (`R`) entre
+dans la v0.9.0. Aucun changement de code.
+
 ## [v0.8.9.88] — 2026-10-07
 
 ### La documentation en anglais et en français (IE-95)

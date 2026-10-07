@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.88 — document de référence courant
+**Version** : 0.8.9.89 — document de référence courant
 **Date** : 2026-10-07
 **Statut** : stable
 
@@ -2896,19 +2896,24 @@ python -m pytest tests/
 
 ## 19. Hors scope
 
-- Logs applicatifs persistants (architecture en place, backend non branché)
-- Python embarqué
-- Interface de mise à jour des sources ffmpeg
-- File de traitement multi-dossiers (hors mode récursif)
-- Gestion des commentary tracks par heuristique (titre de piste)
-- Widget multi-langue par badges pour `audio_languages` (champ texte libre)
-- Timeout ou concurrence sur le mode récursif
-- Pistes externes en traitement par lot (un fichier à la fois)
-- IPC mpv sur named pipe (ajustement en OSD, valeur retapée dans la TUI)
-- Collage de parties aux codecs ou définitions différents : refusé et nommé, jamais
-  rattrapé par un réencodage (§ 9bis.3)
-- Dolby Vision au remux mkvmerge — non vérifié (§ 9.5 piège 8)
-- Suppression de fichier vers la corbeille (`Ctrl+D` supprime définitivement)
+Arbitré ligne par ligne par l'utilisateur le 2026-10-07 (IE-82). Ce qui reste
+hors scope, et pourquoi :
+
+| Hors scope | Raison |
+|---|---|
+| Pistes de commentaire repérées par leur titre | Confort : une piste de commentaire dans une langue gardée est conservée, ce qui ne coûte que de la place ; l'écran des pistes l'écarte d'un `Espace` |
+| Badges de langues pour `audio_languages` | Le champ texte (`fre, eng`) suffit, et les deux jeux de codes ISO sont réconciliés |
+| Pistes externes en traitement par lot | Chaque greffe demande sa mesure et son contrôle : un fichier à la fois, par construction |
+| IPC mpv (réglage dans mpv repris par l'application) | La valeur se retape dans l'écran de recalage ; le gain ne justifie pas un canal nommé par plateforme |
+| Collage de parties aux codecs ou définitions différents | Décision de conception : refusé et nommé, jamais rattrapé par un réencodage (§ 9bis.3) |
+| `Ctrl+D` vers la corbeille | Windows ne met pas en corbeille un fichier d'un partage réseau, là où vit l'essentiel d'une bibliothèque : la promesse serait fausse. La suppression reste définitive et le dit |
+
+Retirées le même jour, parce que faites : journal persistant
+(`~/.iris_encode/iris_encode.log`, avertissements et erreurs ; `logger/logger.py`
+reste un module inerte), Python embarqué (`bootstrap.ps1`, § 3.1.1), mise à
+jour des outils au lancement (`core/updates.py`, § 4.4), file multi-dossiers (la
+file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
+2026-09-24). Entrée en v0.9.0 : l'analyse en parallèle du mode récursif (IE-117).
 
 ---
 
@@ -2939,6 +2944,7 @@ python -m pytest tests/
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.89 | 2026-10-07 | **Hors scope arbitré** (§ 19, IE-82) : six lignes gardées avec leur raison, cinq retirées parce que faites, l'analyse récursive en parallèle entre en v0.9.0 (IE-117) ; aucun changement de code |
 | 0.8.9.88 | 2026-10-07 | **Documentation de la localisation** (§ 2.1, IE-95) : `README.md` et `GUIDE.md` en anglais, versions françaises en `README.fr.md` et `GUIDE.fr.md` (`git mv`), lien croisé en tête ; § 2.1 « Localisation » : ce qui ne se traduit pas, documentation en deux langues · corrigés au passage dans les deux langues : touche de la fiche (`I`, plus `F7`/`F8`), colonne « Raison » disparue, champ audio sans perte et mode HDR10 renommés, profils cités qui n'existent plus, report automatique de la mesure · `install.txt` en anglais · `tests/test_aide.py` vérifie les deux guides et les deux README |
 | 0.8.9.87 | 2026-10-07 | **Tests de la localisation** (§ 18, IE-94) : smoke dans les deux langues, captures avec `--langue`, guide et planchers de colonnes testés dans chaque langue, garde-fous structurels (textes en dur aux points d'affichage, accents dans `core/`, comparaisons à un texte traduit) · corrigés : « Jonction », « Choisir », « Annuler » affichés en dur ; colonne « Sync » à 15 |
 | 0.8.9.86 | 2026-10-07 | **Annexes Jellyfin supprimées avec la source** (§ 14.7, IE-116) : `<nom>.nfo` et `<nom>-*.jpg|png…` partent avec la source après encodage (`delete_source`) et avec `Ctrl+D`, que la confirmation liste ; sous-titres externes, fichiers du dossier et sortie conservés · `core/annexes.py`, `tests/test_annexes.py` |

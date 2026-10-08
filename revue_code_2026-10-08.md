@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `tui/screens/config.py` fait. 1 mineur (options sans effet sur l'accueil avant le prochain dossier).
-- Prochain : `tui/widgets/profile_form.py`.
+- 2026-10-08 — `tui/screens/meta_popup.py` fait. 2 mineurs (titre de disque cherché par son nom de playlist, crochets lus comme balises).
+- Prochain : `tui/screens/aide.py`.
 
 ### Pistes notées en route
 
@@ -42,7 +42,6 @@ Observations faites en lisant un appelant, à instruire quand leur fichier vient
 (et à retirer une fois instruites).
 
 - `main.py` : la console du preflight imprime `✓ ✗ ↑ …` ; sortie redirigée vers un fichier ou un tube sous Windows (cp1252) → `UnicodeEncodeError` au démarrage ? (`sys.stdout.reconfigure` ?)
-- `core/opensubtitles.py`, `tui/screens/meta_popup.py` : pour un **titre de disque**, `parse_title(info.path)` lit `00800.mpls` / `TITLE_01.dvd` (titre « 00800 ») et l'empreinte se calcule sur une playlist de quelques centaines d'octets — utiliser `stem_sortie` et `lecture` ?
 
 ## Cadre (déjà tranché, ne pas re-signaler)
 
@@ -208,11 +207,11 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] tui/screens/segments.py (137)
 - [x] tui/screens/options.py (176)
 - [x] tui/screens/config.py (349)
-- [ ] tui/widgets/profile_form.py (668)
-- [ ] tui/screens/profile_picker.py (119)
-- [ ] tui/screens/value_picker.py (97)
-- [ ] tui/screens/cles.py (233)
-- [ ] tui/screens/meta_popup.py (215)
+- [x] tui/widgets/profile_form.py (668)
+- [x] tui/screens/profile_picker.py (119)
+- [x] tui/screens/value_picker.py (97)
+- [x] tui/screens/cles.py (233)
+- [x] tui/screens/meta_popup.py (215)
 - [ ] tui/screens/aide.py (521)
 - [ ] tui/screens/confirm.py (141)
 - [ ] tui/screens/delete_confirm.py (45)
@@ -779,6 +778,39 @@ Aucun constat nouveau. Lu avec `ConfigScreen` (`U`) et `OutputDirScreen` : la la
   - Correction : `push_screen(OptionsScreen(), lambda ok: setattr(self, "_changed", self._changed or bool(ok)))`, ou un rafraîchissement ciblé de l'accueil.
   - Test : options enregistrées depuis la gestion des profils : `dismiss` rend True.
 - Voir aussi CR-77 : `prof_mod.save_all` (`:303`, `:330`) écrit `profiles.toml` par le même chemin atomique que `config.save`, sans garde non plus — un verrou au mauvais moment ferme l'application au milieu d'une édition de profil. CR-45 (bibliothèque écrasée après un TOML invalide) passe par ces deux mêmes appels.
+
+### tui/widgets/profile_form.py
+
+- **CR-99** · `tui/widgets/profile_form.py:600-601` · mineur · J · reproduit — La validation de l'identifiant accepte ce que son message dit refuser.
+  - Scénario : `c.isalnum()` est vrai pour toute lettre Unicode : « Série_été » passe (vérifié), alors que le message annonce « a-z, 0-9, - _ » et que `core/profiles.py:47` (`ID_PATTERN`, sans appelant — CR-46) le refuserait. Sans conséquence aujourd'hui (la clé TOML est citée, rien n'en fait un nom de fichier), mais deux définitions de l'identifiant valide coexistent, et la seule appliquée n'est pas celle qui est écrite.
+  - Correction : valider par `profiles.validate_id` (et ajuster le message à `a-z, A-Z`), ou accepter l'Unicode et le dire.
+  - Test : « Série_été » est refusé (ou accepté) par le formulaire **et** par `validate_id`, de la même façon.
+- Lu par ailleurs : `on_key` sans `super()` — contraire à la lettre de G4, mais correct sous Textual (voir CR-80) ; `dump()` couvre toutes les clés du profil livré ; `load()` ajoute à la liste une valeur hors liste (`_avec_valeur`) au lieu de laisser le champ vide.
+
+### tui/screens/profile_picker.py
+
+Aucun constat. Mêmes cellules que la gestion des profils (`cellules_profil`, `largeurs_colonnes` en `cell_len`), curseur sur le profil actif, `Échap`/`⌫` rendent None. Appelé par l'accueil (`F4`) et l'écran des pistes (`F4`, voir CR-81 pour ce que ce dernier fait du choix).
+
+### tui/screens/value_picker.py
+
+Aucun constat. Rend l'index de la ligne ou None ; tous les appelants fournissent au moins une option (le filtre a toujours « Tous », les noms commencent par « — », la reprise de décalage exige deux pistes). Largeur calculée en `len()` (pleine chasse : voir l'audit de localisation).
+
+### tui/screens/cles.py
+
+Aucun constat nouveau. Lu avec `core/cles.py` : les vérificateurs rendent un message plutôt que de lever (réseau, JSON illisible d'OMDb), la vérification tourne dans un worker et la fenêtre reste ouverte tant qu'un service refuse ; « Ne plus demander » vaut aussi sans saisie. Les deux `cfg_mod.save` (`:168`, `:228`) sont dans CR-77 ; la clé OMDb en HTTP est CR-47.
+
+- **Question** — Le mot de passe OpenSubtitles est saisi masqué (`password=True`) puis enregistré en clair dans `config.toml`, à côté de l'application (section `[opensubtitles]`, documentée en spec § 9.8). Choix assumé pour un poste personnel, ou passage par le coffre d'identifiants de Windows (`keyring`) ?
+
+### tui/screens/meta_popup.py
+
+- **CR-100** · `tui/screens/meta_popup.py:132`, appelé par `tui/screens/browser.py:1381-1386` (`MetaPopup(path, …)`) · mineur · J · reproduit (titres analysés) — `I` sur un titre de disque cherche « 00800 » ou « TITLE 01 ».
+  - Scénario : la ligne d'un titre a pour chemin sa playlist ou son nom fictif ; `parse_title` rend `('00800', None)` pour `00800.mpls` et `('TITLE 01', None)` pour `TITLE_01.dvd` (vérifié). AlloCiné et IMDB cherchent ce texte, alors que le nom du disque (`info.stem_sortie`, celui qui nomme déjà la sortie) donne le titre et souvent l'année. Même cause que CR-96 côté OpenSubtitles.
+  - Correction : passer à la fiche `stem_sortie` (ou la `VideoInfo`) plutôt que le chemin de la ligne.
+  - Test : `I` sur un titre de Blu-ray simulé dont le disque s'appelle « Film (2020) » : la requête est « Film », année 2020.
+- **CR-101** · `tui/screens/meta_popup.py:120`, `:134-136` (`Static` à balisage actif, titre interpolé) · mineur · J · reproduit — Les crochets d'un nom de fichier sont lus comme des balises : l'en-tête n'affiche pas la recherche réellement envoyée.
+  - Scénario : `"[bold]AlloCiné[/bold] — " + query` dans un `Static` sans `markup=False`. Reproduit : « Blade Runner [Final Cut] 1982 » s'affiche « Blade Runner  (1982) », « [HorribleSubs] Anime - 01 » s'affiche « Anime 01 », alors que la requête envoyée garde les crochets (et c'est souvent pour eux qu'elle échoue). Le reste de l'application passe les noms de fichiers en `markup=False` ou en `Text`.
+  - Correction : composer l'en-tête en `Text` (libellé en gras, requête en clair), comme `_show_result` le fait déjà.
+  - Test : fiche ouverte sur « Film [Final Cut] (2020).mkv » : l'en-tête contient « [Final Cut] ».
 
 ## Synthèse
 

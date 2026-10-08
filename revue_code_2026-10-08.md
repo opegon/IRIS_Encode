@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `updater.py` fait. 1 mineur (protections sensibles à la casse sous NTFS).
-- Prochain : `launch.bat`.
+- 2026-10-08 — `bootstrap.ps1` fait. 1 mineur (dépendances non figées).
+- Prochain : `launcher/IrisEncodeLauncher.cs`.
 
 ### Pistes notées en route
 
@@ -224,8 +224,8 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 ### Racine et lanceurs
 - [x] main.py (156)
 - [x] updater.py (327)
-- [ ] launch.bat (148)
-- [ ] bootstrap.ps1 (262)
+- [x] launch.bat (148)
+- [x] bootstrap.ps1 (262)
 - [ ] launcher/IrisEncodeLauncher.cs (72)
 - [ ] launcher/build.bat (66)
 
@@ -870,6 +870,29 @@ Aucun constat (un commentaire par fichier).
   - Scénario : la docstring promet qu'« aucun chemin de l'archive n'a le droit d'y écrire, même si une archive fautive le demandait ». `_protege("Config.toml")`, `_protege("BIN/ffmpeg.exe")`, `_protege(".VENV/Scripts/python.exe")` rendent faux (vérifié) ; sous NTFS, ces entrées écrasent `config.toml`, `bin\ffmpeg.exe` ou l'interpréteur du `.venv`. Le reste du garde-fou tient sous Windows : `zipfile` y ramène les `\` à `/` à la lecture (`_sanitize_filename`), donc `..` et les chemins absolus sont vus. Peu probable avec `git archive` et l'empreinte publiée, mais c'est précisément le cas que la liste prétend couvrir.
   - Correction : comparer en `casefold()` (noms et premier segment).
   - Test : une archive contenant `Config.toml` est refusée par `contenu_archive`.
+
+### launch.bat
+
+- **CR-107** · `launch.bat:133-137` · mineur · W · lu — La purge des `__pycache__` descend dans `.venv` : toutes les dépendances sont recompilées à chaque lancement.
+  - Scénario : `for /d /r . %%d in (__pycache__)` part de la racine de l'application, `.venv\Lib\site-packages` compris. Textual, Rich, NumPy, requests, bs4 perdent leurs `.pyc` à chaque démarrage, se recompilent et les réécrivent : quelques secondes de plus sur un SSD, bien davantage sur la clé USB que le commentaire de la ligne 139 met en avant (et autant d'écritures). Le motif invoqué (« évite les conflits après mise à jour ») ne tient pas pour des `.pyc` de `__pycache__` : Python les invalide d'après la date et la taille de la source, et ne charge jamais un `.pyc` de `__pycache__` sans sa source.
+  - Correction : limiter la purge aux dossiers de l'application (`core`, `tui`, racine), ou la supprimer.
+  - Test : structurel — la commande de purge n'atteint pas `.venv`.
+- **CR-108** · `launch.bat:2` (`enabledelayedexpansion` pour tout le fichier), `:26-28`, `:57`, `:64`, `:124` · mineur · W · supposé (cmd non exécutable ici) — Un dossier d'installation dont le chemin contient `!` casse le lanceur ; une apostrophe fait perdre la version du bandeau.
+  - Scénario : avec l'expansion retardée active, `%~dp0` développé puis relu fait disparaître tout `!` isolé : `D:\Films!\IRIS\.venv\Scripts\python.exe` devient introuvable, le `.venv` n'est jamais reconnu et `bootstrap.ps1` repart à chaque lancement (comportement connu de cmd). Une apostrophe (« D:\Vidéos d'été\IRIS ») ferme la chaîne brute `r'%~dp0.'` du `for /f` de la ligne 124 : SyntaxError avalée, bandeau sans version (cosmétique).
+  - Correction : n'activer l'expansion retardée que dans le bloc qui lit `!pyver!` (`setlocal enabledelayedexpansion` / `endlocal` autour des lignes 31-41) ; passer le chemin par une variable d'environnement plutôt que dans le code Python.
+  - Test : manuel sous Windows — installation dans un dossier `Test!` puis `Test'x` : le `.venv` est retrouvé, la version s'affiche.
+- **CR-109** · `launch.bat:31-41`, `:80` ; `requirements.txt` (`textual>=0.47.0`) · mineur · J · supposé — Le Python du système est retenu sur un simple `import`, sans contrôle de version des dépendances, alors que le code exige un Textual bien plus récent que le plancher déclaré.
+  - Scénario : un Python 3.11+ du PATH avec un Textual 1.x déjà installé passe l'`import` ; `pip install -r requirements.txt` n'est même pas lancé, et le serait-il, `textual>=0.47.0` est satisfait. Or l'application est éprouvée sous Textual 8 et emploie des API récentes — `compact=True` sur `Button` et `Input` (`tui/screens/options.py:105`, `:110`, arrivé avec Textual 2 si ma mémoire est bonne) : l'écran des options lèverait `TypeError`. Le `.venv` construit par `bootstrap.ps1` n'est pas concerné (versions récentes).
+  - Correction : planchers réels dans `requirements.txt` (au moins la version majeure de Textual éprouvée), et contrôle de version dans le test du lanceur (`importlib.metadata.version`).
+  - Test : structurel — le plancher de `textual` dans `requirements.txt` n'est pas inférieur à la version majeure des tests.
+
+### bootstrap.ps1
+
+- **CR-110** · `bootstrap.ps1:241-247` (`uv pip install -r requirements.txt`), `requirements.txt` (planchers seuls) ; `launch.bat:19-21` · mineur · J · supposé — L'environnement isolé installe « la plus récente » de chaque dépendance : une installation neuve peut recevoir un Textual que l'application n'a jamais vu.
+  - Scénario : `requirements.txt` ne porte que des `>=` ; `uv pip install` prend donc la dernière version publiée au jour du bootstrap. Textual change de version majeure plusieurs fois par an, avec des ruptures que le code a déjà dû absorber (`Select.NULL`, « depuis Textual 8 », `tui/widgets/profile_form.py:98-102`). Le commentaire du lanceur (« le seul dont on connaisse les versions de dépendances ») suppose l'inverse. Un nouvel utilisateur peut ainsi recevoir, le jour d'une majeure, une application qui ne démarre pas — alors que l'installation de l'auteur, faite plus tôt, fonctionne. Pendant de CR-109 (planchers trop bas pour un Python système).
+  - Correction : un fichier de contraintes (ou un `uv.lock`) aux versions éprouvées, passé à `uv pip install -c …`, mis à jour avec les tests.
+  - Test : structurel — toute dépendance de `requirements.txt` a une borne haute ou une contrainte figée.
+- Lu par ailleurs : idempotent (`Test-EnvComplet` importe les six modules), refus de Smart App Control reconnu sur preuve (`4551` en contexte), venv créé par le module `venv` (lanceurs signés) puis garni par uv, TLS 1.2 forcé pour PowerShell 5.1, fichier en UTF-8 avec BOM (les « — » s'affichent). Le téléchargement de `uv.exe` sans empreinte relève du choix déjà tranché pour les outils (spec § 4.4) : non re-signalé.
 
 ## Synthèse
 

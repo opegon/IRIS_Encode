@@ -7,13 +7,14 @@ de sélection + transcodage des pistes audio.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+import subprocess
+from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from pathlib import Path
 from typing import Optional
 
-from .i18n import N_, _, pgettext
-from .muxer import MUX_SUFFIX, ExternalTrack
+from .i18n import N_, ErreurAffichable, _, pgettext
+from .muxer import MUX_SUFFIX, ExternalTrack, TrackKind
 from .profiles import Profile
 from .scanner import (MARQUE_IRIS, AudioTrack, VideoInfo, channel_layout_label,
                       deja_produit, normalize_language, porte_marque,
@@ -495,7 +496,11 @@ class FileDecision:
         if any(ad.action == AudioAction.COPY and ad.track.is_lossless
                for ad in self.audio):
             return True
+        # Une piste audio greffée suit la règle du profil (IE-125) : sans perte,
+        # elle n'est recopiée — donc n'impose le MKV — qu'avec preserve_hd_audio.
+        copie_hd = self.profile.get("preserve_hd_audio", False)
         return any(_needs_mkv_codec(ext.codec)
+                   and (ext.kind != TrackKind.AUDIO or copie_hd)
                    for ext in self.external_tracks + self.premuxed_tracks)
 
     @property
@@ -1061,8 +1066,7 @@ def decide_audio(
     # faisait disparaître la piste sans un mot. Voir scanner.normalize_language.
     langues_voulues = {normalize_language(l) for l in languages}
     preserve_hd  = profile.get("preserve_hd_audio", False)
-    copy_compat  = profile.get("audio_copy_compatible", True)
-    decisions:   list[AudioDecision] = []
+    decisions:  list[AudioDecision] = []
     # Une TrueHD et son cœur AC-3 ne font qu'une piste (IE-119) : la règle
     # automatique n'en garde qu'un. Une sélection manuelle reste maîtresse.
     paires = {} if override_selected is not None else _paires_coeur(info.audio_tracks)
@@ -1108,48 +1112,83 @@ def decide_audio(
             ))
             continue
 
-        codec_lc = track.codec.lower()
-
-        # ── Transcodage ───────────────────────────────────────────────────────
-        if track.is_lossless:
-            if preserve_hd:
-                decisions.append(AudioDecision(
-                    track=track, action=AudioAction.COPY,
-                    # TRANSLATORS: "lossless", "copy" and the profile key
-                    # preserve_hd_audio stay in English (glossary).
-                    reason=_("{reason} · lossless + preserve_hd_audio → copy").format(
-                        reason=reason),
-                    output_codec="copy", output_bitrate=0, locked=(i == originale),
-                ))
-                continue
-            out_codec, out_br, out_ch = _transcode_spec(track, profile)
-            decisions.append(AudioDecision(
-                track=track, action=AudioAction.TRANSCODE,
-                reason=_("{reason} · lossless → {codec}").format(
-                    reason=reason, codec=out_codec),
-                output_codec=out_codec, output_bitrate=out_br, locked=(i == originale),
-                output_channels=out_ch,
-            ))
-            continue
-
-        if copy_compat and track.is_copy_compat:
-            decisions.append(AudioDecision(
-                track=track, action=AudioAction.COPY,
-                reason=_("{reason} · {codec} compatible → copy").format(
-                    reason=reason, codec=codec_lc),
-                output_codec="copy", output_bitrate=0, locked=(i == originale),
-            ))
-            continue
-
-        out_codec, out_br, out_ch = _transcode_spec(track, profile)
-        decisions.append(AudioDecision(
-            track=track, action=AudioAction.TRANSCODE,
-            reason=_("{reason} · → {codec}").format(reason=reason, codec=out_codec),
-            output_codec=out_codec, output_bitrate=out_br, locked=(i == originale),
-            output_channels=out_ch,
-        ))
+        decisions.append(decide_codec_audio(track, profile, reason,
+                                            locked=(i == originale)))
 
     return decisions
+
+
+def decide_codec_audio(track: AudioTrack, profile: Profile, reason: str,
+                       locked: bool = False) -> AudioDecision:
+    """Recopie ou transcodage d'une piste **retenue**, selon le profil.
+
+    Partagée par les pistes de la source et par celles qu'on greffe : une
+    piste se traite pareil d'où qu'elle vienne. Un DTS greffé était recopié
+    tel quel et faisait transcoder Jellyfin, quand le même DTS dans la source
+    était converti (arbitrage de la revue IE-114, IE-125).
+    """
+    preserve_hd = profile.get("preserve_hd_audio", False)
+    copy_compat = profile.get("audio_copy_compatible", True)
+    codec_lc = track.codec.lower()
+
+    if track.is_lossless:
+        if preserve_hd:
+            return AudioDecision(
+                track=track, action=AudioAction.COPY,
+                # TRANSLATORS: "lossless", "copy" and the profile key
+                # preserve_hd_audio stay in English (glossary).
+                reason=_("{reason} · lossless + preserve_hd_audio → copy").format(
+                    reason=reason),
+                output_codec="copy", output_bitrate=0, locked=locked,
+            )
+        out_codec, out_br, out_ch = _transcode_spec(track, profile)
+        return AudioDecision(
+            track=track, action=AudioAction.TRANSCODE,
+            reason=_("{reason} · lossless → {codec}").format(
+                reason=reason, codec=out_codec),
+            output_codec=out_codec, output_bitrate=out_br, locked=locked,
+            output_channels=out_ch,
+        )
+
+    if copy_compat and track.is_copy_compat:
+        return AudioDecision(
+            track=track, action=AudioAction.COPY,
+            reason=_("{reason} · {codec} compatible → copy").format(
+                reason=reason, codec=codec_lc),
+            output_codec="copy", output_bitrate=0, locked=locked,
+        )
+
+    out_codec, out_br, out_ch = _transcode_spec(track, profile)
+    return AudioDecision(
+        track=track, action=AudioAction.TRANSCODE,
+        reason=_("{reason} · → {codec}").format(reason=reason, codec=out_codec),
+        output_codec=out_codec, output_bitrate=out_br, locked=locked,
+        output_channels=out_ch,
+    )
+
+
+def audio_greffee(ext: ExternalTrack, profile: Profile) -> AudioDecision:
+    """La décision audio d'une piste greffée : la règle du profil, comme une
+    piste de la source (IE-125).
+
+    Le donneur est relu par ffprobe : son codec, ses canaux et son débit sont
+    ce que la règle compare. Un donneur illisible est refusé — recopier faute
+    de savoir rendait justement la piste que Jellyfin transcode.
+    """
+    from . import scanner
+    from .muxer import ffmpeg_stream_index
+    idx = ffmpeg_stream_index(ext.source_path, ext.source_tid, TrackKind.AUDIO)
+    try:
+        pistes = scanner.pistes_audio(ext.source_path)
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError):
+        pistes = []
+    if not 0 <= idx < len(pistes):
+        raise ErreurAffichable(N_(
+            "Cannot read the audio track of “{file}” added to this file: the "
+            "profile's audio rule cannot be applied to it."),
+            file=ext.source_path.name)
+    piste = replace(pistes[idx], title=ext.track_name, language=ext.language)
+    return decide_codec_audio(piste, profile, _("added track"))
 
 
 def _langue_dite(code: str) -> bool:

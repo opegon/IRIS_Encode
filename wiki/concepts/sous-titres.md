@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-10-04
+maj: 2026-10-09
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -67,6 +67,30 @@ sous-titres, donc la sortie reste en MKV.
   **Étendue** (v0.8.9.47) aux sous-titres complets : un PGS complet doublé par
   un SRT complet de même langue est écarté aussi. La nature (forcé / complet)
   doit concorder : un SRT forcé ne remplace pas un PGS complet.
+- **Une greffe « par défaut » retire le drapeau de la source.** Sinon deux
+  pistes du même type sont par défaut et le lecteur prend la première : le
+  choix reste sans effet. Mesuré au mux (mkvmerge v82) comme à l'encodage
+  (ffmpeg 6.1). *(revue IE-114, CR-23/25 ; corrigé en v0.8.9.103)*
+
+## Jeu de caractères d'un `.srt`
+
+Beaucoup de `.srt` circulent en **cp1252**, pas en UTF-8. ffmpeg lit un
+sous-titre texte en UTF-8 : un `.srt` cp1252 perd **toutes ses répliques
+accentuées** (« Invalid UTF-8 in decoded subtitles text »), avec un code de
+retour nul. *(mesuré, revue IE-114, CR-50)* mkvmerge sans BOM suit le jeu du
+système : sous Linux (UTF-8) il tronque un cp1252 à la première lettre
+accentuée ; sous Windows en français (cp1252), il lit juste le cp1252 comme
+l'UTF-8 — mesuré le 2026-10-09, mkvmerge de `bin/`. Toujours dire le
+jeu : `-sub_charenc` avant l'entrée ffmpeg, `--sub-charset TID:<jeu>` pour
+mkvmerge. Un `.sub` peut être du MicroDVD (texte) ou du VobSub (binaire, début
+`00 00 01 BA`).
+
+## Polices jointes
+
+Les sous-titres ASS d'un animé s'appuient sur des polices **jointes** au MKV.
+ffmpeg ne les recopie pas sans `-map 0:t? -c:t copy` : la sortie s'affiche
+dans une police de repli, panneaux et karaokés faux. mkvmerge les garde.
+*(reproduit, revue IE-114, CR-20)*
 
 ## Long silence en MP4
 

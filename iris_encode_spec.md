@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.102 — document de référence courant
-**Date** : 2026-10-08
+**Version** : 0.8.9.103 — document de référence courant
+**Date** : 2026-10-09
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -1377,8 +1377,10 @@ class ExternalTrack:
     copied_from:  int | None = None      # index dans external_tracks
 ```
 
-`FileDecision` porte `external_tracks: list[ExternalTrack]`, et `output_container`
-retourne `.mkv` dès que cette liste n'est pas vide.
+`FileDecision` porte `external_tracks: list[ExternalTrack]`. Une greffe n'impose
+le `.mkv` que si son codec ne tient pas en MP4 (ASS, sous-titre image) ; une piste
+audio sans perte greffée ne l'impose qu'avec `preserve_hd_audio`, seul cas où elle
+est recopiée (v0.8.9.103, § 12.0).
 
 ### 9.3 API du module
 
@@ -1417,6 +1419,8 @@ Chacun produit un résultat faux **sans erreur visible** — d'où leur coût.
 | 2 | **Extrait découpé en copie de flux.** Avec `-c copy`, chaque fichier se cale sur son keyframe le plus proche, ce qui **modifie le décalage relatif** et invalide le test. | L'audio de l'extrait est réencodé (60 s, instantané). |
 | 3 | **Donneur embarqué en entier** sans `--no-video --no-subtitles`. | Options systématiques dans `build_mux_command()`. |
 | 4 | **Premier sous-titre `default` d'office.** mkvmerge le pose sans qu'on le demande : les sous-titres s'affichent chez l'utilisateur. | `--default-track-flag TID:0` émis explicitement quand `is_default` est faux. |
+| 4 bis | **Deux pistes par défaut.** Une greffée marquée « par défaut » laissait le drapeau des pistes de la source de même type ; le lecteur prend la première, le choix restait sans effet (CR-25). | `types_par_defaut()` : les pistes de ce type venues de la source reçoivent `--default-track-flag TID:0` (ids par `identify`), sur l'audio produite à part quand c'est elle qui fournit l'audio. Même règle côté ffmpeg (§ 12.0). |
+| 4 ter | **Jeu de caractères d'un `.srt`.** Sans BOM, mkvmerge suit celui du système : juste sous un Windows français (mesuré), un `.srt` en cp1252 tronqué à la première lettre accentuée sous Linux (CR-50). | `--sub-charset TID:<jeu>` toujours posé pour un sous-titre texte, jeu lu par `sous_titres.encodage_texte()` (UTF-8, sinon CP1252, sinon ISO-8859-1). |
 | 5 | **Une seule piste audio à la fois dans mpv.** `audio-delay` et `sub-delay` sont distincts : un audio + un sous-titre se calibrent ensemble, deux audio demandent deux passes. | L'écran le dit au lieu de laisser croire à un réglage simultané. |
 | 6 | **Métadonnées absentes des fichiers externes.** Un `.srt` n'a aucune langue → « und » dans tous les lecteurs. | Champs saisis dans l'écran, jamais déduits silencieusement ; `guess_language()` ne fait que pré-remplir. |
 | 7 | **mkvmerge réécrit le conteneur entier.** Pas d'ajout in-place en MKV : 30 Go = copie disque complète, une à trois minutes sur SSD. | Barre de progression réelle. Les deux fichiers coexistent le temps du mux — prévoir l'espace. |
@@ -1761,6 +1765,25 @@ dans `external_tracks` : un second essai doit repasser par le mux préalable.
 
 Le surcoût — une écriture complète du film — n'est payé que dans ce cas. Sans mkvmerge,
 l'opération est refusée en amont plutôt que d'échouer en cours d'encodage.
+
+**Une piste audio greffée suit la règle audio du profil** (v0.8.9.103, arbitrage de
+la revue IE-114) : `decision.audio_greffee()` relit le donneur par ffprobe
+(`scanner.pistes_audio()`) et passe la piste par `decide_codec_audio()`, la règle des
+pistes de la source. Un DTS, un Opus, un FLAC greffés étaient recopiés et faisaient
+transcoder Jellyfin. Un donneur illisible est refusé plutôt que recopié. Le titre de la
+piste est réécrit comme celui d'une piste de la source transcodée (`retitle`).
+
+**Drapeau par défaut.** Une greffée marquée « par défaut » ôte celui des pistes de la
+source de même type, audio comme sous-titres (`-disposition:s:N 0`, CR-23) — même
+règle que le mux (§ 9.5, piège 4 bis).
+
+**Jeu de caractères.** ffmpeg lit un sous-titre texte en UTF-8 : un `.srt` en cp1252
+perdait toutes ses répliques accentuées, code de retour nul. `-sub_charenc` précède
+l'entrée quand `encodage_texte()` trouve un autre jeu (CR-50).
+
+**Polices jointes.** En sortie Matroska, `-map 0:t? -c:t copy` recopie les pièces
+jointes de la source : sans elles, les sous-titres ASS d'un animé s'affichaient dans
+une police de repli (CR-20).
 
 ### 12.1 Modes d'encodage vidéo
 

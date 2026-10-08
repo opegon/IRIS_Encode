@@ -320,6 +320,37 @@ def _track_options(t: ExternalTrack) -> list[str]:
     args += ["--default-track-flag", f"{t.source_tid}:{1 if t.is_default else 0}"]
     if t.is_forced:
         args += ["--forced-display-flag", f"{t.source_tid}:1"]
+    # Sans BOM, mkvmerge suit le jeu de caractères du système : juste sous un
+    # Windows français (mesuré), un cp1252 tronqué à la première lettre
+    # accentuée sous Linux (CR-50). Le dire ne dépend plus du poste.
+    if t.kind == TrackKind.SUBTITLE:
+        from .sous_titres import encodage_texte
+        jeu = encodage_texte(t.source_path)
+        if jeu:
+            args += ["--sub-charset", f"{t.source_tid}:{jeu}"]
+    return args
+
+
+def types_par_defaut(tracks: list[ExternalTrack]) -> set[TrackKind]:
+    """Les types dont une piste greffée est marquée « par défaut ».
+
+    Les pistes de ce type venues de la source perdent alors leur drapeau :
+    deux pistes par défaut, et le lecteur prend la première — le choix de
+    l'utilisateur restait sans effet (CR-23, CR-25). Une seule règle pour
+    ffmpeg (`encoder.build_command`) et pour mkvmerge.
+    """
+    return {t.kind for t in tracks if t.is_default}
+
+
+def _sans_defaut(fichier: Path, types: set[TrackKind]) -> list[str]:
+    """Options mkvmerge qui ôtent le drapeau « par défaut » des pistes de
+    `fichier` dont le type est dans `types` (à poser avant le fichier)."""
+    if not types:
+        return []
+    args: list[str] = []
+    for t in identify(fichier):
+        if t.kind in types:
+            args += ["--default-track-flag", f"{t.tid}:0"]
     return args
 
 
@@ -354,7 +385,8 @@ def build_mux_command(
                 track=t.source_tid, file=t.source_path.name
             )
 
-    cmd = [_mkvmerge_path, "--gui-mode", "-o", str(output), str(source)]
+    cmd = [_mkvmerge_path, "--gui-mode", "-o", str(output)]
+    cmd += _sans_defaut(source, types_par_defaut(tracks)) + [str(source)]
     cmd += _donor_args(tracks)
     return cmd
 
@@ -459,11 +491,16 @@ def build_strip_command(
         tids = [str(mkvmerge_tid(source, i, TrackKind.SUBTITLE)) for i in sous_titres]
         cmd += ["--subtitle-tracks", ",".join(tids)] if tids else ["--no-subtitles"]
 
-    cmd += [str(source)]
+    defaut = types_par_defaut(tracks or [])
+    # L'audio vient de `audio_source` quand il est fourni : c'est sur lui que
+    # le drapeau de la source se retire.
+    types_source = defaut - {TrackKind.AUDIO} if audio_source is not None else defaut
+    cmd += _sans_defaut(source, types_source) + [str(source)]
 
     if audio_source is not None:
-        cmd += ["--no-video", "--no-chapters", "--no-global-tags", "--no-subtitles",
-                str(audio_source)]
+        cmd += ["--no-video", "--no-chapters", "--no-global-tags", "--no-subtitles"]
+        cmd += _sans_defaut(audio_source, defaut & {TrackKind.AUDIO})
+        cmd += [str(audio_source)]
 
     cmd += _donor_args(tracks or [])
     return cmd

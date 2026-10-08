@@ -96,116 +96,125 @@ msgstr ""
 msgid "OpenSubtitles answered {status}."
 msgstr ""
 
-#: core/decision.py:82
+#: core/decision.py:83
 msgid "manually excluded"
 msgstr ""
 
 #. a track copied unchanged into the output ("→ copy").
-#: core/decision.py:89
-#: core/decision.py:141
+#: core/decision.py:90
+#: core/decision.py:142
 msgctxt "track action"
 msgid "copy"
 msgstr ""
 
-#: core/decision.py:844
+#: core/decision.py:849
 #, python-brace-format
 msgid "{reason} · DV preserved, RPU reinjected"
 msgstr ""
 
-#: core/decision.py:846
+#: core/decision.py:851
 #, python-brace-format
 msgid "{reason} · DV kept → video copied"
 msgstr ""
 
-#: core/decision.py:853
+#: core/decision.py:858
 #, python-brace-format
 msgid "Bitrate {bitrate}k > {target}k target +{tolerance}%"
 msgstr ""
 
-#: core/decision.py:867
+#: core/decision.py:872
 #, python-brace-format
 msgid "Resolution {width}x{height} > {max_width}x{max_height}"
 msgstr ""
 
-#: core/decision.py:881
+#: core/decision.py:886
 #, python-brace-format
 msgid "Codec {codec} not supported by the playback chain"
 msgstr ""
 
-#: core/decision.py:897
+#: core/decision.py:902
 #, python-brace-format
 msgid "{dv} → HDR10 without re-encoding"
 msgstr ""
 
-#: core/decision.py:908
+#: core/decision.py:913
 #, python-brace-format
 msgid "Bitrate within target ±{tolerance}%, resolution OK, codec {codec}"
 msgstr ""
 
-#: core/decision.py:911
+#: core/decision.py:916
 #, python-brace-format
 msgid "Bitrate OK, resolution OK, codec {codec}"
 msgstr ""
 
-#: core/decision.py:1079
+#: core/decision.py:1083
 msgid "manual selection"
-msgstr ""
-
-#: core/decision.py:1082
-#, python-brace-format
-msgid "replaced by its {codec} core (track {index})"
 msgstr ""
 
 #: core/decision.py:1086
 #, python-brace-format
-msgid "core of track {index}, which already carries it"
+msgid "replaced by its {codec} core (track {index})"
 msgstr ""
 
 #: core/decision.py:1090
 #, python-brace-format
+msgid "core of track {index}, which already carries it"
+msgstr ""
+
+#: core/decision.py:1094
+#, python-brace-format
 msgid "original track (index {index})"
 msgstr ""
 
-#: core/decision.py:1095
+#: core/decision.py:1099
 msgid "language unknown → kept"
 msgstr ""
 
-#: core/decision.py:1098
+#: core/decision.py:1102
 #, python-brace-format
 msgid "language {language}"
 msgstr ""
 
-#: core/decision.py:1101
+#: core/decision.py:1105
 #, python-brace-format
 msgid "language {language} not kept"
 msgstr ""
 
 #. "lossless", "copy" and the profile key preserve_hd_audio stay in English (glossary).
-#: core/decision.py:1120
+#: core/decision.py:1140
 #, python-brace-format
 msgid "{reason} · lossless + preserve_hd_audio → copy"
 msgstr ""
 
-#: core/decision.py:1128
+#: core/decision.py:1147
 #, python-brace-format
 msgid "{reason} · lossless → {codec}"
 msgstr ""
 
-#: core/decision.py:1138
+#: core/decision.py:1156
 #, python-brace-format
 msgid "{reason} · {codec} compatible → copy"
 msgstr ""
 
-#: core/decision.py:1147
+#: core/decision.py:1164
 #, python-brace-format
 msgid "{reason} · → {codec}"
 msgstr ""
 
-#: core/decision.py:1406
+#: core/decision.py:1186
+#, python-brace-format
+msgid "Cannot read the audio track of “{file}” added to this file: the profile's audio rule cannot be applied to it."
+msgstr ""
+
+#: core/decision.py:1191
+msgid "added track"
+msgstr ""
+
+#: core/decision.py:1445
 msgid "Forced manually (was SKIP)"
 msgstr ""
 
-#: core/decision.py:1408
+#: core/decision.py:1447
 msgid "Forced manually (was DV removal)"
 msgstr ""
 
@@ -241,13 +250,13 @@ msgstr ""
 msgid "Writing to this location is not allowed."
 msgstr ""
 
-#: core/encoder.py:489
+#: core/encoder.py:491
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Empty suffix and same container — encoding refused to avoid corrupting the source file."
 msgstr ""
 
 #. -itsoffset is an ffmpeg option, keep it as is.
-#: core/encoder.py:541
+#: core/encoder.py:545
 #, python-brace-format
 msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
 msgstr ""
@@ -370,22 +379,22 @@ msgstr ""
 msgid "{codec} {language} “{name}”"
 msgstr ""
 
-#: core/muxer.py:339
+#: core/muxer.py:370
 msgid "No external track to add."
 msgstr ""
 
-#: core/muxer.py:342
+#: core/muxer.py:373
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Mux refused to avoid corrupting the source file."
 msgstr ""
 
 #. "und" is the code players show for an unknown language; keep it as is.
-#: core/muxer.py:351
+#: core/muxer.py:382
 #, python-brace-format
 msgid "Missing language for track {track} of {file}. Without a language, the track shows as “und” in every player."
 msgstr ""
 
-#: core/muxer.py:438
+#: core/muxer.py:470
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Remux refused to avoid corrupting the source file."
 msgstr ""

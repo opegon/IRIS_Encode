@@ -828,6 +828,35 @@ def _detect_dv(path: Path) -> tuple[Optional[int], Optional[int]]:
 
 # ─── Scan principal ───────────────────────────────────────────────────────────
 
+def _pistes_audio(streams: list) -> list[AudioTrack]:
+    """Les pistes audio d'une sortie de ffprobe, numérotées par type."""
+    pistes: list[AudioTrack] = []
+    for i, s in enumerate(s for s in streams if s.get("codec_type") == "audio"):
+        tags = s.get("tags", {})
+        pistes.append(AudioTrack(
+            index=i,
+            codec=s.get("codec_name", "unknown"),
+            channels=_safe_int(s.get("channels"), 2),
+            language=tags.get("language", ""),
+            title=tags.get("title", ""),
+            bitrate=_audio_bitrate(s, tags),
+            profile=s.get("profile", "") if isinstance(s.get("profile"), str) else "",
+            pid=_pid(s),
+            sample_rate=_safe_int(s.get("sample_rate")),
+        ))
+    return pistes
+
+
+def pistes_audio(path: Path) -> list[AudioTrack]:
+    """Les pistes audio d'un fichier, lues comme celles d'une source.
+
+    Pour un donneur : sa piste greffée reçoit la règle audio du profil (IE-125).
+    Lève RuntimeError si ffprobe ne lit pas le fichier.
+    """
+    data = _ffprobe_json(["-show_streams", "-select_streams", "a", str(path)])
+    return _pistes_audio(data.get("streams", []))
+
+
 def scan(path: Path) -> VideoInfo:
     """Analyse complète d'un fichier vidéo, ou d'un titre de Blu-ray désigné
     par sa playlist `.mpls` (IE-120)."""
@@ -881,20 +910,7 @@ def scan(path: Path) -> VideoInfo:
             pass
 
     # ── Flux audio ────────────────────────────────────────────────────────────
-    audio_tracks: list[AudioTrack] = []
-    for i, s in enumerate(s for s in streams if s.get("codec_type") == "audio"):
-        tags = s.get("tags", {})
-        audio_tracks.append(AudioTrack(
-            index=i,
-            codec=s.get("codec_name", "unknown"),
-            channels=_safe_int(s.get("channels"), 2),
-            language=tags.get("language", ""),
-            title=tags.get("title", ""),
-            bitrate=_audio_bitrate(s, tags),
-            profile=s.get("profile", "") if isinstance(s.get("profile"), str) else "",
-            pid=_pid(s),
-            sample_rate=_safe_int(s.get("sample_rate")),
-        ))
+    audio_tracks = _pistes_audio(streams)
 
     # ── Flux sous-titres ──────────────────────────────────────────────────────
     subtitle_tracks: list[SubtitleTrack] = []

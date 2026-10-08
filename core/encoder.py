@@ -377,14 +377,16 @@ def audio_pass_needed(audio: list) -> bool:
     return any(ad.action == AudioAction.TRANSCODE for ad in audio)
 
 
-def audio_args(included_audio: list) -> list[str]:
+def audio_args(included_audio: list, debut: int = 0) -> list[str]:
     """Arguments ffmpeg des pistes audio retenues, dans leur ordre de sortie.
 
     Partagé par l'encodage et par le chemin de retrait du Dolby Vision, qui
     doit produire exactement les mêmes pistes sans toucher à la vidéo.
+    `debut` : index de sortie de la première — les greffées suivent celles
+    de la source.
     """
     args: list[str] = []
-    for out_i, ad in enumerate(included_audio):
+    for out_i, ad in enumerate(included_audio, start=debut):
         if ad.action == AudioAction.COPY:
             args += [f"-c:a:{out_i}", "copy"]
             continue
@@ -524,7 +526,9 @@ def build_command(
     # ── Entrées supplémentaires : pistes externes greffées ────────────────────
     # ffmpeg les absorbe dans la même passe que l'encodage : inutile de muxer
     # séparément quand le fichier est de toute façon réencodé.
-    from .muxer import TrackKind, ffmpeg_stream_index, premux_track_order
+    from .muxer import (TrackKind, ffmpeg_stream_index, premux_track_order,
+                        types_par_defaut)
+    from .sous_titres import encodage_texte
 
     ext_tracks = decision.external_tracks
     # Après un mux préalable, les pistes greffées ne sont plus des entrées à
@@ -556,6 +560,12 @@ def build_command(
             # Sauter le début du donneur donne le même résultat sans jamais
             # produire d'horodatage négatif.
             cmd += ["-ss", f"{-ext.delay_ms / 1000:.3f}"]
+        # ffmpeg lit un sous-titre texte en UTF-8 : un `.srt` en cp1252 perdait
+        # toutes ses répliques accentuées, code de retour nul (CR-50).
+        if ext.kind == TrackKind.SUBTITLE:
+            jeu = encodage_texte(ext.source_path)
+            if jeu and jeu != "UTF-8":
+                cmd += ["-sub_charenc", jeu]
         cmd += ["-i", str(ext.source_path)]
 
     # Les pistes audio produites à part (voir `audio_prepass_needed`). Posée
@@ -786,15 +796,25 @@ def build_command(
     ext_subs  = [t for t in ext_tracks if t.kind != TrackKind.AUDIO] + premux_subs
 
     # Une piste externe marquée « défaut » retire le drapeau des pistes source
-    if any(t.is_default for t in ext_audio):
+    # de son type — sous-titres compris (CR-23) : deux pistes par défaut, et le
+    # lecteur prend la première. Même règle que le mux (`types_par_defaut`).
+    defaut = types_par_defaut(ext_audio + ext_subs)
+    if TrackKind.AUDIO in defaut:
         for out_i in range(len(included_audio)):
             cmd += [f"-disposition:a:{out_i}", "0"]
+    if TrackKind.SUBTITLE in defaut:
+        for out_i in range(n_src_subs):
+            cmd += [f"-disposition:s:{out_i}", "0"]
 
+    # Une piste greffée suit la règle audio du profil, comme celles de la
+    # source : un DTS ou un Opus recopié faisait transcoder Jellyfin (IE-125).
+    from .decision import audio_greffee
     for j, ext in enumerate(ext_audio):
         out_i = len(included_audio) + j
-        cmd += [f"-c:a:{out_i}", "copy"]
+        ad = audio_greffee(ext, profile)
+        cmd += audio_args([ad], debut=out_i)
         cmd += [f"-metadata:s:a:{out_i}", f"language={ext.language}"]
-        if ext.track_name:
+        if ext.track_name and not ad.output_title:
             cmd += [f"-metadata:s:a:{out_i}", f"title={ext.track_name}"]
         flags = [f for f, on in (("default", ext.is_default),
                                  ("forced", ext.is_forced)) if on]
@@ -816,6 +836,11 @@ def build_command(
         # Le conteneur découle déjà des pistes conservées : s'il sort en MP4,
         # c'est qu'aucun sous-titre image n'est gardé, donc mov_text convient.
         cmd += ["-c:s", "copy" if container == ".mkv" else "mov_text"]
+
+    # Les polices jointes d'un ASS : sans elles, panneaux et karaokés
+    # s'affichent dans une police de repli (CR-20). Le MP4 n'en porte pas.
+    if container == ".mkv":
+        cmd += ["-map", "0:t?", "-c:t", "copy"]
 
     # faststart est un réglage MP4 ; ffmpeg l'ignore en avertissant sur MKV
     if container == ".mp4":

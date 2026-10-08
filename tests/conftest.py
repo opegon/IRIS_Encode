@@ -57,3 +57,27 @@ def globales_isolees():
 
     for module, nom_var, valeur in avant:
         setattr(module, nom_var, valeur)
+
+
+@pytest.fixture(autouse=True)
+def donneurs_factices(monkeypatch):
+    """Un donneur fabriqué vide, ou seulement nommé, par un test ne se lit pas
+    par ffprobe : sa
+    piste audio est décrite comme un E-AC3 5.1, recopié par tout profil. Un
+    vrai fichier reste lu (IE-125 : une greffe suit la règle audio du profil)."""
+    from core import scanner
+    from core.scanner import AudioTrack
+
+    reelle = scanner.pistes_audio
+
+    def pistes_audio(path):
+        try:
+            vide = path.stat().st_size == 0
+        except OSError:
+            vide = True
+        if not vide:
+            return reelle(path)
+        return [AudioTrack(index=i, codec="eac3", channels=6, language="",
+                           title="", bitrate=640_000) for i in range(8)]
+
+    monkeypatch.setattr(scanner, "pistes_audio", pistes_audio)

@@ -1,5 +1,31 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.103] — 2026-10-09
+
+### Pistes greffées : la règle audio du profil, les accents, les drapeaux, les polices (IE-125, 1/3)
+
+Revue IE-114, constats CR-20, 23, 25, 50, et l'arbitrage sur l'audio externe.
+
+- **L'audio greffée suit la règle du profil.** Une piste ajoutée d'un autre
+  fichier était toujours recopiée telle quelle : un DTS, un Opus ou un FLAC
+  greffés faisaient transcoder Jellyfin, quand la même piste dans la source
+  était convertie. Elle passe désormais par la même règle que les pistes de la
+  source (recopie si compatible, AC3/E-AC3/AAC sinon, titre corrigé). Une
+  TrueHD greffée n'impose plus le MKV, sauf avec `preserve_hd_audio`. Le
+  réencodage et le retrait du Dolby Vision recopient encore les greffes : ils
+  seront alignés avec IE-126.
+- **Accents d'un `.srt` en cp1252.** Greffé à l'encodage, il perdait toutes
+  ses répliques accentuées, sans erreur. Le jeu de caractères est maintenant
+  lu et donné à ffmpeg, et à mkvmerge aussi, qui le devinait d'après celui du
+  système (juste sous un Windows français, faux ailleurs).
+- **Une seule piste par défaut.** Une piste greffée marquée « par défaut »
+  laissait le drapeau de la piste de la source : deux pistes par défaut, et le
+  lecteur prenait la première. Le drapeau de la source tombe, à l'encodage
+  (sous-titres compris) comme au mux.
+- **Polices jointes.** L'encodage vers MKV perdait les polices d'un animé :
+  ses sous-titres ASS s'affichaient dans une police de repli. Elles sont
+  recopiées.
+
 ## [v0.8.9.102] — 2026-10-08
 
 ### Jonction : le bon nom, et les pistes qui s'accordent (IE-136)

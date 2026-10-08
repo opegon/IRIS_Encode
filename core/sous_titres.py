@@ -89,6 +89,36 @@ def combler_srt(texte: str) -> tuple[str, int]:
     return "\n\n".join(blocs) + "\n", len(instants)
 
 
+_EXT_TEXTE = {".srt", ".ass", ".ssa", ".vtt", ".sub"}
+# Début d'un paquet MPEG-PS : un `.sub` VobSub, binaire, pas un MicroDVD.
+_ENTETE_VOBSUB = b"\x00\x00\x01\xba"
+
+
+def encodage_texte(chemin: Path) -> str | None:
+    """Le jeu de caractères d'un fichier de sous-titres texte, pour ffmpeg
+    (`-sub_charenc`) et mkvmerge (`--sub-charset`). None hors fichier texte.
+
+    Mêmes essais que la mesure (`sync._read_text`) : un `.srt` que la mesure
+    lisait en cp1252 partait ensuite chez ffmpeg, qui le lit en UTF-8, et
+    perdait toutes ses répliques accentuées sans erreur (CR-50).
+    """
+    if chemin.suffix.lower() not in _EXT_TEXTE:
+        return None
+    try:
+        brut = chemin.read_bytes()
+    except OSError:
+        return None
+    if brut.startswith(_ENTETE_VOBSUB):
+        return None
+    for nom, codec in (("UTF-8", "utf-8-sig"), ("CP1252", "cp1252")):
+        try:
+            brut.decode(codec)
+            return nom
+        except UnicodeDecodeError:
+            continue
+    return "ISO-8859-1"
+
+
 def pistes_a_porter(decision) -> list:
     """Les pistes texte de la source que la sortie MP4 garde, dans l'ordre.
 

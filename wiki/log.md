@@ -330,3 +330,8 @@ de la détection « multi » d'`idet` sur les scènes sombres. Pages touchées :
 La page disait qu'une piste externe impose le MKV ; le code ne l'impose que pour
 un codec qui l'exige, et un mux seul sort toujours en MKV. Corrigé avec la spec.
 Pages touchées : [[conteneurs]].
+
+## [2026-10-09] ingest | Greffes : jeu de caractères, drapeaux, polices (IE-125)
+
+Constats CR-20, 23, 25, 50 de la revue, reproduits en tests de bout en bout
+(ffmpeg et mkvmerge de `bin/`). Pages touchées : [[sous-titres]].

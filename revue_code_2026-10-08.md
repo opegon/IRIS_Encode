@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `core/opensubtitles.py` fait. 2 constats : .srt cp1252 vidé de ses accents à l'encodage (critique, reproduit avec ffmpeg), langue perdue hors de 8 langues.
-- Prochain : `core/preview.py`.
+- 2026-10-08 — `core/__init__.py` fait. aucun constat. core/ terminé.
+- Prochain : `tui/screens/run.py`.
 
 ### Pistes notées en route
 
@@ -193,9 +193,9 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] core/cles.py (174)
 - [x] core/meta.py (371)
 - [x] core/opensubtitles.py (308)
-- [ ] core/preview.py (118)
-- [ ] core/veille.py (274)
-- [ ] core/__init__.py (1)
+- [x] core/preview.py (118)
+- [x] core/veille.py (274)
+- [x] core/__init__.py (1)
 
 ### tui/
 - [ ] tui/screens/run.py (1624)
@@ -515,6 +515,24 @@ Aucun constat. (Champs des traductions vérifiés par `tests/test_i18n.py` ; `Er
   - Scénario : la langue n'est transmise que par le nom du fichier (`Film.<id>.nl.srt`), relu par `guess_language`, qui ne connaît que fr, en, de, es, it, ja, pt et ru. Un sous-titre néerlandais, polonais, suédois… choisi dans la liste (où sa langue est pourtant connue, `Resultat.langue`) devient « und » à la greffe ; `zh-cn` aussi.
   - Correction : rendre la langue connue avec le fichier (le `Resultat` la porte) plutôt que la faire relire dans le nom, ou étendre `_LANG_TOKENS` à toute la table `_VERS_API`.
   - Test : un téléchargement simulé en `nl` donne une piste externe de langue `dut`.
+
+### core/preview.py
+
+- **CR-52** · `core/preview.py:72-77` (`--sub-file` sans `--sid`), `tui/screens/sync.py:943-946` · mineur · R · lu — Dans mpv, un sous-titre pris dans un conteneur donneur s'affiche toujours sur la première piste du donneur, pas sur celle choisie.
+  - Scénario : pour l'audio, `--aid` vise la piste choisie ; pour un sous-titre, `--sub-file=<donneur.mkv>` charge toutes ses pistes et mpv en sélectionne une seule, la première (ou celle par défaut), sans rapport avec `source_tid`. Un donneur à six sous-titres dont on greffe le « Full » montre le « Forced » (une vingtaine de répliques) : on juge le recalage sur la mauvaise piste. C'est le défaut que `encoder.py:748-754` décrit et corrige pour l'encodage, resté dans la visualisation. Au passage, `read_cues(t.source_path)` lit le conteneur comme du texte : pas de première réplique, ouverture au quart du film.
+  - Correction : pour un donneur conteneur, extraire la piste (`extract_subtitle` avec l'index traduit) et la donner à `--sub-file`, ou passer `--sid` = nombre de sous-titres internes + index de la piste dans le donneur + 1.
+  - Test : `build_command` d'un sous-titre de tid 5 dans un donneur MKV vise la piste 5 (fichier extrait ou `--sid` attendu).
+
+### core/veille.py
+
+- **CR-53** · `core/veille.py:120`, `:233`, `:259`, `:273`, `core/dovi.py:242`, `:274`, `tui/screens/browser.py:850` · mineur · G · lu — Sept messages de journal en français, contre la règle « journaux dans une langue stable, l'anglais du message source » (wiki `localisation`, spec § 2.1).
+  - Scénario : `~/.iris_encode/iris_encode.log` mêle « veille : suspendue — … », « inject_rpu a échoué : … », « Échec du scan : … » et des messages anglais (`scan failed for %s`, `hdr10 probe failed…`). Rien de cassé ; un journal joint à un ticket Weblate ou GitHub n'est plus lisible d'un bloc.
+  - Correction : passer ces sept messages en anglais (ils ne sont pas extraits : `_log.*` n'est pas un point d'extraction).
+  - Test : structurel — aucun littéral accentué ni mot français courant dans les appels `log.*`/`_log.*`/`_LOG.*` de `core/` et `tui/` (même forme que le test des accents hors `_()`).
+
+### core/__init__.py
+
+Aucun constat (une ligne de commentaire).
 
 ## Synthèse
 

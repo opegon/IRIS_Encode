@@ -33,15 +33,15 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `tui/mixins.py` fait. 1 mineur (super().on_key fait paginer deux fois), 1 question sur la règle G4.
-- Prochain : `tui/screens/tracks.py`.
+- 2026-10-08 — `tui/screens/wizard.py` fait. 2 majeurs (nom figé dès l'étape 1, retrait DV + greffe muxé avec son DV), 2 mineurs.
+- Prochain : `tui/screens/dryrun.py`.
 
 ### Pistes notées en route
 
 Observations faites en lisant un appelant, à instruire quand leur fichier vient
 (et à retirer une fois instruites).
 
-- `tui/screens/sync.py`, `tui/screens/wizard.py` : quel chemin reçoit la mesure pour une **cible titre de Blu-ray** (`info.path` = `.mpls`, que ffmpeg ne lit pas, ou `info.lecture` = premier clip seulement) ? et après un `_remux_titre` ?
+- `tui/screens/sync.py` : quel chemin reçoit la mesure pour une **cible titre de Blu-ray** (`info.lecture` = premier clip seulement — côté assistant, c'est CR-86) ? et après un `_remux_titre` ?
 - `main.py` : la console du preflight imprime `✓ ✗ ↑ …` ; sortie redirigée vers un fichier ou un tube sous Windows (cp1252) → `UnicodeEncodeError` au démarrage ? (`sys.stdout.reconfigure` ?)
 - `core/opensubtitles.py`, `tui/screens/meta_popup.py` : pour un **titre de disque**, `parse_title(info.path)` lit `00800.mpls` / `TITLE_01.dvd` (titre « 00800 ») et l'empreinte se calcule sur une playlist de quelques centaines d'octets — utiliser `stem_sortie` et `lecture` ?
 
@@ -197,8 +197,8 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] tui/screens/browser.py (1415)
 - [x] tui/common.py (600)
 - [x] tui/mixins.py (295)
-- [ ] tui/screens/tracks.py (790)
-- [ ] tui/screens/wizard.py (645)
+- [x] tui/screens/tracks.py (790)
+- [x] tui/screens/wizard.py (645)
 - [ ] tui/screens/dryrun.py (427)
 - [ ] tui/screens/mux_run.py (266)
 - [ ] tui/screens/join.py (380)
@@ -663,6 +663,41 @@ Aucun constat nouveau. `record_measured_speed` (`:41-47`) est le point d'entrée
   - Correction : retirer les deux `super().on_key(event)` et corriger la consigne des mixins ; la règle G4 elle-même est à reposer (voir la question).
   - Test : écran des pistes avec plus de deux pages de lignes : `PageDown` avance d'une page exactement.
 - **Question** — La règle G4 (« `on_key` → `super().on_key(event)` ») repose sur une hypothèse que Textual 8 ne vérifie pas (répartition sur toute la MRO). La garder telle quelle reproduit le défaut ci-dessus à chaque nouvel écran ; la remplacer par « ne pas appeler `super().on_key`, `prevent_default()` pour empêcher un mixin d'agir » ?
+
+### tui/screens/tracks.py
+
+- **CR-81** · `tui/screens/tracks.py:728-746` (`action_change_profile`), `:758-759` ; `tui/screens/browser.py:1195-1197` · **critique** · P · reproduit — `F4` dans l'écran des pistes change le profil de la décision de l'accueil **en place** ; `⌫` (Retour) ne l'annule pas, et l'accueil n'en montre rien : `F2` encode ensuite avec ce profil, suppression de la source comprise.
+  - Scénario : l'écran reçoit l'objet `FileDecision` de l'accueil. `_on_pick` y écrit `profile`, `video` et `audio` aussitôt ; `⌫` rend `None`, et `_on_tracks_return(None)` ne fait rien — ni restauration, ni rafraîchissement de la ligne. Reproduit (vrai `TracksScreen`, vrai sélecteur) : profil « garder » (4 000 k, conservation), `F4` → `video_basic_delete`, `⌫` : rendu `None`, et la décision porte désormais 2 500 k et `delete_source = True`. La ligne de l'accueil affiche toujours l'ancienne décision ; `F2` encode à 2 500 k et efface la source après succès. La confirmation de `Ctrl+Home` (« Les pistes choisies et le codec seront perdus ») confirme que quitter sans valider est censé ne rien garder.
+  - Correction : travailler sur une copie (`deepcopy`) et ne recopier dans la décision de l'accueil qu'à la validation (`↵`, `F1`, `F2`) — ou rendre le changement de profil comme une surcharge de la sélection.
+  - Test : `TracksScreen` sur une décision, `F4` vers un autre profil, `⌫` : la décision garde son profil d'origine.
+- **CR-82** · `tui/screens/tracks.py:753-756` → `tui/screens/browser.py:1242-1243` (`_confier([dec])` sans `force_skip_to_encode`) → `tui/screens/run.py:397-401` · **majeur** · J · reproduit (file) / lu (enchaînement) — Greffer une piste sur un fichier SKIP puis `F2` dans l'écran des pistes : le fichier est « ignoré », rien n'est écrit.
+  - Scénario : MKV qui n'a pas besoin d'être réencodé (SKIP), `.srt` français greffé (`F9`), `F2` « Encoder ». La décision annonce `Film.mux-iris.mp4` (`output_path`, `.mux-iris` existe pour ce cas) et `sorties_bloquees` la compte comme une écriture ; mais `RunScreen._encode_next` passe toute décision SKIP en SKIPPED sans regarder ses pistes externes. Reproduit : décision SKIP + `.srt`, file d'encodage → état SKIPPED, aucun processus, aucune sortie. `F2` depuis l'accueil, lui, force un réencodage au débit source (`force_skip_to_encode`) ; seul l'écran des pistes envoie la décision telle quelle.
+  - Correction : que la file traite SKIP + pistes externes comme un mux (le chemin de `MuxScreen`), ou que l'écran des pistes refuse `F2` sur ce cas en renvoyant au mux.
+  - Test : décision SKIP avec une piste externe mise en file : un mux est lancé (processus simulé) et l'état final n'est pas SKIPPED.
+- **CR-83** · `tui/screens/tracks.py:322`, `:326-329` · mineur · J · lu — Deux libellés de la section sous-titres ne disent pas ce que fera l'encodage.
+  - Scénario : (1) la colonne Source écrit « défaut » pour la piste d'index 0, quelle qu'elle soit, alors que la sortie garde le drapeau par défaut de la source (`SubtitleTrack.default`, `core/sous_titres.py:137`) : un forced en tête, défaut sur la troisième, s'affiche à l'envers. (2) La cible d'un sous-titre texte est toujours « copie MP4 », y compris quand la sortie sera un MKV (audio sans perte gardé, ASS stylé) — `output_container` est pourtant affiché sur la ligne vidéo.
+  - Correction : lire `st.default` ; écrire le conteneur réel (`self._decision.output_container`).
+  - Test : piste par défaut en position 2 : seule elle porte « défaut » ; décision MKV : aucune cible « MP4 ».
+- Voir aussi CR-80 (`super().on_key` en `:532` : `PageUp`/`PageDown` doublés) et CR-77 (`:768`).
+
+### tui/screens/wizard.py
+
+- **CR-84** · `tui/screens/wizard.py:211` (`resoudre_sorties` dès l'étape 1), `:466-470`, `:517-528` ; seul `:488` remet `output_override` à None · **majeur** · J · reproduit — Le nom de sortie que l'assistant fige à l'étape 1 ne suit plus la décision : une greffe ASS ou PGS (ou une piste sans perte écartée) change le conteneur, pas le nom, et ffmpeg refuse.
+  - Scénario : MKV H.264 + AAC, conteneur `auto` → sortie MP4 ; l'étape 1 fige `Film.hevc-iris.mp4` sur la décision. Étape 3 : sous-titres français ASS (ou PGS d'un remux Blu-ray, très courant pour un forced) greffés → `needs_mkv`, `output_container` = `.mkv`, mais `output_path` rend toujours l'override `.mp4`. `build_command` choisit `-c:s copy` d'après le conteneur et écrit vers le nom figé. Reproduit avec le vrai `build_command` et ffmpeg 6.1 : `-c:s copy → Film.hevc-iris.mp4`, code 234, « Could not find tag for codec ass in stream #2, codec not currently supported in container ». Même racine hors de l'assistant : l'override reste posé sur la décision de l'accueil après un simple passage dans l'assistant (↵ sur un fichier en mode guidé, puis ⌫) ; un codec changé ensuite dans l'écran des pistes encode de l'AV1 sous `Film.hevc-iris.mkv`.
+  - Correction : ne figer le nom qu'au lancement (la file le fait déjà), afficher sans figer (`output_path` sans override, numérotation simulée) ; à défaut, remettre `output_override` à None à toute modification de la décision.
+  - Test : décision MP4, `resoudre_sorties`, greffe ASS ajoutée : le suffixe de `output_path` égale `output_container` ; ou, de bout en bout, la commande construite après la greffe écrit un `.mkv`.
+- **CR-85** · `tui/screens/wizard.py:365-369` (`_muxable` accepte `STRIP_DV`), `:384-393`, `:425-426`, `:639-641` · **majeur** · J · reproduit (choix du mux) / lu (DV conservé) — Retrait du Dolby Vision + greffe : `↵` à l'étape 4 lance un mux, qui garde le Dolby Vision.
+  - Scénario : WEB-DL DV 8.1, profil en `dolby_vision = "hdr10"` → `STRIP_DV` ; une VF greffée à l'étape 3. `_muxable()` vaut vrai (« rien n'est à réencoder »), l'étape 4 recommande le mux et `↵` le lance : `MuxScreen` → `build_mux_command`, un mkvmerge qui recopie la vidéo telle quelle, RPU compris. Reproduit : décision `STRIP_DV` annoncée `Film.2160p.WEB-DL.HDR10-iris.mp4`, `_muxable()` = True, commande `mkvmerge … -o Film.2160p.WEB-DL.DV.mux-iris.mkv Film.2160p.WEB-DL.DV.mkv …`. On obtient un MKV Dolby Vision — la forme que la décision évite justement sur le G3 (MKV DV qui plante l'appli Jellyfin, commentaire de `needs_mkv`) — et, par CR-15, l'étape 5 annonce « aucun fichier produit ». Le docstring de `_a_encoder` le dit pourtant : « Le retrait du DV, lui, est déjà un traitement ».
+  - Correction : `_muxable()` limité à `VideoAction.SKIP` ; un `STRIP_DV` avec greffe part par `F2` (le chemin `_strip_dv`, qui sait greffer en MKV — voir CR-55 pour le MP4).
+  - Test : décision `STRIP_DV` avec une piste externe : `_muxable()` est faux, `↵` à l'étape 4 met la décision en file.
+- **CR-86** · `tui/screens/wizard.py:555` (`cible = self._dec.info.lecture`) · mineur · J · lu (effet : supposé) — Sur un titre de Blu-ray de plusieurs clips, la greffe est mesurée contre le seul premier clip, avec la durée du titre entier.
+  - Scénario : `lecture` est le premier `.m2ts` ; `_decode_envelope` décode tout ce fichier, la piste du donneur couvre le film. Clip 1 de 20 min (souvent bien moins : logo, avertissement) contre un donneur de 2 h : au mieux un décalage juste accompagné d'une fausse alerte « durations 83% apart — check that it is the same cut », au pire une mesure ratée (« offset left at 0 ») ou fausse sur un clip de quelques secondes. L'encodage, lui, part de l'assemblage `.iris_titre.mkv`.
+  - Correction : mesurer un titre multi-clips sur son assemblage (l'extraire d'abord, comme l'encodage), ou refuser la greffe tant qu'il n'est pas assemblé, comme pour le DVD.
+  - Test : décision d'un titre de deux clips : la mesure reçoit autre chose que `clips[0]`, ou la greffe est refusée avec un message.
+- **CR-87** · `tui/screens/browser.py:1183-1184` (rappel `lambda _res: self._update_status()`) · mineur · J · lu — Au retour de l'assistant, la ligne de l'accueil n'est pas redessinée : elle montre l'ancienne décision, alors que la décision (modifiée en place) a changé de codec, de débit ou de pistes.
+  - Scénario : étape 2, `F6` → AV1, puis `⌫` jusqu'à sortir : la colonne Décision dit toujours « → HEVC », Estim et Audio aussi ; `F2` depuis la liste encode de l'AV1.
+  - Correction : redessiner la ligne du fichier au retour (les cellules de `_row_cells`), comme le retour de l'écran des pistes le fait pour la cellule audio.
+  - Test : décision modifiée par l'assistant puis `⌫` : la cellule Décision affiche le nouveau codec.
 
 ## Synthèse
 

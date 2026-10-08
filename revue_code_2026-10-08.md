@@ -33,15 +33,14 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `tui/__init__.py` fait. aucun constat. tui/ terminé.
-- Prochain : `main.py`.
+- 2026-10-08 — `updater.py` fait. 1 mineur (protections sensibles à la casse sous NTFS).
+- Prochain : `launch.bat`.
 
 ### Pistes notées en route
 
 Observations faites en lisant un appelant, à instruire quand leur fichier vient
 (et à retirer une fois instruites).
 
-- `main.py` : la console du preflight imprime `✓ ✗ ↑ …` ; sortie redirigée vers un fichier ou un tube sous Windows (cp1252) → `UnicodeEncodeError` au démarrage ? (`sys.stdout.reconfigure` ?)
 
 ## Cadre (déjà tranché, ne pas re-signaler)
 
@@ -223,8 +222,8 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] tui/__init__.py + tui/screens/__init__.py + tui/widgets/__init__.py (3)
 
 ### Racine et lanceurs
-- [ ] main.py (156)
-- [ ] updater.py (327)
+- [x] main.py (156)
+- [x] updater.py (327)
 - [ ] launch.bat (148)
 - [ ] bootstrap.ps1 (262)
 - [ ] launcher/IrisEncodeLauncher.cs (72)
@@ -856,6 +855,21 @@ Aucun constat. Trois bandes (écran, global, touches de fonction triées par num
 ### tui/__init__.py
 
 Aucun constat (un commentaire par fichier).
+
+### main.py
+
+- **CR-105** · `main.py:71-73` (`Path(sys.executable).resolve()`) · mineur · J · reproduit (Linux) — Hors de Windows, la bannière annonce « système » pour le Python du `.venv`.
+  - Scénario : sous POSIX, `.venv/bin/python` est un lien symbolique vers l'interpréteur du système ; `resolve()` le suit, et le test `is_relative_to(racine / ".venv")` échoue. Reproduit : venv créé par `python -m venv`, `resolve()` → `/usr/bin/python3.13`, « dans .venv » faux, alors que `sys.prefix != sys.base_prefix` est vrai. Sous Windows le `python.exe` d'un venv est une copie ou un lanceur, le test y tient (lu). La ligne existe pour diagnostiquer « quel Python tourne » : elle se trompe là où l'on ne l'attend pas.
+  - Correction : `sys.prefix != sys.base_prefix` et `Path(sys.prefix).resolve() == (racine / ".venv").resolve()`.
+  - Test : `_environnement_python()` exécuté depuis un venv nommé `.venv` à la racine annonce le `.venv`.
+- Piste instruite : la console du preflight (`✓ ✗ ↑`, cadre de la bannière) ne peut plus lever `UnicodeEncodeError` — `force_utf8_output()` reconfigure `stdout`/`stderr` en UTF-8 avant tout affichage (`:19-30`, `:96`). L'argument `path`, vérifié puis sans effet, est CR-73.
+
+### updater.py
+
+- **CR-106** · `updater.py:48-51`, `:198-200` (`_protege`), `:211-212` · mineur · W · reproduit (règle) / lu (Windows) — La liste des fichiers protégés est comparée à la casse près, sur un système de fichiers qui l'ignore.
+  - Scénario : la docstring promet qu'« aucun chemin de l'archive n'a le droit d'y écrire, même si une archive fautive le demandait ». `_protege("Config.toml")`, `_protege("BIN/ffmpeg.exe")`, `_protege(".VENV/Scripts/python.exe")` rendent faux (vérifié) ; sous NTFS, ces entrées écrasent `config.toml`, `bin\ffmpeg.exe` ou l'interpréteur du `.venv`. Le reste du garde-fou tient sous Windows : `zipfile` y ramène les `\` à `/` à la lecture (`_sanitize_filename`), donc `..` et les chemins absolus sont vus. Peu probable avec `git archive` et l'empreinte publiée, mais c'est précisément le cas que la liste prétend couvrir.
+  - Correction : comparer en `casefold()` (noms et premier segment).
+  - Test : une archive contenant `Config.toml` est refusée par `contenu_archive`.
 
 ## Synthèse
 

@@ -1,9 +1,10 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-09-24
+maj: 2026-10-08
 sources:
   - "[[source-spec]]"
+  - "[[source-2026-10-08-disques]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-diagnostic]]"
 ---
@@ -43,3 +44,5 @@ DLL, 22 Mo. Licence GPL-2.0.
   refuser** ([[conteneurs#Coller des parties]]).
 - Pose les tags de statistiques `BPS`, `NUMBER_OF_BYTES`, `DURATION` :
   seule source du débit d'une piste sans perte ([[audio]]).
+- Sur un `.m2ts` de Blu-ray, lit les langues dans le `.clpi` voisin, là où
+  ffprobe n'en donne aucune (*mesuré*, [[disques-optiques]]).

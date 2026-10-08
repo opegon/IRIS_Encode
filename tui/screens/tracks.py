@@ -183,9 +183,10 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             # Restaure une sélection déjà explicite
             self._sel_subs = set(self._decision.subtitle_indices)
         else:
-            # Par défaut : toutes les pistes sélectionnées
+            # Par défaut : toutes les pistes qu'une sortie peut porter
             for st in self._decision.info.subtitle_tracks:
-                self._sel_subs.add(st.index)
+                if st.portable:
+                    self._sel_subs.add(st.index)
 
     # ── Décision effective ────────────────────────────────────────────────────
 
@@ -279,12 +280,12 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             idx = t.index
             excl = ad.action == AudioAction.EXCLUDE
             dim  = "dim" if excl else ""
-            lock = " ⚑" if idx == 0 else ""
+            lock = " ⚑" if ad.locked else ""
 
             # Raison simplifiée pour l'affichage
             if excl:
                 reason = _(EXCLU_MANUELLEMENT)
-            elif idx == 0:
+            elif ad.locked:
                 reason = pgettext("track", "default")
             else:
                 reason = _("selected")
@@ -321,7 +322,9 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 cont_str = f"{libelle_copie()} {'MKV' if st.is_image_based else 'MP4'}"
 
                 # Raison simplifiée pour l'affichage
-                if sel:
+                if not st.portable:
+                    reason = _("teletext — not carried")
+                elif sel:
                     reason = (pgettext("track", "default") if st.index == 0
                               else _("selected"))
                 else:
@@ -534,11 +537,14 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             return
         row_type, idx = info
         if row_type == _ROW_AUDIO:
-            if idx == 0:
+            if any(ad.locked and ad.track.index == idx for ad in self._decision.audio):
                 return
             self._sel_audio.symmetric_difference_update({idx})
             self._update_track_cell(_ROW_AUDIO, idx)
         elif row_type == _ROW_SUBTITLE:
+            if not self._decision.info.subtitle_tracks[idx].portable:
+                self.app.bell()
+                return
             self._sel_subs.symmetric_difference_update({idx})
             self._update_track_cell(_ROW_SUBTITLE, idx)
         self._update_status()

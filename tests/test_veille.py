@@ -147,6 +147,7 @@ class _App(App):
     lot            = _Iris.lot
     sources_en_file = _Iris.sources_en_file
     encoder        = _Iris.encoder
+    _mettre_en_file = _Iris._mettre_en_file
     _nouveau_lot   = _Iris._nouveau_lot
     _liberer_lot   = _Iris._liberer_lot
     etat_file      = _Iris.etat_file

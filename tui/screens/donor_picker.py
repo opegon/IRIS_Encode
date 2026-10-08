@@ -23,6 +23,7 @@ from ..common import (cellule, colonne_fixe, fmt_size, langue_affichee,
                       libelle_type_piste, nom_codec, raccourcis)
 
 from core.i18n import _, N_
+from core.scanner import SUPPORTED_EXTENSIONS
 from core.muxer import (
     ExternalTrack, IdentifiedTrack, guess_language, identify,
 )
@@ -33,10 +34,10 @@ from core.muxer import (
 _ICONE_DOSSIER = "📁"
 _ICONE_VIDEO   = "🎬"
 _ICONE_PISTE   = "📄"
-_VIDEO_EXTS    = frozenset({".mkv", ".mp4", ".m4v", ".avi", ".mov", ".webm", ".ts"})
+# Une seule liste des vidéos, celle du scan : la copie divergeait déjà.
+_VIDEO_EXTS    = SUPPORTED_EXTENSIONS
 
-DONOR_EXTS = frozenset({
-    ".mkv", ".mp4", ".m4v", ".avi", ".mov", ".webm", ".ts",
+DONOR_EXTS = SUPPORTED_EXTENSIONS | frozenset({
     ".mka", ".ac3", ".eac3", ".dts", ".flac", ".aac", ".mp3", ".opus",
     ".srt", ".ass", ".ssa", ".sub", ".vtt",
 })

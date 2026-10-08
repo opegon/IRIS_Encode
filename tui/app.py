@@ -218,7 +218,36 @@ class IrisEncodeApp(App):
         Une source déjà en file est refusée. S'il n'y a pas de lot en cours,
         un nouveau démarre et s'affiche ; sinon les fichiers s'ajoutent à la
         suite et la navigation reste où elle est.
+
+        Une source dans un dossier en lecture seule — un ISO monté — fait
+        d'abord choisir un dossier de sortie (IE-118), commun à toutes celles
+        du lot qui sont dans ce cas. Y renoncer, c'est ne rien mettre en file.
         """
+        from core.decision import sorties_bloquees
+
+        bloquees = sorties_bloquees(decisions)
+        if bloquees:
+            from tui.screens.output_dir import OutputDirScreen
+
+            def _choisi(dossier) -> None:
+                if dossier is None:
+                    return
+                for dec in bloquees:
+                    dec.output_dir = dossier
+                self._mettre_en_file(decisions)
+
+            note = ngettext(
+                "The folder of {count} source is read-only (mounted disc image?): "
+                "its output cannot be written next to it.",
+                "The folders of {count} sources are read-only (mounted disc "
+                "image?): their outputs cannot be written next to them.",
+                len(bloquees)).format(count=len(bloquees))
+            self.push_screen(OutputDirScreen(cfg_mod.get_output_dir(self.cfg), note),
+                             _choisi)
+            return
+        self._mettre_en_file(decisions)
+
+    def _mettre_en_file(self, decisions: list) -> None:
         from copy import deepcopy
         from tui.common import touche
 

@@ -23,6 +23,7 @@ from core import config as cfg_mod
 from core.i18n import N_, _, ngettext, texte_erreur
 from core.joiner import (build_join_command, controler, derive_duree,
                          duree_attendue, join_output_path, ordre_naturel)
+from core.decision import dossier_inscriptible
 from core.muxer import MuxProcess
 from core.scanner import VideoInfo
 
@@ -254,6 +255,14 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             self._set("#join-state",
                       "✗ " + _("Join refused — the parts do not match:") + "\n  · "
                       + "\n  · ".join(ctrl.blocages[:2]))
+            return
+
+        if not dossier_inscriptible(self._output.parent):
+            # Un ISO monté (IE-118) : le recollage s'écrit à côté des parties.
+            self.app.bell()
+            self._set("#join-state",
+                      "✗ " + _("This folder is read-only: the joined file cannot "
+                               "be written next to the parts."))
             return
 
         if self._output.exists():

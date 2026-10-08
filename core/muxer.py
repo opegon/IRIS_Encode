@@ -86,6 +86,9 @@ class IdentifiedTrack:
     codec:      str
     language:   str
     track_name: str = ""
+    # PID dans un flux de transport (`properties.number`), None ailleurs :
+    # c'est par lui que `scanner` retrouve la piste vue par ffprobe.
+    number:     int | None = None
 
     def display(self) -> str:
         lang = self.language or "?"
@@ -226,6 +229,7 @@ def identify(path: Path) -> list[IdentifiedTrack]:
             codec=t.get("codec", "?"),
             language=props.get("language", ""),
             track_name=props.get("track_name", ""),
+            number=props.get("number") if isinstance(props.get("number"), int) else None,
         ))
     # Un résultat vide n'est pas mémorisé : c'est aussi ce que rend un
     # mkvmerge absent, et l'installer en cours de session doit suffire.

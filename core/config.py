@@ -28,6 +28,9 @@ _DEFAULTS: dict[str, Any] = {
         # Profil sélectionné au dernier lancement. Vide = jamais choisi, on
         # prend alors le premier de profiles.toml.
         "active_profile": "",
+        # Dossier proposé quand celui d'une source est en lecture seule — un
+        # ISO monté (IE-118). Vide = le dossier Vidéos de l'utilisateur.
+        "output_dir": "",
     },
     "ffmpeg": {
         "fetch_url":    "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
@@ -365,4 +368,24 @@ def get_action_fin(cfg: dict[str, Any]) -> str:
 def set_energie(cfg: dict[str, Any], empecher_veille: bool, action_fin: str) -> None:
     cfg.setdefault("energie", {}).update(empecher_veille=bool(empecher_veille),
                                          action_fin=action_fin)
+    save(cfg)
+
+
+def get_output_dir(cfg: dict[str, Any]) -> Path:
+    """Le dossier de sortie proposé pour une source en lecture seule.
+
+    Le réglage s'il désigne un dossier existant ; à défaut le dossier Vidéos de
+    l'utilisateur, puis son dossier personnel. Un dossier disparu (disque
+    débranché) ne doit pas empêcher de proposer quelque chose.
+    """
+    regle = cfg.get("app", {}).get("output_dir", "")
+    if regle and Path(regle).is_dir():
+        return Path(regle)
+    videos = Path.home() / "Videos"
+    return videos if videos.is_dir() else Path.home()
+
+
+def set_output_dir(cfg: dict[str, Any], dossier: Path | None) -> None:
+    """Enregistre le dossier de sortie ; None revient au défaut."""
+    cfg.setdefault("app", {})["output_dir"] = str(dossier) if dossier else ""
     save(cfg)

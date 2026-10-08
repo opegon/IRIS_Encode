@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.91
+**Version** : 0.8.9.93
 **Date** : 2026-10-07
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -574,6 +574,25 @@ Un `.srt` téléchargé n'est presque jamais synchronisé sur votre fichier.
 Un sous-titre est corrigé **exactement** : il n'y a que des nombres à décaler,
 rien à rééchantillonner. C'est ce qui rend ce cas beaucoup plus sûr qu'un
 recalage audio.
+
+### 3.7 Encoder une image disque (ISO)
+
+1. Dans Windows, clic droit sur le `.iso` → **Monter** : il apparaît comme un
+   lecteur.
+2. Ouvrir ce lecteur depuis la liste des volumes (`Ctrl+Home`).
+   - **Blu-ray** : `BDMV\STREAM` — le film est en général le plus gros `.m2ts`.
+   - **DVD** : `VIDEO_TS` — le film est découpé en `VTS_xx_1.VOB`,
+     `VTS_xx_2.VOB`… de 1 Go chacun ; pour l'instant, chaque partie s'encode
+     à part.
+3. Cocher le fichier, `F2`. Le lecteur est en lecture seule : IRIS demande un
+   **dossier de sortie**. `↵` sur la première ligne retient celui proposé
+   (réglé dans les Options, `F5` puis `U` ; le dossier Vidéos par défaut) ;
+   les autres lignes naviguent vers un autre.
+4. Le lot fini, démonter le lecteur (clic droit → **Éjecter**).
+
+Les langues des pistes d'un `.m2ts` sont lues sur le disque par mkvmerge (outil
+optionnel : sans lui, elles restent inconnues — et une piste de langue inconnue
+est gardée). Une TrueHD et son cœur AC-3 donnent une seule piste en sortie.
 
 ---
 

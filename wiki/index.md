@@ -1,6 +1,6 @@
 ---
 type: index
-maj: 2026-10-06
+maj: 2026-10-08
 ---
 
 # Index du wiki IRIS ENCODE
@@ -28,6 +28,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[synchronisation]] | Décalage, dérive PAL, montages différents, recalage par plages |
 | [[noms-de-release]] | Marques d'un nom de fichier, pièges d'analyse, ce qu'une conversion rend faux |
 | [[localisation]] | Ce qui se traduit ou jamais, formats, choix de la langue, noms de piste selon la langue de la piste, glossaire et ses arbitrages |
+| [[disques-optiques]] | DVD et Blu-ray : IFO, playlists, langues, titres plutôt que fichiers, ISO monté en lecture seule, `.ts` TNT |
 | [[sous-processus]] | Règles pour lancer un outil externe : chemin, `stdin`, UTF-8, tubes, codes retour ; `.bat` réécrit en cours d'exécution |
 
 ## Entités
@@ -62,6 +63,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-10-01-entrelacement]] | Audio écrite par blocs loin de la vidéo : arrêt à 32 s sur TV |
 | [[source-2026-10-03-dv81-mp4]] | DV 8.1 en MP4 `hvc1` lu en direct sur le G3 ; `dvh1` et MKV refusés |
 | [[source-2026-10-04-mov-text]] | `mov_text` : temps écrasés après un silence de plus de 2³¹ µs |
+| [[source-2026-10-08-disques]] | ISO DVD / Blu-ray et `.ts` : builds ffmpeg, langues, lecteur monté en lecture seule |
 | [[source-2026-10-04-localisation]] | Audit de localisation et décisions de l'utilisateur : politique de traduction, glossaire |
 
 ## Brut (`raw/`, immuable)
@@ -84,4 +86,5 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-06-declaration-ie72]] | Retrait DV en MP4 confirmé sur le G3 : citation de l'utilisateur |
 | [[2026-10-07-declaration-ie79]] | Téléchargement OpenSubtitles vérifié : citation de l'utilisateur |
 | [[2026-10-07-piste-vide-ffmpeg-81]] | Piste sans perte vidée : plus reproduite en ffmpeg 8.1.2 / 8.1.3, passe gardée |
+| [[2026-10-08-sondage-disques]] | Sondage ffprobe / mkvmerge des deux ISO et des deux `.ts`, demandes de l'utilisateur |
 | [[2026-10-04-decisions-localisation]] | Choix de l'utilisateur après l'audit de localisation : citations et options retenues |

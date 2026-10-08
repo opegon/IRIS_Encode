@@ -16,7 +16,7 @@ from textual.screen import Screen
 from textual.widgets import Label, ProgressBar, Static
 
 from core.i18n import N_, _, ngettext, texte_erreur
-from core.decision import FileDecision, force_skip_to_encode
+from core.decision import FileDecision, dossier_inscriptible, force_skip_to_encode
 from core.muxer import MuxProcess, build_mux_command, mux_output_path
 
 from ..common import confier_a_la_file, barre_etat, actions_ecran, footer_line2, retour_accueil, touche
@@ -126,6 +126,14 @@ class MuxScreen(Screen[bool]):
 
     @work(thread=True, name="muxer")
     def _run(self) -> None:
+        if not dossier_inscriptible(self._output.parent):
+            # Un ISO monté (IE-118) : le mux s'écrit à côté de la source.
+            self._done = True
+            self.app.call_from_thread(
+                self._set, "#mux-state",
+                "✗ " + _("This folder is read-only: the muxed file cannot be "
+                         "written next to the source."))
+            return
         try:
             cmd = build_mux_command(self._source, self._tracks, self._output)
         except ValueError as e:

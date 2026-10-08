@@ -712,13 +712,16 @@ def build_command(
             cmd += ["-map", f"{porteur_input}:s:{j}"]
         for j in range(len(premux_subs)):
             cmd += ["-map", f"{sub_input}:s:{len(info.subtitle_tracks) + j}"]
+        subs_sortie = pistes_a_porter(decision)
     elif tout_garder:
         # `0:s?` prend tout l'intermédiaire, greffées comprises : les mapper
         # une seconde fois les livrerait en double.
         cmd += ["-map", f"{sub_input}:s?"]
         n_src_subs = len(info.subtitle_tracks)
+        subs_sortie = list(info.subtitle_tracks)
     else:
-        gardes = [st.index for st in decision.subtitles_finales]
+        subs_sortie = decision.subtitles_finales
+        gardes = [st.index for st in subs_sortie]
         for si in gardes:
             cmd += ["-map", f"{sub_input}:s:{si}"]
         n_src_subs = len(gardes)
@@ -745,6 +748,16 @@ def build_command(
             cmd += [f"-c:a:{n}", "copy"]
     else:
         cmd += audio_args(included_audio)
+
+    # ── Langues lues hors du flux ─────────────────────────────────────────────
+    # Celles d'un Blu-ray viennent du `.clpi` (IE-119) : ffmpeg ne les voit pas
+    # dans le `.m2ts`, la sortie n'en aurait aucune sans ces lignes.
+    for n, ad in enumerate(included_audio):
+        if ad.track.langue_completee:
+            cmd += [f"-metadata:s:a:{n}", f"language={ad.track.language}"]
+    for n, st in enumerate(subs_sortie):
+        if st.langue_completee:
+            cmd += [f"-metadata:s:s:{n}", f"language={st.language}"]
 
     # ── Pistes externes : copie, langue, nom, drapeaux ────────────────────────
     # Qu'elles soient entrées par mkvmerge ou par ffmpeg, les pistes greffées

@@ -25,9 +25,13 @@ _log = logging.getLogger("iris_encode.scanner")
 SCAN_WORKERS = 4
 
 
+# Les flux MPEG (IE-118) : `.ts` des enregistrements TNT et IPTV, `.m2ts` /
+# `.mts` des Blu-ray et de l'AVCHD, `.mpg` / `.mpeg` / `.vob` du DVD. Le
+# conteneur de sortie n'en dépend pas : il suit la règle commune (§ 8.6).
 SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({
     ".mp4", ".avi", ".mkv", ".mov", ".wmv",
     ".flv", ".webm", ".m4v", ".3gp",
+    ".ts", ".m2ts", ".mts", ".mpg", ".mpeg", ".vob",
 })
 
 # La marque que toute sortie de l'application porte en dernier, précédée de la
@@ -293,7 +297,19 @@ def channel_layout_label(channels: int) -> str:
     if channels == 6:  return "5.1"
     if channels == 8:  return "7.1"
     return f"{channels}ch"
-_IMAGE_SUB_CODECS = frozenset({"hdmv_pgs_subtitle", "dvd_subtitle", "dvdsub", "pgssub"})
+# `dvb_subtitle` : les sous-titres en images de la TNT (IE-119), traités comme
+# un PGS — Matroska obligatoire, écartés s'ils sont doublés par un texte.
+_IMAGE_SUB_CODECS = frozenset({"hdmv_pgs_subtitle", "dvd_subtitle", "dvdsub", "pgssub",
+                               "dvb_subtitle"})
+
+# Ce qu'aucun conteneur de sortie ne porte : le télétexte de la TNT. Il se
+# décoderait en texte avec libzvbi, absent du ffmpeg de `bin/` ; il est écarté,
+# toujours, et le dire suffit (IE-119).
+_SOUS_TITRES_NON_PORTABLES = frozenset({"dvb_teletext"})
+
+# Les conteneurs où mkvmerge sait des langues que ffprobe ignore : celles d'un
+# Blu-ray sont dans le `.clpi` voisin du `.m2ts` (IE-119, wiki disques-optiques).
+_EXTENSIONS_CLPI = frozenset({".m2ts", ".mts"})
 
 # ISO 639-2 a deux jeux de codes pour vingt langues : un bibliographique (fre,
 # ger, dut…) et un terminologique (fra, deu, nld…). Les deux désignent la même
@@ -354,6 +370,12 @@ class AudioTrack:
     title:    str
     bitrate:  int   # bps, 0 si inconnu
     profile:  str = ""   # « DTS-HD MA », « Dolby Digital Plus + Atmos »…
+    # Identifiant du flux dans un flux de transport (PID), None ailleurs. Deux
+    # pistes de même PID sont une TrueHD et son cœur AC-3 (IE-119).
+    pid:      int | None = None
+    # Langue venue d'ailleurs que du flux (mkvmerge, `.clpi`) : ffmpeg ne la
+    # recopiera pas, l'encodeur doit l'écrire (IE-119).
+    langue_completee: bool = False
 
     @property
     def channel_layout(self) -> str:
@@ -395,10 +417,17 @@ class SubtitleTrack:
     # Drapeau « par défaut ». Lu pour qu'une piste réécrite à part le garde
     # (`core/sous_titres.py`) : recopiée depuis la source, elle l'emporte seule.
     default:  bool = False
+    pid:      int | None = None   # voir AudioTrack.pid
+    langue_completee: bool = False  # voir AudioTrack.langue_completee
 
     @property
     def is_image_based(self) -> bool:
         return self.codec.lower() in _IMAGE_SUB_CODECS
+
+    @property
+    def portable(self) -> bool:
+        """Un conteneur de sortie sait-il porter cette piste ?"""
+        return self.codec.lower() not in _SOUS_TITRES_NON_PORTABLES
 
     @property
     def is_forced(self) -> bool:
@@ -508,6 +537,39 @@ def _ffprobe_json(args: list[str]) -> dict:
     if r.returncode != 0:
         raise RuntimeError(f"ffprobe: {r.stderr.strip()}")
     return json.loads(r.stdout)
+
+
+def _pid(stream: dict) -> int | None:
+    """Le PID d'un flux de transport : ffprobe le donne en `id` (« 0x1101 »)."""
+    try:
+        return int(stream["id"], 16)
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _langue_connue(code: str) -> bool:
+    """Une langue dite, pas « und » ni rien."""
+    return normalize_language(code) not in ("", "und")
+
+
+def _completer_langues(path: Path, pistes: list) -> None:
+    """Complète par mkvmerge les langues que ffprobe n'a pas lues.
+
+    Sur un `.m2ts` de Blu-ray, ffprobe n'en donne aucune ; mkvmerge les lit
+    dans le `.clpi` du disque (mesuré le 2026-10-08, 0,7 s sur 18 Go). Les
+    pistes se retrouvent par **PID**, pas par rang : une TrueHD et son cœur
+    AC-3 partagent le leur, et en reçoivent la même langue. Sans mkvmerge, ou
+    s'il échoue, rien ne change. Une langue déjà lue n'est jamais remplacée.
+    """
+    if all(_langue_connue(p.language) for p in pistes):
+        return
+    from .muxer import identify
+    par_pid = {t.number: t.language for t in identify(path)
+               if t.number is not None and _langue_connue(t.language)}
+    for piste in pistes:
+        if not _langue_connue(piste.language) and piste.pid in par_pid:
+            piste.language = par_pid[piste.pid]
+            piste.langue_completee = True
 
 
 def _safe_int(val: Any, default: int = 0) -> int:
@@ -745,6 +807,7 @@ def scan(path: Path) -> VideoInfo:
             title=tags.get("title", ""),
             bitrate=_audio_bitrate(s, tags),
             profile=s.get("profile", "") if isinstance(s.get("profile"), str) else "",
+            pid=_pid(s),
         ))
 
     # ── Flux sous-titres ──────────────────────────────────────────────────────
@@ -758,7 +821,11 @@ def scan(path: Path) -> VideoInfo:
             title=tags.get("title", "") or "",
             forced=bool((s.get("disposition") or {}).get("forced")),
             default=bool((s.get("disposition") or {}).get("default")),
+            pid=_pid(s),
         ))
+
+    if path.suffix.lower() in _EXTENSIONS_CLPI:
+        _completer_langues(path, audio_tracks + subtitle_tracks)
 
     # ── Dolby Vision ──────────────────────────────────────────────────────────
     dv_profile, dv_bl_compat = _detect_dv(path)

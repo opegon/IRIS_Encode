@@ -5,7 +5,8 @@ Ouvert depuis la gestion des profils (`F5`, `U`). L'énergie : bloquer la mise
 en veille pendant les traitements, et ce que fait la machine après un lot dont
 on a coché « Après le lot » (`core/veille.py`) — par défaut, rien. La langue de
 l'interface (IE-92) : une par catalogue livré, nommée dans sa propre langue ;
-elle prend effet au lancement suivant (IE-71 point 3).
+elle prend effet au lancement suivant (IE-71 point 3). Le dossier de sortie
+proposé quand celui d'une source est en lecture seule (IE-118).
 
 Rend True si quelque chose a été enregistré.
 """
@@ -15,7 +16,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Checkbox, Label, RadioButton, RadioSet, Static
+from textual.widgets import Button, Checkbox, Label, RadioButton, RadioSet, Static
 
 from core import i18n
 from core.i18n import _, N_
@@ -45,6 +46,8 @@ class OptionsScreen(ModalScreen[bool]):
     #options-titre { text-style: bold; margin-bottom: 1; }
     .options-section { text-style: bold; color: $accent; margin-top: 1; }
     .options-note { color: $text-muted; }
+    #options-sortie { width: 1fr; }
+    #options-sortie-btn { min-width: 14; }
     #options-hint {
         color: $text-muted;
         margin-top: 1;
@@ -64,6 +67,7 @@ class OptionsScreen(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         action = cfg_mod.get_action_fin(self._cfg)
+        self._sortie = cfg_mod.get_output_dir(self._cfg)
         with Vertical(id="options-panel"):
             yield Label(_("Options"), id="options-titre")
             yield Static(_("Power"), classes="options-section")
@@ -93,12 +97,29 @@ class OptionsScreen(ModalScreen[bool]):
                                       id=f"langue-{code}")
             yield Static(_("Takes effect the next time IRIS ENCODE starts."),
                          classes="options-note")
+            yield Static(_("Output folder"), classes="options-section")
+            yield Static(str(self._sortie), id="options-sortie", markup=False)
+            yield Button(_("Change…"), id="options-sortie-btn", compact=True)
+            yield Static(_("Offered when a source's folder is read-only, such as "
+                           "a mounted disc image."), classes="options-note")
             yield Static(raccourcis([("tab", N_("Next field")),
                                      ("ctrl+s", N_("Save")),
                                      ("escape", N_("Cancel"))]), id="options-hint")
 
     def on_mount(self) -> None:
         self.query_one("#options-veille", Checkbox).focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id != "options-sortie-btn":
+            return
+        from .output_dir import OutputDirScreen
+
+        def _choisi(dossier) -> None:
+            if dossier is not None:
+                self._sortie = dossier
+                self.query_one("#options-sortie", Static).update(str(dossier))
+
+        self.app.push_screen(OutputDirScreen(self._sortie), _choisi)
 
     def _action_choisie(self) -> str:
         bouton = self.query_one("#options-fin", RadioSet).pressed_button
@@ -126,6 +147,9 @@ class OptionsScreen(ModalScreen[bool]):
                 # Dans la langue courante : la nouvelle n'est pas chargée.
                 self.app.notify(_("Language saved. It takes effect the next "
                                   "time IRIS ENCODE starts."), timeout=6)
+        if self._sortie != cfg_mod.get_output_dir(self._cfg):
+            # Écrit par `set_energie` juste après, qui enregistre tout.
+            self._cfg.setdefault("app", {})["output_dir"] = str(self._sortie)
         cfg_mod.set_energie(self._cfg,
                             self.query_one("#options-veille", Checkbox).value,
                             self._action_choisie())

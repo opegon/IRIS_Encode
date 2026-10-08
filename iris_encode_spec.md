@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.91 — document de référence courant
-**Date** : 2026-10-07
+**Version** : 0.8.9.93 — document de référence courant
+**Date** : 2026-10-08
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -443,6 +443,7 @@ Fichier unique, éditable à la main, dans le dossier de l'application.
 ```toml
 [app]
 language = "fr"          # vide : celle de Windows au premier lancement (§ 2.1)
+output_dir = ""          # proposé pour une source en lecture seule (§ 14.7) ; vide : ~/Videos
 
 [ffmpeg]
 fetch_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
@@ -961,11 +962,22 @@ Algorithme `hable`, exécuté CPU, impact performance significatif.
 **Sélection des pistes :**
 
 ```
-Pour chaque piste audio :
+Pour chaque piste audio (sauf sélection manuelle TUI, qui fait foi) :
+  0. Paire sans perte + cœur (même PID) → une seule des deux (voir ci-dessous)
   1. Index 0                     → toujours conservée (langue originale)
-  2. Langue dans audio_languages → conservée
-  3. Sinon                       → exclue (sauf sélection manuelle TUI)
+  2. Langue inconnue (vide, und) → conservée (v0.8.9.93)
+  3. Langue dans audio_languages → conservée
+  4. Sinon                       → exclue
 ```
+
+**TrueHD et cœur AC-3** (v0.8.9.93, IE-119) — un Blu-ray porte la TrueHD et sa
+compatibilité AC-3 dans un même flux de transport, que ffprobe montre en deux
+pistes de même PID (`AudioTrack.pid`, lu dans `id`). `decision._paires_coeur`
+les apparie (une piste sans perte, une qui ne l'est pas). `preserve_hd_audio =
+true` : la TrueHD est gardée, le cœur exclu. Sinon : la TrueHD est exclue et le
+cœur suit les règles ordinaires (recopié s'il est compatible). Si la TrueHD est
+la piste 0, son cœur hérite du rôle de piste originale (`locked`, ⚑ dans
+l'écran Pistes).
 
 **Transcodage par piste conservée :**
 
@@ -1030,7 +1042,13 @@ passait pour un DTS ordinaire et échappait à `preserve_hd_audio`.
 
 ### 8.6 Sous-titres et conteneur de sortie
 
-- PGS / DVD (image) → conteneur MKV, `-c:s copy`
+- PGS / DVD / DVB (image) → conteneur MKV, `-c:s copy` (`dvb_subtitle`
+  depuis la v0.8.9.93)
+- Télétexte (`dvb_teletext`) → **toujours écarté** (`SubtitleTrack.portable`) :
+  ni MP4 ni MKV ne le portent. `decide_subtitles` ne le retient jamais,
+  `kept_subtitles` l'écarte même coché à la main, l'écran Pistes refuse de le
+  cocher (« télétexte — non transportable »)
+- `subtitle_languages` garde aussi une piste **sans langue** (v0.8.9.93)
 - SRT (texte) → MP4 possible, `-c:s mov_text`
 - ASS / SSA → MKV : le style ne survit pas à `mov_text`
 - Sélection par piste depuis `TracksScreen` (par défaut : toutes conservées)
@@ -1039,7 +1057,7 @@ passait pour un DTS ordinaire et échappait à `preserve_hd_audio`.
   (`decision._pgs_doubles`) : un SRT forcé double un PGS forcé, un SRT complet
   un PGS complet, jamais l'un l'autre. Jellyfin incruste un sous-titre image,
   donc transcode ; le SRT dit la même chose. Seul de sa langue et de sa
-  nature, le PGS reste.
+  nature, le PGS reste. Sans langue déclarée, un PGS n'est jamais dit doublé.
   Forcé = `disposition.forced` ou « forced » / « forcé » dans le titre
   (`SubtitleTrack.is_forced`).
 
@@ -2581,6 +2599,23 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   L'état d'une ligne n'a plus de symbole (« terminé », « échec : … ») : il est
   déjà dans la colonne d'icône.
 
+**Source en lecture seule** (v0.8.9.92, IE-118) — un ISO monté, un partage
+sans droit d'écriture. `app.encoder()`, seule porte de la file, passe les
+décisions à `decision.sorties_bloquees()` : celles qui écrivent quelque chose
+(pas un SKIP sans piste externe), sans `output_dir` ni nom figé, dont le
+dossier refuse un fichier d'essai (`dossier_inscriptible()`, un essai par
+dossier ; ni `os.access`, qui ne lit que l'attribut sous Windows, ni
+`tempfile`, qui réessaie dix mille noms sur un refus). S'il y en a,
+`OutputDirScreen` s'ouvre sur `config.get_output_dir()` — le réglage
+`[app] output_dir` s'il existe, sinon `~/Videos`, sinon `~` : `↵` sur la
+première ligne (« Écrire dans ce dossier ») le retient, après un essai
+d'écriture ; les autres lignes y naviguent, `⌫` remonte jusqu'aux volumes,
+`Esc` ne met rien en file. Le dossier choisi va dans `FileDecision.output_dir`
+des décisions bloquées ; `dossier_sortie` (lui, ou le dossier de la source)
+porte la sortie **et** les intermédiaires de `RunScreen` (`.iris_audio.mka`,
+`.iris_st*.srt`, flux et RPU Dolby Vision). Le mux et le collage, qui écrivent
+à côté de la source, refusent un dossier en lecture seule avec un message.
+
 ### 14.8 Écran Config — gestion des profils
 
 **Options** (v0.8.9.43) — `U` ouvre `OptionsScreen` : la case « Bloquer la
@@ -2589,7 +2624,9 @@ mise en veille pendant les traitements » et le choix de l'action d'après lot,
 Enregistrer relève aussitôt l'état (`surveiller_veille`) : décocher relâche
 la machine sans attendre. `O` aurait été plus parlant, mais il est
 OpenSubtitles chez le donneur (UX-12). Une action inconnue dans le fichier
-vaut `rien` (v0.8.9.53 ; `veille` avant).
+vaut `rien` (v0.8.9.53 ; `veille` avant). Section « Dossier de sortie »
+(v0.8.9.92) : le dossier proposé pour une source en lecture seule (§ 14.7),
+changé par `OutputDirScreen`, écrit dans `[app] output_dir` au `Ctrl+S`.
 
 **Clés d'API** (v0.8.9.37, IE-101) — `K` ouvre `ClesScreen` pour tous les
 services de `core/cles.py` (OpenSubtitles : clé, identifiant, mot de passe
@@ -2716,6 +2753,22 @@ l'opération est destructive.
 ---
 
 ## 15. Scanner — `core/scanner.py`
+
+**Langues complétées** (v0.8.9.93, IE-119) — sur un `.m2ts` / `.mts` dont une
+piste n'a pas de langue, `_completer_langues` appelle `muxer.identify`
+(`mkvmerge -J`, qui lit les `.clpi` du disque) et reporte les langues par PID
+(`IdentifiedTrack.number`) ; une langue lue par ffprobe n'est jamais remplacée,
+mkvmerge absent ne change rien. Une piste complétée porte
+`langue_completee = True` : `build_command` écrit pour elle
+`-metadata:s:a:N language=…` (ou `s:s:N`), sans quoi la sortie n'en aurait
+aucune. Les chemins par mkvmerge (retrait et réencodage Dolby Vision) relisent
+les `.clpi` eux-mêmes.
+
+**Extensions** — `SUPPORTED_EXTENSIONS` : `.mp4 .avi .mkv .mov .wmv .flv .webm
+.m4v .3gp`, et depuis la v0.8.9.92 (IE-118) les flux MPEG `.ts .m2ts .mts .mpg
+.mpeg .vob`. Seule liste des vidéos : le navigateur, le mode récursif, les
+annexes et le choix du donneur la lisent (`DONOR_EXTS` l'étend des pistes
+isolées). Le conteneur de sortie n'en dépend pas (§ 8.6).
 
 ### 15.1 `VideoInfo`
 
@@ -2957,6 +3010,8 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.93 | 2026-10-08 | **Langues des Blu-ray, cœur AC-3, DVB, télétexte** (§ 8.5, § 8.6, § 15, IE-119) : langues d'un `.m2ts` complétées par mkvmerge (PID), écrites dans la sortie · piste sans langue gardée (audio, sous-titres), jamais dite doublée · paire TrueHD + cœur AC-3 réduite à une piste selon `preserve_hd_audio`, verrou de piste originale suivant `AudioDecision.locked` · `dvb_subtitle` image, `dvb_teletext` toujours écarté · `tests/test_langues_disque.py` |
+| 0.8.9.92 | 2026-10-08 | **Flux MPEG et sources en lecture seule** (§ 14.7, § 15, IE-118) : `.ts .m2ts .mts .mpg .mpeg .vob` reconnus, liste vidéo du donneur dérivée du scan · dossier de sortie demandé à la mise en file quand celui de la source refuse l'écriture (ISO monté), réglage `[app] output_dir` dans Options, sortie et intermédiaires dans `FileDecision.dossier_sortie` · mux et collage refusés en lecture seule · `tests/test_sources_lecture_seule.py` |
 | 0.8.9.91 | 2026-10-07 | **Passe audio préalable : défaut plus reproduit** (§ 14.7, IE-80) : ffmpeg 8.1.2 et 8.1.3 écrivent la piste sans perte transcodée en entier, fichier du signalement compris ; passe gardée par choix de l'utilisateur ; docstring d'`audio_prepass_needed` · aucun changement de comportement |
 | 0.8.9.90 | 2026-10-07 | **Analyse récursive en parallèle** (§ 15.2, IE-117) : `R` analyse quatre fichiers à la fois, comme l'accueil, et compte sa progression ; `SCAN_WORKERS` passe de `tui/screens/browser.py` à `core/scanner.py` · `tests/test_scan_recursif.py` |
 | 0.8.9.89 | 2026-10-07 | **Hors scope arbitré** (§ 19, IE-82) : six lignes gardées avec leur raison, cinq retirées parce que faites, l'analyse récursive en parallèle entre en v0.9.0 (IE-117) ; aucun changement de code |

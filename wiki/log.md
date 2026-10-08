@@ -291,3 +291,16 @@ réels, fichier du signalement, commande complète d'IRIS sans passe — aucune
 piste vidée. Passe préalable gardée par choix de l'utilisateur. Question
 retirée de [[questions-ouvertes]]. Source : [[2026-10-07-piste-vide-ffmpeg-81]].
 Pages touchées : [[audio]], [[pieges-et-lecons]].
+
+## [2026-10-08] ingest | Sources disque et `.ts` (IE-118)
+
+Sondage des deux ISO et des deux `.ts` d'essai : capacités des builds ffmpeg,
+langues absentes hors mkvmerge, lecteur monté en lecture seule, encodages
+courts réussis. Nouvelle page [[disques-optiques]]. Source :
+[[2026-10-08-sondage-disques]]. Pages touchées : [[ffmpeg]], [[mkvmerge]].
+
+## [2026-10-08] ingest | Langues des `.m2ts`, cœur AC-3, sous-titres TNT (IE-119)
+
+Une langue complétée par mkvmerge doit être écrite par `-metadata`, ffmpeg ne
+la voyant pas ; la TrueHD et son cœur AC-3 partagent un PID ; libzvbi présent
+dans le BtbN seulement. Pages touchées : [[disques-optiques]].

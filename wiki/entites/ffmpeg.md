@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-10-06
+maj: 2026-10-08
 sources:
+  - "[[source-2026-10-08-disques]]"
   - "[[source-2026-10-06-sar-scale]]"
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -25,6 +26,9 @@ décalage). Outil **essentiel**. Voir aussi [[ffprobe]] et [[sous-processus]].
 | n8.1.3 BtbN gpl | `PATH` du poste (`C:\Program Files\ffmpeg\bin`) | 2026-09-26 |
 
 `get_tool_path` prend le `PATH` **avant** `bin/`.
+
+Capacités disque : le gyan « essentials » n'a ni libbluray ni libdvdnav, le
+BtbN GPL les a (`-buildconf`, 2026-10-08, *mesuré*) — voir [[disques-optiques]].
 
 ## NVENC et version du pilote
 

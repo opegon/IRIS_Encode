@@ -1,5 +1,55 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.93] — 2026-10-08
+
+### Langues des Blu-ray, cœur AC-3, sous-titres de la TNT (IE-119)
+
+**Langues d'un `.m2ts`.** ffprobe n'en lit aucune : elles sont dans les
+fichiers `.clpi` du disque. mkvmerge, qui les lit, les complète désormais
+(0,7 s sur un `.m2ts` de 18 Go), pistes appariées par identifiant de flux, et
+l'encodage les écrit dans la sortie — ffmpeg ne les y aurait pas mises. Sur le
+Blu-ray d'essai, la règle des langues ne gardait qu'une piste audio ; elle
+garde maintenant les trois pistes anglaises et le sous-titre.
+
+**Une piste sans langue est gardée.** La règle des langues n'écartait pas
+seulement ce qui était étranger : elle écartait aussi ce qu'elle ne savait pas
+nommer, ce qui faisait perdre l'audio d'un enregistrement TNT ou d'un VOB. Elle
+n'écarte plus que les langues connues et non voulues, en audio comme en
+sous-titres ; un sous-titre image sans langue n'est plus dit doublé par un
+texte.
+
+**TrueHD et son cœur AC-3.** Un Blu-ray porte la TrueHD et sa compatibilité
+AC-3 dans un même flux, vues comme deux pistes : la sortie avait deux fois le
+même son. Avec `preserve_hd_audio`, la TrueHD seule ; sans, le cœur AC-3
+recopié tel quel au lieu d'une TrueHD transcodée — même résultat, sans perte de
+génération. Une sélection manuelle n'est jamais corrigée.
+
+**Sous-titres DVB et télétexte.** Les sous-titres en images de la TNT sont
+traités comme des PGS (sortie MKV, écartés s'ils sont doublés par un texte). Le
+télétexte, qu'aucun conteneur de sortie ne porte, est toujours écarté ; l'écran
+Pistes le dit et refuse de le cocher.
+
+## [v0.8.9.92] — 2026-10-08
+
+### Flux MPEG et disques montés (IE-118)
+
+Les `.ts` (enregistrements TNT, IPTV), `.m2ts` et `.mts` (Blu-ray, AVCHD),
+`.mpg`, `.mpeg` et `.vob` (DVD) apparaissent désormais dans le navigateur et
+le mode récursif. La liste vidéo du choix du donneur, qui avait divergé, est
+celle du scan.
+
+Une image ISO se monte dans Windows puis se parcourt comme un dossier. Ce
+dossier est en lecture seule : la sortie ne pouvait pas s'écrire à côté de la
+source. La mise en file demande alors un **dossier de sortie**, proposé depuis
+le nouveau réglage des Options (le dossier Vidéos par défaut) et modifiable
+par navigation ; la sortie et tous les intermédiaires (pistes audio, RPU
+Dolby Vision, sous-titres) y vont. Le mux (`F3`) et le collage refusent
+clairement un dossier en lecture seule au lieu d'échouer dans mkvmerge.
+
+Limites connues, objet des livraisons suivantes : les langues d'un `.m2ts`
+(IE-119), les titres d'un Blu-ray (IE-120) et d'un DVD (IE-121) — un film de
+DVD est encore découpé en VOB de 1 Go.
+
 ## [v0.8.9.91] — 2026-10-07
 
 ### La piste audio vidée ne se reproduit plus (IE-80)

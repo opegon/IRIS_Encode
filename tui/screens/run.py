@@ -613,7 +613,11 @@ class RunScreen(TableNavMixin, Screen):
         """
         s   = self._statuses[index]
         src = dec.encode_source or dec.info.path
-        out = src.with_name(f"{src.stem}.iris_audio.mka")
+        # Avec l'intermédiaire d'un mux préalable (dossier temporaire), à côté
+        # de lui ; sinon dans le dossier de sortie — celui de la source peut
+        # être en lecture seule (IE-118).
+        dossier = src.parent if dec.encode_source else dec.dossier_sortie
+        out = dossier / f"{src.stem}.iris_audio.mka"
         cmd = build_audio_command(src, out, dec.audio,
                                   getattr(self.app, "ffmpeg_path", "ffmpeg"))
         self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
@@ -660,8 +664,8 @@ class RunScreen(TableNavMixin, Screen):
         s       = self._statuses[index]
         source  = dec.info.path
         ffmpeg  = getattr(self.app, "ffmpeg_path", "ffmpeg")
-        porteur = source.with_name(f"{source.stem}.iris_st.mkv")
-        cmd, srts = st_mod.build_extraction(source, pistes, source.parent, ffmpeg)
+        porteur = dec.dossier_sortie / f"{source.stem}.iris_st.mkv"
+        cmd, srts = st_mod.build_extraction(source, pistes, dec.dossier_sortie, ffmpeg)
 
         def echouer(detail: str) -> tuple[bool, None]:
             s.state, s.error_msg = FileState.ERROR, _("subtitles: preparation failed")
@@ -739,14 +743,14 @@ class RunScreen(TableNavMixin, Screen):
             return
 
         # Les intermédiaires pèsent le poids du film : les poser à côté de la
-        # source, sur le même volume, plutôt que dans le temp du système —
+        # sortie, sur le même volume, plutôt que dans le temp du système —
         # 30 Go de flux brut n'ont pas leur place sur le disque du système.
-        brut = source.with_name(f"{source.stem}.iris_bl.hevc")
-        nodv = source.with_name(f"{source.stem}.iris_nodv.hevc")
+        brut = dec.dossier_sortie / f"{source.stem}.iris_bl.hevc"
+        nodv = dec.dossier_sortie / f"{source.stem}.iris_nodv.hevc"
         # Les pistes audio finales, quand la décision demande un transcodage.
         # mkvmerge ne sait que recopier : sans ce fichier, le TrueHD annoncé
         # « → E-AC3 » sortait en TrueHD.
-        mka  = source.with_name(f"{source.stem}.iris_audio.mka")
+        mka  = dec.dossier_sortie / f"{source.stem}.iris_audio.mka"
         # Le MP4 est recomposé par ffmpeg en une passe depuis la source : le
         # filtre `dovi_rpu` retire le RPU, l'audio se transcode au passage.
         mp4 = dec.output_container == ".mp4"
@@ -976,17 +980,17 @@ class RunScreen(TableNavMixin, Screen):
 
         ffmpeg_path = getattr(self.app, "ffmpeg_path", "ffmpeg")
         # Comme pour le retrait du RPU : les intermédiaires pèsent le poids de
-        # la vidéo encodée, ils vont à côté de la source et non dans le temp du
+        # la vidéo encodée, ils vont à côté de la sortie et non dans le temp du
         # système. Il y en a deux à la fois — `inject-rpu` ne travaille pas en
         # place — soit environ deux fois la taille de la sortie.
-        rpu = source.with_name(f"{source.stem}.iris.rpu")
-        p8  = source.with_name(f"{source.stem}.iris_p8.rpu")
-        enc = source.with_name(f"{source.stem}.iris_enc.hevc")
-        inj = source.with_name(f"{source.stem}.iris_dv.hevc")
-        mka = source.with_name(f"{source.stem}.iris_audio.mka")
+        rpu = dec.dossier_sortie / f"{source.stem}.iris.rpu"
+        p8  = dec.dossier_sortie / f"{source.stem}.iris_p8.rpu"
+        enc = dec.dossier_sortie / f"{source.stem}.iris_enc.hevc"
+        inj = dec.dossier_sortie / f"{source.stem}.iris_dv.hevc"
+        mka = dec.dossier_sortie / f"{source.stem}.iris_audio.mka"
         # En sortie MP4, mkvmerge écrit d'abord ce Matroska, que ffmpeg remuxe.
         en_mp4 = sortie.suffix.lower() == ".mp4"
-        mkv    = source.with_name(f"{source.stem}.iris_dv.mkv") if en_mp4 else sortie
+        mkv    = dec.dossier_sortie / f"{source.stem}.iris_dv.mkv" if en_mp4 else sortie
         porteur: Optional[Path] = None
 
         passe_audio = audio_pass_needed(dec.audio)

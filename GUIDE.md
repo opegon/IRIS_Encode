@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.8.9.91
+**Version**: 0.8.9.93
 **Date**: 2026-10-07
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -573,6 +573,23 @@ A downloaded `.srt` is almost never in sync with your file.
 
 A subtitle is corrected **exactly**: there are only numbers to shift, nothing
 to resample. That is what makes this case much safer than an audio resync.
+
+### 3.7 Encoding a disc image (ISO)
+
+1. In Windows, right-click the `.iso` → **Mount**: it appears as a drive.
+2. Open that drive from the volume list (`Ctrl+Home`).
+   - **Blu-ray**: `BDMV\STREAM` — the movie is usually the largest `.m2ts`.
+   - **DVD**: `VIDEO_TS` — the movie is split into `VTS_xx_1.VOB`,
+     `VTS_xx_2.VOB`… of 1 GB each; for now, each part is encoded on its own.
+3. Check the file, `F2`. The drive is read-only: IRIS asks for an **output
+   folder**. `↵` on the first row accepts the one offered (set in Options,
+   `F5` then `U`; your Videos folder by default); the other rows browse to
+   another one.
+4. Once the batch is done, unmount the drive (right-click → **Eject**).
+
+Track languages of a `.m2ts` are read from the disc by mkvmerge (an optional
+tool: without it, they stay unknown — and a track whose language is unknown is
+kept). A TrueHD track and its AC-3 core give a single track in the output.
 
 ---
 

@@ -450,6 +450,10 @@ class FileDecision:
     # `output_path` recalcule un nom déterministe ; une fois posé, il ne bouge
     # plus — y compris après que le fichier a été écrit. Voir `resoudre_sorties`.
     output_override:   Path | None = None
+    # Dossier où écrire quand celui de la source est en lecture seule — un ISO
+    # monté (IE-118). None = à côté de la source. La sortie et les
+    # intermédiaires y vont ensemble : voir `dossier_sortie`.
+    output_dir:        Path | None = None
 
     @property
     def kept_subtitles(self) -> list:
@@ -458,10 +462,11 @@ class FileDecision:
         Le conteneur peut en écarter d'autres ensuite — voir
         `sous_titres_ecartes` et `subtitles_finales`.
         """
+        # Une piste non portable (télétexte) ne passe pas, même cochée à la main.
         if self.subtitle_indices is None:
-            return list(self.info.subtitle_tracks)
+            return [st for st in self.info.subtitle_tracks if st.portable]
         return [st for st in self.info.subtitle_tracks
-                if st.index in self.subtitle_indices]
+                if st.index in self.subtitle_indices and st.portable]
 
     @property
     def subtitles_finales(self) -> list:
@@ -571,7 +576,12 @@ class FileDecision:
             # Le groupe de la release part ensuite : il signait la source.
             stem = stem_sans_groupe(stem_sans_suffixe_produit(stem))
         stem = self._stem_a_jour(stem)
-        return self.info.path.parent / f"{stem}{suffixe_sans_redite(stem, suffix)}{ext}"
+        return self.dossier_sortie / f"{stem}{suffixe_sans_redite(stem, suffix)}{ext}"
+
+    @property
+    def dossier_sortie(self) -> Path:
+        """Où vont la sortie et les intermédiaires du traitement."""
+        return self.output_dir or self.info.path.parent
 
     def _stem_a_jour(self, stem: str) -> str:
         """Le stem dont les marques disent le fichier produit, pas la source.
@@ -1039,15 +1049,36 @@ def decide_audio(
     preserve_hd  = profile.get("preserve_hd_audio", False)
     copy_compat  = profile.get("audio_copy_compatible", True)
     decisions:   list[AudioDecision] = []
+    # Une TrueHD et son cœur AC-3 ne font qu'une piste (IE-119) : la règle
+    # automatique n'en garde qu'un. Une sélection manuelle reste maîtresse.
+    paires = {} if override_selected is not None else _paires_coeur(info.audio_tracks)
+    coeurs = {c: hd for hd, c in paires.items()}
+    # Le rôle de piste originale passe au cœur quand il remplace la piste 0.
+    originale = 0
+    if 0 in paires and not preserve_hd:
+        originale = paires[0]
 
     for i, track in enumerate(info.audio_tracks):
         # ── Sélection ────────────────────────────────────────────────────────
         if override_selected is not None:
             included = i in override_selected
             reason   = _("manual selection") if included else _(EXCLU_MANUELLEMENT)
-        elif i == 0:
+        elif i in paires and not preserve_hd:
+            included = False
+            reason   = _("replaced by its {codec} core (track {index})").format(
+                codec=info.audio_tracks[paires[i]].codec.upper(), index=paires[i])
+        elif i in coeurs and preserve_hd:
+            included = False
+            reason   = _("core of track {index}, which already carries it").format(
+                index=coeurs[i])
+        elif i == originale:
             included = True
-            reason   = _("original track (index 0)")
+            reason   = _("original track (index {index})").format(index=i)
+        elif not _langue_dite(track.language):
+            # On n'écarte que ce qu'on sait étranger aux langues voulues : un
+            # enregistrement TNT ou un VOB n'étiquettent pas leurs pistes.
+            included = True
+            reason   = _("language unknown → kept")
         elif normalize_language(track.language) in langues_voulues:
             included = True
             reason   = _("language {language}").format(language=track.language)
@@ -1059,7 +1090,7 @@ def decide_audio(
         if not included:
             decisions.append(AudioDecision(
                 track=track, action=AudioAction.EXCLUDE, reason=reason,
-                output_codec="", output_bitrate=0, locked=(i == 0),
+                output_codec="", output_bitrate=0, locked=(i == originale),
             ))
             continue
 
@@ -1074,7 +1105,7 @@ def decide_audio(
                     # preserve_hd_audio stay in English (glossary).
                     reason=_("{reason} · lossless + preserve_hd_audio → copy").format(
                         reason=reason),
-                    output_codec="copy", output_bitrate=0, locked=(i == 0),
+                    output_codec="copy", output_bitrate=0, locked=(i == originale),
                 ))
                 continue
             out_codec, out_br, out_ch = _transcode_spec(track, profile)
@@ -1082,7 +1113,7 @@ def decide_audio(
                 track=track, action=AudioAction.TRANSCODE,
                 reason=_("{reason} · lossless → {codec}").format(
                     reason=reason, codec=out_codec),
-                output_codec=out_codec, output_bitrate=out_br, locked=(i == 0),
+                output_codec=out_codec, output_bitrate=out_br, locked=(i == originale),
                 output_channels=out_ch,
             ))
             continue
@@ -1092,7 +1123,7 @@ def decide_audio(
                 track=track, action=AudioAction.COPY,
                 reason=_("{reason} · {codec} compatible → copy").format(
                     reason=reason, codec=codec_lc),
-                output_codec="copy", output_bitrate=0, locked=(i == 0),
+                output_codec="copy", output_bitrate=0, locked=(i == originale),
             ))
             continue
 
@@ -1100,11 +1131,37 @@ def decide_audio(
         decisions.append(AudioDecision(
             track=track, action=AudioAction.TRANSCODE,
             reason=_("{reason} · → {codec}").format(reason=reason, codec=out_codec),
-            output_codec=out_codec, output_bitrate=out_br, locked=(i == 0),
+            output_codec=out_codec, output_bitrate=out_br, locked=(i == originale),
             output_channels=out_ch,
         ))
 
     return decisions
+
+
+def _langue_dite(code: str) -> bool:
+    """Une langue déclarée, pas « und » ni rien."""
+    return normalize_language(code) not in ("", "und")
+
+
+def _paires_coeur(pistes: list) -> dict[int, int]:
+    """Index d'une piste sans perte → index de son cœur, dans un même PID.
+
+    Un Blu-ray porte la TrueHD et sa compatibilité AC-3 dans un seul flux, que
+    ffprobe montre en deux pistes de même PID (mesuré le 2026-10-08). Les
+    garder toutes deux donne deux fois le même son ; le cœur seul, recopié,
+    vaut mieux qu'une TrueHD transcodée en AC-3 : même résultat sans perte de
+    génération, et plus vite.
+    """
+    paires: dict[int, int] = {}
+    for hd in pistes:
+        if hd.pid is None or not hd.is_lossless:
+            continue
+        for c in pistes:
+            if (c is not hd and c.pid == hd.pid and not c.is_lossless
+                    and c.index not in paires.values()):
+                paires[hd.index] = c.index
+                break
+    return paires
 
 
 # ─── Point d'entrée ───────────────────────────────────────────────────────────
@@ -1153,6 +1210,52 @@ def resoudre_sorties(decisions: list[FileDecision]) -> None:
             candidat = vise.with_name(f"{vise.stem}({n}){vise.suffix}")
         dec.output_override = candidat
         reserves.add(candidat)
+
+
+def dossier_inscriptible(dossier: Path) -> bool:
+    """Peut-on écrire dans ce dossier ? On essaie, plutôt que de demander.
+
+    `os.access(…, W_OK)` ne lit sous Windows que l'attribut lecture seule : il
+    répond oui sur un ISO monté (UDF, en lecture seule par nature) comme sur un
+    partage où le compte n'a pas le droit d'écrire. Seul un fichier créé pour
+    de bon tranche ; il disparaît aussitôt. Pas `tempfile` : sous Windows, un
+    refus d'accès dans un dossier qu'`os.access` dit inscriptible le fait
+    réessayer jusqu'à dix mille noms.
+    """
+    import uuid
+    essai = dossier / f".iris-{uuid.uuid4().hex}.tmp"
+    try:
+        with essai.open("xb"):
+            pass
+    except OSError:
+        return False
+    try:
+        essai.unlink()
+    except OSError:
+        pass
+    return True
+
+
+def sorties_bloquees(decisions: list[FileDecision]) -> list[FileDecision]:
+    """Les décisions qui écriraient dans un dossier en lecture seule.
+
+    Une décision qui n'écrit rien (SKIP sans piste externe) n'en est pas, ni
+    celle dont le dossier de sortie est déjà choisi. Chaque dossier n'est
+    essayé qu'une fois : sur un partage réseau, l'essai coûte un aller-retour.
+    """
+    essais: dict[Path, bool] = {}
+    bloquees = []
+    for dec in decisions:
+        if dec.output_dir is not None or dec.output_override is not None:
+            continue
+        if dec.video.action == VideoAction.SKIP and not dec.external_tracks:
+            continue
+        dossier = dec.info.path.parent
+        if dossier not in essais:
+            essais[dossier] = dossier_inscriptible(dossier)
+        if not essais[dossier]:
+            bloquees.append(dec)
+    return bloquees
 
 
 def choisir_codec(dec: FileDecision, action: VideoAction,
@@ -1227,13 +1330,16 @@ def decide_subtitles(
     if override is not None:
         return override
     langues = profile.get("subtitle_languages", None)
-    retenues = info.subtitle_tracks
+    # Le télétexte n'a pas de place dans la sortie (IE-119) : jamais retenu.
+    retenues = [st for st in info.subtitle_tracks if st.portable]
     if langues:
         voulues = {normalize_language(l) for l in langues}
+        # Une langue inconnue est gardée, comme en audio.
         retenues = [st for st in retenues
-                    if normalize_language(st.language) in voulues]
+                    if not _langue_dite(st.language)
+                    or normalize_language(st.language) in voulues]
     doublons = _pgs_doubles(retenues)
-    if not langues and not doublons:
+    if not langues and not doublons and len(retenues) == len(info.subtitle_tracks):
         return None
     return [st.index for st in retenues if st not in doublons]
 
@@ -1248,8 +1354,9 @@ def _pgs_doubles(pistes: list) -> list:
     """
     textes = {(normalize_language(st.language), st.is_forced) for st in pistes
               if not st.is_image_based}
+    # Sans langue, rien ne dit que le texte et l'image disent la même chose.
     return [st for st in pistes
-            if st.is_image_based
+            if st.is_image_based and _langue_dite(st.language)
             and (normalize_language(st.language), st.is_forced) in textes]
 
 

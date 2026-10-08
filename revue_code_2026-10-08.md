@@ -33,22 +33,15 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `core/__init__.py` fait. aucun constat. core/ terminé.
-- Prochain : `tui/screens/run.py`.
+- 2026-10-08 — `tui/screens/run.py` fait. 3 critiques (chemins DV : titre supprimé, greffes perdues en MP4 ×2), 1 majeur (sortie partielle laissée), 9 mineurs, 1 question.
+- Prochain : `tui/screens/output_dir.py`.
 
 ### Pistes notées en route
 
 Observations faites en lisant un appelant, à instruire quand leur fichier vient
 (et à retirer une fois instruites).
 
-- `tui/screens/run.py` `_extraire_dvd` (~l. 1300) et `_remux_titre` (~l. 1250) : le détail d'échec est la dernière ligne (`journal[-1]`, `proc.errors[-1]`), pas `encoder.diagnostiquer()` — pour l'LPCM de CR-05 on lirait « Error opening output files: Invalid argument ». Récidive de la règle « un échec nomme sa cause » ?
-- `tui/screens/run.py` : après échec ou abandon d'un titre extrait, `dec.encode_source` est-il remis à None et le `.iris_titre.mkv` effacé ? (un réessai pointerait vers un fichier disparu).
 - `tui/screens/browser.py:831-849` `_scan_one` : une analyse qui lève est seulement journalisée, la ligne disparaît de la liste sans message (titre de disque illisible, CSS non détecté sur lecteur physique : `clip_chiffre`/`vob_chiffre` rendent False sur OSError en promettant que « l'analyse dira pourquoi »). Message de journal en français (« Échec du scan »).
-- `tui/screens/run.py` `ajouter()` : une décision ajoutée à un lot en cours passe-t-elle par `resoudre_sorties` avec les noms déjà réservés du lot ? Sinon deux sources de même stem (Film.mkv puis Film.mp4) visent la même sortie non encore écrite.
-- `tui/screens/run.py` `_audio_prepass` (~l. 660) : échec résumé en « code N », sans `diagnostiquer` (même famille que la première piste).
-- `tui/screens/run.py` arrêt (`_arreter`) d'un processus **en pause** : sous POSIX, `terminate()` (SIGTERM) sur un processus arrêté par SIGSTOP reste en attente jusqu'au SIGCONT, et `wait()` bloque. Reprendre avant de terminer ?
-- `tui/screens/run.py` `_strip_dv` / `_encode_dv` : `dovi.remove_dv`, `inject_rpu`, `convert_p7_to_p8`, `extract_rpu_depuis_source` sont des appels bloquants qui ne publient pas leur processus : `X` (arrêt) et `F10` peuvent-ils les interrompre ? un dovi_tool orphelin continuerait d'écrire des dizaines de Go. Et `pistes_audio_vides` est-il vérifié après un retrait DV en MP4 (`build_strip_mp4` transcode sans passe préalable) ?
-- `tui/screens/run.py` `_strip_dv` en MP4 : `dovi.build_strip_mp4` n'a pas de paramètre de pistes externes — une greffe sur une décision `STRIP_DV` sortant en MP4 est-elle perdue en silence ?
 - `tui/screens/sync.py`, `tui/screens/wizard.py` : quel chemin reçoit la mesure pour une **cible titre de Blu-ray** (`info.path` = `.mpls`, que ffmpeg ne lit pas, ou `info.lecture` = premier clip seulement) ? et après un `_remux_titre` ?
 - `main.py` : la console du preflight imprime `✓ ✗ ↑ …` ; sortie redirigée vers un fichier ou un tube sous Windows (cp1252) → `UnicodeEncodeError` au démarrage ? (`sys.stdout.reconfigure` ?)
 - `core/opensubtitles.py`, `tui/screens/meta_popup.py` : pour un **titre de disque**, `parse_title(info.path)` lit `00800.mpls` / `TITLE_01.dvd` (titre « 00800 ») et l'empreinte se calcule sur une playlist de quelques centaines d'octets — utiliser `stem_sortie` et `lecture` ?
@@ -198,7 +191,7 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] core/__init__.py (1)
 
 ### tui/
-- [ ] tui/screens/run.py (1624)
+- [x] tui/screens/run.py (1624)
 - [ ] tui/screens/output_dir.py (133)
 - [ ] tui/widgets/file_tree.py (150)
 - [ ] tui/app.py (499)
@@ -533,6 +526,65 @@ Aucun constat. (Champs des traductions vérifiés par `tests/test_i18n.py` ; `Er
 ### core/__init__.py
 
 Aucun constat (une ligne de commentaire).
+
+### tui/screens/run.py
+
+Banc de reproduction : celui de `tests/test_arret_encodage.py` (vraie `RunScreen` dans une `App` Textual, faux ffmpeg et faux mkvmerge qui écrivent leur sortie), scénarios A à G du script de session `repro_run.py`.
+
+- **CR-54** · `tui/screens/run.py:933-942` (`_strip_dv`), `:1170-1179` (`_encode_dv`) · **critique** · P · reproduit (décision synthétique ; portée réelle supposée) — Les chemins Dolby Vision suppriment la source sans les garde-fous de la passe principale : un titre de Blu-ray perd son `.m2ts`.
+  - Scénario : la passe principale ne supprime jamais un titre (`:579`, `dec.info.titre is None` ; spec § 15.5, CHANGELOG v0.8.9.94 « Un titre n'est jamais supprimé après encodage, même avec `delete_source` »). `_strip_dv` et `_encode_dv` refont leur propre `should_delete` et appellent `source.unlink()` sur `dec.info.lecture`, c'est-à-dire le clip du disque. Reproduit : titre Blu-ray d'un clip (dossier BDMV copié sur disque), profil 7, `STRIP_DV`, `delete_source_override=True` → état SUCCESS, `BDMV/STREAM/00001.m2ts` effacé. Pour un fichier ordinaire, les mêmes lignes oublient `supprimer_annexes` : le `.nfo` et les images Jellyfin restent orphelins (IE-116 ne vaut que pour la passe principale). Portée : un UHD officiel en double couche n'expose probablement pas son DV sur `v:0` (`scanner._detect_dv`), donc n'arrive pas ici ; un disque monté en simple couche (tsMuxeR, profil 8) oui — supposé.
+  - Correction : une seule fonction `_supprimer_source(dec)` (garde du titre, `supprimer_annexes`), appelée par les trois chemins.
+  - Test : titre Blu-ray d'un clip, `STRIP_DV` puis `ENCODE_DV`, processus simulés, `delete_source_override=True` : le `.m2ts` existe encore ; fichier ordinaire en `STRIP_DV` : son `.nfo` part avec lui.
+- **CR-55** · `tui/screens/run.py:874-882` (`dovi.build_strip_mp4` sans pistes externes) · **critique** · J · reproduit — Retrait du Dolby Vision vers MP4 : les pistes greffées disparaissent, l'encodage est déclaré réussi.
+  - Scénario : WEB-DL DV 8.1 avec E-AC3 (cas courant), profil en `dolby_vision = "hdr10"` → `STRIP_DV` ; l'utilisateur greffe une VF ou un `.srt` français depuis l'écran des pistes (`T`, `pick_external_tracks`). Rien n'impose le MKV : sortie MP4. `build_strip_mp4` ne connaît que la source et le porteur. Reproduit : décision `STRIP_DV` + `.srt` greffé → conteneur `.mp4`, commande ffmpeg à **une seule entrée** (la source), état SUCCESS ; le chemin MKV (`build_strip_command(tracks=…)`) les recopie, lui.
+  - Correction : passer les pistes externes au chemin MP4 (entrées et `-map` comme `build_command`), ou faire passer en MKV un `STRIP_DV` qui porte des greffes.
+  - Test : `STRIP_DV` vers MP4 avec une piste greffée : la commande finale a le donneur pour entrée et le mappe ; plus généralement, pour toute décision à `external_tracks` non vide, chaque chemin d'écriture référence chaque donneur.
+- **CR-56** · `tui/screens/run.py:1149-1152`, `core/dovi.py:183-185` (`"-map", "1:s?" if porteur …`) · **critique** · J · reproduit — Réencodage DV vers MP4 : quand un porteur de sous-titres est nécessaire, les sous-titres greffés sont abandonnés.
+  - Scénario : film DV 8.1 réencodé (`ENCODE_DV`), sortie MP4, sous-titre « forced » de la source dont deux répliques sont séparées de plus de 2³¹ µs (≈ 36 min — fréquent pour un forced), et un `.srt` français greffé. mkvmerge met bien la greffe dans `<n>.iris_dv.mkv` ; le remux MP4 prend alors les sous-titres **uniquement** dans le porteur (`1:s?`), qui ne contient que ceux de la source. Reproduit : donneur présent dans la commande mkvmerge, remux `-map 1:s?` sur les entrées `[Film2.iris_dv.mkv, Film2.iris_st.mkv]`, état SUCCESS, sous-titre français absent.
+  - Correction : mapper les sous-titres greffés depuis le Matroska en plus de ceux du porteur (`-map 0:s:<n>` pour les pistes externes), ou fabriquer le porteur depuis le Matroska.
+  - Test : `ENCODE_DV` vers MP4 avec porteur et sous-titre greffé (processus simulés, porteur réel) : la commande de remux mappe la piste greffée.
+- **CR-57** · `tui/screens/run.py:552-628` (passe principale), `:895-931` et `:1161-1168` (dernières étapes DV), `:1522-1534` (`action_skip_current`) · **majeur** · P · reproduit — Une sortie partielle reste après un échec de ffmpeg ou un `S`, sous le nom d'une sortie réussie.
+  - Scénario : spec § 12.4 « Sortie partielle supprimée en cas d'échec » ; seul `_arreter` (`X`, `F10`) efface. Disque plein à 70 %, erreur NVENC en cours de route, ou `S` pour passer le fichier : `Film.hevc-iris.mkv` tronqué reste à côté de la source. Jellyfin l'indexe comme une version du film ; le réessai, numéroté par `resoudre_sorties`, écrit `Film.hevc-iris(2).mkv` ; l'accueil grise le tronqué comme une sortie d'IRIS. Reproduit : faux ffmpeg à code 1 → ERROR, sortie présente ; `S` pendant l'encodage → SKIPPED, sortie présente. Aucun test ne verrouille la suppression hors `X`.
+  - Correction : à la fin de chaque chemin, effacer `output_path` dès que l'état final n'est pas SUCCESS (y compris la piste audio vide de `pistes_audio_vides`, que le message déclare inutilisable), comme `_arreter`.
+  - Test : faux ffmpeg à code 1, puis `S` pendant un encodage : `output_path` n'existe plus une fois le fichier suivant démarré.
+- **CR-58** · `tui/screens/run.py:450-511` · mineur · P · reproduit — Un échec entre l'assemblage du titre et l'encodage laisse l'intermédiaire (le poids du film) dans le dossier de sortie.
+  - Scénario : le nettoyage de `encode_source` n'a lieu qu'après la passe d'encodage (`:600-610`), dont le commentaire dit « que l'encodage ait réussi ou non ». Les sorties anticipées n'y passent pas : `_premux` en échec (l'assemblage reste), `_audio_prepass` en échec, porteur en échec, `ValueError` de `build_command`, encodeur indisponible (AV1 NVENC sur RTX 30) — ces deux derniers laissent aussi `audio_tmp` (`<n>.iris_audio.mka`). Reproduit : titre de deux clips, passe audio en échec → `00800.iris_titre.mkv` reste dans le dossier du disque, et `deja_produit` ne le reconnaît pas (CR-11).
+  - Correction : un `try/finally` unique autour de la préparation et de l'encodage qui efface `encode_source`, `audio_tmp`, porteur et chapitres.
+  - Test : titre de deux clips, chacune des sorties anticipées provoquée : aucun `*.iris_*` dans le dossier de sortie après l'enchaînement.
+- **CR-59** · `tui/screens/run.py:1246` (`_remux_titre`), `:1357` (`_premux`) · mineur · J · reproduit — Pendant l'assemblage d'un titre ou un mux préalable, la ligne affiche « 4200% » et la barre globale saute à 100 %.
+  - Scénario : `muxer.parse_progress` rend 0–100 ; `_strip_dv` et `_encode_dv` divisent par 100, ces deux étapes non. Reproduit : mkvmerge simulé à 42 % → cellule État `4200%`, `avancement()` = `(0, 1, 100)`.
+  - Correction : `s.percent = pourcent / 100.0`.
+  - Test : pendant un assemblage simulé à 42 %, la cellule d'état affiche `42%`.
+- **CR-60** · `tui/screens/run.py:1522-1534` (`action_skip_current`) · mineur · S · reproduit (POSIX) — `S` sur un encodage en pause ne l'arrête pas : ffmpeg reste suspendu, le fichier suivant ne démarre jamais.
+  - Scénario : `_arreter` reprend un processus suspendu avant de le terminer ; `action_skip_current` non. Sous POSIX, le SIGTERM reste en attente d'un SIGCONT. Reproduit avec `EncoderProcess` et un vrai ffmpeg : `pause()`, `terminate()` → toujours vivant 5 s après ; repris, il sort (255). De plus `_paused` repasse à False alors que le processus garde le sien à True : il faut presser `P` deux fois pour débloquer. Sous Windows, `TerminateProcess` tue un processus suspendu (lu).
+  - Correction : faire passer `S` par la même routine que `_arreter` (reprise puis arrêt), sans l'effacement si l'on garde le partiel.
+  - Test : faux processus qui enregistre l'ordre des appels : pause puis `S` → `resume` avant `terminate`.
+- **CR-61** · `tui/screens/run.py:1522-1525`, `:1579-1582`, `:836`, `:1042`, `:1056`, `:1086`, `:927-931`, `:1139-1143` · mineur · C · lu (arrêt à la sortie : supposé) — `S` et `X` ne savent pas interrompre les étapes qui ne publient pas de processus ffmpeg.
+  - Scénario : `S` n'agit que sur `self._process` : pendant mkvmerge (assemblage, mux préalable, remux DV) et pendant dovi_tool, la touche ne fait rien, sans message. `X` pendant `dovi_tool remove` (jusqu'à 30 min) ou `inject-rpu` (jusqu'à 2 h) ne trouve rien à arrêter : le bilan « Arrêté » s'affiche, dovi_tool continue d'écrire des dizaines de Go, puis l'étape suivante est tuée au démarrage et l'échec de la dernière étape réécrit l'état SKIPPED en ERROR (`echouer` sans contrôle de SKIPPED après le remux), contre le bilan déjà affiché. Quitter (`F10`) pendant dovi_tool : le thread de travail n'est pas démon, l'interpréteur attend sa fin (supposé). Voir CR-32 pour les délais fixes.
+  - Correction : lancer dovi_tool comme les autres étapes (processus publié et arrêtable) ; tester SKIPPED avant tout `echouer` ; `S` sur une étape mkvmerge l'arrête aussi.
+  - Test : étape dovi_tool simulée bloquante, `X` : le faux processus reçoit `terminate`, l'état final reste SKIPPED et aucune étape suivante ne démarre.
+- **CR-62** · `tui/screens/run.py:1293-1306` (`_extraire_dvd`), `:663-667`, `:717-719`, `:820-824`, `:865-869`, `:1064-1081`, `:1110-1113`, `:1165-1167` · mineur · R · lu (dernière ligne LPCM : reproduit) — Hors de la passe principale, un échec ne nomme pas sa cause (récidive d'IE-13).
+  - Scénario : seule la passe principale garde 40 lignes et appelle `diagnostiquer`. Les étapes DV écrivent de 30 à 80 Go d'intermédiaires à côté de la sortie : un disque plein y donne « HEVC extraction: code 1 », la sortie de ffmpeg étant jetée, au lieu de « The destination disk is full. ». La passe vidéo d'`ENCODE_DV` est un vrai encodage NVENC : pilote trop ancien → « video encoding: code 1 », et ni `diagnostiquer` ni le refus préalable `peut_encoder` (`:495-511`) ne s'y appliquent — l'extraction du RPU a déjà lu tout le film. L'extraction DVD garde la dernière de cinq lignes : pour l'LPCM de CR-05, mesuré avec ffmpeg 6.1, « Error opening output files: Invalid argument », la ligne qu'IE-13 décrit comme « la seule qui n'apprend rien ».
+  - Correction : un journal et `diagnostiquer` pour chaque étape ffmpeg ; contrôle `encodeur_a_controler`/`peut_encoder` avant `_encode_dv`.
+  - Test : faux ffmpeg qui écrit « No space left on device » puis rend 1 à l'extraction HEVC : `last_line` contient « The destination disk is full ».
+- **CR-63** · `tui/screens/run.py:742-960`, `:962-1197` · mineur · R · lu — Les chemins DV perdent les chapitres d'un titre de Blu-ray (IE-120) et, dès qu'une piste audio est transcodée ou en MP4, ses langues lues dans le `.clpi` (IE-119).
+  - Scénario : `_ecrire_chapitres` n'est appelé que par la passe principale ; un `.m2ts` ne porte pas de chapitres. Les langues : mkvmerge les lit dans le `.clpi` quand il reçoit le `.m2ts`, mais `build_audio_command` produit un `.mka` sans langue, qui remplace l'audio (`--no-audio` sur la source) ; `build_strip_mp4` recopie sans `-metadata language` (ce que fait `build_command`, `core/encoder.py:770-777`). Résultat : pistes `und`, pas de chapitres. Même portée que CR-54.
+  - Correction : chapitres FFMETADATA ou playlist passés à mkvmerge (`--chapters` accepte une `.mpls`) ; langues complétées écrites par `build_audio_command` et `build_strip_mp4`.
+  - Test : `STRIP_DV` d'un titre d'un clip à chapitres et langues complétées : la commande mkvmerge porte les chapitres, le `.mka` les langues.
+- **CR-64** · `tui/screens/run.py:570-571` → `tui/common.py:41-47` (`cfg_mod.save`) · mineur · J · reproduit (déclencheur Windows supposé) — Un `config.toml` impossible à réécrire à la fin d'un encodage réussi fait quitter l'application au milieu du lot.
+  - Scénario : la moyenne de vitesse est enregistrée depuis le thread d'encodage ; `save` lève `OSError`, rien ne l'attrape, et le `@work` (sortie sur erreur par défaut) ferme l'application : fichiers suivants jamais encodés, intermédiaires de la passe non nettoyés. Reproduit : `CONFIG_PATH` sous un chemin non inscriptible → `WorkerFailed: NotADirectoryError`, application arrêtée après le premier fichier. Sous Windows, `os.replace` échoue (`WinError 5`) quand un antivirus ou un client de synchronisation tient le fichier à cet instant ; `assurer_langue` tolère déjà un `config.toml` non inscriptible au démarrage.
+  - Correction : attraper `OSError` autour de l'enregistrement de la vitesse (une statistique perdue, pas un lot).
+  - Test : `cfg_mod.save` qui lève `OSError` : deux fichiers en file, les deux encodés.
+- **CR-65** · `tui/screens/run.py:874-931` · mineur · S · supposé — Le retrait DV vers MP4 transcode l'audio dans le même appel que les sous-titres, sans passe préalable ni contrôle `pistes_audio_vides`.
+  - Scénario : c'est la combinaison du défaut d'août (décodage sans perte + sous-titre tardif mappé, `audio_prepass_needed`) ; IE-80 garde la passe « pour un ffmpeg plus ancien », et ce chemin exige justement ffmpeg ≥ 7.1 (une 7.1 système est possible). Si le défaut s'y produit : MP4 à piste vide, SUCCESS, source supprimée si `delete_source`. La règle du fichier (« Le succès se vérifie, il ne se déduit pas du code de retour », `:555-557`) n'est appliquée qu'à la passe principale.
+  - Correction : appeler `pistes_audio_vides` après chaque sortie finale, et faire la passe audio à part quand `audio_prepass_needed`.
+  - Test : sortie MP4 simulée dont la piste audio dure 0,05 s : état ERROR.
+- **CR-66** · `tui/screens/run.py:630`, `:674`, `:780`, `:1017`, `:1199` · mineur · J · lu — `Optional` est employé dans des annotations sans être importé.
+  - Scénario : sans effet à l'exécution (`from __future__ import annotations`), mais `typing.get_type_hints` lève `NameError` et pyflakes signale F821 ; le reste du fichier écrit `X | None`.
+  - Correction : `Path | None`.
+  - Test : structurel — pyflakes sans F821 sur `tui/`.
+- **Question** — `S` abandonne sans confirmation un encodage de plusieurs heures, alors que `X` demande (`ConfirmModal`) et qu'UX-02 pose « une frappe ne jette plus des heures d'encodage ». Choix assumé pour une touche dédiée, ou confirmation au-delà d'une durée écoulée ?
+- Pistes instruites : `ajouter()` passe bien par `resoudre_sorties` avec les noms déjà réservés, sous verrou (`:188-199`) — pas de défaut ; l'arrêt d'un processus en pause par `X`/`F10` reprend avant de terminer (`:1560-1561`) — seul `S` est fautif (CR-60).
 
 ## Synthèse
 

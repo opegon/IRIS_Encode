@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `core/sync.py` fait. 3 constats : extraction de sous-titre embarqué limitée à 120 s avec une cause fausse (majeur), horodatage ,1000 (reproduit), .sub/.vtt non lus (reproduit).
-- Prochain : `core/preflight.py`.
+- 2026-10-08 — `core/platform.py` fait. 1 constat mineur supposé (sonde 8 bits seulement).
+- Prochain : `core/config.py`.
 
 ### Pistes notées en route
 
@@ -50,6 +50,7 @@ Observations faites en lisant un appelant, à instruire quand leur fichier vient
 - `tui/screens/run.py` `_strip_dv` / `_encode_dv` : `dovi.remove_dv`, `inject_rpu`, `convert_p7_to_p8`, `extract_rpu_depuis_source` sont des appels bloquants qui ne publient pas leur processus : `X` (arrêt) et `F10` peuvent-ils les interrompre ? un dovi_tool orphelin continuerait d'écrire des dizaines de Go. Et `pistes_audio_vides` est-il vérifié après un retrait DV en MP4 (`build_strip_mp4` transcode sans passe préalable) ?
 - `tui/screens/run.py` `_strip_dv` en MP4 : `dovi.build_strip_mp4` n'a pas de paramètre de pistes externes — une greffe sur une décision `STRIP_DV` sortant en MP4 est-elle perdue en silence ?
 - `tui/screens/sync.py`, `tui/screens/wizard.py` : quel chemin reçoit la mesure pour une **cible titre de Blu-ray** (`info.path` = `.mpls`, que ffmpeg ne lit pas, ou `info.lecture` = premier clip seulement) ? et après un `_remux_titre` ?
+- `main.py` : la console du preflight imprime `✓ ✗ ↑ …` ; sortie redirigée vers un fichier ou un tube sous Windows (cp1252) → `UnicodeEncodeError` au démarrage ? (`sys.stdout.reconfigure` ?)
 
 ## Cadre (déjà tranché, ne pas re-signaler)
 
@@ -182,9 +183,9 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] core/dovi.py (358)
 - [x] core/sous_titres.py (141)
 - [x] core/sync.py (1547)
-- [ ] core/preflight.py (629)
-- [ ] core/updates.py (233)
-- [ ] core/platform.py (213)
+- [x] core/preflight.py (629)
+- [x] core/updates.py (233)
+- [x] core/platform.py (213)
 - [ ] core/config.py (402)
 - [ ] core/profiles.py (299)
 - [ ] core/i18n.py (210)
@@ -429,6 +430,35 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
   - Scénario : `read_cues` ne connaît que la forme SRT `h:mm:ss,mmm`. Mesuré : un `.vtt` aux temps sans heures (`00:01.000 --> 00:02.500`, permis par WebVTT) → 0 réplique ; un `.sub` MicroDVD (`{25}{50}…`) → 0 ; un `.sub` VobSub est binaire. Le donneur les propose, la mesure répond « no readable subtitle line — unknown format or empty file ». Au passage, `\d{1,3}` lit `00:00:01,5` comme 1,005 s.
   - Correction : lire les temps WebVTT sans heures, convertir MicroDVD et VobSub par ffmpeg (`extract_subtitle`) au lieu de les lire comme du texte, compléter une fraction de moins de trois chiffres à droite.
   - Test : les deux fichiers ci-dessus rendent leurs répliques (MicroDVD à la cadence de la cible) ; `.sub` VobSub → refus « image ».
+
+### core/preflight.py
+
+- **CR-38** · `core/preflight.py:209-227` (`_install_from_zip`), `:323-330`, `:612-618` · mineur · R · lu — Installation et mise à jour écrivent l'exécutable en place ; un échec en route laisse un outil tronqué, et le message dit « previous version kept ».
+  - Scénario : `target.write_bytes(zf.read(member))` directement sur `bin/ffmpeg.exe`, puis sur `bin/ffprobe.exe`. Disque plein, antivirus ou coupure pendant la mise à jour : `ffmpeg.exe` est déjà neuf ou tronqué quand `ffprobe.exe` échoue ; l'exception remonte, `check_for_updates` affiche « ffmpeg update failed — previous version kept », et au lancement suivant `_localiser` trouve un `ffmpeg.exe` présent mais inutilisable — l'outil essentiel. C'est la famille d'IE-39 et d'IE-50 (écriture non atomique), ici pour des binaires.
+  - Correction : extraire dans un provisoire du même dossier puis `os.replace`, outil par outil, tous ou aucun.
+  - Test : `write_bytes` qui échoue au second membre → les deux exécutables d'origine intacts, message conforme.
+- **CR-39** · `core/preflight.py:240-260` (`poser("dovi_tool")`), `data/ffmpeg_releases.toml` (`[dovi_tool.linux]`) · mineur · R · reproduit — Sous Linux, l'archive `.tar.gz` de dovi_tool est écrite telle quelle comme exécutable, avec « ✓ Installed ».
+  - Scénario : la source statique Linux pointe un `.tar.gz` ; `poser` ne reconnaît que le ZIP et écrit sinon les octets bruts. Mesuré : `poser("dovi_tool", <tar.gz>)` rend True et pose un `bin/dovi_tool` qui commence par `1f 8b` (gzip). C'est le défaut d'IE-40 (« les octets du ZIP dans dovi_tool.exe, ✓ Installé ») par une autre forme d'archive. Sans effet sous Windows (ZIP).
+  - Correction : reconnaître tar.gz / tar.xz (`tarfile`) ; n'écrire en binaire nu qu'un contenu qui a l'en-tête d'un exécutable (MZ, ELF).
+  - Test : `poser("dovi_tool", <tar.gz>)` extrait le membre ou échoue, jamais d'écriture brute.
+- **CR-40** · `core/preflight.py:272-277` (`install_ffmpeg`), `:288-292`, `:513` · mineur · J · lu — La spec promet une vérification SHA256 à l'installation (§ 4.2, wiki `ffmpeg` : « SHA256 vérifié ») qui n'a lieu que pour mpv et mkvmerge.
+  - Scénario : ffmpeg (l'outil essentiel), dovi_tool et l'outil DVD (190 Mo) sont téléchargés sans aucune empreinte : `install_ffmpeg` n'en lit pas, et les sources statiques portent `sha256 = ""`. gyan.dev publie pourtant `…essentials.zip.sha256` à côté de l'archive, et GitHub un `digest` par asset (déjà exploité par `updater.py`).
+  - Correction : lire l'empreinte publiée (fichier `.sha256` de gyan.dev, `digest` des assets GitHub pour BtbN et dovi_tool) et refuser sans elle ; ou corriger la spec.
+  - Test : `install_ffmpeg` avec une empreinte publiée fausse refuse l'archive.
+
+### core/updates.py
+
+- **CR-41** · `core/updates.py:209-220` (`save_cache`), `core/preflight.py:167-175` (`_load_releases`) · **majeur** · J · reproduit — Dès que le cache des mises à jour existe, installer dovi_tool, mkvmerge ou mpv échoue : « URL not found in the sources ».
+  - Scénario : `check_for_updates` écrit `data/ffmpeg_releases_cache.toml` sous la forme `{checked_at, tools: {outil: {version, url}}}` ; `_load_releases` lit **ce même fichier en priorité**, avec la forme du fichier statique (`[dovi_tool.windows] url = …`). Premier lancement : les offres d'installation passent (pas encore de cache), puis le cache est écrit. À tout lancement suivant, accepter dovi_tool, mkvmerge ou mpv (refusés la première fois, ou supprimés depuis) : `releases.get("dovi_tool", {}).get("windows", {})` est vide, aucun téléchargement n'est tenté. Reproduit : avec le cache écrit par `save_cache`, `install_dovi_tool` et `install_mkvtoolnix` rendent False sans appeler `_download`. Le cache n'expire jamais pour ce lecteur-là (le fichier existe).
+  - Correction : `_load_releases` ne lit que le fichier statique (ou traduit `tools` vers la forme statique) ; mieux, prendre l'URL fraîche de `updates.fetch_latest()` quand elle existe, comme le fait déjà l'outil DVD.
+  - Test : cache écrit par `save_cache` + sources statiques : `install_dovi_tool` tente le téléchargement de l'URL statique (ou de celle du cache).
+
+### core/platform.py
+
+- **CR-42** · `core/platform.py:92-98` (`sonder_encodeurs`) · mineur · J · supposé — La sonde n'ouvre chaque encodeur qu'en 8 bits ; une sortie HDR (`p010le`, `main10`) n'est jamais vérifiée.
+  - Scénario : `nullsrc` en `yuv420p`, sans `-pix_fmt` ni `-profile:v`. Une carte qui encode le HEVC en 8 bits mais pas en 10 bits (Maxwell, GTX 9xx) est dite capable ; un fichier HDR (sortie `p010le main10`) passe le contrôle du lancement puis échoue dans ffmpeg, sur un message qu'aucune signature de `diagnostiquer` ne reconnaît. Le principe « les capacités sont mesurées, jamais supposées » (spec § 14) ne couvre donc que la moitié des sorties.
+  - Correction : sonder aussi `hevc_nvenc`/`av1_nvenc` en `p010le` + `main10` (une entrée de plus dans le pool), et refuser un fichier HDR quand seul le 8 bits passe.
+  - Test : sonde simulée où l'essai 10 bits échoue → un fichier HDR est refusé au lancement avec la cause, un SDR passe.
 
 ## Synthèse
 

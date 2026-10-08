@@ -456,6 +456,17 @@ class FileDecision:
     output_dir:        Path | None = None
 
     @property
+    def desentrelace(self) -> bool:
+        """L'encodage désentrelace-t-il ? Une source déclarée entrelacée dont
+        l'image est recalculée (IE-122). Ni une copie, ni le retrait du RPU, ni
+        le réencodage Dolby Vision — un flux DV n'est jamais entrelacé."""
+        return (self.info.entrelace
+                and self.video.action in (VideoAction.ENCODE_HEVC,
+                                          VideoAction.ENCODE_H264,
+                                          VideoAction.ENCODE_AV1)
+                and not video_recopiee(self.video.action, self.video.dv_action))
+
+    @property
     def kept_subtitles(self) -> list:
         """Pistes de sous-titres retenues par la sélection (None = toutes).
 

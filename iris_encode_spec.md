@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.95 — document de référence courant
+**Version** : 0.8.9.96 — document de référence courant
 **Date** : 2026-10-08
 **Statut** : stable
 
@@ -898,6 +898,24 @@ en 3832×1600 n'a ni 3840 de large ni 2160 de haut, et passait pour un 1080p gar
 à sa définition. Sans `keep_4k`, il est rabattu en 1920×1080 comme toute 4K.
 
 **Pixels carrés** : le filtre `scale=W:H:force_original_aspect_ratio=decrease:force_divisible_by=2` est suivi de `setsar=1`. Sans lui, `scale` rattrape l'arrondi par un SAR (3832×1600 → 1920×802 en 192079:192000 ; 1918×802, étiré à 1920, en 959:960) et Jellyfin transcode une vidéo qu'il croit anamorphique. Le filtre n'est posé que si la source dépasse la cible en largeur ou en hauteur : une source qui y tient garde sa définition (1918×802 était étiré en 1920×802). Seule exception, une dimension impaire, que le 4:2:0 refuse : `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1` lui retire un pixel.
+
+**Désentrelacement** (v0.8.9.96, IE-122) : `VideoInfo.field_order` (lu au
+scan) en `tt`, `bb`, `tb` ou `bt` fait `entrelace` ; `FileDecision.desentrelace`
+le retient quand l'image est recalculée (encodage HEVC, H264 ou AV1, pas une
+copie Dolby Vision, ni SKIP, ni retrait du RPU, ni `ENCODE_DV`). `build_command`
+pose alors `FILTRE_DESENTRELACEMENT` =
+`bwdif=mode=send_frame:parity=auto:deint=interlaced` **avant** `scale` : une
+image par image (cadence de la source, même débit cible), et seules les images
+que le flux marque entrelacées sont traitées. Arbitrage de l'utilisateur : les
+**marqueurs** seulement, sans sondage `idet` — une source qui se dit
+progressive n'est pas touchée, même mal marquée (mesuré : un `.ts` France 2
+déclaré progressif, entrelacé par passages). Avec `-hwaccel cuda`, les images
+décodées redescendent en mémoire système : bwdif (processeur) s'applique comme
+`scale`. Affiché dans l'assistant et l'aperçu (« désentrelacé »). Mesuré sur le
+DVD d'essai (`tt`, NVENC H.264 3 Mb/s) : `idet` image par image, 686 images
+entrelacées sur 899 sans le filtre, 1 avec ; sur une scène sombre, la détection
+« multi » d'`idet` en compte encore 322, artefact de l'outil (les images sont
+indécises, il reporte son verdict précédent).
 
 **Force SKIP → encode (browser)** : un fichier SKIP sélectionné manuellement pour le run
 est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans gonflement.
@@ -3114,6 +3132,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.96 | 2026-10-08 | **Désentrelacement** (§ 8.1, IE-122) : `VideoInfo.field_order`, `entrelace` ; `FileDecision.desentrelace` ; bwdif `send_frame`, `deint=interlaced`, avant `scale` ; affiché dans l'assistant et l'aperçu · `tests/test_desentrelacement.py` |
 | 0.8.9.95 | 2026-10-08 | **Titres de DVD** (§ 4.1, § 4.2, § 15.6, IE-121) : dossier `VIDEO_TS` présenté par les titres de ses IFO lus sans outil · outil DVD à part (`ffmpeg_dvd`, BtbN GPL dans `bin/dvd/`, ou le principal s'il a `dvdvideo`), proposé au preflight, mis à jour par branche · titre extrait sans perte en Matroska avant l'encodage par le ffmpeg principal · CSS refusé · pas de greffe sur un titre de DVD · `TitreDisque.chemin` (ex-`mpls`), `numero`, `a_extraire` · Options « Titres de disque » · `tests/test_dvd.py` |
 | 0.8.9.94 | 2026-10-08 | **Titres de Blu-ray** (§ 5, § 14.8, § 15.5, IE-120) : dossier `BDMV` présenté par playlists `.mpls` lues sans outil, durée minimale `[app] min_title_minutes` (Options), doublons réduits, titre principal · `VideoInfo.titre`, `lecture`, `dossier`, `stem_sortie`, `taille` · sortie nommée d'après le disque, à côté de `BDMV` · titre de plusieurs clips assemblé par mkvmerge avant l'encodage, chapitres FFMETADATA pour un clip seul · AACS refusé · mode récursif : titre principal seul · `tests/test_bluray.py` |
 | 0.8.9.93 | 2026-10-08 | **Langues des Blu-ray, cœur AC-3, DVB, télétexte** (§ 8.5, § 8.6, § 15, IE-119) : langues d'un `.m2ts` complétées par mkvmerge (PID), écrites dans la sortie · piste sans langue gardée (audio, sous-titres), jamais dite doublée · paire TrueHD + cœur AC-3 réduite à une piste selon `preserve_hd_audio`, verrou de piste originale suivant `AudioDecision.locked` · `dvb_subtitle` image, `dvb_teletext` toujours écarté · `tests/test_langues_disque.py` |

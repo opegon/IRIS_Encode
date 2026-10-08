@@ -280,6 +280,10 @@ class WizardScreen(TableNavMixin, Screen):
             t.append(" · " + _("{bitrate}k targeted").format(
                 bitrate=v.target_bitrate // 1000))
         t.append(f"\n  {' ' * large}{v.reason}\n")
+        if d.desentrelace:
+            t.append(f"  {' ' * large}"
+                     + _("Interlaced source: deinterlaced (bwdif), frame rate "
+                         "kept.") + "\n")
         self._remplir_decision()
         return t, "", True
 

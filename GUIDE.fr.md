@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.95
+**Version** : 0.8.9.96
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -615,6 +615,13 @@ disque.
 Les langues des pistes d'un `.m2ts` sont lues sur le disque par mkvmerge (outil
 optionnel : sans lui, elles restent inconnues — et une piste de langue inconnue
 est gardée). Une TrueHD et son cœur AC-3 donnent une seule piste en sortie.
+
+Un DVD, comme un enregistrement TNT en 1080i, est souvent **entrelacé** : quand
+la source le déclare, l'encodage le désentrelace (bwdif), à la même cadence. La
+décision le dit (assistant, aperçu `F1`) : « désentrelacé ». Une source qui se
+dit progressive n'est pas touchée — certains enregistrements TNT se trompent
+sur une partie de leurs images (pubs, bandes-annonces), qui gardent alors leurs
+peignes.
 
 ---
 

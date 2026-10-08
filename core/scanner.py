@@ -456,6 +456,9 @@ class VideoInfo:
     dv_bl_compat:    Optional[int]       = None
     color_transfer:  str                 = ""
     frame_rate:      str                 = ""    # "24/1", "24000/1001"…
+    # Ordre des trames déclaré par le flux : « progressive », « tt », « bb »,
+    # « tb », « bt », ou « » s'il ne dit rien (IE-122).
+    field_order:     str                 = ""
     # ── Métadonnées Dolby Vision enrichies (dovi_tool, optionnel) ────────────
     dv_subprofile:   Optional[str]              = None   # "5", "7.06", "8.1"…
     hdr10_master_display: Optional[str]         = None   # G(...)B(...)R(...)WP(...)L(...)
@@ -494,6 +497,12 @@ class VideoInfo:
     @property
     def kbps(self) -> int:
         return self.bitrate // 1000
+
+    @property
+    def entrelace(self) -> bool:
+        """Le flux se déclare-t-il entrelacé ? Les marqueurs seulement : une
+        source qui se dit progressive l'est pour l'application (IE-122)."""
+        return self.field_order in ("tt", "bb", "tb", "bt")
 
     @property
     def has_image_subs(self) -> bool:
@@ -916,6 +925,7 @@ def scan(path: Path) -> VideoInfo:
         dv_bl_compat=dv_bl_compat,
         color_transfer=vid.get("color_transfer", ""),
         frame_rate=vid.get("r_frame_rate", ""),
+        field_order=vid.get("field_order", "") or "",
         titre=titre_dvd,
     )
 

@@ -82,6 +82,19 @@ toute écriture y est refusée (`Errno 13`, *mesuré*), d'où le dossier de sort
 demandé par IRIS. Depuis un lecteur monté, `.m2ts` et `.VOB` s'encodent avec les
 outils de `bin/` (*mesuré*, 15 s).
 
+## Entrelacement
+
+Le DVD d'essai est entrelacé et le dit (`field_order=tt`, chaque image
+`interlaced_frame=1`) ; `idet` : 100 % TFF (*mesuré*). Les deux `.ts` TNT se
+déclarent progressifs, images marquées progressives ; `idet` confirme pour
+César, mais pas pour Olympe : 14 % BFF au début, 0 % au milieu, 80 % vers la
+fin (*mesuré*) — un enregistrement qui ment par passages, sans doute pubs et
+bandes-annonces. `bwdif … deint=interlaced` ne traite que les images marquées :
+il laisse donc ces passages. Encodé NVENC H.264 3 Mb/s, le DVD sort sans peignes
+avec bwdif (`idet` image par image : 1 sur 899 contre 686 sans, *mesuré*,
+contrôlé à l'œil) ; la détection « multi » d'`idet` en voit encore 322 sur une
+scène sombre, artefact de l'outil (images indécises). Voir spec § 8.1.
+
 ## Flux de transport `.ts`
 
 Enregistrements TNT : `start_time` à 10 s, flux listés deux fois par ffprobe

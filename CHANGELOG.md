@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.96] — 2026-10-08
+
+### Désentrelacement (IE-122)
+
+Un DVD, un enregistrement TNT en 1080i sont souvent entrelacés : encodés tels
+quels, leurs images gardaient des peignes sur tout ce qui bouge. Quand la
+source se déclare entrelacée, l'encodage la désentrelace désormais (bwdif), à
+la même cadence — même débit, même poids. Seules les images que la source
+marque entrelacées sont traitées. L'assistant et l'aperçu le disent :
+« désentrelacé ».
+
+Une source qui se dit progressive n'est pas touchée. Certains enregistrements
+TNT se trompent sur une partie de leurs images (vu sur un `.ts` de France 2 :
+progressif déclaré, entrelacé par passages, sans doute les pubs) : ces
+passages gardent leurs peignes. Les détecter demanderait d'analyser l'image de
+chaque fichier — écarté pour l'instant.
+
 ## [v0.8.9.95] — 2026-10-08
 
 ### Les titres d'un DVD (IE-121)

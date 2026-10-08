@@ -75,6 +75,12 @@ def _resume_process(pid: int) -> bool:
 
 
 # Pipeline tone mapping Dolby Vision P5 → SDR (CPU, algorithme Hable)
+# Le désentrelacement (IE-122) : bwdif, une image par image — la cadence de la
+# source, donc le même débit cible. `deint=interlaced` ne touche que les images
+# que le flux marque entrelacées : un passage progressif d'une source mixte
+# reste intact. `parity=auto` suit l'ordre des trames que le flux déclare.
+FILTRE_DESENTRELACEMENT = "bwdif=mode=send_frame:parity=auto:deint=interlaced"
+
 _SDR_TONEMAP_FILTER = (
     "zscale=t=linear:npl=100,"
     "format=gbrpf32le,"
@@ -602,6 +608,9 @@ def build_command(
         # Une source qui tient dans la cible n'est pas agrandie (1918x802 sortait
         # en 1920x802) ; une dimension impaire, que le 4:2:0 refuse, perd un pixel.
         filtres = []
+        # Avant la mise à l'échelle : réduire des trames mêlées les mélange.
+        if decision.desentrelace:
+            filtres.append(FILTRE_DESENTRELACEMENT)
         if info.width > vid.target_width or info.height > vid.target_height:
             filtres.append(
                 f"scale={vid.target_width}:{vid.target_height}"

@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.8.9.95
+**Version**: 0.8.9.96
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -611,6 +611,12 @@ it, never inside. The recursive mode keeps only the movie of each disc.
 Track languages of a `.m2ts` are read from the disc by mkvmerge (an optional
 tool: without it, they stay unknown — and a track whose language is unknown is
 kept). A TrueHD track and its AC-3 core give a single track in the output.
+
+A DVD, like a 1080i TV recording, is often **interlaced**: when the source says
+so, the encode deinterlaces it (bwdif), at the same frame rate. The decision
+(guided mode, `F1` preview) shows it: "deinterlaced". A source that calls
+itself progressive is left alone — some TV recordings are wrong about it on
+part of their frames (ads, trailers), and those parts keep their comb lines.
 
 ---
 

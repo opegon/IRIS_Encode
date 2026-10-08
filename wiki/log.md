@@ -317,3 +317,10 @@ touchées : [[disques-optiques]].
 IFO du DVD d'essai lus sans outil, validés contre ffprobe `dvdvideo` ; chemin
 `VIDEO_TS` exigé par libdvdread à la racine d'un lecteur ; extraction MKV
 mesurée ; BtbN n9.0 installé et éprouvé. Pages touchées : [[disques-optiques]].
+
+## [2026-10-08] ingest | Entrelacement des sources disque et TNT (IE-122)
+
+`field_order` et `idet` sur le DVD et les deux `.ts` : un `.ts` déclaré
+progressif est entrelacé par passages ; bwdif mesuré sur le DVD, et un artefact
+de la détection « multi » d'`idet` sur les scènes sombres. Pages touchées :
+[[disques-optiques]].

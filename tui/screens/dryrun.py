@@ -183,6 +183,8 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             else:
                 bitrate_str = f"{vid.target_bitrate // 1000}k"
                 res_str     = f"{vid.target_width}x{vid.target_height}"
+                if dec.desentrelace:
+                    res_str += " · " + _("deinterlaced")
 
             audio_parts = [
                 f"{ad.track.channel_layout} {langue_affichee(ad.track.language)} ({ad.display()})"

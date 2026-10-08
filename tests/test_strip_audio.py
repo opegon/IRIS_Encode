@@ -107,17 +107,41 @@ def test_l_audio_transcodee_remplace_celle_de_la_source(tmp_path):
     assert cmd.index("--no-audio") < cmd.index(str(tmp_path / "src.mkv"))
 
 
-def test_sans_transcodage_les_pistes_gardees_sont_nommees(tmp_path):
+@pytest.fixture
+def source_identifiee(monkeypatch):
+    """Vidéo en tid 0, trois audio (1-3), deux sous-titres (4-5) : les index
+    ffprobe par type se traduisent en tids mkvmerge globaux."""
+    from core import muxer
+    from core.muxer import IdentifiedTrack, TrackKind
+    pistes = ([IdentifiedTrack(tid=t, kind=TrackKind.AUDIO, codec="AC-3",
+                               language="fre") for t in (1, 2, 3)]
+              + [IdentifiedTrack(tid=t, kind=TrackKind.SUBTITLE, codec="SubRip",
+                                 language="fre") for t in (4, 5)])
+    monkeypatch.setattr(muxer, "identify", lambda _p: list(pistes))
+
+
+def test_sans_transcodage_les_pistes_gardees_sont_nommees(tmp_path,
+                                                          source_identifiee):
     cmd = build_strip_command(tmp_path / "v.hevc", tmp_path / "src.mkv",
                               tmp_path / "out.mkv", audio_indices=[0, 2])
-    assert cmd[cmd.index("--audio-tracks") + 1] == "0,2"
+    assert cmd[cmd.index("--audio-tracks") + 1] == "1,3"
     assert "--no-audio" not in cmd
 
 
-def test_les_sous_titres_ecartes_n_entrent_pas(tmp_path):
+def test_les_sous_titres_ecartes_n_entrent_pas(tmp_path, source_identifiee):
     cmd = build_strip_command(tmp_path / "v.hevc", tmp_path / "src.mkv",
                               tmp_path / "out.mkv", sous_titres=[1])
-    assert cmd[cmd.index("--subtitle-tracks") + 1] == "1"
+    assert cmd[cmd.index("--subtitle-tracks") + 1] == "5"
+
+
+def test_une_source_non_identifiee_est_refusee(tmp_path, monkeypatch):
+    """Rendre l'index comme tid désignait la vidéo (tid 0) : `--audio-tracks 0`
+    ne gardait aucune audio (CR-27)."""
+    from core import muxer
+    monkeypatch.setattr(muxer, "identify", lambda _p: [])
+    with pytest.raises(ValueError, match="src.mkv"):
+        build_strip_command(tmp_path / "v.hevc", tmp_path / "src.mkv",
+                            tmp_path / "out.mkv", audio_indices=[0])
 
 
 def test_aucun_sous_titre_garde_donne_no_subtitles(tmp_path):

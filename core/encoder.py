@@ -732,13 +732,14 @@ def build_command(
 
     if porteur_input is not None:
         # Le porteur tient toutes les pistes de la source que la sortie garde,
-        # dans l'ordre ; les greffées d'un mux préalable restent dans l'entrée.
+        # puis les greffées — directes ou passées par un mux préalable — dans
+        # l'ordre de `sous_titres.greffes_a_porter` (CR-34).
         from .sous_titres import pistes_a_porter
         n_src_subs = len(pistes_a_porter(decision))
-        for j in range(n_src_subs):
+        n_greffes  = len(premux_subs) + sum(
+            t.kind != TrackKind.AUDIO for t in ext_tracks)
+        for j in range(n_src_subs + n_greffes):
             cmd += ["-map", f"{porteur_input}:s:{j}"]
-        for j in range(len(premux_subs)):
-            cmd += ["-map", f"{sub_input}:s:{len(info.subtitle_tracks) + j}"]
         subs_sortie = pistes_a_porter(decision)
     elif tout_garder:
         # `0:s?` prend tout l'intermédiaire, greffées comprises : les mapper
@@ -763,6 +764,8 @@ def build_command(
     # correctement nommée, et n'affichait rien — la première d'un rip est en
     # général la piste « forced », vingt-trois répliques sur un épisode.
     for n, ext in enumerate(ext_tracks, start=1):
+        if ext.kind != TrackKind.AUDIO and porteur_input is not None:
+            continue                      # déjà mappé depuis le porteur
         stream = "a" if ext.kind == TrackKind.AUDIO else "s"
         idx    = ffmpeg_stream_index(ext.source_path, ext.source_tid, ext.kind)
         cmd += ["-map", f"{n}:{stream}:{idx}"]

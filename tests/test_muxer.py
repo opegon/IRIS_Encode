@@ -18,9 +18,19 @@ from core.muxer import ExternalTrack, TrackKind
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
 
+def _identifier(monkeypatch, path: Path, piste: "muxer.IdentifiedTrack") -> None:
+    """Le donneur fictif est vu par mkvmerge : depuis CR-27, une piste que
+    mkvmerge ne retrouve pas est refusée au lieu d'être devinée."""
+    reel = muxer.identify
+    monkeypatch.setattr(muxer, "identify",
+                        lambda p: [piste] if p == path else reel(p))
+
+
 @pytest.fixture
-def vf(tmp_path: Path) -> ExternalTrack:
+def vf(tmp_path: Path, monkeypatch) -> ExternalTrack:
     """Piste audio VF venant d'un autre release, décalée et étirée (PAL)."""
+    _identifier(monkeypatch, tmp_path / "Film.VF.mkv", muxer.IdentifiedTrack(
+        tid=1, kind=TrackKind.AUDIO, codec="AC-3", language="fre"))
     return ExternalTrack(
         source_path=tmp_path / "Film.VF.mkv",
         source_tid=1,
@@ -34,8 +44,10 @@ def vf(tmp_path: Path) -> ExternalTrack:
 
 
 @pytest.fixture
-def subs(tmp_path: Path) -> ExternalTrack:
+def subs(tmp_path: Path, monkeypatch) -> ExternalTrack:
     """Sous-titres externes, simple décalage."""
+    _identifier(monkeypatch, tmp_path / "Film.fr.srt", muxer.IdentifiedTrack(
+        tid=0, kind=TrackKind.SUBTITLE, codec="SubRip/SRT", language="fre"))
     return ExternalTrack(
         source_path=tmp_path / "Film.fr.srt",
         source_tid=0,
@@ -235,6 +247,19 @@ def test_identify_survives_missing_binary(tmp_path: Path):
     ("sous-titres.srt",           ""),
     ("film.mkv",                  ""),
     ("Film.2019.1080p.x265.mkv",  ""),
+    # Un mot du titre n'est pas une langue (CR-26)
+    ("La.Cite.de.la.peur.1994.srt",            ""),
+    ("Le.Pont.de.la.Riviere.Kwai.1957.srt",    ""),
+    ("It.2017.srt",                            ""),
+    ("Paris.en.fete.2019.srt",                 ""),
+    ("Parasite.VO.srt",                        ""),    # « VO » ne dit pas laquelle
+    ("La.Cite.de.la.peur.1994.fr.srt",         "fre"),
+    ("It.2017.it.srt",                         "ita"),
+    ("Film.2020.FRENCH.1080p.WEB.srt",         "fre"),
+    # Le code ISO qu'écrit un téléchargement OpenSubtitles (CR-51)
+    ("Film.123.dut.srt",                       "dut"),
+    ("Film.123.chi.srt",                       "chi"),
+    ("Film.123.und.srt",                       ""),
 ])
 def test_guess_language(nom: str, attendu: str):
     assert muxer.guess_language(Path(nom)) == attendu

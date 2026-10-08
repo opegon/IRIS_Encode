@@ -144,14 +144,20 @@ def test_un_srt_nu_reste_en_zero(tmp_path, monkeypatch):
     assert "1:s:0" in _maps(_commande(tmp_path, [piste]))
 
 
-def test_un_donneur_illisible_retombe_sur_le_premier_flux(tmp_path, monkeypatch):
-    """mkvmerge absent ou muet : on ne devine pas, on garde l'ancien comportement."""
+def test_un_donneur_illisible_est_refuse(tmp_path, monkeypatch):
+    """mkvmerge absent ou muet : mapper le premier flux greffait une autre piste
+    sous le nom de celle choisie. On refuse plutôt que deviner (CR-27)."""
     p = tmp_path / "muet.mkv"
     p.write_bytes(b"")
     monkeypatch.setattr(muxer, "identify", lambda _p: [])
     piste = ExternalTrack(source_path=p, source_tid=3, kind=TrackKind.SUBTITLE,
                           codec="SubRip", language="fre")
-    assert "1:s:0" in _maps(_commande(tmp_path, [piste]))
+    with pytest.raises(ValueError, match="muet.mkv"):
+        _commande(tmp_path, [piste])
+    with pytest.raises(ValueError):
+        muxer.ffmpeg_stream_index(p, 3, TrackKind.SUBTITLE)
+    with pytest.raises(ValueError):
+        muxer.mkvmerge_tid(p, 0, TrackKind.AUDIO)
 
 
 # ─── La greffe passée par un mux préalable ────────────────────────────────────

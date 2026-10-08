@@ -363,3 +363,173 @@ def test_un_donneur_audio_illisible_est_refuse(tmp_path, monkeypatch):
     monkeypatch.setattr(scanner, "pistes_audio", lambda _p: [])
     with pytest.raises(ValueError, match="vf.mkv"):
         _commande_greffe(tmp_path, donneur, _profil())
+
+
+# ─── CR-34 : un sous-titre greffé à première réplique tardive, en MP4 ────────
+
+SRT_FORCE_TARDIF = ("1\n00:36:40,000 --> 00:36:42,000\nRéplique un\n\n"
+                    "2\n00:38:20,000 --> 00:38:22,000\nRéplique deux\n")
+
+
+def _temps_repliques(chemin: Path) -> list[float]:
+    from core.sync import read_cues
+    srt = chemin.with_suffix(".lu.srt")
+    _ff("-i", str(chemin), "-map", "0:s:0", "-c:s", "srt", str(srt))
+    # Les répliques invisibles du porteur durent 1 ms.
+    return [round(debut, 2) for debut, fin in read_cues(srt) if fin - debut > 0.01]
+
+
+def _porter(dec, dossier: Path) -> Path | None:
+    """Ce que fait `RunScreen._porter_sous_titres`, sans l'écran."""
+    pistes, greffes = ST.pistes_a_porter(dec), ST.greffes_a_porter(dec)
+    srts = []
+    for k, g in enumerate(greffes):
+        chemin = dossier / f"g{k}.srt"
+        subprocess.run(ST.build_extraction_greffe(g, chemin, str(_FFMPEG)),
+                       check=True, capture_output=True)
+        srts.append(chemin)
+    combles = 0
+    for chemin in srts:
+        texte, n = ST.combler_srt(chemin.read_text(encoding="utf-8"))
+        chemin.write_text(texte, encoding="utf-8")
+        combles += n
+    if not combles:
+        return None
+    porteur = dossier / "porteur.mkv"
+    subprocess.run(ST.build_porteur(pistes + [g.piste for g in greffes], srts,
+                                    porteur, str(_FFMPEG)),
+                   check=True, capture_output=True)
+    return porteur
+
+
+@outils
+@pytest.mark.parametrize("decalage_ms", [0, -1000])
+def test_un_srt_greffe_tardif_garde_ses_temps_en_mp4(tmp_path, vrais_outils,
+                                                     decalage_ms):
+    source = tmp_path / "film.mkv"
+    _ff("-f", "lavfi", "-i", "color=c=black:size=1920x1080:rate=1:duration=2400",
+        "-f", "lavfi", "-i", "anullsrc=r=8000:cl=mono", "-t", "2400",
+        "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", str(source))
+    srt = tmp_path / "film.forced.fr.srt"
+    srt.write_text(SRT_FORCE_TARDIF, encoding="utf-8")
+    dec = _decide(source)
+    dec.external_tracks.append(ExternalTrack(
+        source_path=srt, source_tid=0, kind=TrackKind.SUBTITLE,
+        language="fre", is_forced=True, delay_ms=decalage_ms))
+    assert dec.output_container == ".mp4"
+    porteur = _porter(dec, tmp_path)
+    assert porteur is not None, "un silence de 36 min appelle le porteur"
+    cmd = build_command(dec, _plat(), sous_titres_porteur=porteur)
+    r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
+                       encoding="utf-8", errors="replace")
+    assert r.returncode == 0, r.stderr[-800:]
+    d = decalage_ms / 1000
+    assert _temps_repliques(dec.output_path) == [
+        pytest.approx(2200 + d, abs=0.01), pytest.approx(2300 + d, abs=0.01)]
+    assert "Réplique un" in _repliques(dec.output_path)
+
+
+def test_le_sous_titre_greffe_est_pris_dans_le_porteur(tmp_path, monkeypatch):
+    """Structurel : en MP4, avec porteur, aucun sous-titre n'est mappé depuis
+    son donneur — tout `mov_text` vient du porteur."""
+    srt = tmp_path / "vf.srt"
+    srt.write_text(SRT_FORCE_TARDIF, encoding="utf-8")
+    monkeypatch.setattr(muxer, "identify", lambda _p: [IdentifiedTrack(
+        tid=0, kind=TrackKind.SUBTITLE, codec="SubRip/SRT", language="fre")])
+    p = tmp_path / "film.mkv"
+    p.write_bytes(b"")
+    info = VideoInfo(path=p, width=1920, height=1080, bitrate=20_000_000,
+                     codec="h264", duration=2400.0, frame_count=0, dv_profile=None,
+                     audio_tracks=[], subtitle_tracks=[])
+    dec = force_skip_to_encode(decide(info, _profil()))
+    dec.external_tracks.append(ExternalTrack(
+        source_path=srt, source_tid=0, kind=TrackKind.SUBTITLE, language="fre"))
+    cmd = build_command(dec, _plat(), sous_titres_porteur=tmp_path / "p.mkv")
+    entrees = [cmd[i + 1] for i, x in enumerate(cmd) if x == "-i"]
+    n_porteur = entrees.index(str(tmp_path / "p.mkv"))
+    subs = [cmd[i + 1] for i, x in enumerate(cmd)
+            if x == "-map" and ":s" in cmd[i + 1]]
+    assert subs == [f"{n_porteur}:s:0"], subs
+
+
+def test_apres_un_mux_prealable_les_greffes_sont_lues_dans_l_intermediaire(tmp_path):
+    from core.scanner import SubtitleTrack
+    p = tmp_path / "film.mkv"
+    p.write_bytes(b"")
+    info = VideoInfo(path=p, width=1920, height=1080, bitrate=20_000_000,
+                     codec="h264", duration=60.0, frame_count=0, dv_profile=None,
+                     audio_tracks=[],
+                     subtitle_tracks=[SubtitleTrack(index=0, codec="subrip",
+                                                    language="eng")])
+    dec = force_skip_to_encode(decide(info, _profil()))
+    dec.encode_source = tmp_path / "film.iris_premux.mkv"
+    dec.premuxed_tracks = [ExternalTrack(
+        source_path=tmp_path / "vf.srt", source_tid=0, kind=TrackKind.SUBTITLE,
+        language="fre", delay_ms=-500, stretch=(24000, 25025))]
+    [g] = ST.greffes_a_porter(dec)
+    assert (g.entree, g.flux, g.decalage_ms) == (dec.encode_source, 1, 0)
+    assert g.piste.language == "fre"
+
+
+# ─── Réencodage DV vers MP4 : greffes lues dans le Matroska recomposé ────────
+
+@outils
+def test_une_greffe_etiree_garde_son_etirement_dans_le_mp4_dv(tmp_path, vrais_outils):
+    """mkvmerge recompose le MKV, greffe étirée (24000/25025) comprise ; le
+    porteur doit la lire là, pas dans son donneur où elle n'aurait que son
+    décalage — une dérive de 4 %."""
+    from core import dovi
+    source = tmp_path / "film.mkv"
+    _ff("-f", "lavfi", "-i", "color=c=black:size=320x240:rate=1:duration=2400",
+        "-c:v", "libx265", "-preset", "ultrafast", "-x265-params", "log-level=none",
+        str(source))
+    srt = tmp_path / "vf.fr.srt"
+    srt.write_text(SRT_FORCE_TARDIF, encoding="utf-8")
+    greffe = ExternalTrack(source_path=srt, source_tid=0, kind=TrackKind.SUBTITLE,
+                           language="fre", is_forced=True, stretch=(24000, 25025))
+    # La recomposition du chemin DV : mêmes options de donneur que le mux.
+    mkv = tmp_path / "recompose.mkv"
+    r = subprocess.run(muxer.build_mux_command(source, [greffe], mkv),
+                       capture_output=True, encoding="utf-8", errors="replace")
+    assert muxer.mkvmerge_reussi(r.returncode, mkv), r.stdout[-500:]
+    attendus = _temps_repliques(mkv)
+    assert attendus[0] < 2190, attendus          # l'étirement a bien eu lieu
+
+    info = VideoInfo(path=source, width=320, height=240, bitrate=1_000_000,
+                     codec="hevc", duration=2400.0, frame_count=0, dv_profile=None,
+                     audio_tracks=[], subtitle_tracks=[])
+    dec = decide(info, _profil())
+    dec.external_tracks.append(greffe)
+    assert dec.output_container == ".mp4"
+    [g] = ST.greffes_a_porter(dec, recompose=mkv)
+    assert (g.entree, g.flux) == (mkv, 0)
+
+    chemin = tmp_path / "g.srt"
+    subprocess.run(ST.build_extraction_greffe(g, chemin, str(_FFMPEG)),
+                   check=True, capture_output=True)
+    texte, n = ST.combler_srt(chemin.read_text(encoding="utf-8"))
+    assert n
+    chemin.write_text(texte, encoding="utf-8")
+    porteur = tmp_path / "porteur.mkv"
+    subprocess.run(ST.build_porteur([g.piste], [chemin], porteur, str(_FFMPEG)),
+                   check=True, capture_output=True)
+    sortie = tmp_path / "sortie.mp4"
+    r = subprocess.run(dovi.build_dv_mp4_remux(mkv, sortie, str(_FFMPEG), porteur),
+                       capture_output=True, encoding="utf-8", errors="replace")
+    assert r.returncode == 0, r.stderr[-800:]
+    assert _temps_repliques(sortie) == [pytest.approx(t, abs=0.01) for t in attendus]
+
+
+def test_une_greffe_etiree_non_recalee_est_refusee(tmp_path):
+    """Hors recomposition, ffmpeg ne saurait pas l'étirer : refus, pas dérive."""
+    p = tmp_path / "film.mkv"
+    p.write_bytes(b"")
+    info = VideoInfo(path=p, width=1920, height=1080, bitrate=20_000_000,
+                     codec="h264", duration=60.0, frame_count=0, dv_profile=None,
+                     audio_tracks=[], subtitle_tracks=[])
+    dec = decide(info, _profil())
+    dec.external_tracks.append(ExternalTrack(
+        source_path=tmp_path / "vf.srt", source_tid=0, kind=TrackKind.SUBTITLE,
+        language="fre", stretch=(24000, 25025)))
+    with pytest.raises(ValueError, match="vf.srt"):
+        ST.greffes_a_porter(dec)

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.103 — document de référence courant
+**Version** : 0.8.9.104 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -1170,6 +1170,23 @@ drapeaux reportés ; ffmpeg et non mkvmerge, le MKV n'ayant pas le défaut).
 `build_command`, `build_strip_mp4` et `build_dv_mp4_remux` y lisent alors les
 sous-titres à la place de la source. Sans long silence, pas de porteur.
 
+**Les sous-titres greffés y passent aussi** (v0.8.9.104, CR-34) : un `.srt` forcé
+trouvé sur OpenSubtitles, première réplique à 36 min, sortait avec ses répliques à
+0 s et 2 s. `greffes_a_porter` les liste dans l'ordre de sortie — greffes directes
+(donneur, index traduit, jeu de caractères, décalage) ou celles d'un mux préalable
+(lues dans l'intermédiaire, à la suite des sous-titres de la source) ;
+`build_extraction_greffe` les extrait une à une, décalage appliqué comme à
+l'encodage (`-itsoffset`, `-ss` pour un négatif). Avec un porteur, `build_command`
+les mappe depuis lui, jamais depuis leur donneur. Une greffe **étirée** n'est jamais
+extraite de son donneur — ffmpeg n'y appliquerait que le décalage, une dérive de 4 %
+— : le chemin principal l'a déjà absorbée par un mux préalable, et
+`greffes_a_porter` refuse celle qui arriverait autrement. Le réencodage DV vers MP4
+lit ses greffes dans le Matroska que mkvmerge vient de recomposer
+(`greffes_a_porter(dec, recompose=mkv)`), à la suite des sous-titres gardés de la
+source : décalage et étirement y sont déjà appliqués. `build_strip_mp4` ne les prend
+pas encore (`_porter_sous_titres(…, greffes=False)`) : les greffes du retrait DV vers
+MP4 relèvent d'IE-126 (CR-55).
+
 ### 8.7 Nommage des sorties
 
 Depuis la v0.8.8.11, le nom suit l'usage des noms de release : les marques
@@ -1387,8 +1404,8 @@ est recopiée (v0.8.9.103, § 12.0).
 | Fonction | Rôle |
 |---|---|
 | `identify(path)` | Pistes du fichier via `mkvmerge -J` → `list[IdentifiedTrack]`. Mémorisé par (chemin, taille, date) : traduire vingt index ne relançait pas vingt processus |
-| `ffmpeg_stream_index(path, tid, kind)` | Traduit un TID mkvmerge en index ffprobe |
-| `guess_language(path)` | Déduit une langue du nom de fichier (`film.VF.mka`) |
+| `ffmpeg_stream_index(path, tid, kind)` | Traduit un TID mkvmerge en index ffprobe ; `mkvmerge_tid` fait l'inverse. Une piste que mkvmerge ne retrouve pas lève `ErreurAffichable` : deviner 0 greffait une autre piste sous le nom de celle choisie (CR-27) |
+| `guess_language(path)` | Déduit une langue du nom de fichier (`film.VF.mka`). Le dernier fragment peut être tout marqueur connu ou un code ISO 639-2 de la table OpenSubtitles (`CODES_ISO`) ; plus à gauche, seuls les marqueurs qui ne sont pas des mots de titre (`FRENCH`, `VFF`, `eng`…) — jamais `de`, `it`, `en`, `es` (CR-26). « VO » ne désigne aucune langue |
 | `noms_proposes(langue)` | Noms que le champ Nom du recalage propose, selon la langue **de la piste** : `fre` → VF, VFF, VFQ, VOSTFR, Forcés, Commentaires, SDH ; `eng` → English, Forced, Commentary, SDH ; autre → Forced, SDH. Écrits dans le fichier, ce sont des données : ils ne suivent jamais la langue de l'interface (v0.8.9.70) |
 | `build_mux_command(…)` | Arguments mkvmerge complets |
 | `build_sample_command(…)` | Extrait de contrôle muxé |
@@ -1454,7 +1471,7 @@ recalage suivent sans rien savoir de sa provenance.
 | **Deux recherches fusionnées** | Par empreinte (`moviehash`) : sous-titres déposés pour cette release exacte, donc synchronisés — marqués `≡`, classés en tête. Par nom (`meta.parse_title`, plus `season_number`/`episode_number` sur un `SxxEyy`, sinon `year`) : rattrape un fichier réencodé, dont l'empreinte n'est plus celle de sa release. Fusion par `file_id`. Tri : release exacte, puis langue dans l'ordre du profil, puis téléchargements. |
 | **Pages lues jusqu'à 5** | L'API rend 50 résultats par page ; la première seule perdait des sous-titres français derrière des anglais plus téléchargés (Film Q : 44 résultats lus sur 72, contre 64 après). Au-delà de 250, la liste ne se lit plus. |
 | **Langues du profil** | `subtitle_languages` (ISO 639-2) traduites au format de l'API ; `fre`/`eng` si le profil n'en dit rien. Paramètres triés : l'API redirige une requête qui ne l'est pas. |
-| **Dossier temporaire** | `<tmp>/iris_opensubtitles/<stem>.<file_id>.<code>.srt`. Le fichier ne sert qu'à la greffe : rien ne s'ajoute à la médiathèque, aucun lecteur ne l'affichera en double. La langue en dernier fragment est lue par `muxer.guess_language`. |
+| **Dossier temporaire** | `<tmp>/iris_opensubtitles/<stem>.<file_id>.<langue>.srt`, la langue en ISO 639-2 (`dut`, `pol`…). Le fichier ne sert qu'à la greffe : rien ne s'ajoute à la médiathèque, aucun lecteur ne l'affichera en double. La langue en dernier fragment est lue par `muxer.guess_language` ; le code de l'API (`nl`) n'y était reconnu que pour huit langues (CR-51). |
 | **Sous-titres en plusieurs CD écartés** | Ils ne se greffent pas sur un fichier unique. |
 
 Empreinte : taille du fichier + somme des mots 64 bits little-endian des 64
@@ -3265,6 +3282,8 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.104 | 2026-10-09 | **Greffes : temps en MP4, langue, index** (§ 8.6, § 9.3, § 9.8, IE-125 2/3) : les sous-titres greffés passent par le porteur (`greffes_a_porter`, `build_extraction_greffe`, CR-34 ; réencodage DV : lus dans le Matroska recomposé, étirement compris) ; `guess_language` ne prend plus un mot du titre pour une langue (CR-26) ; un téléchargement OpenSubtitles porte son code ISO 639-2 (CR-51) ; `ffmpeg_stream_index` et `mkvmerge_tid` refusent au lieu de deviner (CR-27) · `tests/test_greffes_encodage.py` |
+| 0.8.9.103 | 2026-10-09 | **Greffes : règle audio du profil, jeu de caractères, drapeaux, polices** (§ 9.5, § 12.0, IE-125 1/3) : `decision.audio_greffee`, `decide_codec_audio`, `scanner.pistes_audio` ; `sous_titres.encodage_texte` (CR-50) ; `muxer.types_par_defaut` (CR-23, CR-25) ; `-map 0:t?` en MKV (CR-20) · `tests/test_greffes_encodage.py` |
 | 0.8.9.102 | 2026-10-08 | **Jonction** (§ 9bis, IE-136) : marqueur de numérotation retiré seulement comme mot entier, une fois (`Le Fantome 1` ne devient plus `Le Fan`) · langues inversées de même rang annoncées, fréquence différente bloquante (`AudioTrack.sample_rate`, lu au scan) · CR-29, 30 · `tests/test_collage.py` |
 | 0.8.9.101 | 2026-10-08 | **Titres de disque dans les écrans annexes** (§ 15.6, IE-134) : pas de greffe sur un titre à assembler (Blu-ray de plusieurs clips comme DVD) · OpenSubtitles et fiche cherchent le nom du disque, empreinte sur le clip · CR-86, 94, 96, 100 · `tests/test_titres_ecrans.py` |
 | 0.8.9.100 | 2026-10-08 | **Arrêts et sorties** (§ 12.4, IE-131) : `S` en pause, `Ctrl+Home` pendant un mux, quitter tous les modes, confirmation unique, en-tête du catalogue, compte à rebours recouvert, lecteur inhabituel, réponse OpenSubtitles non JSON · CR-60, 67, 70, 71, 91, 95, 103, 104 · `tests/test_arrets_sorties.py` |

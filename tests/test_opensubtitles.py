@@ -198,6 +198,19 @@ def _refuse(motif: str):
     assert re.search(motif, texte_erreur(refus.value)), texte_erreur(refus.value)
 
 
+@pytest.mark.parametrize("langue", ["dut", "pol", "swe", "chi"])
+def test_un_sous_titre_hors_des_huit_langues_garde_la_sienne(tmp_path, serveur,
+                                                            langue):
+    """Le nom portait le code de l'API (`nl`), que la greffe ne relisait pas :
+    la piste sortait en « und » (CR-51)."""
+    serveur["routes"]["login"]    = _Rep(json={"token": "JWT", "base_url": "api.opensubtitles.com"})
+    serveur["routes"]["download"] = _Rep(json={"link": "https://dl/x.srt", "remaining": 19})
+    r = osub.Resultat(file_id=42, langue=langue, release="x", telechargements=1,
+                      empreinte=True, malentendants=False)
+    chemin, _ = _client().telecharger(r, _video(tmp_path))
+    assert guess_language(chemin) == langue
+
+
 def test_sans_compte_le_telechargement_le_dit(tmp_path, serveur):
     r = osub.Resultat(1, "fre", "", 0, False, False)
     with _refuse("identifiant et mot de passe"):

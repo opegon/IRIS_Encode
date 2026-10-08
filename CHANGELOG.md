@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.104] — 2026-10-09
+
+### Pistes greffées : les temps en MP4, la bonne langue, la bonne piste (IE-125, 2/3)
+
+Revue IE-114, constats CR-26, 27, 34, 51.
+
+- **Sous-titre greffé tardif en MP4.** La correction de la v0.8.9.62 (un long
+  silence efface les temps d'un sous-titre en MP4) ne visait que ceux de la
+  source : un sous-titre forcé greffé, première réplique à 36 min, s'affichait
+  dès les premières images. Les sous-titres greffés passent maintenant par le
+  même traitement, décalage et jeu de caractères compris. Au passage, le
+  réencodage Dolby Vision vers MP4 ne perd plus ses sous-titres greffés quand
+  ce traitement est nécessaire (une partie de CR-56) : il les lit dans le
+  fichier qu'il vient de recomposer, où une VF PAL greffée est déjà étirée.
+- **Langue devinée dans le nom.** « La Cité de la peur » donnait l'allemand
+  (`de`), « It » l'italien, « Parasite.VO » l'anglais. Les marqueurs courts ne
+  comptent plus qu'en dernière position (`Film.fr.srt`), et « VO » ne vaut plus
+  l'anglais. Sans marqueur, la langue reste à saisir.
+- **Sous-titres OpenSubtitles hors des huit langues courantes.** Un sous-titre
+  néerlandais, polonais, suédois… sortait sans langue : le fichier téléchargé
+  porte maintenant son code de langue complet.
+- **Piste introuvable.** Quand mkvmerge ne retrouvait pas la piste choisie
+  (partage lent, fichier changé), IRIS prenait la première du fichier, sous le
+  nom de celle choisie, ou n'en gardait aucune. Le fichier est désormais refusé
+  avec un message, et ce refus ne ferme plus l'application sur les chemins
+  Dolby Vision.
+
 ## [v0.8.9.103] — 2026-10-09
 
 ### Pistes greffées : la règle audio du profil, les accents, les drapeaux, les polices (IE-125, 1/3)

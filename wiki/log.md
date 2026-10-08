@@ -335,3 +335,9 @@ Pages touchées : [[conteneurs]].
 
 Constats CR-20, 23, 25, 50 de la revue, reproduits en tests de bout en bout
 (ffmpeg et mkvmerge de `bin/`). Pages touchées : [[sous-titres]].
+
+## [2026-10-09] ingest | Greffes : langue dans le nom, long silence (IE-125 2/3)
+
+Mots de titre pris pour des langues (CR-26) ; sous-titre greffé tardif en MP4
+reproduit de bout en bout, décalage négatif par `-ss` vérifié sur un `.srt`.
+Pages touchées : [[sous-titres]].

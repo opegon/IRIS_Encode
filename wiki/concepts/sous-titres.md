@@ -125,7 +125,14 @@ normalisation, afficher ce que le fichier déclare.
 
 Un `.srt` nu ne porte **aucune** langue : sans saisie, il devient « und »
 dans tous les lecteurs. La langue peut se lire dans le nom
-(`film.fre.srt`, `film.VF.srt`).
+(`film.fre.srt`, `film.VF.srt`) — **mais les codes courts sont aussi des mots
+de titre** : « La Cité **de** la peur » donnait l'allemand, « **It** »
+l'italien, « Paris **en** fête » l'anglais. Un code court ne vaut qu'en
+dernière position ; « VO » ne dit pas quelle langue. *(revue IE-114, CR-26)*
+
+**En MP4, un sous-titre greffé a le même défaut de long silence** que ceux de
+la source (section suivante) : il passe par le même porteur depuis la
+v0.8.9.104. *(reproduit, CR-34)*
 
 ## Chapitres en MP4
 

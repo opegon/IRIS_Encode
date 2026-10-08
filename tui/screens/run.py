@@ -706,25 +706,46 @@ class RunScreen(TableNavMixin, Screen):
             return None
         return out
 
-    def _porter_sous_titres(self, index: int,
-                            dec: FileDecision) -> tuple[bool, Optional[Path]]:
+    def _porter_sous_titres(self, index: int, dec: FileDecision,
+                            recompose: Optional[Path] = None,
+                            greffes: bool = True) -> tuple[bool, Optional[Path]]:
         """Les sous-titres texte d'une sortie MP4, réécrits s'il le faut.
 
         Rend (réussite, porteur). Le porteur est None quand aucune piste n'a
         de silence assez long pour le défaut de `core/sous_titres.py` : la
         commande lit alors la source comme avant. Le coût est une lecture de
         la source, payée seulement par les sorties MP4 qui gardent du texte.
+        Les sous-titres greffés y passent aussi (CR-34) : extraits un par un,
+        décalage et jeu de caractères appliqués — ou lus dans `recompose`, le
+        Matroska du réencodage DV, où mkvmerge les a déjà recalés et étirés.
+        `greffes=False` : le retrait DV vers MP4 ne les prend pas (CR-55,
+        IE-126) ; les extraire n'y servirait à rien.
         """
         from core import sous_titres as st_mod
 
-        pistes = st_mod.pistes_a_porter(dec)
-        if not pistes:
-            return True, None
         s       = self._statuses[index]
+        pistes  = st_mod.pistes_a_porter(dec)
+        try:
+            greffes = st_mod.greffes_a_porter(dec, recompose) if greffes else []
+        except ValueError as e:          # piste introuvable (CR-27)
+            s.state, s.error_msg = FileState.ERROR, _("subtitles: preparation failed")
+            s.last_line = texte_erreur(e)
+            self.app.call_from_thread(self._update_row, index)
+            return False, None
+        if not pistes and not greffes:
+            return True, None
         source  = dec.encode_source or dec.info.lecture
         ffmpeg  = getattr(self.app, "ffmpeg_path", "ffmpeg")
         porteur = dec.dossier_sortie / f"{source.stem}.iris_st.mkv"
-        cmd, srts = st_mod.build_extraction(source, pistes, dec.dossier_sortie, ffmpeg)
+        travaux: list[tuple[list[str], list[Path]]] = []
+        if pistes:
+            travaux.append(st_mod.build_extraction(source, pistes,
+                                                   dec.dossier_sortie, ffmpeg))
+        for n, g in enumerate(greffes):
+            chemin = dec.dossier_sortie / f"{source.stem}.iris_stg{n}.srt"
+            travaux.append((st_mod.build_extraction_greffe(g, chemin, ffmpeg),
+                            [chemin]))
+        srts = [c for _cmd, chemins in travaux for c in chemins]
 
         def echouer(detail: str) -> tuple[bool, None]:
             s.state, s.error_msg = FileState.ERROR, _("subtitles: preparation failed")
@@ -734,25 +755,26 @@ class RunScreen(TableNavMixin, Screen):
             return False, None
 
         try:
-            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
             self.app.call_from_thread(
                 self._update_ffmpeg_line,
                 "▶ " + _("Reading the subtitles — a long silence skews their "
                          "timings in MP4…"))
             s.percent = -1
             self.app.call_from_thread(self._update_row, index)
-            proc = EncoderProcess(cmd, dec.info.duration)
-            self._demarrer(proc)
-            for ligne, progress in proc.iter_progress():
-                s.last_line = ligne
-                if progress:
-                    s.percent = progress.percent
-                    self.app.call_from_thread(self._update_row, index)
-            code = proc.wait()
-            self._process = None
-            if code != 0 or not all(p.exists() for p in srts):
-                return echouer(_("Extracting the subtitles failed (code {code}).").format(
-                    code=code))
+            for cmd, chemins in travaux:
+                self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+                proc = EncoderProcess(cmd, dec.info.duration)
+                self._demarrer(proc)
+                for ligne, progress in proc.iter_progress():
+                    s.last_line = ligne
+                    if progress:
+                        s.percent = progress.percent
+                        self.app.call_from_thread(self._update_row, index)
+                code = proc.wait()
+                self._process = None
+                if code != 0 or not all(p.exists() for p in chemins):
+                    return echouer(_("Extracting the subtitles failed (code {code}).").format(
+                        code=code))
 
             combles = 0
             for chemin in srts:
@@ -763,7 +785,8 @@ class RunScreen(TableNavMixin, Screen):
             if not combles:
                 return True, None
 
-            cmd = st_mod.build_porteur(pistes, srts, porteur, ffmpeg)
+            cmd = st_mod.build_porteur(pistes + [g.piste for g in greffes],
+                                       srts, porteur, ffmpeg)
             self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
             r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
                                encoding="utf-8", errors="replace", timeout=300)
@@ -908,7 +931,7 @@ class RunScreen(TableNavMixin, Screen):
             # écrire que du Matroska : quand le profil demande du MP4, c'est
             # ffmpeg qui recompose, depuis la source.
             if mp4:
-                ok, porteur = self._porter_sous_titres(index, dec)
+                ok, porteur = self._porter_sous_titres(index, dec, greffes=False)
                 if not ok:
                     return
                 cmd = dovi.build_strip_mp4(
@@ -985,6 +1008,10 @@ class RunScreen(TableNavMixin, Screen):
             self.app.call_from_thread(self._update_row, index)
             self.app.call_from_thread(self._update_header)
 
+        except ValueError as e:
+            # Un refus de construction de commande (piste introuvable, CR-27) :
+            # remonté hors du fil, il fermait l'application.
+            echouer(texte_erreur(e), texte_erreur(e))
         finally:
             self._process = None
             if s.state != FileState.SUCCESS:
@@ -1186,7 +1213,7 @@ class RunScreen(TableNavMixin, Screen):
             if en_mp4:
                 if s.state == FileState.SKIPPED:
                     return
-                ok, porteur = self._porter_sous_titres(index, dec)
+                ok, porteur = self._porter_sous_titres(index, dec, recompose=mkv)
                 if not ok:
                     return
                 cmd = dovi.build_dv_mp4_remux(mkv, sortie, ffmpeg_path, porteur)
@@ -1224,6 +1251,10 @@ class RunScreen(TableNavMixin, Screen):
             self.app.call_from_thread(self._update_row, index)
             self.app.call_from_thread(self._update_header)
 
+        except ValueError as e:
+            # Un refus de construction de commande (piste introuvable, CR-27) :
+            # remonté hors du fil, il fermait l'application.
+            echouer(texte_erreur(e), texte_erreur(e))
         finally:
             self._process = None
             if s.state != FileState.SUCCESS:

@@ -56,6 +56,10 @@ _DEPUIS_API: dict[str, str] = {
     "el": "gre", "cs": "cze", "ro": "rum", "pt-br": "por", "pt-pt": "por",
 }
 
+# Les langues qu'une recherche peut rendre, en ISO 639-2 : le nom du fichier
+# téléchargé en porte une, que `muxer.guess_language` relit.
+CODES_ISO: frozenset[str] = frozenset(_DEPUIS_API.values())
+
 _EPISODE_RE = re.compile(r"(?i)\bS(\d{1,2})E(\d{1,3})\b")
 
 
@@ -245,9 +249,10 @@ class Client:
     def telecharger(self, resultat: Resultat, video: Path) -> tuple[Path, Optional[int]]:
         """Écrit le fichier dans le dossier temporaire. Rend (chemin, quota restant).
 
-        Le nom porte la langue en dernier fragment (`Film.fr.srt`) : c'est là
-        que `muxer.guess_language` la lit, et la piste greffée ne sortira pas
-        en « und ».
+        Le nom porte la langue en dernier fragment, en ISO 639-2
+        (`Film.123.dut.srt`) : c'est là que `muxer.guess_language` la lit, et
+        la piste greffée ne sortira pas en « und ». Le code de l'API (`nl`)
+        n'y était pas reconnu hors de huit langues (CR-51).
         """
         import requests
         self._connecter()
@@ -267,8 +272,7 @@ class Client:
 
         dossier = Path(tempfile.gettempdir()) / "iris_opensubtitles"
         dossier.mkdir(exist_ok=True)
-        code    = _VERS_API.get(resultat.langue, resultat.langue)
-        sortie  = dossier / f"{video.stem}.{resultat.file_id}.{code}.srt"
+        sortie  = dossier / f"{video.stem}.{resultat.file_id}.{resultat.langue}.srt"
         sortie.write_bytes(contenu.content)
         return sortie, rep.get("remaining")
 

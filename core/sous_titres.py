@@ -21,6 +21,7 @@ où l'encodage prend ses sous-titres à la place de ceux de la source.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 # Marge sous les 2 147,48 s du défaut.
@@ -132,6 +133,92 @@ def pistes_a_porter(decision) -> list:
     else:
         pistes = decision.subtitles_finales
     return [st for st in pistes if not st.is_image_based]
+
+
+@dataclass
+class Greffe:
+    """Un sous-titre greffé à faire passer par le porteur (CR-34)."""
+    entree:      Path     # le donneur, ou l'intermédiaire d'un mux préalable
+    flux:        int      # `0:s:N` dans cette entrée
+    piste:       object   # SubtitleTrack : langue, titre, drapeaux du porteur
+    jeu:         str | None = None   # `-sub_charenc`, hors UTF-8
+    decalage_ms: int = 0
+
+
+def greffes_a_porter(decision, recompose: Path | None = None) -> list[Greffe]:
+    """Les sous-titres greffés d'une sortie MP4, dans l'ordre de sortie.
+
+    Le porteur ne réécrivait que ceux de la source : un `.srt` forcé greffé,
+    première réplique à 36 min, sortait en `mov_text` avec ses répliques à
+    0 s et 2 s (CR-34). En MP4 ils sont tous du texte — un sous-titre image
+    ou stylé impose le MKV. L'ordre est celui de `encoder.build_command` :
+    greffes directes, puis celles d'un mux préalable (les deux s'excluent).
+
+    `recompose` : le Matroska que mkvmerge a recomposé (réencodage Dolby
+    Vision), où les greffes suivent les sous-titres gardés de la source,
+    décalage **et étirement** appliqués. Elles y sont lues : depuis leur
+    donneur, ffmpeg ne saurait pas les étirer.
+    """
+    if decision.output_container != ".mp4":
+        return []
+    from .i18n import N_, ErreurAffichable
+    from .muxer import TrackKind, ffmpeg_stream_index, premux_track_order
+    from .scanner import SubtitleTrack
+
+    def piste(t) -> SubtitleTrack:
+        return SubtitleTrack(index=0, codec="subrip", language=t.language,
+                             title=t.track_name, forced=t.is_forced,
+                             default=t.is_default)
+
+    def sous_titres(pistes) -> list:
+        return [t for t in premux_track_order(pistes) if t.kind == TrackKind.SUBTITLE]
+
+    if recompose is not None:
+        n_gardes = len(decision.subtitles_finales)
+        return [Greffe(entree=recompose, flux=n_gardes + j, piste=piste(t))
+                for j, t in enumerate(sous_titres(decision.external_tracks))]
+
+    greffes: list[Greffe] = []
+    for t in decision.external_tracks:
+        if t.kind != TrackKind.SUBTITLE:
+            continue
+        if t.stretch:
+            # Extraite de son donneur, elle n'aurait que son décalage : une
+            # dérive de 4 % (24000/25025), cinq minutes en fin de film. Le
+            # chemin principal l'étire par un mux préalable, le réencodage DV
+            # par sa recomposition — y arriver ici est un chemin oublié.
+            raise ErreurAffichable(N_(
+                "The subtitle “{track}” needs a stretch factor, which cannot be "
+                "applied while preparing the subtitles: it would drift."),
+                track=t.source_path.name)
+        jeu = encodage_texte(t.source_path)
+        greffes.append(Greffe(
+            entree=t.source_path,
+            flux=ffmpeg_stream_index(t.source_path, t.source_tid, t.kind),
+            piste=piste(t), jeu=jeu if jeu != "UTF-8" else None,
+            decalage_ms=t.delay_ms))
+    n_source = len(decision.info.subtitle_tracks)
+    for j, t in enumerate(sous_titres(decision.premuxed_tracks)):
+        # Déjà recalées et réencodées en UTF-8 par mkvmerge, à la suite des
+        # sous-titres de la source dans l'intermédiaire.
+        greffes.append(Greffe(entree=decision.encode_source,
+                              flux=n_source + j, piste=piste(t)))
+    return greffes
+
+
+def build_extraction_greffe(g: Greffe, chemin: Path,
+                            ffmpeg_path: str = "ffmpeg") -> list[str]:
+    """Le sous-titre greffé en `.srt`, son décalage appliqué comme à
+    l'encodage (`-itsoffset`, ou `-ss` pour un décalage négatif)."""
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error"]
+    if g.decalage_ms > 0:
+        cmd += ["-itsoffset", f"{g.decalage_ms / 1000:.3f}"]
+    elif g.decalage_ms < 0:
+        cmd += ["-ss", f"{-g.decalage_ms / 1000:.3f}"]
+    if g.jeu:
+        cmd += ["-sub_charenc", g.jeu]
+    cmd += ["-i", str(g.entree), "-map", f"0:s:{g.flux}", "-c:s", "srt", str(chemin)]
+    return cmd
 
 
 def build_extraction(source: Path, pistes: list, dossier: Path,

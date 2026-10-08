@@ -120,17 +120,14 @@ def test_un_srt_nu_reste_a_zero(monkeypatch, appels, tmp_path):
     assert appels["index"] == 0
 
 
-def test_un_donneur_illisible_vise_le_premier_flux(monkeypatch, appels,
-                                                  tmp_path):
-    """mkvmerge absent ou muet : `ffmpeg_stream_index` retombe sur 0.
-
-    Viser le premier flux de son type est le seul repli qui ait un sens —
-    reprendre le tid tel quel viserait un flux choisi au hasard.
-    """
+def test_un_donneur_illisible_est_refuse(monkeypatch, appels, tmp_path):
+    """mkvmerge absent ou muet : viser le premier flux mesurait une autre piste
+    que celle choisie. La mesure refuse plutôt que deviner (CR-27)."""
     from core import muxer
     monkeypatch.setattr(muxer, "identify", lambda _p: [])
     p = tmp_path / "muet.mkv"
     p.write_bytes(b"")
-    sync.measure_external_track(tmp_path / "film.mkv",
-                                _piste(p, 3, TrackKind.AUDIO))
-    assert appels["index"] == 0
+    with pytest.raises(ValueError, match="muet.mkv"):
+        sync.measure_external_track(tmp_path / "film.mkv",
+                                    _piste(p, 3, TrackKind.AUDIO))
+    assert "index" not in appels

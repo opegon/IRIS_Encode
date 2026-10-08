@@ -156,7 +156,7 @@ _LANG_TOKENS: dict[str, str] = {
     "fr": "fre", "fre": "fre", "fra": "fre", "french": "fre",
     "vf": "fre", "vff": "fre", "vfq": "fre", "truefrench": "fre",
     "vostfr": "fre", "francais": "fre",
-    "en": "eng", "eng": "eng", "english": "eng", "vo": "eng",
+    "en": "eng", "eng": "eng", "english": "eng",
     "de": "ger", "ger": "ger", "deu": "ger", "german": "ger",
     "es": "spa", "spa": "spa", "esp": "spa", "spanish": "spa",
     "it": "ita", "ita": "ita", "italian": "ita",
@@ -164,6 +164,11 @@ _LANG_TOKENS: dict[str, str] = {
     "pt": "por", "por": "por", "portuguese": "por",
     "ru": "rus", "rus": "rus", "russian": "rus",
 }
+# Ceux-là sont aussi des mots de titre — « La Cité de la peur », « It »,
+# « Paris en fête » : reconnus seulement en dernière position, là où un nom de
+# sous-titre range sa langue (CR-26). « VO » ne dit pas quelle langue : retiré.
+_TOKENS_AMBIGUS = frozenset({"fr", "en", "de", "es", "it", "ja", "jp", "pt",
+                             "ru", "esp"})
 
 _TOKEN_SPLIT = re.compile(r"[.\-_ \[\]()]+")
 
@@ -172,13 +177,23 @@ def guess_language(path: Path) -> str:
     """
     Déduit une langue ISO 639-2 du nom de fichier ("film.fr.srt" → "fre").
 
-    Les marqueurs de langue sont en fin de nom : on parcourt les fragments
-    de droite à gauche et on retient le premier reconnu. "" si aucun.
+    Le dernier fragment peut être n'importe quel marqueur connu, ou un code
+    ISO 639-2 que la recherche OpenSubtitles sait rendre (`Film.123.dut.srt`,
+    CR-51). Plus à gauche, seuls les marqueurs qui ne sont pas des mots de
+    titre comptent (`Film.2020.FRENCH.1080p`). "" si aucun : l'écran demande.
     """
-    for token in reversed(_TOKEN_SPLIT.split(path.stem.lower())):
-        lang = _LANG_TOKENS.get(token)
-        if lang:
-            return lang
+    from .opensubtitles import CODES_ISO
+    fragments = [f for f in _TOKEN_SPLIT.split(path.stem.lower()) if f]
+    if not fragments:
+        return ""
+    dernier = fragments[-1]
+    if dernier in _LANG_TOKENS:
+        return _LANG_TOKENS[dernier]
+    if dernier in CODES_ISO:
+        return dernier
+    for token in reversed(fragments[:-1]):
+        if token in _LANG_TOKENS and token not in _TOKENS_AMBIGUS:
+            return _LANG_TOKENS[token]
     return ""
 
 
@@ -250,7 +265,9 @@ def ffmpeg_stream_index(path: Path, tid: int, kind: TrackKind) -> int:
     for i, t in enumerate(same_kind):
         if t.tid == tid:
             return i
-    return 0
+    # Deviner 0 mappait la première piste du donneur sous le nom et la langue
+    # de celle choisie : un refus vaut mieux qu'un chiffre faux (CR-27).
+    raise _piste_introuvable(path, tid)
 
 
 def mkvmerge_tid(path: Path, index: int, kind: TrackKind) -> int:
@@ -263,7 +280,18 @@ def mkvmerge_tid(path: Path, index: int, kind: TrackKind) -> int:
     same_kind = [t for t in identify(path) if t.kind == kind]
     if 0 <= index < len(same_kind):
         return same_kind[index].tid
-    return index
+    # L'index ffprobe rendu comme tid désignait une autre piste — 0 est la
+    # vidéo : `--audio-tracks 0` ne gardait aucune audio (CR-27).
+    raise _piste_introuvable(path, index)
+
+
+def _piste_introuvable(path: Path, numero: int) -> ErreurAffichable:
+    """mkvmerge ne retrouve pas la piste : absent, en délai sur un partage
+    lent, ou fichier changé depuis le choix."""
+    return ErreurAffichable(N_(
+        "Track {track} of “{file}” cannot be found by mkvmerge (missing, "
+        "unreadable or changed file): it will not be guessed."),
+        track=numero, file=path.name)
 
 
 def propager_recalage(tracks: list[ExternalTrack], source: int) -> list[int]:

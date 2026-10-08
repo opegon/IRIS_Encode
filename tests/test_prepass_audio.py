@@ -162,11 +162,19 @@ def test_l_entree_dediee_se_parcourt_par_rang(tmp_path):
     assert maps == ["1:a:0"], "la seule piste gardée est la première du fichier"
 
 
-def test_les_donneurs_ne_sont_pas_decales(tmp_path):
+def _identifier(monkeypatch, kind) -> None:
+    from core import muxer
+    from core.muxer import IdentifiedTrack
+    monkeypatch.setattr(muxer, "identify", lambda _p: [
+        IdentifiedTrack(tid=0, kind=kind, codec="?", language="fre")])
+
+
+def test_les_donneurs_ne_sont_pas_decales(tmp_path, monkeypatch):
     """L'entrée dédiée est posée en dernier, pour que les index des pistes
     greffées restent ceux qu'ils étaient."""
     donneur = tmp_path / "vf.mkv"
     donneur.write_bytes(b"")
+    _identifier(monkeypatch, TrackKind.SUBTITLE)
     dec = decide(_info(tmp_path), _profile())
     dec.external_tracks.append(ExternalTrack(
         source_path=donneur, source_tid=0, kind=TrackKind.SUBTITLE,
@@ -190,11 +198,12 @@ def test_les_sous_titres_ont_leur_propre_entree(tmp_path):
     assert subs and all(m.startswith("2:") for m in subs), subs
 
 
-def test_une_piste_audio_greffee_les_deplace_aussi(tmp_path):
+def test_une_piste_audio_greffee_les_deplace_aussi(tmp_path, monkeypatch):
     """Même disposition sans passe préalable : l'audio greffée est une autre
     entrée que la vidéo."""
     donneur = tmp_path / "vf.mka"
     donneur.write_bytes(b"")
+    _identifier(monkeypatch, TrackKind.AUDIO)
     dec = decide(_info(tmp_path, hd=False), _profile())
     dec.external_tracks.append(ExternalTrack(
         source_path=donneur, source_tid=0, kind=TrackKind.AUDIO,

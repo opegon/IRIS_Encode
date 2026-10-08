@@ -33,15 +33,14 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `tui/app.py` fait. 4 mineurs (en-tête du catalogue dans la confirmation de sortie, arrêt limité au mode affiché, journal en cp1252, argument path sans effet), 1 question.
-- Prochain : `tui/screens/browser.py`.
+- 2026-10-08 — `tui/mixins.py` fait. 1 mineur (super().on_key fait paginer deux fois), 1 question sur la règle G4.
+- Prochain : `tui/screens/tracks.py`.
 
 ### Pistes notées en route
 
 Observations faites en lisant un appelant, à instruire quand leur fichier vient
 (et à retirer une fois instruites).
 
-- `tui/screens/browser.py:831-849` `_scan_one` : une analyse qui lève est seulement journalisée, la ligne disparaît de la liste sans message (titre de disque illisible, CSS non détecté sur lecteur physique : `clip_chiffre`/`vob_chiffre` rendent False sur OSError en promettant que « l'analyse dira pourquoi »). Message de journal en français (« Échec du scan »).
 - `tui/screens/sync.py`, `tui/screens/wizard.py` : quel chemin reçoit la mesure pour une **cible titre de Blu-ray** (`info.path` = `.mpls`, que ffmpeg ne lit pas, ou `info.lecture` = premier clip seulement) ? et après un `_remux_titre` ?
 - `main.py` : la console du preflight imprime `✓ ✗ ↑ …` ; sortie redirigée vers un fichier ou un tube sous Windows (cp1252) → `UnicodeEncodeError` au démarrage ? (`sys.stdout.reconfigure` ?)
 - `core/opensubtitles.py`, `tui/screens/meta_popup.py` : pour un **titre de disque**, `parse_title(info.path)` lit `00800.mpls` / `TITLE_01.dvd` (titre « 00800 ») et l'empreinte se calcule sur une playlist de quelques centaines d'octets — utiliser `stem_sortie` et `lecture` ?
@@ -195,9 +194,9 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] tui/screens/output_dir.py (133)
 - [x] tui/widgets/file_tree.py (150)
 - [x] tui/app.py (499)
-- [ ] tui/screens/browser.py (1415)
-- [ ] tui/common.py (600)
-- [ ] tui/mixins.py (295)
+- [x] tui/screens/browser.py (1415)
+- [x] tui/common.py (600)
+- [x] tui/mixins.py (295)
 - [ ] tui/screens/tracks.py (790)
 - [ ] tui/screens/wizard.py (645)
 - [ ] tui/screens/dryrun.py (427)
@@ -624,6 +623,46 @@ Aucun constat. Lu avec ses deux appelants (`app.encoder` → `sorties_bloquees`,
   - Correction : à trancher — retirer l'argument, ou ouvrir ce dossier quand il est donné.
   - Test : selon la décision.
 - **Question** — Le motif de la demande d'alimentation (`:377`, « IRIS ENCODE : encodage, mesure en cours », visible dans `powercfg /requests`) est en français, documenté tel quel (spec § 14.7) mais antérieur à la règle « anglais source » (v0.8.9.8x) qui fait passer les journaux en anglais (CR-53). Il part vers un programme, donc ne se traduit pas ; doit-il passer en anglais ?
+
+### tui/screens/browser.py
+
+- **CR-74** · `tui/screens/browser.py:384-401` (`on_screen_resume`), `:640-641`, `:1208-1225` · **critique** · J · reproduit — Pendant qu'un lot tourne, chaque retour à l'accueil rescanne le dossier et remplace les décisions : codec, débit, suppression de la source et pistes greffées réglés sur un fichier sont perdus, et `F2` encode la décision automatique.
+  - Scénario : IE-100 laisse naviguer pendant l'encodage pour préparer la suite. Mode manuel : `T` sur un fichier, codec AV1 et débit choisis, `.srt` français greffé, retour à la liste, coche, `F2`. Tant que `app.lots_encodes` contient le lot en cours, `on_screen_resume` appelle `_refresh_view()` à **chaque** retour (pistes, assistant, aperçu `F1`, sélecteur de profil, fiche `I`…) ; le worker de scan refait `decide()` et `_populate_table` écrase `self._decisions[path]`. Seules les sélections audio et sous-titres survivent (`_audio_overrides`, `_subtitle_overrides`) ; le choix de codec, le débit, `delete_source_override` et `external_tracks` ne vivent que sur l'objet remplacé. Reproduit (vraie `BrowserScreen`, vrai ffprobe, un écran ouvert puis refermé) : sans lot, la décision garde AV1, 2 500 k et la greffe ; avec un lot en cours, nouvel objet, `SKIP`, débit 0, aucune piste greffée. Le même écrasement suit `F4` et le retour de `F5`. Coût en plus : un ffprobe par fichier à chaque fermeture de fenêtre pendant tout le lot, sur un partage réseau.
+  - Correction : ne rescanner qu'une fois à la fin d'un lot (ou ne relire que les sorties produites), et garder les réglages explicites par fichier (codec, débit, suppression, greffes) dans un registre ré-appliqué après `decide`, comme les pistes.
+  - Test : accueil avec un lot simulé en cours, décision modifiée (codec, greffe), écran ouvert puis refermé : `_decisions[path]` garde codec et greffe.
+- **CR-75** · `tui/screens/browser.py:831-866` (`_scan_one`), `:661-667` · mineur · J · reproduit (analyse) / lu (écran) / supposé (lecteur physique) — Un fichier que l'analyse ne lit pas disparaît de la liste sans un mot ; si tous échouent, l'écran dit « Aucun fichier vidéo dans ce dossier ».
+  - Scénario : `scan()` lève (`RuntimeError: ffprobe … EBML header parsing failed` sur un `.mkv` tronqué, reproduit), `_scan_one` journalise et rend None, la ligne n'existe pas, et le compte « masqués » de la barre d'état ne l'inclut pas. Cas aggravant : `dvd.vob_chiffre` et `bluray.clip_chiffre` rendent False sur `OSError` « l'analyse dira pourquoi » — sur un lecteur physique qui refuse les secteurs CSS d'un disque non authentifié, chaque titre échoue à l'analyse et l'écran affiche le message du dossier vide (supposé, aucun lecteur ici).
+  - Correction : garder une ligne « illisible » (nom, cause courte, grisée, non cochable), et un placeholder qui distingue « rien » de « rien de lisible ».
+  - Test : dossier avec un fichier valide et un fichier tronqué : deux lignes, la seconde marquée illisible.
+- **CR-76** · `tui/screens/browser.py:1285-1296` (`_confier`) · mineur · J · lu — Renoncer au choix du dossier de sortie décoche quand même les fichiers.
+  - Scénario : source sur un ISO monté, `F2` : `app.encoder` ouvre `OutputDirScreen` et rend aussitôt ; `_confier` décoche alors tout le lot. `Échap` dans la modale : rien n'est mis en file (« Y renoncer, c'est ne rien mettre en file »), et la sélection, parfois longue à refaire sur un disque, est perdue.
+  - Correction : décocher dans le rappel, une fois la mise en file faite (`encoder` rendant ce qui a été accepté).
+  - Test : source en lecture seule, `F2`, `Échap` sur la modale : les fichiers restent cochés.
+- **CR-77** · `tui/screens/browser.py:920-924` (`_resize_persist`) ; même forme : `tui/app.py:185` (`active_profile_id` → `set_active_profile`), `tui/screens/dryrun.py:317`, `tui/screens/tracks.py:768`, `tui/screens/cles.py:168`, `:228`, `core/config.py:374`, `:402` · mineur · R · lu — Récidive de CR-64 côté interface : un `config.toml` qui ne s'écrit pas fait quitter l'application sur un `<`, un `F4` ou un enregistrement d'options.
+  - Scénario : `cfg_mod.save` lève `OSError` (verrou d'antivirus ou de synchronisation au moment du `os.replace`, voir CR-64) ; aucun de ces appels ne l'attrape, et une exception dans un gestionnaire Textual ferme l'application. `assurer_langue` (`core/config.py:183-186`) est le seul à tolérer l'échec.
+  - Correction : un `enregistrer(cfg)` qui attrape `OSError` et le dit par une notification, utilisé partout hors du démarrage.
+  - Test : `cfg_mod.save` qui lève : `<` sur l'accueil et `F4` ne ferment pas l'application.
+- **CR-78** · `tui/screens/browser.py:64-86` (`_cellules_volume`), appelée par `_populate_table` (`:617-624`) sur le fil principal · mineur · W · supposé — La liste des volumes interroge `shutil.disk_usage` de chaque lecteur sur le fil de l'interface.
+  - Scénario : un lecteur réseau monté sur un NAS en veille met plusieurs secondes à répondre (réveil des disques, délai SMB) ; l'accueil, qui est l'écran de démarrage, se fige d'autant à chaque retour aux volumes. `list_volumes` tourne déjà dans le worker ; la mesure de l'espace, non.
+  - Correction : calculer les trois cellules dans `_load_directory` et les passer à `_populate_table`.
+  - Test : structurel — `_populate_table` n'appelle pas `disk_usage` ; `_cellules_volume` est appelée depuis le worker.
+- **CR-79** · `tui/screens/browser.py:290` (`"temps_estim": "ETA"`), `tui/screens/dryrun.py:111` · mineur · G1 · lu — L'en-tête « ETA » n'est pas marqué pour la traduction.
+  - Scénario : `ColumnResizeMixin` passe bien l'en-tête par `_()` au rendu, mais sans `N_()` la chaîne n'est pas extraite : le catalogue ne la contient pas, l'interface française affiche « ETA ». (« Dolby V. » est dans la même situation ici, mais son `msgid` existe grâce à `tui/common.py:528`.)
+  - Correction : `N_("ETA")` avec un commentaire de longueur pour le traducteur.
+  - Test : structurel — toute valeur de `RESIZE_LABELS` est un `msgid` du catalogue.
+- Piste instruite : `_scan_one` (CR-75) ; son message de journal en français est déjà CR-53.
+
+### tui/common.py
+
+Aucun constat nouveau. `record_measured_speed` (`:41-47`) est le point d'entrée de CR-64. Lu : `confier_a_la_file` dépile avant `app.encoder` (la copie profonde de la mise en file précède le rescan de l'accueil, CR-74 ne s'y applique pas) ; `retour_accueil`, `actions_ecran` (BINDINGS lus sur toute la MRO), formats (`fmt_bytes`, `fmt_duration` conformes à IE-90) ; `largeur_entete` et `tronquer_milieu` mesurent en `len()`, ce qui ne diffère de `cell_len` qu'en pleine chasse (aucun catalogue concerné, déjà noté par l'audit de localisation).
+
+### tui/mixins.py
+
+- **CR-80** · `tui/mixins.py:31-32`, `:119-120` (consigne), appliquée par `tui/screens/tracks.py:532` et `tui/screens/sync.py:405` · mineur · J · reproduit — Appeler `super().on_key(event)`, comme le demande la règle G4, fait traiter deux fois `PageUp`/`PageDown` : l'écran des pistes et le recalage sautent deux pages.
+  - Scénario : Textual n'attend pas `super()` — `MessagePump._get_dispatch_methods` appelle l'`on_key` de **chaque** classe de la MRO qui en définit un (seul `prevent_default()` arrête ce parcours ; `event.stop()` n'arrête que la remontée dans le DOM). Un `on_key` d'écran qui appelle `super().on_key` exécute donc `TableNavMixin.on_key` une fois par cet appel, une seconde fois par le parcours. Reproduit avec les vrais mixins, écran de même forme que `TracksScreen` (200 lignes, page de 30) : avec `super()`, `PageDown` → 2 appels, curseur ligne 60 ; sans `on_key` ou sans `super()`, 1 appel, ligne 30. `Home`/`End` sont idempotents, d'où le défaut passé inaperçu ; `Tab` et `<`/`>` ne passent qu'une fois (le premier mixin n'appelle pas `super`). Inversement, `ProfileForm.on_key` (`tui/widgets/profile_form.py:648`), qui « enfreint » G4, est correct.
+  - Correction : retirer les deux `super().on_key(event)` et corriger la consigne des mixins ; la règle G4 elle-même est à reposer (voir la question).
+  - Test : écran des pistes avec plus de deux pages de lignes : `PageDown` avance d'une page exactement.
+- **Question** — La règle G4 (« `on_key` → `super().on_key(event)` ») repose sur une hypothèse que Textual 8 ne vérifie pas (répartition sur toute la MRO). La garder telle quelle reproduit le défaut ci-dessus à chaque nouvel écran ; la remplacer par « ne pas appeler `super().on_key`, `prevent_default()` pour empêcher un mixin d'agir » ?
 
 ## Synthèse
 

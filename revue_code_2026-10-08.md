@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `core/dovi.py` fait. 3 constats mineurs : code retour de ffmpeg ignoré dans le tuyau RPU, délais fixes sur des étapes du film entier, code mort et spec périmée.
-- Prochain : `core/sous_titres.py`.
+- 2026-10-08 — `core/sync.py` fait. 3 constats : extraction de sous-titre embarqué limitée à 120 s avec une cause fausse (majeur), horodatage ,1000 (reproduit), .sub/.vtt non lus (reproduit).
+- Prochain : `core/preflight.py`.
 
 ### Pistes notées en route
 
@@ -48,6 +48,8 @@ Observations faites en lisant un appelant, à instruire quand leur fichier vient
 - `tui/screens/run.py` `_audio_prepass` (~l. 660) : échec résumé en « code N », sans `diagnostiquer` (même famille que la première piste).
 - `tui/screens/run.py` arrêt (`_arreter`) d'un processus **en pause** : sous POSIX, `terminate()` (SIGTERM) sur un processus arrêté par SIGSTOP reste en attente jusqu'au SIGCONT, et `wait()` bloque. Reprendre avant de terminer ?
 - `tui/screens/run.py` `_strip_dv` / `_encode_dv` : `dovi.remove_dv`, `inject_rpu`, `convert_p7_to_p8`, `extract_rpu_depuis_source` sont des appels bloquants qui ne publient pas leur processus : `X` (arrêt) et `F10` peuvent-ils les interrompre ? un dovi_tool orphelin continuerait d'écrire des dizaines de Go. Et `pistes_audio_vides` est-il vérifié après un retrait DV en MP4 (`build_strip_mp4` transcode sans passe préalable) ?
+- `tui/screens/run.py` `_strip_dv` en MP4 : `dovi.build_strip_mp4` n'a pas de paramètre de pistes externes — une greffe sur une décision `STRIP_DV` sortant en MP4 est-elle perdue en silence ?
+- `tui/screens/sync.py`, `tui/screens/wizard.py` : quel chemin reçoit la mesure pour une **cible titre de Blu-ray** (`info.path` = `.mpls`, que ffmpeg ne lit pas, ou `info.lecture` = premier clip seulement) ? et après un `_remux_titre` ?
 
 ## Cadre (déjà tranché, ne pas re-signaler)
 
@@ -178,8 +180,8 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] core/muxer.py (638)
 - [x] core/joiner.py (244)
 - [x] core/dovi.py (358)
-- [ ] core/sous_titres.py (141)
-- [ ] core/sync.py (1547)
+- [x] core/sous_titres.py (141)
+- [x] core/sync.py (1547)
 - [ ] core/preflight.py (629)
 - [ ] core/updates.py (233)
 - [ ] core/platform.py (213)
@@ -405,6 +407,28 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
   - Scénario : `extract_hevc_stream`, `extract_rpu`, `get_temp_dir`, `cleanup_temp_files` n'ont aucun appelant ; `scanner._dovi_path`, posé par `app.py` via `set_dovi_path`, n'est jamais lu. La spec (§ 7.1, § 7.2, § 15.3) et l'en-tête du module décrivent `probe_file()` et `rpu_info()`, qui n'existent plus (les métadonnées HDR10 viennent de ffprobe depuis la v0.8.1.19) : l'« enrichissement DV au scan » documenté n'a pas lieu.
   - Correction : à trancher (supprimer, ou remettre la spec d'accord).
   - Test : —
+
+### core/sous_titres.py
+
+- **CR-34** · `core/sous_titres.py:92-104` (`pistes_a_porter` : pistes de la source seulement), `core/encoder.py:745-758`, `:803-818` · **critique** · R · reproduit — Un sous-titre **greffé** à première réplique tardive garde le défaut `mov_text` que la v0.8.9.62 a corrigé pour la source : la VF forcée s'affiche dès les premières images.
+  - Scénario : le porteur ne réécrit que les sous-titres texte de la source ; une piste externe (ou greffée par un mux préalable) est mappée telle quelle avec `-c:s mov_text`, et un `.srt` ne force pas le MKV (CR-15). Reproduit de bout en bout (ffmpeg 6.1.1 — le défaut est aussi mesuré en 8.1.2/8.1.3) : MKV de 2 400 s sans sous-titres, `.srt` forcé greffé dont les répliques sont à 2 200 s et 2 300 s, commande de `build_command` → `Film.1080p.h264-iris.mp4`, code 0, répliques à **0,000 s et 2,000 s**. C'est le cas typique : un sous-titre forcé trouvé sur OpenSubtitles et greffé.
+  - Correction : faire passer aussi les sous-titres texte greffés (externes et pré-muxés) par `combler_srt` et le porteur, ou forcer le MKV dès qu'un sous-titre greffé a un silence de plus de `SEUIL_S`.
+  - Test : le cas ci-dessus rend des répliques à 2 200 s et 2 300 s (±0,01 s) ; structurel : toute piste mappée en `mov_text` provient du porteur ou a été contrôlée par `instants_bouche_trou`.
+
+### core/sync.py
+
+- **CR-35** · `core/sync.py:535-557` (`extract_subtitle`, `timeout=120`), `:1424-1431`, `:1511-1520` · **majeur** · W · lu — Extraire un sous-titre embarqué lit tout le donneur en 120 s au plus ; au-delà, le refus accuse un « sous-titre image ».
+  - Scénario : `ffmpeg -map 0:s:N -c:s srt` doit démultiplexer le fichier entier (les paquets de sous-titres sont entrelacés jusqu'à la fin). Un donneur de 20 Go sur un partage à ~110 Mo/s demande ~3 min ; un remux UHD de 50 Go sur un disque dur, davantage. `subprocess.run(..., timeout=120)` tue ffmpeg, `extract_subtitle` rend None, et la mesure répond « image subtitle (PGS, VobSub) — no text to correlate » pour un SRT : cause fausse, mesure impossible pour tout gros donneur hors SSD (la bibliothèque de l'utilisateur vit sur un partage, spec § 19). Deux minutes sans progression, aussi.
+  - Correction : pas de délai fixe (ou proportionnel à la taille), progression par `-progress`, et un refus « image » seulement si le codec de la piste est un codec image (connu par `identify`) ; sinon dire « extraction impossible : … ».
+  - Test : `subprocess.run` simulé levant `TimeoutExpired` pour une piste `SubRip/SRT` → raison qui ne parle pas d'image ; structurel : aucun `timeout=` sur une commande qui lit un film entier.
+- **CR-36** · `core/sync.py:576-580` (`_srt_stamp`) · mineur · J · reproduit — `shift_srt` peut écrire une milliseconde à quatre chiffres (`00:00:05,1000`), que mkvmerge lit 900 ms trop tôt.
+  - Scénario : `int(s)` puis `round((s % 1) * 1000)` : quand la somme flottante tombe juste sous l'entier (`8.450 − 2.450` = 5,999999999999999), on obtient `,1000`. Mesuré : 8 horodatages sur 597 539 combinaisons (première minute, dix décalages), soit de l'ordre d'une réplique sur 20 000 ; sur un film de 1 500 répliques, quelques pour cent de chances d'en toucher une. ffmpeg relit `05,1000` comme 6,000 s, mkvmerge v82 comme **5,100 s** (trois premiers chiffres) : au mux (`F3`), la réplique part 0,9 s trop tôt.
+  - Correction : arrondir d'abord en millisecondes entières (`ms = round(s * 1000)`), puis découper par `divmod` (comme `core/sous_titres._horodatage`).
+  - Test : `_srt_stamp(8.450 - 2.450) == "00:00:06,000"` ; balayage de toutes les millisecondes d'une heure × décalages usuels : jamais quatre chiffres.
+- **CR-37** · `core/sync.py:121` (`_TEXT_SUB_EXT`), `:416-460` (`read_cues`), `tui/screens/donor_picker.py:40-43` · mineur · J · reproduit — `.sub` et `.vtt` sont proposés comme sous-titres texte, mais `read_cues` n'en lit rien.
+  - Scénario : `read_cues` ne connaît que la forme SRT `h:mm:ss,mmm`. Mesuré : un `.vtt` aux temps sans heures (`00:01.000 --> 00:02.500`, permis par WebVTT) → 0 réplique ; un `.sub` MicroDVD (`{25}{50}…`) → 0 ; un `.sub` VobSub est binaire. Le donneur les propose, la mesure répond « no readable subtitle line — unknown format or empty file ». Au passage, `\d{1,3}` lit `00:00:01,5` comme 1,005 s.
+  - Correction : lire les temps WebVTT sans heures, convertir MicroDVD et VobSub par ffmpeg (`extract_subtitle`) au lieu de les lire comme du texte, compléter une fraction de moins de trois chiffres à droite.
+  - Test : les deux fichiers ci-dessus rendent leurs répliques (MicroDVD à la cadence de la cible) ; `.sub` VobSub → refus « image ».
 
 ## Synthèse
 

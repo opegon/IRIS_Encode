@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `tui/screens/fin_lot.py` fait. 1 mineur (décompte arrivé à zéro sous un autre écran : mauvais écran retiré, puis plantage).
-- Prochain : `tui/widgets/entete.py`.
+- 2026-10-08 — `tui/__init__.py` fait. aucun constat. tui/ terminé.
+- Prochain : `main.py`.
 
 ### Pistes notées en route
 
@@ -218,9 +218,9 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] tui/screens/recursive_confirm.py (32)
 - [x] tui/screens/quit.py (26)
 - [x] tui/screens/fin_lot.py (52)
-- [ ] tui/widgets/entete.py (106)
-- [ ] tui/widgets/footer.py (194)
-- [ ] tui/__init__.py + tui/screens/__init__.py + tui/widgets/__init__.py (3)
+- [x] tui/widgets/entete.py (106)
+- [x] tui/widgets/footer.py (194)
+- [x] tui/__init__.py + tui/screens/__init__.py + tui/widgets/__init__.py (3)
 
 ### Racine et lanceurs
 - [ ] main.py (156)
@@ -844,6 +844,18 @@ Aucun constat. Le texte décrit bien ce que fait `R` (analyse, puis aperçu, dé
   - Scénario : Textual `Screen.dismiss` appelle le rappel puis `app.pop_screen()`, qui retire l'écran du **sommet**, quel qu'il soit. Reproduit : pile [Accueil, FinDeLotModal, Guide] (`H` pendant le décompte de 2 s) → l'action est déclenchée, la pile devient [Accueil, FinDeLotModal] (le guide a été retiré à sa place), le minuteur repart, et le second `dismiss` lève `InvalidStateError` : application arrêtée. Même chose avec `F10` (la confirmation de sortie est retirée à sa place) ; avec `F12`, la modale reste dans la pile de l'autre mode et `pop_screen` vise la pile affichée. Concrètement : on revient devant l'écran pendant le décompte, on ouvre le guide ou la file — la machine se met en veille quand même, et l'application a planté au réveil.
   - Correction : arrêter le minuteur avant de rendre, ne rendre que si la modale est au sommet (`self.is_current`) — sinon la mettre en tête ou annuler l'action ; ou ouvrir la modale hors d'atteinte des autres touches.
   - Test : modale à 1 s de délai recouverte d'un écran : à l'échéance, l'écran du dessus est toujours là, et le rappel n'est appelé qu'une fois.
+
+### tui/widgets/entete.py
+
+Aucun constat. Titre rafraîchi chaque seconde depuis `etat_file`/`etat_veille` (lus par `getattr`, donc sans risque hors de l'application), heure au format fixe `%H:%M:%S` (L-49), largeur du rappel suivant le libellé traduit en `cell_len`.
+
+### tui/widgets/footer.py
+
+Aucun constat. Trois bandes (écran, global, touches de fonction triées par numéro), largeur mesurée en `cell_len` (L-50), descriptions traduites au rendu, hauteur posée d'après le nombre de lignes produites ; une entrée plus large que l'écran déborde plutôt que disparaître (choix écrit).
+
+### tui/__init__.py
+
+Aucun constat (un commentaire par fichier).
 
 ## Synthèse
 

@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `core/profiles.py` fait. 2 constats : bibliothèque écrasée au premier enregistrement après un TOML illisible (critique, reproduit), code mort.
-- Prochain : `core/i18n.py`.
+- 2026-10-08 — `core/opensubtitles.py` fait. 2 constats : .srt cp1252 vidé de ses accents à l'encodage (critique, reproduit avec ffmpeg), langue perdue hors de 8 langues.
+- Prochain : `core/preview.py`.
 
 ### Pistes notées en route
 
@@ -51,6 +51,7 @@ Observations faites en lisant un appelant, à instruire quand leur fichier vient
 - `tui/screens/run.py` `_strip_dv` en MP4 : `dovi.build_strip_mp4` n'a pas de paramètre de pistes externes — une greffe sur une décision `STRIP_DV` sortant en MP4 est-elle perdue en silence ?
 - `tui/screens/sync.py`, `tui/screens/wizard.py` : quel chemin reçoit la mesure pour une **cible titre de Blu-ray** (`info.path` = `.mpls`, que ffmpeg ne lit pas, ou `info.lecture` = premier clip seulement) ? et après un `_remux_titre` ?
 - `main.py` : la console du preflight imprime `✓ ✗ ↑ …` ; sortie redirigée vers un fichier ou un tube sous Windows (cp1252) → `UnicodeEncodeError` au démarrage ? (`sys.stdout.reconfigure` ?)
+- `core/opensubtitles.py`, `tui/screens/meta_popup.py` : pour un **titre de disque**, `parse_title(info.path)` lit `00800.mpls` / `TITLE_01.dvd` (titre « 00800 ») et l'empreinte se calcule sur une playlist de quelques centaines d'octets — utiliser `stem_sortie` et `lecture` ?
 
 ## Cadre (déjà tranché, ne pas re-signaler)
 
@@ -188,10 +189,10 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] core/platform.py (213)
 - [x] core/config.py (402)
 - [x] core/profiles.py (299)
-- [ ] core/i18n.py (210)
-- [ ] core/cles.py (174)
-- [ ] core/meta.py (371)
-- [ ] core/opensubtitles.py (308)
+- [x] core/i18n.py (210)
+- [x] core/cles.py (174)
+- [x] core/meta.py (371)
+- [x] core/opensubtitles.py (308)
 - [ ] core/preview.py (118)
 - [ ] core/veille.py (274)
 - [ ] core/__init__.py (1)
@@ -481,6 +482,39 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
   - Scénario : `summary_fields` a remplacé `summary_line` ; la saisie des langues et la validation du nom passent ailleurs (`profile_form`). Une réutilisation de `summary_line` afficherait « hd-audio: oui » dans l'interface anglaise.
   - Correction : à trancher (supprimer).
   - Test : —
+
+### core/i18n.py
+
+Aucun constat. (Champs des traductions vérifiés par `tests/test_i18n.py` ; `ErreurAffichable.brute` ne formate pas le texte d'un service.)
+
+### core/cles.py
+
+- **CR-47** · `core/cles.py:122`, `core/meta.py:130` · mineur · J (sécurité) · lu — La clé OMDb part en clair, en HTTP.
+  - Scénario : la vérification (`verifier_omdb`) et chaque fiche IMDB (`meta.py`) appellent `http://www.omdbapi.com/?apikey=…` ; OMDb répond en HTTPS (le lien d'inscription du même module l'emploie). Sur un réseau partagé, la clé et les titres consultés se lisent en clair. Les autres services (OpenSubtitles, GitHub, gyan.dev) passent tous en HTTPS.
+  - Correction : `https://www.omdbapi.com/` aux deux endroits.
+  - Test : structurel — aucune URL `http://` dans `core/` et `tui/` hors liste blanche commentée.
+
+### core/meta.py
+
+- **CR-48** · `core/meta.py:127` (`type=movie`), `:112-119` · **majeur** · J · lu — Dès qu'une clé OMDb est saisie, la fiche IMDB d'une série échoue (« OMDb: “Movie not found!” »).
+  - Scénario : la requête OMDb filtre `type=movie` ; une série (`Show.S01E01…` → titre « Show ») n'y figure pas, et `fetch_imdb` ne retombe pas sur les suggestions IMDB, qui, elles, connaissent `tvSeries` et `tvMiniSeries`. La table `NATURE_OMDB` prévoit pourtant `series` et `episode`. Sans clé, la même fiche s'affiche : configurer la clé dégrade donc toutes les séries (profils `series_*`). Comportement documenté de l'API OMDb (`type` : movie, series, episode), non rejoué ici faute de clé.
+  - Correction : ne pas filtrer le type (ou `type=series` quand le nom porte `SxxEyy`), et retomber sur les suggestions quand OMDb répond « not found ».
+  - Test : `requests.get` simulé rendant « Movie not found! » pour `type=movie` → la fiche d'un `Show.S01E01.mkv` vient des suggestions ; la requête d'un nom d'épisode ne porte pas `type=movie`.
+- **CR-49** · `core/meta.py:16-52` (`parse_title`) · mineur · J · reproduit — Un titre qui commence par une année est vidé ; un titre qui contient une année prend la mauvaise.
+  - Scénario : l'année est un marqueur de coupe, prise où qu'elle soit. Mesuré : `2001.A.Space.Odyssey.1968.1080p` → `('', 2001)` ; `1917.2019.1080p` → `('', 1917)` ; `Blade.Runner.2049.2017.2160p` → `('Blade Runner', 2049)`. La fiche (`I`) et la recherche OpenSubtitles par nom (spec § 9.8) partent d'un titre vide ou d'une année fausse.
+  - Correction : ne couper sur une année qu'au-delà du premier mot, et retenir la **dernière** année plausible avant les marqueurs techniques.
+  - Test : les trois noms ci-dessus → `('2001 A Space Odyssey', 1968)`, `('1917', 2019)`, `('Blade Runner 2049', 2017)`.
+
+### core/opensubtitles.py
+
+- **CR-50** · `core/encoder.py:546-559` (entrées externes), `core/muxer.py:310-323` (pas de `--sub-charset`), à rapprocher de `core/sync.py:424-437` (`_read_text`) · **critique** · J · reproduit (ffmpeg) / supposé (mkvmerge sous Windows) — Un `.srt` greffé en cp1252 perd à l'encodage toutes ses répliques accentuées, sans erreur.
+  - Scénario : la mesure lit le fichier en essayant utf-8 puis cp1252 (`_read_text`, qui note que « beaucoup de .srt circulent en cp1252 ») et trouve un bon recalage ; l'encodage le donne ensuite à ffmpeg sans `-sub_charenc`. Reproduit (ffmpeg 6.1.1) : `.srt` cp1252 de trois répliques (« Été à Paris », « Bonjour », « Déjà vu ») greffé en `mov_text` → « Invalid UTF-8 in decoded subtitles text », code **0**, une seule réplique en sortie ; la mesure, elle, en lit trois. En français, presque chaque réplique a un accent. Au mux, mkvmerge v82 sous Linux tronque aussi (« D… ») ; sous Windows il suit, sans BOM, le jeu de caractères du système : à vérifier, dans un sens ou dans l'autre (un UTF-8 sans BOM pourrait alors sortir en « Ã© »).
+  - Correction : déterminer l'encodage du `.srt` greffé comme le fait `_read_text`, puis le passer explicitement (`-sub_charenc` avant l'`-i` de ffmpeg, `--sub-charset TID:…` pour mkvmerge), ou réécrire le fichier en UTF-8 avant la greffe.
+  - Test : le `.srt` cp1252 ci-dessus greffé par la commande de `build_command` (et de `build_mux_command`) rend trois répliques, accents intacts.
+- **CR-51** · `core/opensubtitles.py:255-258`, `core/muxer.py:155-166` · mineur · J · lu — Un sous-titre téléchargé dans une langue hors de `_LANG_TOKENS` sort sans langue.
+  - Scénario : la langue n'est transmise que par le nom du fichier (`Film.<id>.nl.srt`), relu par `guess_language`, qui ne connaît que fr, en, de, es, it, ja, pt et ru. Un sous-titre néerlandais, polonais, suédois… choisi dans la liste (où sa langue est pourtant connue, `Resultat.langue`) devient « und » à la greffe ; `zh-cn` aussi.
+  - Correction : rendre la langue connue avec le fichier (le `Resultat` la porte) plutôt que la faire relire dans le nom, ou étendre `_LANG_TOKENS` à toute la table `_VERS_API`.
+  - Test : un téléchargement simulé en `nl` donne une piste externe de langue `dut`.
 
 ## Synthèse
 

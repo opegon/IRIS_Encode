@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `core/encoder.py` fait. 4 constats : polices jointes perdues (critique, reproduit), passes audio sans progression, règle x265 non appliquée hors HDR10 quality, double sous-titre par défaut ; 2 questions. Piste « audio externe en MP4 » instruite (copie acceptée par ffmpeg 6.1 → question).
-- Prochain : `core/annexes.py`.
+- 2026-10-08 — `core/dovi.py` fait. 3 constats mineurs : code retour de ffmpeg ignoré dans le tuyau RPU, délais fixes sur des étapes du film entier, code mort et spec périmée.
+- Prochain : `core/sous_titres.py`.
 
 ### Pistes notées en route
 
@@ -47,6 +47,7 @@ Observations faites en lisant un appelant, à instruire quand leur fichier vient
 - `tui/screens/run.py` `ajouter()` : une décision ajoutée à un lot en cours passe-t-elle par `resoudre_sorties` avec les noms déjà réservés du lot ? Sinon deux sources de même stem (Film.mkv puis Film.mp4) visent la même sortie non encore écrite.
 - `tui/screens/run.py` `_audio_prepass` (~l. 660) : échec résumé en « code N », sans `diagnostiquer` (même famille que la première piste).
 - `tui/screens/run.py` arrêt (`_arreter`) d'un processus **en pause** : sous POSIX, `terminate()` (SIGTERM) sur un processus arrêté par SIGSTOP reste en attente jusqu'au SIGCONT, et `wait()` bloque. Reprendre avant de terminer ?
+- `tui/screens/run.py` `_strip_dv` / `_encode_dv` : `dovi.remove_dv`, `inject_rpu`, `convert_p7_to_p8`, `extract_rpu_depuis_source` sont des appels bloquants qui ne publient pas leur processus : `X` (arrêt) et `F10` peuvent-ils les interrompre ? un dovi_tool orphelin continuerait d'écrire des dizaines de Go. Et `pistes_audio_vides` est-il vérifié après un retrait DV en MP4 (`build_strip_mp4` transcode sans passe préalable) ?
 
 ## Cadre (déjà tranché, ne pas re-signaler)
 
@@ -173,10 +174,10 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] core/scanner.py (1040)
 - [x] core/decision.py (1386)
 - [x] core/encoder.py (891)
-- [ ] core/annexes.py (68)
-- [ ] core/muxer.py (638)
-- [ ] core/joiner.py (244)
-- [ ] core/dovi.py (358)
+- [x] core/annexes.py (68)
+- [x] core/muxer.py (638)
+- [x] core/joiner.py (244)
+- [x] core/dovi.py (358)
 - [ ] core/sous_titres.py (141)
 - [ ] core/sync.py (1547)
 - [ ] core/preflight.py (629)
@@ -352,6 +353,58 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
   - Test : le cas ci-dessus rend un seul sous-titre par défaut, le français.
 - **Question** — `core/encoder.py:793-795` : une piste audio **externe** est toujours recopiée (`-c:a copy`), alors que la même piste dans la source serait transcodée par le profil (Opus, Vorbis, FLAC, PCM, DTS : le G3 ne les lit pas, le DTS gèle au saut). ffmpeg 6.1 les accepte en MP4 sans erreur (mesuré) : la sortie fera transcoder Jellyfin. Appliquer à une greffe la règle audio du profil ?
 - **Question** — `core/encoder.py:633-634`, `:821-829` : une copie Dolby Vision **profil 5** sort en MP4 étiquetée `hvc1` avec `dvcC`, comme un 8.1 ; seul le 8.1 a été essayé sur le G3 (IE-75). Un P5 n'a pas de couche de base lisible : si le lecteur l'ouvre en HEVC simple, couleurs fausses. À vérifier sur le téléviseur (Film H est un P5) ?
+
+### core/annexes.py
+
+- **CR-24** · `core/annexes.py:52-58` (`rivales`) · mineur · P · supposé — Deux vidéos de même nom dans un dossier (`Film.mkv`, `Film.avi`) partagent leurs annexes : supprimer l'une emporte le `.nfo` et les images de l'autre.
+  - Scénario : seules les vidéos au nom **plus long** sont protégées. Avec `Film.mkv` encodé sous un profil `delete_source` à côté d'un `Film.avi` (ou d'un `Film.iso`, extension hors `SUPPORTED_EXTENSIONS`, qui n'est jamais une rivale), `Film.nfo` et `Film-poster.jpg` partent alors que Jellyfin les rattache aussi à la vidéo qui reste. Rare ; perte réparable (Jellyfin refait ses fichiers).
+  - Correction : ne rien supprimer quand une autre vidéo du dossier a le même nom de base (ou une extension vidéo connue de Jellyfin hors liste).
+  - Test : dossier `Film.mkv`, `Film.avi`, `Film.nfo` : `annexes_jellyfin(Film.mkv)` est vide.
+
+### core/muxer.py
+
+- **CR-25** · `core/muxer.py:310-323` (`_track_options`), `:357` · mineur · R · reproduit — Au mux, une piste greffée « par défaut » laisse le drapeau des pistes de la source : deux pistes audio et deux sous-titres par défaut.
+  - Scénario : `--default-track-flag` ne vise que la piste du donneur ; la source garde les siens. Mesuré (mkvmerge v82) : source avec audio et sous-titre anglais par défaut, VF `.mka` et `.srt` français greffés et marqués défaut → `[(und, True), (fre, True)]` en audio, `[(eng, True), (fre, True)]` en sous-titres. Le lecteur prend la première : le choix est sans effet. Même famille que CR-23 (chemin ffmpeg, sous-titres) ; le chemin ffmpeg traite l'audio, celui-ci rien.
+  - Correction : quand une piste greffée d'un type est par défaut, poser `--default-track-flag TID:0` sur les pistes de ce type de la source (ids par `identify`) ; une seule fonction pour les deux chemins.
+  - Test : le cas ci-dessus rend une seule piste par défaut par type, la greffée ; structurel : `build_mux_command` et `build_command` passent par la même règle.
+- **CR-26** · `core/muxer.py:155-182` (`guess_language`), `tui/screens/donor_picker.py:71-74` · mineur · J · reproduit — Un mot du titre est pris pour une langue : « de » donne l'allemand à un sous-titre français.
+  - Scénario : les fragments du nom sont lus de droite à gauche et le premier connu gagne, mot de titre compris. `La.Cite.de.la.peur.1994.srt` → `ger`, `Le.Pont.de.la.Riviere.Kwai.1957.srt` → `ger`, `It.2017.srt` → `ita`, `Parasite.VO.srt` → `eng` (« VO » n'est pas l'anglais). Le sélecteur de donneur pose cette langue sur la piste ; l'assistant l'affiche sans permettre de la changer, et elle est écrite dans le fichier produit (« German » dans Jellyfin).
+  - Correction : ne reconnaître qu'un marqueur en **dernière** position (avant l'extension) ou dans une liste de marqueurs non ambigus (`fr`, `fre`, `vff`, `en`…), jamais `de`, `it`, `es`, `pt`, `vo` au milieu d'un titre ; sans marqueur, laisser vide pour que l'écran demande.
+  - Test : les quatre noms ci-dessus rendent `""` (ou `fre` pour un `.fr.srt` ajouté) ; `Film.fr.srt` → `fre`.
+- **CR-27** · `core/muxer.py:241-253` (`ffmpeg_stream_index` → 0), `:256-266` (`mkvmerge_tid` → l'index lui-même) · mineur · J · lu — Une traduction d'index qui échoue devine au lieu de refuser.
+  - Scénario : si `identify` rend `[]` au moment de l'encodage (mkvmerge en délai de 30 s sur un partage lent, exécutable déplacé), `ffmpeg_stream_index` rend 0 et `build_command` mappe la **première** piste du donneur sous la langue et le nom de celle qui était choisie — exactement le défaut que le commentaire de `encoder.py:748-754` dit corrigé ; `mkvmerge_tid` rend l'index ffprobe comme un tid mkvmerge (0 = la vidéo), et `--audio-tracks 0` du retrait DV ne garde aucune audio. Rare (le cache d'`identify` sert le plus souvent), mais « un refus vaut mieux qu'un chiffre faux ».
+  - Correction : lever une `ErreurAffichable` quand le tid ou l'index n'est pas trouvé.
+  - Test : `identify` simulé vide → `ffmpeg_stream_index` et `mkvmerge_tid` lèvent ; `build_command` d'une décision à piste externe aussi.
+- **CR-28** · `core/muxer.py:556-565` (`premux_output_path`) · mineur · P · lu — Le mux préalable (piste étirée) écrit le film entier dans le dossier temporaire du système.
+  - Scénario : `tempfile.gettempdir()` est sur le disque système ; l'intermédiaire pèse le film (30 à 60 Go en 4K). La règle du projet dit l'inverse pour tout gros intermédiaire (spec § 7.3 : « le disque système n'a pas 30 Go à prêter » ; wiki `conteneurs`), et IE-118 a rangé les autres dans `dossier_sortie`. Disque système trop petit : échec du mux ; coupure ou plantage : 30 Go oubliés dans `%TEMP%`, invisibles, jamais nettoyés.
+  - Correction : écrire l'intermédiaire dans `dec.dossier_sortie` sous un nom d'intermédiaire (`<stem>.iris_premux.mkv`, reconnu par CR-11).
+  - Test : `premux_output_path` (ou son remplaçant) rend un chemin dans le dossier de sortie de la décision.
+
+### core/joiner.py
+
+- **CR-29** · `core/joiner.py:80-92` (`nom_commun`) · mineur · J · reproduit — Le marqueur de numérotation est retiré sans borne de mot : il ronge la fin du titre.
+  - Scénario : `bas.endswith(marqueur)` en boucle. Mesuré : `Le Fantome 1` + `Le Fantome 2` → `Le Fan.join-iris.mkv` ; `Concept.CD1` + `Concept.CD2` → `Conce.join-iris.mkv` (« CD » puis « pt ») ; `Le Depart 1/2` → `Le De` ; `Envol.part1/2` → `En`. Le nom s'affiche avant le collage (« Sortie : … »), mais rien ne permet de le corriger dans l'écran.
+  - Correction : ne retirer un marqueur que s'il est un mot entier (précédé d'un séparateur ou en tête), une seule fois.
+  - Test : les quatre paires ci-dessus donnent `Le Fantome`, `Concept`, `Le Depart`, `Envol` ; `Film part1/part2` → `Film`.
+- **CR-30** · `core/joiner.py:151-166` (`controler`) · mineur · J · lu — L'appariement ne compare ni la langue ni la fréquence des pistes audio de même rang.
+  - Scénario : mkvmerge colle les pistes rang par rang. Deux parties de releases différentes, `[fre, eng]` puis `[eng, fre]`, mêmes codecs et canaux : aucun blocage ni avertissement, et la piste « fre » du fichier produit passe à l'anglais au milieu du film, sans erreur. Une fréquence différente (48 / 44,1 kHz) n'est pas vue non plus : mkvmerge refuse alors lui-même, avec son message anglais brut.
+  - Correction : avertir quand les langues de deux pistes de même rang diffèrent (langues normalisées) ; bloquer sur une fréquence différente (à lire au scan).
+  - Test : `controler` de deux `VideoInfo` aux langues inversées rend un avertissement nommant la piste.
+
+### core/dovi.py
+
+- **CR-31** · `core/dovi.py:229-248` (`extract_rpu_depuis_source`) · mineur · R · lu — Le code de retour de ffmpeg n'est pas lu dans le tuyau ffmpeg → `dovi_tool extract-rpu`.
+  - Scénario : seul `dt.returncode` est testé ; `ff.wait(timeout=30)` est appelé sans regarder son résultat. Une lecture qui casse en route (partage réseau, fichier abîmé) termine ffmpeg en erreur, dovi_tool reçoit un flux tronqué et rend 0 avec un RPU partiel, accepté (taille > 0). La suite dépend de `inject-rpu` face à un RPU plus court que la vidéo encodée. C'est la règle d'IE-41 (« un ffmpeg tué rend une sortie partielle qui passe pour un film court ») non appliquée ici.
+  - Correction : exiger `ff.wait() == 0` en plus, et comparer le nombre d'images du RPU (`dovi_tool info --summary`) à celui de la source.
+  - Test : `Popen` simulés, ffmpeg à 1 et dovi_tool à 0 → `False`.
+- **CR-32** · `core/dovi.py:283-299` (`remove_dv`, `timeout=1800`), `:258-280` (`inject_rpu`, 7 200 s), `:215-217` (3 600 s) · mineur · S · lu — Des délais fixes peuvent tuer une étape légitime, après des dizaines de minutes de travail.
+  - Scénario : `dovi_tool remove` lit et réécrit tout le flux vidéo brut (60 à 80 Go pour un remux UHD) ; sur un disque dur USB ou un partage à ~100 Mo/s partagés entre lecture et écriture, 120 Go d'entrées-sorties dépassent 1 800 s. `subprocess.run` tue alors dovi_tool et le retrait échoue sans autre cause que « remove failed ». Ces appels bloquants ne publient pas non plus leur processus : voir la piste sur l'arrêt dans `run.py`.
+  - Correction : pas de délai fixe pour ces étapes ; les lancer comme les autres (processus publié, arrêtable, progression), et ne tuer que sur arrêt demandé.
+  - Test : structurel — aucun `subprocess.run(..., timeout=…)` sur une étape qui traite le film entier.
+- **CR-33** · `core/dovi.py:62-79`, `:204-212`, `:344-358`, `core/scanner.py:346-356` · mineur · M · lu — Code mort et documentation qui décrit des fonctions absentes.
+  - Scénario : `extract_hevc_stream`, `extract_rpu`, `get_temp_dir`, `cleanup_temp_files` n'ont aucun appelant ; `scanner._dovi_path`, posé par `app.py` via `set_dovi_path`, n'est jamais lu. La spec (§ 7.1, § 7.2, § 15.3) et l'en-tête du module décrivent `probe_file()` et `rpu_info()`, qui n'existent plus (les métadonnées HDR10 viennent de ffprobe depuis la v0.8.1.19) : l'« enrichissement DV au scan » documenté n'a pas lieu.
+  - Correction : à trancher (supprimer, ou remettre la spec d'accord).
+  - Test : —
 
 ## Synthèse
 

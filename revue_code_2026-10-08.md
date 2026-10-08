@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `tui/screens/run.py` fait. 3 critiques (chemins DV : titre supprimé, greffes perdues en MP4 ×2), 1 majeur (sortie partielle laissée), 9 mineurs, 1 question.
-- Prochain : `tui/screens/output_dir.py`.
+- 2026-10-08 — `tui/app.py` fait. 4 mineurs (en-tête du catalogue dans la confirmation de sortie, arrêt limité au mode affiché, journal en cp1252, argument path sans effet), 1 question.
+- Prochain : `tui/screens/browser.py`.
 
 ### Pistes notées en route
 
@@ -192,9 +192,9 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 
 ### tui/
 - [x] tui/screens/run.py (1624)
-- [ ] tui/screens/output_dir.py (133)
-- [ ] tui/widgets/file_tree.py (150)
-- [ ] tui/app.py (499)
+- [x] tui/screens/output_dir.py (133)
+- [x] tui/widgets/file_tree.py (150)
+- [x] tui/app.py (499)
 - [ ] tui/screens/browser.py (1415)
 - [ ] tui/common.py (600)
 - [ ] tui/mixins.py (295)
@@ -585,6 +585,45 @@ Banc de reproduction : celui de `tests/test_arret_encodage.py` (vraie `RunScreen
   - Test : structurel — pyflakes sans F821 sur `tui/`.
 - **Question** — `S` abandonne sans confirmation un encodage de plusieurs heures, alors que `X` demande (`ConfirmModal`) et qu'UX-02 pose « une frappe ne jette plus des heures d'encodage ». Choix assumé pour une touche dédiée, ou confirmation au-delà d'une durée écoulée ?
 - Pistes instruites : `ajouter()` passe bien par `resoudre_sorties` avec les noms déjà réservés, sous verrou (`:188-199`) — pas de défaut ; l'arrêt d'un processus en pause par `X`/`F10` reprend avant de terminer (`:1560-1561`) — seul `S` est fautif (CR-60).
+
+### tui/screens/output_dir.py
+
+Aucun constat. Lu avec ses deux appelants (`app.encoder` → `sorties_bloquees`, Options) : l'essai d'écriture réel (`dossier_inscriptible`) refuse un dossier en lecture seule, une racine remonte à la liste des volumes, un dossier disparu donne une liste vide et un refus explicite, tous les libellés passent par `_()`/`N_()`.
+
+### tui/widgets/file_tree.py
+
+- **CR-67** · `tui/widgets/file_tree.py:26-31` (`list_volumes`), appelée par `:103-105` sans garde · **majeur** · W · supposé (Windows non exécutable ici ; table de pathlib vérifiée) — Un lecteur dans un état inhabituel peut faire quitter l'application dès son lancement.
+  - Scénario : `Path(f"{c}:\\").exists()` ne rend False que pour les erreurs que pathlib ignore (`ENOENT`, `ENOTDIR`, `EBADF`, `ELOOP`, et sous Windows `ERROR_NOT_READY`, `ERROR_INVALID_NAME`, `ERROR_CANT_RESOLVE_FILENAME` — relu dans `pathlib._abc`, Python 3.13) ; toute autre lève. Un disque externe non reconnu auquel Windows a donné une lettre (ext4, APFS : `ERROR_UNRECOGNIZED_VOLUME`), un volume BitLocker verrouillé, un lecteur réseau dont l'authentification a expiré font lever `stat`. L'accueil démarre sur la liste des volumes (`app.py:190`, `start_virtual=True`) : `list_subdirs` → `list_volumes` dans le worker de scan, sans `try` sur cette branche, et le `@work` quitte l'application sur erreur. Tant que le lecteur reste dans cet état, IRIS ne démarre plus ; `OutputDirScreen` appelle la même fonction sur le fil principal.
+  - Correction : `os.path.isdir` (qui rend False sur toute `OSError`), ou un `try` par lettre.
+  - Test : `Path.exists` simulé levant `OSError(winerror=1005)` pour une lettre : `list_volumes()` rend les autres, sans lever.
+- **CR-68** · `tui/widgets/file_tree.py:47`, `:72`, `:76` (`resolve()`), `tui/app.py:87` · mineur · W · supposé — Sous Windows, entrer dans un lecteur réseau monté affiche et utilise son chemin UNC.
+  - Scénario : depuis Python 3.8, `Path.resolve()` passe par `GetFinalPathNameByHandle` : `Z:\Films` devient `\\nas\media\Films` (de même un lecteur `subst` devient sa cible). Le fil d'Ariane, les chemins de sortie et le journal montrent le chemin UNC, et `⌫` depuis `\\nas\media\` remonte aux volumes au lieu de `Z:\`. Rien de cassé (ffmpeg et mkvmerge lisent l'UNC), mais l'utilisateur ne reconnaît plus son lecteur.
+  - Correction : `absolute()` pour l'affichage et la navigation, `resolve()` seulement là où l'identité du fichier compte (doublons de la file).
+  - Test : structurel — la navigation n'appelle pas `resolve()` ; ou, sous Windows, entrer dans un lecteur `subst` garde sa lettre.
+- **CR-69** · `tui/widgets/file_tree.py:148-149` (`breadcrumb`) · mineur · M · lu — Branche inatteignable, et texte affichable non traduit.
+  - Scénario : le seul appelant (`browser.py:538`) n'appelle `breadcrumb()` que hors de la liste des volumes, où la barre d'état dit `_("Choose a volume")`. La branche « 📁  Volumes » ne s'affiche donc jamais ; si elle servait, « Volumes » échapperait à `_()` (invisible en français, identique).
+  - Correction : à trancher — retirer la branche, ou la faire passer par `_()`.
+  - Test : aucun nécessaire si la branche part.
+
+### tui/app.py
+
+- **CR-70** · `tui/app.py:461-467` (`travaux_en_cours`) · mineur · J · reproduit — En français, quitter pendant une analyse affiche l'en-tête du catalogue de traduction dans la confirmation.
+  - Scénario : `_(self._TRAVAUX.get(w.name or "", ""))` traduit la chaîne vide pour tout worker absent de `_TRAVAUX` ; or `gettext("")` rend l'en-tête du `.mo`. `scanner`, `recursive-scan`, `meta-fetch`, `os-search`, `os-download`, `sync-sample`, `cles-verification` en sont absents. Reproduit (catalogue `fr`, worker `scanner` en cours) : la modale de `F10` affiche « Project-Id-Version: IRIS ENCODE ⏎ Report-Msgid-Bugs-To: https://github.com/opegon/IRIS_Encode/issues ⏎ Language: fr ⏎ MIME-Version: 1.0… » au lieu de « Aucun traitement en cours. ». Il suffit de quitter dans les secondes qui suivent l'ouverture d'un dossier. En anglais (`NullTranslations`), rien ne se voit, ce qui explique que les tests passent.
+  - Correction : ne traduire que si la clé existe (`phrase = self._TRAVAUX.get(nom)` puis `_(phrase)` si elle n'est pas None).
+  - Test : catalogue `fr` chargé, un worker `scanner` en cours : `travaux_en_cours() == []`.
+- **CR-71** · `tui/app.py:484-495` (`_on_quit_answer`) · mineur · P · reproduit — Quitter depuis la vue des encodages n'arrête pas un mux, une jonction ou une mesure lancés côté navigation, alors que la confirmation l'annonce.
+  - Scénario : `self.screen_stack` n'est que la pile du mode courant (Textual : `_screen_stacks[_current_mode]`). Un mux tourne dans la navigation, `F12` vers les encodages, `F10` → « Le mux en cours sera arrêté, sa sortie partielle effacée » → Quitter : `RunScreen._interrompre()` est appelé, pas celui de `MuxRunScreen`. Reproduit (écran de mux simulé dans la pile de navigation) : interrompu = False, encodage arrêté = True. mkvmerge continue, l'interpréteur attend la fin du thread de travail avant de rendre la main (fenêtre figée), et la sortie partielle reste. La symétrie existe déjà pour le lot (`:493`), pas pour l'autre sens.
+  - Correction : parcourir les piles de tous les modes (`self._screen_stacks.values()`), pas seulement la pile affichée.
+  - Test : écran simulé avec `_interrompre` dans la pile de navigation, mode encodages affiché, `_on_quit_answer(True)` : `_interrompre` appelé.
+- **CR-72** · `tui/app.py:26-30` (`logging.basicConfig(filename=…)`) · mineur · W · lu — Le journal s'ouvre dans l'encodage local (cp1252 sous un Windows français) : une ligne qui contient un caractère hors de cette page est perdue.
+  - Scénario : sans `encoding=`, `FileHandler` ouvre `iris_encode.log` avec `locale.getpreferredencoding()`. Un avertissement qui cite un fichier au nom japonais, cyrillique ou à émoji (« scan failed for … ») lève `UnicodeEncodeError` dans le gestionnaire : `logging` imprime « --- Logging error --- » sur un `stderr` que Textual capture, et la ligne n'est pas écrite — l'erreur qu'on voulait garder disparaît. Le reste du projet écrit ses textes en UTF-8 explicite.
+  - Correction : `logging.basicConfig(…, encoding="utf-8")` (Python ≥ 3.9).
+  - Test : structurel — `basicConfig` reçoit `encoding="utf-8"` ; ou, journal configuré, un `warning` avec « 東京 » s'écrit et se relit.
+- **CR-73** · `tui/app.py:87`, `:190` (`start_virtual=True`), `main.py:103-118`, `:151` · mineur · M · lu — L'argument `path` de `main.py` est vérifié puis sans effet.
+  - Scénario : `launch.bat D:\Films` (le `.bat` transmet `%*`) : `main.py` contrôle que le chemin existe (« ✗ Path not found » sinon), `IrisEncodeApp` le résout, puis l'accueil démarre toujours sur la liste des volumes (choix assumé, spec § 14.1 « Démarrage virtuel ») ; `FileNavigator._current` n'est jamais montré dans ce mode. L'aide (« Working directory (default: current directory) ») promet l'inverse.
+  - Correction : à trancher — retirer l'argument, ou ouvrir ce dossier quand il est donné.
+  - Test : selon la décision.
+- **Question** — Le motif de la demande d'alimentation (`:377`, « IRIS ENCODE : encodage, mesure en cours », visible dans `powercfg /requests`) est en français, documenté tel quel (spec § 14.7) mais antérieur à la règle « anglais source » (v0.8.9.8x) qui fait passer les journaux en anglais (CR-53). Il part vers un programme, donc ne se traduit pas ; doit-il passer en anglais ?
 
 ## Synthèse
 

@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `core/platform.py` fait. 1 constat mineur supposé (sonde 8 bits seulement).
-- Prochain : `core/config.py`.
+- 2026-10-08 — `core/profiles.py` fait. 2 constats : bibliothèque écrasée au premier enregistrement après un TOML illisible (critique, reproduit), code mort.
+- Prochain : `core/i18n.py`.
 
 ### Pistes notées en route
 
@@ -186,8 +186,8 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] core/preflight.py (629)
 - [x] core/updates.py (233)
 - [x] core/platform.py (213)
-- [ ] core/config.py (402)
-- [ ] core/profiles.py (299)
+- [x] core/config.py (402)
+- [x] core/profiles.py (299)
 - [ ] core/i18n.py (210)
 - [ ] core/cles.py (174)
 - [ ] core/meta.py (371)
@@ -459,6 +459,28 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
   - Scénario : `nullsrc` en `yuv420p`, sans `-pix_fmt` ni `-profile:v`. Une carte qui encode le HEVC en 8 bits mais pas en 10 bits (Maxwell, GTX 9xx) est dite capable ; un fichier HDR (sortie `p010le main10`) passe le contrôle du lancement puis échoue dans ffmpeg, sur un message qu'aucune signature de `diagnostiquer` ne reconnaît. Le principe « les capacités sont mesurées, jamais supposées » (spec § 14) ne couvre donc que la moitié des sorties.
   - Correction : sonder aussi `hevc_nvenc`/`av1_nvenc` en `p010le` + `main10` (une entrée de plus dans le pool), et refuser un fichier HDR quand seul le 8 bits passe.
   - Test : sonde simulée où l'essai 10 bits échoue → un fichier HDR est refusé au lancement avec la cause, un SDR passe.
+
+### core/config.py
+
+- **CR-43** · `core/config.py:125-134` (`load`), `:172-187` (`assurer_langue`), `main.py:126-131` · **critique** · P · reproduit — Une faute de frappe dans `config.toml` le fait écraser au lancement suivant par les valeurs par défaut : identifiants et réglages perdus, sans un mot.
+  - Scénario : `load()` avale l'erreur de syntaxe et rend les défauts ; `main.py` appelle aussitôt `assurer_langue(cfg)`, qui trouve une langue vide et **réécrit** le fichier. Reproduit : `config.toml` avec un guillemet oublié dans `output_dir` et une section `[opensubtitles]` (clé, compte, mot de passe) → après `load()` + `assurer_langue()`, le fichier est remplacé et `CLE-SECRETE` n'y est plus. Toute autre écriture (largeur de colonne, vitesse mesurée) ferait de même. La spec dit le fichier « éditable à la main » ; `profiles.toml` est explicitement protégé de ce cas (« ne réécrit rien — il reste réparable à la main », spec § 6.2), `config.toml` non.
+  - Correction : sur erreur de lecture, garder le fichier intact (copie `config.toml.illisible`, ou interdiction d'écrire pendant la session) et l'annoncer dans la console, comme les profils.
+  - Test : `config.toml` invalide → `load()` + `assurer_langue()` + `save()` laissent le fichier octet pour octet, et un avertissement est émis.
+- **CR-44** · `core/config.py:142-169` (`_VERROU_ECRITURE`), `tui/common.py:41-47` · mineur · C · supposé — Le verrou sérialise l'écriture du fichier, pas les modifications du dictionnaire partagé.
+  - Scénario : le worker d'encodage ajoute une clé (`stats.encode_speed[<codec>]`, première mesure d'un codec) pendant que le fil d'interface est dans `tomli_w.dump(cfg)` après un redimensionnement de colonne (ou l'inverse) : « dictionary changed size during iteration », exception dans l'un des deux fils. Fenêtre de quelques microsecondes.
+  - Correction : prendre le verrou autour de la modification **et** de l'écriture (fonctions `config.modifier(cfg, fn)`), ou sérialiser une copie profonde.
+  - Test : deux fils, l'un qui ajoute des clés en boucle, l'autre qui sauve, avec un `dump` ralenti : aucune exception.
+
+### core/profiles.py
+
+- **CR-45** · `core/profiles.py:194-213` (`load_all`, TOML illisible), `tui/screens/config.py:286-298`, `:321-328` · **critique** · P · reproduit — Après un `profiles.toml` illisible, le premier enregistrement de la session écrase la bibliothèque de l'utilisateur par les profils livrés.
+  - Scénario : la session tient sur les 14 profils livrés « en mémoire seulement » et la console dit « your file was not touched » — message imprimé avant que l'interface ne prenne l'écran. Dans `F5`, créer, modifier ou supprimer un profil appelle `save_all(profiles)` sans condition : le fichier est remplacé par les profils livrés plus la modification. Reproduit : fichier à deux profils personnels avec un guillemet oublié → `load_all()` → ajout d'un profil → `save_all()` : `mon_profil_4k` et `mon_anime` ont disparu du fichier. C'est la perte qu'IE-50 voulait rendre impossible (« une bibliothèque de profils ne se refait pas »), par un autre chemin.
+  - Correction : retenir l'état « fichier illisible » (`load_all` le rend), refuser tout `save_all` pendant la session tant qu'il dure, et le dire dans l'écran de configuration (bandeau d'alerte), pas seulement dans la console.
+  - Test : `PROFILES_PATH` invalide → `load_all()` puis `save_all()` laissent le fichier octet pour octet (ou lèvent une erreur affichable) ; l'écran Config affiche l'alerte.
+- **CR-46** · `core/profiles.py:116-122` (`summary_line`, « oui »/« non » en dur), `:47`, `:292-299` (`ID_PATTERN`, `validate_id`, `parse_languages`) · mineur · M · lu — Fonctions sans appelant, ni dans l'application ni dans les tests ; `summary_line` porte du français hors catalogue.
+  - Scénario : `summary_fields` a remplacé `summary_line` ; la saisie des langues et la validation du nom passent ailleurs (`profile_form`). Une réutilisation de `summary_line` afficherait « hd-audio: oui » dans l'interface anglaise.
+  - Correction : à trancher (supprimer).
+  - Test : —
 
 ## Synthèse
 

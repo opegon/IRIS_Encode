@@ -234,3 +234,49 @@ def test_derive_duree_signale_un_collage_tronque():
 
 def test_derive_duree_sans_duree_attendue_ne_conclut_pas():
     assert derive_duree(0.0, 1234.0) is None
+
+
+# ─── IE-136 — revue IE-114 ────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("a,b,attendu", [
+    ("Le Fantome 1", "Le Fantome 2", "Le Fantome"),
+    ("Concept.CD1", "Concept.CD2", "Concept"),
+    ("Le Depart 1", "Le Depart 2", "Le Depart"),
+    ("Envol.part1", "Envol.part2", "Envol"),
+    ("Film part1", "Film part2", "Film"),
+])
+def test_le_marqueur_ne_ronge_pas_le_titre(a, b, attendu):
+    """CR-29 : un marqueur n'est retiré que s'il est un mot entier, une fois."""
+    from core.joiner import nom_commun
+    assert nom_commun([Path(f"{a}.mkv"), Path(f"{b}.mkv")]) == attendu
+
+
+def _partie(nom, langues, frequence=48000):
+    from core.scanner import AudioTrack, VideoInfo
+    return VideoInfo(
+        path=Path(nom), width=1920, height=1080, bitrate=5_000_000, codec="h264",
+        duration=1800.0, frame_count=0, dv_profile=None,
+        audio_tracks=[AudioTrack(index=i, codec="ac3", channels=6, language=l,
+                                 title="", bitrate=448_000, sample_rate=frequence)
+                      for i, l in enumerate(langues)])
+
+
+def test_des_langues_inversées_s_annoncent():
+    """CR-30."""
+    from core.joiner import controler
+    ctrl = controler([_partie("a.mkv", ["fre", "eng"]), _partie("b.mkv", ["eng", "fre"])])
+    assert ctrl.collable
+    assert len(ctrl.avertissements) == 2
+
+
+def test_une_langue_inconnue_ne_s_annonce_pas():
+    from core.joiner import controler
+    ctrl = controler([_partie("a.mkv", ["fre"]), _partie("b.mkv", [""])])
+    assert not ctrl.avertissements
+
+
+def test_une_fréquence_différente_bloque():
+    """CR-30 : mkvmerge refuserait, en anglais brut."""
+    from core.joiner import controler
+    ctrl = controler([_partie("a.mkv", ["fre"]), _partie("b.mkv", ["fre"], 44100)])
+    assert not ctrl.collable and "44100" in ctrl.blocages[0]

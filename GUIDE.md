@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.8.9.96
+**Version**: 0.8.9.102
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -595,7 +595,8 @@ to resample. That is what makes this case much safer than an audio resync.
      losslessly into the output folder (4 to 8 GB, about a minute), with its
      languages and chapters, then encoded like any file; the extraction is
      deleted afterwards. Same naming as a Blu-ray. An encrypted DVD (CSS) is
-     refused. External tracks are added to the output, not to the title.
+     refused. External tracks are added to the output, not to the title — the
+     same goes for a Blu-ray title made of several clips.
      `VIDEO_TS` still shows the raw `.VOB` files.
 3. Check the file, `F2`. The drive is read-only: IRIS asks for an **output
    folder**. `↵` on the first row accepts the one offered (set in Options,

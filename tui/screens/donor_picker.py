@@ -51,16 +51,20 @@ def pick_external_tracks(screen, decision, on_added) -> None:
     ses sous-titres ne doit pas obliger à remonter d'un écran entre les deux.
     `on_added` n'est appelé que si au moins une piste a été ajoutée.
     """
-    source = decision.info.path
     titre = decision.info.titre
-    if titre is not None and titre.est_dvd:
-        # Le titre n'existe en fichier qu'après son extraction : mesurer un
-        # décalage sur un VOB, dont les pistes ne sont pas numérotées comme
-        # celles du titre, donnerait une greffe fausse (IE-121).
+    if titre is not None and titre.a_extraire:
+        # Le titre n'existe en fichier qu'après son extraction : la mesure
+        # lirait un VOB, numéroté autrement que le titre (IE-121), ou le seul
+        # premier clip d'un Blu-ray, avec la durée du titre entier (CR-86, CR-94).
         screen.app.bell()
-        screen.notify(_("Tracks cannot be added to a DVD title: encode it, then "
-                        "add them to the output."), severity="warning", timeout=6)
+        screen.notify(_("Tracks cannot be added to this disc title before it is "
+                        "assembled: encode it, then add them to the output."),
+                      severity="warning", timeout=6)
         return
+    # La vidéo qu'on lit : le clip d'un titre de Blu-ray, pas sa playlist —
+    # c'est d'elle que l'empreinte OpenSubtitles se calcule (CR-96).
+    source = decision.info.lecture
+    nom = decision.info.stem_sortie if titre is not None else None
     chosen_donor: Path | None = None
 
     def _on_tracks(chosen) -> None:
@@ -91,7 +95,8 @@ def pick_external_tracks(screen, decision, on_added) -> None:
 
     langues = decision.profile.get("subtitle_languages", None) or ["fre", "eng"]
     screen.app.push_screen(
-        DonorFileScreen(decision.info.dossier, exclude=source, langues=langues),
+        DonorFileScreen(decision.info.dossier, exclude=source, langues=langues,
+                        nom=nom),
         _on_donor)
 
 
@@ -122,10 +127,11 @@ class DonorFileScreen(ModalScreen["Path | None"]):
     ]
 
     def __init__(self, start_dir: Path, exclude: Path | None = None,
-                 langues: list[str] | None = None) -> None:
+                 langues: list[str] | None = None, nom: str | None = None) -> None:
         super().__init__()
         self._dir     = start_dir
         self._video   = exclude
+        self._nom     = nom          # le nom du disque d'un titre (CR-96)
         self._langues = langues or ["fre", "eng"]
         self._exclude = exclude.resolve() if exclude else None
         self._entries: list[Path] = []
@@ -205,7 +211,8 @@ class DonorFileScreen(ModalScreen["Path | None"]):
             if chemin is not None:
                 self.dismiss(chemin)
 
-        self.app.push_screen(OpenSubtitlesScreen(self._video, self._langues), _recu)
+        self.app.push_screen(OpenSubtitlesScreen(self._video, self._langues,
+                                                 nom=self._nom), _recu)
 
     def action_cancel(self) -> None:
         self.dismiss(None)

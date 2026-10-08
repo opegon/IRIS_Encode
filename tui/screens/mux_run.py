@@ -17,7 +17,7 @@ from textual.widgets import Label, ProgressBar, Static
 
 from core.i18n import N_, _, ngettext, texte_erreur
 from core.decision import FileDecision, dossier_inscriptible, force_skip_to_encode
-from core.muxer import MuxProcess, build_mux_command, mux_output_path
+from core.muxer import MuxProcess, build_mux_command, mkvmerge_reussi, mux_output_path
 
 from ..common import confier_a_la_file, barre_etat, actions_ecran, footer_line2, retour_accueil, touche
 from ..widgets.entete import Entete
@@ -164,7 +164,8 @@ class MuxScreen(Screen[bool]):
                 self.app.call_from_thread(self._set, "#mux-state", f"▶ Mux — {pct}%")
 
         rc         = proc.wait()
-        self._ok   = rc == 0
+        # Code 1 : des avertissements, la sortie vaut (CR-89).
+        self._ok   = mkvmerge_reussi(rc, self._output)
         self._done = True
         self._process = None
 
@@ -172,6 +173,8 @@ class MuxScreen(Screen[bool]):
             self.app.call_from_thread(self._set_progress, 100)
             self.app.call_from_thread(self._adopt_output)
         else:
+            # Une sortie partielle porterait le nom d'un mux réussi (CR-90).
+            self._output.unlink(missing_ok=True)
             detail = proc.errors[0] if proc.errors else _("code {code}").format(code=rc)
             self.app.call_from_thread(
                 self._set, "#mux-state", "✗ " + _("Mux failed: {detail}").format(detail=detail))
@@ -262,5 +265,8 @@ class MuxScreen(Screen[bool]):
         self.dismiss(self._ok)
 
     def action_accueil(self) -> None:
-        """Retour au choix du fichier, sans repasser par les écrans intermédiaires."""
+        """Retour au choix du fichier, sans repasser par les écrans intermédiaires.
+        Comme `⌫`, le mux en cours s'arrête : mkvmerge ne survit pas à l'écran
+        (CR-91)."""
+        self._interrompre()
         retour_accueil(self.app)

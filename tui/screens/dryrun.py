@@ -27,6 +27,7 @@ from core.decision import (
     AudioAction, DVAction, DV_SORTIE, FileDecision, VideoAction,
     video_recopiee,
 )
+from ..common import sauver_config
 from ..common import (confier_a_la_file, langue_affichee, barre_etat, 
     actions_ecran,
     touche,
@@ -132,7 +133,10 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     def __init__(self, decisions: list[FileDecision]) -> None:
         super().__init__()
-        self._decisions = decisions
+        # Des copies : un codec ou un débit changé ici ne vaut que pour le
+        # lancement `F2` ; Retour n'en laisse rien sur l'accueil (CR-88).
+        from copy import deepcopy
+        self._decisions = [deepcopy(d) for d in decisions]
         self._selected  = set(range(len(decisions)))  # indices des décisions sélectionnées
         self._totals    = (0, 0)   # (source, estimé) en octets — posés par _build_table
 
@@ -314,7 +318,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     def _resize_persist(self, key: str, width: int) -> None:
         cfg_mod.set_dryrun_column_width(self._app.cfg, key, width)
-        cfg_mod.save(self._app.cfg)
+        sauver_config(self.app)
 
     def _resize_rebuild(self) -> None:
         table      = self.query_one(DataTable)

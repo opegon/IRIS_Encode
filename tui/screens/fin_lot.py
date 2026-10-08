@@ -38,11 +38,18 @@ class FinDeLotModal(ConfirmModal):
 
     def on_mount(self) -> None:
         super().on_mount()
-        self.set_interval(1, self._decompter, name="compte à rebours")
+        self._minuteur = self.set_interval(1, self._decompter, name="compte à rebours")
 
     def _decompter(self) -> None:
-        self._reste -= 1
+        self._reste = max(self._reste - 1, 0)
         if self._reste <= 0:
+            # `dismiss` retire l'écran du **sommet** : recouverte (guide, file,
+            # confirmation de sortie), la modale aurait fait retirer l'autre
+            # écran, puis planté au tour suivant. Elle attend d'être revenue
+            # devant, et ne rend qu'une fois (CR-104).
+            if not self.is_active:
+                return
+            self._minuteur.stop()
             self.dismiss(True)
             return
         from textual.widgets import Static

@@ -57,9 +57,13 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
         Binding("backspace", "cancel",   N_("Back"),      show=False, priority=True),
     ]
 
-    def __init__(self, video: Path, langues: list[str]) -> None:
+    def __init__(self, video: Path, langues: list[str],
+                 nom: str | None = None) -> None:
         super().__init__()
         self._video     = video
+        # Le titre à chercher, quand le nom du fichier n'en est pas un : le
+        # nom du disque d'un titre de Blu-ray, pas « 00800 » (CR-96).
+        self._nom       = nom
         self._langues   = langues
         self._resultats: list[Resultat] = []
         self._occupe    = True
@@ -97,9 +101,10 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
     def _chercher(self) -> None:
         try:
             self._client = _client(self.app.cfg)
-            res = self._client.chercher(self._video, self._langues)
+            res = self._client.chercher(self._video, self._langues, nom=self._nom)
             self.app.call_from_thread(self._afficher, res)
-        except ErreurOpenSubtitles as e:
+        except (ErreurOpenSubtitles, OSError) as e:
+            # OSError : l'empreinte d'une source déplacée entre-temps (CR-95).
             self.app.call_from_thread(self._echec, texte_erreur(e))
 
     def _afficher(self, resultats: list[Resultat]) -> None:
@@ -145,7 +150,8 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
         try:
             chemin, restant = self._client.telecharger(resultat, self._video)
             self.app.call_from_thread(self._fini, chemin, restant)
-        except ErreurOpenSubtitles as e:
+        except (ErreurOpenSubtitles, OSError) as e:
+            # OSError : le `.srt` qui ne s'écrit pas dans le temp (CR-95).
             self.app.call_from_thread(self._echec, texte_erreur(e))
 
     def _fini(self, chemin: Path, restant) -> None:

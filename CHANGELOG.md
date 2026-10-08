@@ -1,5 +1,133 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.102] — 2026-10-08
+
+### Jonction : le bon nom, et les pistes qui s'accordent (IE-136)
+
+Revue IE-114, constats CR-29, 30. Le mot qui numérote les parties (« part »,
+« CD », « tome »…) n'est plus retiré du nom que s'il est un mot à part entière :
+`Le Fantome 1` + `Le Fantome 2` donnait `Le Fan.join-iris.mkv`, il donne
+`Le Fantome`. Et la jonction prévient quand deux parties n'ont pas leurs pistes
+audio dans le même ordre de langues (la piste française passerait à l'anglais
+au milieu du film), et refuse des fréquences différentes, que mkvmerge
+refusait de toute façon avec un message brut.
+
+## [v0.8.9.101] — 2026-10-08
+
+### Titres de disque dans les écrans annexes (IE-134)
+
+Revue IE-114, constats CR-86, 94, 96, 100. Sur un titre de Blu-ray fait de
+plusieurs clips, la mesure d'une piste greffée ne lisait que le premier clip :
+comme pour un DVD, la greffe se fait désormais sur la sortie, une fois le titre
+encodé. Et la recherche OpenSubtitles (`O`) comme la fiche (`I`) d'un titre
+cherchent le nom du disque, plus « 00800 » ou « TITLE 01 ».
+
+## [v0.8.9.100] — 2026-10-08
+
+### Arrêts et sorties sans mauvaise surprise (IE-131)
+
+Revue IE-114, constats CR-60, 67, 70, 71, 91, 95, 103, 104.
+
+- **Démarrage** — un lecteur dans un état inhabituel (disque non reconnu,
+  volume BitLocker verrouillé, lecteur réseau à reconnecter) pouvait empêcher
+  IRIS de démarrer. Il est simplement ignoré.
+- **`S` sur un encodage en pause** le laissait suspendu, et le fichier suivant
+  ne démarrait jamais : il est repris, puis arrêté.
+- **`Ctrl+Home` pendant un mux ou une jonction** laissait mkvmerge travailler
+  sans écran ; il s'arrête désormais, comme avec `⌫`. Quitter depuis la vue
+  des encodages arrête aussi ce qui tourne côté navigation.
+- **La confirmation de sortie**, en français, pouvait afficher l'en-tête
+  technique du catalogue de traduction ; et `F10` deux fois en empilait deux.
+- **Le compte à rebours d'après lot**, recouvert par un autre écran (le guide,
+  la file) au moment d'agir, retirait cet écran à sa place puis faisait
+  planter l'application : il attend d'être revenu devant.
+- **OpenSubtitles** derrière un portail Wi-Fi ou un proxy (une page web au lieu
+  de la réponse attendue) fermait l'application : c'est désormais un message.
+
+## [v0.8.9.99] — 2026-10-08
+
+### Plus de fichiers abandonnés sur le disque (IE-129)
+
+Revue IE-114, constats CR-11, 24, 28, 57, 58, 89, 90, 93.
+
+**Sorties partielles.** Un encodage en échec — disque plein, erreur NVENC —
+ou passé par `S` laissait son fichier tronqué, sous le nom d'une sortie
+réussie : Jellyfin l'indexait, et le réessai écrivait à côté un `(2)`. Il est
+maintenant effacé, sur tous les chemins (encodage, Dolby Vision, mux).
+
+**Fichiers intermédiaires.** Assemblage d'un titre, pistes audio préparées,
+sous-titres réécrits : quand un traitement s'arrêtait avant d'encoder, ces
+fichiers — parfois du poids du film — restaient. Ils sont effacés quelle que
+soit l'issue. Laissés par une coupure de courant, ils ne passent plus pour des
+sources : ils apparaissent grisés, comme les sorties, et ne sont ni cochés par
+`A` ni encodés par `R`. Le mux préalable d'une piste étirée et la piste audio
+recalée ne vont plus dans le dossier temporaire du disque système, mais à côté
+de la sortie.
+
+**mkvmerge et ses avertissements.** mkvmerge signale par le code 1 des
+avertissements bénins — une réplique hors d'ordre dans un `.srt` — en écrivant
+un fichier complet. IRIS le prenait pour un échec : le mux semblait raté, et
+après un réencodage Dolby Vision, des heures de travail étaient jetées. Le
+code 1 est désormais un succès partout.
+
+**Annexes Jellyfin.** Avec `Film.mkv` et `Film.avi` dans un même dossier,
+supprimer l'un emportait le `.nfo` et les images de l'autre : elles restent.
+
+## [v0.8.9.98] — 2026-10-08
+
+### Les fichiers de réglages ne s'écrasent plus (IE-124)
+
+Revue IE-114, constats CR-43, 44, 45, 64, 77.
+
+**Une faute de frappe ne coûte plus vos réglages.** Un `config.toml` mal
+édité à la main était remplacé au lancement suivant par les valeurs par
+défaut — clés d'API et mot de passe OpenSubtitles compris. Un `profiles.toml`
+illisible était épargné au démarrage, mais le premier profil enregistré dans
+la session remplaçait toute la bibliothèque par les profils livrés. Dans les
+deux cas, la session tourne désormais sur les défauts **sans jamais réécrire
+le fichier**, et le dit : dans la console, dans l'interface au démarrage, et
+dans l'écran des profils.
+
+**Un fichier verrouillé ne ferme plus l'application.** Un antivirus ou un
+client de synchronisation qui tenait `config.toml` au mauvais moment faisait
+quitter IRIS — y compris au milieu d'un lot, à la fin d'un encodage réussi.
+L'enregistrement qui échoue est maintenant signalé, et la session continue.
+
+## [v0.8.9.97] — 2026-10-08
+
+### Les réglages d'un fichier ne se perdent plus (IE-123)
+
+Première correction issue de la revue de code IE-114
+(`revue_code_2026-10-08.md`, constats CR-15, 74, 76, 81, 82, 84, 87, 88, 98).
+
+**Réglages conservés.** Pendant qu'un lot tournait, chaque retour à l'accueil
+relisait le dossier et refaisait les décisions : un codec, un débit, la
+suppression de la source ou une piste greffée réglés sur un fichier
+disparaissaient, et `F2` encodait la décision automatique. Ces réglages sont
+désormais retenus par fichier et réappliqués à chaque relecture, comme l'étaient
+déjà les choix de pistes. Et l'accueil ne relit plus le dossier à chaque retour
+d'écran pendant un lot, seulement quand un encodage vient de réussir.
+
+**Retour veut dire annuler.** Changer de profil (`F4`) dans l'écran des pistes
+puis revenir (`⌫`) gardait le nouveau profil, suppression de la source
+comprise, sans que la liste le montre. L'écran des pistes et l'aperçu (`F1`)
+travaillent maintenant sur une copie : ce qu'on abandonne est abandonné.
+L'assistant, lui, garde ses choix, et la ligne de la liste les montre au retour.
+
+**Le bon nom de sortie.** L'assistant figeait le nom dès la première étape :
+une greffe ASS ou PGS, qui impose le Matroska, faisait ensuite écrire du MKV
+sous un nom `.mp4`, et ffmpeg refusait. Le nom est annoncé sans être figé. Un
+mux est annoncé `.mux-iris.mkv` — ce que mkvmerge écrit — et l'assistant ne
+conclut plus « aucun fichier produit » après un mux réussi.
+
+**Une greffe sur un fichier à garder.** Envoyée par `F2` depuis l'écran des
+pistes, elle finissait « ignorée » sans rien écrire : la file la traite
+désormais comme un mux.
+
+**Et encore.** Renoncer au choix du dossier de sortie ne décoche plus les
+fichiers ; une durée minimale de titre changée dans les options s'applique au
+retour à la liste.
+
 ## [v0.8.9.96] — 2026-10-08
 
 ### Désentrelacement (IE-122)

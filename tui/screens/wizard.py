@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from dataclasses import replace as dc_replace
 from enum import Enum, auto
+from pathlib import Path
 from typing import Optional
 
 from rich.cells import cell_len
@@ -41,7 +42,7 @@ from core.i18n import N_, _, ngettext, texte_erreur
 from core.decision import (ACTION_CYCLE, AudioAction,
                            FileDecision, VideoAction, cycle_index,
                            choisir_codec, decide_audio, force_skip_to_encode,
-                           resoudre_sorties, libelle_copie)
+                           sortie_prevue, libelle_copie)
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import measure_external_track
 
@@ -158,6 +159,7 @@ class WizardScreen(TableNavMixin, Screen):
         self._lignes: list[tuple[str, int]] = []
         self._mesure = False
         self._bilan  = ""            # ce que l'étape 5 annonce
+        self._produit: Optional[Path] = None   # le fichier qu'un mux a écrit
 
     @property
     def _etape(self) -> Etape:
@@ -203,12 +205,11 @@ class WizardScreen(TableNavMixin, Screen):
             pass
 
     def _afficher(self) -> None:
-        # L'assistant annonce le nom de sortie à trois étapes. Le résoudre ici
-        # lui évite d'annoncer `Film.hevc-iris.mkv` pour un encodage qui écrira
-        # `Film.hevc-iris(2).mkv`. Déjà résolu, il n'est pas recalculé — c'est ce
-        # qui permet de rappeler `_afficher()` après l'encodage sans que le nom
-        # dérive.
-        resoudre_sorties([self._dec])
+        # L'assistant annonce le nom de sortie à trois étapes, numérotation
+        # comprise (`sortie_prevue`), sans le figer : la décision peut encore
+        # changer de conteneur — une greffe ASS impose le Matroska — et un nom
+        # figé `.mp4` faisait refuser ffmpeg (CR-84). La file le fige au
+        # lancement.
         titre = self.query_one("#wiz-titre", Static)
         corps = self.query_one("#wiz-corps", Static)
         table = self.query_one(DataTable)
@@ -273,7 +274,7 @@ class WizardScreen(TableNavMixin, Screen):
         # Libellés alignés sur le plus long, dans la langue affichée (L-83).
         sortie, video = _("Output"), _("Video")
         large = max(cell_len(sortie), cell_len(video)) + 3
-        t.append(f"  {sortie}{' ' * (large - cell_len(sortie))}{d.output_path.name}\n",
+        t.append(f"  {sortie}{' ' * (large - cell_len(sortie))}{sortie_prevue(d).name}\n",
                  style="bold")
         t.append(f"  {video}{' ' * (large - cell_len(video))}{v.label()}")
         if v.target_bitrate:
@@ -385,7 +386,7 @@ class WizardScreen(TableNavMixin, Screen):
         d = self._dec if self._muxable() else self._a_encoder()
         t = Text()
         t.append(_("Ready") + "\n\n", style="bold")
-        t.append(f"  {_('Output')}   {d.output_path.name}\n\n", style="bold")
+        t.append(f"  {_('Output')}   {sortie_prevue(d).name}\n\n", style="bold")
         if self._muxable():
             t.append("  " + _("Recommended: mux. Nothing needs re-encoding, the "
                               "tracks are added by mkvmerge and the picture "
@@ -414,7 +415,7 @@ class WizardScreen(TableNavMixin, Screen):
     def _etape_termine(self):
         t = Text()
         t.append((self._bilan or _("Operation complete.")) + "\n", style="bold")
-        t.append(f"\n  {self._dec.output_path.name}\n")
+        t.append(f"\n  {(self._produit or sortie_prevue(self._dec)).name}\n")
         return t, "", False
 
     # ── Navigation ────────────────────────────────────────────────────────────
@@ -625,19 +626,24 @@ class WizardScreen(TableNavMixin, Screen):
                   "encode.").format(key=touche("f2")))
             return
 
-        def _apres(_res=None) -> None:
-            if self._dec.output_path.exists():
-                self._bilan = (_("Done — the tracks have been added.")
-                               if mux else
-                               _("Done — the file has been produced."))
-            else:
-                self._bilan = _("The operation produced no file. Go back to "
-                                "the previous step.")
-            self._i = _ORDRE.index(Etape.TERMINE)
-            self._afficher()
-
         if mux:
+            from core.muxer import mux_output_path
             from .mux_run import MuxScreen
+            # Le fichier que l'écran du mux écrit. Après le mux, la décision
+            # porte sur lui (adoption) : la relire chercherait la sortie de
+            # son encodage à venir, et annonçait « aucun fichier » (CR-15).
+            sortie = mux_output_path(self._dec.info.path)
+
+            def _apres(ok=None) -> None:
+                if ok and sortie.exists():
+                    self._produit = sortie
+                    self._bilan = _("Done — the tracks have been added.")
+                else:
+                    self._bilan = _("The operation produced no file. Go back to "
+                                    "the previous step.")
+                self._i = _ORDRE.index(Etape.TERMINE)
+                self._afficher()
+
             self.app.push_screen(MuxScreen(self._dec), _apres)
         else:
             # La file d'encodage prend le relais (IE-100) : l'assistant

@@ -553,16 +553,28 @@ def needs_premux(tracks: list[ExternalTrack]) -> bool:
     return any(t.stretch for t in tracks)
 
 
-def premux_output_path(source: Path) -> Path:
+def premux_output_path(source: Path, dossier: Path) -> Path:
     """
-    Intermédiaire d'un mux préalable, écrit hors du dossier du film.
+    Intermédiaire d'un mux préalable, dans le dossier de sortie de la décision.
 
-    Il ne survit pas à l'encodage et n'a rien à faire à côté des originaux ;
-    son nom ne doit pas non plus ressembler à une sortie que l'utilisateur
-    voudrait garder.
+    Il pèse le film entier : le dossier temporaire du système, sur le disque
+    système, n'a pas 30 Go à prêter, et une coupure les y oubliait sans que
+    rien ne les retrouve (CR-28). À côté de la sortie, sous un nom
+    d'intermédiaire, il est sur le bon volume et reconnu comme tel (CR-11).
     """
-    import tempfile
-    return Path(tempfile.gettempdir()) / f"{source.stem}_[premux].mkv"
+    from .scanner import intermediaire
+    return dossier / f"{intermediaire(source.stem, 'premux')}.mkv"
+
+
+def mkvmerge_reussi(code: int, sortie: Path) -> bool:
+    """mkvmerge a-t-il produit une sortie utilisable ?
+
+    Il rend 0 sans remarque, **1 avec des avertissements** — une réplique
+    hors d'ordre dans un `.srt` suffit — et une sortie complète, 2 sur une
+    erreur. Traiter 1 comme un échec jetait un mux réussi, et après un
+    réencodage Dolby Vision, des heures de travail (CR-89).
+    """
+    return code in (0, 1) and sortie.exists()
 
 
 # ─── Progression (--gui-mode) ─────────────────────────────────────────────────

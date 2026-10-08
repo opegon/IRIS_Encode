@@ -39,12 +39,35 @@ def get_measured_speed(cfg: dict, action: VideoAction) -> float | None:
 
 
 def record_measured_speed(cfg: dict, action: VideoAction, speed: float) -> None:
-    """Enregistre la vitesse réelle mesurée pour ce codec (moyenne mobile) et persiste."""
+    """Enregistre la vitesse réelle mesurée pour ce codec (moyenne mobile) et persiste.
+
+    À appeler sur le fil de l'interface (`call_from_thread`) : c'est là que
+    vivent toutes les autres modifications de la configuration, et l'écriture
+    ne croise plus une modification d'un autre fil (CR-44). Un échec
+    d'écriture perd une statistique, pas le lot (CR-64).
+    """
     key = _CODEC_SPEED_KEYS.get(action)
     if key is None or speed <= 0:
         return
     cfg_mod.update_encode_speed(cfg, key, speed)
-    cfg_mod.save(cfg)
+    cfg_mod.enregistrer(cfg)
+
+
+def sauver_config(app) -> bool:
+    """Écrit config.toml depuis l'interface ; un échec se dit, une fois par
+    cause, et ne ferme pas l'application (CR-77)."""
+    return signaler_config(app, cfg_mod.enregistrer(app.cfg))
+
+
+def signaler_config(app, erreur: str | None) -> bool:
+    """Dit un échec d'écriture de config.toml (une fois par cause)."""
+    if erreur is None:
+        return True
+    if getattr(app, "_erreur_config_dite", None) != erreur:
+        app._erreur_config_dite = erreur
+        app.notify(_("Settings not saved: {error}").format(error=erreur),
+                   severity="warning", timeout=6)
+    return False
 
 
 # ─── Noms de touches ──────────────────────────────────────────────────────────

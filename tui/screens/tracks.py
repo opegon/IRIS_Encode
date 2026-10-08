@@ -45,6 +45,7 @@ from core.decision import (
     VideoAction, VideoOverride, decide_audio, decide_video,
     DV_SORTIE, EXCLU_MANUELLEMENT, libelle_copie,
 )
+from ..common import sauver_config
 from ..common import (langue_affichee, nom_codec, barre_etat, 
     libelle_ecartee,
     actions_ecran,
@@ -765,7 +766,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
     def _resize_persist(self, key: str, width: int) -> None:
         cfg_mod.set_tracks_column_width(self.app.cfg, key, width)  # type: ignore[attr-defined]
-        cfg_mod.save(self.app.cfg)  # type: ignore[attr-defined]
+        sauver_config(self.app)
 
     def _resize_rebuild(self) -> None:
         self._build_table(keep_cursor=True)

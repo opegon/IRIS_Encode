@@ -556,9 +556,13 @@ def test_skip_with_external_track_gets_a_distinct_name():
         kind=TrackKind.SUBTITLE, codec="SubRip/SRT", language="fre",
     )]
 
-    # Un SubRip ne force pas le MKV : même extension que la source
+    # Un SubRip ne force pas le MKV d'un encodage ; mais ce SKIP est un mux, et
+    # mkvmerge n'écrit que du Matroska : le nom annoncé est celui qu'il écrit
+    # (CR-15 — ce test verrouillait un `.mux-iris.mp4` qu'aucun chemin n'écrit).
+    from core.muxer import mux_output_path
     assert dec.output_container == ".mp4"
-    assert dec.output_path.name == "Film.mux-iris.mp4"
+    assert dec.output_path.name == "Film.mux-iris.mkv"
+    assert dec.output_path == mux_output_path(info.path)
     assert dec.output_path != info.path
 
 
@@ -576,12 +580,16 @@ def test_needs_premux_on_empty_list():
     assert not muxer.needs_premux([])
 
 
-def test_premux_output_stays_out_of_the_film_folder(tmp_path: Path):
+def test_premux_output_is_an_intermediate_in_the_output_folder(tmp_path: Path):
+    """CR-28 : à côté de la sortie, pas dans le temp du disque système ; sous
+    un nom d'intermédiaire, que le scan reconnaît (CR-11)."""
+    from core.scanner import deja_produit, est_intermediaire
     source = tmp_path / "films" / "Film.mkv"
-    out    = muxer.premux_output_path(source)
-    assert out.parent != source.parent
+    sortie = tmp_path / "sorties"
+    out    = muxer.premux_output_path(source, sortie)
+    assert out.parent == sortie
     assert out.suffix == ".mkv"
-    assert "premux" in out.name
+    assert est_intermediaire(out.stem) and deja_produit(out.stem)
 
 
 def test_encode_reads_the_premuxed_file(vf: ExternalTrack):

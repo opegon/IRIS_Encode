@@ -1138,7 +1138,7 @@ async def scenario_opensubtitles() -> None:
         telecharge = td / "clip0.42.fr.srt"
         vus = {}
 
-        def chercher(self, video, langues):
+        def chercher(self, video, langues, nom=None):
             vus["langues"] = langues
             return [Resultat(42, "fre", "Clip.1080p.WEB", 120, True, False),
                     Resultat(43, "eng", "Clip.720p", 900, False, True)]

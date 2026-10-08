@@ -578,8 +578,11 @@ class FileDecision:
         ext    = self.output_container
         if not suffix and self.external_tracks:
             # SKIP + pistes externes : pas de suffixe de codec, donc rien ne
-            # distinguerait la sortie de la source. On mux sous `.mux-iris`.
+            # distinguerait la sortie de la source. On mux sous `.mux-iris`,
+            # en Matroska — mkvmerge n'écrit rien d'autre, et c'est ce nom que
+            # `muxer.mux_output_path` lui donne (CR-15).
             suffix = MUX_SUFFIX
+            ext    = ".mkv"
         if suffix:
             # La marque se remplace, elle ne s'empile pas : réencoder un
             # `Film.av1-iris` en HEVC donne `Film.hevc-iris`, pas
@@ -1211,16 +1214,96 @@ def resoudre_sorties(decisions: list[FileDecision]) -> None:
             continue
         if dec.video.action == VideoAction.SKIP and not dec.external_tracks:
             continue
-        vise     = dec.output_path
-        candidat = vise
-        n        = 1
-        while (candidat == dec.info.path
-               or candidat in reserves
-               or candidat.exists()):
-            n += 1
-            candidat = vise.with_name(f"{vise.stem}({n}){vise.suffix}")
+        candidat = _sans_collision(dec, reserves)
         dec.output_override = candidat
         reserves.add(candidat)
+
+
+def _sans_collision(dec: FileDecision, reserves: set) -> Path:
+    vise     = dec.output_path
+    candidat = vise
+    n        = 1
+    while (candidat == dec.info.path
+           or candidat in reserves
+           or candidat.exists()):
+        n += 1
+        candidat = vise.with_name(f"{vise.stem}({n}){vise.suffix}")
+    return candidat
+
+
+def sortie_prevue(dec: FileDecision) -> Path:
+    """Le nom que `resoudre_sorties` donnerait aujourd'hui, sans le figer.
+
+    Pour un écran qui annonce la sortie avant la mise en file : figer le nom
+    là le séparait de la décision, qui peut encore changer de conteneur ou de
+    codec — une greffe ASS faisait écrire du Matroska sous un nom `.mp4`, que
+    ffmpeg refusait (CR-84). Le nom ne se fige qu'au lancement.
+    """
+    if dec.output_override is not None:
+        return dec.output_override
+    if dec.video.action == VideoAction.SKIP and not dec.external_tracks:
+        return dec.output_path
+    return _sans_collision(dec, set())
+
+
+# ─── Réglages explicites d'un fichier ─────────────────────────────────────────
+
+@dataclass
+class Reglages:
+    """Ce que l'utilisateur a réglé à la main sur un fichier de l'accueil.
+
+    L'accueil refait ses décisions à chaque analyse du dossier — retour d'un
+    écran pendant un lot, changement de profil. Sans ce registre, un codec,
+    un débit, une suppression ou une greffe choisis sur un fichier
+    disparaissaient au rescan, et `F2` encodait la décision automatique
+    (CR-74). Les sélections de pistes ont leur propre registre (overrides).
+    """
+    profil:          Optional[str]             = None   # id du profil propre au fichier
+    video:           Optional["VideoDecision"] = None
+    delete_source:   Optional[bool]            = None
+    external_tracks: list = field(default_factory=list)
+
+    @property
+    def vide(self) -> bool:
+        return (self.profil is None and self.video is None
+                and self.delete_source is None and not self.external_tracks)
+
+
+def reglages_explicites(dec: FileDecision, profil_actif: Profile,
+                        override_audio: Optional[list[int]] = None,
+                        override_subtitles: Optional[list[int]] = None) -> Reglages:
+    """Ce qui, dans `dec`, diffère de la décision automatique.
+
+    La vidéo se compare à la décision que donnerait le profil **du fichier** :
+    un profil propre au fichier n'est pas, à lui seul, un choix de codec.
+    """
+    from copy import deepcopy
+    auto = decide(dec.info, dec.profile, override_audio, override_subtitles)
+    return Reglages(
+        profil=dec.profile.id if dec.profile.id != profil_actif.id else None,
+        video=dec.video if dec.video != auto.video else None,
+        delete_source=dec.delete_source_override,
+        external_tracks=deepcopy(dec.external_tracks),
+    )
+
+
+def appliquer_reglages(info: VideoInfo, profil_actif: Profile, reglages: Reglages,
+                       profils: dict,
+                       override_audio: Optional[list[int]] = None,
+                       override_subtitles: Optional[list[int]] = None) -> FileDecision:
+    """La décision d'un fichier, ses réglages explicites réappliqués.
+
+    Un profil propre au fichier qui n'existe plus (supprimé dans `F5`) laisse
+    la place au profil actif.
+    """
+    from copy import deepcopy
+    profil = profils.get(reglages.profil, profil_actif) if reglages.profil else profil_actif
+    dec = decide(info, profil, override_audio, override_subtitles)
+    if reglages.video is not None:
+        dec.video = reglages.video
+    dec.delete_source_override = reglages.delete_source
+    dec.external_tracks = deepcopy(reglages.external_tracks)
+    return dec
 
 
 def dossier_inscriptible(dossier: Path) -> bool:

@@ -108,6 +108,12 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
     def on_mount(self) -> None:
         self._build_table()
         self._update_header()
+        if prof_mod.illisible():
+            # Ce qu'on enregistrera ici ne sera pas écrit (CR-45) : le dire avant.
+            self.notify(_("profiles.toml unreadable ({error}): changes made here "
+                          "last for this session only.").format(
+                              error=prof_mod.illisible()),
+                        severity="warning", timeout=10)
 
     # ─── Table ────────────────────────────────────────────────────────────────
 
@@ -137,7 +143,12 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         if self._form_mode:
             return
         from .options import OptionsScreen
-        self.app.push_screen(OptionsScreen())
+
+        def _enregistre(ok) -> None:
+            # Une durée minimale de titre changée doit relire le dossier au
+            # retour à l'accueil (CR-98).
+            self._changed = self._changed or bool(ok)
+        self.app.push_screen(OptionsScreen(), _enregistre)
 
     def _update_header(self) -> None:
         if self._form_mode:
@@ -295,7 +306,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
 
         # Activer le profil sauvegardé et écrire
         self._app.active_profile_id = msg.profile_id
-        prof_mod.save_all(profiles)
+        self._enregistrer_profils(profiles)
         self._changed = True
         self._close_form()
         self._build_table()
@@ -325,10 +336,20 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         del profiles[name]
         if self._app.active_profile_id == name:
             self._app.active_profile_id = next(iter(profiles))
-        prof_mod.save_all(profiles)
+        self._enregistrer_profils(profiles)
         self._changed = True
         self._build_table()
         self._update_header()
+
+    def _enregistrer_profils(self, profiles) -> None:
+        """profiles.toml, ou le dire : un fichier illisible au lancement n'est
+        pas réécrit (CR-45), un disque qui refuse ne ferme rien (CR-77)."""
+        try:
+            prof_mod.save_all(profiles)
+        except OSError as e:
+            self.notify(_("Profiles not saved, kept for this session only: "
+                          "{error}").format(error=e),
+                        severity="warning", timeout=8)
 
     def action_go_back(self) -> None:
         if self._form_mode:

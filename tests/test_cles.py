@@ -57,7 +57,7 @@ class _App(App):
 @pytest.fixture
 def sans_reseau(monkeypatch):
     ecrits = []
-    monkeypatch.setattr(ecran_cles.cfg_mod, "save", lambda cfg: ecrits.append(1))
+    monkeypatch.setattr("core.config.save", lambda cfg: ecrits.append(1))
     monkeypatch.setattr(ecran_cles.webbrowser, "open", lambda url: None)
     verif = {"omdb": None, "opensubtitles": None}
     monkeypatch.setattr(cles, "VERIFICATEURS", {

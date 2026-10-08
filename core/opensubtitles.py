@@ -172,7 +172,14 @@ class Client:
         if r.status_code >= 400:
             raise ErreurOpenSubtitles(N_("OpenSubtitles answered {status}: {detail}"),
                                       status=r.status_code, detail=r.text[:200])
-        return r.json()
+        try:
+            return r.json()
+        except ValueError as e:
+            # Portail Wi-Fi captif, proxy, DNS détourné : 200 et du HTML. Le
+            # dire, plutôt que fermer l'application (CR-95).
+            raise ErreurOpenSubtitles(N_("Unexpected answer from OpenSubtitles "
+                                         "(not JSON): {detail}"),
+                                      detail=r.text[:120]) from e
 
     def _connecter(self) -> None:
         if self._jeton:
@@ -193,9 +200,14 @@ class Client:
 
     # ── Recherche ─────────────────────────────────────────────────────────────
 
-    def chercher(self, video: Path, langues: list[str]) -> list[Resultat]:
+    def chercher(self, video: Path, langues: list[str],
+                 nom: str | None = None) -> list[Resultat]:
         """Les sous-titres de cette vidéo, triés : release exacte d'abord, puis
-        langue dans l'ordre du profil, puis nombre de téléchargements."""
+        langue dans l'ordre du profil, puis nombre de téléchargements.
+
+        `nom` remplace le nom du fichier pour la recherche par titre — celui
+        du disque pour un titre de Blu-ray ; l'empreinte se calcule toujours
+        sur `video` (CR-96)."""
         codes = langues_api(langues)
         base  = {"languages": codes} if codes else {}
 
@@ -204,7 +216,8 @@ class Client:
         cle = empreinte(video)
         if cle:
             requetes.append({**base, "moviehash": cle})
-        requetes.append({**base, **_parametres_nom(video)})
+        # `.mkv` ajouté : un nom à points (« Film.2020 ») perdrait sinon sa fin.
+        requetes.append({**base, **_parametres_nom(Path(f"{nom}.mkv") if nom else video)})
 
         for params in requetes:
             page, pages = 1, 1

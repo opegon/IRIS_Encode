@@ -173,6 +173,21 @@ def _profils_livres() -> dict[str, "Profile"] | None:
     return livres or None
 
 
+class ProfilsIllisibles(OSError):
+    """profiles.toml n'a pas pu être lu : la session ne le réécrit pas."""
+
+
+# L'erreur de lecture de profiles.toml, ou None. Tant qu'elle est posée,
+# `save_all` refuse : la session tient sur les profils livrés, et les écrire
+# remplacerait la bibliothèque de l'utilisateur (CR-45).
+_illisible: str | None = None
+
+
+def illisible() -> str | None:
+    """Pourquoi profiles.toml n'a pas pu être lu, ou None."""
+    return _illisible
+
+
 def load_all() -> dict[str, "Profile"]:
     """Charge les profils dans l'ordre où profiles.toml les écrit.
 
@@ -183,6 +198,8 @@ def load_all() -> dict[str, "Profile"]:
     lancement sans pouvoir être supprimé. Un utilisateur ayant renommé les
     profils livrés en voyait seize là où son fichier en décrivait dix.
     """
+    global _illisible
+    _illisible = None
     if not PROFILES_PATH.exists():
         livres = _profils_livres()
         if livres is not None:
@@ -197,7 +214,9 @@ def load_all() -> dict[str, "Profile"]:
     except Exception as e:
         # Syntaxe invalide — on ne réécrit **rien** : le fichier de
         # l'utilisateur reste réparable à la main, c'est sa bibliothèque. La
-        # session tient sur les profils livrés, chargés en mémoire seulement.
+        # session tient sur les profils livrés, chargés en mémoire seulement —
+        # et `save_all` refuse jusqu'à la fin de la session (CR-45).
+        _illisible = str(e) or type(e).__name__
         livres = _profils_livres()
         if livres is not None:
             print("⚠  " + ngettext(
@@ -279,7 +298,14 @@ def _ecrire(raw: dict[str, Any]) -> None:
 
 
 def save_all(profiles: dict[str, "Profile"]) -> None:
-    """Écrit tous les profils dans profiles.toml, dans l'ordre du dictionnaire."""
+    """Écrit tous les profils dans profiles.toml, dans l'ordre du dictionnaire.
+
+    Refusé (`ProfilsIllisibles`) quand le fichier n'a pas pu être lu au
+    lancement : le premier enregistrement de la session écrasait sinon la
+    bibliothèque par les profils livrés (CR-45).
+    """
+    if _illisible is not None:
+        raise ProfilsIllisibles(f"profiles.toml unreadable, not rewritten: {_illisible}")
     _ecrire({name: p.as_toml_dict() for name, p in profiles.items()})
 
 

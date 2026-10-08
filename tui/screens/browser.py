@@ -6,6 +6,7 @@ Navigation fichiers avec DataTable, sélection par case, colonnes redimensionnab
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 import math
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -27,11 +28,12 @@ from core.annexes import supprimer_annexes
 from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
-    AudioAction, FileDecision, VideoAction, decide, force_skip_to_encode,
-    video_recopiee,
+    AudioAction, FileDecision, Reglages, VideoAction, appliquer_reglages, decide,
+    force_skip_to_encode, reglages_explicites, video_recopiee,
 )
 from core.scanner import (SCAN_WORKERS, deja_produit, scan,
                           scan_directory_recursive)
+from ..common import sauver_config
 from ..common import (barre_etat, colonne_fixe,
     touche,
     cellule,
@@ -330,6 +332,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # Override audio par fichier (TUI tracks)
         self._audio_overrides:    dict[Path, list[int]] = {}
         self._subtitle_overrides: dict[Path, list[int]] = {}
+        # Codec, débit, profil, suppression et greffes réglés à la main sur un
+        # fichier : réappliqués à chaque analyse du dossier (CR-74).
+        self._reglages:   dict[Path, "Reglages"] = {}
+        # Les réussites de lot déjà reflétées par la vue : un retour à l'accueil
+        # pendant un lot ne rescanne que si le disque a changé depuis (CR-74).
+        self._reussites_vues: set[Path] = set()
         # Taille de chaque fichier, relevée par le worker de scan. Chaque touche
         # `<`/`>` reconstruit la table : sur un partage réseau, relire la taille
         # de chaque ligne à chaque frappe coûtait plusieurs secondes.
@@ -391,13 +399,19 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         lots = self._app.lots_encodes
         if not lots:
             return
-        self._selected -= sources_reussies(lots)
+        reussies = sources_reussies(lots)
+        self._selected -= reussies
         # Un lot encore en cours produira d'autres réussites : on ne le lâche
         # qu'une fois fini (IE-100).
         lot = self._app.lot
         lots[:] = [l for l in lots
                    if lot is not None and l is lot.statuts and not lot.termine]
-        if not self._nav.is_virtual:
+        # Rescanner à chaque retour d'écran pendant tout un lot coûtait un
+        # ffprobe par fichier et par fermeture de fenêtre. Seule une nouvelle
+        # réussite change ce que montre le disque (CR-74).
+        nouvelles = reussies - self._reussites_vues
+        self._reussites_vues |= reussies
+        if nouvelles and not self._nav.is_virtual:
             self._refresh_view()
 
     def on_mount(self) -> None:
@@ -841,11 +855,18 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 info = scan(vpath)
                 if info.titre is not None:
                     self._tailles[vpath] = info.titre.taille
-                dec  = decide(
-                    info, profile,
-                    self._audio_overrides.get(vpath),
-                    self._subtitle_overrides.get(vpath),
-                )
+                reglages = self._reglages.get(vpath)
+                if reglages is not None:
+                    dec = appliquer_reglages(
+                        info, profile, reglages, self._app.profiles,
+                        self._audio_overrides.get(vpath),
+                        self._subtitle_overrides.get(vpath))
+                else:
+                    dec = decide(
+                        info, profile,
+                        self._audio_overrides.get(vpath),
+                        self._subtitle_overrides.get(vpath),
+                    )
             except Exception:
                 _LOG.warning("Échec du scan : %s", vpath, exc_info=True)
             with lock:
@@ -921,7 +942,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if self._nav.is_virtual:
             return
         cfg_mod.set_column_width(self._app.cfg, key, width)
-        cfg_mod.save(self._app.cfg)
+        sauver_config(self.app)
 
     def _resize_rebuild(self) -> None:
         """Reconstruit colonnes + données après resize. Conserve curseur + sélection."""
@@ -1180,16 +1201,31 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if dec is None:
             return
         from .wizard import WizardScreen
-        self.app.push_screen(WizardScreen(dec),
-                             lambda _res: self._update_status())
+
+        def _retour(_res) -> None:
+            # L'assistant travaille sur la décision elle-même : ses choix
+            # tiennent, la ligne doit les montrer (CR-87).
+            if dec.info.path != path:
+                # Un mux a été adopté : la décision porte sur le fichier produit.
+                self._oublier(path)
+                self._decisions[dec.info.path] = dec
+                self._refresh_view()
+            else:
+                self._retenir(path, dec)
+                self._redessiner(path)
+            self._update_status()
+        self.app.push_screen(WizardScreen(dec), _retour)
 
     def action_open_tracks(self) -> None:
         row_type, path = self._current_row_info()
         if row_type != _ROW_TYPE_FILE or path is None:
             return
-        dec = self._decisions.get(path)
-        if dec is None:
+        if path not in self._decisions:
             return
+        # L'écran travaille sur une copie : `⌫` n'en garde rien, pas même un
+        # profil changé par `F4` (CR-81). Elle remplace la décision de
+        # l'accueil seulement quand l'écran rend une sélection.
+        dec = deepcopy(self._decisions[path])
         from .tracks import TracksScreen
         from core.decision import TracksSelection, decide_audio
         def _on_tracks_return(result: TracksSelection | None) -> None:
@@ -1200,11 +1236,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             # faites sur l'ancien fichier ne s'appliquent plus.
             adopted = dec.info.path != path
             if adopted:
-                self._decisions.pop(path, None)
+                self._oublier(path)
                 self._decisions[dec.info.path] = dec
-                self._audio_overrides.pop(path, None)
-                self._subtitle_overrides.pop(path, None)
             else:
+                self._decisions[path] = dec
                 # Stocker les overrides pistes
                 self._audio_overrides[path]    = result.audio
                 self._subtitle_overrides[path] = result.subtitle_indices
@@ -1223,18 +1258,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                         dec, ov.action or dec.video.action, ov.dv_action)
                 if ov.bitrate       is not None: dec.video = dc_replace(dec.video, target_bitrate=ov.bitrate)
                 if ov.delete_source is not None: dec.delete_source_override = ov.delete_source
-            # Mettre à jour la cellule audio dans la table
             if adopted:
                 self._refresh_view()   # le fichier muxé remplace l'ancien
             else:
-                try:
-                    self.query_one(DataTable).update_cell(
-                        str(path), "audio",
-                        Text(dec.audio_summary, overflow="ellipsis", no_wrap=True),
-                        update_width=False,
-                    )
-                except Exception:
-                    pass
+                self._retenir(path, dec)
+                self._redessiner(path)
             # Lancement direct demandé depuis TracksScreen
             if result.launch_mode == "dryrun":
                 from .dryrun import DryrunScreen
@@ -1289,11 +1317,47 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         la file refuserait, mais avec un message pour rien.
         """
         confies = {d.info.path for d in decisions}
-        self._app.encoder(decisions)
-        for path in confies & self._selected:
-            self._selected.discard(path)
-            self._update_row_check(path)
-        self._update_status()
+
+        def _decocher() -> None:
+            # Seulement une fois en file : renoncer au choix du dossier de
+            # sortie ne met rien en file, et ne doit rien décocher (CR-76).
+            for path in confies & self._selected:
+                self._selected.discard(path)
+                self._update_row_check(path)
+            self._update_status()
+        self._app.encoder(decisions, apres=_decocher)
+
+    # ─── Registre des réglages explicites ─────────────────────────────────────
+
+    def _retenir(self, path: Path, dec: FileDecision) -> None:
+        """Note ce que `dec` règle à la main, pour le réappliquer au rescan."""
+        reglages = reglages_explicites(dec, self._active_profile(),
+                                       self._audio_overrides.get(path),
+                                       self._subtitle_overrides.get(path))
+        if reglages.vide:
+            self._reglages.pop(path, None)
+        else:
+            self._reglages[path] = reglages
+
+    def _oublier(self, path: Path) -> None:
+        """Ce fichier n'est plus celui qu'on règle (un mux l'a remplacé)."""
+        self._decisions.pop(path, None)
+        self._audio_overrides.pop(path, None)
+        self._subtitle_overrides.pop(path, None)
+        self._reglages.pop(path, None)
+
+    def _redessiner(self, path: Path) -> None:
+        """La ligne entière d'un fichier, d'après sa décision actuelle."""
+        dec = self._decisions.get(path)
+        if dec is None:
+            return
+        try:
+            table = self.query_one(DataTable)
+            cells = self._row_cells(dec, self._check_str(path), path in self._produits)
+            for col, cell in zip(["check", *self.RESIZE_COLS], cells):
+                table.update_cell(str(path), col, cell, update_width=False)
+        except Exception:
+            pass
 
     # ─── Collage de parties (J) ───────────────────────────────────────────────
 
@@ -1383,6 +1447,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if row_type != _ROW_TYPE_FILE or path is None:
             return
         from .meta_popup import MetaPopup
+        # Un titre de disque se cherche par le nom du disque, pas par
+        # « 00800 » ou « TITLE 01 » (CR-100) : un chemin qui le porte.
+        dec = self._decisions.get(path)
+        if dec is not None and dec.info.titre is not None:
+            path = dec.info.dossier / f"{dec.info.stem_sortie}.mkv"
         self.app.push_screen(MetaPopup(path, source))
 
     def action_open_fiche(self) -> None:

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.96 — document de référence courant
+**Version** : 0.8.9.102 — document de référence courant
 **Date** : 2026-10-08
 **Statut** : stable
 
@@ -450,6 +450,22 @@ ffmpeg BtbN `n8.1.3-20260925`).
 
 Fichier unique, éditable à la main, dans le dossier de l'application.
 
+**Fichier illisible** (v0.8.9.98, CR-43) — comme `profiles.toml` (§ 6.2) : la
+session tourne sur les valeurs par défaut et **ne réécrit pas** le fichier
+(`config.illisible()` posé par `load()`, `save()` lève `ConfigIllisible`) ; la
+console le dit avant l'interface, l'interface le redit au montage. Avant, la
+langue écrite au démarrage (`assurer_langue`) remplaçait le fichier — clés
+d'API et mot de passe compris — à la moindre faute de frappe.
+
+**Écriture refusée** (v0.8.9.98, CR-64, CR-77) — `config.enregistrer(cfg)` rend
+la cause d'un échec au lieu de lever ; l'interface écrit toujours par
+`tui/common.sauver_config` / `signaler_config`, qui le notifient une fois par
+cause. `set_active_profile` et `set_energie` rendent la cause de même. Un
+antivirus ou un client de synchronisation qui tient le fichier ne ferme plus
+l'application, ni le lot en cours. La vitesse mesurée s'enregistre sur le fil
+de l'interface (`call_from_thread`) : toutes les modifications de la
+configuration y vivent, l'écriture ne croise plus celle d'un autre fil (CR-44).
+
 ```toml
 [app]
 language = "fr"          # vide : celle de Windows au premier lancement (§ 2.1)
@@ -626,7 +642,7 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 |---|---|
 | `profiles.toml` absent | écrit les **profils livrés** dans un fichier neuf, et les charge |
 | `profiles.toml` absent **et** fichier livré absent | écrit `[_default_]` dans un fichier neuf, et le charge |
-| TOML invalide | **ne réécrit rien** — le fichier de l'utilisateur est sa bibliothèque, il reste réparable à la main — et tient la session sur les profils livrés, chargés en mémoire seulement |
+| TOML invalide | **ne réécrit rien** — le fichier de l'utilisateur est sa bibliothèque, il reste réparable à la main — et tient la session sur les profils livrés, chargés en mémoire seulement. `save_all` refuse jusqu'à la fin de la session (`ProfilsIllisibles`, v0.8.9.98, CR-45) : l'écran de gestion le dit à l'ouverture et à chaque enregistrement, l'interface au montage |
 | TOML invalide **et** fichier livré absent | ne réécrit rien, tient la session sur `_default_` |
 | fichier vide, ou sans table nommée | charge `_default_` |
 
@@ -1125,7 +1141,11 @@ Le LG G3 lit les deux étiquettes en lecture directe *(observé, IE-74)*.
 
 **Conteneur de sortie** — `output_container` suit les pistes réellement conservées :
 écarter les sous-titres image libère le MP4 ; `mov_text` n'est jamais proposé en
-Matroska. La présence d'au moins une piste externe force le `.mkv` (§ 9).
+Matroska. Une piste externe n'impose le `.mkv` que si son codec l'exige
+(`_needs_mkv_codec` : ASS, PGS…) : un `.srt` greffé sur un encodage tient en MP4.
+Un **mux** (SKIP + pistes externes) s'écrit toujours en `.mux-iris.mkv`, le seul
+format de mkvmerge : `output_path` rend ce nom, celui de
+`muxer.mux_output_path` (v0.8.9.97, CR-15).
 
 **Le flux `bin_data` d'un MP4 est sa piste de chapitres.** `ffprobe` rapporte,
 sur une sortie MP4 issue d'une source chapitrée, un flux de plus que ceux
@@ -1524,6 +1544,14 @@ le navigateur, où toutes les touches valent pour lui comme pour les autres.
 
 ---
 
+**Revue IE-114** (v0.8.9.102, IE-136) — `nom_commun` ne retire un marqueur de
+numérotation (`part`, `cd`, `tome`…) que s'il est un **mot entier** — en tête ou
+après un séparateur — et une seule fois : la boucle d'avant rongeait la fin du
+titre (`Le Fantome 1` → `Le Fan`, CR-29). `controler` compare aussi, rang par
+rang, la **langue** des pistes audio (avertissement : la piste recollée
+changerait de langue en cours de route) et leur **fréquence** (blocage : mkvmerge
+refuserait), lue au scan dans `AudioTrack.sample_rate` (CR-30).
+
 ## 10. Mesure du décalage — `core/sync.py`
 
 Corrélation croisée par FFT (numpy), en Python pur — ffmpeg est déjà présent pour le
@@ -1866,7 +1894,47 @@ mobile de `[stats.encode_speed]`, qui nourrit la colonne « ETA ».
 ### 12.4 Garde-fous
 
 - Chemin de sortie identique à la source : `ValueError` levée avant lancement
-- Sortie partielle supprimée en cas d'échec
+- Sortie partielle supprimée en cas d'échec — **sur tous les chemins**
+  (v0.8.9.99, CR-57, CR-90) : passe principale (échec de ffmpeg, piste audio
+  vidée, `S`), retrait et réencodage Dolby Vision (`finally` : état autre que
+  SUCCESS), mux. Le nom est le nôtre, figé à la mise en file sur un fichier qui
+  n'existait pas. Avant, seul l'arrêt (`X`, `F10`) l'effaçait.
+- **Intermédiaires** (v0.8.9.99) — une seule forme, `<nom>.iris_<étape>.<ext>`
+  (`scanner.intermediaire`, reconnue par `est_intermediaire`) : `titre`,
+  `audio`, `st`/`st<n>`, `chap`, `dv`, `enc`, `p8`, `premux`, `recale`…
+  `deja_produit` les compte comme des sorties : laissés par une coupure, ils
+  sont grisés, hors de `Ctrl+A` et du mode récursif, visibles pour être
+  supprimés (CR-11). `RunScreen._liberer(dec, *tmps)` les efface sur **chaque**
+  sortie de la passe principale, anticipée comprise (CR-58) ; il ne rend les
+  greffes à `external_tracks` que si un mux préalable les avait absorbées.
+  Le mux préalable (`premux_output_path(source, dossier)`) et la piste recalée
+  (`SyncScreen._fichier_recale`) s'écrivent dans `dossier_sortie`, plus dans
+  le temp du disque système (CR-28, CR-93 ; temp en dernier recours si le
+  dossier refuse l'écriture). Une piste recalée est effacée après un encodage
+  réussi, qui l'a recopiée.
+- **Code 1 de mkvmerge** (v0.8.9.99, CR-89) — des avertissements, une sortie
+  complète : `muxer.mkvmerge_reussi(code, sortie)` (0 ou 1, et la sortie
+  existe) est la seule règle — mux, jonction, extrait, mux préalable,
+  assemblage, remux Dolby Vision. Un `.srt` aux répliques désordonnées faisait
+  jeter un réencodage DV de plusieurs heures.
+- **Arrêts et sorties** (v0.8.9.100, IE-131) — `S` sur un encodage en pause
+  le reprend avant de l'arrêter : sous POSIX, l'arrêt d'un processus suspendu
+  restait en attente (CR-60). `Ctrl+Home` pendant un mux ou une jonction passe
+  par `_interrompre`, comme `⌫` (CR-91). Quitter (`_on_quit_answer`) arrête les
+  écrans de **tous** les modes (`_screen_stacks`), pas seulement la pile
+  affichée (CR-71) ; une seule confirmation de sortie à la fois (CR-103) ;
+  `travaux_en_cours` ne traduit que les workers de `_TRAVAUX` — `_("")` rendait
+  l'en-tête du catalogue (CR-70). Le compte à rebours d'après lot
+  (`FinDeLotModal`) n'agit qu'au sommet de la pile (`is_active`) et une seule
+  fois : recouvert, il faisait retirer l'écran du dessus (CR-104).
+  `list_volumes` interroge les lettres par `os.path.isdir`, qui ne lève jamais :
+  un lecteur non reconnu ou verrouillé empêchait IRIS de démarrer (CR-67).
+  OpenSubtitles : une réponse 200 qui n'est pas du JSON (portail captif) devient
+  une `ErreurOpenSubtitles`, et les deux workers attrapent aussi `OSError`
+  (CR-95).
+- **Annexes partagées** (CR-24) — `annexes_jellyfin` ne rend rien quand une
+  autre vidéo du dossier porte le même nom (`Film.avi`, `Film.iso`) : Jellyfin
+  rattache les annexes aux deux.
 
 ---
 
@@ -2053,7 +2121,7 @@ Conventions transverses :
 - **Un afficheur qui montre un nom se construit en `markup=False`.** `Static`
   interprète par défaut ce qui ressemble à une balise entre crochets, et la
   convention de nommage du projet jusqu'à la v0.8.8.10 — `_[mux]`, `_[hevc]`,
-  `_[av1]`, `_[hdr10]` — et ses fichiers temporaires `_[extrait]`, `_[premux]`
+  `_[av1]`, `_[hdr10]` — et ses fichiers temporaires `_[extrait]`, `.iris_premux`
   sont faits de cette syntaxe. Un nom affiché sans
   précaution y perd son suffixe, et un identifiant de profil écrit
   `[serie_basic]` disparaît en entier. Le piège est irrégulier : `_[H264]`
@@ -2214,7 +2282,42 @@ l'accepte, au débit de la source ; sinon en copie du flux, suffixe `.dv-iris`
 **Retour d'un encodage** (v0.8.9.8) — `RunScreen` inscrit ses statuts dans
 `app.lots_encodes` au montage. `BrowserScreen.on_screen_resume()` les consomme :
 les sources réussies quittent la sélection (`sources_reussies()`), la vue est
-relue. Un fichier en échec ou interrompu reste coché.
+relue. Un fichier en échec ou interrompu reste coché. Pendant un lot, la vue
+n'est relue que lorsqu'une **nouvelle** réussite est apparue
+(`_reussites_vues`) : un retour d'écran sans changement sur le disque ne
+relance pas un ffprobe par fichier (v0.8.9.97, CR-74).
+
+**La décision d'un fichier** (v0.8.9.97, IE-123) — l'accueil est le seul
+propriétaire de ses `FileDecision`. L'écran des pistes reçoit une **copie**
+(`deepcopy`) qui ne remplace la décision qu'au retour d'une sélection : `⌫`
+n'en garde rien, pas même un profil changé par `F4` (CR-81) ; l'aperçu `F1`
+travaille sur des copies, que seul `F2` met en file (CR-88). L'assistant,
+parcours guidé, garde ses choix sur la décision elle-même ; la ligne est
+redessinée à son retour (`_redessiner`, CR-87). Ce que l'utilisateur règle à la
+main — profil propre au fichier, codec et débit, suppression de la source,
+pistes greffées — est noté au retour de ces écrans dans un registre
+(`decision.Reglages`, `reglages_explicites`, `BrowserScreen._retenir`) et
+réappliqué après chaque `decide` du scan (`appliquer_reglages`), comme les
+sélections de pistes : un rescan ne le perd plus (CR-74). La vidéo se compare à
+la décision automatique du profil du fichier ; un profil supprimé entre-temps
+rend la main au profil actif. Les fichiers confiés à la file ne se décochent
+qu'une fois en file : renoncer au dossier de sortie ne décoche rien
+(`app.encoder(…, apres=…)`, CR-76). Des options enregistrées depuis la gestion
+des profils font relire le dossier au retour (CR-98).
+
+**Nom de sortie annoncé** — l'assistant affiche `decision.sortie_prevue()` :
+le nom que la file donnerait, numérotation comprise, **sans le figer** ; il ne
+se fige qu'au lancement (`resoudre_sorties`). Un nom figé à l'étape 1 restait
+`.mp4` après une greffe ASS qui imposait le Matroska, et ffmpeg refusait
+(CR-84). Après un mux, l'assistant juge le résultat sur le rendu de
+`MuxScreen` et le fichier que mkvmerge a écrit, pas sur la décision adoptée
+(CR-15).
+
+**Un SKIP muni de greffes est un mux** (v0.8.9.97, CR-82) — dans la file,
+`_a_muxer(dec)` (SKIP, pistes externes, pas un titre de disque) lance
+`RunScreen._muxer` : `build_mux_command` vers `output_path`, code 0 ou 1 de
+mkvmerge accepté, sortie partielle effacée sur échec. Il finissait « ignoré »
+sans rien écrire quand `F2` partait de l'écran des pistes.
 
 #### Démarrage virtuel
 
@@ -2976,7 +3079,14 @@ brouillé, refusé comme un AACS.
 
 **Garde-fous** — en plus de ceux du Blu-ray : pas de greffe de piste externe
 sur un titre de DVD (`pick_external_tracks`) — la mesure lirait un VOB, dont
-les pistes ne sont pas numérotées comme celles du titre.
+les pistes ne sont pas numérotées comme celles du titre. Depuis la v0.8.9.101
+(IE-134, CR-86, CR-94), la règle vaut pour **tout titre `a_extraire`** : sur un
+Blu-ray de plusieurs clips, mesure, ancrage, aperçu et extrait lisaient le seul
+premier clip avec la durée du titre entier. Pour un titre d'un clip, la greffe
+reste possible : le donneur reçoit le clip (`lecture`, pour l'empreinte
+OpenSubtitles) et le nom du disque (`stem_sortie`), que `Client.chercher(…,
+nom=…)` cherche à la place de « 00800 » (CR-96) ; la fiche `I` cherche aussi
+le nom du disque (CR-100).
 
 ## 16. Logging
 
@@ -3132,6 +3242,12 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.102 | 2026-10-08 | **Jonction** (§ 9bis, IE-136) : marqueur de numérotation retiré seulement comme mot entier, une fois (`Le Fantome 1` ne devient plus `Le Fan`) · langues inversées de même rang annoncées, fréquence différente bloquante (`AudioTrack.sample_rate`, lu au scan) · CR-29, 30 · `tests/test_collage.py` |
+| 0.8.9.101 | 2026-10-08 | **Titres de disque dans les écrans annexes** (§ 15.6, IE-134) : pas de greffe sur un titre à assembler (Blu-ray de plusieurs clips comme DVD) · OpenSubtitles et fiche cherchent le nom du disque, empreinte sur le clip · CR-86, 94, 96, 100 · `tests/test_titres_ecrans.py` |
+| 0.8.9.100 | 2026-10-08 | **Arrêts et sorties** (§ 12.4, IE-131) : `S` en pause, `Ctrl+Home` pendant un mux, quitter tous les modes, confirmation unique, en-tête du catalogue, compte à rebours recouvert, lecteur inhabituel, réponse OpenSubtitles non JSON · CR-60, 67, 70, 71, 91, 95, 103, 104 · `tests/test_arrets_sorties.py` |
+| 0.8.9.99 | 2026-10-08 | **Restes sur le disque** (§ 12.4, IE-129) : sortie partielle effacée sur tous les chemins · forme unique des intermédiaires, reconnus comme des sorties · `_liberer` sur chaque sortie de la passe principale · mux préalable et piste recalée dans le dossier de sortie · `mkvmerge_reussi` (code 1 accepté) partout · annexes gardées pour une vidéo de même nom · CR-11, 24, 28, 57, 58, 89, 90, 93 · `tests/test_restes_disque.py` |
+| 0.8.9.98 | 2026-10-08 | **Fichiers de réglages** (§ 5, § 6.2, IE-124) : `config.toml` et `profiles.toml` illisibles jamais réécrits (`illisible()`, `ConfigIllisible`, `ProfilsIllisibles`), alerte console et interface · écriture refusée sans fermer l'application (`enregistrer`, `sauver_config`, `signaler_config`) · vitesse mesurée enregistrée sur le fil de l'interface · CR-43, 44, 45, 64, 77 · `tests/test_fichiers_reglages.py` |
+| 0.8.9.97 | 2026-10-08 | **La décision de l'accueil** (§ 8.6, § 14.1, IE-123) : copies de travail pour les pistes et l'aperçu, registre des réglages explicites réappliqué au rescan, rescan pendant un lot seulement sur nouvelle réussite, nom de sortie prévu sans être figé (`sortie_prevue`), mux nommé `.mux-iris.mkv`, SKIP + greffes muxé par la file, décoche après mise en file, options relues · CR-15, 74, 76, 81, 82, 84, 87, 88, 98 · `tests/test_decision_accueil.py` |
 | 0.8.9.96 | 2026-10-08 | **Désentrelacement** (§ 8.1, IE-122) : `VideoInfo.field_order`, `entrelace` ; `FileDecision.desentrelace` ; bwdif `send_frame`, `deint=interlaced`, avant `scale` ; affiché dans l'assistant et l'aperçu · `tests/test_desentrelacement.py` |
 | 0.8.9.95 | 2026-10-08 | **Titres de DVD** (§ 4.1, § 4.2, § 15.6, IE-121) : dossier `VIDEO_TS` présenté par les titres de ses IFO lus sans outil · outil DVD à part (`ffmpeg_dvd`, BtbN GPL dans `bin/dvd/`, ou le principal s'il a `dvdvideo`), proposé au preflight, mis à jour par branche · titre extrait sans perte en Matroska avant l'encodage par le ffmpeg principal · CSS refusé · pas de greffe sur un titre de DVD · `TitreDisque.chemin` (ex-`mpls`), `numero`, `a_extraire` · Options « Titres de disque » · `tests/test_dvd.py` |
 | 0.8.9.94 | 2026-10-08 | **Titres de Blu-ray** (§ 5, § 14.8, § 15.5, IE-120) : dossier `BDMV` présenté par playlists `.mpls` lues sans outil, durée minimale `[app] min_title_minutes` (Options), doublons réduits, titre principal · `VideoInfo.titre`, `lecture`, `dossier`, `stem_sortie`, `taille` · sortie nommée d'après le disque, à côté de `BDMV` · titre de plusieurs clips assemblé par mkvmerge avant l'encodage, chapitres FFMETADATA pour un clip seul · AACS refusé · mode récursif : titre principal seul · `tests/test_bluray.py` |

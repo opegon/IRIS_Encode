@@ -163,9 +163,10 @@ class OptionsScreen(ModalScreen[bool]):
         if saisie.isdigit():
             # Écrit par `set_energie` juste après, qui enregistre tout.
             self._cfg.setdefault("app", {})["min_title_minutes"] = int(saisie)
-        cfg_mod.set_energie(self._cfg,
-                            self.query_one("#options-veille", Checkbox).value,
-                            self._action_choisie())
+        from ..common import signaler_config
+        signaler_config(self.app, cfg_mod.set_energie(
+            self._cfg, self.query_one("#options-veille", Checkbox).value,
+            self._action_choisie()))
         # Sans attendre le prochain relevé : décocher relâche aussitôt.
         surveiller = getattr(self.app, "surveiller_veille", None)
         if surveiller is not None:

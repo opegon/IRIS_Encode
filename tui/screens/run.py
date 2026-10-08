@@ -33,9 +33,10 @@ from core.encoder import (
 )
 from core.muxer import (
     MuxProcess, build_mux_command, build_strip_command, needs_premux,
-    premux_output_path,
+    mkvmerge_reussi, premux_output_path,
 )
 from core.platform import PlatformProfile
+from core.scanner import est_intermediaire
 from ..common import (barre_etat, actions_ecran, colonne_fixe, footer_line2,
                       record_measured_speed,
                       retour_accueil)
@@ -45,6 +46,14 @@ from ..widgets.footer import KeyFooter
 
 
 # ─── État fichier ─────────────────────────────────────────────────────────────
+
+def _a_muxer(dec: FileDecision) -> bool:
+    """Rien à réencoder, des pistes à greffer : un mux. Pas sur un titre de
+    disque — on n'écrit jamais dans le disque, et le titre n'est pas un
+    fichier que mkvmerge recopie tel quel."""
+    return (dec.video.action == VideoAction.SKIP and bool(dec.external_tracks)
+            and dec.info.titre is None)
+
 
 class FileState(Enum):
     PENDING  = auto()
@@ -394,7 +403,9 @@ class RunScreen(TableNavMixin, Screen):
             while next_idx < len(self._statuses):
                 s   = self._statuses[next_idx]
                 dec = s.decision
-                if dec.video.action == VideoAction.SKIP:
+                # Un SKIP qui porte des greffes est un mux, pas un fichier à
+                # ignorer (CR-82).
+                if dec.video.action == VideoAction.SKIP and not _a_muxer(dec):
                     s.state = FileState.SKIPPED
                     ignores.append(next_idx)
                     next_idx += 1
@@ -412,6 +423,10 @@ class RunScreen(TableNavMixin, Screen):
             self.app.call_from_thread(self._on_all_done)
             return
         self.app.call_from_thread(self._update_row, next_idx)
+
+        if _a_muxer(dec):
+            self._muxer(next_idx, dec)
+            return
 
         # Un titre de Blu-ray fait de plusieurs clips, un titre de DVD : il est
         # d'abord extrait en Matroska, tout ce qui suit lit l'extraction
@@ -448,6 +463,7 @@ class RunScreen(TableNavMixin, Screen):
         # greffe d'abord, ffmpeg encode l'intermédiaire. Transparent pour
         # l'utilisateur, et payé seulement quand c'est nécessaire.
         if needs_premux(dec.external_tracks) and not self._premux(next_idx, dec):
+            self._liberer(dec)
             self._encode_next()
             return
 
@@ -458,6 +474,7 @@ class RunScreen(TableNavMixin, Screen):
         if audio_prepass_needed(dec):
             audio_tmp = self._audio_prepass(next_idx, dec)
             if audio_tmp is None:
+                self._liberer(dec)
                 self._encode_next()
                 return
 
@@ -465,8 +482,7 @@ class RunScreen(TableNavMixin, Screen):
         # `core/sous_titres.py`.
         ok, porteur = self._porter_sous_titres(next_idx, dec)
         if not ok:
-            if audio_tmp is not None:
-                audio_tmp.unlink(missing_ok=True)
+            self._liberer(dec, audio_tmp)
             self._encode_next()
             return
 
@@ -479,9 +495,7 @@ class RunScreen(TableNavMixin, Screen):
             s.last_line = texte_erreur(e)
             s.error_msg = texte_erreur(e)[:60]
             self.app.call_from_thread(self._update_row, next_idx)
-            for tmp in (porteur, chapitres):
-                if tmp is not None:
-                    tmp.unlink(missing_ok=True)
+            self._liberer(dec, audio_tmp, porteur, chapitres)
             self._encode_next()  # passe au suivant
             return
         self.app.call_from_thread(
@@ -504,9 +518,7 @@ class RunScreen(TableNavMixin, Screen):
                     "startup. AV1 through NVENC needs an RTX 40 or newer; HEVC "
                     "and H264 remain available.").format(encoder=choisi)
             self.app.call_from_thread(self._update_row, next_idx)
-            for tmp in (porteur, chapitres):
-                if tmp is not None:
-                    tmp.unlink(missing_ok=True)
+            self._liberer(dec, audio_tmp, porteur, chapitres)
             self._encode_next()
             return
 
@@ -567,8 +579,19 @@ class RunScreen(TableNavMixin, Screen):
                     "as it is, and this case is outside the known scope — "
                     "please report it.").format(tracks=" · ".join(vides))
 
+        # Une sortie qui n'a pas abouti — échec de ffmpeg, piste vidée, `S` —
+        # porterait le nom d'une sortie réussie : Jellyfin l'indexerait, le
+        # réessai écrirait à côté un `(2)`. Le nom est le nôtre, figé à la mise
+        # en file sur un fichier qui n'existait pas (CR-57).
+        if not success or s.state == FileState.SKIPPED:
+            try:
+                dec.output_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
         if success and s._last_progress:
-            record_measured_speed(self.app.cfg, dec.video.action, s._last_progress.speed)  # type: ignore[attr-defined]
+            self.app.call_from_thread(record_measured_speed, self.app.cfg,  # type: ignore[attr-defined]
+                                      dec.video.action, s._last_progress.speed)
 
         should_delete = (
             dec.delete_source_override
@@ -586,28 +609,17 @@ class RunScreen(TableNavMixin, Screen):
                 supprimer_annexes(dec.info.path)
 
         # Les pistes audio produites à part ont été recopiées dans la sortie,
-        # les sous-titres réécrits aussi.
-        for tmp in (audio_tmp, porteur, chapitres):
-            if tmp is not None:
-                try:
-                    tmp.unlink(missing_ok=True)
-                except OSError:
-                    pass
-
-        # L'intermédiaire d'un mux préalable n'a plus de raison d'être, que
-        # l'encodage ait réussi ou non : il pèse le poids du film et se
-        # refabrique en quelques secondes.
-        if dec.encode_source is not None:
-            try:
-                dec.encode_source.unlink()
-            except OSError:
-                pass                      # tenu par un lecteur : on n'insiste pas
-            dec.encode_source = None
-            # L'intermédiaire parti, la greffe redevient à faire : sans ce
-            # retour, un second essai sur la même décision produirait un
-            # fichier sans les pistes, le mux préalable ne se déclenchant plus.
-            dec.external_tracks = dec.premuxed_tracks
-            dec.premuxed_tracks = []
+        # les sous-titres réécrits aussi ; l'intermédiaire d'un mux préalable
+        # ou d'un titre n'a plus de raison d'être.
+        self._liberer(dec, audio_tmp, porteur, chapitres)
+        if success:
+            # Une piste recalée a été recopiée dans la sortie (CR-93).
+            for ext in dec.external_tracks:
+                if est_intermediaire(ext.source_path.stem):
+                    try:
+                        ext.source_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
 
         # Préserve l'état SKIPPED posé par action_skip_current()
         if s.state != FileState.SKIPPED:
@@ -626,6 +638,30 @@ class RunScreen(TableNavMixin, Screen):
 
         # Enchaîne le suivant
         self._encode_next()
+
+    def _liberer(self, dec: FileDecision, *tmps: Optional[Path]) -> None:
+        """Efface les intermédiaires d'un fichier, que le traitement ait abouti
+        ou non : ils pèsent le poids du film et se refabriquent. Appelé sur
+        **chaque** sortie de la passe principale — une sortie anticipée laissait
+        l'assemblage d'un titre dans le dossier de sortie (CR-58)."""
+        for tmp in tmps:
+            if tmp is not None:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass                  # tenu par un lecteur : on n'insiste pas
+        if dec.encode_source is not None:
+            try:
+                dec.encode_source.unlink(missing_ok=True)
+            except OSError:
+                pass
+            dec.encode_source = None
+            # L'intermédiaire d'un mux préalable parti, la greffe redevient à
+            # faire : sans ce retour, un second essai produirait un fichier sans
+            # les pistes. L'assemblage d'un titre, lui, n'en a déplacé aucune.
+            if dec.premuxed_tracks:
+                dec.external_tracks = dec.premuxed_tracks
+                dec.premuxed_tracks = []
 
     def _audio_prepass(self, index: int, dec: FileDecision) -> Optional[Path]:
         """Produit les pistes audio finales avant l'encodage. None si échec.
@@ -923,6 +959,8 @@ class RunScreen(TableNavMixin, Screen):
                 code = mux.wait()
                 self._mux = None
                 erreurs = mux.errors
+                if mkvmerge_reussi(code, sortie):
+                    code = 0              # des avertissements : la sortie vaut (CR-89)
 
             if code != 0 or not sortie.exists():
                 detail = erreurs[-1] if erreurs else f"code {code}"
@@ -949,6 +987,8 @@ class RunScreen(TableNavMixin, Screen):
 
         finally:
             self._process = None
+            if s.state != FileState.SUCCESS:
+                sortie.unlink(missing_ok=True)      # partielle (CR-57)
             # Les deux flux bruts pèsent chacun le poids du film : les laisser
             # traîner remplirait le disque, que l'opération ait abouti ou non.
             for tmp in (brut, nodv, mka, porteur):
@@ -1136,7 +1176,7 @@ class RunScreen(TableNavMixin, Screen):
                     self.app.call_from_thread(self._update_ffmpeg_line, ligne)
             code = mux.wait()
             self._mux = None
-            if code != 0 or not mkv.exists():
+            if not mkvmerge_reussi(code, mkv):
                 detail = mux.errors[-1] if mux.errors else f"code {code}"
                 echouer(_("remux: {detail}").format(detail=detail),
                         _("Remux failed — {detail}").format(detail=detail))
@@ -1186,6 +1226,8 @@ class RunScreen(TableNavMixin, Screen):
 
         finally:
             self._process = None
+            if s.state != FileState.SUCCESS:
+                sortie.unlink(missing_ok=True)      # partielle (CR-57)
             # Deux flux bruts de la taille de la vidéo encodée : les laisser
             # traîner remplirait le disque, que l'opération ait abouti ou non.
             for tmp in (rpu, p8, enc, inj, mka, porteur) + ((mkv,) if en_mp4 else ()):
@@ -1194,6 +1236,57 @@ class RunScreen(TableNavMixin, Screen):
                         tmp.unlink()
                 except OSError:
                     pass
+            self._encode_next()
+
+    def _muxer(self, index: int, dec: FileDecision) -> None:
+        """Greffe les pistes externes d'un fichier qui n'a rien à réencoder.
+
+        Le chemin de l'écran du mux, dans la file : mkvmerge recopie l'image et
+        ajoute les pistes, en quelques minutes. Sans lui, un SKIP muni de
+        greffes envoyé par `F2` depuis l'écran des pistes finissait « ignoré »
+        sans rien écrire (CR-82).
+        """
+        s      = self._statuses[index]
+        sortie = dec.output_path
+        try:
+            if not getattr(self.app, "mkvmerge_available", False):
+                s.state, s.error_msg = FileState.ERROR, _("mkvmerge required")
+                s.last_line = _("Adding tracks without re-encoding needs mkvmerge. "
+                                "Run the preflight again to install it.")
+                return
+            try:
+                cmd = build_mux_command(dec.info.path, dec.external_tracks, sortie)
+            except ValueError as e:
+                s.state, s.error_msg, s.last_line = (FileState.ERROR,
+                                                     texte_erreur(e)[:60], texte_erreur(e))
+                return
+            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+            self.app.call_from_thread(
+                self._update_ffmpeg_line,
+                "▶ " + _("Adding the tracks with mkvmerge, no re-encoding…"))
+            proc = MuxProcess(cmd)
+            self._demarrer(proc)
+            for ligne, pourcent in proc.iter_progress():
+                if pourcent is not None:
+                    s.percent = pourcent / 100
+                    self.app.call_from_thread(self._update_row, index)
+                elif ligne:
+                    self.app.call_from_thread(self._update_ffmpeg_line, ligne)
+            code = proc.wait()
+            self._mux = None
+            # mkvmerge rend 1 pour de simples avertissements : la sortie vaut.
+            if mkvmerge_reussi(code, sortie):
+                if s.state != FileState.SKIPPED:
+                    s.state, s.percent = FileState.SUCCESS, 1.0
+                return
+            sortie.unlink(missing_ok=True)
+            detail = proc.errors[-1] if proc.errors else f"code {code}"
+            s.state, s.error_msg = (FileState.ERROR,
+                                    _("mux: {detail}").format(detail=detail)[:60])
+            s.last_line = _("Mux failed — {detail}").format(detail=detail)
+        finally:
+            self.app.call_from_thread(self._update_row, index)
+            self.app.call_from_thread(self._update_header)
             self._encode_next()
 
     def _ecrire_chapitres(self, dec: FileDecision) -> Optional[Path]:
@@ -1251,7 +1344,7 @@ class RunScreen(TableNavMixin, Screen):
         self._mux = None
 
         # mkvmerge rend 1 pour de simples avertissements.
-        if code not in (0, 1) or not sortie.exists():
+        if not mkvmerge_reussi(code, sortie):
             sortie.unlink(missing_ok=True)
             detail = proc.errors[-1] if proc.errors else f"code {code}"
             s.state, s.error_msg = (FileState.ERROR,
@@ -1332,7 +1425,7 @@ class RunScreen(TableNavMixin, Screen):
             self.app.call_from_thread(self._update_row, index)
             return False
 
-        sortie = premux_output_path(dec.info.path)
+        sortie = premux_output_path(dec.info.path, dec.dossier_sortie)
         # Après l'assemblage d'un titre de Blu-ray, c'est lui que la greffe
         # complète ; il cède ensuite la place.
         assemblage = dec.encode_source
@@ -1361,7 +1454,7 @@ class RunScreen(TableNavMixin, Screen):
         code = proc.wait()
         self._mux = None
 
-        if code != 0 or not sortie.exists():
+        if not mkvmerge_reussi(code, sortie):
             # Interrompu ou échoué, l'intermédiaire pèse le poids du film.
             sortie.unlink(missing_ok=True)
             detail = proc.errors[-1] if proc.errors else f"code {code}"
@@ -1529,9 +1622,13 @@ class RunScreen(TableNavMixin, Screen):
             s.last_line = _("Skipped manually")
             self._update_row(self._current_idx)
         # terminate() ferme le process : la boucle iter_progress se termine,
-        # _encode_next() enchaîne automatiquement sur le suivant
+        # _encode_next() enchaîne automatiquement sur le suivant. Un processus
+        # suspendu doit d'abord reprendre : sous POSIX, l'arrêt resterait en
+        # attente, et le fichier suivant ne démarrerait jamais (CR-60).
+        if self._paused:
+            self._process.resume()
+            self._paused = False
         self._process.terminate()
-        self._paused = False
 
     # ─── Sortie ───────────────────────────────────────────────────────────────
 

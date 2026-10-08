@@ -29,6 +29,10 @@ from .scanner import SUPPORTED_EXTENSIONS
 
 IMAGES: frozenset[str] = frozenset({".jpg", ".jpeg", ".png", ".webp"})
 
+# Ce que Jellyfin indexe comme vidéo, au-delà de ce qu'IRIS encode.
+_VIDEOS_JELLYFIN: frozenset[str] = SUPPORTED_EXTENSIONS | {".iso", ".divx", ".ogv",
+                                                           ".rmvb", ".m2v", ".f4v"}
+
 
 def _est_annexe(nom: str, base: str) -> bool:
     """`nom` est-il un fichier Jellyfin de la vidéo de nom (sans extension)
@@ -45,6 +49,12 @@ def annexes_jellyfin(video: Path) -> list[Path]:
     try:
         voisins = [p for p in video.parent.iterdir() if p.is_file()]
     except OSError:
+        return []
+    # Une autre vidéo du même nom (`Film.avi` à côté de `Film.mkv`, ou un
+    # `Film.iso` que la liste ignore) : Jellyfin rattache les annexes aux deux,
+    # elles restent avec celle qui reste (CR-24).
+    if any(p.stem.casefold() == video.stem.casefold() and p != video
+           and p.suffix.lower() in _VIDEOS_JELLYFIN for p in voisins):
         return []
     # Seules les vidéos au nom plus long peuvent réclamer un fichier qui répond
     # aussi à celui de `video`.

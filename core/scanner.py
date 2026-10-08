@@ -59,13 +59,34 @@ _RE_ENTREE_IRIS = re.compile(
     rf"\.(?i:{'|'.join(ENTREES_IRIS)}){re.escape(MARQUE_IRIS)}(?:\(\d+\))?$")
 
 
+# Les fichiers intermédiaires d'un traitement : `<nom>.iris_<étape>.<ext>`
+# (`.iris_titre.mkv`, `.iris_audio.mka`, `.iris_st0.srt`, `.iris_premux.mkv`…).
+# Une seule forme, reconnue ici et produite partout : laissé par une coupure,
+# un intermédiaire n'est pas une source (CR-11).
+_RE_INTERMEDIAIRE = re.compile(r"\.iris_[a-z]+\d*$")
+
+
+def intermediaire(nom: str, etape: str) -> str:
+    """Le nom (sans dossier) d'un intermédiaire de `nom` pour une étape."""
+    return f"{nom}.iris_{etape}"
+
+
+def est_intermediaire(stem: str) -> bool:
+    """Ce stem est-il celui d'un fichier intermédiaire de l'application ?"""
+    return bool(_RE_INTERMEDIAIRE.search(stem))
+
+
 def deja_produit(stem: str) -> bool:
-    """Ce nom de fichier est-il celui d'une sortie d'encodage de l'application ?
+    """Ce nom de fichier est-il celui d'une sortie de l'application ?
 
     La marque est cherchée en **fin** de stem : `Film.hevc-iris (copie)` n'est
     pas une sortie que nous venons d'écrire. Les noms de l'ancien schéma
     (`_[hevc]`, `_[av1]`…) ne sont plus reconnus — ils redeviennent des sources.
+    Un intermédiaire laissé par une coupure en est une aussi : grisé, hors de
+    `Ctrl+A` et du mode récursif, il reste visible pour être supprimé (CR-11).
     """
+    if est_intermediaire(stem):
+        return True
     return bool(_RE_MARQUE_IRIS.search(stem)) and not _RE_ENTREE_IRIS.search(stem)
 
 
@@ -379,6 +400,7 @@ class AudioTrack:
     # Langue venue d'ailleurs que du flux (mkvmerge, `.clpi`) : ffmpeg ne la
     # recopiera pas, l'encodeur doit l'écrire (IE-119).
     langue_completee: bool = False
+    sample_rate: int = 0     # Hz, 0 si inconnu — la jonction le compare (CR-30)
 
     @property
     def channel_layout(self) -> str:
@@ -871,6 +893,7 @@ def scan(path: Path) -> VideoInfo:
             bitrate=_audio_bitrate(s, tags),
             profile=s.get("profile", "") if isinstance(s.get("profile"), str) else "",
             pid=_pid(s),
+            sample_rate=_safe_int(s.get("sample_rate")),
         ))
 
     # ── Flux sous-titres ──────────────────────────────────────────────────────

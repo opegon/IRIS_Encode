@@ -133,6 +133,13 @@ def main() -> None:
     print()
     for ligne in banniere([f"IRIS ENCODE  v{__version__}", _environnement_python()]):
         print(ligne)
+    if cfg_mod.illisible():
+        # Comme profiles.toml : la session tourne sur les défauts, le fichier
+        # reste tel quel, réparable à la main (CR-43).
+        print("⚠  " + _("config.toml unreadable ({error}). Session running on "
+                        "the default settings — your file was not touched, and "
+                        "will not be until it is fixed.").format(
+                            error=cfg_mod.illisible()))
     print()
     print(_("Checking tools:"))
     ok  = run_preflight(cfg)

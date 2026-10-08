@@ -7,6 +7,7 @@ interactions avec le système de fichiers (liste, changement de répertoire).
 """
 from __future__ import annotations
 
+import os
 import sys
 import string
 from pathlib import Path
@@ -24,10 +25,14 @@ def list_volumes() -> list[Path]:
     Linux/macOS : [Path("/")] — stub minimal
     """
     if sys.platform == "win32":
+        # `os.path.isdir` rend False sur toute erreur ; `Path.exists` lève sur
+        # celles que pathlib ne connaît pas — volume non reconnu, BitLocker
+        # verrouillé, lecteur réseau à l'authentification expirée — et un
+        # seul lecteur dans cet état empêchait IRIS de démarrer (CR-67).
         return [
             Path(f"{c}:\\")
             for c in string.ascii_uppercase
-            if Path(f"{c}:\\").exists()
+            if os.path.isdir(f"{c}:\\")
         ]
     return [Path("/")]
 

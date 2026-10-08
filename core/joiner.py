@@ -24,7 +24,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .i18n import N_, Nn_, ErreurAffichable, _, ngettext
-from .scanner import MARQUE_IRIS, VideoInfo, stem_sans_groupe
+from .scanner import (MARQUE_IRIS, VideoInfo, normalize_language, same_language,
+                      stem_sans_groupe)
 
 # Suffixe du fichier recousu. Absent de `SUFFIX_BY_ACTION` à dessein : ce n'est
 # pas une sortie d'encodage mais une entrée de travail, et le scan doit la voir
@@ -77,16 +78,15 @@ def nom_commun(parts: list[Path]) -> str:
     if not stems:
         return ""
 
-    nom = os.path.commonprefix(stems)
-    while True:
-        avant = nom
-        nom = nom.rstrip(_SEPARATEURS)
-        bas  = nom.lower()
-        for marqueur in _MARQUEURS:
-            if bas.endswith(marqueur):
-                nom = nom[: -len(marqueur)]
-                break
-        if nom == avant:
+    nom = os.path.commonprefix(stems).rstrip(_SEPARATEURS)
+    # Un marqueur n'est retiré que s'il est un mot entier — en tête ou après
+    # un séparateur —, et une seule fois : la boucle d'avant rongeait le titre,
+    # `Le Fantome 1` devenait `Le Fan` (« tome », puis « pt »…) (CR-29).
+    bas = nom.lower()
+    for marqueur in _MARQUEURS:
+        debut = len(nom) - len(marqueur)
+        if bas.endswith(marqueur) and (debut == 0 or nom[debut - 1] in _SEPARATEURS):
+            nom = nom[:debut].rstrip(_SEPARATEURS)
             break
 
     return nom.strip() or stems[0]
@@ -164,6 +164,24 @@ def controler(infos: list[VideoInfo]) -> Controle:
                     .format(file=nom, number=rang + 1, layout=b.channel_layout,
                             reference_layout=a.channel_layout,
                             reference=ref.path.name))
+            elif a.sample_rate and b.sample_rate and a.sample_rate != b.sample_rate:
+                # mkvmerge le refuserait lui-même, en anglais brut (CR-30).
+                ctrl.blocages.append(
+                    _("{file} — audio track {number} at {rate} Hz, "
+                      "{reference_rate} Hz in {reference}.")
+                    .format(file=nom, number=rang + 1, rate=b.sample_rate,
+                            reference_rate=a.sample_rate, reference=ref.path.name))
+            connues = all(normalize_language(t.language) not in ("", "und")
+                          for t in (a, b))
+            if connues and not same_language(a.language, b.language):
+                # Collée rang par rang, la piste changerait de langue au
+                # milieu du film, sans erreur (CR-30).
+                ctrl.avertissements.append(
+                    _("{file} — audio track {number} in {language}, "
+                      "{reference_language} in {reference}: the joined track "
+                      "would change language midway.")
+                    .format(file=nom, number=rang + 1, language=b.language,
+                            reference_language=a.language, reference=ref.path.name))
 
         if len(info.audio_tracks) != len(ref.audio_tracks):
             n = len(info.audio_tracks)

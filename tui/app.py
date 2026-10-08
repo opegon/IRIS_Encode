@@ -182,7 +182,8 @@ class IrisEncodeApp(App):
         if profile_id == self._active_profile_id:
             return                      # rien à écrire
         self._active_profile_id = profile_id
-        cfg_mod.set_active_profile(self.cfg, profile_id)
+        from tui.common import signaler_config
+        signaler_config(self, cfg_mod.set_active_profile(self.cfg, profile_id))
 
     def on_mount(self) -> None:
         from tui.screens.browser import BrowserScreen
@@ -196,9 +197,23 @@ class IrisEncodeApp(App):
         if self.platform.alerte_nvenc:
             self.notify(self.platform.alerte_nvenc, title=_("Graphics card"),
                         severity="warning", timeout=30)
+        # Dit dans la console avant l'interface, qui la recouvre : à redire ici.
+        self.alerter_fichiers_illisibles()
         # Cinq secondes : la veille sur inactivité se compte en minutes, et un
         # traitement qui finit relâche la machine presque aussitôt.
         self.set_interval(5, self.surveiller_veille, name="veille")
+
+    def alerter_fichiers_illisibles(self) -> None:
+        """config.toml ou profiles.toml illisible au lancement : la session
+        tourne sur les défauts et ne réécrit pas le fichier (CR-43, CR-45)."""
+        from core import profiles as prof_mod
+        for nom, erreur in (("config.toml", cfg_mod.illisible()),
+                            ("profiles.toml", prof_mod.illisible())):
+            if erreur:
+                self.notify(_("{file} unreadable ({error}): this session runs on "
+                              "the defaults and will not rewrite it. Fix it by "
+                              "hand, then restart.").format(file=nom, error=erreur),
+                            severity="warning", timeout=30)
 
     def on_unmount(self) -> None:
         self.veille.relacher()
@@ -214,7 +229,7 @@ class IrisEncodeApp(App):
         """Les sources en attente ou en cours d'encodage."""
         return self._lot.sources_en_file() if self._lot is not None else set()
 
-    def encoder(self, decisions: list) -> None:
+    def encoder(self, decisions: list, apres=None) -> None:
         """Confie des décisions à la file d'encodage — seule porte d'entrée.
 
         Chaque décision est **copiée** : les réglages sont figés au moment de
@@ -226,6 +241,9 @@ class IrisEncodeApp(App):
         Une source dans un dossier en lecture seule — un ISO monté — fait
         d'abord choisir un dossier de sortie (IE-118), commun à toutes celles
         du lot qui sont dans ce cas. Y renoncer, c'est ne rien mettre en file.
+
+        `apres()` est appelé une fois la mise en file faite — jamais si l'on
+        renonce au dossier de sortie (CR-76).
         """
         from core.decision import sorties_bloquees
 
@@ -239,6 +257,8 @@ class IrisEncodeApp(App):
                 for dec in bloquees:
                     dec.output_dir = dossier
                 self._mettre_en_file(decisions)
+                if apres is not None:
+                    apres()
 
             note = ngettext(
                 "The folder of {count} source is read-only (mounted disc image?): "
@@ -250,6 +270,8 @@ class IrisEncodeApp(App):
                              _choisi)
             return
         self._mettre_en_file(decisions)
+        if apres is not None:
+            apres()
 
     def _mettre_en_file(self, decisions: list) -> None:
         from copy import deepcopy
@@ -462,8 +484,13 @@ class IrisEncodeApp(App):
         """Les phrases de `_TRAVAUX` des workers qui tournent, sans doublon."""
         phrases: list[str] = []
         for w in self.workers:
-            texte = _(self._TRAVAUX.get(w.name or "", ""))
-            if w.is_running and texte and texte not in phrases:
+            # `_("")` rend l'en-tête du catalogue : un worker absent de la
+            # table ne se traduit pas du tout (CR-70).
+            phrase = self._TRAVAUX.get(w.name or "")
+            if phrase is None or not w.is_running:
+                continue
+            texte = _(phrase)
+            if texte not in phrases:
                 phrases.append(texte)
         # Ce qui attend dans la file n'a pas de worker à soi : il faut le dire.
         if self._lot is not None and not self._lot.termine:
@@ -478,6 +505,8 @@ class IrisEncodeApp(App):
     def action_request_quit(self) -> None:
         """Affiche la modal de confirmation avant de quitter."""
         from tui.screens.quit import QuitConfirmScreen
+        if isinstance(self.screen, QuitConfirmScreen):
+            return                       # déjà posée : une seule (CR-103)
         self.push_screen(QuitConfirmScreen(self.travaux_en_cours()),
                          self._on_quit_answer)
 
@@ -485,12 +514,20 @@ class IrisEncodeApp(App):
         if confirmed:
             # Tenir la promesse du message : un processus lancé par l'écran
             # survivrait à l'application et continuerait d'écrire.
-            for ecran in self.screen_stack:
-                arreter = getattr(ecran, "_interrompre", None)
-                if arreter is not None:
-                    arreter()
-            # Le lot vit dans un autre mode : il n'est pas dans la pile affichée.
-            if self._lot is not None and self._lot not in self.screen_stack:
+            # Les écrans de **tous** les modes : un mux lancé côté navigation
+            # tourne encore quand on quitte depuis la vue des encodages, et
+            # `screen_stack` n'est que la pile affichée (CR-71).
+            piles = getattr(self, "_screen_stacks", None) or {None: self.screen_stack}
+            vus = set()
+            for pile in piles.values():
+                for ecran in pile:
+                    arreter = getattr(ecran, "_interrompre", None)
+                    if arreter is not None and id(ecran) not in vus:
+                        vus.add(id(ecran))
+                        arreter()
+            # Le lot vit dans son mode, mais `add_mode` le pose par une fabrique :
+            # il peut n'y être dans aucune pile.
+            if self._lot is not None and id(self._lot) not in vus:
                 self._lot._interrompre()
             self.exit()
 

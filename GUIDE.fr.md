@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.96
+**Version** : 0.8.9.102
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -599,7 +599,7 @@ recalage audio.
      environ), langues et chapitres compris, puis encodé comme un fichier ;
      l'extraction est supprimée ensuite. Même nommage qu'un Blu-ray. Un DVD
      chiffré (CSS) est refusé. Les pistes externes se greffent sur la sortie,
-     pas sur le titre. `VIDEO_TS` montre toujours les `.VOB` bruts.
+     pas sur le titre — de même pour un titre de Blu-ray de plusieurs clips. `VIDEO_TS` montre toujours les `.VOB` bruts.
 3. Cocher le fichier, `F2`. Le lecteur est en lecture seule : IRIS demande un
    **dossier de sortie**. `↵` sur la première ligne retient celui proposé
    (réglé dans les Options, `F5` puis `U` ; le dossier Vidéos par défaut) ;

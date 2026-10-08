@@ -324,3 +324,9 @@ mesurée ; BtbN n9.0 installé et éprouvé. Pages touchées : [[disques-optique
 progressif est entrelacé par passages ; bwdif mesuré sur le DVD, et un artefact
 de la détection « multi » d'`idet` sur les scènes sombres. Pages touchées :
 [[disques-optiques]].
+
+## [2026-10-08] lint | Conteneur d'une greffe (IE-123, CR-15)
+
+La page disait qu'une piste externe impose le MKV ; le code ne l'impose que pour
+un codec qui l'exige, et un mux seul sort toujours en MKV. Corrigé avec la spec.
+Pages touchées : [[conteneurs]].

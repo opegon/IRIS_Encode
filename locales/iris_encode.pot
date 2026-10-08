@@ -107,105 +107,105 @@ msgctxt "track action"
 msgid "copy"
 msgstr ""
 
-#: core/decision.py:841
+#: core/decision.py:844
 #, python-brace-format
 msgid "{reason} · DV preserved, RPU reinjected"
 msgstr ""
 
-#: core/decision.py:843
+#: core/decision.py:846
 #, python-brace-format
 msgid "{reason} · DV kept → video copied"
 msgstr ""
 
-#: core/decision.py:850
+#: core/decision.py:853
 #, python-brace-format
 msgid "Bitrate {bitrate}k > {target}k target +{tolerance}%"
 msgstr ""
 
-#: core/decision.py:864
+#: core/decision.py:867
 #, python-brace-format
 msgid "Resolution {width}x{height} > {max_width}x{max_height}"
 msgstr ""
 
-#: core/decision.py:878
+#: core/decision.py:881
 #, python-brace-format
 msgid "Codec {codec} not supported by the playback chain"
 msgstr ""
 
-#: core/decision.py:894
+#: core/decision.py:897
 #, python-brace-format
 msgid "{dv} → HDR10 without re-encoding"
 msgstr ""
 
-#: core/decision.py:905
+#: core/decision.py:908
 #, python-brace-format
 msgid "Bitrate within target ±{tolerance}%, resolution OK, codec {codec}"
 msgstr ""
 
-#: core/decision.py:908
+#: core/decision.py:911
 #, python-brace-format
 msgid "Bitrate OK, resolution OK, codec {codec}"
 msgstr ""
 
-#: core/decision.py:1076
+#: core/decision.py:1079
 msgid "manual selection"
 msgstr ""
 
-#: core/decision.py:1079
+#: core/decision.py:1082
 #, python-brace-format
 msgid "replaced by its {codec} core (track {index})"
 msgstr ""
 
-#: core/decision.py:1083
+#: core/decision.py:1086
 #, python-brace-format
 msgid "core of track {index}, which already carries it"
 msgstr ""
 
-#: core/decision.py:1087
+#: core/decision.py:1090
 #, python-brace-format
 msgid "original track (index {index})"
 msgstr ""
 
-#: core/decision.py:1092
+#: core/decision.py:1095
 msgid "language unknown → kept"
 msgstr ""
 
-#: core/decision.py:1095
+#: core/decision.py:1098
 #, python-brace-format
 msgid "language {language}"
 msgstr ""
 
-#: core/decision.py:1098
+#: core/decision.py:1101
 #, python-brace-format
 msgid "language {language} not kept"
 msgstr ""
 
 #. "lossless", "copy" and the profile key preserve_hd_audio stay in English (glossary).
-#: core/decision.py:1117
+#: core/decision.py:1120
 #, python-brace-format
 msgid "{reason} · lossless + preserve_hd_audio → copy"
 msgstr ""
 
-#: core/decision.py:1125
+#: core/decision.py:1128
 #, python-brace-format
 msgid "{reason} · lossless → {codec}"
 msgstr ""
 
-#: core/decision.py:1135
+#: core/decision.py:1138
 #, python-brace-format
 msgid "{reason} · {codec} compatible → copy"
 msgstr ""
 
-#: core/decision.py:1144
+#: core/decision.py:1147
 #, python-brace-format
 msgid "{reason} · → {codec}"
 msgstr ""
 
-#: core/decision.py:1323
+#: core/decision.py:1406
 msgid "Forced manually (was SKIP)"
 msgstr ""
 
-#: core/decision.py:1325
+#: core/decision.py:1408
 msgid "Forced manually (was DV removal)"
 msgstr ""
 
@@ -300,30 +300,40 @@ msgstr ""
 
 #: core/joiner.py:170
 #, python-brace-format
+msgid "{file} — audio track {number} at {rate} Hz, {reference_rate} Hz in {reference}."
+msgstr ""
+
+#: core/joiner.py:180
+#, python-brace-format
+msgid "{file} — audio track {number} in {language}, {reference_language} in {reference}: the joined track would change language midway."
+msgstr ""
+
+#: core/joiner.py:188
+#, python-brace-format
 msgid "{file} — {count} audio track against {reference_count}: the joined file will keep only {kept}."
 msgid_plural "{file} — {count} audio tracks against {reference_count}: the joined file will keep only {kept}."
 msgstr[0] ""
 msgstr[1] ""
 
-#: core/joiner.py:179
+#: core/joiner.py:197
 #, python-brace-format
 msgid "{file} — {count} subtitle track against {reference_count}: the joined file will keep only {kept}."
 msgid_plural "{file} — {count} subtitle tracks against {reference_count}: the joined file will keep only {kept}."
 msgstr[0] ""
 msgstr[1] ""
 
-#: core/joiner.py:203
+#: core/joiner.py:221
 #, python-brace-format
 msgid "Join: at least {minimum} parts ({count} given)."
 msgid_plural "Join: at least {minimum} parts ({count} given)."
 msgstr[0] ""
 msgstr[1] ""
 
-#: core/joiner.py:210
+#: core/joiner.py:228
 msgid "Join: the same part is present twice."
 msgstr ""
 
-#: core/joiner.py:213
+#: core/joiner.py:231
 #, python-brace-format
 msgid "Output path identical to one of the parts ({file}). Join refused to avoid corrupting the source file."
 msgstr ""
@@ -410,31 +420,36 @@ msgstr ""
 msgid "OpenSubtitles answered {status}: {detail}"
 msgstr ""
 
+#: core/opensubtitles.py:180
+#, python-brace-format
+msgid "Unexpected answer from OpenSubtitles (not JSON): {detail}"
+msgstr ""
+
 #. F5 then K are keys.
-#: core/opensubtitles.py:182
+#: core/opensubtitles.py:189
 msgid "Downloading needs an account — enter a username and password from the profile management (F5, then K)."
 msgstr ""
 
-#: core/opensubtitles.py:189
+#: core/opensubtitles.py:196
 msgid "Login refused: no token received."
 msgstr ""
 
-#: core/opensubtitles.py:247
+#: core/opensubtitles.py:260
 msgid "No download link received."
 msgstr ""
 
-#: core/opensubtitles.py:252
+#: core/opensubtitles.py:265
 #, python-brace-format
 msgid "Download interrupted: {error}"
 msgstr ""
 
 #. {reset} is OpenSubtitles' own text, in English.
-#: core/opensubtitles.py:306
+#: core/opensubtitles.py:319
 #, python-brace-format
 msgid "Daily download quota used up — {reset}."
 msgstr ""
 
-#: core/opensubtitles.py:308
+#: core/opensubtitles.py:321
 msgid "Daily download quota used up."
 msgstr ""
 
@@ -659,14 +674,14 @@ msgctxt "profile value"
 msgid "no"
 msgstr ""
 
-#: core/profiles.py:203
+#: core/profiles.py:222
 #, python-brace-format
 msgid "profiles.toml unreadable ({error}). Session running on the {count} built-in profile — your file was not touched."
 msgid_plural "profiles.toml unreadable ({error}). Session running on the {count} built-in profiles — your file was not touched."
 msgstr[0] ""
 msgstr[1] ""
 
-#: core/profiles.py:210
+#: core/profiles.py:229
 #, python-brace-format
 msgid "profiles.toml unreadable ({error}). Loading the built-in profile [{profile}]."
 msgstr ""
@@ -820,8 +835,8 @@ msgid "ffmpeg failed: {error}"
 msgstr ""
 
 #: core/sync.py:1372
-#: tui/screens/join.py:319
-#: tui/screens/mux_run.py:175
+#: tui/screens/join.py:320
+#: tui/screens/mux_run.py:178
 #, python-brace-format
 msgid "code {code}"
 msgstr ""
@@ -921,7 +936,7 @@ msgstr ""
 
 #: tui/app.py:62
 #: tui/app.py:63
-#: tui/common.py:403
+#: tui/common.py:426
 #: tui/screens/quit.py:23
 msgid "Quit"
 msgstr ""
@@ -935,213 +950,223 @@ msgstr ""
 msgid "Encodes"
 msgstr ""
 
-#: tui/app.py:197
+#: tui/app.py:198
 msgid "Graphics card"
 msgstr ""
 
-#: tui/app.py:243
+#: tui/app.py:213
+#, python-brace-format
+msgid "{file} unreadable ({error}): this session runs on the defaults and will not rewrite it. Fix it by hand, then restart."
+msgstr ""
+
+#: tui/app.py:263
 #, python-brace-format
 msgid "The folder of {count} source is read-only (mounted disc image?): its output cannot be written next to it."
 msgid_plural "The folders of {count} sources are read-only (mounted disc image?): their outputs cannot be written next to them."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/app.py:268
+#: tui/app.py:290
 #, python-brace-format
 msgid "Already in the queue: {files}"
 msgstr ""
 
-#: tui/app.py:274
+#: tui/app.py:296
 #, python-brace-format
 msgid "{count} file added to the queue — {key} to follow it."
 msgid_plural "{count} files added to the queue — {key} to follow it."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/app.py:317
-#: tui/screens/run.py:87
-#: tui/screens/run.py:88
-#: tui/screens/run.py:215
+#: tui/app.py:339
+#: tui/screens/run.py:96
+#: tui/screens/run.py:97
+#: tui/screens/run.py:224
 msgid "Files"
 msgstr ""
 
-#: tui/app.py:319
+#: tui/app.py:341
 msgid "Batch done"
 msgstr ""
 
-#: tui/app.py:321
+#: tui/app.py:343
 #, python-brace-format
 msgid "Encoding in progress · {done}/{total} · {percent}%"
 msgstr ""
 
-#: tui/app.py:366
+#: tui/app.py:388
 msgid "sleep blocked"
 msgstr ""
 
-#: tui/app.py:368
+#: tui/app.py:390
 #, python-brace-format
 msgid "then {action}"
 msgstr ""
 
-#: tui/app.py:401
+#: tui/app.py:423
 msgid "After-batch action canceled."
 msgstr ""
 
-#: tui/app.py:405
+#: tui/app.py:427
 msgid "A task has resumed: after-batch action canceled."
 msgstr ""
 
-#: tui/app.py:411
+#: tui/app.py:433
 #, python-brace-format
 msgid "Cannot {action}: {error}"
 msgstr ""
 
-#: tui/app.py:424
+#: tui/app.py:446
 msgid "No encoding in progress."
 msgstr ""
 
-#: tui/app.py:452
+#: tui/app.py:474
 msgid "The running encode will be stopped, its partial output deleted."
 msgstr ""
 
-#: tui/app.py:453
+#: tui/app.py:475
 msgid "The running mux will be stopped, its partial output deleted."
 msgstr ""
 
-#: tui/app.py:454
+#: tui/app.py:476
 msgid "The running join will be stopped, its partial output deleted."
 msgstr ""
 
-#: tui/app.py:455
-#: tui/app.py:456
-#: tui/app.py:457
+#: tui/app.py:477
+#: tui/app.py:478
+#: tui/app.py:479
 msgid "The running measurement will be lost."
 msgstr ""
 
-#: tui/app.py:458
+#: tui/app.py:480
 msgid "The running resync will be lost."
 msgstr ""
 
-#: tui/app.py:472
+#: tui/app.py:499
 #, python-brace-format
 msgid "{count} waiting file will not be encoded."
 msgid_plural "{count} waiting files will not be encoded."
 msgstr[0] ""
 msgstr[1] ""
 
+#: tui/common.py:68
+#, python-brace-format
+msgid "Settings not saved: {error}"
+msgstr ""
+
 #. the Delete key, as printed on the keyboard ("Suppr" in French).
-#: tui/common.py:66
+#: tui/common.py:89
 msgid "Del"
 msgstr ""
 
-#: tui/common.py:186
+#: tui/common.py:209
 msgid "audio"
 msgstr ""
 
-#: tui/common.py:186
+#: tui/common.py:209
 msgid "subtitle"
 msgstr ""
 
 #. a track left out of the output (feminine in French: "piste").
-#: tui/common.py:235
+#: tui/common.py:258
 msgctxt "track"
 msgid "discarded"
 msgstr ""
 
 #. terabytes (1024⁴ bytes), as Windows Explorer names them.
-#: tui/common.py:244
+#: tui/common.py:267
 msgctxt "bytes"
 msgid "TB"
 msgstr ""
 
 #. gigabytes (1024³ bytes), as Windows Explorer names them.
-#: tui/common.py:247
+#: tui/common.py:270
 msgctxt "bytes"
 msgid "GB"
 msgstr ""
 
 #. megabytes (1024² bytes), as Windows Explorer names them.
-#: tui/common.py:250
+#: tui/common.py:273
 msgctxt "bytes"
 msgid "MB"
 msgstr ""
 
 #. kilobytes (1024 bytes), as Windows Explorer names them.
-#: tui/common.py:252
+#: tui/common.py:275
 msgctxt "bytes"
 msgid "KB"
 msgstr ""
 
-#: tui/common.py:335
+#: tui/common.py:358
 msgid "AV1  (⚠ very demanding)"
 msgstr ""
 
-#: tui/common.py:356
+#: tui/common.py:379
 msgid "unavailable here"
 msgstr ""
 
-#: tui/common.py:371
+#: tui/common.py:394
 msgid "Bitrate (AV1)"
 msgstr ""
 
-#: tui/common.py:371
-#: tui/screens/dryrun.py:115
+#: tui/common.py:394
+#: tui/screens/dryrun.py:116
 msgid "Target bitrate"
 msgstr ""
 
-#: tui/common.py:384
+#: tui/common.py:407
 #: tui/mixins.py:36
-#: tui/screens/browser.py:466
+#: tui/screens/browser.py:480
 msgid "Start"
 msgstr ""
 
-#: tui/common.py:385
+#: tui/common.py:408
 #: tui/mixins.py:37
-#: tui/screens/browser.py:467
+#: tui/screens/browser.py:481
 msgid "End"
 msgstr ""
 
-#: tui/common.py:386
+#: tui/common.py:409
 #: tui/mixins.py:38
 msgid "Page ↑"
 msgstr ""
 
-#: tui/common.py:387
+#: tui/common.py:410
 #: tui/mixins.py:39
 msgid "Page ↓"
 msgstr ""
 
 #. "Col" is short for column; keep these labels short.
-#: tui/common.py:392
+#: tui/common.py:415
 #: tui/mixins.py:140
 msgid "Prev col"
 msgstr ""
 
-#: tui/common.py:393
+#: tui/common.py:416
 #: tui/mixins.py:141
 msgid "Next col"
 msgstr ""
 
-#: tui/common.py:394
+#: tui/common.py:417
 #: tui/mixins.py:142
 msgid "Narrow"
 msgstr ""
 
-#: tui/common.py:395
+#: tui/common.py:418
 #: tui/mixins.py:143
 msgid "Widen"
 msgstr ""
 
-#: tui/common.py:398
+#: tui/common.py:421
 #: tui/screens/aide.py:435
 #: tui/screens/aide.py:436
 #: tui/screens/aide.py:444
 #: tui/screens/config.py:62
 #: tui/screens/config.py:63
 #: tui/screens/config.py:102
-#: tui/screens/donor_picker.py:237
-#: tui/screens/dryrun.py:94
+#: tui/screens/donor_picker.py:244
 #: tui/screens/dryrun.py:95
+#: tui/screens/dryrun.py:96
 #: tui/screens/join.py:60
 #: tui/screens/join.py:61
 #: tui/screens/mux_run.py:45
@@ -1150,70 +1175,70 @@ msgstr ""
 #: tui/screens/profile_picker.py:61
 #: tui/screens/sync.py:197
 #: tui/screens/sync.py:198
-#: tui/screens/tracks.py:135
 #: tui/screens/tracks.py:136
+#: tui/screens/tracks.py:137
 #: tui/screens/value_picker.py:53
-#: tui/screens/wizard.py:149
 #: tui/screens/wizard.py:150
+#: tui/screens/wizard.py:151
 msgid "Back"
 msgstr ""
 
-#: tui/common.py:402
+#: tui/common.py:425
 #: tui/screens/aide.py:293
-#: tui/screens/browser.py:261
+#: tui/screens/browser.py:263
 #: tui/screens/config.py:66
-#: tui/screens/dryrun.py:98
+#: tui/screens/dryrun.py:99
 #: tui/screens/join.py:62
 #: tui/screens/mux_run.py:49
-#: tui/screens/run.py:91
+#: tui/screens/run.py:100
 #: tui/screens/sync.py:201
-#: tui/screens/tracks.py:139
-#: tui/screens/wizard.py:151
+#: tui/screens/tracks.py:140
+#: tui/screens/wizard.py:152
 msgid "Home"
 msgstr ""
 
 #. "Dolby V." is short for Dolby Vision; keep it short.
-#: tui/common.py:528
-#: tui/screens/browser.py:277
-#: tui/screens/browser.py:378
-#: tui/screens/browser.py:503
-#: tui/screens/tracks.py:130
+#: tui/common.py:551
+#: tui/screens/browser.py:279
+#: tui/screens/browser.py:386
+#: tui/screens/browser.py:517
+#: tui/screens/tracks.py:131
 msgid "Profile"
 msgstr ""
 
 #. "Dolby V." is short for Dolby Vision; keep it short.
-#: tui/common.py:528
+#: tui/common.py:551
 msgid "Dolby V."
 msgstr ""
 
-#: tui/common.py:529
+#: tui/common.py:552
 #: tui/widgets/profile_form.py:260
 msgid "Preset"
 msgstr ""
 
-#: tui/common.py:529
-#: tui/screens/browser.py:587
+#: tui/common.py:552
+#: tui/screens/browser.py:601
 msgid "HD audio"
 msgstr ""
 
-#: tui/common.py:529
+#: tui/common.py:552
 #: tui/screens/sync.py:292
-#: tui/screens/tracks.py:145
+#: tui/screens/tracks.py:146
 msgid "Source"
 msgstr ""
 
 #. profile column Source — "del." = the source is deleted after encoding (keep it short), "keep" = it is kept.
 #. column Actions of the profile list; keep it short.
-#: tui/common.py:557
-#: tui/screens/config.py:123
+#: tui/common.py:580
+#: tui/screens/config.py:129
 msgctxt "source file"
 msgid "del."
 msgstr ""
 
-#: tui/common.py:559
-#: tui/screens/tracks.py:432
-#: tui/screens/tracks.py:438
-#: tui/screens/tracks.py:711
+#: tui/common.py:582
+#: tui/screens/tracks.py:433
+#: tui/screens/tracks.py:439
+#: tui/screens/tracks.py:712
 msgctxt "source file"
 msgid "keep"
 msgstr ""
@@ -1656,8 +1681,8 @@ msgstr ""
 
 #. {key_mode} is the home screen key that turns guided mode on.
 #: tui/screens/aide.py:296
-#: tui/screens/browser.py:480
-#: tui/screens/browser.py:569
+#: tui/screens/browser.py:494
+#: tui/screens/browser.py:583
 msgid "Guided"
 msgstr ""
 
@@ -1667,8 +1692,8 @@ msgid "One file, five steps. Turned on by {key_mode} from the Home screen."
 msgstr ""
 
 #: tui/screens/aide.py:299
-#: tui/screens/browser.py:264
-#: tui/screens/browser.py:457
+#: tui/screens/browser.py:266
+#: tui/screens/browser.py:471
 #: tui/screens/join.py:39
 msgid "Tracks"
 msgstr ""
@@ -1687,14 +1712,14 @@ msgid "Add a track from another file, and put it back in time."
 msgstr ""
 
 #: tui/screens/aide.py:303
-#: tui/screens/browser.py:275
-#: tui/screens/browser.py:376
-#: tui/screens/browser.py:502
-#: tui/screens/browser.py:1273
-#: tui/screens/dryrun.py:291
+#: tui/screens/browser.py:277
+#: tui/screens/browser.py:384
+#: tui/screens/browser.py:516
+#: tui/screens/browser.py:1301
+#: tui/screens/dryrun.py:295
 #: tui/screens/mux_run.py:43
 #: tui/screens/sync.py:193
-#: tui/screens/tracks.py:128
+#: tui/screens/tracks.py:129
 msgid "Dry run"
 msgstr ""
 
@@ -1703,7 +1728,7 @@ msgid "What would be done, without doing anything."
 msgstr ""
 
 #: tui/screens/aide.py:305
-#: tui/screens/run.py:340
+#: tui/screens/run.py:349
 msgid "Encoding"
 msgstr ""
 
@@ -1740,22 +1765,22 @@ msgid "Create and set up the encoding profiles."
 msgstr ""
 
 #: tui/screens/aide.py:379
-#: tui/screens/browser.py:288
-#: tui/screens/wizard.py:77
-#: tui/screens/wizard.py:297
+#: tui/screens/browser.py:290
+#: tui/screens/wizard.py:78
+#: tui/screens/wizard.py:298
 msgid "Decision"
 msgstr ""
 
 #: tui/screens/aide.py:380
-#: tui/screens/tracks.py:431
-#: tui/screens/tracks.py:435
-#: tui/screens/tracks.py:710
+#: tui/screens/tracks.py:432
+#: tui/screens/tracks.py:436
+#: tui/screens/tracks.py:711
 msgctxt "source file"
 msgid "delete"
 msgstr ""
 
 #: tui/screens/aide.py:382
-#: tui/screens/wizard.py:79
+#: tui/screens/wizard.py:80
 msgid "Launch"
 msgstr ""
 
@@ -1797,17 +1822,17 @@ msgstr ""
 
 #: tui/screens/ancrage.py:64
 #: tui/screens/ancrage.py:89
-#: tui/screens/config.py:260
+#: tui/screens/config.py:271
 #: tui/screens/confirm.py:72
 #: tui/screens/confirm.py:73
 #: tui/screens/confirm.py:92
 #: tui/screens/confirm.py:110
-#: tui/screens/donor_picker.py:121
-#: tui/screens/donor_picker.py:142
-#: tui/screens/donor_picker.py:236
-#: tui/screens/donor_picker.py:253
+#: tui/screens/donor_picker.py:126
+#: tui/screens/donor_picker.py:148
+#: tui/screens/donor_picker.py:243
+#: tui/screens/donor_picker.py:260
 #: tui/screens/opensubtitles.py:56
-#: tui/screens/opensubtitles.py:74
+#: tui/screens/opensubtitles.py:78
 #: tui/screens/options.py:64
 #: tui/screens/options.py:116
 #: tui/screens/output_dir.py:55
@@ -1824,9 +1849,9 @@ msgstr ""
 #: tui/screens/ancrage.py:88
 #: tui/screens/confirm.py:76
 #: tui/screens/confirm.py:109
-#: tui/screens/donor_picker.py:235
-#: tui/screens/donor_picker.py:252
-#: tui/screens/tracks.py:127
+#: tui/screens/donor_picker.py:242
+#: tui/screens/donor_picker.py:259
+#: tui/screens/tracks.py:128
 msgid "OK"
 msgstr ""
 
@@ -1880,372 +1905,372 @@ msgstr ""
 msgid "More than five minutes away from {time} — check the time before confirming."
 msgstr ""
 
-#: tui/screens/browser.py:229
+#: tui/screens/browser.py:231
 #, python-brace-format
 msgid "All files ({count})"
 msgstr ""
 
-#: tui/screens/browser.py:231
+#: tui/screens/browser.py:233
 #, python-brace-format
 msgid "Dolby Vision, all profiles ({count})"
 msgstr ""
 
-#: tui/screens/browser.py:235
+#: tui/screens/browser.py:237
 #, python-brace-format
 msgid "HDR10 / HLG, without DV ({count})"
 msgstr ""
 
-#: tui/screens/browser.py:256
-#: tui/screens/browser.py:452
-#: tui/screens/donor_picker.py:234
-#: tui/screens/dryrun.py:88
-#: tui/screens/tracks.py:122
+#: tui/screens/browser.py:258
+#: tui/screens/browser.py:466
+#: tui/screens/donor_picker.py:241
+#: tui/screens/dryrun.py:89
+#: tui/screens/tracks.py:123
 msgid "Toggle"
 msgstr ""
 
-#: tui/screens/browser.py:257
-#: tui/screens/browser.py:453
+#: tui/screens/browser.py:259
+#: tui/screens/browser.py:467
 msgid "All"
 msgstr ""
 
-#: tui/screens/browser.py:258
-#: tui/screens/browser.py:454
+#: tui/screens/browser.py:260
+#: tui/screens/browser.py:468
 msgid "None"
 msgstr ""
 
-#: tui/screens/browser.py:259
-#: tui/screens/browser.py:455
-#: tui/screens/donor_picker.py:118
-#: tui/screens/donor_picker.py:139
+#: tui/screens/browser.py:261
+#: tui/screens/browser.py:469
+#: tui/screens/donor_picker.py:123
+#: tui/screens/donor_picker.py:145
 #: tui/screens/output_dir.py:53
 #: tui/screens/output_dir.py:73
 msgid "Open"
 msgstr ""
 
-#: tui/screens/browser.py:260
-#: tui/screens/browser.py:465
-#: tui/screens/donor_picker.py:119
-#: tui/screens/donor_picker.py:140
+#: tui/screens/browser.py:262
+#: tui/screens/browser.py:479
+#: tui/screens/donor_picker.py:124
+#: tui/screens/donor_picker.py:146
 #: tui/screens/output_dir.py:54
 #: tui/screens/output_dir.py:74
 msgid "Up"
 msgstr ""
 
-#: tui/screens/browser.py:265
-#: tui/screens/browser.py:456
+#: tui/screens/browser.py:267
+#: tui/screens/browser.py:470
 msgid "Mode"
 msgstr ""
 
-#: tui/screens/browser.py:266
-#: tui/screens/browser.py:458
+#: tui/screens/browser.py:268
+#: tui/screens/browser.py:472
 #: tui/screens/sync.py:141
 #: tui/screens/sync.py:179
 msgid "Play"
 msgstr ""
 
-#: tui/screens/browser.py:269
-#: tui/screens/browser.py:459
+#: tui/screens/browser.py:271
+#: tui/screens/browser.py:473
 #: tui/screens/recursive_confirm.py:27
 msgid "Encode the folder"
 msgstr ""
 
-#: tui/screens/browser.py:270
-#: tui/screens/browser.py:460
+#: tui/screens/browser.py:272
+#: tui/screens/browser.py:474
 msgid "Join parts"
 msgstr ""
 
-#: tui/screens/browser.py:271
-#: tui/screens/browser.py:461
+#: tui/screens/browser.py:273
+#: tui/screens/browser.py:475
 msgid "Info"
 msgstr ""
 
-#: tui/screens/browser.py:272
-#: tui/screens/browser.py:462
+#: tui/screens/browser.py:274
+#: tui/screens/browser.py:476
 #: tui/screens/config.py:54
 #: tui/screens/config.py:55
-#: tui/screens/config.py:215
+#: tui/screens/config.py:226
 #: tui/screens/delete_confirm.py:42
 msgid "Delete"
 msgstr ""
 
-#: tui/screens/browser.py:273
-#: tui/screens/browser.py:463
+#: tui/screens/browser.py:275
+#: tui/screens/browser.py:477
 msgid "Filter"
 msgstr ""
 
-#: tui/screens/browser.py:274
-#: tui/screens/browser.py:464
-#: tui/screens/browser.py:481
+#: tui/screens/browser.py:276
+#: tui/screens/browser.py:478
+#: tui/screens/browser.py:495
 msgid "Hide SKIP"
 msgstr ""
 
-#: tui/screens/browser.py:276
-#: tui/screens/browser.py:377
-#: tui/screens/browser.py:502
-#: tui/screens/browser.py:1281
-#: tui/screens/dryrun.py:91
+#: tui/screens/browser.py:278
+#: tui/screens/browser.py:385
+#: tui/screens/browser.py:516
+#: tui/screens/browser.py:1309
+#: tui/screens/dryrun.py:92
 #: tui/screens/mux_run.py:44
 #: tui/screens/sync.py:194
-#: tui/screens/tracks.py:129
-#: tui/screens/wizard.py:147
+#: tui/screens/tracks.py:130
+#: tui/screens/wizard.py:148
 msgid "Encode"
 msgstr ""
 
-#: tui/screens/browser.py:278
-#: tui/screens/browser.py:379
-#: tui/screens/browser.py:503
+#: tui/screens/browser.py:280
+#: tui/screens/browser.py:387
+#: tui/screens/browser.py:517
 msgid "Manage"
 msgstr ""
 
-#: tui/screens/browser.py:284
-#: tui/screens/donor_picker.py:146
-#: tui/screens/dryrun.py:106
+#: tui/screens/browser.py:286
+#: tui/screens/donor_picker.py:152
+#: tui/screens/dryrun.py:107
 #: tui/screens/join.py:39
-#: tui/screens/run.py:261
-#: tui/screens/wizard.py:76
+#: tui/screens/run.py:270
+#: tui/screens/wizard.py:77
 msgid "File"
 msgstr ""
 
-#: tui/screens/browser.py:284
-#: tui/screens/donor_picker.py:147
-#: tui/screens/dryrun.py:107
+#: tui/screens/browser.py:286
+#: tui/screens/donor_picker.py:153
+#: tui/screens/dryrun.py:108
 msgid "Size"
 msgstr ""
 
 #. column header, short for "Resolution".
-#: tui/screens/browser.py:286
+#: tui/screens/browser.py:288
 msgid "Res."
 msgstr ""
 
-#: tui/screens/browser.py:287
-#: tui/screens/dryrun.py:108
+#: tui/screens/browser.py:289
+#: tui/screens/dryrun.py:109
 #: tui/screens/join.py:39
 #: tui/screens/segments.py:24
 msgid "Duration"
 msgstr ""
 
-#: tui/screens/browser.py:287
-#: tui/screens/dryrun.py:93
-#: tui/screens/tracks.py:132
-#: tui/screens/wizard.py:143
+#: tui/screens/browser.py:289
+#: tui/screens/dryrun.py:94
+#: tui/screens/tracks.py:133
+#: tui/screens/wizard.py:144
 msgid "Bitrate"
 msgstr ""
 
-#: tui/screens/browser.py:287
-#: tui/screens/donor_picker.py:263
-#: tui/screens/dryrun.py:92
-#: tui/screens/dryrun.py:388
-#: tui/screens/tracks.py:131
-#: tui/screens/tracks.py:145
-#: tui/screens/tracks.py:684
-#: tui/screens/wizard.py:142
-#: tui/screens/wizard.py:294
-#: tui/screens/wizard.py:493
+#: tui/screens/browser.py:289
+#: tui/screens/donor_picker.py:270
+#: tui/screens/dryrun.py:93
+#: tui/screens/dryrun.py:392
+#: tui/screens/tracks.py:132
+#: tui/screens/tracks.py:146
+#: tui/screens/tracks.py:685
+#: tui/screens/wizard.py:143
+#: tui/screens/wizard.py:295
+#: tui/screens/wizard.py:494
 msgid "Codec"
 msgstr ""
 
 #. estimated output size and its change; keep it short.
-#: tui/screens/browser.py:289
-#: tui/screens/dryrun.py:110
+#: tui/screens/browser.py:291
+#: tui/screens/dryrun.py:111
 msgid "Est. (Δ%)"
 msgstr ""
 
-#: tui/screens/browser.py:290
-#: tui/screens/tracks.py:71
+#: tui/screens/browser.py:292
+#: tui/screens/tracks.py:72
 msgid "Audio"
 msgstr ""
 
-#: tui/screens/browser.py:366
+#: tui/screens/browser.py:374
 msgid "Analyzing…"
 msgstr ""
 
-#: tui/screens/browser.py:421
+#: tui/screens/browser.py:435
 msgid "Volume"
 msgstr ""
 
-#: tui/screens/browser.py:422
+#: tui/screens/browser.py:436
 msgid "Free space"
 msgstr ""
 
-#: tui/screens/browser.py:423
+#: tui/screens/browser.py:437
 msgid "Total"
 msgstr ""
 
-#: tui/screens/browser.py:424
+#: tui/screens/browser.py:438
 msgid "Used"
 msgstr ""
 
-#: tui/screens/browser.py:449
+#: tui/screens/browser.py:463
 msgid "Open the volume"
 msgstr ""
 
-#: tui/screens/browser.py:480
-#: tui/screens/browser.py:569
+#: tui/screens/browser.py:494
+#: tui/screens/browser.py:583
 msgid "Manual"
 msgstr ""
 
-#: tui/screens/browser.py:481
+#: tui/screens/browser.py:495
 msgid "Show SKIP"
 msgstr ""
 
-#: tui/screens/browser.py:525
+#: tui/screens/browser.py:539
 msgid "Choose a volume"
 msgstr ""
 
-#: tui/screens/browser.py:526
+#: tui/screens/browser.py:540
 #, python-brace-format
 msgid "{count} volume"
 msgid_plural "{count} volumes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:534
+#: tui/screens/browser.py:548
 msgid "without SKIP"
 msgstr ""
 
-#: tui/screens/browser.py:535
+#: tui/screens/browser.py:549
 #, python-brace-format
 msgid "{count} hidden"
 msgid_plural "{count} hidden"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:539
+#: tui/screens/browser.py:553
 #, python-brace-format
 msgid "{selected}/{total} selected"
 msgid_plural "{selected}/{total} selected"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:541
+#: tui/screens/browser.py:555
 #, python-brace-format
 msgid "Filter: {filter} ({hidden})"
 msgstr ""
 
-#: tui/screens/browser.py:543
-#: tui/screens/dryrun.py:293
-#: tui/screens/tracks.py:485
+#: tui/screens/browser.py:557
+#: tui/screens/dryrun.py:297
+#: tui/screens/tracks.py:486
 #, python-brace-format
 msgid "Col: {column}"
 msgstr ""
 
-#: tui/screens/browser.py:559
+#: tui/screens/browser.py:573
 #, python-brace-format
 msgid "4K: {value}"
 msgstr ""
 
 #. the profile deletes the source files; shown in capitals.
-#: tui/screens/browser.py:591
+#: tui/screens/browser.py:605
 msgid "Deletion"
 msgstr ""
 
-#: tui/screens/browser.py:662
+#: tui/screens/browser.py:676
 msgid "All files are hidden"
 msgstr ""
 
-#: tui/screens/browser.py:663
+#: tui/screens/browser.py:677
 #, python-brace-format
 msgid "{filter_key} filter, {skip_key} SKIP"
 msgstr ""
 
-#: tui/screens/browser.py:666
+#: tui/screens/browser.py:680
 msgid "No video file in this folder"
 msgstr ""
 
-#: tui/screens/browser.py:667
+#: tui/screens/browser.py:681
 #, python-brace-format
 msgid "{key} to go up"
 msgstr ""
 
-#: tui/screens/browser.py:785
+#: tui/screens/browser.py:799
 #, python-brace-format
 msgid "{file} did not need re-encoding: checked, it will be encoded ({video}, source bitrate)."
 msgstr ""
 
-#: tui/screens/browser.py:789
+#: tui/screens/browser.py:803
 #, python-brace-format
 msgid "Checked lines not re-encoded by default: {count}. They will be encoded at their source bitrate."
 msgstr ""
 
-#: tui/screens/browser.py:805
+#: tui/screens/browser.py:819
 msgid "This disc is encrypted (AACS or CSS): IRIS ENCODE cannot read it. Decrypt it first, then open the decrypted copy."
 msgstr ""
 
-#: tui/screens/browser.py:811
+#: tui/screens/browser.py:825
 msgid "Reading a DVD's titles needs the DVD tool (an ffmpeg with libdvdnav). Restart IRIS ENCODE and accept its installation. VIDEO_TS still shows the VOB files."
 msgstr ""
 
-#: tui/screens/browser.py:825
-#: tui/screens/browser.py:853
-#: tui/screens/browser.py:1359
+#: tui/screens/browser.py:839
+#: tui/screens/browser.py:874
+#: tui/screens/browser.py:1423
 #, python-brace-format
 msgid "Analyzing… {done} / {total}"
 msgstr ""
 
-#: tui/screens/browser.py:968
-#: tui/screens/sync.py:937
+#: tui/screens/browser.py:989
+#: tui/screens/sync.py:933
 msgid "mpv missing — run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/browser.py:975
+#: tui/screens/browser.py:996
 #, python-brace-format
 msgid "Cannot play: {error}"
 msgstr ""
 
-#: tui/screens/browser.py:993
+#: tui/screens/browser.py:1014
 msgid "A disc title cannot be deleted from here: its files belong to the disc."
 msgstr ""
 
-#: tui/screens/browser.py:998
+#: tui/screens/browser.py:1019
 #, python-brace-format
 msgid "{file} is in the encoding queue: it cannot be deleted now."
 msgstr ""
 
-#: tui/screens/browser.py:1017
+#: tui/screens/browser.py:1038
 #, python-brace-format
 msgid "Cannot delete: {error}"
 msgstr ""
 
-#: tui/screens/browser.py:1150
+#: tui/screens/browser.py:1171
 msgid "Picture type"
 msgstr ""
 
-#: tui/screens/browser.py:1169
+#: tui/screens/browser.py:1190
 #, python-brace-format
 msgid "Guided mode — {key} opens the guided path, one file at a time."
 msgstr ""
 
-#: tui/screens/browser.py:1172
+#: tui/screens/browser.py:1193
 #, python-brace-format
 msgid "Manual mode — {key} opens the Tracks screen."
 msgstr ""
 
-#: tui/screens/browser.py:1252
+#: tui/screens/browser.py:1280
 #, python-brace-format
 msgid "{action}: first enter a volume, then check files ({key})."
 msgstr ""
 
-#: tui/screens/browser.py:1255
+#: tui/screens/browser.py:1283
 #, python-brace-format
 msgid "{action}: no file checked — {key} checks the line, {all_key} checks everything."
 msgstr ""
 
-#: tui/screens/browser.py:1312
+#: tui/screens/browser.py:1376
 #, python-brace-format
 msgid "Join: check at least {count} parts ({key})."
 msgstr ""
 
-#: tui/screens/browser.py:1354
+#: tui/screens/browser.py:1418
 #, python-brace-format
 msgid "Recursive scan of {folder}…"
 msgstr ""
 
-#: tui/screens/browser.py:1371
+#: tui/screens/browser.py:1435
 msgid "No file to encode in this folder."
 msgstr ""
 
 #: tui/screens/cles.py:69
-#: tui/screens/config.py:259
+#: tui/screens/config.py:270
 #: tui/screens/options.py:63
 #: tui/screens/options.py:115
 #: tui/widgets/profile_form.py:210
@@ -2287,7 +2312,7 @@ msgstr ""
 #: tui/screens/cles.py:120
 #: tui/screens/options.py:114
 #: tui/screens/sync.py:157
-#: tui/screens/tracks.py:124
+#: tui/screens/tracks.py:125
 #: tui/widgets/profile_form.py:206
 msgid "Next field"
 msgstr ""
@@ -2341,64 +2366,74 @@ msgid "Options"
 msgstr ""
 
 #: tui/screens/config.py:101
-#: tui/screens/config.py:256
+#: tui/screens/config.py:267
 msgid "New profile"
 msgstr ""
 
-#: tui/screens/config.py:120
+#: tui/screens/config.py:113
+#, python-brace-format
+msgid "profiles.toml unreadable ({error}): changes made here last for this session only."
+msgstr ""
+
+#: tui/screens/config.py:126
 msgid "Actions"
 msgstr ""
 
 #. column Actions of the profile list; keep it short.
-#: tui/screens/config.py:123
+#: tui/screens/config.py:129
 msgid "edit"
 msgstr ""
 
-#: tui/screens/config.py:147
+#: tui/screens/config.py:158
 msgid "Manage profiles"
 msgstr ""
 
-#: tui/screens/config.py:148
+#: tui/screens/config.py:159
 #, python-brace-format
 msgid "Active: {profile}"
 msgstr ""
 
-#: tui/screens/config.py:203
+#: tui/screens/config.py:214
 #, python-brace-format
 msgid "[{profile}] is the last profile — cannot be deleted"
 msgstr ""
 
-#: tui/screens/config.py:210
+#: tui/screens/config.py:221
 #, python-brace-format
 msgid "Profile [{profile}] deleted"
 msgstr ""
 
-#: tui/screens/config.py:213
+#: tui/screens/config.py:224
 #, python-brace-format
 msgid "Delete the profile [{profile}]?"
 msgstr ""
 
-#: tui/screens/config.py:214
+#: tui/screens/config.py:225
 msgid "The profile will be removed from profiles.toml for good."
 msgstr ""
 
-#: tui/screens/config.py:255
+#: tui/screens/config.py:266
 #, python-brace-format
 msgid "Copy of {profile}"
 msgstr ""
 
-#: tui/screens/config.py:257
+#: tui/screens/config.py:268
 #, python-brace-format
 msgid "Editing — {profile}"
 msgstr ""
 
-#: tui/screens/config.py:317
+#: tui/screens/config.py:328
 msgid "Configuration — Encoding profiles"
 msgstr ""
 
-#: tui/screens/config.py:318
+#: tui/screens/config.py:329
 #, python-brace-format
 msgid "Profile [{profile}] saved and active"
+msgstr ""
+
+#: tui/screens/config.py:350
+#, python-brace-format
+msgid "Profiles not saved, kept for this session only: {error}"
 msgstr ""
 
 #: tui/screens/confirm.py:91
@@ -2443,106 +2478,106 @@ msgstr ""
 msgid "Delete the file"
 msgstr ""
 
-#: tui/screens/donor_picker.py:61
-msgid "Tracks cannot be added to a DVD title: encode it, then add them to the output."
+#: tui/screens/donor_picker.py:60
+msgid "Tracks cannot be added to this disc title before it is assembled: encode it, then add them to the output."
 msgstr ""
 
-#: tui/screens/donor_picker.py:135
+#: tui/screens/donor_picker.py:141
 msgid "Donor file"
 msgstr ""
 
-#: tui/screens/donor_picker.py:248
+#: tui/screens/donor_picker.py:255
 msgid "Donor tracks"
 msgstr ""
 
-#: tui/screens/donor_picker.py:251
+#: tui/screens/donor_picker.py:258
 msgid "Select"
 msgstr ""
 
-#: tui/screens/donor_picker.py:261
+#: tui/screens/donor_picker.py:268
 #: tui/screens/sync.py:293
-#: tui/screens/tracks.py:259
-#: tui/screens/wizard.py:293
+#: tui/screens/tracks.py:260
+#: tui/screens/wizard.py:294
 msgid "Track"
 msgstr ""
 
-#: tui/screens/donor_picker.py:262
+#: tui/screens/donor_picker.py:269
 #: tui/screens/meta_popup.py:188
 msgid "Type"
 msgstr ""
 
-#: tui/screens/donor_picker.py:264
-#: tui/screens/opensubtitles.py:80
+#: tui/screens/donor_picker.py:271
+#: tui/screens/opensubtitles.py:84
 #: tui/screens/sync.py:58
-#: tui/screens/tracks.py:262
-#: tui/screens/wizard.py:295
+#: tui/screens/tracks.py:263
+#: tui/screens/wizard.py:296
 msgid "Language"
 msgstr ""
 
-#: tui/screens/donor_picker.py:265
+#: tui/screens/donor_picker.py:272
 #: tui/screens/sync.py:59
-#: tui/screens/wizard.py:296
+#: tui/screens/wizard.py:297
 msgid "Name"
 msgstr ""
 
-#: tui/screens/donor_picker.py:268
+#: tui/screens/donor_picker.py:275
 msgid "no readable track"
 msgstr ""
 
-#: tui/screens/dryrun.py:112
-#: tui/screens/run.py:261
+#: tui/screens/dryrun.py:113
+#: tui/screens/run.py:270
 msgid "Action"
 msgstr ""
 
-#: tui/screens/dryrun.py:113
+#: tui/screens/dryrun.py:114
 #: tui/widgets/profile_form.py:298
 msgid "Container"
 msgstr ""
 
-#: tui/screens/dryrun.py:116
+#: tui/screens/dryrun.py:117
 msgid "Resolution"
 msgstr ""
 
-#: tui/screens/dryrun.py:187
+#: tui/screens/dryrun.py:191
 msgid "deinterlaced"
 msgstr ""
 
 #. "st" = subtitle track(s) left out; keep it short.
-#: tui/screens/dryrun.py:200
+#: tui/screens/dryrun.py:204
 msgid "st"
 msgstr ""
 
-#: tui/screens/dryrun.py:282
+#: tui/screens/dryrun.py:286
 #, python-brace-format
 msgid "Source: {size}"
 msgstr ""
 
-#: tui/screens/dryrun.py:283
+#: tui/screens/dryrun.py:287
 #, python-brace-format
 msgid "Estimated: {size}"
 msgstr ""
 
-#: tui/screens/dryrun.py:291
+#: tui/screens/dryrun.py:295
 #, python-brace-format
 msgid "{count} file selected"
 msgid_plural "{count} files selected"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/dryrun.py:296
+#: tui/screens/dryrun.py:300
 #, python-brace-format
 msgid "To encode: {counts}"
 msgstr ""
 
-#: tui/screens/dryrun.py:357
+#: tui/screens/dryrun.py:361
 msgid "Chosen in the dry run"
 msgstr ""
 
-#: tui/screens/dryrun.py:367
+#: tui/screens/dryrun.py:371
 msgid "Bitrate chosen in the dry run"
 msgstr ""
 
-#: tui/screens/dryrun.py:418
+#: tui/screens/dryrun.py:422
 #, python-brace-format
 msgid "Nothing to encode: no kept line needs re-encoding — {space} keeps a line, {codec_key} changes the codec of a SKIP line."
 msgstr ""
@@ -2562,12 +2597,12 @@ msgid "{action} in {seconds} s"
 msgstr ""
 
 #: tui/screens/join.py:57
-#: tui/screens/run.py:82
+#: tui/screens/run.py:91
 msgid "Move up"
 msgstr ""
 
 #: tui/screens/join.py:58
-#: tui/screens/run.py:83
+#: tui/screens/run.py:92
 msgid "Move down"
 msgstr ""
 
@@ -2657,32 +2692,32 @@ msgstr[1] ""
 msgid "Join — {percent}%"
 msgstr ""
 
-#: tui/screens/join.py:321
+#: tui/screens/join.py:322
 #, python-brace-format
 msgid "Join failed: {detail}"
 msgstr ""
 
-#: tui/screens/join.py:340
+#: tui/screens/join.py:341
 #, python-brace-format
 msgid "Join done — {file}, but cannot be read back ({error}): check its duration before encoding it."
 msgstr ""
 
 #. {expected} is a duration ("1:52:10").
-#: tui/screens/join.py:347
+#: tui/screens/join.py:348
 #, python-brace-format
 msgid "{file} lasts {duration}, {expected} expected ({gap} s)."
 msgstr ""
 
-#: tui/screens/join.py:351
+#: tui/screens/join.py:352
 msgid "The join may be incomplete — check it before encoding it."
 msgstr ""
 
-#: tui/screens/join.py:354
+#: tui/screens/join.py:355
 #, python-brace-format
 msgid "Done — {file}, {duration}. The parts are kept."
 msgstr ""
 
-#: tui/screens/join.py:356
+#: tui/screens/join.py:357
 #, python-brace-format
 msgid "{key} goes back to the folder, where the file can be handled like any other."
 msgstr ""
@@ -2776,76 +2811,76 @@ msgstr ""
 msgid "Mux started — copying the container…"
 msgstr ""
 
-#: tui/screens/mux_run.py:177
+#: tui/screens/mux_run.py:180
 #, python-brace-format
 msgid "Mux failed: {detail}"
 msgstr ""
 
-#: tui/screens/mux_run.py:194
+#: tui/screens/mux_run.py:197
 #, python-brace-format
 msgid "Mux succeeded ({file}) but cannot be read back: {error}. Encoding would target the original file."
 msgstr ""
 
-#: tui/screens/mux_run.py:213
+#: tui/screens/mux_run.py:216
 #, python-brace-format
 msgid "Done — {file}"
 msgstr ""
 
-#: tui/screens/mux_run.py:215
+#: tui/screens/mux_run.py:218
 #, python-brace-format
 msgid "Working file: {file}"
 msgstr ""
 
-#: tui/screens/mux_run.py:216
+#: tui/screens/mux_run.py:219
 #, python-brace-format
 msgid "{key} will encode this file  {decision}"
 msgstr ""
 
-#: tui/screens/mux_run.py:227
+#: tui/screens/mux_run.py:230
 msgid "Mux in progress…"
 msgstr ""
 
-#: tui/screens/mux_run.py:228
+#: tui/screens/mux_run.py:231
 msgid "Mux failed — nothing to encode."
 msgstr ""
 
 #: tui/screens/opensubtitles.py:55
-#: tui/screens/opensubtitles.py:73
+#: tui/screens/opensubtitles.py:77
 msgid "Download"
 msgstr ""
 
 #. column header, short for "downloads"; 8 characters at most.
-#: tui/screens/opensubtitles.py:82
+#: tui/screens/opensubtitles.py:86
 msgid "Downl."
 msgstr ""
 
 #. column header, subtitles for the deaf and hard of hearing (French: SME); 4 characters at most.
-#: tui/screens/opensubtitles.py:85
+#: tui/screens/opensubtitles.py:89
 msgid "SDH"
 msgstr ""
 
-#: tui/screens/opensubtitles.py:87
+#: tui/screens/opensubtitles.py:91
 #, python-brace-format
 msgid "Searching for {file}…"
 msgstr ""
 
-#: tui/screens/opensubtitles.py:121
+#: tui/screens/opensubtitles.py:126
 msgid "No subtitle found in the profile's languages."
 msgstr ""
 
 #. ≡ marks the results made for this exact release.
-#: tui/screens/opensubtitles.py:124
+#: tui/screens/opensubtitles.py:129
 #, python-brace-format
 msgid "{count} result, {exact} for this exact release (≡, already in sync)."
 msgid_plural "{count} results, {exact} for this exact release (≡, already in sync)."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/opensubtitles.py:140
+#: tui/screens/opensubtitles.py:145
 msgid "Downloading…"
 msgstr ""
 
-#: tui/screens/opensubtitles.py:153
+#: tui/screens/opensubtitles.py:159
 #, python-brace-format
 msgid "Subtitle downloaded — {count} left today."
 msgid_plural "Subtitle downloaded — {count} left today."
@@ -2952,432 +2987,450 @@ msgstr ""
 msgid "Start the scan"
 msgstr ""
 
-#: tui/screens/run.py:73
+#: tui/screens/run.py:82
 msgid "Pause / Resume"
 msgstr ""
 
-#: tui/screens/run.py:74
+#: tui/screens/run.py:83
 msgid "Skip the file"
 msgstr ""
 
-#: tui/screens/run.py:75
+#: tui/screens/run.py:84
 msgid "Stop all"
 msgstr ""
 
-#: tui/screens/run.py:79
+#: tui/screens/run.py:88
 msgid "After the batch"
 msgstr ""
 
-#: tui/screens/run.py:84
+#: tui/screens/run.py:93
 #: tui/screens/sync.py:144
 #: tui/screens/sync.py:190
-#: tui/screens/wizard.py:145
+#: tui/screens/wizard.py:146
 msgid "Remove"
 msgstr ""
 
-#: tui/screens/run.py:206
+#: tui/screens/run.py:215
 msgid "Overall"
 msgstr ""
 
-#: tui/screens/run.py:264
+#: tui/screens/run.py:273
 msgid "State"
 msgstr ""
 
-#: tui/screens/run.py:274
-#: tui/screens/run.py:309
+#: tui/screens/run.py:283
+#: tui/screens/run.py:318
 msgid "pending"
 msgstr ""
 
-#: tui/screens/run.py:295
+#: tui/screens/run.py:304
 msgid "running…"
 msgstr ""
 
-#: tui/screens/run.py:312
+#: tui/screens/run.py:321
 msgid "done"
 msgstr ""
 
-#: tui/screens/run.py:313
+#: tui/screens/run.py:322
 #, python-brace-format
 msgid "failed: {error}"
 msgstr ""
 
-#: tui/screens/run.py:315
+#: tui/screens/run.py:324
 msgid "skipped"
 msgstr ""
 
-#: tui/screens/run.py:337
+#: tui/screens/run.py:346
 #, python-brace-format
 msgid "After the batch: {action}"
 msgstr ""
 
-#: tui/screens/run.py:341
+#: tui/screens/run.py:350
 #, python-brace-format
 msgid "{count} file"
 msgid_plural "{count} files"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/run.py:342
+#: tui/screens/run.py:351
 #, python-brace-format
 msgid "{done}/{total} done"
 msgid_plural "{done}/{total} done"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/run.py:344
+#: tui/screens/run.py:353
 #, python-brace-format
 msgid "Overall: {percent}%"
 msgstr ""
 
-#: tui/screens/run.py:423
+#: tui/screens/run.py:438
 msgid "Dolby Vision: single-clip titles only"
 msgstr ""
 
-#: tui/screens/run.py:424
+#: tui/screens/run.py:439
 #, python-brace-format
 msgid "This Blu-ray title spans {count} clips: its Dolby Vision cannot be kept. Choose a re-encode without Dolby Vision in guided mode."
 msgstr ""
 
-#: tui/screens/run.py:498
+#: tui/screens/run.py:512
 #, python-brace-format
 msgid "{encoder} unavailable here"
 msgstr ""
 
-#: tui/screens/run.py:502
+#: tui/screens/run.py:516
 #, python-brace-format
 msgid "This machine cannot encode with “{encoder}” — probed at startup. AV1 through NVENC needs an RTX 40 or newer; HEVC and H264 remain available."
 msgstr ""
 
-#: tui/screens/run.py:519
+#: tui/screens/run.py:531
 msgid "Encoding started, initializing…"
 msgstr ""
 
-#: tui/screens/run.py:564
+#: tui/screens/run.py:576
 #, python-brace-format
 msgid "Empty audio track in the output: {tracks}. The encode nevertheless finished without error. The file is unusable as it is, and this case is outside the known scope — please report it."
 msgstr ""
 
-#: tui/screens/run.py:621
+#: tui/screens/run.py:633
 #, python-brace-format
 msgid "ffmpeg: {detail}"
 msgstr ""
 
-#: tui/screens/run.py:649
+#: tui/screens/run.py:685
 msgid "Audio tracks prepared separately — see the release notes…"
 msgstr ""
 
-#: tui/screens/run.py:665
+#: tui/screens/run.py:701
 #, python-brace-format
 msgid "audio preparation: code {code}"
 msgstr ""
 
-#: tui/screens/run.py:666
+#: tui/screens/run.py:702
 #, python-brace-format
 msgid "Preparing the audio tracks failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:694
+#: tui/screens/run.py:730
 msgid "subtitles: preparation failed"
 msgstr ""
 
-#: tui/screens/run.py:704
+#: tui/screens/run.py:740
 msgid "Reading the subtitles — a long silence skews their timings in MP4…"
 msgstr ""
 
-#: tui/screens/run.py:718
+#: tui/screens/run.py:754
 #, python-brace-format
 msgid "Extracting the subtitles failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:735
+#: tui/screens/run.py:771
 #, python-brace-format
 msgid "Grouping the subtitles failed: {detail}"
 msgstr ""
 
-#: tui/screens/run.py:762
-#: tui/screens/run.py:997
+#: tui/screens/run.py:798
+#: tui/screens/run.py:1037
 msgid "dovi_tool + mkvmerge required"
 msgstr ""
 
-#: tui/screens/run.py:763
+#: tui/screens/run.py:799
 msgid "Removing Dolby Vision needs dovi_tool and mkvmerge. Run the preflight again to install them."
 msgstr ""
 
-#: tui/screens/run.py:783
+#: tui/screens/run.py:819
 msgid "ffmpeg 7.1+ required (dovi_rpu filter)"
 msgstr ""
 
-#: tui/screens/run.py:784
+#: tui/screens/run.py:820
 msgid "Removing Dolby Vision to MP4 needs the dovi_rpu filter, which came with ffmpeg 7.1. Update ffmpeg from the preflight."
 msgstr ""
 
-#: tui/screens/run.py:803
+#: tui/screens/run.py:839
 msgid "Extracting the HEVC stream — copy, no re-encoding…"
 msgstr ""
 
-#: tui/screens/run.py:821
+#: tui/screens/run.py:857
 #, python-brace-format
 msgid "HEVC extraction: code {code}"
 msgstr ""
 
-#: tui/screens/run.py:822
+#: tui/screens/run.py:858
 #, python-brace-format
 msgid "Extracting the HEVC stream failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:832
+#: tui/screens/run.py:868
 msgid "Removing the Dolby Vision RPU with dovi_tool…"
 msgstr ""
 
-#: tui/screens/run.py:837
+#: tui/screens/run.py:873
 msgid "dovi_tool remove failed"
 msgstr ""
 
-#: tui/screens/run.py:838
+#: tui/screens/run.py:874
 msgid "dovi_tool could not remove the RPU from the stream."
 msgstr ""
 
-#: tui/screens/run.py:849
-#: tui/screens/run.py:1098
+#: tui/screens/run.py:885
+#: tui/screens/run.py:1138
 msgid "Transcoding the audio tracks…"
 msgstr ""
 
-#: tui/screens/run.py:866
-#: tui/screens/run.py:1111
+#: tui/screens/run.py:902
+#: tui/screens/run.py:1151
 #, python-brace-format
 msgid "audio transcoding: code {code}"
 msgstr ""
 
-#: tui/screens/run.py:867
-#: tui/screens/run.py:1112
+#: tui/screens/run.py:903
+#: tui/screens/run.py:1152
 #, python-brace-format
 msgid "Transcoding the audio tracks failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:886
+#: tui/screens/run.py:922
 msgid "Removing the RPU and remuxing with ffmpeg — copy, no re-encoding…"
 msgstr ""
 
-#: tui/screens/run.py:913
-#: tui/screens/run.py:1128
+#: tui/screens/run.py:949
+#: tui/screens/run.py:1168
 msgid "Remuxing the tracks with mkvmerge…"
 msgstr ""
 
-#: tui/screens/run.py:929
-#: tui/screens/run.py:1141
+#: tui/screens/run.py:967
+#: tui/screens/run.py:1181
 #, python-brace-format
 msgid "remux: {detail}"
 msgstr ""
 
-#: tui/screens/run.py:930
-#: tui/screens/run.py:1142
+#: tui/screens/run.py:968
+#: tui/screens/run.py:1182
 #, python-brace-format
 msgid "Remux failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:998
+#: tui/screens/run.py:1038
 msgid "Preserving Dolby Vision through a re-encode needs dovi_tool and mkvmerge. Run the preflight again to install them."
 msgstr ""
 
-#: tui/screens/run.py:1040
+#: tui/screens/run.py:1080
 msgid "Extracting the Dolby Vision metadata…"
 msgstr ""
 
-#: tui/screens/run.py:1043
+#: tui/screens/run.py:1083
 msgid "RPU extraction failed"
 msgstr ""
 
-#: tui/screens/run.py:1044
+#: tui/screens/run.py:1084
 msgid "dovi_tool could not extract the Dolby Vision metadata from the source. The re-encode would have destroyed it: stopping rather than producing a file without Dolby Vision."
 msgstr ""
 
-#: tui/screens/run.py:1054
+#: tui/screens/run.py:1094
 msgid "Converting the RPU to profile 8.1…"
 msgstr ""
 
-#: tui/screens/run.py:1057
+#: tui/screens/run.py:1097
 msgid "RPU 7 → 8.1 conversion failed"
 msgstr ""
 
-#: tui/screens/run.py:1058
+#: tui/screens/run.py:1098
 msgid "dovi_tool could not convert the RPU from profile 7 to profile 8.1."
 msgstr ""
 
-#: tui/screens/run.py:1065
+#: tui/screens/run.py:1105
 msgid "Encoding the video…"
 msgstr ""
 
-#: tui/screens/run.py:1079
+#: tui/screens/run.py:1119
 #, python-brace-format
 msgid "video encoding: code {code}"
 msgstr ""
 
-#: tui/screens/run.py:1080
+#: tui/screens/run.py:1120
 #, python-brace-format
 msgid "Encoding the video failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:1084
+#: tui/screens/run.py:1124
 msgid "Re-injecting Dolby Vision…"
 msgstr ""
 
-#: tui/screens/run.py:1087
+#: tui/screens/run.py:1127
 msgid "RPU re-injection failed"
 msgstr ""
 
-#: tui/screens/run.py:1088
+#: tui/screens/run.py:1128
 msgid "dovi_tool could not re-inject the RPU. The most common cause is a different frame count between the source and the encode."
 msgstr ""
 
-#: tui/screens/run.py:1153
+#: tui/screens/run.py:1193
 msgid "Remuxing to MP4 with ffmpeg…"
 msgstr ""
 
-#: tui/screens/run.py:1166
+#: tui/screens/run.py:1206
 #, python-brace-format
 msgid "MP4 remux: code {code}"
 msgstr ""
 
-#: tui/screens/run.py:1167
+#: tui/screens/run.py:1207
 #, python-brace-format
 msgid "The MP4 remux failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:1229
-msgid "mkvmerge required (Blu-ray title)"
+#: tui/screens/run.py:1253
+msgid "mkvmerge required"
 msgstr ""
 
-#: tui/screens/run.py:1230
-msgid "This Blu-ray title spans several clips: only mkvmerge can join them. Run the preflight again to install it."
+#: tui/screens/run.py:1254
+msgid "Adding tracks without re-encoding needs mkvmerge. Run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/run.py:1240
-msgid "Joining the clips of the Blu-ray title with mkvmerge…"
+#: tui/screens/run.py:1266
+msgid "Adding the tracks with mkvmerge, no re-encoding…"
 msgstr ""
 
-#: tui/screens/run.py:1258
-#: tui/screens/run.py:1369
+#: tui/screens/run.py:1285
+#: tui/screens/run.py:1351
+#: tui/screens/run.py:1462
 #, python-brace-format
 msgid "mux: {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1259
+#: tui/screens/run.py:1286
+#, python-brace-format
+msgid "Mux failed — {detail}"
+msgstr ""
+
+#: tui/screens/run.py:1322
+msgid "mkvmerge required (Blu-ray title)"
+msgstr ""
+
+#: tui/screens/run.py:1323
+msgid "This Blu-ray title spans several clips: only mkvmerge can join them. Run the preflight again to install it."
+msgstr ""
+
+#: tui/screens/run.py:1333
+msgid "Joining the clips of the Blu-ray title with mkvmerge…"
+msgstr ""
+
+#: tui/screens/run.py:1352
 #, python-brace-format
 msgid "Joining the Blu-ray title failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1277
+#: tui/screens/run.py:1370
 msgid "DVD tool required"
 msgstr ""
 
-#: tui/screens/run.py:1278
+#: tui/screens/run.py:1371
 msgid "Reading a DVD title needs the DVD tool (an ffmpeg with libdvdnav). Restart IRIS ENCODE and accept its installation."
 msgstr ""
 
-#: tui/screens/run.py:1289
+#: tui/screens/run.py:1382
 msgid "Extracting the DVD title (lossless copy)…"
 msgstr ""
 
-#: tui/screens/run.py:1308
+#: tui/screens/run.py:1401
 #, python-brace-format
 msgid "DVD: {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1309
+#: tui/screens/run.py:1402
 #, python-brace-format
 msgid "Extracting the DVD title failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1329
+#: tui/screens/run.py:1422
 msgid "mkvmerge required (stretch)"
 msgstr ""
 
-#: tui/screens/run.py:1330
+#: tui/screens/run.py:1423
 msgid "A track needs a stretch factor: only mkvmerge can apply it. Run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/run.py:1351
+#: tui/screens/run.py:1444
 msgid "Adding the tracks with mkvmerge (stretch) before encoding…"
 msgstr ""
 
-#: tui/screens/run.py:1370
+#: tui/screens/run.py:1463
 #, python-brace-format
 msgid "Pre-mux failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1396
+#: tui/screens/run.py:1489
 #, python-brace-format
 msgid "Done — succeeded: {success} · failed: {failed} · skipped: {skipped}"
 msgstr ""
 
-#: tui/screens/run.py:1405
+#: tui/screens/run.py:1498
 #, python-brace-format
 msgid "… and {count} other"
 msgid_plural "… and {count} others"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/run.py:1419
+#: tui/screens/run.py:1512
 #, python-brace-format
 msgid "Encoding batch done — {key} for the summary."
 msgstr ""
 
-#: tui/screens/run.py:1439
+#: tui/screens/run.py:1532
 msgid "Only a pending file can be moved or removed — the running one and the finished ones stay."
 msgstr ""
 
-#: tui/screens/run.py:1477
+#: tui/screens/run.py:1570
 #, python-brace-format
 msgid "{file} removed from the queue."
 msgstr ""
 
-#: tui/screens/run.py:1491
+#: tui/screens/run.py:1584
 msgid "Sleep and shutdown are only managed under Windows."
 msgstr ""
 
-#: tui/screens/run.py:1496
+#: tui/screens/run.py:1589
 #, python-brace-format
 msgid "After the batch: nothing is planned. Choose an action in the options ({key}, then {option_key})."
 msgstr ""
 
-#: tui/screens/run.py:1503
+#: tui/screens/run.py:1596
 #, python-brace-format
 msgid "After the batch: {action}, after a {seconds} s countdown."
 msgstr ""
 
-#: tui/screens/run.py:1507
+#: tui/screens/run.py:1600
 msgid "After the batch: nothing."
 msgstr ""
 
-#: tui/screens/run.py:1529
+#: tui/screens/run.py:1622
 msgid "Skipped manually"
 msgstr ""
 
-#: tui/screens/run.py:1608
+#: tui/screens/run.py:1705
 msgid "Stopped"
 msgstr ""
 
-#: tui/screens/run.py:1616
+#: tui/screens/run.py:1713
 msgid "The current file is abandoned, its partial output deleted."
 msgstr ""
 
-#: tui/screens/run.py:1618
+#: tui/screens/run.py:1715
 #, python-brace-format
 msgid "The pending file will not be encoded."
 msgid_plural "The {count} pending files will not be encoded."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/run.py:1622
+#: tui/screens/run.py:1719
 msgid "Stop all encodes?"
 msgstr ""
 
-#: tui/screens/run.py:1623
+#: tui/screens/run.py:1720
 msgid "Stop"
 msgstr ""
 
-#: tui/screens/run.py:1623
-#: tui/screens/wizard.py:140
+#: tui/screens/run.py:1720
+#: tui/screens/wizard.py:141
 msgid "Continue"
 msgstr ""
 
@@ -3473,7 +3526,7 @@ msgstr ""
 
 #: tui/screens/sync.py:143
 #: tui/screens/sync.py:196
-#: tui/screens/wizard.py:144
+#: tui/screens/wizard.py:145
 msgid "Add"
 msgstr ""
 
@@ -3483,17 +3536,17 @@ msgid "Missing language — +/- or {key} to choose it. Without it, the track wou
 msgstr ""
 
 #: tui/screens/sync.py:156
-#: tui/screens/tracks.py:123
+#: tui/screens/tracks.py:124
 msgid "Prev. field"
 msgstr ""
 
 #: tui/screens/sync.py:160
-#: tui/screens/tracks.py:125
+#: tui/screens/tracks.py:126
 msgid "Next value"
 msgstr ""
 
 #: tui/screens/sync.py:161
-#: tui/screens/tracks.py:126
+#: tui/screens/tracks.py:127
 msgid "Prev. value"
 msgstr ""
 
@@ -3514,7 +3567,7 @@ msgid "Apply"
 msgstr ""
 
 #: tui/screens/sync.py:195
-#: tui/screens/wizard.py:148
+#: tui/screens/wizard.py:149
 msgid "Mux"
 msgstr ""
 
@@ -3524,7 +3577,7 @@ msgid "Measurement in progress"
 msgstr ""
 
 #: tui/screens/sync.py:335
-#: tui/screens/wizard.py:358
+#: tui/screens/wizard.py:359
 msgid "measured"
 msgstr ""
 
@@ -3581,7 +3634,7 @@ msgid "cannot measure: {error}"
 msgstr ""
 
 #: tui/screens/sync.py:604
-#: tui/screens/sync.py:860
+#: tui/screens/sync.py:858
 msgid "failed"
 msgstr ""
 
@@ -3666,491 +3719,487 @@ msgstr ""
 msgid "Resync in progress"
 msgstr ""
 
-#: tui/screens/sync.py:861
+#: tui/screens/sync.py:859
 msgid "Cannot resync."
 msgstr ""
 
-#: tui/screens/sync.py:875
+#: tui/screens/sync.py:873
 msgid "Track resynced — offset now zero."
 msgstr ""
 
-#: tui/screens/sync.py:877
-#: tui/screens/sync.py:919
+#: tui/screens/sync.py:875
+#: tui/screens/sync.py:915
 #, python-brace-format
 msgid "{play_key} to check in mpv, {sample_key} for a muxed sample."
 msgstr ""
 
-#: tui/screens/sync.py:892
+#: tui/screens/sync.py:889
 msgid "Cannot extract — image subtitle (PGS, VobSub) or unreadable track."
 msgstr ""
 
-#: tui/screens/sync.py:900
+#: tui/screens/sync.py:896
 #, python-brace-format
 msgid "Cannot correct: {error}"
 msgstr ""
 
-#: tui/screens/sync.py:913
+#: tui/screens/sync.py:909
 #, python-brace-format
 msgid "Subtitle resynced over {count} segment ({steps} ms) — offset now zero."
 msgid_plural "Subtitle resynced over {count} segments ({steps} ms) — offset now zero."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/sync.py:961
+#: tui/screens/sync.py:957
 #, python-brace-format
 msgid "Cannot start mpv: {error}"
 msgstr ""
 
-#: tui/screens/sync.py:966
+#: tui/screens/sync.py:962
 #, python-brace-format
 msgid "mpv opened with {delay} ms."
 msgstr ""
 
-#: tui/screens/sync.py:967
+#: tui/screens/sync.py:963
 msgid "The stretch cannot be previewed — mpv can only apply a constant offset."
 msgstr ""
 
-#: tui/screens/sync.py:969
+#: tui/screens/sync.py:965
 #, python-brace-format
 msgid "{keys}, then enter the value here."
 msgstr ""
 
-#: tui/screens/sync.py:972
+#: tui/screens/sync.py:968
 #, python-brace-format
 msgid "mpv opened with {delay} ms applied."
 msgstr ""
 
-#: tui/screens/sync.py:974
+#: tui/screens/sync.py:970
 msgid "Then enter the corrected value in this screen."
 msgstr ""
 
-#: tui/screens/sync.py:987
+#: tui/screens/sync.py:983
 msgid "An operation is already running."
 msgstr ""
 
-#: tui/screens/sync.py:993
+#: tui/screens/sync.py:989
 msgid "Building the check sample…"
-msgstr ""
-
-#: tui/screens/sync.py:1028
-#, python-brace-format
-msgid "Cannot build the sample: {error}"
-msgstr ""
-
-#: tui/screens/sync.py:1036
-#, python-brace-format
-msgid "Sample ready: {path}"
-msgstr ""
-
-#: tui/screens/sync.py:1037
-#, python-brace-format
-msgid "mpv could not open it: {error}"
-msgstr ""
-
-#: tui/screens/sync.py:1041
-#, python-brace-format
-msgid "Sample opened in mpv — windows at {times}."
 msgstr ""
 
 #: tui/screens/sync.py:1042
 #, python-brace-format
+msgid "Cannot build the sample: {error}"
+msgstr ""
+
+#: tui/screens/sync.py:1050
+#, python-brace-format
+msgid "Sample ready: {path}"
+msgstr ""
+
+#: tui/screens/sync.py:1051
+#, python-brace-format
+msgid "mpv could not open it: {error}"
+msgstr ""
+
+#: tui/screens/sync.py:1055
+#, python-brace-format
+msgid "Sample opened in mpv — windows at {times}."
+msgstr ""
+
+#: tui/screens/sync.py:1056
+#, python-brace-format
 msgid "This is the actual mux result: what you hear is what {key} will produce."
 msgstr ""
 
-#: tui/screens/sync.py:1045
+#: tui/screens/sync.py:1059
 #, python-brace-format
 msgid "Sample ready (mpv missing): {path}"
 msgstr ""
 
-#: tui/screens/sync.py:1046
+#: tui/screens/sync.py:1060
 #, python-brace-format
 msgid "Windows at {times}."
 msgstr ""
 
-#: tui/screens/sync.py:1080
+#: tui/screens/sync.py:1094
 msgid "Copy the offset from"
 msgstr ""
 
-#: tui/screens/sync.py:1092
+#: tui/screens/sync.py:1106
 msgid "Measurement in progress — wait for it to finish before adding a track."
 msgstr ""
 
-#: tui/screens/sync.py:1128
+#: tui/screens/sync.py:1142
 #, python-brace-format
 msgid "No track to add — add one with {key}."
 msgstr ""
 
-#: tui/screens/sync.py:1139
+#: tui/screens/sync.py:1153
 #, python-brace-format
 msgid "Cannot mux: “{file}” has no language. Choose it with +/- or {key}."
 msgstr ""
 
-#: tui/screens/sync.py:1183
+#: tui/screens/sync.py:1197
 #, python-brace-format
 msgid "“{file}” needs a stretch: mkvmerge will add the tracks just before encoding, then ffmpeg will encode the result. The intermediate file is temporary."
 msgstr ""
 
-#: tui/screens/sync.py:1191
+#: tui/screens/sync.py:1205
 #, python-brace-format
 msgid "“{file}” needs a stretch, which ffmpeg cannot apply in one pass. Only mkvmerge can — run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/sync.py:1224
+#: tui/screens/sync.py:1238
 msgid "Measurement in progress — wait for it to finish before going back. The gauge shows how far it has got."
 msgstr ""
 
-#: tui/screens/sync.py:1244
-#: tui/screens/tracks.py:788
+#: tui/screens/sync.py:1258
+#: tui/screens/tracks.py:789
 msgid "Go back to Home?"
 msgstr ""
 
-#: tui/screens/sync.py:1245
+#: tui/screens/sync.py:1259
 msgid "The added tracks and their resync will be lost."
 msgstr ""
 
-#: tui/screens/sync.py:1246
-#: tui/screens/tracks.py:790
+#: tui/screens/sync.py:1260
+#: tui/screens/tracks.py:791
 msgid "Go back"
 msgstr ""
 
-#: tui/screens/sync.py:1246
-#: tui/screens/tracks.py:790
+#: tui/screens/sync.py:1260
+#: tui/screens/tracks.py:791
 msgid "Stay"
 msgstr ""
 
-#: tui/screens/tracks.py:71
-#: tui/screens/wizard.py:274
+#: tui/screens/tracks.py:72
+#: tui/screens/wizard.py:275
 msgid "Video"
 msgstr ""
 
-#: tui/screens/tracks.py:71
+#: tui/screens/tracks.py:72
 msgid "Subtitles"
 msgstr ""
 
 #. section of the tracks taken from another file.
-#: tui/screens/tracks.py:73
+#: tui/screens/tracks.py:74
 msgid "External"
 msgstr ""
 
-#: tui/screens/tracks.py:109
+#: tui/screens/tracks.py:110
 msgid "Field"
 msgstr ""
 
-#: tui/screens/tracks.py:109
+#: tui/screens/tracks.py:110
 msgid "Value"
 msgstr ""
 
-#: tui/screens/tracks.py:110
+#: tui/screens/tracks.py:111
 msgid "List of choices"
 msgstr ""
 
-#: tui/screens/tracks.py:111
+#: tui/screens/tracks.py:112
 msgid "on a track: confirm"
 msgstr ""
 
-#: tui/screens/tracks.py:115
+#: tui/screens/tracks.py:116
 msgid "Select / deselect"
 msgstr ""
 
-#: tui/screens/tracks.py:116
+#: tui/screens/tracks.py:117
 msgid "Confirm the selection"
 msgstr ""
 
-#: tui/screens/tracks.py:133
+#: tui/screens/tracks.py:134
 msgid "Del./keep source"
 msgstr ""
 
-#: tui/screens/tracks.py:134
+#: tui/screens/tracks.py:135
 msgid "External track"
 msgstr ""
 
-#: tui/screens/tracks.py:145
+#: tui/screens/tracks.py:146
 msgid "Format"
 msgstr ""
 
-#: tui/screens/tracks.py:146
+#: tui/screens/tracks.py:147
 msgid "Title"
 msgstr ""
 
-#: tui/screens/tracks.py:269
+#: tui/screens/tracks.py:270
 msgid "Decision / Target"
 msgstr ""
 
-#: tui/screens/tracks.py:289
-#: tui/screens/tracks.py:328
+#: tui/screens/tracks.py:290
+#: tui/screens/tracks.py:329
 msgctxt "track"
 msgid "default"
 msgstr ""
 
-#: tui/screens/tracks.py:291
-#: tui/screens/tracks.py:329
+#: tui/screens/tracks.py:292
+#: tui/screens/tracks.py:330
 msgid "selected"
 msgstr ""
 
-#: tui/screens/tracks.py:312
+#: tui/screens/tracks.py:313
 msgid "(none)"
 msgstr ""
 
-#: tui/screens/tracks.py:321
+#: tui/screens/tracks.py:322
 msgid "image"
 msgstr ""
 
-#: tui/screens/tracks.py:321
+#: tui/screens/tracks.py:322
 msgid "text"
 msgstr ""
 
-#: tui/screens/tracks.py:326
+#: tui/screens/tracks.py:327
 msgid "teletext — not carried"
 msgstr ""
 
 #. {kind} is "audio" or "subtitle".
-#: tui/screens/tracks.py:362
-#: tui/screens/wizard.py:314
+#: tui/screens/tracks.py:363
+#: tui/screens/wizard.py:315
 #, python-brace-format
 msgid "added {kind}"
 msgstr ""
 
-#: tui/screens/tracks.py:427
+#: tui/screens/tracks.py:428
 msgid "dovi_tool missing"
 msgstr ""
 
-#: tui/screens/tracks.py:432
+#: tui/screens/tracks.py:433
 msgid "(profile)"
 msgstr ""
 
-#: tui/screens/tracks.py:479
+#: tui/screens/tracks.py:480
 msgid "video modified"
-msgstr ""
-
-#: tui/screens/tracks.py:481
-#, python-brace-format
-msgid "Profile: {profile}"
 msgstr ""
 
 #: tui/screens/tracks.py:482
 #, python-brace-format
-msgid "Audio: {selected}/{total}"
+msgid "Profile: {profile}"
 msgstr ""
 
 #: tui/screens/tracks.py:483
 #, python-brace-format
+msgid "Audio: {selected}/{total}"
+msgstr ""
+
+#: tui/screens/tracks.py:484
+#, python-brace-format
 msgid "Subtitles: {selected}/{total}"
 msgstr ""
 
-#: tui/screens/tracks.py:628
+#: tui/screens/tracks.py:629
 msgid "mkvmerge missing — run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/tracks.py:712
+#: tui/screens/tracks.py:713
 #, python-brace-format
 msgid "Profile ({action})"
 msgstr ""
 
-#: tui/screens/tracks.py:713
+#: tui/screens/tracks.py:714
 msgid "Keep the original"
 msgstr ""
 
-#: tui/screens/tracks.py:713
+#: tui/screens/tracks.py:714
 msgid "Delete the original"
 msgstr ""
 
-#: tui/screens/tracks.py:719
+#: tui/screens/tracks.py:720
 msgid "Original file"
 msgstr ""
 
-#: tui/screens/tracks.py:789
+#: tui/screens/tracks.py:790
 msgid "The selected tracks and the chosen codec will be lost."
 msgstr ""
 
-#: tui/screens/wizard.py:78
+#: tui/screens/wizard.py:79
 msgid "External tracks"
 msgstr ""
 
-#: tui/screens/wizard.py:80
+#: tui/screens/wizard.py:81
 msgid "Done"
 msgstr ""
 
-#: tui/screens/wizard.py:95
+#: tui/screens/wizard.py:96
 msgid "Keep / discard"
 msgstr ""
 
-#: tui/screens/wizard.py:96
+#: tui/screens/wizard.py:97
 msgid "Present a file"
 msgstr ""
 
-#: tui/screens/wizard.py:96
+#: tui/screens/wizard.py:97
 msgid "Remove the last one"
 msgstr ""
 
-#: tui/screens/wizard.py:97
+#: tui/screens/wizard.py:98
 msgid "Run the recommended one"
 msgstr ""
 
-#: tui/screens/wizard.py:98
+#: tui/screens/wizard.py:99
 msgid "Return to the list"
 msgstr ""
 
-#: tui/screens/wizard.py:141
+#: tui/screens/wizard.py:142
 msgid "Keep"
 msgstr ""
 
-#: tui/screens/wizard.py:174
-#: tui/screens/wizard.py:194
+#: tui/screens/wizard.py:176
+#: tui/screens/wizard.py:196
 msgid "Measuring the offset"
 msgstr ""
 
-#: tui/screens/wizard.py:221
+#: tui/screens/wizard.py:222
 msgid "Guided mode"
 msgstr ""
 
-#: tui/screens/wizard.py:222
+#: tui/screens/wizard.py:223
 #, python-brace-format
 msgid "step {step} of {total}"
 msgstr ""
 
-#: tui/screens/wizard.py:255
+#: tui/screens/wizard.py:256
 msgid "File to process"
 msgstr ""
 
-#: tui/screens/wizard.py:260
+#: tui/screens/wizard.py:261
 #, python-brace-format
 msgid "{count} audio track"
 msgid_plural "{count} audio tracks"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/wizard.py:262
+#: tui/screens/wizard.py:263
 #, python-brace-format
 msgid "{count} subtitle"
 msgid_plural "{count} subtitles"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/wizard.py:264
+#: tui/screens/wizard.py:265
 msgid "Active profile"
 msgstr ""
 
-#: tui/screens/wizard.py:272
+#: tui/screens/wizard.py:273
 msgid "What will be produced"
 msgstr ""
 
-#: tui/screens/wizard.py:274
-#: tui/screens/wizard.py:388
+#: tui/screens/wizard.py:275
+#: tui/screens/wizard.py:389
 msgid "Output"
 msgstr ""
 
-#: tui/screens/wizard.py:280
+#: tui/screens/wizard.py:281
 #, python-brace-format
 msgid "{bitrate}k targeted"
 msgstr ""
 
-#: tui/screens/wizard.py:285
+#: tui/screens/wizard.py:286
 msgid "Interlaced source: deinterlaced (bwdif), frame rate kept."
 msgstr ""
 
-#: tui/screens/wizard.py:336
+#: tui/screens/wizard.py:337
 msgid "Tracks from another file"
 msgstr ""
 
-#: tui/screens/wizard.py:338
+#: tui/screens/wizard.py:339
 msgid "Measuring the offset…"
 msgstr ""
 
-#: tui/screens/wizard.py:340
+#: tui/screens/wizard.py:341
 msgid "None so far."
 msgstr ""
 
-#: tui/screens/wizard.py:341
+#: tui/screens/wizard.py:342
 msgid "A dubbed track, subtitles: present the file that carries them. Guided mode never looks for one on its own — a wrong match is only heard afterwards."
 msgstr ""
 
-#: tui/screens/wizard.py:357
+#: tui/screens/wizard.py:358
 msgid "not measured"
 msgstr ""
 
-#: tui/screens/wizard.py:359
+#: tui/screens/wizard.py:360
 msgid "set by hand"
 msgstr ""
 
-#: tui/screens/wizard.py:360
+#: tui/screens/wizard.py:361
 msgid "taken from the audio track"
 msgstr ""
 
-#: tui/screens/wizard.py:387
+#: tui/screens/wizard.py:388
 msgid "Ready"
 msgstr ""
 
-#: tui/screens/wizard.py:390
+#: tui/screens/wizard.py:391
 msgid "Recommended: mux. Nothing needs re-encoding, the tracks are added by mkvmerge and the picture copied as it is — a few minutes instead of a few hours."
 msgstr ""
 
-#: tui/screens/wizard.py:395
+#: tui/screens/wizard.py:396
 #, python-brace-format
 msgid "Nothing needs re-encoding by default. {key} forces the encode: {video}, at the source bitrate."
 msgstr ""
 
-#: tui/screens/wizard.py:399
+#: tui/screens/wizard.py:400
 #, python-brace-format
 msgid "Recommended: encode. {video}."
 msgstr ""
 
-#: tui/screens/wizard.py:402
+#: tui/screens/wizard.py:403
 msgid "With no track to add, the mux would have nothing to do."
 msgstr ""
 
-#: tui/screens/wizard.py:405
+#: tui/screens/wizard.py:406
 #, python-brace-format
 msgid "Both remain available: {mux_key} mux, {encode_key} encode."
 msgstr ""
 
-#: tui/screens/wizard.py:416
+#: tui/screens/wizard.py:417
 msgid "Operation complete."
 msgstr ""
 
-#: tui/screens/wizard.py:485
+#: tui/screens/wizard.py:486
 msgid "Chosen in guided mode"
 msgstr ""
 
-#: tui/screens/wizard.py:510
+#: tui/screens/wizard.py:511
 msgid "Bitrate chosen in guided mode"
 msgstr ""
 
-#: tui/screens/wizard.py:566
+#: tui/screens/wizard.py:567
 #, python-brace-format
 msgid "Measurement {current}/{total} — {language}"
 msgstr ""
 
-#: tui/screens/wizard.py:581
+#: tui/screens/wizard.py:582
 #, python-brace-format
 msgid "{file}: cannot measure ({error})"
 msgstr ""
 
-#: tui/screens/wizard.py:590
+#: tui/screens/wizard.py:591
 #, python-brace-format
 msgid "copied to {count} subtitle"
 msgid_plural "copied to {count} subtitles"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/wizard.py:599
+#: tui/screens/wizard.py:600
 #, python-brace-format
 msgid "{language}: {reason} — offset left at 0, check it before starting"
 msgstr ""
 
-#: tui/screens/wizard.py:624
+#: tui/screens/wizard.py:625
 #, python-brace-format
 msgid "Nothing to mux: no external track to add. {key} to encode."
 msgstr ""
 
-#: tui/screens/wizard.py:630
+#: tui/screens/wizard.py:640
 msgid "Done — the tracks have been added."
 msgstr ""
 
-#: tui/screens/wizard.py:632
-msgid "Done — the file has been produced."
-msgstr ""
-
-#: tui/screens/wizard.py:634
+#: tui/screens/wizard.py:642
 msgid "The operation produced no file. Go back to the previous step."
 msgstr ""
 
@@ -4409,14 +4458,19 @@ msgctxt "python origin"
 msgid "system"
 msgstr ""
 
-#: main.py:137
+#: main.py:139
+#, python-brace-format
+msgid "config.toml unreadable ({error}). Session running on the default settings — your file was not touched, and will not be until it is fixed."
+msgstr ""
+
+#: main.py:144
 msgid "Checking tools:"
 msgstr ""
 
-#: main.py:141
+#: main.py:148
 msgid "Tools missing. Stopping."
 msgstr ""
 
-#: main.py:145
+#: main.py:152
 msgid "Preflight OK."
 msgstr ""

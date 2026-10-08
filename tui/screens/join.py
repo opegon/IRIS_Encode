@@ -24,7 +24,7 @@ from core.i18n import N_, _, ngettext, texte_erreur
 from core.joiner import (build_join_command, controler, derive_duree,
                          duree_attendue, join_output_path, ordre_naturel)
 from core.decision import dossier_inscriptible
-from core.muxer import MuxProcess
+from core.muxer import MuxProcess, mkvmerge_reussi
 from core.scanner import VideoInfo
 
 from ..common import barre_etat, actions_ecran, cellule, fmt_duration, footer_line2, largeur_entete, retour_accueil, touche
@@ -311,7 +311,8 @@ class JoinScreen(TableNavMixin, Screen[bool]):
                     self._set, "#join-state", "▶ " + _("Join — {percent}%").format(percent=pct))
 
         rc            = proc.wait()
-        self._ok      = rc == 0
+        # Code 1 : des avertissements, la sortie vaut (CR-89).
+        self._ok      = mkvmerge_reussi(rc, self._output)
         self._done    = True
         self._process = None
 
@@ -377,4 +378,6 @@ class JoinScreen(TableNavMixin, Screen[bool]):
         self.dismiss(self._ok)
 
     def action_accueil(self) -> None:
+        # Comme `⌫` : mkvmerge ne survit pas à l'écran (CR-91).
+        self._interrompre()
         retour_accueil(self.app)

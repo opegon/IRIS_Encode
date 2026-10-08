@@ -20,9 +20,9 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, Input, Label, Static
 
 from core import cles
-from core import config as cfg_mod
 from core.i18n import N_, _
 
+from ..common import sauver_config
 from ..common import raccourcis
 
 
@@ -165,7 +165,7 @@ class ClesScreen(ModalScreen[bool]):
             return
         # « Ne plus demander » vaut aussi quand on ne saisit rien.
         if self._au_lancement and self._ecarts():
-            cfg_mod.save(self._cfg)
+            sauver_config(self.app)
         self.dismiss(False)
 
     def _ecarts(self) -> bool:
@@ -225,7 +225,7 @@ class ClesScreen(ModalScreen[bool]):
                        "refus")
         if self._au_lancement:
             self._ecarts()
-        cfg_mod.save(self._cfg)
+        sauver_config(self.app)
         if refus:
             return                        # la fenêtre reste, on corrige
         if acceptes:

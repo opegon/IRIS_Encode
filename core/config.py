@@ -7,6 +7,7 @@ fréquemment utilisées (bin_dir, largeurs de colonnes).
 from __future__ import annotations
 
 import os
+import logging
 import threading
 import tomllib
 from pathlib import Path
@@ -18,6 +19,8 @@ from core.profiles import RENOMMAGES_LIVRES
 
 APP_DIR     = Path(__file__).resolve().parent.parent
 CONFIG_PATH = APP_DIR / "config.toml"
+
+_log = logging.getLogger("iris_encode.config")
 
 _DEFAULTS: dict[str, Any] = {
     "app": {
@@ -122,15 +125,40 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return result
 
 
+class ConfigIllisible(OSError):
+    """config.toml n'a pas pu être lu : la session ne le réécrit pas."""
+
+
+# L'erreur de lecture de config.toml, ou None s'il a été lu (ou n'existe pas).
+# Tant qu'elle est posée, `save` refuse d'écrire : le fichier garde les clés
+# d'API et le mot de passe que l'utilisateur y a mis, et reste réparable à la
+# main, comme profiles.toml (CR-43).
+_illisible: str | None = None
+
+
+def illisible() -> str | None:
+    """Pourquoi config.toml n'a pas pu être lu, ou None."""
+    return _illisible
+
+
 def load() -> dict[str, Any]:
-    """Charge config.toml en appliquant les valeurs par défaut."""
+    """Charge config.toml en appliquant les valeurs par défaut.
+
+    Un fichier illisible — une faute de frappe à la main — fait tourner la
+    session sur les valeurs par défaut **sans le réécrire** : la moindre
+    écriture (la langue au démarrage, une largeur de colonne) l'aurait
+    remplacé, identifiants compris (CR-43). Voir `illisible()`.
+    """
+    global _illisible
+    _illisible = None
     if not CONFIG_PATH.exists():
         return _deep_merge({}, _DEFAULTS)
     try:
         with CONFIG_PATH.open("rb") as f:
             user = tomllib.load(f)
         return _deep_merge(_DEFAULTS, user)
-    except Exception:
+    except Exception as e:
+        _illisible = str(e) or type(e).__name__
         return _deep_merge({}, _DEFAULTS)
 
 
@@ -153,6 +181,8 @@ def save(cfg: dict[str, Any]) -> None:
     C'est la famille de la v0.8.1.4 par un autre chemin : un fichier de
     configuration cassé se paie au lancement suivant, loin de sa cause.
     """
+    if _illisible is not None:
+        raise ConfigIllisible(f"config.toml unreadable, not rewritten: {_illisible}")
     with _VERROU_ECRITURE:
         provisoire = CONFIG_PATH.with_name(CONFIG_PATH.name + ".tmp")
         try:
@@ -167,6 +197,23 @@ def save(cfg: dict[str, Any]) -> None:
         except BaseException:
             provisoire.unlink(missing_ok=True)
             raise
+
+
+def enregistrer(cfg: dict[str, Any]) -> str | None:
+    """`save`, sans jamais lever : rend la cause d'un échec, ou None.
+
+    Un antivirus ou un client de synchronisation qui tient config.toml au
+    moment du `os.replace`, et c'est `OSError` : levée dans un gestionnaire
+    Textual ou un worker, elle fermait l'application, au milieu d'un lot
+    (CR-64, CR-77). Un réglage non enregistré se dit ; il ne coûte pas la
+    session.
+    """
+    try:
+        save(cfg)
+    except OSError as e:
+        _log.warning("config.toml not saved: %s", e)
+        return str(e)
+    return None
 
 
 def assurer_langue(cfg: dict[str, Any]) -> str:
@@ -210,10 +257,11 @@ def get_active_profile(cfg: dict[str, Any], profile_ids) -> str:
     return retenu if retenu in ids else ids[0]
 
 
-def set_active_profile(cfg: dict[str, Any], profile_id: str) -> None:
-    """Mémorise le profil actif et écrit config.toml."""
+def set_active_profile(cfg: dict[str, Any], profile_id: str) -> str | None:
+    """Mémorise le profil actif et écrit config.toml ; rend la cause d'un
+    échec d'écriture, ou None (voir `enregistrer`)."""
     cfg.setdefault("app", {})["active_profile"] = profile_id
-    save(cfg)
+    return enregistrer(cfg)
 
 
 def get_bin_dir(cfg: dict[str, Any]) -> Path:
@@ -368,10 +416,12 @@ def get_action_fin(cfg: dict[str, Any]) -> str:
     return action if action in ACTIONS_FIN else ACTION_FIN_DEFAUT
 
 
-def set_energie(cfg: dict[str, Any], empecher_veille: bool, action_fin: str) -> None:
+def set_energie(cfg: dict[str, Any], empecher_veille: bool,
+                action_fin: str) -> str | None:
+    """Enregistre les réglages d'énergie ; rend la cause d'un échec, ou None."""
     cfg.setdefault("energie", {}).update(empecher_veille=bool(empecher_veille),
                                          action_fin=action_fin)
-    save(cfg)
+    return enregistrer(cfg)
 
 
 def get_output_dir(cfg: dict[str, Any]) -> Path:

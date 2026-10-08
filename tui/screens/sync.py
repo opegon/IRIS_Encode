@@ -31,7 +31,7 @@ from textual.widgets import DataTable, Label, ProgressBar, Static
 from core.i18n import N_, _, liste, ngettext, texte_erreur
 from core import preview
 from core.decision import FileDecision
-from core.muxer import (
+from core.muxer import (mkvmerge_reussi,
     ExternalTrack, MuxProcess, SyncOrigin, TrackKind, build_sample_command,
     ffmpeg_stream_index, noms_proposes, propager_recalage, sample_output_path,
     sample_windows, timecode,
@@ -831,7 +831,6 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     @work(thread=True, name="sync-retime")
     def _retime(self, i: int, segs: list[Segment]) -> None:
         """Fabrique la piste audio recalée hors du thread UI."""
-        import tempfile
         from core.sync import retime_audio
 
         t = self._tracks[i]
@@ -841,8 +840,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
 
         try:
             idx = ffmpeg_stream_index(t.source_path, t.source_tid, TrackKind.AUDIO)
-            out = (Path(tempfile.gettempdir())
-                   / f"{self._source.stem}_{t.language or 'und'}_[recale].mka")
+            out = self._fichier_recale(t, ".mka")
             fichier, notes = retime_audio(t.source_path, idx, segs, out,
                                           progress=report)
         except Exception as e:
@@ -878,7 +876,6 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 "sample.").format(play_key=touche("v"), sample_key=touche("k")))
 
     def _build_corrected_subtitle(self, i: int, segs: list[Segment]) -> None:
-        import tempfile
         from core.sync import extract_subtitle, shift_srt
 
         t = self._tracks[i]
@@ -892,8 +889,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                     self._set_hint(_("Cannot extract — image subtitle (PGS, "
                                      "VobSub) or unreadable track."))
                     return
-            out = (Path(tempfile.gettempdir())
-                   / f"{self._source.stem}_{t.language or 'und'}_[recale].srt")
+            out = self._fichier_recale(t, ".srt")
             shift_srt(src, segs, out)
         except Exception as e:
             self.app.bell()
@@ -1017,8 +1013,26 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             if pct is not None:
                 self.app.call_from_thread(self._set_progress, pct / 100)
         rc = proc.wait()
-        erreur = None if rc == 0 else (proc.errors[0] if proc.errors else f"code {rc}")
+        # Code 1 : des avertissements, l'extrait vaut (CR-89).
+        erreur = (None if mkvmerge_reussi(rc, out)
+                  else (proc.errors[0] if proc.errors else f"code {rc}"))
         self.app.call_from_thread(self._sample_done, out, erreur, starts)
+
+    def _fichier_recale(self, piste, extension: str) -> Path:
+        """Où écrire une piste recalée : à côté de la sortie, sous un nom
+        d'intermédiaire, effacé avec eux après l'encodage. Une piste audio de
+        film n'a rien à faire dans le dossier temporaire du système, où rien
+        ne l'effaçait et où un nettoyage pouvait la retirer avant son tour dans
+        la file (CR-93). Dossier de sortie en lecture seule (choisi seulement à
+        la mise en file) : le dossier temporaire, faute de mieux."""
+        import tempfile
+        from core.decision import dossier_inscriptible
+        from core.scanner import intermediaire
+        dossier = self._decision.dossier_sortie
+        if not dossier_inscriptible(dossier):
+            dossier = Path(tempfile.gettempdir())
+        nom = f"{self._decision.info.path.stem}_{piste.language or 'und'}"
+        return dossier / f"{intermediaire(nom, 'recale')}{extension}"
 
     def _sample_done(self, out, erreur: str | None, starts: list[float]) -> None:
         self._sampling = False

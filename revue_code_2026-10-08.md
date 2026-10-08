@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `tui/screens/meta_popup.py` fait. 2 mineurs (titre de disque cherché par son nom de playlist, crochets lus comme balises).
-- Prochain : `tui/screens/aide.py`.
+- 2026-10-08 — `tui/screens/fin_lot.py` fait. 1 mineur (décompte arrivé à zéro sous un autre écran : mauvais écran retiré, puis plantage).
+- Prochain : `tui/widgets/entete.py`.
 
 ### Pistes notées en route
 
@@ -212,12 +212,12 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] tui/screens/value_picker.py (97)
 - [x] tui/screens/cles.py (233)
 - [x] tui/screens/meta_popup.py (215)
-- [ ] tui/screens/aide.py (521)
-- [ ] tui/screens/confirm.py (141)
-- [ ] tui/screens/delete_confirm.py (45)
-- [ ] tui/screens/recursive_confirm.py (32)
-- [ ] tui/screens/quit.py (26)
-- [ ] tui/screens/fin_lot.py (52)
+- [x] tui/screens/aide.py (521)
+- [x] tui/screens/confirm.py (141)
+- [x] tui/screens/delete_confirm.py (45)
+- [x] tui/screens/recursive_confirm.py (32)
+- [x] tui/screens/quit.py (26)
+- [x] tui/screens/fin_lot.py (52)
 - [ ] tui/widgets/entete.py (106)
 - [ ] tui/widgets/footer.py (194)
 - [ ] tui/__init__.py + tui/screens/__init__.py + tui/widgets/__init__.py (3)
@@ -811,6 +811,39 @@ Aucun constat nouveau. Lu avec `core/cles.py` : les vérificateurs rendent un me
   - Scénario : `"[bold]AlloCiné[/bold] — " + query` dans un `Static` sans `markup=False`. Reproduit : « Blade Runner [Final Cut] 1982 » s'affiche « Blade Runner  (1982) », « [HorribleSubs] Anime - 01 » s'affiche « Anime 01 », alors que la requête envoyée garde les crochets (et c'est souvent pour eux qu'elle échoue). Le reste de l'application passe les noms de fichiers en `markup=False` ou en `Text`.
   - Correction : composer l'en-tête en `Text` (libellé en gras, requête en clair), comme `_show_result` le fait déjà.
   - Test : fiche ouverte sur « Film [Final Cut] (2020).mkv » : l'en-tête contient « [Final Cut] ».
+
+### tui/screens/aide.py
+
+- **CR-102** · `tui/screens/aide.py:266-267`, `:98-99`, `:64-66`, `:79` ; code concerné : `tui/screens/config.py:200-204`, `tui/screens/browser.py:1339-1342`, `tui/screens/join.py:379-380`, `tui/screens/browser.py:1108-1111` · mineur · J · lu — Le guide intégré (`H`) affirme quatre comportements que le code n'a pas.
+  - Scénario : (1) Gestion des profils, `D` : « The profiles shipped with the application are protected » — faux depuis v0.8.7.2 (« tout profil s'efface, sauf le dernier », `config.py:200-204`) ; un utilisateur rassuré par le guide supprime un profil livré pour de bon. (2) Accueil, `R` : « Encodes the whole tree under the current folder » — l'action ne part que de la **ligne de dossier sous le curseur** et ne fait rien, sans message, sur une ligne de fichier (contraire à UX-17) ; elle ouvre d'ailleurs un aperçu, pas un encodage. (3) `Ctrl+Home` : « Asks for confirmation if work is in progress » — pas sur le mux ni le collage, qui continuent sans écran (CR-91). (4) `A` : « Checks every file in the folder » — les sorties d'IRIS sont exclues, à dessein (spec § 14.1). Le test du guide (`tests/test_aide.py`) vérifie qu'une explication existe pour chaque action, pas qu'elle soit juste. À l'inverse, deux explications disent ce que le code devrait faire : « Returns to the Home screen without applying the changes » (pistes, `⌫` — contredit par CR-81) et le défilement « one screen of rows » (doublé par CR-80).
+  - Correction : corriger les quatre textes (ou le code pour `R` : agir sur le dossier courant hors ligne de dossier, ou le dire par un message) ; garder les deux autres et corriger le code (CR-80, CR-81).
+  - Test : `R` sur une ligne de fichier produit un message ; un test par affirmation vérifiable du guide (profil livré supprimable, `A` sans les sorties).
+
+### tui/screens/confirm.py
+
+Aucun constat. Focus initial sur Annuler sauf demande expresse, `Échap` prioritaire, titre en `markup=False`. Le corps garde le balisage actif quand il est une `str` : tous les appelants lus passent soit un `Text` (suppression, récursif), soit des phrases sans nom de fichier (quitter, arrêt du lot, retour à l'accueil) — à garder en tête pour un appelant futur qui y mettrait un nom (voir CR-101).
+
+### tui/screens/delete_confirm.py
+
+Aucun constat. Corps en `Text` (rien d'interprété), annexes Jellyfin nommées avant suppression (IE-116), focus sur Annuler.
+
+### tui/screens/recursive_confirm.py
+
+Aucun constat. Le texte décrit bien ce que fait `R` (analyse, puis aperçu, décisions automatiques) — contrairement au guide, voir CR-102.
+
+### tui/screens/quit.py
+
+- **CR-103** · `tui/app.py:478-482` (`action_request_quit`), liaisons `F10`/`Ctrl+C` prioritaires (`:62-63`) · mineur · J · lu — `F10` (ou `Ctrl+C`) pressé pendant que la confirmation de sortie est ouverte en empile une seconde.
+  - Scénario : les liaisons de l'application sont prioritaires et rien ne vérifie qu'un `QuitConfirmScreen` est déjà affiché ; un double appui (ou `Ctrl+C` par réflexe) empile deux modales, et « Continuer » sur la première laisse la seconde. Sans conséquence sur les données ; incohérent avec `action_aide`, qui se garde du cas (`isinstance(self.screen, AideScreen)`).
+  - Correction : ignorer la demande si l'écran courant est déjà un `QuitConfirmScreen`.
+  - Test : `F10` deux fois : un seul `QuitConfirmScreen` dans la pile.
+
+### tui/screens/fin_lot.py
+
+- **CR-104** · `tui/screens/fin_lot.py:41-46` (`dismiss(True)` depuis le minuteur) · mineur · C · reproduit — Si un autre écran est ouvert par-dessus le compte à rebours quand il atteint zéro, l'action part, c'est l'**autre** écran qui est retiré, et l'application tombe à la seconde suivante.
+  - Scénario : Textual `Screen.dismiss` appelle le rappel puis `app.pop_screen()`, qui retire l'écran du **sommet**, quel qu'il soit. Reproduit : pile [Accueil, FinDeLotModal, Guide] (`H` pendant le décompte de 2 s) → l'action est déclenchée, la pile devient [Accueil, FinDeLotModal] (le guide a été retiré à sa place), le minuteur repart, et le second `dismiss` lève `InvalidStateError` : application arrêtée. Même chose avec `F10` (la confirmation de sortie est retirée à sa place) ; avec `F12`, la modale reste dans la pile de l'autre mode et `pop_screen` vise la pile affichée. Concrètement : on revient devant l'écran pendant le décompte, on ouvre le guide ou la file — la machine se met en veille quand même, et l'application a planté au réveil.
+  - Correction : arrêter le minuteur avant de rendre, ne rendre que si la modale est au sommet (`self.is_current`) — sinon la mettre en tête ou annuler l'action ; ou ouvrir la modale hors d'atteinte des autres touches.
+  - Test : modale à 1 s de délai recouverte d'un écran : à l'échéance, l'écran du dessus est toujours là, et le rappel n'est appelé qu'une fois.
 
 ## Synthèse
 

@@ -33,7 +33,7 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — Revue terminée : 62 cases cochées, 112 constats (12 critiques, 14 majeurs, 86 mineurs), 11 questions, synthèse écrite. Tests relancés : identiques au départ.
+- 2026-10-08 — Revue terminée : 62 cases cochées, 112 constats (12 critiques, 14 majeurs, 86 mineurs), 11 questions, synthèse écrite. Tests relancés : identiques au départ. Pull request en brouillon : https://github.com/opegon/IRIS_Encode/pull/3.
 - Prochain : relecture de la synthèse par l'auteur, puis ouverture des entrées IE-123 à IE-137.
 
 ### Pistes notées en route

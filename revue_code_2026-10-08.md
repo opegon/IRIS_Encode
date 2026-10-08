@@ -33,33 +33,17 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — Journal créé, base de tests relevée. Aucun fichier revu.
-- Prochain : `core/bluray.py`.
+- 2026-10-08 — `core/scanner.py` fait. 5 constats : DTS:X IMAX non reconnu sans perte (critique, reproduit), marques audio collées aux canaux, intermédiaires pris pour des sources, triple parcours récursif, code mort ; 2 questions.
+- Prochain : `core/decision.py`.
 
-### Base de tests (au départ)
+### Pistes notées en route
 
-`pip install -r requirements.txt pytest` puis `python -m pytest -q`, sous Linux
-(Python 3.13.16, textual 8.2.8, rich 15.0.0, numpy 2.5.3, pytest 9.1.1), sans
-GPU NVIDIA, sans `bin/` ni `resources_files/`.
+Observations faites en lisant un appelant, à instruire quand leur fichier vient
+(et à retirer une fois instruites).
 
-**1 644 tests : 1 630 réussis, 5 échecs, 9 ignorés.** Les cinq échecs sont
-**d'environnement** (sémantique des chemins Windows sous Linux), aucun n'est un
-défaut :
-
-| Test | Cause |
-|---|---|
-| `test_bluray.py::test_à_la_racine_d_un_lecteur_l_étiquette_du_volume` | `Path("E:\\")` n'est pas une racine de lecteur sous Linux : `.name` vaut `E:\` |
-| `test_dvd.py::test_à_la_racine_d_un_lecteur_le_nom_par_défaut` | idem |
-| `test_densite.py::test_la_notice_ne_repete_pas_le_dossier_courant` (×2) | séparateur `\` attendu, `/` rendu par `PosixPath` |
-| `test_dvd.py::test_l_outil_dvd_se_pose_dans_bin_dvd` | l'archive du test porte des noms en `.exe`, `_exe()` n'en ajoute pas sous Linux |
-
-Ignorés (9) : ffmpeg absent de `bin/` (3), échantillons absents de
-`resources_files/` (5), API Windows (`test_veille.py`, 1).
-
-Ce qui ne peut pas être exécuté ici : NVENC, `ctypes.windll`,
-`Mount-DiskImage`, lecteurs en lecture seule réels, cmd.exe et PowerShell.
-Les constats qui en dépendent sont marqués `lu` ou `supposé`, jamais
-`reproduit`.
+- `tui/screens/run.py` `_extraire_dvd` (~l. 1300) et `_remux_titre` (~l. 1250) : le détail d'échec est la dernière ligne (`journal[-1]`, `proc.errors[-1]`), pas `encoder.diagnostiquer()` — pour l'LPCM de CR-05 on lirait « Error opening output files: Invalid argument ». Récidive de la règle « un échec nomme sa cause » ?
+- `tui/screens/run.py` : après échec ou abandon d'un titre extrait, `dec.encode_source` est-il remis à None et le `.iris_titre.mkv` effacé ? (un réessai pointerait vers un fichier disparu).
+- `tui/screens/browser.py:831-849` `_scan_one` : une analyse qui lève est seulement journalisée, la ligne disparaît de la liste sans message (titre de disque illisible, CSS non détecté sur lecteur physique : `clip_chiffre`/`vob_chiffre` rendent False sur OSError en promettant que « l'analyse dira pourquoi »). Message de journal en français (« Échec du scan »).
 
 ## Cadre (déjà tranché, ne pas re-signaler)
 
@@ -119,6 +103,34 @@ Choix assumés par la spec, le wiki ou le CHANGELOG. Un désaccord se pose en
 - **Revue du 2026-08-29** (IE-38 à IE-58) close, tests dans
   `tests/test_revue_code.py`.
 
+
+### Base de tests (au départ)
+
+`pip install -r requirements.txt pytest` puis `python -m pytest -q`, sous Linux
+(Python 3.13.16, textual 8.2.8, rich 15.0.0, numpy 2.5.3, pytest 9.1.1), sans
+GPU NVIDIA, sans `bin/` ni `resources_files/`. Outils présents pour les
+reproductions : ffmpeg/ffprobe 6.1.1 (Ubuntu, sans `dvdvideo` ni `dovi_rpu`),
+mkvmerge v82.0 (installé pour la revue) ; ni dovi_tool, ni mpv.
+
+**1 644 tests : 1 630 réussis, 5 échecs, 9 ignorés.** Les cinq échecs sont
+**d'environnement** (sémantique des chemins Windows sous Linux), aucun n'est un
+défaut :
+
+| Test | Cause |
+|---|---|
+| `test_bluray.py::test_à_la_racine_d_un_lecteur_l_étiquette_du_volume` | `Path("E:\\")` n'est pas une racine de lecteur sous Linux : `.name` vaut `E:\` |
+| `test_dvd.py::test_à_la_racine_d_un_lecteur_le_nom_par_défaut` | idem |
+| `test_densite.py::test_la_notice_ne_repete_pas_le_dossier_courant` (×2) | séparateur `\` attendu, `/` rendu par `PosixPath` |
+| `test_dvd.py::test_l_outil_dvd_se_pose_dans_bin_dvd` | l'archive du test porte des noms en `.exe`, `_exe()` n'en ajoute pas sous Linux |
+
+Ignorés (9) : ffmpeg absent de `bin/` (3), échantillons absents de
+`resources_files/` (5), API Windows (`test_veille.py`, 1).
+
+Ce qui ne peut pas être exécuté ici : NVENC, `ctypes.windll`,
+`Mount-DiskImage`, lecteurs en lecture seule réels, cmd.exe et PowerShell.
+Les constats qui en dépendent sont marqués `lu` ou `supposé`, jamais
+`reproduit`.
+
 ## Critères
 
 | Code | Ce qu'on cherche |
@@ -153,9 +165,9 @@ Ordre de revue : le code des sources disque d'abord (IE-118 à IE-122), puis
 le reste de `core/`, `tui/`, la racine et les lanceurs.
 
 ### core/
-- [ ] core/bluray.py (305)
-- [ ] core/dvd.py (260)
-- [ ] core/scanner.py (1040)
+- [x] core/bluray.py (305)
+- [x] core/dvd.py (260)
+- [x] core/scanner.py (1040)
 - [ ] core/decision.py (1386)
 - [ ] core/encoder.py (891)
 - [ ] core/annexes.py (68)
@@ -223,6 +235,70 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 ## Constats
 
 <!-- Un bloc par fichier, dans l'ordre de revue. -->
+
+### core/bluray.py
+
+- **CR-01** · `core/bluray.py:61-66` (`a_extraire`), `core/scanner.py:933-944` · **critique** · J · reproduit — Un titre d'un seul clip qui n'en joue qu'une partie est encodé en entier.
+  - Scénario : disque dont plusieurs playlists pointent dans le même clip avec des points d'entrée et de sortie différents (concert : une playlist par chanson ; série : un épisode par playlist). Disque synthétique : `00001.m2ts` de 60 s, `00010.mpls` = 0-20 s (deux chapitres), `00011.mpls` = 20-60 s. `titres()` les liste (20 s, 40 s), `scan()` annonce 20 s, mais `a_extraire` est faux (un seul clip) et `build_command` lit `00001.m2ts` sans `-ss`/`-t`. Obtenu : `Concert (2020) - 00010.h264-iris.mp4` dure **60,0 s** (tout le concert), code 0 ; idem pour `00011` ; les chapitres FFMETADATA sont décalés dès que l'entrée n'est pas au début du clip. Attendu : 20 s. mkvmerge v82, lui, respecte les bornes (`mkvmerge -o x.mkv 00010.mpls` → 20,006 s).
+  - Correction : faire passer par l'assemblage mkvmerge (`_remux_titre`) tout titre dont les éléments ne couvrent pas leur clip — par exemple `_scan_titre` compare la durée du clip (ffprobe) à `t.duree` et marque le titre partiel au-delà de 1 s d'écart, `a_extraire` le lit.
+  - Test : le disque synthétique ci-dessus (playlists fabriquées comme dans `tests/test_bluray.py`, clip par ffmpeg) : `00010` est `a_extraire`, et un titre qui couvre son clip ne l'est pas.
+- **CR-02** · `core/bluray.py:233-245` (`titre`), `core/scanner.py:937-938` · mineur · J (coût) · reproduit — Analyser les titres d'un disque relit toutes ses playlists pour chacun : coût quadratique.
+  - Scénario : `_scan_titre` appelle `bluray.titre(mpls)`, qui rappelle `titres(racine)` (toutes les playlists, un `is_file` par clip cité) pour retrouver un seul titre ; le navigateur analyse chaque titre listé, et `disque_chiffre` refait un `titres()` à chaque ouverture. Sur une sauvegarde déchiffrée d'un disque à playlists obscurcies (des centaines de playlists de pleine durée, toutes au-dessus de 2 min), mesuré sous Linux sur disque synthétique : 600 playlists × 100 clips → 0,70 s par `titre()`, soit **≈ 7 min** de seule lecture des playlists pour analyser les 600 titres, avant le moindre ffprobe ; davantage sur un ISO monté ou un partage.
+  - Correction : mémoriser `titres(racine)` par (racine, date du dossier `PLAYLIST`), ou faire porter le `TitreDisque` déjà lu par le navigateur jusqu'à `scan()`.
+  - Test : compter les appels à `lire_mpls` pendant l'analyse de N titres d'un disque synthétique : au plus N (+ constante), pas N².
+- **CR-03** · `core/bluray.py:300-305`, `tui/screens/run.py:1218-1260` (`_remux_titre`) · mineur · J · supposé — Rien ne vérifie que l'assemblage mkvmerge a les pistes sur lesquelles la décision a été prise.
+  - Scénario : la décision numérote les pistes par type d'après ffprobe sur le premier clip (`_scan_titre`), puis encode le Matroska de mkvmerge. Mesuré avec mkvmerge v82 : l'ordre suit la PMT dans les deux outils, même à PID inversés (bon) ; mais sur un `.m2ts` portant une AAC, ffprobe voit trois flux et mkvmerge deux (l'AAC manque). Une piste absente avant une piste gardée décale les index : `-map 0:a:1` prend une autre langue, étiquetée par `langue_completee` comme la piste voulue — faux sans erreur ; après, `-map` échoue (erreur visible).
+  - Correction : après `_remux_titre`, relire le Matroska (ffprobe) et comparer, par type, la suite des codecs à celle de `dec.info` ; refuser avec un message en cas d'écart.
+  - Test : `_remux_titre` avec un ffprobe simulé rendant une piste audio de moins → fichier en erreur, message explicite, intermédiaire effacé.
+- **CR-04** · `core/bluray.py:185-195` (`nom_disque`) · mineur · W · supposé — L'étiquette de volume devient un nom de fichier sans être assainie.
+  - Scénario : à la racine d'un lecteur, le nom des sorties est l'étiquette du volume (soulignés → espaces). Une étiquette UDF peut porter `:`, `?`, `"` ou `/` (ISO gravé soi-même, « Film: Director's Cut ») : `Film: Director's Cut.hevc-iris.mkv` est refusé par Windows, ffmpeg échoue après l'analyse, sur un message d'ouverture de sortie. Aucune fonction d'assainissement dans le dépôt.
+  - Correction : remplacer les caractères interdits par Windows (`<>:"/\|?*`, contrôles, points et espaces finaux) dans `nom_disque`, défaut si rien ne reste.
+  - Test : `nom_disque(Path("E:\\"))` avec une étiquette `A:B?C` simulée rend un nom sans caractère interdit.
+
+### core/dvd.py
+
+- **CR-05** · `core/dvd.py:255-260` (`build_extraction_command`) · **majeur** · J · reproduit (muxeur ; `dvdvideo` non disponible ici) — Un DVD à piste LPCM ne s'extrait pas : `-map 0 -c copy` vers Matroska refuse `pcm_dvd`.
+  - Scénario : DVD musical, concert, ou film avec une piste LPCM 2.0 (courant). Le démultiplexeur `dvdvideo` livre l'LPCM en `pcm_dvd` ; le muxeur Matroska n'a pas d'étiquette pour ce codec. Mesuré (ffmpeg 6.1.1, VOB synthétique `mpeg2video` + `pcm_dvd`, `-map 0 -c copy x.mkv`) : « No wav codec tag found for codec pcm_dvd », « Could not write header », code 234. `_extraire_dvd` passe le titre en échec ; tout le DVD est inencodable, alors que l'IFO, la vidéo et les autres pistes sont lisibles. À confirmer sous BtbN n9.0 (même muxeur, sans changement connu).
+  - Correction : convertir à l'extraction les pistes `pcm_dvd` connues par l'analyse (`dec.info.audio_tracks`) en un PCM ou un FLAC que Matroska accepte (`-c:a:N pcm_s24le` ou `flac`), le reste en copie.
+  - Test : la commande d'extraction d'un titre dont l'analyse montre une piste `pcm_dvd` ne la recopie pas telle quelle ; avec le ffmpeg local, la même commande sur un MPEG-PS synthétique à `pcm_dvd` (entrée `-f mpeg` au lieu de `dvdvideo`) rend 0.
+- **CR-06** · `core/dvd.py:182-190` (`clips = _vobs(vts)`), `core/bluray.py:68-77` (`taille`), `core/scanner.py:825-830` · mineur · J · lu — Un titre d'un VTS qui en porte plusieurs prend tous les VOB du VTS : taille, débit et visualisation faux.
+  - Scénario : DVD de série, quatre épisodes = quatre titres d'un même VTS (`VTS_01_1…4.VOB`). Chaque titre a pour `clips` les quatre VOB : sa `taille` (colonne Taille, Estim. Δ%, bilan de l'aperçu) est celle du disque entier, son débit estimé (`taille × 8 / durée`) quatre fois trop haut, et `V` (mpv sur `lecture` = premier VOB) montre le premier épisode quel que soit le titre. La décision change rarement (MPEG-2 toujours réencodé), mais les chiffres affichés sont faux.
+  - Correction : calculer la taille d'un titre sur ses cellules (table C_PBKT du PGC : premier et dernier secteur de chaque cellule, × 2 048), et ne garder dans `clips` que les VOB que ces secteurs couvrent.
+  - Test : IFO synthétiques d'un VTS à deux titres de durées 1:3 : `taille` de chacun dans ce rapport, à ±1 %.
+- **CR-07** · `core/dvd.py:186-190` (`chapitres=[0.0] * chapitres`) · mineur · J · lu — Piège latent : le champ `chapitres` d'un titre de DVD ne porte que des zéros.
+  - Scénario : `TitreDisque.chapitres` est documenté « débuts, en secondes » ; pour un DVD, il vaut `[0.0] * n` (le nombre seul). Aujourd'hui seul `ffmetadata_chapitres` le lit, et `_ecrire_chapitres` ne l'appelle pas pour un DVD parce que l'extraction a déjà posé `encode_source`. Le jour où un chemin écrit les chapitres d'un DVD sans extraction (visualisation, aperçu, réessai), il produira n chapitres à 0 s.
+  - Correction : un champ distinct (`nb_chapitres`) pour le DVD, `chapitres` vide.
+  - Test : `ffmetadata_chapitres` d'un titre de DVD rend « » ; ou un titre DVD a `chapitres == []`.
+- **CR-08** · `core/dvd.py:258` (`_ffmpeg or "ffmpeg"`) · mineur · M · lu — Repli sur `ffmpeg` par son nom, inatteignable.
+  - Scénario : `_extraire_dvd` refuse déjà quand `dvd.outils()[0]` est None, donc le repli ne sert jamais ; s'il servait, il appellerait un ffmpeg du `PATH` sans `dvdvideo`, contre la règle « jamais le nom nu ».
+  - Correction : laisser `build_extraction_command` lever si l'outil manque.
+  - Test : sans outil, `build_extraction_command` lève.
+- **Question** — `core/dvd.py:194-198` : sur un DVD de série, le titre le plus long est souvent « Lire tout », qui devient le principal : le mode récursif encode alors le disque en un seul fichier au lieu de ses épisodes. Choix assumé (« principal = le plus long ») ou faut-il écarter un titre dont les PGC couvrent ceux d'autres titres ?
+
+### core/scanner.py
+
+- **CR-09** · `core/scanner.py:289` (`_LOSSLESS_PROFILES`), `:388-391` (`is_lossless`) · **critique** · J · reproduit — Un DTS:X IMAX n'est pas reconnu sans perte : `preserve_hd_audio` le transcode, et la sortie part en MP4.
+  - Scénario : ffmpeg (≥ 6.1, et 8.x) nomme le profil « DTS-HD MA + DTS:X IMAX » (relevé dans `libavcodec.so.60`) ; la liste n'a que « dts-hd ma » et « dts-hd ma + dts:x », comparés à l'égalité. Profil `preserve_hd_audio = true`, `container = "auto"`, piste DTS-HD MA + DTS:X IMAX 7.1 : obtenu `→ ac3 5.1 640k`, sortie `.mp4` ; attendu `→ copy`, sortie `.mkv` (ce que rendent « DTS-HD MA » et « DTS-HD MA + DTS:X » dans le même essai). La passe audio préalable (`audio_prepass_needed`) et le garde-fou « sans perte conservé → MKV » ne la voient pas non plus. Avec `delete_source`, la piste sans perte est perdue pour de bon.
+  - Correction : reconnaître toute variante dont le profil commence par « dts-hd ma » (préfixe, pas égalité), et le dire en un seul endroit.
+  - Test : paramétré sur les profils `dca` de ffmpeg (DTS, DTS-ES, DTS 96/24, DTS-HD HRA, DTS-HD MA, … + DTS:X, … + DTS:X IMAX, DTS Express) : sans perte exactement pour les trois « DTS-HD MA… » ; décision `copy` + `.mkv` pour le troisième.
+- **CR-10** · `core/scanner.py:128-135` (`_re_marques`, `(?![0-9A-Za-z+])`), avec `core/decision.py` (`JETONS_AUDIO`) · mineur · J · reproduit — Une famille audio collée à ses canaux (`DTS5.1`, `TrueHD7.1`, `DDP5.1`) n'est pas reconnue : la sortie garde la famille de la source.
+  - Scénario : la marque doit être suivie d'un non-alphanumérique, or `DTS5.1` la colle à un chiffre. Obtenu par `decide` (DTS ou TrueHD transcodés en E-AC3) : `Film.1080p.BluRay.DTS5.1.x264-GRP.mkv` → `Film.1080p.BluRay.DTS5.1.hevc-iris.mp4` ; `Film.2160p.BluRay.TrueHD7.1.Atmos.x265-GRP.mkv` → `…TrueHD7.1.Atmos.hevc-iris.mp4`, alors que le fichier porte de l'E-AC3 5.1 sans Atmos. Avec un point (`DTS.5.1`), le nom est juste (`E-AC3.5.1`). Le nom ment là où la règle « ce que la conversion rend faux » (wiki `noms-de-release`) devait le corriger.
+  - Correction : accepter comme fin de marque une disposition collée (`(?=\d\.\d)`) et réécrire ensemble famille et disposition (`TrueHD7.1` → `E-AC3.5.1`).
+  - Test : les quatre noms ci-dessus passés par `decide` : famille, disposition et `Atmos` de la sortie.
+- **CR-11** · `core/scanner.py:62-69` (`deja_produit`), intermédiaires de `tui/screens/run.py` · mineur · P · lu — Un intermédiaire Matroska laissé par une coupure passe pour une source : `A` le coche, `R` l'encode.
+  - Scénario : coupure de courant pendant l'encodage d'un titre de DVD : `TITLE_01.iris_titre.mkv` (4,4 Go) reste dans le dossier de sortie ; de même `<n>.iris_dv.mkv` (réencodage DV vers MP4) et `<n>.iris_st.mkv` (porteur de sous-titres). `deja_produit` ne reconnaît que `-iris` en fin de nom : la ligne n'est pas grisée, `A` la coche, `R` la réencode en `TITLE_01.iris_titre.hevc-iris.mkv`, et rien ne signale ni ne nettoie ces gigaoctets.
+  - Correction : reconnaître les intermédiaires (`.iris_<mot>` avant l'extension, une seule expression partagée avec `run.py`), les écarter du scan et les montrer comme restes à supprimer.
+  - Test : `X.iris_titre.mkv`, `X.iris_dv.mkv`, `X.iris_st.mkv` absents de `scan_directory_recursive` et non cochés par `A` ; une source `Film.iris.mkv` reste une source.
+- **CR-12** · `core/scanner.py:991-1004` · mineur · W (coût) · lu — Le mode récursif parcourt l'arborescence trois fois avant le premier ffprobe.
+  - Scénario : `rglob("index.bdmv")`, `rglob("VIDEO_TS.IFO")` puis `rglob("*")` : trois parcours complets. Sur une bibliothèque d'un partage réseau (le cas qu'IE-117 visait), IE-121 a ajouté deux parcours de plus que la liste elle-même.
+  - Correction : un seul parcours, qui note au passage les marqueurs de disque.
+  - Test : sur une arborescence synthétique, compter les `os.scandir` (monkeypatch) : un par dossier.
+- **CR-13** · `core/scanner.py:958-974`, `:1035-1040`, `:511-536`, `:340-342` · mineur · M · lu — Code mort : `scan_directory`, `scanner.list_subdirs`, `VideoInfo.is_already_encoded`, `VideoInfo.resolution_label`, `VideoInfo.has_image_subs`, `same_language` n'ont plus d'appelant hors des tests.
+  - Scénario : la spec § 15.2 dit encore que `scan_directory` « alimente les lots que l'utilisateur ne compose pas lui-même » ; aucun écran ne l'appelle. Les tests qui l'exercent vérifient un filtre que l'application n'emprunte plus (le navigateur passe par `FileNavigator.list_videos`).
+  - Correction : à trancher (supprimer, ou rattacher les tests à `scan_directory_recursive`).
+  - Test : —
+- **Question** — `core/scanner.py:991-1010` : en mode récursif, un disque chiffré ou un DVD sans outil est écarté sans un mot (« rien »). La règle « une perte doit se voir » (wiki `pieges-et-lecons`) voudrait que le bilan de `R` le dise. Voulu ?
+- **Question** — `core/scanner.py:285-289` : LPCM (`pcm_bluray`, `pcm_dvd`), FLAC et ALAC ne sont pas « sans perte » au sens de `preserve_hd_audio` (la spec § 8.5 ne cite que TrueHD, DTS-HD MA, MLP) : la piste PCM d'un Blu-ray part en AAC même avec « copier telles quelles ». Voulu ?
 
 ## Synthèse
 

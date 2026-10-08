@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `tui/screens/sync.py` fait. 1 majeur (recalage par plages écrit sur la piste voisine après D), 2 mineurs.
-- Prochain : `tui/screens/donor_picker.py`.
+- 2026-10-08 — `tui/screens/config.py` fait. 1 mineur (options sans effet sur l'accueil avant le prochain dossier).
+- Prochain : `tui/widgets/profile_form.py`.
 
 ### Pistes notées en route
 
@@ -202,12 +202,12 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] tui/screens/mux_run.py (266)
 - [x] tui/screens/join.py (380)
 - [x] tui/screens/sync.py (1246)
-- [ ] tui/screens/donor_picker.py (308)
-- [ ] tui/screens/opensubtitles.py (160)
-- [ ] tui/screens/ancrage.py (161)
-- [ ] tui/screens/segments.py (137)
-- [ ] tui/screens/options.py (176)
-- [ ] tui/screens/config.py (349)
+- [x] tui/screens/donor_picker.py (308)
+- [x] tui/screens/opensubtitles.py (160)
+- [x] tui/screens/ancrage.py (161)
+- [x] tui/screens/segments.py (137)
+- [x] tui/screens/options.py (176)
+- [x] tui/screens/config.py (349)
 - [ ] tui/widgets/profile_form.py (668)
 - [ ] tui/screens/profile_picker.py (119)
 - [ ] tui/screens/value_picker.py (97)
@@ -740,6 +740,45 @@ Aucun constat nouveau. `record_measured_speed` (`:41-47`) est le point d'entrée
   - Correction : celle de CR-86 (cible assemblée, ou greffe refusée tant que le titre n'est pas assemblé).
   - Test : celui de CR-86, pour `SyncScreen`.
 - Voir aussi CR-80 (`:405`), CR-89 (`:1019-1020`), CR-88 (`:1196-1204`, aperçu sur la décision de l'accueil).
+
+### tui/screens/donor_picker.py
+
+Aucun constat nouveau. Lu avec ses trois appelants (pistes, recalage, assistant) : refus du titre de DVD, langue d'un `.srt` nu devinée (`guess_language`, voir CR-26), tid mkvmerge conservés, `identify` tolérant (codes 0 et 1, `[]` sur échec). Pour un titre de Blu-ray, `self._video` (`exclude`) vaut la playlist `.mpls` et part tel quel vers OpenSubtitles par `O` : instruit avec `tui/screens/opensubtitles.py` (piste en cours).
+
+### tui/screens/opensubtitles.py
+
+- **CR-95** · `tui/screens/opensubtitles.py:96-103`, `:143-149` (seule `ErreurOpenSubtitles` est attrapée) ; `core/opensubtitles.py:175` (`return r.json()` hors du `try`), `:86`, `:253-256` · mineur · J · reproduit — Une réponse 200 qui n'est pas du JSON fait quitter l'application.
+  - Scénario : portail Wi-Fi captif, page d'un proxy d'entreprise, résolveur DNS qui détourne : `requests` suit la redirection, rend 200 et du HTML ; `r.json()` lève `JSONDecodeError`, que `_appel` ne convertit pas, et le worker `os-search` sort sur erreur. Reproduit (réponse simulée) : `WorkerFailed: … JSONDecodeError('Expecting value: line 1 column 1 (char 0)')`, application arrêtée. Même sort pour un `OSError` de `empreinte` (`stat` d'une source déplacée entre-temps) ou de l'écriture du `.srt` dans le temp. Si un lot tourne en arrière-plan (IE-100), il s'arrête avec l'application.
+  - Correction : `_appel` convertit toute réponse illisible en `ErreurOpenSubtitles` (« réponse inattendue ») ; les deux workers attrapent aussi `OSError`.
+  - Test : `requests.request` simulé rendant 200 et du HTML : l'écran affiche un message et l'application continue.
+- **CR-96** · `tui/screens/donor_picker.py:94-96` (`exclude=source`, `source = decision.info.path`), `tui/screens/opensubtitles.py:100` → `core/opensubtitles.py:205-209`, `:265-268` · mineur · J · reproduit (titre analysé) / lu — Pour un titre de Blu-ray, `O` cherche « 00800 » sans empreinte.
+  - Scénario : la vidéo transmise est la playlist (`info.path`) : `empreinte` rend "" (fichier de quelques centaines d'octets), et `parse_title(…/00800.mpls)` rend `('00800', None)` (vérifié). La recherche par nom ne trouve rien ou n'importe quoi, alors que le nom du disque (`stem_sortie`, « Film (2020) ») et le premier clip (`lecture`, pour l'empreinte) sont à portée.
+  - Correction : passer `info.lecture` pour l'empreinte et `info.stem_sortie` pour le titre (le paramètre `video` sert aux deux aujourd'hui).
+  - Test : titre de Blu-ray simulé : la requête par nom porte le nom du disque.
+- **CR-97** · `tui/screens/opensubtitles.py:115` (`"oui"`), `:86` (`"Release"`) · mineur · G1 · lu — Une valeur affichée écrite en français dans le code, hors de `_()`.
+  - Scénario : la colonne SDH affiche « oui » dans toutes les langues de l'interface, anglais compris (langue source). L'en-tête « Release » n'est pas marqué non plus (le terme peut rester, mais c'est au catalogue d'en décider).
+  - Correction : `_("yes")` (le `msgid` existe déjà, `_BOOLS` de `sync.py`) ; `N_("Release")` avec un commentaire au traducteur.
+  - Test : structurel — le test des littéraux accentués ou français hors `_()` couvre aussi les mots sans accent courants (« oui », « non »).
+
+### tui/screens/ancrage.py
+
+Aucun constat. Lu avec son appelant (`SyncScreen.action_ancrer`) : la réplique passe en `Text` (aucun balisage interprété), l'horodatage saisi est relu par `lire_timecode`, l'écart de plus de cinq minutes est refusé avec un message, `Échap` rend None ; libellés par `_()`/`N_()`.
+
+### tui/screens/segments.py
+
+Aucun constat. Lecture seule ; largeurs mesurées en `cell_len` sur les libellés traduits, style de la confiance tiré du niveau et non du libellé (UX-29). Seule remarque d'usage : la note dit qu'il « faudrait fabriquer une piste corrigée » sans nommer `P`, qui le fait depuis le recalage — rien à corriger.
+
+### tui/screens/options.py
+
+Aucun constat nouveau. Lu avec `ConfigScreen` (`U`) et `OutputDirScreen` : la langue, le dossier de sortie et la durée minimale ne s'écrivent que s'ils changent, `Échap` ne touche à rien, le relevé de veille repart aussitôt. L'enregistrement passe par `set_energie` → `save` sans garde : c'est un des appels de CR-77.
+
+### tui/screens/config.py
+
+- **CR-98** · `tui/screens/config.py:140-144` (`action_options` sans rappel) · mineur · J · lu — Une durée minimale de titre changée dans les options ne s'applique pas à l'écran qu'on retrouve.
+  - Scénario : dans le dossier d'un Blu-ray, `F5` → `U`, durée minimale de 2 à 0 (pour voir un bonus court), `Ctrl+S`, puis Retour : `OptionsScreen` rend True mais personne ne l'écoute, `_changed` reste faux, et l'accueil (`_on_config_return(False)`) ne relit pas le dossier — les mêmes titres restent affichés jusqu'au prochain changement de dossier, comme si le réglage n'avait pas pris.
+  - Correction : `push_screen(OptionsScreen(), lambda ok: setattr(self, "_changed", self._changed or bool(ok)))`, ou un rafraîchissement ciblé de l'accueil.
+  - Test : options enregistrées depuis la gestion des profils : `dismiss` rend True.
+- Voir aussi CR-77 : `prof_mod.save_all` (`:303`, `:330`) écrit `profiles.toml` par le même chemin atomique que `config.save`, sans garde non plus — un verrou au mauvais moment ferme l'application au milieu d'une édition de profil. CR-45 (bibliothèque écrasée après un TOML invalide) passe par ces deux mêmes appels.
 
 ## Synthèse
 

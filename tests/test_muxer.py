@@ -329,6 +329,10 @@ def _encode_decision(ext: list[ExternalTrack], *, subs=None):
 
     info = mock.Mock()
     info.path            = Path("/films/film.mkv")
+    info.titre           = None
+    info.lecture         = info.path
+    info.dossier         = info.path.parent
+    info.stem_sortie     = info.path.stem
     info.width           = 1920
     info.height          = 1080
     info.has_image_subs  = False
@@ -532,6 +536,10 @@ def test_skip_with_external_track_gets_a_distinct_name():
 
     info = mock.Mock()
     info.path            = Path("/films/Film.mp4")
+    info.titre           = None
+    info.lecture         = info.path
+    info.dossier         = info.path.parent
+    info.stem_sortie     = info.path.stem
     info.width           = 1920
     info.height          = 1080
     info.has_image_subs  = False

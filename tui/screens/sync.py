@@ -232,7 +232,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     def __init__(self, decision: FileDecision) -> None:
         super().__init__()
         self._decision  = decision
-        self._source    = decision.info.path
+        self._source    = decision.info.lecture
         tracks          = decision.external_tracks
         self._tracks    = tracks
         # Une piste sans langue bloque le mux : on ouvre directement sur ce

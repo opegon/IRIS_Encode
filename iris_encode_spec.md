@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.93 — document de référence courant
+**Version** : 0.8.9.94 — document de référence courant
 **Date** : 2026-10-08
 **Statut** : stable
 
@@ -51,6 +51,7 @@ iris_encode/
 │   ├── config.py                 ← lecture/écriture config.toml
 │   ├── profiles.py               ← lecture/écriture profiles.toml
 │   ├── scanner.py                ← analyse fichiers via ffprobe + enrichissement DV
+│   ├── bluray.py                 ← titres d'un dossier Blu-ray (playlists .mpls, AACS)
 │   ├── decision.py               ← logique métier encodage
 │   ├── encoder.py                ← construction commande ffmpeg + exécution
 │   ├── dovi.py                   ← wrapper dovi_tool (probe, RPU, x265-params HDR10)
@@ -444,6 +445,7 @@ Fichier unique, éditable à la main, dans le dossier de l'application.
 [app]
 language = "fr"          # vide : celle de Windows au premier lancement (§ 2.1)
 output_dir = ""          # proposé pour une source en lecture seule (§ 14.7) ; vide : ~/Videos
+min_title_minutes = 2    # durée minimale d'un titre de Blu-ray listé (§ 15.5) ; 0 : tous
 
 [ffmpeg]
 fetch_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
@@ -2627,6 +2629,9 @@ OpenSubtitles chez le donneur (UX-12). Une action inconnue dans le fichier
 vaut `rien` (v0.8.9.53 ; `veille` avant). Section « Dossier de sortie »
 (v0.8.9.92) : le dossier proposé pour une source en lecture seule (§ 14.7),
 changé par `OutputDirScreen`, écrit dans `[app] output_dir` au `Ctrl+S`.
+Section « Titres de Blu-ray » (v0.8.9.94) : la durée minimale d'un titre listé,
+en minutes (§ 15.5), écrite dans `[app] min_title_minutes` ; une saisie non
+numérique est ignorée.
 
 **Clés d'API** (v0.8.9.37, IE-101) — `K` ouvre `ClesScreen` pour tous les
 services de `core/cles.py` (OpenSubtitles : clé, identifiant, mot de passe
@@ -2856,6 +2861,51 @@ bascule en mode normal.
 
 ---
 
+### 15.5 Titres de Blu-ray — `core/bluray.py`
+
+(v0.8.9.94, IE-120) Un dossier qui contient `BDMV\index.bdmv` — racine d'un
+ISO monté, ou rip copié — présente ses **titres** : `FileNavigator.list_videos`
+ajoute à ses fichiers les playlists `BDMV\PLAYLIST\*.mpls` de
+`bluray.titres(racine, durée_min)` (`[app] min_title_minutes`, 2 par défaut,
+celle de MakeMKV). Les playlists sont lues sans outil (`lire_mpls` : éléments
+de lecture clip / entrée / sortie à 45 kHz, marques d'entrée = chapitres) ;
+validé contre mkvmerge sur le disque d'essai (durées et nombres de chapitres
+identiques). Une playlist qui cite un clip absent est ignorée ; les doublons
+(mêmes clips, même durée) se réduisent à celle qui porte le plus de
+chapitres ; la plus longue est `principal`. `BDMV\STREAM` liste toujours les
+clips bruts (IE-118).
+
+`scanner.scan(*.mpls)` analyse le premier clip, puis pose `path` = la
+playlist (identité dans le navigateur, la file, les réglages par fichier),
+`titre`, la durée de la playlist et un `frame_count` mis à l'échelle. Trois
+propriétés de `VideoInfo` en découlent : `lecture` (le fichier que lisent
+ffmpeg, mkvmerge et mpv — le premier clip), `dossier` (le dossier qui contient
+`BDMV`, jamais dedans ; base de `dossier_sortie` et de `sorties_bloquees`),
+`stem_sortie` (`nom_disque` : le nom de ce dossier, ou à la racine d'un lecteur
+son étiquette, soulignés en espaces ; suivi de ` - 01000` hors du titre
+principal). `taille` : la somme des clips.
+
+À l'encodage (`RunScreen`) : un titre de plusieurs clips est d'abord assemblé
+par `mkvmerge --gui-mode -o <dossier_sortie>\<n>.iris_titre.mkv <playlist>`
+(`_remux_titre`, code 1 = avertissements accepté), qui devient
+`encode_source` et part après l'encodage comme l'intermédiaire d'un mux
+préalable ; ses pistes suivent l'ordre de celles du premier clip, que la
+décision a numérotées. Dolby Vision sur un titre de plusieurs clips : refusé
+avec un message. Un titre d'un seul clip lit son `.m2ts` ; ses chapitres
+(deux au moins) sont écrits en FFMETADATA (`<n>.iris_chap.txt`, « Chapter
+01 »…) et passés à `build_command(chapitres=…)` : `-f ffmetadata -i …` en
+dernière entrée, `-map_chapters`. Un titre n'est jamais supprimé après
+encodage (`delete_source`), ni par `Ctrl+D` ; mux (`F3`) et collage le
+refusent.
+
+**Disque chiffré** — `clip_chiffre` lit les premières unités de 6 144 octets
+du premier clip du titre principal : AACS chiffre chaque unité au-delà de ses
+16 premiers octets, la synchronisation `0x47` des paquets 2 à 32 disparaît.
+Chiffré, le dossier ne liste aucun titre et le navigateur le dit.
+
+**Mode récursif** — un disque n'y donne que son titre principal (non chiffré) ;
+ses fichiers sous `BDMV` sont écartés.
+
 ## 16. Logging
 
 ### 16.1 Logging Python standard (opérationnel)
@@ -3010,6 +3060,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.94 | 2026-10-08 | **Titres de Blu-ray** (§ 5, § 14.8, § 15.5, IE-120) : dossier `BDMV` présenté par playlists `.mpls` lues sans outil, durée minimale `[app] min_title_minutes` (Options), doublons réduits, titre principal · `VideoInfo.titre`, `lecture`, `dossier`, `stem_sortie`, `taille` · sortie nommée d'après le disque, à côté de `BDMV` · titre de plusieurs clips assemblé par mkvmerge avant l'encodage, chapitres FFMETADATA pour un clip seul · AACS refusé · mode récursif : titre principal seul · `tests/test_bluray.py` |
 | 0.8.9.93 | 2026-10-08 | **Langues des Blu-ray, cœur AC-3, DVB, télétexte** (§ 8.5, § 8.6, § 15, IE-119) : langues d'un `.m2ts` complétées par mkvmerge (PID), écrites dans la sortie · piste sans langue gardée (audio, sous-titres), jamais dite doublée · paire TrueHD + cœur AC-3 réduite à une piste selon `preserve_hd_audio`, verrou de piste originale suivant `AudioDecision.locked` · `dvb_subtitle` image, `dvb_teletext` toujours écarté · `tests/test_langues_disque.py` |
 | 0.8.9.92 | 2026-10-08 | **Flux MPEG et sources en lecture seule** (§ 14.7, § 15, IE-118) : `.ts .m2ts .mts .mpg .mpeg .vob` reconnus, liste vidéo du donneur dérivée du scan · dossier de sortie demandé à la mise en file quand celui de la source refuse l'écriture (ISO monté), réglage `[app] output_dir` dans Options, sortie et intermédiaires dans `FileDecision.dossier_sortie` · mux et collage refusés en lecture seule · `tests/test_sources_lecture_seule.py` |
 | 0.8.9.91 | 2026-10-07 | **Passe audio préalable : défaut plus reproduit** (§ 14.7, IE-80) : ffmpeg 8.1.2 et 8.1.3 écrivent la piste sans perte transcodée en entier, fichier du signalement compris ; passe gardée par choix de l'utilisateur ; docstring d'`audio_prepass_needed` · aucun changement de comportement |

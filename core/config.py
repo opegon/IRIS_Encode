@@ -31,6 +31,9 @@ _DEFAULTS: dict[str, Any] = {
         # Dossier proposé quand celui d'une source est en lecture seule — un
         # ISO monté (IE-118). Vide = le dossier Vidéos de l'utilisateur.
         "output_dir": "",
+        # Durée minimale, en minutes, d'un titre de Blu-ray listé (IE-120) :
+        # écarte menus et boucles. Celle de MakeMKV.
+        "min_title_minutes": 2,
     },
     "ffmpeg": {
         "fetch_url":    "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
@@ -383,6 +386,14 @@ def get_output_dir(cfg: dict[str, Any]) -> Path:
         return Path(regle)
     videos = Path.home() / "Videos"
     return videos if videos.is_dir() else Path.home()
+
+
+def get_min_title_minutes(cfg: dict[str, Any]) -> int:
+    """Durée minimale d'un titre de Blu-ray listé, en minutes (0 = tous)."""
+    try:
+        return max(int(cfg.get("app", {}).get("min_title_minutes", 2)), 0)
+    except (TypeError, ValueError):
+        return 2
 
 
 def set_output_dir(cfg: dict[str, Any], dossier: Path | None) -> None:

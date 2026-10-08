@@ -1,7 +1,7 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.8.9.93
-**Date**: 2026-10-07
+**Version**: 0.8.9.94
+**Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
 
@@ -578,7 +578,16 @@ to resample. That is what makes this case much safer than an audio resync.
 
 1. In Windows, right-click the `.iso` → **Mount**: it appears as a drive.
 2. Open that drive from the volume list (`Ctrl+Home`).
-   - **Blu-ray**: `BDMV\STREAM` — the movie is usually the largest `.m2ts`.
+   - **Blu-ray**: the drive itself lists the disc's **titles**, one row per
+     playlist (`01001.mpls`…), with their length. The longest is the movie;
+     titles shorter than 2 minutes (menus, loops) are hidden — the limit is in
+     Options (`F5` then `U`, "Blu-ray titles"; `0` lists them all). A title
+     made of several clips is joined by mkvmerge before encoding, in the
+     output folder: allow its size in free space. The output is named after
+     the disc (the folder holding `BDMV`, or the drive label), with the
+     playlist number for titles other than the movie, and keeps the disc's
+     chapters. An encrypted disc (AACS) is refused: decrypt it first.
+     `BDMV\STREAM` still shows the raw clips.
    - **DVD**: `VIDEO_TS` — the movie is split into `VTS_xx_1.VOB`,
      `VTS_xx_2.VOB`… of 1 GB each; for now, each part is encoded on its own.
 3. Check the file, `F2`. The drive is read-only: IRIS asks for an **output
@@ -586,6 +595,10 @@ to resample. That is what makes this case much safer than an audio resync.
    `F5` then `U`; your Videos folder by default); the other rows browse to
    another one.
 4. Once the batch is done, unmount the drive (right-click → **Eject**).
+
+A Blu-ray folder copied to a hard drive (`Movie (2020)\BDMV\…`) works the
+same way: open the folder that holds `BDMV`. The output is written next to
+`BDMV`, never inside. The recursive mode keeps only the movie of each disc.
 
 Track languages of a `.m2ts` are read from the disc by mkvmerge (an optional
 tool: without it, they stay unknown — and a track whose language is unknown is

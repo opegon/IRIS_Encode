@@ -1,7 +1,7 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.93
-**Date** : 2026-10-07
+**Version** : 0.8.9.94
+**Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
 
@@ -580,7 +580,17 @@ recalage audio.
 1. Dans Windows, clic droit sur le `.iso` → **Monter** : il apparaît comme un
    lecteur.
 2. Ouvrir ce lecteur depuis la liste des volumes (`Ctrl+Home`).
-   - **Blu-ray** : `BDMV\STREAM` — le film est en général le plus gros `.m2ts`.
+   - **Blu-ray** : le lecteur lui-même liste les **titres** du disque, une
+     ligne par playlist (`01001.mpls`…), avec leur durée. Le plus long est le
+     film ; les titres de moins de 2 minutes (menus, boucles) sont masqués —
+     la limite est dans les Options (`F5` puis `U`, « Titres de Blu-ray » ;
+     `0` les liste tous). Un titre fait de plusieurs clips est assemblé par
+     mkvmerge avant l'encodage, dans le dossier de sortie : prévoir sa taille
+     en espace libre. La sortie prend le nom du disque (le dossier qui
+     contient `BDMV`, ou l'étiquette du lecteur), suivi du numéro de playlist
+     hors du film, et garde les chapitres du disque. Un disque chiffré (AACS)
+     est refusé : le déchiffrer d'abord. `BDMV\STREAM` montre toujours les
+     clips bruts.
    - **DVD** : `VIDEO_TS` — le film est découpé en `VTS_xx_1.VOB`,
      `VTS_xx_2.VOB`… de 1 Go chacun ; pour l'instant, chaque partie s'encode
      à part.
@@ -589,6 +599,11 @@ recalage audio.
    (réglé dans les Options, `F5` puis `U` ; le dossier Vidéos par défaut) ;
    les autres lignes naviguent vers un autre.
 4. Le lot fini, démonter le lecteur (clic droit → **Éjecter**).
+
+Un dossier Blu-ray copié sur un disque dur (`Film (2020)\BDMV\…`) se
+traite pareil : ouvrir le dossier qui contient `BDMV`. La sortie s'écrit à côté
+de `BDMV`, jamais dedans. Le mode récursif ne retient que le film de chaque
+disque.
 
 Les langues des pistes d'un `.m2ts` sont lues sur le disque par mkvmerge (outil
 optionnel : sans lui, elles restent inconnues — et une piste de langue inconnue

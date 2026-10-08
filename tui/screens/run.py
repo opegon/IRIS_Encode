@@ -413,6 +413,24 @@ class RunScreen(TableNavMixin, Screen):
             return
         self.app.call_from_thread(self._update_row, next_idx)
 
+        # Un titre de Blu-ray fait de plusieurs clips : mkvmerge l'assemble
+        # d'abord, tout ce qui suit lit l'assemblage (IE-120).
+        titre = dec.info.titre
+        if titre is not None and len(titre.clips) > 1 and dec.encode_source is None:
+            if dec.video.action in (VideoAction.STRIP_DV, VideoAction.ENCODE_DV):
+                s.state     = FileState.ERROR
+                s.error_msg = _("Dolby Vision: single-clip titles only")
+                s.last_line = _("This Blu-ray title spans {count} clips: its Dolby "
+                                "Vision cannot be kept. Choose a re-encode without "
+                                "Dolby Vision in guided mode.").format(
+                                    count=len(titre.clips))
+                self.app.call_from_thread(self._update_row, next_idx)
+                self._encode_next()
+                return
+            if not self._remux_titre(next_idx, dec):
+                self._encode_next()
+                return
+
         # Retrait du Dolby Vision seul : aucun réencodage, donc aucun appel à
         # build_command. Le fichier suivant est enchaîné par _strip_dv.
         if dec.video.action == VideoAction.STRIP_DV:
@@ -451,16 +469,18 @@ class RunScreen(TableNavMixin, Screen):
             self._encode_next()
             return
 
+        chapitres = self._ecrire_chapitres(dec)
         try:
             cmd = build_command(dec, self._platform, audio_source=audio_tmp,
-                                sous_titres_porteur=porteur)
+                                sous_titres_porteur=porteur, chapitres=chapitres)
         except ValueError as e:
             s.state     = FileState.ERROR
             s.last_line = texte_erreur(e)
             s.error_msg = texte_erreur(e)[:60]
             self.app.call_from_thread(self._update_row, next_idx)
-            if porteur is not None:
-                porteur.unlink(missing_ok=True)
+            for tmp in (porteur, chapitres):
+                if tmp is not None:
+                    tmp.unlink(missing_ok=True)
             self._encode_next()  # passe au suivant
             return
         self.app.call_from_thread(
@@ -483,8 +503,9 @@ class RunScreen(TableNavMixin, Screen):
                     "startup. AV1 through NVENC needs an RTX 40 or newer; HEVC "
                     "and H264 remain available.").format(encoder=choisi)
             self.app.call_from_thread(self._update_row, next_idx)
-            if porteur is not None:
-                porteur.unlink(missing_ok=True)
+            for tmp in (porteur, chapitres):
+                if tmp is not None:
+                    tmp.unlink(missing_ok=True)
             self._encode_next()
             return
 
@@ -553,7 +574,8 @@ class RunScreen(TableNavMixin, Screen):
             if dec.delete_source_override is not None
             else dec.profile.get("delete_source", False)
         )
-        if success and should_delete:
+        # Un titre de disque ne se supprime pas : ce sont les fichiers du disque.
+        if success and should_delete and dec.info.titre is None:
             try:
                 dec.info.path.unlink()
             except Exception:
@@ -564,7 +586,7 @@ class RunScreen(TableNavMixin, Screen):
 
         # Les pistes audio produites à part ont été recopiées dans la sortie,
         # les sous-titres réécrits aussi.
-        for tmp in (audio_tmp, porteur):
+        for tmp in (audio_tmp, porteur, chapitres):
             if tmp is not None:
                 try:
                     tmp.unlink(missing_ok=True)
@@ -612,7 +634,7 @@ class RunScreen(TableNavMixin, Screen):
         là où la passe vidéo se compte en heures.
         """
         s   = self._statuses[index]
-        src = dec.encode_source or dec.info.path
+        src = dec.encode_source or dec.info.lecture
         # Avec l'intermédiaire d'un mux préalable (dossier temporaire), à côté
         # de lui ; sinon dans le dossier de sortie — celui de la source peut
         # être en lecture seule (IE-118).
@@ -662,7 +684,7 @@ class RunScreen(TableNavMixin, Screen):
         if not pistes:
             return True, None
         s       = self._statuses[index]
-        source  = dec.info.path
+        source  = dec.encode_source or dec.info.lecture
         ffmpeg  = getattr(self.app, "ffmpeg_path", "ffmpeg")
         porteur = dec.dossier_sortie / f"{source.stem}.iris_st.mkv"
         cmd, srts = st_mod.build_extraction(source, pistes, dec.dossier_sortie, ffmpeg)
@@ -727,7 +749,7 @@ class RunScreen(TableNavMixin, Screen):
         from core import dovi
 
         s      = self._statuses[index]
-        source = dec.info.path
+        source = dec.info.lecture
         sortie = dec.output_path
 
         def echouer(resume: str, detail: str) -> None:
@@ -962,7 +984,7 @@ class RunScreen(TableNavMixin, Screen):
         from core.encoder import build_dv_video_command
 
         s      = self._statuses[index]
-        source = dec.info.path
+        source = dec.info.lecture
         sortie = dec.output_path
 
         def echouer(resume: str, detail: str) -> None:
@@ -1173,6 +1195,74 @@ class RunScreen(TableNavMixin, Screen):
                     pass
             self._encode_next()
 
+    def _ecrire_chapitres(self, dec: FileDecision) -> Optional[Path]:
+        """Les chapitres d'un titre de Blu-ray d'un seul clip, écrits pour
+        ffmpeg (IE-120). None sans titre, sans chapitres, ou quand l'entrée
+        est un assemblage : mkvmerge les y a déjà mis."""
+        from core.bluray import ffmetadata_chapitres
+
+        titre = dec.info.titre
+        if titre is None or dec.encode_source is not None:
+            return None
+        texte = ffmetadata_chapitres(titre)
+        if not texte:
+            return None
+        chemin = dec.dossier_sortie / f"{dec.info.path.stem}.iris_chap.txt"
+        try:
+            chemin.write_text(texte, encoding="utf-8")
+        except OSError:
+            return None               # des chapitres en moins, pas un échec
+        return chemin
+
+    def _remux_titre(self, index: int, dec: FileDecision) -> bool:
+        """Assemble par mkvmerge les clips d'un titre de Blu-ray. False si ça
+        échoue. L'assemblage devient `encode_source`, supprimé après
+        l'encodage comme l'intermédiaire d'un mux préalable."""
+        from core.bluray import build_remux_command
+
+        s = self._statuses[index]
+        if not getattr(self.app, "mkvmerge_available", False):
+            s.state     = FileState.ERROR
+            s.error_msg = _("mkvmerge required (Blu-ray title)")
+            s.last_line = _("This Blu-ray title spans several clips: only mkvmerge "
+                            "can join them. Run the preflight again to install it.")
+            self.app.call_from_thread(self._update_row, index)
+            return False
+
+        sortie = dec.dossier_sortie / f"{dec.info.path.stem}.iris_titre.mkv"
+        cmd = build_remux_command(dec.info.titre, sortie)
+        self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+        self.app.call_from_thread(
+            self._update_ffmpeg_line,
+            "▶ " + _("Joining the clips of the Blu-ray title with mkvmerge…"))
+
+        proc = MuxProcess(cmd)
+        self._demarrer(proc)
+        for ligne, pourcent in proc.iter_progress():
+            if pourcent is not None:
+                s.percent = pourcent
+                self.app.call_from_thread(self._update_row, index)
+            elif ligne:
+                self.app.call_from_thread(self._update_ffmpeg_line, ligne)
+        code = proc.wait()
+        self._mux = None
+
+        # mkvmerge rend 1 pour de simples avertissements.
+        if code not in (0, 1) or not sortie.exists():
+            sortie.unlink(missing_ok=True)
+            detail = proc.errors[-1] if proc.errors else f"code {code}"
+            s.state, s.error_msg = (FileState.ERROR,
+                                    _("mux: {detail}").format(detail=detail)[:60])
+            s.last_line = _("Joining the Blu-ray title failed — {detail}").format(
+                detail=detail)
+            self.app.call_from_thread(self._update_row, index)
+            return False
+
+        dec.encode_source = sortie
+        s.percent = -1
+        self.app.call_from_thread(self._update_row, index)
+        return True
+
     def _premux(self, index: int, dec: FileDecision) -> bool:
         """
         Greffe les pistes par mkvmerge avant l'encodage. False si ça échoue.
@@ -1190,8 +1280,12 @@ class RunScreen(TableNavMixin, Screen):
             return False
 
         sortie = premux_output_path(dec.info.path)
+        # Après l'assemblage d'un titre de Blu-ray, c'est lui que la greffe
+        # complète ; il cède ensuite la place.
+        assemblage = dec.encode_source
         try:
-            cmd = build_mux_command(dec.info.path, dec.external_tracks, sortie)
+            cmd = build_mux_command(assemblage or dec.info.lecture,
+                                    dec.external_tracks, sortie)
         except ValueError as e:
             s.state, s.error_msg, s.last_line = (FileState.ERROR,
                                                  texte_erreur(e)[:60], texte_erreur(e))
@@ -1229,6 +1323,8 @@ class RunScreen(TableNavMixin, Screen):
         # Les pistes quittent `external_tracks` — ffmpeg ne doit pas rouvrir
         # les donneurs — mais elles ne sont pas oubliées pour autant : la
         # commande d'encodage a encore à les mapper depuis l'intermédiaire.
+        if assemblage is not None:
+            assemblage.unlink(missing_ok=True)
         dec.encode_source   = sortie
         dec.premuxed_tracks = dec.external_tracks
         dec.external_tracks = []

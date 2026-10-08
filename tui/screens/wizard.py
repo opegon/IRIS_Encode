@@ -548,7 +548,7 @@ class WizardScreen(TableNavMixin, Screen):
     @work(thread=True, name="wizard-mesure")
     def _travail_mesure(self, indices: list[int]) -> None:
         pistes = self._dec.external_tracks
-        cible  = self._dec.info.path
+        cible  = self._dec.info.lecture
         duree  = self._dec.info.duration
         notes: list[str] = []
 

@@ -1,5 +1,38 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.94] — 2026-10-08
+
+### Les titres d'un Blu-ray (IE-120)
+
+**Un disque se présente par titres.** Ouvrir le lecteur d'un ISO monté — ou le
+dossier d'un Blu-ray copié, celui qui contient `BDMV` — liste les titres du
+disque, une ligne par playlist, comme le font MakeMKV et HandBrake : il n'y a
+plus à deviner lequel des `.m2ts` est le film. Les titres de moins de
+2 minutes (menus, boucles) sont masqués, réglable dans les Options
+(« Titres de Blu-ray », `0` les montre tous). Un titre publié deux fois par le
+disque n'apparaît qu'une fois, sous la playlist qui porte ses chapitres.
+`BDMV\STREAM` montre toujours les clips bruts.
+
+**Nommé d'après le disque, avec ses chapitres.** La sortie prend le nom du
+dossier du disque (« Film (2020) »), ou à la racine d'un lecteur son
+étiquette ; les titres autres que le film y ajoutent leur numéro de playlist.
+Elle s'écrit à côté de `BDMV`, jamais dedans, et garde les chapitres du disque
+— quatorze sur le disque d'essai, que le `.m2ts` seul n'avait pas.
+
+**Un titre de plusieurs clips.** mkvmerge l'assemble avant l'encodage, dans le
+dossier de sortie (prévoir sa taille en espace libre) ; l'assemblage disparaît
+ensuite. Éprouvé sur un titre de deux clips : sortie de la durée complète.
+Le Dolby Vision d'un tel titre n'est pas pris en charge : refusé avec un
+message.
+
+**Disque chiffré.** Un Blu-ray encore protégé (AACS) est reconnu et refusé
+clairement, au lieu d'échouer à l'analyse.
+
+**Garde-fous.** Un titre n'est jamais supprimé après encodage, même avec
+`delete_source`, ni par `Ctrl+D` : ses fichiers sont ceux du disque. Le mux
+(`F3`) et la jonction le refusent. Le mode récursif ne retient que le film de
+chaque disque.
+
 ## [v0.8.9.93] — 2026-10-08
 
 ### Langues des Blu-ray, cœur AC-3, sous-titres de la TNT (IE-119)

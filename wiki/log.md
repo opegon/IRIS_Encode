@@ -304,3 +304,10 @@ courts réussis. Nouvelle page [[disques-optiques]]. Source :
 Une langue complétée par mkvmerge doit être écrite par `-metadata`, ffmpeg ne
 la voyant pas ; la TrueHD et son cœur AC-3 partagent un PID ; libzvbi présent
 dans le BtbN seulement. Pages touchées : [[disques-optiques]].
+
+## [2026-10-08] ingest | Titres de Blu-ray (IE-120)
+
+Playlists `.mpls` du disque d'essai lues sans outil, validées contre mkvmerge ;
+doublons à chapitres différents ; assemblage mkvmerge d'une playlist de deux
+clips ; chapitres posés par FFMETADATA ; signature AACS des clips. Pages
+touchées : [[disques-optiques]].

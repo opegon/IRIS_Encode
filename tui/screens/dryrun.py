@@ -62,7 +62,7 @@ def _estimate_output_bytes(dec: FileDecision) -> int:
     if (dec.video.action == VideoAction.STRIP_DV
             or video_recopiee(dec.video.action, dec.video.dv_action)):
         try:
-            return dec.info.path.stat().st_size
+            return dec.info.taille
         except OSError:
             return 0
     duration = dec.info.duration
@@ -200,7 +200,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             # Estimation taille de sortie — un seul stat() par fichier,
             # réutilisé pour la ligne ET les totaux du summary
             try:
-                src_bytes = info.path.stat().st_size
+                src_bytes = info.taille
             except OSError:
                 src_bytes = 0
             est_bytes = _estimate_output_bytes(dec)

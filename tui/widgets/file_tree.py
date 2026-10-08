@@ -11,6 +11,7 @@ import sys
 import string
 from pathlib import Path
 
+from core import bluray
 from core.scanner import SUPPORTED_EXTENSIONS
 
 
@@ -46,6 +47,10 @@ class FileNavigator:
         self._current = start.resolve()
         self._history: list[Path] = []
         self._virtual = start_virtual            # True = écran "Volumes"
+        # Titres d'un Blu-ray (IE-120) : la durée minimale d'un titre listé,
+        # et ce que le dernier listage a constaté d'un disque chiffré.
+        self.duree_min_titre: float = bluray.DUREE_MIN_DEFAUT_MIN * 60
+        self.disque_chiffre = False
 
     @property
     def current(self) -> Path:
@@ -111,16 +116,25 @@ class FileNavigator:
         `scanner.scan_directory` et `scan_directory_recursive`, qui alimentent
         le scan récursif et les lots automatiques.
         """
+        self.disque_chiffre = False
         if self._virtual:
             return []
         try:
-            return sorted(
+            fichiers = sorted(
                 p for p in self._current.iterdir()
                 if p.is_file()
                 and p.suffix.lower() in SUPPORTED_EXTENSIONS
             )
         except (PermissionError, OSError):
             return []
+        # Le dossier d'un Blu-ray présente ses titres, par playlist (IE-120).
+        if bluray.est_disque(self._current):
+            if bluray.disque_chiffre(self._current):
+                self.disque_chiffre = True
+            else:
+                fichiers += [t.mpls for t in
+                             bluray.titres(self._current, self.duree_min_titre)]
+        return fichiers
 
     # ── Breadcrumb ────────────────────────────────────────────────────────────
 

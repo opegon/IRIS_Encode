@@ -6,7 +6,8 @@ en veille pendant les traitements, et ce que fait la machine après un lot dont
 on a coché « Après le lot » (`core/veille.py`) — par défaut, rien. La langue de
 l'interface (IE-92) : une par catalogue livré, nommée dans sa propre langue ;
 elle prend effet au lancement suivant (IE-71 point 3). Le dossier de sortie
-proposé quand celui d'une source est en lecture seule (IE-118).
+proposé quand celui d'une source est en lecture seule (IE-118). La durée
+minimale d'un titre de Blu-ray listé (IE-120).
 
 Rend True si quelque chose a été enregistré.
 """
@@ -16,7 +17,8 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Checkbox, Label, RadioButton, RadioSet, Static
+from textual.widgets import (Button, Checkbox, Input, Label, RadioButton, RadioSet,
+                             Static)
 
 from core import i18n
 from core.i18n import _, N_
@@ -48,6 +50,7 @@ class OptionsScreen(ModalScreen[bool]):
     .options-note { color: $text-muted; }
     #options-sortie { width: 1fr; }
     #options-sortie-btn { min-width: 14; }
+    #options-titres { width: 12; }
     #options-hint {
         color: $text-muted;
         margin-top: 1;
@@ -102,6 +105,12 @@ class OptionsScreen(ModalScreen[bool]):
             yield Button(_("Change…"), id="options-sortie-btn", compact=True)
             yield Static(_("Offered when a source's folder is read-only, such as "
                            "a mounted disc image."), classes="options-note")
+            yield Static(_("Blu-ray titles"), classes="options-section")
+            yield Input(str(cfg_mod.get_min_title_minutes(self._cfg)),
+                        type="integer", id="options-titres", compact=True)
+            yield Static(_("Minimum length in minutes of a listed title: shorter "
+                           "ones (menus, loops) are hidden. 0 lists them all."),
+                         classes="options-note")
             yield Static(raccourcis([("tab", N_("Next field")),
                                      ("ctrl+s", N_("Save")),
                                      ("escape", N_("Cancel"))]), id="options-hint")
@@ -150,6 +159,10 @@ class OptionsScreen(ModalScreen[bool]):
         if self._sortie != cfg_mod.get_output_dir(self._cfg):
             # Écrit par `set_energie` juste après, qui enregistre tout.
             self._cfg.setdefault("app", {})["output_dir"] = str(self._sortie)
+        saisie = self.query_one("#options-titres", Input).value.strip()
+        if saisie.isdigit():
+            # Écrit par `set_energie` juste après, qui enregistre tout.
+            self._cfg.setdefault("app", {})["min_title_minutes"] = int(saisie)
         cfg_mod.set_energie(self._cfg,
                             self.query_one("#options-veille", Checkbox).value,
                             self._action_choisie())

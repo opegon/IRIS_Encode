@@ -82,7 +82,8 @@ def pick_external_tracks(screen, decision, on_added) -> None:
 
     langues = decision.profile.get("subtitle_languages", None) or ["fre", "eng"]
     screen.app.push_screen(
-        DonorFileScreen(source.parent, exclude=source, langues=langues), _on_donor)
+        DonorFileScreen(decision.info.dossier, exclude=source, langues=langues),
+        _on_donor)
 
 
 class DonorFileScreen(ModalScreen["Path | None"]):

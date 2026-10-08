@@ -431,7 +431,7 @@ def build_dv_video_command(decision, platform, sortie_hevc: Path,
     cmd = [ffmpeg_path or _ffmpeg_path, "-y"]
     if platform.hwaccel:
         cmd += ["-hwaccel", platform.hwaccel]
-    cmd += ["-i", str(decision.encode_source or info.path)]
+    cmd += ["-i", str(decision.encode_source or info.lecture)]
 
     # Le Dolby Vision est du 10 bits par construction : la couche de base d'un
     # profil 8.1 est du HDR10, et un encodage 8 bits la trahirait.
@@ -458,6 +458,7 @@ def build_command(
     platform: PlatformProfile,
     audio_source: Path | None = None,
     sous_titres_porteur: Path | None = None,
+    chapitres: Path | None = None,
 ) -> list[str]:
     """
     Retourne la liste d'arguments ffmpeg pour un FileDecision.
@@ -465,6 +466,8 @@ def build_command(
 
     `sous_titres_porteur` : le Matroska de `core/sous_titres.py`, d'où les
     sous-titres texte de la source sont pris à la place de la source.
+    `chapitres` : un fichier FFMETADATA, ceux d'un titre de Blu-ray lus dans
+    sa playlist (IE-120) — le `.m2ts` n'en porte aucun.
     """
     vid     = decision.video
     info    = decision.info
@@ -510,7 +513,7 @@ def build_command(
 
     # Après un mux préalable, l'entrée est l'intermédiaire, pas la source.
     # `info.path` reste la source : c'est d'elle que dépend le nom de sortie.
-    cmd += ["-i", str(decision.encode_source or info.path)]
+    cmd += ["-i", str(decision.encode_source or info.lecture)]
 
     # ── Entrées supplémentaires : pistes externes greffées ────────────────────
     # ffmpeg les absorbe dans la même passe que l'encodage : inutile de muxer
@@ -579,12 +582,17 @@ def build_command(
     sub_input = 0
     if audio_a_part and sous_titres_source:
         sub_input = len(ext_tracks) + 1 + (audio_source is not None)
-        cmd += ["-i", str(decision.encode_source or info.path)]
+        cmd += ["-i", str(decision.encode_source or info.lecture)]
 
     porteur_input = None
     if sous_titres_porteur is not None:
         porteur_input = cmd.count("-i")
         cmd += ["-i", str(sous_titres_porteur)]
+
+    chapitres_input = None
+    if chapitres is not None:
+        chapitres_input = cmd.count("-i")
+        cmd += ["-f", "ffmetadata", "-i", str(chapitres)]
 
     # ── Filtre vidéo ──────────────────────────────────────────────────────────
     if not preserve_video:
@@ -758,6 +766,8 @@ def build_command(
     for n, st in enumerate(subs_sortie):
         if st.langue_completee:
             cmd += [f"-metadata:s:s:{n}", f"language={st.language}"]
+    if chapitres_input is not None:
+        cmd += ["-map_chapters", str(chapitres_input)]
 
     # ── Pistes externes : copie, langue, nom, drapeaux ────────────────────────
     # Qu'elles soient entrées par mkvmerge ou par ffmpeg, les pistes greffées

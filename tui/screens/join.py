@@ -249,6 +249,14 @@ class JoinScreen(TableNavMixin, Screen[bool]):
                       else _("Join in progress…"))
             return
 
+        if any(i.titre is not None for i in self._infos):
+            # Sa playlist enchaîne déjà les clips d'un titre de Blu-ray (IE-120).
+            self.app.bell()
+            self._set("#join-state",
+                      "✗ " + _("Blu-ray titles are not joined: each one already "
+                               "plays its clips in order."))
+            return
+
         ctrl = controler(self._infos)
         if not ctrl.collable:
             self.app.bell()

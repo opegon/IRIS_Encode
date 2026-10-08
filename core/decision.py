@@ -562,7 +562,7 @@ class FileDecision:
         """
         if self.output_override is not None:
             return self.output_override
-        stem   = self.info.path.stem
+        stem   = self.info.stem_sortie
         suffix = self.video.output_suffix
         ext    = self.output_container
         if not suffix and self.external_tracks:
@@ -581,7 +581,7 @@ class FileDecision:
     @property
     def dossier_sortie(self) -> Path:
         """Où vont la sortie et les intermédiaires du traitement."""
-        return self.output_dir or self.info.path.parent
+        return self.output_dir or self.info.dossier
 
     def _stem_a_jour(self, stem: str) -> str:
         """Le stem dont les marques disent le fichier produit, pas la source.
@@ -1250,7 +1250,7 @@ def sorties_bloquees(decisions: list[FileDecision]) -> list[FileDecision]:
             continue
         if dec.video.action == VideoAction.SKIP and not dec.external_tracks:
             continue
-        dossier = dec.info.path.parent
+        dossier = dec.info.dossier
         if dossier not in essais:
             essais[dossier] = dossier_inscriptible(dossier)
         if not essais[dossier]:

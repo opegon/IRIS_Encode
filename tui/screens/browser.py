@@ -172,7 +172,7 @@ def _estimate_output_bytes(dec: FileDecision,
         if taille_source is not None:
             return taille_source
         try:
-            return dec.info.path.stat().st_size
+            return dec.info.taille
         except OSError:
             return 0
     duration = dec.info.duration
@@ -342,6 +342,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._filtre       = FILTRE_TOUS
         self._masquer_skip = False
         self._dossier:    list[Path] = []
+        # Le dossier de disque dont le titre principal a été coché d'office
+        # (IE-120) : une fois par visite, pour qu'un rescan ne recoche pas ce
+        # que l'utilisateur a décoché ni ce qui vient d'être encodé.
+        self._precoche:   Path | None = None
 
     # ─── Accesseurs app ───────────────────────────────────────────────────────
 
@@ -635,6 +639,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                                       d.info.path in self._selected)]
         for dec in tous:
             self._decisions[dec.info.path] = dec
+        if epoch >= 0 and self._nav.current != self._precoche:
+            principal = [d.info.path for d in tous
+                         if d.info.titre is not None and d.info.titre.principal]
+            if principal:
+                self._selected.update(principal)
+                self._precoche = self._nav.current
         for dec in decisions:
             row_key = str(dec.info.path)
             check   = self._check_str(dec.info.path)
@@ -786,8 +796,15 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     @work(thread=True, exclusive=True, name="scanner")
     def _load_directory(self) -> None:
         epoch   = self._scan_epoch          # capture l'epoch au lancement du thread
+        self._nav.duree_min_titre = 60 * cfg_mod.get_min_title_minutes(self._app.cfg)
         subdirs = self._nav.list_subdirs()
         videos  = self._nav.list_videos()
+        if self._nav.disque_chiffre:
+            self.app.call_from_thread(
+                self.notify,
+                _("This Blu-ray is encrypted (AACS): IRIS ENCODE cannot read it. "
+                  "Decrypt it first, then open the decrypted copy."),
+                severity="warning", timeout=8)
         total   = len(videos)
         profile = self._active_profile()
 
@@ -815,6 +832,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 self._tailles[vpath] = None
             try:
                 info = scan(vpath)
+                if info.titre is not None:
+                    self._tailles[vpath] = info.titre.taille
                 dec  = decide(
                     info, profile,
                     self._audio_overrides.get(vpath),
@@ -941,8 +960,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self.app.bell()
             self._flash_status(_("mpv missing — run the preflight again to install it."))
             return
+        dec = self._decisions.get(path)
         try:
-            preview.open_file(path)
+            preview.open_file(dec.info.lecture if dec else path)
         except Exception as e:
             self.app.bell()
             self._flash_status(_("Cannot play: {error}").format(error=texte_erreur(e)))
@@ -956,6 +976,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         """
         row_type, path = self._current_row_info()
         if row_type != _ROW_TYPE_FILE or path is None:
+            return
+        # Un titre de Blu-ray n'est pas un fichier à soi : ses clips sont ceux
+        # du disque, partagés avec d'autres titres (IE-120).
+        if path.suffix.lower() == ".mpls":
+            self.app.bell()
+            self._flash_status(_("A Blu-ray title cannot be deleted from here: "
+                                 "its files belong to the disc."))
             return
         # Un fichier en file ou en cours d'encodage se lit encore (IE-100).
         if path in self._app.sources_en_file():
@@ -1020,6 +1047,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if row_type == _ROW_TYPE_DIR and path is not None:
             self._nav.enter(path)
             self._selected.clear()
+            self._precoche = None
             self._refresh_view()
         elif row_type == _ROW_TYPE_FILE:
             # C'est ↵ que le mode commande, et lui seul : `T` garde son sens
@@ -1037,12 +1065,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return
         self._nav.aller_aux_volumes()
         self._selected.clear()
+        self._precoche = None
         self._refresh_view()
 
     def action_go_up(self) -> None:
         changed = self._nav.go_up()
         if changed:
             self._selected.clear()
+            self._precoche = None
             self._refresh_view()
 
     # ─── Sélection ────────────────────────────────────────────────────────────

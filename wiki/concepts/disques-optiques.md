@@ -21,6 +21,23 @@ sources:
   Blu-ray d'essai, une seule piste audio était retenue (*mesuré*). Une langue
   complétée ainsi n'est **pas** recopiée par ffmpeg, qui ne la voit pas dans le
   flux : il faut l'écrire (`-metadata:s:a:N language=…`, *mesuré*).
+- **Playlists** — un disque publie souvent deux fois le même titre : sur le
+  disque d'essai, `00001.mpls` et `01001.mpls` citent le même clip, la
+  première avec 1 chapitre, la seconde avec 14 (*mesuré*) ; idem 00000/01000,
+  00002/01002, 00003/01003. Le format MPLS se lit en quelques lignes (éléments
+  clip / entrée / sortie à 45 kHz, marques d'entrée) : durées et nombres de
+  chapitres identiques à ceux de `mkvmerge -J` (*mesuré*). `mkvmerge -o x.mkv
+  titre.mpls` assemble un titre de plusieurs clips, durée complète, code 0
+  (*mesuré* sur une playlist de deux clips fabriquée). IRIS : voir spec
+  § 15.5.
+- **AACS** — chaque unité de 6 144 octets (32 paquets de 192) d'un clip
+  chiffré ne garde en clair que ses 16 premiers octets : la synchronisation
+  `0x47` des paquets suivants disparaît. Le disque d'essai : 2 000 paquets sur
+  2 000 synchronisés, bits de permission de copie à zéro (*mesuré*). Aucun
+  disque chiffré disponible pour l'épreuve inverse (*documenté*).
+- **Chapitres d'un clip seul** — le `.m2ts` n'en porte pas ; un fichier
+  FFMETADATA en entrée `-f ffmetadata` avec `-map_chapters` les pose dans la
+  sortie, coupés à la durée encodée (*mesuré*, 400 s : 2 chapitres sur 14).
 - **TrueHD et cœur AC-3** — un même PID (0x1101 sur le disque d'essai), deux
   pistes pour ffprobe et pour mkvmerge (*mesuré*) : le cœur est la
   compatibilité AC-3 embarquée, pas une piste distincte. `-c:a copy` de ce cœur

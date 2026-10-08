@@ -15,7 +15,10 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
+
+if TYPE_CHECKING:
+    from .bluray import TitreDisque
 
 _log = logging.getLogger("iris_encode.scanner")
 
@@ -457,8 +460,36 @@ class VideoInfo:
     dv_subprofile:   Optional[str]              = None   # "5", "7.06", "8.1"…
     hdr10_master_display: Optional[str]         = None   # G(...)B(...)R(...)WP(...)L(...)
     hdr10_max_cll:        Optional[tuple[int, int]] = None  # (MaxCLL, MaxFALL)
+    # Titre d'un Blu-ray (IE-120) : `path` est alors sa playlist `.mpls`, qui
+    # l'identifie dans le navigateur, et `lecture` le fichier que lisent les
+    # outils.
+    titre: Optional["TitreDisque"] = None
 
     # ── Propriétés dérivées ──────────────────────────────────────────────────
+
+    @property
+    def lecture(self) -> Path:
+        """Le fichier que lisent ffmpeg, mkvmerge et mpv : la source, ou le
+        premier clip d'un titre de disque — le seul, le plus souvent. Un titre
+        de plusieurs clips est assemblé avant l'encodage (`encode_source`)."""
+        return self.titre.clips[0] if self.titre else self.path
+
+    @property
+    def dossier(self) -> Path:
+        """Où la sortie s'écrit par défaut : à côté de la source, ou à côté
+        du dossier `BDMV` d'un disque, jamais dedans."""
+        return self.titre.racine if self.titre else self.path.parent
+
+    @property
+    def taille(self) -> int:
+        """Octets de la source — les clips d'un titre de disque. OSError si
+        elle ne se lit pas."""
+        return self.titre.taille if self.titre else self.path.stat().st_size
+
+    @property
+    def stem_sortie(self) -> str:
+        """Le nom dont part celui de la sortie."""
+        return self.titre.nom_sortie if self.titre else self.path.stem
 
     @property
     def kbps(self) -> int:
@@ -764,7 +795,10 @@ def _detect_dv(path: Path) -> tuple[Optional[int], Optional[int]]:
 # ─── Scan principal ───────────────────────────────────────────────────────────
 
 def scan(path: Path) -> VideoInfo:
-    """Analyse complète d'un fichier vidéo."""
+    """Analyse complète d'un fichier vidéo, ou d'un titre de Blu-ray désigné
+    par sa playlist `.mpls` (IE-120)."""
+    if path.suffix.lower() == ".mpls":
+        return _scan_titre(path)
     data    = _ffprobe_json(["-show_streams", "-show_format", str(path)])
     streams = data.get("streams", [])
     fmt     = data.get("format", {})
@@ -865,6 +899,30 @@ def scan(path: Path) -> VideoInfo:
     )
 
 
+def _scan_titre(mpls: Path) -> VideoInfo:
+    """Un titre de Blu-ray : les pistes de son premier clip, la durée et le
+    nom de la playlist. Les clips suivants d'un titre assemblé portent les
+    mêmes pistes — c'est ce qui permet à mkvmerge de les enchaîner."""
+    from .bluray import titre as lire_titre
+    t = lire_titre(mpls)
+    info = scan(t.clips[0])
+    info.path, info.titre = mpls, t
+    if t.duree > 0 and info.duration > 0:
+        info.frame_count = round(info.frame_count * t.duree / info.duration)
+        info.duration = t.duree
+    return info
+
+
+def sources_du_dossier(dossier: Path, duree_min: float) -> list[Path]:
+    """Les titres d'un disque, si `dossier` en contient un (IE-120) : leurs
+    playlists, à analyser comme des fichiers. Un disque chiffré n'en donne
+    aucun — voir `bluray.disque_chiffre`."""
+    from . import bluray
+    if not bluray.est_disque(dossier) or bluray.disque_chiffre(dossier):
+        return []
+    return [t.mpls for t in bluray.titres(dossier, duree_min)]
+
+
 def scan_directory(directory: Path) -> list[VideoInfo]:
     """
     Scanne tous les fichiers vidéo supportés dans un répertoire (non récursif).
@@ -898,10 +956,21 @@ def scan_directory_recursive(
     minutes. L'ordre des résultats reste celui du tri. `progres(fait, total)`
     est appelé après chaque fichier, depuis le fil qui l'a analysé.
     """
+    # Un disque Blu-ray donne son titre principal, pas ses clips (IE-120) ;
+    # chiffré, rien.
+    from . import bluray
+    disques = [d.parent.parent for d in root.rglob("index.bdmv")
+               if d.parent.name.upper() == "BDMV" and bluray.est_disque(d.parent.parent)]
     chemins = [p for p in sorted(root.rglob("*"))
                if p.is_file()
                and p.suffix.lower() in SUPPORTED_EXTENSIONS
-               and not deja_produit(p.stem)]
+               and not deja_produit(p.stem)
+               and not any(p.is_relative_to(d / "BDMV") for d in disques)]
+    for d in disques:
+        t = None if bluray.disque_chiffre(d) else bluray.principal(d)
+        if t is not None:
+            chemins.append(t.mpls)
+    chemins.sort()
     total, fait = len(chemins), 0
     verrou = threading.Lock()
 

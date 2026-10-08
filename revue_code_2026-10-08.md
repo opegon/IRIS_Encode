@@ -33,13 +33,15 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `launcher/build.bat` fait. 1 mineur (apostrophe dans le chemin) ; tous les fichiers sont revus.
-- Prochain : `synthèse`.
+- 2026-10-08 — Revue terminée : 62 cases cochées, 112 constats (12 critiques, 14 majeurs, 86 mineurs), 11 questions, synthèse écrite. Tests relancés : identiques au départ.
+- Prochain : relecture de la synthèse par l'auteur, puis ouverture des entrées IE-123 à IE-137.
 
 ### Pistes notées en route
 
 Observations faites en lisant un appelant, à instruire quand leur fichier vient
 (et à retirer une fois instruites).
+
+Aucune piste ouverte : les onze notées en route ont été instruites (constat ou absence de défaut écrits dans le bloc du fichier concerné).
 
 
 ## Cadre (déjà tranché, ne pas re-signaler)
@@ -910,4 +912,72 @@ Aucun constat (un commentaire par fichier).
 
 ## Synthèse
 
-*(à écrire quand tous les fichiers sont cochés)*
+### Bilan
+
+- **62 cases cochées** (`core/` 23, `tui/` 33, racine et lanceurs 6), chacune lue en entier avec ses appelants ; aucune piste notée en route ne reste ouverte.
+- **112 constats : 12 critiques, 14 majeurs, 86 mineurs.** Certitude : 55 reproduits (scripts de session sur fichiers synthétiques, vrais écrans Textual, ffmpeg 6.1.1, mkvmerge v82), 44 lus, 13 supposés (Windows, NVENC, lecteurs physiques, wt.exe). **11 questions** sur des choix documentés.
+- Tests : 1 644 au départ (1 630 réussis, 5 échecs d'environnement, 9 ignorés — voir le cadre) ; relancés à la fin, résultat identique. Seul le journal a été modifié.
+- Un test affirme ce que le code ne fait pas : `tests/test_muxer.py::test_skip_with_external_track_gets_a_distinct_name` verrouille `Film.mux-iris.mp4`, nom qu'aucun chemin n'écrit (CR-15). `tests/test_aide.py` vérifie qu'une explication existe pour chaque touche, pas qu'elle soit juste (CR-102).
+
+### Critiques (12)
+
+| Constat | Ce qui se passe | Fichier principal |
+|---|---|---|
+| CR-74 | Pendant un lot, chaque retour à l'accueil rescanne et écrase codec, débit, suppression et greffes réglés sur un fichier ; `F2` encode la décision automatique | `tui/screens/browser.py` |
+| CR-34 | Sous-titre forcé **greffé** en MP4 (première réplique tardive) : répliques à 0 s | `core/sous_titres.py` |
+| CR-50 | `.srt` greffé en cp1252 : toutes les répliques accentuées perdues, code 0 | `core/encoder.py`, `core/muxer.py` |
+| CR-20 | Encodage vers MKV : polices jointes perdues, ASS d'animé rendu sans ses polices | `core/encoder.py` |
+| CR-43 | Une faute dans `config.toml` le fait écraser au lancement (clés, mot de passe) | `core/config.py`, `main.py` |
+| CR-45 | `profiles.toml` illisible : la bibliothèque écrasée au premier enregistrement | `core/profiles.py` |
+| CR-81 | `F4` dans l'écran des pistes puis Retour : le nouveau profil reste, suppression de la source comprise | `tui/screens/tracks.py` |
+| CR-55 | Retrait DV vers MP4 : pistes greffées absentes, succès annoncé | `tui/screens/run.py` |
+| CR-56 | Réencodage DV vers MP4 avec porteur : sous-titres greffés absents | `tui/screens/run.py`, `core/dovi.py` |
+| CR-54 | Chemins DV : la source est supprimée sans la garde des titres de disque (ni les annexes Jellyfin) — portée réelle supposée | `tui/screens/run.py` |
+| CR-01 | Titre Blu-ray d'un clip joué en partie (concert, épisodes) : encodé en entier | `core/bluray.py` |
+| CR-09 | DTS:X IMAX non reconnu sans perte : transcodé, sortie en MP4 | `core/scanner.py` |
+
+### Majeurs (14)
+
+CR-05 (DVD à piste LPCM inextractible) · CR-14 (SAR anamorphique gardé : Jellyfin transcode les DVD et la TNT SD) · CR-15 (mux de l'assistant : mauvais nom, « aucun fichier produit ») · CR-16 (forcer un 1080p scope l'encode en H264) · CR-35 (extraction de sous-titre limitée à 120 s, refus mal expliqué) · CR-41 (cache des mises à jour : outils optionnels non installables) · CR-48 (clé OMDb : fiche d'une série en échec) · CR-57 (sortie partielle laissée après un échec ou `S`) · CR-67 (un lecteur dans un état inhabituel ferme l'application au lancement, supposé) · CR-82 (SKIP + greffe, `F2` des pistes : ignoré) · CR-84 (nom figé par l'assistant : une greffe ASS/PGS fait refuser ffmpeg) · CR-85 (retrait DV + greffe : l'assistant recommande un mux qui garde le DV) · CR-89 (code 1 de mkvmerge pris pour un échec, six appels — jusqu'à jeter des heures de réencodage DV) · CR-92 (recalage par plages écrit sur la piste voisine après `D`).
+
+### Entrées de travail proposées
+
+Par ordre de priorité. Estimation en jours de développement, tests compris, hors essais sur le G3.
+
+| Entrée | Objet | Constats | Gravité max | Fichiers | Estimation |
+|---|---|---|---|---|---|
+| IE-123 | La décision de l'accueil : copie à l'édition, réglages explicites conservés au rescan, nom de sortie figé au seul lancement | CR-15, CR-74, CR-76, CR-81, CR-82, CR-84, CR-87, CR-88, CR-98 | critique | `tui/screens/browser.py`, `tracks.py`, `wizard.py`, `dryrun.py`, `config.py`, `run.py`, `core/decision.py` | 2,5 j |
+| IE-124 | Fichiers de réglages : ne jamais réécrire un fichier illisible, ne jamais planter sur une écriture refusée | CR-43, CR-44, CR-45, CR-64, CR-77 | critique | `core/config.py`, `core/profiles.py`, `main.py`, `tui/common.py`, `app.py`, `browser.py`, `tracks.py`, `dryrun.py`, `cles.py`, `config.py` | 1 j |
+| IE-125 | Pistes greffées : texte (cp1252, `mov_text`, VTT/MicroDVD, horodatage), polices, drapeaux, langue, recalage | CR-20, CR-23, CR-25, CR-26, CR-27, CR-34, CR-35, CR-36, CR-37, CR-50, CR-51, CR-52, CR-92 | critique | `core/encoder.py`, `sous_titres.py`, `muxer.py`, `sync.py`, `opensubtitles.py`, `preview.py`, `tui/screens/sync.py` | 3 j |
+| IE-126 | Chemins Dolby Vision de la file : une seule suppression de source, greffes et porteur en MP4, chapitres et langues des titres, dovi_tool arrêtable, contrôle des pistes vides | CR-31, CR-32, CR-54, CR-55, CR-56, CR-61, CR-63, CR-65, CR-85 | critique | `tui/screens/run.py`, `wizard.py`, `core/dovi.py` | 3 j |
+| IE-127 | Titres de disque à l'extraction : points d'entrée/sortie, assemblage vérifié, LPCM, VTS multi-titres, coûts de lecture | CR-01, CR-02, CR-03, CR-04, CR-05, CR-06, CR-07, CR-12 | critique | `core/bluray.py`, `core/dvd.py`, `core/scanner.py` | 3 j |
+| IE-128 | Audio : formats sans perte (DTS:X IMAX), familles collées aux canaux, nom après écartement | CR-09, CR-10, CR-18 | critique | `core/scanner.py`, `core/decision.py` | 0,5 j |
+| IE-129 | Sorties partielles et intermédiaires ; mkvmerge à avertissements | CR-11, CR-24, CR-28, CR-57, CR-58, CR-89, CR-90, CR-93 | majeur | `tui/screens/run.py`, `mux_run.py`, `join.py`, `sync.py`, `core/scanner.py`, `muxer.py`, `annexes.py` | 1,5 j |
+| IE-130 | Vidéo et encodeurs : SAR, forçage scope, libellé AV1, débit inconnu, `maxrate` x265, sonde 10 bits | CR-14, CR-16, CR-17, CR-19, CR-22, CR-42 | majeur | `core/encoder.py`, `decision.py`, `scanner.py`, `platform.py` | 2 j |
+| IE-131 | Arrêts, pauses et sorties de l'application ; exceptions qui la ferment | CR-60, CR-67, CR-70, CR-71, CR-91, CR-95, CR-103, CR-104 | majeur | `tui/screens/run.py`, `app.py`, `join.py`, `mux_run.py`, `opensubtitles.py`, `fin_lot.py`, `tui/widgets/file_tree.py`, `core/opensubtitles.py` | 1,5 j |
+| IE-132 | Lanceurs, mises à jour et outils | CR-38, CR-39, CR-40, CR-41, CR-105, CR-106, CR-107, CR-108, CR-109, CR-110, CR-111, CR-112 | majeur | `core/preflight.py`, `core/updates.py`, `main.py`, `updater.py`, `launch.bat`, `bootstrap.ps1`, `launcher/` | 2 j |
+| IE-133 | Services en ligne et fiches : HTTPS, séries, titres à année, crochets | CR-47, CR-48, CR-49, CR-101 | majeur | `core/meta.py`, `core/cles.py`, `tui/screens/meta_popup.py` | 0,5 j |
+| IE-134 | Titres de disque dans les écrans de greffe et de fiche (mesure, extrait, OpenSubtitles, AlloCiné) | CR-86, CR-94, CR-96, CR-100 | mineur | `tui/screens/wizard.py`, `sync.py`, `donor_picker.py`, `opensubtitles.py`, `meta_popup.py` | 1 j |
+| IE-135 | Affichage, messages d'échec, localisation, guide intégré | CR-21, CR-53, CR-59, CR-62, CR-68, CR-72, CR-75, CR-78, CR-79, CR-80, CR-83, CR-97, CR-99, CR-102 | mineur | `tui/screens/run.py`, `browser.py`, `tracks.py`, `opensubtitles.py`, `aide.py`, `app.py`, `tui/mixins.py`, `tui/widgets/file_tree.py`, `profile_form.py`, `core/encoder.py`, `veille.py`, `dovi.py` | 1,5 j |
+| IE-136 | Collage : borne de mot du marqueur, appariement audio | CR-29, CR-30 | mineur | `core/joiner.py` | 0,5 j |
+| IE-137 | Code mort et hygiène — après décision, rien n'est retiré d'office | CR-08, CR-13, CR-33, CR-46, CR-66, CR-69, CR-73 | mineur | `core/dvd.py`, `scanner.py`, `dovi.py`, `profiles.py`, `tui/screens/run.py`, `tui/widgets/file_tree.py`, `tui/app.py`, `main.py` | 0,5 j |
+
+Total : environ 24 jours. IE-123 est le plus urgent (le flux ordinaire pendant un lot) ; IE-124 et IE-129 sont les plus rentables (peu de code pour des pertes évitées) ; IE-125 et IE-126 touchent le cœur du flux de l'utilisateur (VF et sous-titres greffés, sources Dolby Vision).
+
+### Familles de défauts
+
+1. **Un objet partagé sans propriétaire.** La `FileDecision` de l'accueil est modifiée en place par l'écran des pistes, l'assistant, l'aperçu et le mux, et remplacée en bloc par le rescan : réglages perdus (CR-74), gardés à tort (CR-81, CR-88), noms figés trop tôt (CR-84), lignes qui ne disent plus la décision (CR-87). Une copie à l'édition et un registre des réglages explicites traitent la famille entière.
+2. **Les chemins parallèles ont divergé de la passe principale** — récidives : DV (CR-54 à 56, 63, 65), greffes contre pistes de la source (CR-34, CR-23/25), mkvmerge et son code 1 (CR-89), cause d'échec (CR-62), écritures de réglages (CR-64/77), intermédiaires dans le temp (CR-28/93), écriture en place des outils (CR-38/39), règle x265 (CR-22). Chaque correction de la passe principale a laissé ses jumelles en l'état.
+3. **Un titre de disque traité comme un fichier.** `info.path` (une playlist, un nom fictif) et `info.lecture` (le premier clip) servent là où il faudrait le titre : CR-01, CR-06, CR-54, CR-63, CR-86, CR-94, CR-96, CR-100.
+4. **Des exceptions qui ferment l'application.** Les workers (`exit_on_error`) et les gestionnaires ne rattrapent pas `OSError` ni les réponses illisibles : CR-64, CR-67, CR-77, CR-95, CR-104 — avec un lot en cours, il s'arrête avec elle.
+5. **Ce qui reste sur le disque.** Sorties partielles et intermédiaires de la taille du film : CR-11, CR-28, CR-57, CR-58, CR-90, CR-93.
+6. **Texte, encodages et balisage.** cp1252 (CR-50, CR-72), balisage Rich sur des noms de fichiers (CR-101), `gettext("")` (CR-70), littéraux hors catalogue (CR-79, CR-97, CR-53).
+7. **Opérations longues à délai fixe ou impossibles à interrompre** : CR-32, CR-35, CR-60, CR-61, CR-71, CR-91.
+8. **Ce qui documente le code dit autre chose que lui** : le guide intégré (CR-102), la règle G4 (CR-80), le test du nom `.mux-iris.mp4` (CR-15).
+
+### Questions et décisions à prendre
+
+- **Choix documentés, contestés** (11) : « Lire tout » comme titre principal d'un DVD de série (`core/dvd.py`) ; disques chiffrés écartés en silence par `R` (`core/scanner.py`) ; LPCM, FLAC et ALAC hors de `preserve_hd_audio` ; cœur AC-3 préféré à un E-AC3 transcodé (`_paires_coeur`) ; H264 sur HDR10 sans avertissement ; audio externe toujours recopiée ; DV profil 5 en MP4 `hvc1` ; `S` sans confirmation ; motif `powercfg` en français ; règle G4 ; mot de passe OpenSubtitles en clair dans `config.toml`.
+- **Code mort** (CR-08, CR-13, CR-33, CR-46, CR-66, CR-69, CR-73) : retirer, ou rebrancher et documenter — signalé seulement.
+- **Test à réécrire** avec CR-15 : `test_skip_with_external_track_gets_a_distinct_name`.
+- **Vérifications sous Windows** pour les constats supposés (CR-67, CR-108, CR-111 en tête), et sur le G3 pour CR-14 (SAR) et CR-85 (MKV Dolby Vision issu du mux).

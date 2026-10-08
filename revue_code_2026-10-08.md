@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `bootstrap.ps1` fait. 1 mineur (dépendances non figées).
-- Prochain : `launcher/IrisEncodeLauncher.cs`.
+- 2026-10-08 — `launcher/build.bat` fait. 1 mineur (apostrophe dans le chemin) ; tous les fichiers sont revus.
+- Prochain : `synthèse`.
 
 ### Pistes notées en route
 
@@ -226,8 +226,8 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] updater.py (327)
 - [x] launch.bat (148)
 - [x] bootstrap.ps1 (262)
-- [ ] launcher/IrisEncodeLauncher.cs (72)
-- [ ] launcher/build.bat (66)
+- [x] launcher/IrisEncodeLauncher.cs (72)
+- [x] launcher/build.bat (66)
 
 ## Constats
 
@@ -893,6 +893,20 @@ Aucun constat (un commentaire par fichier).
   - Correction : un fichier de contraintes (ou un `uv.lock`) aux versions éprouvées, passé à `uv pip install -c …`, mis à jour avec les tests.
   - Test : structurel — toute dépendance de `requirements.txt` a une borne haute ou une contrainte figée.
 - Lu par ailleurs : idempotent (`Test-EnvComplet` importe les six modules), refus de Smart App Control reconnu sur preuve (`4551` en contexte), venv créé par le module `venv` (lanceurs signés) puis garni par uv, TLS 1.2 forcé pour PowerShell 5.1, fichier en UTF-8 avec BOM (les « — » s'affichent). Le téléchargement de `uv.exe` sans empreinte relève du choix déjà tranché pour les outils (spec § 4.4) : non re-signalé.
+
+### launcher/IrisEncodeLauncher.cs
+
+- **CR-111** · `launcher/IrisEncodeLauncher.cs:44-56` · mineur · W · supposé (wt.exe non exécutable ici) — Un `;` dans le chemin du dossier coupe la commande passée à Windows Terminal.
+  - Scénario : `wt.exe` lit `;` comme séparateur de sous-commandes (nouvel onglet), guillemets ou non ; seul `\;` est littéral. « D:\Films;Séries\IRIS » donne un onglet ouvert sur « D:\Films » et une seconde commande « Séries\IRIS" cmd /c launch.bat » qui échoue — sans que l'exception attrapée ne déclenche le repli sur `cmd.exe`, puisque `wt.exe` lui-même a démarré. Le cas voisin du `\` final est, lui, traité (`:41-45`).
+  - Correction : échapper `;` en `\;` dans `entreGuillemets`.
+  - Test : manuel — lanceur posé dans un dossier `A;B` : la TUI démarre.
+
+### launcher/build.bat
+
+- **CR-112** · `launcher/build.bat:127` · mineur · W · lu — Une apostrophe dans le chemin de l'application fait échouer la création du raccourci.
+  - Scénario : `%ROOT%` est inséré dans des chaînes PowerShell entre apostrophes (`'%ROOT%\IRIS_Encode.exe'`) : « D:\Vidéos d'été\IRIS » ferme la chaîne, PowerShell lève une erreur de syntaxe. L'échec est rattrapé (message et procédure manuelle « Envoyer vers > Bureau »), d'où la gravité ; mais l'apostrophe est courante dans les noms de dossiers en français.
+  - Correction : passer le chemin par une variable d'environnement (`$env:ROOT` dans la commande) plutôt que l'incruster dans le texte.
+  - Test : manuel — `build.bat` lancé depuis un dossier `l'essai` : le raccourci est créé.
 
 ## Synthèse
 

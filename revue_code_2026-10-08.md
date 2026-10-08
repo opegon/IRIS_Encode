@@ -33,8 +33,8 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `core/scanner.py` fait. 5 constats : DTS:X IMAX non reconnu sans perte (critique, reproduit), marques audio collées aux canaux, intermédiaires pris pour des sources, triple parcours récursif, code mort ; 2 questions.
-- Prochain : `core/decision.py`.
+- 2026-10-08 — `core/encoder.py` fait. 4 constats : polices jointes perdues (critique, reproduit), passes audio sans progression, règle x265 non appliquée hors HDR10 quality, double sous-titre par défaut ; 2 questions. Piste « audio externe en MP4 » instruite (copie acceptée par ffmpeg 6.1 → question).
+- Prochain : `core/annexes.py`.
 
 ### Pistes notées en route
 
@@ -44,6 +44,9 @@ Observations faites en lisant un appelant, à instruire quand leur fichier vient
 - `tui/screens/run.py` `_extraire_dvd` (~l. 1300) et `_remux_titre` (~l. 1250) : le détail d'échec est la dernière ligne (`journal[-1]`, `proc.errors[-1]`), pas `encoder.diagnostiquer()` — pour l'LPCM de CR-05 on lirait « Error opening output files: Invalid argument ». Récidive de la règle « un échec nomme sa cause » ?
 - `tui/screens/run.py` : après échec ou abandon d'un titre extrait, `dec.encode_source` est-il remis à None et le `.iris_titre.mkv` effacé ? (un réessai pointerait vers un fichier disparu).
 - `tui/screens/browser.py:831-849` `_scan_one` : une analyse qui lève est seulement journalisée, la ligne disparaît de la liste sans message (titre de disque illisible, CSS non détecté sur lecteur physique : `clip_chiffre`/`vob_chiffre` rendent False sur OSError en promettant que « l'analyse dira pourquoi »). Message de journal en français (« Échec du scan »).
+- `tui/screens/run.py` `ajouter()` : une décision ajoutée à un lot en cours passe-t-elle par `resoudre_sorties` avec les noms déjà réservés du lot ? Sinon deux sources de même stem (Film.mkv puis Film.mp4) visent la même sortie non encore écrite.
+- `tui/screens/run.py` `_audio_prepass` (~l. 660) : échec résumé en « code N », sans `diagnostiquer` (même famille que la première piste).
+- `tui/screens/run.py` arrêt (`_arreter`) d'un processus **en pause** : sous POSIX, `terminate()` (SIGTERM) sur un processus arrêté par SIGSTOP reste en attente jusqu'au SIGCONT, et `wait()` bloque. Reprendre avant de terminer ?
 
 ## Cadre (déjà tranché, ne pas re-signaler)
 
@@ -168,8 +171,8 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] core/bluray.py (305)
 - [x] core/dvd.py (260)
 - [x] core/scanner.py (1040)
-- [ ] core/decision.py (1386)
-- [ ] core/encoder.py (891)
+- [x] core/decision.py (1386)
+- [x] core/encoder.py (891)
 - [ ] core/annexes.py (68)
 - [ ] core/muxer.py (638)
 - [ ] core/joiner.py (244)
@@ -299,6 +302,56 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
   - Test : —
 - **Question** — `core/scanner.py:991-1010` : en mode récursif, un disque chiffré ou un DVD sans outil est écarté sans un mot (« rien »). La règle « une perte doit se voir » (wiki `pieges-et-lecons`) voudrait que le bilan de `R` le dise. Voulu ?
 - **Question** — `core/scanner.py:285-289` : LPCM (`pcm_bluray`, `pcm_dvd`), FLAC et ALAC ne sont pas « sans perte » au sens de `preserve_hd_audio` (la spec § 8.5 ne cite que TrueHD, DTS-HD MA, MLP) : la piste PCM d'un Blu-ray part en AAC même avec « copier telles quelles ». Voulu ?
+
+### core/decision.py
+
+- **CR-14** · `core/encoder.py:604-626` (filtre vidéo), `core/scanner.py:836-931` (SAR jamais lu) · **majeur** · J · reproduit — Une source anamorphique garde son SAR : toute sortie de DVD (et de TNT SD, de HDV 1440×1080) sera transcodée par Jellyfin.
+  - Scénario : `setsar=1` n'est posé que si l'image est réduite ou a une dimension impaire. Un DVD est anamorphique par nature (720×480 en SAR 8:9 ou 32:27, 720×576 en 16:15 ou 64:45) et tient dans la boîte 1280×720 : aucun filtre. Mesuré (ffmpeg 6.1, VOB synthétique 720×480 SAR 32:27 analysé et décidé par IRIS, commande de `build_command` exécutée) : `ENCODE_H264`, pas de `-vf`, sortie `720×480 SAR 32:27`. Or Jellyfin transcode « tout SAR différent de 1:1, même 959:960 » (wiki `jellyfin`, *observé* sur deux sorties d'IRIS) : la fonction DVD d'IE-121 produit des fichiers que la chaîne ne lit pas en direct.
+  - Correction : lire `sample_aspect_ratio` à l'analyse ; s'il diffère de 1:1, ramener à des pixels carrés en largeur (`scale=trunc(iw*sar/2)*2:ih,setsar=1`, combiné avec la boîte de taille), comme le fait déjà la v0.8.9.79 pour l'arrondi.
+  - Test : la source synthétique ci-dessus encodée par la commande d'IRIS sort en SAR 1:1 et garde son rapport d'affichage 16:9 (±1 %) ; une source 1:1 ne reçoit aucun filtre de plus.
+- **CR-15** · `core/decision.py:579-582` (`output_path` d'un SKIP + pistes externes), `tui/screens/wizard.py:388`, `:417`, `:629` · **majeur** · J · reproduit — L'assistant annonce `.mux-iris.mp4` et conclut « aucun fichier produit » après un mux réussi.
+  - Scénario : MKV H.264 + AC-3 en SKIP, un `.srt` greffé (le cas typique). `output_path` suit `output_container`, qui rend `.mp4` (un SubRip tient en MP4) : l'étape 4 annonce `Film.1080p.mux-iris.mp4`. `F3` lance mkvmerge, qui écrit `mux_output_path` = `Film.1080p.mux-iris.mkv` (toujours Matroska). `MuxScreen` rebascule la décision sur le fichier produit ; `_apres` teste alors `self._dec.output_path.exists()`, qui vise `Film.1080p.mux-iris.mp4` : faux. Reproduit avec mkvmerge v82 et la décision réindexée comme `MuxScreen` le fait : bilan « The operation produced no file. Go back to the previous step. », alors que le fichier est là. L'étape 5 affiche aussi le mauvais nom. Le test `tests/test_muxer.py::test_skip_with_external_track_gets_a_distinct_name` verrouille ce `Film.mux-iris.mp4` qu'aucun chemin n'écrit. (La spec § 8.6, § 9.2 et le wiki `conteneurs` disent encore qu'une piste externe impose le MKV ; les tests de l'encodage disent le contraire, à dessein : la documentation a dérivé.)
+  - Correction : pour un SKIP avec pistes externes (un mux), `output_path` = `muxer.mux_output_path` ; après le mux, l'assistant vérifie le fichier que `MuxScreen` a écrit (rendu par `dismiss`), pas une décision recalculée.
+  - Test : décision SKIP + SRT externe → `output_path == mux_output_path(source)` ; `_apres` d'un faux `MuxScreen` réussi → bilan de réussite.
+- **CR-16** · `core/decision.py:1318-1319` (`force_skip_to_encode`) · **majeur** · J · reproduit — Forcer un film 1080p au format scope l'encode en H264, là où la règle choisit HEVC.
+  - Scénario : `sub_1080 = info.height < 1080` ; or la décision automatique raisonne par tranche (`_resolve_limits` : 1920 de large → tranche 1080p → HEVC). Mesuré : 1920×800 HEVC à 1 500k (SKIP) forcé → `ENCODE_H264` à 1 500k, `Film.1920x800.h264-iris.mp4` ; le même à 9 000k → `ENCODE_HEVC` automatiquement. La plupart des films sont au format scope (1920×800 à 1036) : coche forcée à l'accueil, `F2` de l'assistant sur un SKIP, enchaînement après mux, tous réencodent un HEVC en H264 au même débit, donc en moins bonne qualité.
+  - Correction : choisir le codec forcé par la tranche (`_resolve_limits(...)[2] < 1080`), comme `decide_video`.
+  - Test : 1920×800 SKIP forcé → `ENCODE_HEVC` ; 1280×720 forcé → `ENCODE_H264`.
+- **CR-17** · `core/decision.py:142-146` (`VideoDecision.label`) · mineur · J · reproduit — Un encodage AV1 s'affiche « → H264 ».
+  - Scénario : `codec = "HEVC" if action in (ENCODE_HEVC, ENCODE_DV) else "H264"`. `ENCODE_AV1` → « → H264 » (et « → H264 → HDR10 » sur une source DV). Lu par la colonne Décision de l'accueil, l'aperçu, l'assistant, la file d'encodage et l'écran de mux. Le suffixe `.av1-iris` est juste : seul l'écran ment, au moment de choisir.
+  - Correction : nommer chaque action (table `VideoAction → libellé`), AV1 compris.
+  - Test : `label()` de chaque action de `ACTION_CYCLE` contient son codec ; structurel : toute `VideoAction` a un libellé.
+- **CR-18** · `core/decision.py:633-664` (`_stem_audio_a_jour`) · mineur · J · reproduit — La famille d'une piste écartée reste dans le nom.
+  - Scénario : seules les pistes transcodées réécrivent la marque audio. `Film.2160p.UHD.BluRay.REMUX.HEVC.TrueHD.7.1.Atmos-GRP.m2ts`, TrueHD et cœur AC-3 de même PID, `preserve_hd_audio = false` : la TrueHD est écartée au profit du cœur (IE-119) et la sortie s'appelle `Film.1080p.BluRay.REMUX.TrueHD.7.1.Atmos.hevc-iris.mp4` avec une AC-3 5.1 seule. Même chose pour une piste écartée par la langue quand le nom citait sa famille.
+  - Correction : traiter une famille qu'aucune piste conservée ne porte plus comme une famille transcodée vers le codec de la piste qui la remplace (ou retirer la marque).
+  - Test : le nom ci-dessus → `…AC3.5.1…`, sans `TrueHD` ni `Atmos`.
+- **CR-19** · `core/scanner.py:845-847` (`9_999_999`), `core/decision.py:847`, `:875-885` · mineur · J · reproduit — Le débit « inconnu » n'impose pas le réencodage qu'il annonce et devient une cible inventée.
+  - Scénario : « inconnu → on suppose élevé (force re-encode) », mais 9 999 999 bps reste sous une cible 4K de 12 000k + 10 %. Mesuré : 4K HEVC au débit inconnu → SKIP, raison « Bitrate OK » ; 4K VP9 → CAS 3 à `target_bitrate = 9 999 999` (« bitrate conservé » d'une valeur fabriquée). Rare (ffprobe donne presque toujours un débit de conteneur : fichier en cours d'enregistrement, flux sans durée).
+  - Correction : porter l'inconnu tel quel (0) et le traiter en CAS 1 à la cible, raison « débit inconnu ».
+  - Test : débit inconnu sous un profil 4K à 12 000k → réencodage à la cible, raison qui dit « inconnu ».
+- **Question** — `core/decision.py:1063-1100` (`_paires_coeur`) : avec `audio_hd_codec = "eac3"`, une TrueHD de Blu-ray est remplacée par son cœur AC-3 à 640k au lieu d'être transcodée en E-AC3 jusqu'à 1 024k ; avec `audio_copy_compatible = false`, c'est le cœur avec perte qui est retranscodé (une génération de plus) au lieu de la TrueHD. Le CHANGELOG (v0.8.9.93) parle de « même résultat », vrai pour le forfait AC-3 seulement. Voulu ?
+- **Question** — `core/decision.py:1292-1293` (`choisir_codec`) : choisir H264 (`F6`) sur une source HDR10 non DV donne une sortie PQ en 8 bits (le « banding dans les ciels » de `pieges-et-lecons`), sans avertissement ni tone mapping. Assumé pour un choix manuel ?
+
+### core/encoder.py
+
+- **CR-20** · `core/encoder.py:706-758` (mapping de `build_command`) · **critique** · P · reproduit — L'encodage vers Matroska perd les polices jointes : les sous-titres ASS d'un animé sortent sans leurs polices.
+  - Scénario : `build_command` mappe `0:v:0`, l'audio et les sous-titres, jamais `0:t` (pièces jointes). MKV H.264 + AAC + ASS + police TTF jointe, encodé par la commande d'IRIS (ffmpeg 6.1) : source `[video, audio, subtitle ass, attachment ttf]`, sortie `[video hevc, audio, subtitle ass]`, code 0. L'ASS est gardé en MKV précisément pour son style (§ 8.6), mais il s'affiche ensuite dans une police de repli : panneaux et karaokés faux, sans erreur. Le premier profil livré est `series_anime` ; avec `series_anime_delete`, la source part après le « succès » et les polices avec elle. (Le retrait et le réencodage DV, par mkvmerge, les gardent : seul le chemin ffmpeg les perd.)
+  - Correction : en sortie Matroska, ajouter `-map 0:t? -c:t copy` (depuis l'entrée qui porte les sous-titres de la source) ; en MP4, rien ne change (l'ASS y impose déjà le MKV).
+  - Test : le MKV synthétique ci-dessus encodé par la commande d'IRIS garde sa pièce jointe (`codec_type == attachment`, même `filename`).
+- **CR-21** · `core/encoder.py:251-270` (`build_audio_command` : `-loglevel error` sans `-stats`), `:94-100` (`_PROGRESS_RE` exige `frame=`) · mineur · S · reproduit — Les passes audio (passe préalable, retrait et réencodage DV) n'affichent aucune progression.
+  - Scénario : avec `-loglevel error`, ffmpeg n'écrit plus la ligne de progression (mesuré, ffmpeg 6.1 : 0 octet sur stderr) ; avec `-stats`, une sortie sans vidéo écrit `size= … time= … bitrate= … speed=`, sans `frame=` ni `fps=`, que la regex refuse. La barre reste indéterminée pendant tout le transcodage d'une TrueHD de trois heures — le « blocage apparent » que la spec § 10.6 avait corrigé pour `retime_audio`.
+  - Correction : `-stats` dans `build_audio_command`, et une regex qui accepte une ligne sans `frame=`/`fps=` (le `time=` suffit au pourcentage).
+  - Test : `parse_progress("size=  711kB time=00:00:29.97 bitrate= 194.2kbits/s speed= 194x", 60)` rend 0,5 ; `build_audio_command` contient `-stats`.
+- **CR-22** · `core/encoder.py:679-697` (branche standard), `:444-453` (`build_dv_video_command`) · mineur · R · lu — La règle x265 (`maxrate` = cible, mesurée) n'est appliquée que dans le mode « HDR10 quality ».
+  - Scénario : sur un poste sans NVIDIA, `platform.encoder_hevc` vaut `libx265` et la branche standard lui applique la marge de NVENC (`maxrate` = 1,5 × cible, `-rc vbr` ignoré avec un avertissement) ; `build_dv_video_command` fait de même. Or le wiki (`codecs-video`, *mesuré*) et `tests/test_x265_debit.py` établissent que x265 sous-consomme alors (93,6 % au lieu de 99,9 % à t = 1800). Le test ne vérifie que l'écart entre les deux branches avec une plateforme NVENC : il ne voit pas libx265 dans la branche standard.
+  - Correction : choisir la règle de débit d'après l'encodeur effectif (`libx265` → `maxrate` = cible, sans `-rc`), aux trois endroits.
+  - Test : avec une plateforme CPU (`encoder_hevc="libx265"`), `build_command` (standard) et `build_dv_video_command` posent `-maxrate` égal à `-b:v` et pas de `-rc`.
+- **CR-23** · `core/encoder.py:788-810` · mineur · J · reproduit — Un sous-titre externe marqué « par défaut » laisse le drapeau du sous-titre de la source : deux pistes par défaut.
+  - Scénario : l'audio externe « défaut » retire le drapeau des pistes de la source (`-disposition:a:N 0`), les sous-titres non. MKV dont le sous-titre anglais est par défaut, `.srt` français greffé et marqué défaut, encodé par la commande d'IRIS : sortie `[(eng, default=1), (fre, default=1)]`. Le lecteur prend le premier : le choix de l'utilisateur est sans effet.
+  - Correction : même traitement que l'audio — `-disposition:s:N 0` sur les sous-titres de la source dès qu'un sous-titre greffé est par défaut.
+  - Test : le cas ci-dessus rend un seul sous-titre par défaut, le français.
+- **Question** — `core/encoder.py:793-795` : une piste audio **externe** est toujours recopiée (`-c:a copy`), alors que la même piste dans la source serait transcodée par le profil (Opus, Vorbis, FLAC, PCM, DTS : le G3 ne les lit pas, le DTS gèle au saut). ffmpeg 6.1 les accepte en MP4 sans erreur (mesuré) : la sortie fera transcoder Jellyfin. Appliquer à une greffe la règle audio du profil ?
+- **Question** — `core/encoder.py:633-634`, `:821-829` : une copie Dolby Vision **profil 5** sort en MP4 étiquetée `hvc1` avec `dvcC`, comme un 8.1 ; seul le 8.1 a été essayé sur le G3 (IE-75). Un P5 n'a pas de couche de base lisible : si le lecteur l'ouvre en HEVC simple, couleurs fausses. À vérifier sur le téléviseur (Film H est un P5) ?
 
 ## Synthèse
 

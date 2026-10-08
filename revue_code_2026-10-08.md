@@ -33,15 +33,14 @@ l'utilisateur.
 
 ## Dernier état
 
-- 2026-10-08 — `tui/screens/wizard.py` fait. 2 majeurs (nom figé dès l'étape 1, retrait DV + greffe muxé avec son DV), 2 mineurs.
-- Prochain : `tui/screens/dryrun.py`.
+- 2026-10-08 — `tui/screens/sync.py` fait. 1 majeur (recalage par plages écrit sur la piste voisine après D), 2 mineurs.
+- Prochain : `tui/screens/donor_picker.py`.
 
 ### Pistes notées en route
 
 Observations faites en lisant un appelant, à instruire quand leur fichier vient
 (et à retirer une fois instruites).
 
-- `tui/screens/sync.py` : quel chemin reçoit la mesure pour une **cible titre de Blu-ray** (`info.lecture` = premier clip seulement — côté assistant, c'est CR-86) ? et après un `_remux_titre` ?
 - `main.py` : la console du preflight imprime `✓ ✗ ↑ …` ; sortie redirigée vers un fichier ou un tube sous Windows (cp1252) → `UnicodeEncodeError` au démarrage ? (`sys.stdout.reconfigure` ?)
 - `core/opensubtitles.py`, `tui/screens/meta_popup.py` : pour un **titre de disque**, `parse_title(info.path)` lit `00800.mpls` / `TITLE_01.dvd` (titre « 00800 ») et l'empreinte se calcule sur une playlist de quelques centaines d'octets — utiliser `stem_sortie` et `lecture` ?
 
@@ -199,10 +198,10 @@ le reste de `core/`, `tui/`, la racine et les lanceurs.
 - [x] tui/mixins.py (295)
 - [x] tui/screens/tracks.py (790)
 - [x] tui/screens/wizard.py (645)
-- [ ] tui/screens/dryrun.py (427)
-- [ ] tui/screens/mux_run.py (266)
-- [ ] tui/screens/join.py (380)
-- [ ] tui/screens/sync.py (1246)
+- [x] tui/screens/dryrun.py (427)
+- [x] tui/screens/mux_run.py (266)
+- [x] tui/screens/join.py (380)
+- [x] tui/screens/sync.py (1246)
 - [ ] tui/screens/donor_picker.py (308)
 - [ ] tui/screens/opensubtitles.py (160)
 - [ ] tui/screens/ancrage.py (161)
@@ -698,6 +697,49 @@ Aucun constat nouveau. `record_measured_speed` (`:41-47`) est le point d'entrée
   - Scénario : étape 2, `F6` → AV1, puis `⌫` jusqu'à sortir : la colonne Décision dit toujours « → HEVC », Estim et Audio aussi ; `F2` depuis la liste encode de l'AV1.
   - Correction : redessiner la ligne du fichier au retour (les cellules de `_row_cells`), comme le retour de l'écran des pistes le fait pour la cellule audio.
   - Test : décision modifiée par l'assistant puis `⌫` : la cellule Décision affiche le nouveau codec.
+
+### tui/screens/dryrun.py
+
+- **CR-88** · `tui/screens/dryrun.py:350-368` (`_apply_codec`, `_apply_bitrate`), `:408-409` ; `tui/screens/browser.py:1270-1276` · mineur · J · reproduit — Un codec ou un débit changé dans l'aperçu (`F1`) modifie en place la décision de l'accueil — sauf pour une ligne SKIP forcée, copiée — et `⌫` ne l'annule pas ; la liste n'en montre rien.
+  - Scénario : `force_skip_to_encode` rend l'objet lui-même pour toute décision qui n'est ni SKIP ni retrait DV ; l'aperçu reçoit donc les décisions de l'accueil. Reproduit : une ligne HEVC et une ligne SKIP, `F6` → AV1 sur les deux dans l'aperçu, puis Retour : la première décision de l'accueil est devenue `ENCODE_AV1`, la seconde est restée `SKIP`. La colonne Décision affiche toujours « → HEVC » ; un `F2` ultérieur depuis la liste encode en AV1. Même famille que CR-81 et CR-87 (écrans de travail qui écrivent dans la décision de l'accueil sans la redessiner).
+  - Correction : l'aperçu travaille sur des copies (`deepcopy`) et ne rend ses changements qu'avec `F2` ; ou l'accueil redessine ses lignes au retour.
+  - Test : aperçu sur une décision HEVC, `F6` → AV1, Retour : la décision de l'accueil est inchangée (ou sa ligne affiche AV1, selon le choix retenu).
+- Voir aussi CR-77 (`:317`), CR-79 (`:111`, en-tête « ETA »).
+
+### tui/screens/mux_run.py
+
+- **CR-89** · `tui/screens/mux_run.py:166-177` (`self._ok = rc == 0`) ; même forme : `tui/screens/join.py:313-319`, `tui/screens/sync.py:1019-1020` (extrait de contrôle), `tui/screens/run.py:1364` (`_premux`), `:927` (`_strip_dv`), `:1139` (`_encode_dv`) · **majeur** · R · reproduit — Le code 1 de mkvmerge (avertissements, sortie utilisable) est traité comme un échec partout sauf dans `_remux_titre`.
+  - Scénario : un `.srt` d'OpenSubtitles dont deux répliques sont dans le désordre — courant. Reproduit avec mkvmerge v82 : `#GUI#warning … The start timestamp is smaller than that of the previous entry…`, code 1, sortie complète écrite (92 Ko). Conséquences selon l'écran : le mux affiche « Mux failed: code 1 » (aucun `#GUI#error` à citer), n'adopte pas le fichier et le laisse sur le disque ; le mux préalable d'une piste étirée fait échouer l'encodage avant de commencer ; dans le réencodage DV, le remux vient **après** des heures d'encodage vidéo, et l'échec efface `.iris_enc.hevc` et `.iris_dv.hevc` dans le `finally` — tout le travail est perdu pour un avertissement. `_remux_titre` accepte déjà 0 et 1 (« mkvmerge rend 1 pour de simples avertissements », choix noté au cadre), comme `muxer.identify` et le preflight.
+  - Correction : une seule fonction `mkvmerge_reussi(code, sortie)` (0 ou 1, et la sortie existe), utilisée par tous les appels ; les avertissements montrés à côté du succès.
+  - Test : faux `MuxProcess` qui rend 1 et écrit sa sortie : le mux est adopté, le mux préalable et les remux DV continuent.
+- **CR-90** · `tui/screens/mux_run.py:174-177` · mineur · P · lu — Un mux en échec laisse sa sortie partielle, contre la spec (§ 14.5 : « Une sortie partielle est supprimée si le mux échoue ») ; seul l'abandon (`_interrompre`) l'efface.
+  - Scénario : mkvmerge qui s'arrête en cours d'écriture (disque plein, lecture d'un partage interrompue) : `Film.mux-iris.mkv` tronqué reste à côté de la source, nommé comme une sortie valide (voir CR-57 pour l'encodage).
+  - Correction : effacer `self._output` sur tout code autre que succès (après CR-89, autre que 0 et 1).
+  - Test : faux `MuxProcess` qui écrit puis rend 2 : la sortie n'existe plus.
+
+### tui/screens/join.py
+
+- **CR-91** · `tui/screens/join.py:379-380` (`action_accueil`) ; même forme : `tui/screens/mux_run.py:264-266` · mineur · C · lu — `Ctrl+Home` pendant un collage ou un mux dépile l'écran sans arrêter mkvmerge, là où `⌫` l'arrête et efface la sortie partielle.
+  - Scénario : collage de deux parties de 15 Go lancé, `Ctrl+Home` : `retour_accueil` dépile l'écran sans passer par `_interrompre`. mkvmerge continue sans écran ; le contrôle de durée (`_verifier`) et l'adoption du fichier muxé (`_adopt_output`, qui réécrit la décision de l'accueil) se font sur un écran démonté, sans que personne les voie. `F10` annonce ensuite « Le collage en cours sera arrêté, sa sortie partielle effacée » mais ne le trouve plus dans la pile (CR-71) : mkvmerge survit, l'interpréteur attend la fin du thread. UX-01 décrivait le même écart pour l'encodage, réglé par IE-100 pour la seule file.
+  - Correction : `action_accueil` passe par `_interrompre()` (ou demande confirmation tant que le processus tourne), comme `⌫`.
+  - Test : collage simulé en cours, `Ctrl+Home` : le faux processus reçoit `terminate` et la sortie partielle n'existe plus.
+- Voir aussi CR-89 (`:313-319` : un avertissement de mkvmerge fait annoncer « Join failed: code 1 », et la sortie valide bloque ensuite tout nouvel essai — « already exists »).
+
+### tui/screens/sync.py
+
+- **CR-92** · `tui/screens/sync.py:829-871` (`_retime(i, …)`, `_retime_done(i, …)`), `:1105-1119` (`action_remove_track` sans garde) · **majeur** · R · reproduit — Le recalage par plages d'une piste audio désigne la piste par son **rang** : `D` pendant le recalage fait écrire l'audio recalée sur la piste voisine.
+  - Scénario : récidive exacte du défaut que décrit le commentaire de `__init__` (`:245-249`, « Le résultat s'écrivait alors sur la piste voisine »), corrigé pour la mesure (`_measure(t)`, `_rang(piste)`) mais pas pour `P` : le worker reçoit `i`, et `action_remove_track` n'est pas bloquée pendant `_measuring` (l'ajout et le retour, eux, le sont). Reproduit (vrai `SyncScreen`, `retime_audio` simulé) : pistes [sous-titres EN, VF, sous-titres FR], `P` sur la VF, `D` sur les sous-titres EN pendant le recalage → la piste **sous-titres FR** prend pour source `Film_fre_[recale].mka`, la VF garde sa source non recalée. Le mux ou l'encodage échoue ensuite sur un message sans rapport (aucun sous-titre dans un `.mka`), ou, à défaut, la VF sort décalée.
+  - Correction : passer la piste (l'objet) au worker et la retrouver par `_rang` au retour, comme la mesure ; refuser `D` pendant une opération longue.
+  - Test : le scénario ci-dessus avec un recalage simulé : la VF reçoit le fichier recalé, les sous-titres FR gardent leur source.
+- **CR-93** · `tui/screens/sync.py:844-845`, `:895-896` · mineur · P · lu — L'audio recalée (le poids d'une piste de film) s'écrit dans le temp du système et n'est jamais effacée ; elle devient pourtant la source d'une piste qui peut attendre des heures dans la file.
+  - Scénario : `P` sur une VF de 2 h : `%TEMP%\Film_fre_[recale].mka` (centaines de Mo à plus d'1 Go). Aucun code ne le supprime, ni après l'encodage ni à la fermeture ; inversement, un nettoyage du temp (Assistant de stockage) avant le passage du fichier dans la file fait échouer l'encodage. La règle du projet range les gros intermédiaires à côté de la sortie (spec § 7.3 ; voir CR-28) ; le cadre n'excepte que l'extrait de contrôle et les sous-titres OpenSubtitles.
+  - Correction : écrire le fichier recalé dans `dossier_sortie` sous un nom d'intermédiaire (`.iris_recale.mka`, reconnu par CR-11) et l'effacer avec les intermédiaires de l'encodage.
+  - Test : après `P`, la source de la piste est dans le dossier de sortie de la décision.
+- **CR-94** · `tui/screens/sync.py:235` (`self._source = decision.info.lecture`), `:589`, `:716`, `:951-957`, `:1005-1009` · mineur · J · lu (effet : supposé) — Sur un titre de Blu-ray de plusieurs clips, mesure, ancrage, aperçu mpv et extrait de contrôle portent tous sur le premier clip, avec la durée du titre entier.
+  - Scénario : même cause que CR-86 côté assistant. En plus de la mesure faussée, `sample_windows(duree_du_titre)` place les fenêtres de l'extrait au-delà de la fin du premier clip : extrait vide ou refusé, sur l'écran même où il est présenté comme « le seul contrôle honnête ».
+  - Correction : celle de CR-86 (cible assemblée, ou greffe refusée tant que le titre n'est pas assemblé).
+  - Test : celui de CR-86, pour `SyncScreen`.
+- Voir aussi CR-80 (`:405`), CR-89 (`:1019-1020`), CR-88 (`:1196-1204`, aperçu sur la décision de l'accueil).
 
 ## Synthèse
 

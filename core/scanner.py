@@ -556,8 +556,11 @@ class VideoInfo:
 
 # ─── Helpers ffprobe ──────────────────────────────────────────────────────────
 
-def _ffprobe_json(args: list[str]) -> dict:
-    cmd = [_ffprobe_path, "-v", "error", "-print_format", "json"] + args
+def _ffprobe_json(args: list[str], outil: str | None = None) -> dict:
+    # `-v quiet` pour l'outil DVD : libdvdread signale en erreur ce qui n'en
+    # est pas (« Zero check failed », mesuré), et le code de retour suffit.
+    niveau = "quiet" if outil else "error"
+    cmd = [outil or _ffprobe_path, "-v", niveau, "-print_format", "json"] + args
     # ffprobe, ffmpeg et mkvmerge écrivent en UTF-8. Les lire avec l'encodage
     # local — cp1252 sur un Windows français — fait mourir le thread de lecture
     # de subprocess dès qu'un titre ou un nom de fichier sort de cette table :
@@ -799,9 +802,26 @@ def scan(path: Path) -> VideoInfo:
     par sa playlist `.mpls` (IE-120)."""
     if path.suffix.lower() == ".mpls":
         return _scan_titre(path)
-    data    = _ffprobe_json(["-show_streams", "-show_format", str(path)])
+    # Un titre de DVD (IE-121) : ffprobe de l'outil DVD, par `dvdvideo`.
+    titre_dvd = None
+    if path.suffix.lower() == ".dvd":
+        from . import dvd
+        titre_dvd = dvd.titre(path)
+        ffprobe_dvd = dvd.outils()[1]
+        if ffprobe_dvd is None:
+            raise RuntimeError("no DVD-capable ffprobe")
+        data = _ffprobe_json(["-show_streams", "-show_format", *dvd.entree(titre_dvd)],
+                             outil=ffprobe_dvd)
+    else:
+        data = _ffprobe_json(["-show_streams", "-show_format", str(path)])
     streams = data.get("streams", [])
     fmt     = data.get("format", {})
+    if titre_dvd is not None and not _safe_int(fmt.get("bit_rate")):
+        # `dvdvideo` ne donne pas de débit : celui des VOB sur la durée, que
+        # `_video_bitrate` répartit ensuite entre les pistes.
+        duree = _safe_float(fmt.get("duration")) or titre_dvd.duree
+        if duree > 0:
+            fmt["bit_rate"] = str(int(titre_dvd.taille * 8 / duree))
 
     # ── Flux vidéo ────────────────────────────────────────────────────────────
     vid = next((s for s in streams if s.get("codec_type") == "video"), {})
@@ -862,7 +882,7 @@ def scan(path: Path) -> VideoInfo:
         _completer_langues(path, audio_tracks + subtitle_tracks)
 
     # ── Dolby Vision ──────────────────────────────────────────────────────────
-    dv_profile, dv_bl_compat = _detect_dv(path)
+    dv_profile, dv_bl_compat = (None, None) if titre_dvd else _detect_dv(path)
 
     # Sous-profil DV : deduit de la compatibilite annoncee par le flux, sans
     # extraire ni analyser le RPU.
@@ -896,6 +916,7 @@ def scan(path: Path) -> VideoInfo:
         dv_bl_compat=dv_bl_compat,
         color_transfer=vid.get("color_transfer", ""),
         frame_rate=vid.get("r_frame_rate", ""),
+        titre=titre_dvd,
     )
 
 
@@ -913,14 +934,15 @@ def _scan_titre(mpls: Path) -> VideoInfo:
     return info
 
 
-def sources_du_dossier(dossier: Path, duree_min: float) -> list[Path]:
-    """Les titres d'un disque, si `dossier` en contient un (IE-120) : leurs
-    playlists, à analyser comme des fichiers. Un disque chiffré n'en donne
-    aucun — voir `bluray.disque_chiffre`."""
-    from . import bluray
-    if not bluray.est_disque(dossier) or bluray.disque_chiffre(dossier):
-        return []
-    return [t.mpls for t in bluray.titres(dossier, duree_min)]
+def module_disque(dossier: Path):
+    """`core.bluray` ou `core.dvd` si `dossier` contient un disque, sinon None.
+    Les deux exposent `titres`, `principal` et `disque_chiffre`."""
+    from . import bluray, dvd
+    if bluray.est_disque(dossier):
+        return bluray
+    if dvd.est_disque(dossier):
+        return dvd
+    return None
 
 
 def scan_directory(directory: Path) -> list[VideoInfo]:
@@ -956,20 +978,26 @@ def scan_directory_recursive(
     minutes. L'ordre des résultats reste celui du tri. `progres(fait, total)`
     est appelé après chaque fichier, depuis le fil qui l'a analysé.
     """
-    # Un disque Blu-ray donne son titre principal, pas ses clips (IE-120) ;
-    # chiffré, rien.
-    from . import bluray
-    disques = [d.parent.parent for d in root.rglob("index.bdmv")
-               if d.parent.name.upper() == "BDMV" and bluray.est_disque(d.parent.parent)]
+    # Un disque donne son titre principal, pas ses fichiers (IE-120, IE-121) ;
+    # chiffré, ou DVD sans outil pour le lire, rien.
+    from . import dvd
+    disques = {}
+    for marque, dossier in (("index.bdmv", "BDMV"), ("VIDEO_TS.IFO", "VIDEO_TS")):
+        for f in root.rglob(marque):
+            module = module_disque(f.parent.parent)
+            if f.parent.name.upper() == dossier and module is not None:
+                disques[f.parent] = (f.parent.parent, module)
     chemins = [p for p in sorted(root.rglob("*"))
                if p.is_file()
                and p.suffix.lower() in SUPPORTED_EXTENSIONS
                and not deja_produit(p.stem)
-               and not any(p.is_relative_to(d / "BDMV") for d in disques)]
-    for d in disques:
-        t = None if bluray.disque_chiffre(d) else bluray.principal(d)
+               and not any(p.is_relative_to(d) for d in disques)]
+    for racine, module in disques.values():
+        if module is dvd and dvd.outils()[1] is None:
+            continue
+        t = None if module.disque_chiffre(racine) else module.principal(racine)
         if t is not None:
-            chemins.append(t.mpls)
+            chemins.append(t.chemin)
     chemins.sort()
     total, fait = len(chemins), 0
     verrou = threading.Lock()

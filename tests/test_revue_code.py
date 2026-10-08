@@ -629,7 +629,9 @@ def test_un_outil_inconnu_n_a_pas_d_installateur():
 def test_les_versions_sont_relevees_en_parallele(tmp_path, monkeypatch):
     """Cinq relevés à 100 ms doivent tenir bien en deçà de leur somme."""
     for nom in preflight.ALL_TOOLS:
-        (tmp_path / preflight._exe(nom)).write_bytes(b"")
+        chemin = preflight.chemin_local(nom, tmp_path)
+        chemin.parent.mkdir(exist_ok=True)
+        chemin.write_bytes(b"")
     monkeypatch.setattr(preflight.shutil, "which", lambda _n: None)
 
     def _lent(_chemin):

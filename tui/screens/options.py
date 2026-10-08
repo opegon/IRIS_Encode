@@ -105,7 +105,7 @@ class OptionsScreen(ModalScreen[bool]):
             yield Button(_("Change…"), id="options-sortie-btn", compact=True)
             yield Static(_("Offered when a source's folder is read-only, such as "
                            "a mounted disc image."), classes="options-note")
-            yield Static(_("Blu-ray titles"), classes="options-section")
+            yield Static(_("Disc titles (Blu-ray, DVD)"), classes="options-section")
             yield Input(str(cfg_mod.get_min_title_minutes(self._cfg)),
                         type="integer", id="options-titres", compact=True)
             yield Static(_("Minimum length in minutes of a listed title: shorter "

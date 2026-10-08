@@ -253,8 +253,8 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             # Sa playlist enchaîne déjà les clips d'un titre de Blu-ray (IE-120).
             self.app.bell()
             self._set("#join-state",
-                      "✗ " + _("Blu-ray titles are not joined: each one already "
-                               "plays its clips in order."))
+                      "✗ " + _("Disc titles are not joined: each one already "
+                               "plays its parts in order."))
             return
 
         ctrl = controler(self._infos)

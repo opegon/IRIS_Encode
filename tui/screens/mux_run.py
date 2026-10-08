@@ -131,8 +131,8 @@ class MuxScreen(Screen[bool]):
             self._done = True
             self.app.call_from_thread(
                 self._set, "#mux-state",
-                "✗ " + _("A Blu-ray title is not muxed in place: the tracks are "
-                         "added when it is encoded."))
+                "✗ " + _("A disc title is not muxed in place: encode it, or add "
+                         "the tracks when it is encoded."))
             return
         if not dossier_inscriptible(self._output.parent):
             # Un ISO monté (IE-118) : le mux s'écrit à côté de la source.

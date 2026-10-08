@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.8.9.94
+**Version**: 0.8.9.95
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -588,17 +588,25 @@ to resample. That is what makes this case much safer than an audio resync.
      playlist number for titles other than the movie, and keeps the disc's
      chapters. An encrypted disc (AACS) is refused: decrypt it first.
      `BDMV\STREAM` still shows the raw clips.
-   - **DVD**: `VIDEO_TS` — the movie is split into `VTS_xx_1.VOB`,
-     `VTS_xx_2.VOB`… of 1 GB each; for now, each part is encoded on its own.
+   - **DVD**: the drive itself lists the disc's **titles** (`TITLE_01.dvd`…),
+     read from its IFO files, with the same length limit; the longest is the
+     movie and comes pre-checked. Reading them needs the **DVD tool**, offered
+     at startup (see README, chapter 4). A title is first extracted
+     losslessly into the output folder (4 to 8 GB, about a minute), with its
+     languages and chapters, then encoded like any file; the extraction is
+     deleted afterwards. Same naming as a Blu-ray. An encrypted DVD (CSS) is
+     refused. External tracks are added to the output, not to the title.
+     `VIDEO_TS` still shows the raw `.VOB` files.
 3. Check the file, `F2`. The drive is read-only: IRIS asks for an **output
    folder**. `↵` on the first row accepts the one offered (set in Options,
    `F5` then `U`; your Videos folder by default); the other rows browse to
    another one.
 4. Once the batch is done, unmount the drive (right-click → **Eject**).
 
-A Blu-ray folder copied to a hard drive (`Movie (2020)\BDMV\…`) works the
-same way: open the folder that holds `BDMV`. The output is written next to
-`BDMV`, never inside. The recursive mode keeps only the movie of each disc.
+A disc folder copied to a hard drive (`Movie (2020)\BDMV\…` or
+`Movie (2020)\VIDEO_TS\…`) works the same way: open the folder that holds
+`BDMV` or `VIDEO_TS`. The output is written next to
+it, never inside. The recursive mode keeps only the movie of each disc.
 
 Track languages of a `.m2ts` are read from the disc by mkvmerge (an optional
 tool: without it, they stay unknown — and a track whose language is unknown is

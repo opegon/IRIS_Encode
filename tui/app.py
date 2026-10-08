@@ -142,6 +142,10 @@ class IrisEncodeApp(App):
                                 alerte_nvenc=alerte)
             from core import sync as sync_mod
             sync_mod.set_ffmpeg_path(ffmpeg_p)
+        # L'outil DVD (IE-121) : un ffmpeg avec `dvdvideo`, à part de celui
+        # qui encode — `bin\dvd\`, ou le principal s'il sait lire un DVD.
+        from core import dvd
+        dvd.set_outils(*dvd.chercher_outils(bin_dir, ffmpeg_p, ffprobe_p))
         # Câble mkvmerge pour la greffe de pistes externes (optionnel)
         from core import muxer
         mkvmerge_p = get_tool_path("mkvmerge", bin_dir)

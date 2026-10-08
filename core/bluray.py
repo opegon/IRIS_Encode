@@ -41,14 +41,29 @@ DUREE_MIN_DEFAUT_MIN = 2
 
 @dataclass
 class TitreDisque:
-    """Un titre d'un Blu-ray : sa playlist, ses clips, sa durée, ses chapitres."""
-    mpls:      Path
-    racine:    Path               # le dossier qui contient `BDMV`
+    """Un titre de disque : ce qui l'identifie, ses fichiers, sa durée, ses
+    chapitres. Blu-ray : `chemin` est sa playlist `.mpls`, `clips` ses `.m2ts`.
+    DVD (IE-121, `core/dvd.py`) : `chemin` est un nom fictif `TITLE_nn.dvd`
+    sous `VIDEO_TS`, `numero` le numéro du titre, `clips` les VOB de son VTS."""
+    chemin:    Path
+    racine:    Path               # le dossier qui contient `BDMV` ou `VIDEO_TS`
     clips:     list[Path]
     duree:     float              # secondes
     chapitres: list[float] = field(default_factory=list)   # débuts, en secondes
     nom:       str = ""           # le nom du disque
     principal: bool = False       # le plus long du disque
+    numero:    int = 0            # titre de DVD ; 0 pour un Blu-ray
+
+    @property
+    def est_dvd(self) -> bool:
+        return self.numero > 0
+
+    @property
+    def a_extraire(self) -> bool:
+        """Faut-il en faire un Matroska avant l'encodage ? Un DVD toujours —
+        ffmpeg ne le lit que par son démultiplexeur `dvdvideo` —, un Blu-ray
+        quand ses clips sont plusieurs."""
+        return self.est_dvd or len(self.clips) > 1
 
     @property
     def taille(self) -> int:
@@ -67,7 +82,7 @@ class TitreDisque:
         titre principal — deux bonus ne se marchent pas dessus."""
         if self.principal:
             return self.nom
-        return f"{self.nom} - {self.mpls.stem}"
+        return f"{self.nom} - {self.chemin.stem}"
 
 
 # ─── Lecture d'une playlist ───────────────────────────────────────────────────
@@ -141,7 +156,7 @@ def _titre(mpls: Path, racine: Path) -> Optional[TitreDisque]:
         if 0 <= t < duree - 1 and all(abs(t - c) > 0.5 for c in chapitres):
             chapitres.append(t)
     chapitres.sort()
-    return TitreDisque(mpls=mpls, racine=racine, clips=clips, duree=duree,
+    return TitreDisque(chemin=mpls, racine=racine, clips=clips, duree=duree,
                        chapitres=chapitres)
 
 
@@ -167,7 +182,7 @@ def _etiquette_volume(racine: Path) -> str:
     return tampon.value if ok else ""
 
 
-def nom_disque(racine: Path) -> str:
+def nom_disque(racine: Path, defaut: str = "BLURAY") -> str:
     """Le nom que prennent les sorties d'un disque.
 
     Le dossier qui contient `BDMV` — un rip se range sous « Film (2020) ». À
@@ -177,7 +192,7 @@ def nom_disque(racine: Path) -> str:
     if racine.parent != racine and racine.name:
         return racine.name
     nom = " ".join(_etiquette_volume(racine).replace("_", " ").split())
-    return nom or "BLURAY"
+    return nom or defaut
 
 
 def titres(racine: Path, duree_min: float = 0) -> list[TitreDisque]:
@@ -207,7 +222,7 @@ def titres(racine: Path, duree_min: float = 0) -> list[TitreDisque]:
         return []
 
     nom = nom_disque(racine)
-    liste = sorted(uniques.values(), key=lambda t: t.mpls.name)
+    liste = sorted(uniques.values(), key=lambda t: t.chemin.name)
     principal = max(liste, key=lambda t: t.duree)
     for t in liste:
         t.nom = nom
@@ -220,7 +235,7 @@ def titre(mpls: Path) -> TitreDisque:
     disque. Lève ValueError si elle n'en fait pas un."""
     racine = mpls.parent.parent.parent
     for t in titres(racine):
-        if t.mpls == mpls:
+        if t.chemin == mpls:
             return t
     # Doublon écarté au profit d'une jumelle : il reste un titre à part entière.
     t = _titre(mpls, racine)
@@ -287,4 +302,4 @@ def build_remux_command(t: TitreDisque, sortie: Path) -> list[str]:
     langues compris. Les pistes y gardent l'ordre de celles du premier clip,
     que la décision a numérotées."""
     from .muxer import _mkvmerge_path
-    return [_mkvmerge_path, "--gui-mode", "-o", str(sortie), str(t.mpls)]
+    return [_mkvmerge_path, "--gui-mode", "-o", str(sortie), str(t.chemin)]

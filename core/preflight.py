@@ -27,7 +27,10 @@ CACHE_FILE  = DATA_DIR / "ffmpeg_releases_cache.toml"
 STATIC_FILE = DATA_DIR / "ffmpeg_releases.toml"
 
 ESSENTIAL_TOOLS = ("ffmpeg", "ffprobe")
-OPTIONAL_TOOLS  = ("dovi_tool", "mkvmerge", "mpv")
+# `ffmpeg_dvd` : l'outil DVD (IE-121), un ffmpeg BtbN GPL avec libdvdnav posé
+# dans `bin/dvd/`, à part du ffmpeg qui encode. Il n'est cherché que là — le
+# PATH contient le ffmpeg principal, pas lui.
+OPTIONAL_TOOLS  = ("dovi_tool", "mkvmerge", "mpv", "ffmpeg_dvd")
 ALL_TOOLS       = ESSENTIAL_TOOLS + OPTIONAL_TOOLS
 
 
@@ -113,8 +116,18 @@ def _get_version(path: str) -> str:
     return ""
 
 
+def chemin_local(name: str, bin_dir: Path) -> Path:
+    """Où l'outil est posé dans ./bin/ : `bin/dvd/ffmpeg.exe` pour l'outil DVD."""
+    if name == "ffmpeg_dvd":
+        return bin_dir / "dvd" / _exe("ffmpeg")
+    return bin_dir / _exe(name)
+
+
 def _localiser(name: str, bin_dir: Path) -> Optional[Path]:
     """Chemin de l'outil : PATH système d'abord, puis ./bin/. None si absent."""
+    if name == "ffmpeg_dvd":
+        local = chemin_local(name, bin_dir)
+        return local if local.exists() else None
     exe = _exe(name)
     p = shutil.which(exe) or shutil.which(name)
     if p:
@@ -249,6 +262,9 @@ def poser(nom: str, data: bytes, bin_dir: Path) -> bool:
         return _install_from_7z(data, bin_dir, {_exe("mpv")})
     if nom == "ffmpeg":
         return _install_from_zip(data, bin_dir,
+                                 {_exe("ffmpeg"), _exe("ffprobe")})
+    if nom == "ffmpeg_dvd":
+        return _install_from_zip(data, bin_dir / "dvd",
                                  {_exe("ffmpeg"), _exe("ffprobe")})
     return _install_from_zip(data, bin_dir, {_exe(nom)})
 
@@ -390,6 +406,7 @@ def run_preflight(cfg: dict) -> bool:
     missing_dovi     = next((s for s in statuses if s.name == "dovi_tool" and not s.found), None)
     missing_mkvmerge = next((s for s in statuses if s.name == "mkvmerge"  and not s.found), None)
     missing_mpv      = next((s for s in statuses if s.name == "mpv"       and not s.found), None)
+    missing_dvd      = _dvd_manquant(statuses)
 
     if not missing_essential:
         # ffmpeg OK — proposer les outils optionnels absents
@@ -404,6 +421,10 @@ def run_preflight(cfg: dict) -> bool:
         if missing_mpv:
             _dire(_("mpv missing (optional — used to check a resync by eye)."))
             _offer_mpv_install(bin_dir)
+            print()
+        if missing_dvd:
+            _dire(_("DVD tool missing (optional — needed to read DVD titles)."))
+            _offer_dvd_install(bin_dir)
             print()
         check_for_updates(cfg, statuses, bin_dir)
         return True
@@ -465,7 +486,48 @@ def _offer_mpv_install(bin_dir: Path) -> None:
         _dire(_("mpv skipped — you will not be able to check a resync by eye."))
 
 
-OUTILS_INSTALLABLES = frozenset({"ffmpeg", "mkvmerge", "dovi_tool", "mpv"})
+def _dvd_manquant(statuses: list[ToolStatus]) -> bool:
+    """L'outil DVD manque-t-il vraiment ? Pas si le ffmpeg principal sait lire
+    un DVD lui-même — un BtbN dans le PATH : il sert alors d'outil DVD."""
+    if any(s.name == "ffmpeg_dvd" and s.found for s in statuses):
+        return False
+    principal = next((s for s in statuses if s.name == "ffmpeg" and s.found), None)
+    if principal is not None:
+        from .dvd import lit_les_dvd
+        if lit_les_dvd(str(principal.path)):
+            return False
+    return True
+
+
+def install_ffmpeg_dvd(bin_dir: Path) -> bool:
+    """Le dernier ffmpeg BtbN GPL d'une branche publiée, dans `bin/dvd/`."""
+    from . import updates
+    try:
+        rel = updates.latest_ffmpeg_dvd()
+    except Exception:
+        rel = None
+    if rel is None:
+        _dire(_("{tool} URL not found in the sources.").format(tool="ffmpeg (BtbN)"), "✗")
+        return False
+    _dire(_("Downloading from {url}").format(url=rel.url))
+    data = _download(rel.url)
+    if data is None:
+        return False
+    return poser("ffmpeg_dvd", data, bin_dir)
+
+
+def _offer_dvd_install(bin_dir: Path) -> None:
+    """Propose l'outil DVD si aucun ffmpeg ne sait lire un DVD (optionnel)."""
+    if _oui_non(_("Download and install the DVD tool (ffmpeg BtbN, about 190 MB) "
+                  "into ./bin/dvd/?")):
+        if not install_ffmpeg_dvd(bin_dir):
+            _dire(_("DVD tool installation failed — DVD titles unavailable."), "✗")
+    else:
+        _dire(_("DVD tool skipped — DVD folders will only show their VOB files."))
+
+
+OUTILS_INSTALLABLES = frozenset({"ffmpeg", "mkvmerge", "dovi_tool", "mpv",
+                                 "ffmpeg_dvd"})
 
 
 def _installer_for(name: str):
@@ -525,7 +587,8 @@ def check_for_updates(cfg: dict, statuses: list[ToolStatus],
     installed = {
         s.name: s.version
         for s in statuses
-        if s.found and s.path is not None and s.path.parent == bin_dir
+        if s.found and s.path is not None
+        and s.path.parent == chemin_local(s.name, bin_dir).parent
     }
     # ffprobe suit ffmpeg : même archive, inutile de le traiter à part
     installed.pop("ffprobe", None)

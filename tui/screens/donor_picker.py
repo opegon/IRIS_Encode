@@ -52,6 +52,15 @@ def pick_external_tracks(screen, decision, on_added) -> None:
     `on_added` n'est appelé que si au moins une piste a été ajoutée.
     """
     source = decision.info.path
+    titre = decision.info.titre
+    if titre is not None and titre.est_dvd:
+        # Le titre n'existe en fichier qu'après son extraction : mesurer un
+        # décalage sur un VOB, dont les pistes ne sont pas numérotées comme
+        # celles du titre, donnerait une greffe fausse (IE-121).
+        screen.app.bell()
+        screen.notify(_("Tracks cannot be added to a DVD title: encode it, then "
+                        "add them to the output."), severity="warning", timeout=6)
+        return
     chosen_donor: Path | None = None
 
     def _on_tracks(chosen) -> None:

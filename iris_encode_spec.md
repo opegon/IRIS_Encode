@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.94 — document de référence courant
+**Version** : 0.8.9.95 — document de référence courant
 **Date** : 2026-10-08
 **Statut** : stable
 
@@ -52,6 +52,7 @@ iris_encode/
 │   ├── profiles.py               ← lecture/écriture profiles.toml
 │   ├── scanner.py                ← analyse fichiers via ffprobe + enrichissement DV
 │   ├── bluray.py                 ← titres d'un dossier Blu-ray (playlists .mpls, AACS)
+│   ├── dvd.py                    ← titres d'un dossier DVD (IFO, CSS), outil DVD
 │   ├── decision.py               ← logique métier encodage
 │   ├── encoder.py                ← construction commande ffmpeg + exécution
 │   ├── dovi.py                   ← wrapper dovi_tool (probe, RPU, x265-params HDR10)
@@ -377,8 +378,11 @@ dans `launch.bat`.
 | `dovi_tool` | optionnel | Dolby Vision (probe RPU, métadonnées HDR10) |
 | `mkvmerge` | optionnel | remux de pistes externes, identification `-J` |
 | `mpv` | optionnel | visualisation d'un fichier ou d'un recalage |
+| `ffmpeg_dvd` | optionnel | outil DVD : ffmpeg BtbN GPL dans `bin/dvd/`, analyse et extraction des titres de DVD (§ 15.6) |
 
-Ordre de recherche : **PATH système**, puis dossier local `./bin/`.
+Ordre de recherche : **PATH système**, puis dossier local `./bin/`. L'outil DVD
+n'est cherché que dans `./bin/dvd/` (`chemin_local`) ; il n'est pas proposé
+quand le ffmpeg principal a le démultiplexeur `dvdvideo` (`_dvd_manquant`).
 
 L'absence d'un outil optionnel ne bloque jamais le lancement — elle désactive la
 fonction correspondante avec un message explicite.
@@ -390,6 +394,11 @@ fonction correspondante avec un message explicite.
 - Vérification SHA256 après téléchargement
 - Extraction dans `./bin/`, aplatie par nom de fichier
 - Build ffmpeg cible : **essentials** (~30 Mo)
+- Outil DVD : `updates.latest_ffmpeg_dvd` choisit dans la release `latest` de
+  BtbN le ZIP `ffmpeg-nX.Y-latest-win64-gpl-X.Y.zip` de la branche la plus
+  haute (aujourd'hui n9.0), extrait `ffmpeg` et `ffprobe` dans `bin/dvd/`
+  (`poser("ffmpeg_dvd")`). Les ZIP étant refaits chaque jour, seule la branche
+  se compare : une mise à jour est proposée au changement de branche.
 - Sources : gyan.dev / BtbN (ffmpeg), GitHub quietvoid (dovi_tool),
   mkvtoolnix.download (mkvmerge), sourceforge (mpv)
 
@@ -445,7 +454,7 @@ Fichier unique, éditable à la main, dans le dossier de l'application.
 [app]
 language = "fr"          # vide : celle de Windows au premier lancement (§ 2.1)
 output_dir = ""          # proposé pour une source en lecture seule (§ 14.7) ; vide : ~/Videos
-min_title_minutes = 2    # durée minimale d'un titre de Blu-ray listé (§ 15.5) ; 0 : tous
+min_title_minutes = 2    # durée minimale d'un titre de disque listé (§ 15.5, § 15.6) ; 0 : tous
 
 [ffmpeg]
 fetch_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
@@ -2629,7 +2638,7 @@ OpenSubtitles chez le donneur (UX-12). Une action inconnue dans le fichier
 vaut `rien` (v0.8.9.53 ; `veille` avant). Section « Dossier de sortie »
 (v0.8.9.92) : le dossier proposé pour une source en lecture seule (§ 14.7),
 changé par `OutputDirScreen`, écrit dans `[app] output_dir` au `Ctrl+S`.
-Section « Titres de Blu-ray » (v0.8.9.94) : la durée minimale d'un titre listé,
+Section « Titres de disque » (v0.8.9.94, étendue au DVD en v0.8.9.95) : la durée minimale d'un titre listé,
 en minutes (§ 15.5), écrite dans `[app] min_title_minutes` ; une saisie non
 numérique est ignorée.
 
@@ -2906,6 +2915,51 @@ Chiffré, le dossier ne liste aucun titre et le navigateur le dit.
 **Mode récursif** — un disque n'y donne que son titre principal (non chiffré) ;
 ses fichiers sous `BDMV` sont écartés.
 
+### 15.6 Titres de DVD — `core/dvd.py`
+
+(v0.8.9.95, IE-121) Un dossier qui contient `VIDEO_TS\VIDEO_TS.IFO` présente
+ses titres, sur le modèle du Blu-ray (§ 15.5) et avec le même `TitreDisque` :
+`scanner.module_disque` rend `bluray` ou `dvd`, que `FileNavigator` et le mode
+récursif interrogent pareil (`titres`, `principal`, `disque_chiffre`).
+
+**IFO lus sans outil** — `VIDEO_TS.IFO` (secteur pointé en `0xC4`, TT_SRPT) :
+pour chaque titre, son VTS, son rang dans le VTS, ses chapitres ;
+`VTS_xx_0.IFO` (PTT_SRPT en `0xC8`, PGCI en `0xCC`) : les PGC du titre et leur
+durée (BCD, cadence dans les deux bits de poids fort des images). Validé sur
+le DVD d'essai : un titre, 26 chapitres, 6 573,0 s contre 6 572,5 s pour
+ffprobe. Deux titres jouant les mêmes PGC d'un même VTS n'en font qu'un ; un
+VTS sans VOB ne donne rien. Identité : un nom fictif
+`VIDEO_TS\TITLE_nn.dvd` (`chemin`), le numéro dans `numero` ; `clips` = les
+VOB du contenu du VTS (`lecture` : le premier, pour mpv) ; `nom_disque(…,
+defaut="DVD")`.
+
+**Outil DVD** — le démultiplexeur `dvdvideo` (libdvdnav) n'est que dans un
+build comme le BtbN GPL. `dvd.chercher_outils` : `bin/dvd/ffmpeg(.exe)` et
+`ffprobe` s'ils existent, sinon le ffmpeg principal si `-demuxers` liste
+`dvdvideo`, sinon rien ; câblé au lancement (`dvd.set_outils`). Il ne fait
+qu'analyser (`ffprobe -v quiet -f dvdvideo -title N -i <VIDEO_TS>` — le
+dossier `VIDEO_TS`, pas la racine du lecteur, que libdvdread prend pour un
+périphérique ; `-v quiet` car il signale en erreur des « Zero check failed »
+sans effet) et extraire ; l'encodage reste au ffmpeg principal. Sans outil :
+aucun titre, un message ; `VIDEO_TS` liste toujours les VOB (IE-118). Débit :
+`dvdvideo` n'en donne pas, il est estimé sur la taille des VOB et la durée.
+
+**Extraction** — tout titre de DVD est `a_extraire` : `RunScreen._extraire_dvd`
+lance `ffmpeg -y -loglevel error -stats -f dvdvideo -title N -i <VIDEO_TS>
+-map 0 -c copy <dossier_sortie>\TITLE_nn.iris_titre.mkv` (progression par
+`EncoderProcess`), qui devient `encode_source` et part après l'encodage.
+Langues, chapitres et palette des sous-titres viennent de l'IFO. Mesuré :
+4,4 Go en 34 s, 26 chapitres.
+
+**CSS** — `vob_chiffre` lit les 512 premiers paquets de 2 048 octets du
+premier VOB du titre principal : un PES vidéo (`0xE0`), audio (`0xBD`,
+`0xC0`–`0xDF`) dont `PES_scrambling_control` n'est pas nul trahit un disque
+brouillé, refusé comme un AACS.
+
+**Garde-fous** — en plus de ceux du Blu-ray : pas de greffe de piste externe
+sur un titre de DVD (`pick_external_tracks`) — la mesure lirait un VOB, dont
+les pistes ne sont pas numérotées comme celles du titre.
+
 ## 16. Logging
 
 ### 16.1 Logging Python standard (opérationnel)
@@ -3060,6 +3114,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.95 | 2026-10-08 | **Titres de DVD** (§ 4.1, § 4.2, § 15.6, IE-121) : dossier `VIDEO_TS` présenté par les titres de ses IFO lus sans outil · outil DVD à part (`ffmpeg_dvd`, BtbN GPL dans `bin/dvd/`, ou le principal s'il a `dvdvideo`), proposé au preflight, mis à jour par branche · titre extrait sans perte en Matroska avant l'encodage par le ffmpeg principal · CSS refusé · pas de greffe sur un titre de DVD · `TitreDisque.chemin` (ex-`mpls`), `numero`, `a_extraire` · Options « Titres de disque » · `tests/test_dvd.py` |
 | 0.8.9.94 | 2026-10-08 | **Titres de Blu-ray** (§ 5, § 14.8, § 15.5, IE-120) : dossier `BDMV` présenté par playlists `.mpls` lues sans outil, durée minimale `[app] min_title_minutes` (Options), doublons réduits, titre principal · `VideoInfo.titre`, `lecture`, `dossier`, `stem_sortie`, `taille` · sortie nommée d'après le disque, à côté de `BDMV` · titre de plusieurs clips assemblé par mkvmerge avant l'encodage, chapitres FFMETADATA pour un clip seul · AACS refusé · mode récursif : titre principal seul · `tests/test_bluray.py` |
 | 0.8.9.93 | 2026-10-08 | **Langues des Blu-ray, cœur AC-3, DVB, télétexte** (§ 8.5, § 8.6, § 15, IE-119) : langues d'un `.m2ts` complétées par mkvmerge (PID), écrites dans la sortie · piste sans langue gardée (audio, sous-titres), jamais dite doublée · paire TrueHD + cœur AC-3 réduite à une piste selon `preserve_hd_audio`, verrou de piste originale suivant `AudioDecision.locked` · `dvb_subtitle` image, `dvb_teletext` toujours écarté · `tests/test_langues_disque.py` |
 | 0.8.9.92 | 2026-10-08 | **Flux MPEG et sources en lecture seule** (§ 14.7, § 15, IE-118) : `.ts .m2ts .mts .mpg .mpeg .vob` reconnus, liste vidéo du donneur dérivée du scan · dossier de sortie demandé à la mise en file quand celui de la source refuse l'écriture (ISO monté), réglage `[app] output_dir` dans Options, sortie et intermédiaires dans `FileDecision.dossier_sortie` · mux et collage refusés en lecture seule · `tests/test_sources_lecture_seule.py` |

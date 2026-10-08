@@ -311,3 +311,9 @@ Playlists `.mpls` du disque d'essai lues sans outil, validées contre mkvmerge ;
 doublons à chapitres différents ; assemblage mkvmerge d'une playlist de deux
 clips ; chapitres posés par FFMETADATA ; signature AACS des clips. Pages
 touchées : [[disques-optiques]].
+
+## [2026-10-08] ingest | Titres de DVD et outil DVD (IE-121)
+
+IFO du DVD d'essai lus sans outil, validés contre ffprobe `dvdvideo` ; chemin
+`VIDEO_TS` exigé par libdvdread à la racine d'un lecteur ; extraction MKV
+mesurée ; BtbN n9.0 installé et éprouvé. Pages touchées : [[disques-optiques]].

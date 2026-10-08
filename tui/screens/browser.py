@@ -802,9 +802,16 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if self._nav.disque_chiffre:
             self.app.call_from_thread(
                 self.notify,
-                _("This Blu-ray is encrypted (AACS): IRIS ENCODE cannot read it. "
-                  "Decrypt it first, then open the decrypted copy."),
+                _("This disc is encrypted (AACS or CSS): IRIS ENCODE cannot read "
+                  "it. Decrypt it first, then open the decrypted copy."),
                 severity="warning", timeout=8)
+        elif self._nav.dvd_sans_outil:
+            self.app.call_from_thread(
+                self.notify,
+                _("Reading a DVD's titles needs the DVD tool (an ffmpeg with "
+                  "libdvdnav). Restart IRIS ENCODE and accept its installation. "
+                  "VIDEO_TS still shows the VOB files."),
+                severity="warning", timeout=10)
         total   = len(videos)
         profile = self._active_profile()
 
@@ -977,11 +984,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         row_type, path = self._current_row_info()
         if row_type != _ROW_TYPE_FILE or path is None:
             return
-        # Un titre de Blu-ray n'est pas un fichier à soi : ses clips sont ceux
-        # du disque, partagés avec d'autres titres (IE-120).
-        if path.suffix.lower() == ".mpls":
+        # Un titre de disque n'est pas un fichier à soi : ses fichiers sont
+        # ceux du disque, partagés avec d'autres titres (IE-120, IE-121).
+        dec = self._decisions.get(path)
+        if ((dec is not None and dec.info.titre is not None)
+                or path.suffix.lower() in (".mpls", ".dvd")):
             self.app.bell()
-            self._flash_status(_("A Blu-ray title cannot be deleted from here: "
+            self._flash_status(_("A disc title cannot be deleted from here: "
                                  "its files belong to the disc."))
             return
         # Un fichier en file ou en cours d'encodage se lit encore (IE-100).

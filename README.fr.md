@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.94 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.95 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -228,6 +228,7 @@ pas répétée. Rien n'est jamais écrasé : une collision donne `(2)`.
 | dovi_tool | 2.x             | ✗ (optionnel — Dolby Vision) |
 | mkvmerge  | 99.x            | ✗ (optionnel — greffe de pistes externes) |
 | mpv       | récent          | ✗ (optionnel — visualisation) |
+| Outil DVD | ffmpeg BtbN 7+  | ✗ (optionnel — titres de DVD) |
 | GPU NVIDIA | driver récent  | ✗ (recommandé — encodage accéléré CUDA) |
 
 ---
@@ -389,7 +390,7 @@ Si ffmpeg est déjà installé sur le système (accessible via `ffmpeg` dans un 
 
 ## 4. (Optionnel) Installer les outils complémentaires
 
-Trois outils sont optionnels. Aucun n'est nécessaire pour encoder : leur absence
+Quatre outils sont optionnels. Aucun n'est nécessaire pour encoder : leur absence
 désactive une fonction, elle ne bloque jamais le lancement.
 
 | Outil | Nécessaire pour | Taille |
@@ -397,6 +398,13 @@ désactive une fonction, elle ne bloque jamais le lancement.
 | `dovi_tool` | contenus **Dolby Vision** (probe RPU, métadonnées HDR10) | ~2 Mo |
 | `mkvmerge` | **greffe de pistes externes** (VF, sous-titres), **jonction de parties** (`J`) et extraits de contrôle | ~22 Mo |
 | `mpv` | **visualisation** d'un fichier ou d'un recalage | ~50 Mo |
+| Outil DVD | lecture des **titres d'un DVD** (`VIDEO_TS`) | ~320 Mo |
+
+L'**outil DVD** est un second ffmpeg — le build GPL de BtbN, qui lit les DVD
+(libdvdnav) — installé dans `bin/dvd/`, à part du ffmpeg qui encode. Il ne fait
+qu'extraire un titre de DVD, sans perte ; l'encodage reste au ffmpeg principal.
+Il n'est pas proposé quand le ffmpeg principal lit déjà les DVD (un build BtbN
+dans le PATH, par exemple).
 
 ### Option A — Installation automatique (recommandée)
 
@@ -423,13 +431,17 @@ Téléchargez les binaires Windows et placez les exécutables directement dans `
 | `dovi_tool.exe` | https://github.com/quietvoid/dovi_tool/releases |
 | `mkvmerge.exe` | https://mkvtoolnix.download/downloads.html (archive ZIP 64-bit) |
 | `mpv.exe` | https://mpv.io/installation/ (build Windows portable) |
+| `dvd/ffmpeg.exe`, `dvd/ffprobe.exe` | https://github.com/BtbN/FFmpeg-Builds/releases (`ffmpeg-n…-latest-win64-gpl-….zip`) — dans le sous-dossier `dvd` |
 
 ```
 iris_encode/
 └── bin/
     ├── dovi_tool.exe
     ├── mkvmerge.exe
-    └── mpv.exe
+    ├── mpv.exe
+    └── dvd/
+        ├── ffmpeg.exe
+        └── ffprobe.exe
 ```
 
 > Un outil déjà présent dans le PATH système est détecté automatiquement — rien à faire.
@@ -543,7 +555,7 @@ iris_encode/
 ├── GUIDE.md            ← Guide d'utilisation, en anglais (GUIDE.fr.md : en français)
 ├── .venv/              ← Environnement Python local (auto)
 ├── .iris_update/       ← Cache, sauvegarde et manifeste des mises à jour (auto)
-├── bin/                ← uv / python / ffmpeg / ffprobe / dovi_tool / mkvmerge / mpv (auto)
+├── bin/                ← uv / python / ffmpeg / ffprobe / dovi_tool / mkvmerge / mpv, dvd/ (auto)
 ├── data/               ← Sources de téléchargement (embarquées)
 ├── launcher/           ← Lanceur Bureau : source C#, icône, build.bat
 ├── core/               ← Logique métier

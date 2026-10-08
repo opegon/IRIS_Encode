@@ -1,5 +1,35 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.95] — 2026-10-08
+
+### Les titres d'un DVD (IE-121)
+
+**Un DVD se présente par titres.** Comme un Blu-ray depuis la version
+précédente, le dossier d'un DVD — lecteur d'un ISO monté, ou dossier copié qui
+contient `VIDEO_TS` — liste ses titres, lus dans ses fichiers IFO, au lieu de
+tranches de VOB de 1 Go à encoder une par une. Même durée minimale (les
+Options disent désormais « Titres de disque »), le plus long coché d'office,
+même nommage d'après le disque, sortie à côté de `VIDEO_TS`. Un titre est
+d'abord extrait sans perte dans le dossier de sortie, langues, chapitres et
+palette des sous-titres compris, puis encodé comme n'importe quel fichier ;
+l'extraction disparaît ensuite. Mesuré sur le DVD d'essai : 4,4 Go extraits
+en 34 s, 26 chapitres.
+
+**Un outil DVD à part.** Lire un DVD demande un ffmpeg avec libdvdnav, que le
+build gyan « essentials » n'a pas. Plutôt que de changer celui qui encode, un
+second ffmpeg — le build GPL de BtbN, branche publiée la plus récente — est
+proposé au lancement et installé dans `bin\dvd\` (environ 190 Mo à
+télécharger). Il ne fait qu'analyser et extraire ; l'encodage reste au ffmpeg
+principal. Il n'est pas proposé si le ffmpeg principal lit déjà les DVD (un
+BtbN dans le PATH). Sans lui, un dossier DVD le dit et montre ses VOB comme
+avant.
+
+**DVD chiffré.** Un DVD protégé (CSS) est reconnu et refusé clairement.
+
+**Pistes externes.** Elles ne se greffent pas sur un titre de DVD — la mesure
+du décalage lirait un VOB, numéroté autrement que le titre : encoder d'abord,
+greffer ensuite.
+
 ## [v0.8.9.94] — 2026-10-08
 
 ### Les titres d'un Blu-ray (IE-120)

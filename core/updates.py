@@ -113,6 +113,27 @@ def _latest_ffmpeg() -> Optional[Release]:
     )
 
 
+def latest_ffmpeg_dvd() -> Optional[Release]:
+    """L'outil DVD (IE-121) : le build BtbN GPL de la branche publiée la plus
+    récente. Les ZIP se nomment `ffmpeg-n9.0-latest-win64-gpl-9.0.zip` et sont
+    refaits chaque jour : seule la branche se compare — un correctif dans une
+    branche ne se voit pas, une nouvelle branche si."""
+    r = _get("https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest")
+    if not r.ok:
+        return None
+    rx = re.compile(r"ffmpeg-n(\d+)\.(\d+)-latest-win64-gpl-\1\.\2\.zip")
+    branches = []
+    for asset in r.json().get("assets", []):
+        m = rx.fullmatch(asset.get("name", ""))
+        if m:
+            branches.append(((int(m.group(1)), int(m.group(2))),
+                             asset["browser_download_url"]))
+    if not branches:
+        return None
+    (majeur, mineur), url = max(branches)
+    return Release(f"{majeur}.{mineur}", url)
+
+
 def _latest_mkvtoolnix() -> Optional[Release]:
     r = _get("https://mkvtoolnix.download/latest-release.xml")
     if not r.ok:
@@ -144,6 +165,7 @@ _SOURCES: dict[str, Callable[[], Optional[Release]]] = {
     "mkvmerge":   _latest_mkvtoolnix,
     "dovi_tool":  _latest_dovi_tool,
     "mpv":        _latest_mpv,
+    "ffmpeg_dvd": latest_ffmpeg_dvd,
 }
 
 

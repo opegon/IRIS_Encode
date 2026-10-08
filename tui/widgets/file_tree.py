@@ -11,8 +11,8 @@ import sys
 import string
 from pathlib import Path
 
-from core import bluray
-from core.scanner import SUPPORTED_EXTENSIONS
+from core import bluray, dvd
+from core.scanner import SUPPORTED_EXTENSIONS, module_disque
 
 
 # ─── Détection des volumes ─────────────────────────────────────────────────────
@@ -48,9 +48,11 @@ class FileNavigator:
         self._history: list[Path] = []
         self._virtual = start_virtual            # True = écran "Volumes"
         # Titres d'un Blu-ray (IE-120) : la durée minimale d'un titre listé,
-        # et ce que le dernier listage a constaté d'un disque chiffré.
+        # et ce que le dernier listage a constaté : un disque chiffré, un DVD
+        # sans outil pour le lire (IE-121).
         self.duree_min_titre: float = bluray.DUREE_MIN_DEFAUT_MIN * 60
         self.disque_chiffre = False
+        self.dvd_sans_outil = False
 
     @property
     def current(self) -> Path:
@@ -116,7 +118,7 @@ class FileNavigator:
         `scanner.scan_directory` et `scan_directory_recursive`, qui alimentent
         le scan récursif et les lots automatiques.
         """
-        self.disque_chiffre = False
+        self.disque_chiffre = self.dvd_sans_outil = False
         if self._virtual:
             return []
         try:
@@ -127,13 +129,17 @@ class FileNavigator:
             )
         except (PermissionError, OSError):
             return []
-        # Le dossier d'un Blu-ray présente ses titres, par playlist (IE-120).
-        if bluray.est_disque(self._current):
-            if bluray.disque_chiffre(self._current):
+        # Le dossier d'un disque présente ses titres : les playlists d'un
+        # Blu-ray (IE-120), les titres des IFO d'un DVD (IE-121).
+        module = module_disque(self._current)
+        if module is dvd and dvd.outils()[1] is None:
+            self.dvd_sans_outil = True
+        elif module is not None:
+            if module.disque_chiffre(self._current):
                 self.disque_chiffre = True
             else:
-                fichiers += [t.mpls for t in
-                             bluray.titres(self._current, self.duree_min_titre)]
+                fichiers += [t.chemin for t in
+                             module.titres(self._current, self.duree_min_titre)]
         return fichiers
 
     # ── Breadcrumb ────────────────────────────────────────────────────────────

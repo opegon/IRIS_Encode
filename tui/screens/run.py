@@ -413,10 +413,11 @@ class RunScreen(TableNavMixin, Screen):
             return
         self.app.call_from_thread(self._update_row, next_idx)
 
-        # Un titre de Blu-ray fait de plusieurs clips : mkvmerge l'assemble
-        # d'abord, tout ce qui suit lit l'assemblage (IE-120).
+        # Un titre de Blu-ray fait de plusieurs clips, un titre de DVD : il est
+        # d'abord extrait en Matroska, tout ce qui suit lit l'extraction
+        # (IE-120, IE-121).
         titre = dec.info.titre
-        if titre is not None and len(titre.clips) > 1 and dec.encode_source is None:
+        if titre is not None and titre.a_extraire and dec.encode_source is None:
             if dec.video.action in (VideoAction.STRIP_DV, VideoAction.ENCODE_DV):
                 s.state     = FileState.ERROR
                 s.error_msg = _("Dolby Vision: single-clip titles only")
@@ -1215,9 +1216,11 @@ class RunScreen(TableNavMixin, Screen):
         return chemin
 
     def _remux_titre(self, index: int, dec: FileDecision) -> bool:
-        """Assemble par mkvmerge les clips d'un titre de Blu-ray. False si ça
-        échoue. L'assemblage devient `encode_source`, supprimé après
-        l'encodage comme l'intermédiaire d'un mux préalable."""
+        """Extrait un titre de disque en Matroska. False si ça échoue.
+        L'extraction devient `encode_source`, supprimée après l'encodage comme
+        l'intermédiaire d'un mux préalable."""
+        if dec.info.titre.est_dvd:
+            return self._extraire_dvd(index, dec)
         from core.bluray import build_remux_command
 
         s = self._statuses[index]
@@ -1254,6 +1257,56 @@ class RunScreen(TableNavMixin, Screen):
             s.state, s.error_msg = (FileState.ERROR,
                                     _("mux: {detail}").format(detail=detail)[:60])
             s.last_line = _("Joining the Blu-ray title failed — {detail}").format(
+                detail=detail)
+            self.app.call_from_thread(self._update_row, index)
+            return False
+
+        dec.encode_source = sortie
+        s.percent = -1
+        self.app.call_from_thread(self._update_row, index)
+        return True
+
+    def _extraire_dvd(self, index: int, dec: FileDecision) -> bool:
+        """Un titre de DVD recopié sans perte en Matroska par l'outil DVD —
+        langues, chapitres et palette des sous-titres compris (IE-121)."""
+        from core import dvd
+
+        s = self._statuses[index]
+        if dvd.outils()[0] is None:
+            s.state     = FileState.ERROR
+            s.error_msg = _("DVD tool required")
+            s.last_line = _("Reading a DVD title needs the DVD tool (an ffmpeg with "
+                            "libdvdnav). Restart IRIS ENCODE and accept its "
+                            "installation.")
+            self.app.call_from_thread(self._update_row, index)
+            return False
+
+        sortie = dec.dossier_sortie / f"{dec.info.path.stem}.iris_titre.mkv"
+        cmd = dvd.build_extraction_command(dec.info.titre, sortie)
+        self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+        self.app.call_from_thread(
+            self._update_ffmpeg_line,
+            "▶ " + _("Extracting the DVD title (lossless copy)…"))
+
+        proc = EncoderProcess(cmd, dec.info.duration)
+        self._demarrer(proc)
+        journal: list[str] = []
+        for ligne, progress in proc.iter_progress():
+            if progress:
+                s.percent = progress.percent
+                self.app.call_from_thread(self._update_row, index)
+            elif ligne:
+                journal.append(ligne)
+                del journal[:-5]
+        code = proc.wait()
+        self._process = None
+
+        if code != 0 or not sortie.exists():
+            sortie.unlink(missing_ok=True)
+            detail = journal[-1] if journal else f"code {code}"
+            s.state, s.error_msg = (FileState.ERROR,
+                                    _("DVD: {detail}").format(detail=detail)[:60])
+            s.last_line = _("Extracting the DVD title failed — {detail}").format(
                 detail=detail)
             self.app.call_from_thread(self._update_row, index)
             return False

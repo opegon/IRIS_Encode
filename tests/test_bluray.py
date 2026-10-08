@@ -118,18 +118,18 @@ def test_un_fichier_qui_n_est_pas_une_playlist_est_ignoré(tmp_path):
 # ─── Le disque ────────────────────────────────────────────────────────────────
 
 def test_les_doublons_gardent_celui_qui_a_le_plus_de_chapitres(disque):
-    noms = [t.mpls.stem for t in bluray.titres(disque)]
+    noms = [t.chemin.stem for t in bluray.titres(disque)]
     assert "01001" in noms and "00001" not in noms
 
 
 def test_la_durée_minimale_écarte_menus_et_boucles(disque):
-    assert [t.mpls.stem for t in bluray.titres(disque, 120)] == ["00002", "01001"]
+    assert [t.chemin.stem for t in bluray.titres(disque, 120)] == ["00002", "01001"]
     assert len(bluray.titres(disque, 0)) == 3
 
 
 def test_le_plus_long_est_le_principal(disque):
     principal = bluray.principal(disque)
-    assert principal.mpls.stem == "01001"
+    assert principal.chemin.stem == "01001"
     assert [t.principal for t in bluray.titres(disque)].count(True) == 1
 
 
@@ -139,7 +139,7 @@ def test_un_doublon_écarté_reste_un_titre_à_part_entière(disque):
 
 
 def test_le_nom_vient_du_dossier_du_disque(disque):
-    titres = {t.mpls.stem: t for t in bluray.titres(disque)}
+    titres = {t.chemin.stem: t for t in bluray.titres(disque)}
     assert titres["01001"].nom_sortie == "Film (2020)"
     assert titres["00002"].nom_sortie == "Film (2020) - 00002"
 
@@ -171,12 +171,10 @@ def test_un_clip_aacs_est_reconnu(tmp_path):
 
 
 def test_un_disque_chiffré_ne_donne_aucun_titre(tmp_path):
-    from core.scanner import sources_du_dossier
     from tui.widgets.file_tree import FileNavigator
     racine = _disque(tmp_path / "D", {"00001": _mpls([("00001", 0, 4000)])},
                      {"00001": _clip_chiffre()})
     assert bluray.disque_chiffre(racine)
-    assert sources_du_dossier(racine, 0) == []
     nav = FileNavigator(racine)
     assert nav.list_videos() == []
     assert nav.disque_chiffre
@@ -220,7 +218,7 @@ def test_le_réglage_de_durée_minimale():
 def _info_titre(disque: Path) -> VideoInfo:
     t = bluray.principal(disque)
     return VideoInfo(
-        path=t.mpls, width=1920, height=1080, bitrate=30_000_000, codec="h264",
+        path=t.chemin, width=1920, height=1080, bitrate=30_000_000, codec="h264",
         duration=t.duree, frame_count=0, dv_profile=None,
         audio_tracks=[AudioTrack(index=0, codec="ac3", channels=6,
                                  language="eng", title="", bitrate=640_000)],
@@ -318,7 +316,7 @@ def test_l_assemblage_est_confié_à_mkvmerge_sur_la_playlist(disque, tmp_path):
     t = bluray.principal(disque)
     cmd = bluray.build_remux_command(t, tmp_path / "x.mkv")
     assert cmd[1:4] == ["--gui-mode", "-o", str(tmp_path / "x.mkv")]
-    assert cmd[-1] == str(t.mpls)
+    assert cmd[-1] == str(t.chemin)
 
 
 # ─── Garde-fous ───────────────────────────────────────────────────────────────

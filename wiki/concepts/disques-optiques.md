@@ -14,6 +14,20 @@ sources:
   (1 073 739 776 o) d'un même VTS (*mesuré*). `VIDEO_TS.VOB` et `VTS_xx_0.VOB`
   sont des menus. Un VOB isolé ne porte **aucune langue** (*mesuré*, ffprobe et
   mkvmerge).
+- **Titres d'un DVD** — `VIDEO_TS.IFO` (TT_SRPT, secteur en `0xC4`) liste
+  les titres et leur VTS ; `VTS_xx_0.IFO` (PTT_SRPT en `0xC8`, PGCI en `0xCC`)
+  donne leurs PGC et leur durée en BCD. Lu sans outil sur le DVD d'essai :
+  1 titre, 26 chapitres, 6 573,0 s, contre 6 572,5 s pour ffprobe
+  `dvdvideo` (*mesuré*). Ses 512 premiers paquets portent des PES vidéo
+  `0xE0` et audio `0xBD`, bits de brouillage nuls (*mesuré*) : c'est là que
+  CSS se lirait (*documenté*, aucun DVD chiffré pour l'épreuve).
+- **`dvdvideo`** — `-i E:\` (racine d'un lecteur monté) échoue : libdvdread y
+  voit un périphérique et cherche libdvdcss ; `-i E:\VIDEO_TS` et `-i E:\.`
+  passent (*mesuré*, BtbN 8.1.3). Des « Zero check failed » s'affichent en
+  erreur sans effet. `-map 0 -c copy` vers MKV : 4,4 Go en 34 s, 26
+  chapitres, langue de la piste AC-3 (*mesuré*) ; le MKV s'encode ensuite par
+  le gyan « essentials ». Le BtbN n9.0 de la release `latest` s'installe
+  (ffmpeg et ffprobe, ~160 Mo chacun) et lit le DVD (*mesuré*).
 - **Blu-ray** — `BDMV` : `PLAYLIST\*.mpls` décrit un titre comme une suite de
   clips `STREAM\*.m2ts` ; `CLIPINF\*.clpi` porte les langues. ffprobe n'en lit
   aucune sur un `.m2ts`, mkvmerge les lit dans le `.clpi` voisin (*mesuré*).

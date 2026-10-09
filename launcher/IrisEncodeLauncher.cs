@@ -46,6 +46,10 @@ static class IrisEncodeLauncher
         string entreGuillemets =
             "\"" + (chemin.EndsWith("\\") ? chemin + "\\" : chemin) + "\"";
 
+        // « .\launch.bat » et non « launch.bat » : avec la variable
+        // NoDefaultCurrentDirectoryInExePath, cmd ne cherche plus une commande
+        // nue dans le dossier courant, et le lanceur échouait (mesuré).
+        //
         // wt.exe est un alias d'exécution (fichier de 0 octet sous
         // WindowsApps) : CreateProcess ne sait pas le résoudre, seul
         // ShellExecute y parvient — d'où UseShellExecute = true.
@@ -53,7 +57,7 @@ static class IrisEncodeLauncher
         {
             Process.Start(new ProcessStartInfo("wt.exe")
             {
-                Arguments = "-d " + entreGuillemets + " cmd /c launch.bat",
+                Arguments = "-d " + entreGuillemets + " cmd /c .\\launch.bat",
                 UseShellExecute = true,
             });
             return;
@@ -66,7 +70,7 @@ static class IrisEncodeLauncher
 
         Process.Start(new ProcessStartInfo("cmd.exe")
         {
-            Arguments = "/c launch.bat",
+            Arguments = "/c .\\launch.bat",
             WorkingDirectory = dossier,
             UseShellExecute = true,
         });

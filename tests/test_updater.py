@@ -393,3 +393,24 @@ def test_launch_bat_relance_depuis_un_bloc_unique():
     appels = [l for l in commandes if "updater.py" in l]
     assert len(appels) == 1, "updater.py n'est appelé qu'une fois, dans le bloc"
     assert texte.index(appels[0]) < texte.index('"%PY%" main.py')
+
+
+# ─── CR-106 — fichiers protégés, sans égard à la casse ───────────────────────
+
+@pytest.mark.parametrize("nom", ["Config.toml", "PROFILES.TOML", "claude.md",
+                                 "BIN/ffmpeg.exe", ".VENV/Scripts/python.exe",
+                                 "Resources_Files/a.mkv"])
+def test_la_casse_ne_contourne_pas_la_protection(nom):
+    assert updater._protege(nom)
+
+
+def test_une_archive_avec_config_en_majuscule_est_refusee(tmp_path):
+    archive = _archive(tmp_path / "iris_encode_v0.8.9.1.zip", "0.8.9.1",
+                       extra={"Config.toml": "[pirate]\n"})
+    with pytest.raises(updater.ErreurMaj, match="personal file"):
+        updater.contenu_archive(archive, "0.8.9.1")
+
+
+def test_un_fichier_au_nom_voisin_reste_livrable():
+    assert not updater._protege("core/config.py")
+    assert not updater._protege("binaire.txt")

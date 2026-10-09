@@ -386,3 +386,9 @@ Essais réels, ancien et nouveau lanceur : `launch.bat` dans `Test!x` (le `!`
 effacé fait démarrer le `main.py` du dossier courant), `l'essai` (bandeau sans
 version), lanceur C# dans `A;B` (`wt.exe` coupe au `;`, `\;` passe), raccourci
 de `build.bat` avec apostrophe. Page mise à jour : [[pieges-et-lecons]].
+
+## [2026-10-09] ingest | Lanceur C# et `NoDefaultCurrentDirectoryInExePath` (IE-132 3/3)
+
+Mesuré : avec la variable définie, `cmd /c launch.bat` ne trouve pas le script
+du dossier courant, par `wt.exe` comme par le repli `cmd.exe` ; `.\launch.bat`
+passe. Page mise à jour : [[pieges-et-lecons]].

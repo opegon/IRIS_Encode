@@ -38,9 +38,31 @@ def test_lorigine_suit_lexecutable_reellement_utilise():
     faux chemin ne prouverait que la logique de comparaison. Ici on interroge
     l'interpréteur qui exécute vraiment les tests.
     """
-    dans_venv = Path(sys.executable).resolve().is_relative_to(ROOT / ".venv")
+    dans_venv = (sys.prefix != sys.base_prefix
+                 and Path(sys.prefix).resolve() == (ROOT / ".venv").resolve())
     attendu   = ".venv local" if dans_venv else "système"
     assert main._environnement_python().endswith(attendu)
+
+
+def test_un_venv_posix_lie_au_python_du_systeme_reste_le_venv(monkeypatch):
+    """CR-105 : `.venv/bin/python` est un lien vers `/usr/bin/python3` ;
+    suivre l'exécutable faisait annoncer « système »."""
+    monkeypatch.setattr(sys, "executable", "/usr/bin/python3.13")
+    monkeypatch.setattr(sys, "prefix", str(ROOT / ".venv"))
+    monkeypatch.setattr(sys, "base_prefix", "/usr")
+    assert main._environnement_python().endswith(".venv local")
+
+
+def test_hors_venv_c_est_le_systeme(monkeypatch):
+    monkeypatch.setattr(sys, "prefix", "/usr")
+    monkeypatch.setattr(sys, "base_prefix", "/usr")
+    assert main._environnement_python().endswith("système")
+
+
+def test_un_autre_venv_n_est_pas_celui_d_iris(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "prefix", str(tmp_path / "autre_venv"))
+    monkeypatch.setattr(sys, "base_prefix", "/usr")
+    assert main._environnement_python().endswith("système")
 
 
 @pytest.mark.parametrize("lignes", [

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.115 — document de référence courant
+**Version** : 0.8.9.116 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -124,7 +124,9 @@ iris_encode/
 la langue source** : les textes du code sont en anglais, le français est une
 traduction (`locales/fr/LC_MESSAGES/iris_encode.po`). `main.py` charge la langue
 de `[app] language` juste après le contrôle des dépendances et l'analyse des
-arguments, **avant la bannière** : bannière (origine de Python comprise),
+arguments, **avant la bannière** : bannière (origine de Python comprise — « .venv
+local » si `sys.prefix` est le `.venv` de l'application, et non d'après l'exécutable :
+hors de Windows, `.venv/bin/python` est un lien vers le Python du système),
 « Checking tools: », preflight et interface passent par le catalogue. Ce qui
 s'affiche avant — version de Python, dépendances manquantes, `--help`, chemin
 introuvable — est en anglais seul, comme tout ce qui tourne avant `main.py`
@@ -275,7 +277,10 @@ par `pip install -r requirements.txt`.
 **Lanceur `IRIS_Encode.exe`** (`launcher/IrisEncodeLauncher.cs`) : le dossier
 est passé à `wt.exe -d` avec ses `;` échappés en `\;` — `wt.exe` lit `;` comme
 séparateur de sous-commandes, même entre guillemets (mesuré : dans `A;B`, la
-TUI ne démarrait pas). `launcher/build.bat` passe le chemin du raccourci par
+TUI ne démarrait pas). Il lance `cmd /c .\launch.bat`, chemin relatif explicite :
+avec la variable `NoDefaultCurrentDirectoryInExePath`, cmd ne cherche plus une
+commande nue dans le dossier courant, et `launch.bat` restait introuvable
+(mesuré, par `wt.exe` comme par le repli `cmd.exe`). `launcher/build.bat` passe le chemin du raccourci par
 `$env:ROOT` : incrusté entre apostrophes PowerShell, un dossier `l'essai`
 faisait échouer la création (mesuré).
 
@@ -360,7 +365,7 @@ avant le bandeau et `main.py`. Il ne lit **que la release GitHub marquée
 | **Jamais bloquant** | hors ligne, API en erreur, archive refusée : message, code 0, l'application démarre dans sa version actuelle |
 | **Sans console, aucune installation** en mode `ask` | un « O » présélectionné n'est pas un consentement quand personne ne peut répondre ; Ctrl+C vaut non |
 | **Empreinte obligatoire** | une release sans `digest` SHA256 n'est pas installée |
-| **Fichiers personnels intouchables** | `config.toml`, `profiles.toml`, `CLAUDE.md`, et les dossiers `.venv`, `bin`, `.git`, `.iris_update`, `resources_files`, `_shots` : une archive qui voudrait y écrire est refusée en bloc |
+| **Fichiers personnels intouchables** | `config.toml`, `profiles.toml`, `CLAUDE.md`, et les dossiers `.venv`, `bin`, `.git`, `.iris_update`, `resources_files`, `_shots` : une archive qui voudrait y écrire est refusée en bloc. Comparés **sans la casse** (`casefold`) : NTFS l'ignore, et un `Config.toml` de l'archive écraserait `config.toml` |
 | **`REQUIS`** : `version.py`, `main.py`, `launch.bat`, `updater.py` | une archive qui en manque n'est pas la nôtre, ou retirerait le mécanisme de mise à jour lui-même. La v0.8.9.0, antérieure à `updater.py`, est ainsi refusée (vérifié contre GitHub) |
 | **Sauvegarde puis restauration** | tout fichier touché est copié dans `.iris_update/sauvegarde/` ; au moindre échec, il est remis et les fichiers créés sont retirés |
 | **Manifeste** (`.iris_update/manifeste.txt`) | liste des fichiers livrés : ce que la version précédente livrait et que la nouvelle ne livre plus est retiré. Sans manifeste (première mise à jour), rien n'est retiré |
@@ -3497,6 +3502,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.116 | 2026-10-09 | **Lanceurs, fin** (§ 2.1, § 3.1, § 3.1.2, IE-132 3/3 — IE-132 close) : `cmd /c .\launch.bat` dans le lanceur C# (`NoDefaultCurrentDirectoryInExePath`, mesuré) · origine de Python par `sys.prefix` (CR-105) · fichiers protégés de `updater.py` comparés sans la casse (CR-106) · `tests/test_banniere.py`, `tests/test_updater.py`, `tests/test_lanceurs.py` |
 | 0.8.9.115 | 2026-10-09 | **Lanceurs** (§ 3.1, § 17.2, IE-132 2/3) : bornes hautes et basses des dépendances, contrôlées par `dependances.py` au lancement et au bootstrap (CR-109, CR-110) · `launch.bat` sans expansion retardée, dossier par `IRIS_DIR` (CR-108), sans purge des `__pycache__` (CR-107) · `;` échappé pour `wt.exe` (CR-111) · raccourci par `$env:ROOT` (CR-112) · essais réels sous Windows dans `Test!x`, `l'essai`, `A;B` · `tests/test_lanceurs.py` |
 | 0.8.9.114 | 2026-10-09 | **Installation des outils** (§ 4.2 à 4.4, IE-132 1/3) : empreinte SHA256 exigée pour tout téléchargement, lue chez l'amont ou épinglée (CR-40) · tous ou aucun, par provisoires et `os.replace` (CR-38) · tar.gz/tar.xz extraits, exécutable nu reconnu à son en-tête (CR-39) · installation sur les seules sources statiques, le cache ne les masque plus (CR-41) · `tests/test_outils_installation.py` |
 | 0.8.9.113 | 2026-10-09 | **Vidéo et encodeurs** (§ 8.1, § 11, § 12, § 14.0, IE-130) : pixels carrés pour une source anamorphique (`VideoInfo.sar`, CR-14) ; forçage par tranche, HDR gardé en HEVC (CR-16) ; `CODEC_PAR_ACTION` (CR-17) ; débit inconnu réencodé à la cible (CR-19) ; `regle_debit` selon l'encodeur effectif (CR-22) ; sonde 10 bits NVENC, `_refuser_encodeur` (CR-42) ; H264 sur une source HDR → SDR, averti (`h264_force_sdr`, arbitrage du 2026-10-09) · `tests/test_video_revue.py` |

@@ -104,3 +104,10 @@ def test_build_bat_passe_le_chemin_par_l_environnement():
     txt = _lire("launcher/build.bat")
     ligne = next(l for l in txt.splitlines() if "CreateShortcut" in l)
     assert "'%ROOT%" not in ligne and "$env:ROOT" in ligne
+
+
+def test_le_lanceur_appelle_launch_bat_par_un_chemin_relatif():
+    """`cmd /c launch.bat` échoue avec NoDefaultCurrentDirectoryInExePath."""
+    cs = _lire("launcher/IrisEncodeLauncher.cs")
+    assert cs.count('.\\\\launch.bat"') == 2
+    assert 'c launch.bat"' not in cs

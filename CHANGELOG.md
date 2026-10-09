@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.116] — 2026-10-09
+
+### Lanceurs : dernières corrections (IE-132, 3/3)
+
+Revue IE-114, constats CR-105, 106, et un défaut trouvé pendant les essais.
+IE-132 est close.
+
+- **`IRIS_Encode.exe` sur un poste réglé strictement.** Avec la variable
+  `NoDefaultCurrentDirectoryInExePath` (que posent certains postes
+  verrouillés), le lanceur ne trouvait pas `launch.bat` à côté de lui. Il
+  l'appelle maintenant par son chemin. À recompiler avec `launcher\build.bat`.
+- **Mise à jour : les fichiers personnels protégés quelle que soit la casse.**
+  Une archive contenant `Config.toml` aurait écrasé `config.toml`, Windows ne
+  distinguant pas les deux. Elle est refusée, comme `config.toml`.
+- **Linux et macOS : la bannière dit « .venv local »** quand c'est le cas ; elle
+  annonçait « system » pour le Python de l'environnement isolé.
+
 ## [v0.8.9.115] — 2026-10-09
 
 ### Lanceurs : les dossiers aux noms ordinaires, et des dépendances éprouvées (IE-132, 2/3)

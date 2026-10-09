@@ -4535,30 +4535,30 @@ msgid "The profile “{profile}” already exists."
 msgstr "Le profil « {profile} » existe déjà."
 
 #. where the Python interpreter comes from, in the start banner.
-#: main.py:75
+#: main.py:78
 msgctxt "python origin"
 msgid "local .venv"
 msgstr ".venv local"
 
 #. the Python installed on the computer, in the start banner.
-#: main.py:78
+#: main.py:81
 msgctxt "python origin"
 msgid "system"
 msgstr "système"
 
-#: main.py:139
+#: main.py:142
 #, python-brace-format
 msgid "config.toml unreadable ({error}). Session running on the default settings — your file was not touched, and will not be until it is fixed."
 msgstr "config.toml illisible ({error}). Session tenue sur les réglages par défaut — votre fichier n'a pas été touché, et ne le sera pas tant qu'il n'est pas corrigé."
 
-#: main.py:144
+#: main.py:147
 msgid "Checking tools:"
 msgstr "Vérification des outils :"
 
-#: main.py:148
+#: main.py:151
 msgid "Tools missing. Stopping."
 msgstr "Outils manquants. Arrêt."
 
-#: main.py:152
+#: main.py:155
 msgid "Preflight OK."
 msgstr "Preflight OK."

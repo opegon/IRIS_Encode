@@ -77,7 +77,7 @@ une ligne de moins dans une liste.
 | `F11` ne répond pas dans l'application | Windows Terminal la lie au plein écran (`toggleFullscreen`, réglage par défaut) ; elle n'arrive jamais au programme *(vérifié dans ses réglages, IE-100)* | spec § 14.7 |
 | Le lanceur démarre un autre `main.py` | dossier `Test!x` : sous `enabledelayedexpansion`, cmd efface le `!` de `%~dp0` développé ; `.venv` introuvable, `cd` échoue, le `main.py` du dossier courant part *(mesuré, CR-108)* | spec § 3.1 |
 | `wt.exe` n'exécute pas la commande | `;` du dossier lu comme séparateur de sous-commandes, même entre guillemets ; `\;` est littéral *(mesuré, CR-111)* | spec § 3.1 |
-| `launch.bat` « n'est pas reconnu » dans son propre dossier | `NoDefaultCurrentDirectoryInExePath` défini : cmd ne cherche plus le dossier courant *(mesuré dans le bac à sable de Claude Code, qui la pose)* | spec § 3.1 |
+| `launch.bat` « n'est pas reconnu » dans son propre dossier | `NoDefaultCurrentDirectoryInExePath` défini : cmd ne cherche plus le dossier courant *(mesuré dans le bac à sable de Claude Code, qui la pose)* ; d'où `cmd /c .\launch.bat` dans le lanceur C# | spec § 3.1 |
 | `UnknownModeError: '_default'` | Textual 8 ne sait pas **revenir** au mode de départ, qu'il ne déclare pas, et `add_mode` refuse ce nom : la navigation doit être un mode nommé *(mesuré, IE-100)* | spec § 14.7 |
 
 ## Hypothèses infirmées

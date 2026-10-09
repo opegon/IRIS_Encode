@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.115 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.116 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -497,7 +497,7 @@ foi. Après une mise à jour du lanceur, relancer `launcher\build.bat` suffit.
 > refuser un exécutable sans réputation, même compilé localement — même
 > famille de blocages qu'au chapitre 1.4. Dans ce cas, un raccourci `.lnk`
 > sans `.exe` rend le même service, avec cette cible :
-> `wt.exe -d "C:\chemin\vers\iris_encode" cmd /c launch.bat`
+> `wt.exe -d "C:\chemin\vers\iris_encode" cmd /c .\launch.bat`
 > (icône au choix via *Propriétés* → *Changer d'icône* →
 > `launcher\iris.ico`, présent après un passage de `build.bat`).
 

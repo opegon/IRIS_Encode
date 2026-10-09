@@ -69,8 +69,11 @@ def _environnement_python() -> str:
     """
     v = sys.version_info
     racine = Path(__file__).resolve().parent
-    exe    = Path(sys.executable).resolve()
-    if exe.is_relative_to(racine / ".venv"):
+    # Le préfixe du venv, pas l'exécutable : hors de Windows, `.venv/bin/python`
+    # est un lien vers le Python du système, que `resolve()` suivait — la
+    # bannière annonçait alors « system » (CR-105).
+    dans_un_venv = sys.prefix != sys.base_prefix
+    if dans_un_venv and Path(sys.prefix).resolve() == (racine / ".venv").resolve():
         # TRANSLATORS: where the Python interpreter comes from, in the start banner.
         origine = pgettext("python origin", "local .venv")
     else:

@@ -49,6 +49,10 @@ ARCHIVE = re.compile(r"^iris_encode_v[\d.]+\.zip$")
 # l'archive n'a le droit d'y écrire, même si une archive fautive le demandait.
 PROTEGES = {"config.toml", "profiles.toml", "CLAUDE.md"}
 DOSSIERS_PROTEGES = {".venv", "bin", ".git", ".iris_update", "resources_files", "_shots"}
+# Comparés sans la casse : NTFS l'ignore, et « Config.toml » de l'archive
+# écraserait `config.toml` (CR-106).
+_PROTEGES_CF = {n.casefold() for n in PROTEGES}
+_DOSSIERS_PROTEGES_CF = {n.casefold() for n in DOSSIERS_PROTEGES}
 # Présents dans toute archive d'IRIS : une archive qui en manque n'est pas la nôtre.
 REQUIS = {"version.py", "main.py", "launch.bat", "updater.py"}
 
@@ -197,7 +201,8 @@ def telecharger(release: dict, dest: Path,
 
 def _protege(nom: str) -> bool:
     parties = PurePosixPath(nom).parts
-    return nom in PROTEGES or bool(parties) and parties[0] in DOSSIERS_PROTEGES
+    return (nom.casefold() in _PROTEGES_CF
+            or bool(parties) and parties[0].casefold() in _DOSSIERS_PROTEGES_CF)
 
 
 def contenu_archive(archive: Path, version_attendue: str) -> list[str]:

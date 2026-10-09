@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.8.9.115 — Windows (macOS/Linux support planned)
+**Version**: 0.8.9.116 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -499,7 +499,7 @@ again is enough.
 > executable without reputation, even one compiled locally — the same family of
 > blocks as in chapter 1.4. In that case, a `.lnk` shortcut without an `.exe`
 > does the same job, with this target:
-> `wt.exe -d "C:\path\to\iris_encode" cmd /c launch.bat`
+> `wt.exe -d "C:\path\to\iris_encode" cmd /c .\launch.bat`
 > (icon of your choice through *Properties* → *Change Icon* →
 > `launcher\iris.ico`, present once `build.bat` has run).
 

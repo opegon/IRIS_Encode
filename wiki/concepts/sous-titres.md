@@ -85,6 +85,21 @@ jeu : `-sub_charenc` avant l'entrée ffmpeg, `--sub-charset TID:<jeu>` pour
 mkvmerge. Un `.sub` peut être du MicroDVD (texte) ou du VobSub (binaire, début
 `00 00 01 BA`).
 
+## Formats texte qu'on croit lire
+
+- **WebVTT** permet des temps **sans heures** (`00:01.000`) : un lecteur qui
+  exige `h:mm:ss` n'en lit aucune réplique. Une fraction courte (`,5`) vaut
+  500 ms, pas 5. *(mesuré, revue IE-114, CR-37)*
+- **`.sub`** désigne deux formats : VobSub (image, binaire) et MicroDVD (texte
+  en numéros d'image `{25}{50}`). **Ni mkvmerge ni ffmpeg ne reconnaissent le
+  MicroDVD** (mesuré le 2026-10-09, outils de `bin/`) : il ne se greffe pas.
+- **Horodatage SRT** : arrondir aux millisecondes *avant* de découper. Arrondir
+  la seule fraction écrit `05,1000` pour 5,999999… s, que mkvmerge lit 5,100 s.
+  *(mesuré, CR-36)*
+- **Un sous-titre embarqué s'extrait en lisant tout le conteneur** : ses
+  paquets sont entrelacés jusqu'à la fin. Pas de délai fixe — 120 s ne
+  suffisent pas à un gros donneur sur un partage. *(CR-35)*
+
 ## Polices jointes
 
 Les sous-titres ASS d'un animé s'appuient sur des polices **jointes** au MKV.

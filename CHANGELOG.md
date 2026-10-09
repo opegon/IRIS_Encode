@@ -1,5 +1,31 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.105] — 2026-10-09
+
+### Écran de recalage : gros donneurs, VTT, mpv, la bonne piste (IE-125, 3/3)
+
+Revue IE-114, constats CR-35, 36, 37, 52, 92.
+
+- **Gros donneur.** Extraire un sous-titre d'un conteneur lit tout le
+  fichier ; au-delà de deux minutes (un donneur de 20 Go sur un partage),
+  l'extraction était tuée et la mesure répondait « sous-titre image » pour un
+  simple SRT. Plus de limite, une barre de progression, et la vraie cause en
+  cas d'échec. L'écran ne gèle plus pendant ce temps (repère `A`, correction
+  par plages, aperçu mpv).
+- **Une réplique 900 ms trop tôt.** Un sous-titre recalé par plages pouvait
+  recevoir un horodatage à quatre chiffres de millisecondes (environ une
+  réplique sur 20 000), que mkvmerge lisait 0,9 s trop tôt.
+- **Sous-titres WebVTT** sans heures (`00:01.000`) : la mesure n'en lisait
+  aucune réplique. Un temps comme `00:00:01,5` est lu 1,5 s, plus 1,005 s. Un
+  `.sub` n'est plus lu comme du texte : la mesure dit pourquoi elle échoue.
+  Un `.sub` MicroDVD reste impossible à greffer : mkvmerge ne le reconnaît pas.
+- **mpv montrait la mauvaise piste** d'un donneur à plusieurs sous-titres —
+  souvent la « forced » au lieu de la complète qu'on recale. Il reçoit
+  désormais la piste choisie.
+- **`D` pendant un recalage audio** faisait écrire la piste recalée sur la
+  piste voisine. `D` attend la fin de l'opération, et le résultat va toujours à
+  la piste recalée.
+
 ## [v0.8.9.104] — 2026-10-09
 
 ### Pistes greffées : les temps en MP4, la bonne langue, la bonne piste (IE-125, 2/3)

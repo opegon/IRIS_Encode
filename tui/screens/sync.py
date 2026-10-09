@@ -19,6 +19,7 @@ suivantes le message du moment (avertissement, compte rendu de mesure).
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
 from rich.text import Text
 from textual import on, work
@@ -664,21 +665,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                              "is measured directly with {key}.").format(key=touche("m")))
             return
 
-        from .ancrage import AncrageModal
-
         # Les répliques proposées viennent du fichier lui-même : une piste
         # embarquée doit d'abord être extraite, comme pour la mesure.
+        self._en_texte(t, lambda src: self._proposer_reperes(t, src))
+
+    def _proposer_reperes(self, t: ExternalTrack, src: Path) -> None:
+        from .ancrage import AncrageModal
+
         try:
-            src = t.source_path
-            if src.suffix.lower() != ".srt":
-                idx = ffmpeg_stream_index(src, t.source_tid,
-                                          TrackKind.SUBTITLE)
-                extrait = extract_subtitle(t.source_path, idx)
-                if extrait is None:
-                    self._set_hint(_("Image subtitle (PGS, VobSub): no text to "
-                                     "offer as an anchor."))
-                    return
-                src = extrait
             reperes = reperes_proposables(src)
         except Exception as e:                       # noqa: BLE001
             self._set_hint(_("Cannot read the subtitle lines: {error}").format(
@@ -689,7 +683,8 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return
 
         def _apres(points) -> None:
-            if points is None:
+            i = self._rang(t)
+            if points is None or i is None:
                 return
             ecrit, entendu = points
             self._measuring = True
@@ -703,6 +698,51 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
 
         self.app.push_screen(
             AncrageModal(reperes, t.track_name or t.source_path.name), _apres)
+
+    # ── Sous-titre embarqué : extraction hors du fil de l'écran ───────────────
+
+    def _en_texte(self, t: ExternalTrack, suite: Callable[[Path], None],
+                  direct: tuple[str, ...] = (".srt",)) -> None:
+        """Appelle `suite` avec le sous-titre de `t` en fichier texte.
+
+        Un sous-titre embarqué s'extrait en lisant tout le donneur : des
+        minutes sur un partage, que le fil de l'écran ne doit pas attendre.
+        L'extraction avait un délai de 120 s et gelait l'écran jusque-là
+        (CR-35) ; elle tourne maintenant à part, avec sa barre. Un fichier
+        dont l'extension est dans `direct` est passé tel quel.
+        """
+        if t.source_path.suffix.lower() in direct:
+            suite(t.source_path)
+            return
+        self._measuring = True
+        self._set_hint("⏳ " + _("Extracting the subtitle track — the whole donor "
+                                "file is read."))
+        self._show_bar(True)
+        self._extraire(t, suite)
+
+    @work(thread=True, name="sync-extraction")
+    def _extraire(self, t: ExternalTrack, suite: Callable[[Path], None]) -> None:
+        def report(fraction: float) -> None:
+            self.app.call_from_thread(self._set_progress, fraction)
+
+        try:
+            idx = ffmpeg_stream_index(t.source_path, t.source_tid, TrackKind.SUBTITLE)
+            src, erreur = extract_subtitle(t.source_path, idx, report,
+                                           self._decision.info.duration), ""
+        except Exception as e:                       # noqa: BLE001
+            src, erreur = None, texte_erreur(e)
+        self.app.call_from_thread(self._extrait, suite, src, erreur)
+
+    def _extrait(self, suite: Callable[[Path], None], src: Path | None,
+                 erreur: str) -> None:
+        self._measuring = False
+        self._show_bar(False)
+        if src is None:
+            self.app.bell()
+            self._set_hint(_("Cannot extract the subtitle track: {error}").format(
+                error=erreur))
+            return
+        suite(src)
 
     @work(thread=True, name="sync-ancrage")
     def _mesure_ancree(self, t: ExternalTrack, ecrit: float,
@@ -811,7 +851,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         segs = self._segments[1]
         t = self._tracks[i]
         if t.kind == TrackKind.SUBTITLE:
-            self._build_corrected_subtitle(i, segs)
+            self._en_texte(t, lambda src: self._build_corrected_subtitle(t, src, segs))
             return
 
         # L'audio ne se corrige pas en décalant des nombres : il faut le
@@ -826,14 +866,15 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                                   "handful of minutes."))
         self._set_origin_cell(i, Text(_("resyncing…"), style="yellow"))
         self._show_bar(True, _("Resync in progress"))
-        self._retime(i, segs)
+        self._retime(t, segs)
 
+    # La piste est désignée par l'objet, pas par son rang : `D` pendant le
+    # recalage faisait glisser les rangs, et l'audio recalée s'écrivait sur la
+    # piste voisine (CR-92) — le défaut que `_measure` avait déjà corrigé.
     @work(thread=True, name="sync-retime")
-    def _retime(self, i: int, segs: list[Segment]) -> None:
+    def _retime(self, t: ExternalTrack, segs: list[Segment]) -> None:
         """Fabrique la piste audio recalée hors du thread UI."""
         from core.sync import retime_audio
-
-        t = self._tracks[i]
 
         def report(fraction: float) -> None:
             self.app.call_from_thread(self._set_progress, fraction)
@@ -845,13 +886,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                                           progress=report)
         except Exception as e:
             fichier, notes = None, [texte_erreur(e)]
-        self.app.call_from_thread(self._retime_done, i, fichier, notes)
+        self.app.call_from_thread(self._retime_done, t, fichier, notes)
 
-    def _retime_done(self, i: int, fichier: Path | None,
+    def _retime_done(self, t: ExternalTrack, fichier: Path | None,
                      notes: list[str]) -> None:
         self._measuring = False
         self._show_bar(False)
-        if not (0 <= i < len(self._tracks)):
+        i = self._rang(t)
+        if i is None:
             return                                   # piste retirée entre-temps
         if fichier is None:
             self.app.bell()
@@ -859,7 +901,6 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             self._set_hint(_("Cannot resync.") + "\n" + " · ".join(notes))
             return
 
-        t = self._tracks[i]
         t.source_path = fichier
         t.source_tid  = 0            # la piste produite est seule dans son fichier
         t.delay_ms    = 0
@@ -875,20 +916,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             + _("{play_key} to check in mpv, {sample_key} for a muxed "
                 "sample.").format(play_key=touche("v"), sample_key=touche("k")))
 
-    def _build_corrected_subtitle(self, i: int, segs: list[Segment]) -> None:
-        from core.sync import extract_subtitle, shift_srt
+    def _build_corrected_subtitle(self, t: ExternalTrack, src: Path,
+                                  segs: list[Segment]) -> None:
+        from core.sync import shift_srt
 
-        t = self._tracks[i]
+        i = self._rang(t)
+        if i is None:
+            return                                   # piste retirée entre-temps
         try:
-            src = t.source_path
-            if src.suffix.lower() != ".srt":
-                idx = ffmpeg_stream_index(src, t.source_tid, TrackKind.SUBTITLE)
-                src = extract_subtitle(t.source_path, idx)
-                if src is None:
-                    self.app.bell()
-                    self._set_hint(_("Cannot extract — image subtitle (PGS, "
-                                     "VobSub) or unreadable track."))
-                    return
             out = self._fichier_recale(t, ".srt")
             shift_srt(src, segs, out)
         except Exception as e:
@@ -934,11 +969,22 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return
 
         t = self._tracks[i]
+        if t.kind == TrackKind.SUBTITLE:
+            # Un donneur conteneur, donné tel quel à `--sub-file`, montrait sa
+            # première piste — souvent la « forced » — et non celle choisie
+            # (CR-52). mpv reçoit la piste extraite, et la première réplique
+            # se lit dans du texte, plus dans le conteneur.
+            self._en_texte(t, lambda src: self._ouvrir_mpv(t, src),
+                           direct=(".srt", ".ass", ".ssa", ".vtt"))
+        else:
+            self._ouvrir_mpv(t, None)
+
+    def _ouvrir_mpv(self, t: ExternalTrack, sous_titre: Path | None) -> None:
         try:
             first_cue = None
             donor_idx = 0
-            if t.kind == TrackKind.SUBTITLE:
-                cues = read_cues(t.source_path)
+            if sous_titre is not None:
+                cues = read_cues(sous_titre)
                 first_cue = cues[0][0] if cues else None
             else:
                 donor_idx = ffmpeg_stream_index(
@@ -950,6 +996,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
                 n_internal_audio=len(self._decision.info.audio_tracks),
                 donor_audio_index=donor_idx,
                 first_cue=first_cue,
+                sub_file=sous_titre,
             )
             preview.launch(cmd)
         except Exception as e:
@@ -1119,6 +1166,12 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     def action_remove_track(self) -> None:
         i = self._current()
         if i is None:
+            return
+        # Retirer une piste fait glisser les rangs des suivantes : pas pendant
+        # une opération qui écrira son résultat sur l'une d'elles (CR-92).
+        if self._measuring:
+            self.app.bell()
+            self._set_hint(_("An operation is already running — let it finish."))
             return
         self._tracks.pop(i)
         # Les index de reprise pointent sur une liste qui vient de bouger

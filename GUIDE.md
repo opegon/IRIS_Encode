@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.8.9.104
+**Version**: 0.8.9.105
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -671,6 +671,12 @@ audio track.
 These subtitles are pictures, with no text to correlate. No measurement is
 possible; set the offset by hand or with `C`.
 
+Any other failure to read a subtitle inside a container shows as "cannot
+extract the subtitle track", followed by ffmpeg's own reason (unreadable or
+disconnected file, for instance). The whole donor file is read to extract the
+track: on a large file over the network, allow a few minutes — the progress
+bar shows how far it got.
+
 ### 4.5 "✗ different cut — N segments"
 
 The two files carry the same content in two different cuts — typically a
@@ -684,7 +690,9 @@ a streaming rip.
    do with each other.
 2. Cursor on the **audio** track, `P`. The resync takes a few minutes —
    decoding then re-encoding, with a progress bar.
-3. Cursor on each **subtitle**, `P`. Instant.
+3. Cursor on each **subtitle**, `P`. Instant for a subtitle file; a subtitle
+   inside a container is first extracted, which reads the whole donor (progress
+   bar).
 4. `V` or `K` to check, then `F2` or `F3`.
 
 The segments stay in memory as long as no new measurement is started: a single

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.104
+**Version** : 0.8.9.105
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -676,6 +676,12 @@ Utilisez `C` pour reprendre le décalage de la piste audio.
 Ces sous-titres sont des images, sans texte à corréler. Aucune mesure n'est
 possible ; réglez le décalage à la main ou par `C`.
 
+Tout autre échec de lecture d'un sous-titre pris dans un conteneur s'affiche
+« extraction du sous-titre impossible », suivi de la raison donnée par ffmpeg
+(fichier illisible ou déconnecté, par exemple). L'extraction lit le donneur en
+entier : sur un gros fichier en réseau, comptez quelques minutes — la barre de
+progression montre où elle en est.
+
 ### 4.5 « ✗ montage différent — N plages »
 
 Les deux fichiers portent le même contenu dans deux montages différents —
@@ -689,7 +695,9 @@ qui suit, face à un rip streaming.
    plutôt que les fichiers n'ont rien à voir.
 2. Curseur sur la piste **audio**, `P`. Le recalage prend quelques minutes —
    décodage puis réencodage, avec barre de progression.
-3. Curseur sur chaque **sous-titre**, `P`. Instantané.
+3. Curseur sur chaque **sous-titre**, `P`. Instantané pour un fichier de
+   sous-titres ; un sous-titre pris dans un conteneur est d'abord extrait, ce qui
+   lit tout le donneur (barre de progression).
 4. `V` ou `K` pour contrôler, puis `F2` ou `F3`.
 
 Les plages restent en mémoire tant qu'aucune nouvelle mesure n'est lancée :

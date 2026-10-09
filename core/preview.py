@@ -53,9 +53,14 @@ def build_command(
     n_internal_audio: int = 0,
     donor_audio_index: int = 0,
     first_cue:  Optional[float] = None,
+    sub_file:   Optional[Path] = None,
 ) -> list[str]:
     """
     Commande mpv ouvrant `video` avec `track` greffée et son décalage appliqué.
+
+    `sub_file` : la piste de sous-titres choisie, extraite de son donneur. Un
+    conteneur passé à `--sub-file` charge toutes ses pistes et mpv affiche la
+    première, pas celle qu'on recale (CR-52).
 
     Lève ErreurAffichable si mpv n'est pas disponible.
     """
@@ -71,7 +76,7 @@ def build_command(
 
     if track.kind == TrackKind.SUBTITLE:
         cmd += [
-            f"--sub-file={track.source_path}",
+            f"--sub-file={sub_file or track.source_path}",
             f"--sub-delay={delay_s:.3f}",
             "--sub-visibility=yes",
         ]

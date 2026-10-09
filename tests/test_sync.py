@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 from core import sync
+from core.i18n import texte_erreur
 
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -435,35 +436,71 @@ def test_no_segments_keeps_the_previous_diagnosis():
 
 # ─── Sous-titres embarqués ────────────────────────────────────────────────────
 
-def test_extract_subtitle_asks_ffmpeg_for_the_right_track(tmp_path: Path):
-    cible = tmp_path / "donneur_2_[sync].srt"
-
-    def _fake_run(cmd, **kw):
-        Path(cmd[-1]).write_text("1\n00:00:01,000 --> 00:00:02,000\nX\n",
-                                 encoding="utf-8")
-        return mock.Mock(returncode=0)
-
-    with mock.patch("core.sync.tempfile.gettempdir", return_value=str(tmp_path)), \
-         mock.patch("core.sync.subprocess.run", side_effect=_fake_run) as run:
-        out = sync.extract_subtitle(tmp_path / "donneur.mkv", 2)
-
-    assert out == cible
-    cmd = run.call_args[0][0]
-    assert "-map" in cmd and cmd[cmd.index("-map") + 1] == "0:s:2"
-    assert cmd[cmd.index("-c:s") + 1] == "srt"
+_BIN_FFMPEG = Path(__file__).resolve().parent.parent / "bin" / "ffmpeg.exe"
 
 
-def test_extract_subtitle_returns_none_on_failure(tmp_path: Path):
-    """Un sous-titre image fait échouer ffmpeg : pas de fichier, pas de mesure."""
-    with mock.patch("core.sync.tempfile.gettempdir", return_value=str(tmp_path)), \
-         mock.patch("core.sync.subprocess.run",
-                    return_value=mock.Mock(returncode=1)):
-        assert sync.extract_subtitle(tmp_path / "donneur.mkv", 0) is None
+@pytest.mark.skipif(not _BIN_FFMPEG.exists(), reason="ffmpeg du projet absent")
+def test_extract_subtitle_rend_la_piste_demandee(tmp_path: Path, monkeypatch):
+    import subprocess as sp
+    monkeypatch.setattr(sync, "_ffmpeg_path", str(_BIN_FFMPEG))
+    monkeypatch.setattr(sync.tempfile, "gettempdir", lambda: str(tmp_path))
+    a, b = tmp_path / "a.srt", tmp_path / "b.srt"
+    a.write_text("1\n00:00:01,000 --> 00:00:02,000\nForced\n", encoding="utf-8")
+    b.write_text("1\n00:00:01,000 --> 00:00:02,000\nComplet\n", encoding="utf-8")
+    donneur = tmp_path / "donneur.mkv"
+    sp.run([str(_BIN_FFMPEG), "-y", "-v", "error", "-f", "lavfi", "-i",
+            "color=size=64x64:duration=3", "-i", str(a), "-i", str(b),
+            "-map", "0", "-map", "1", "-map", "2", "-c:v", "libx264",
+            "-c:s", "srt", str(donneur)], check=True, capture_output=True)
+    progression: list[float] = []
+    out = sync.extract_subtitle(donneur, 1, progression.append, 3.0)
+    assert out == tmp_path / "donneur_1_[sync].srt"
+    assert "Complet" in out.read_text(encoding="utf-8")
+
+
+class _FauxProcessus:
+    """Ce que rend `subprocess.Popen` : un ffmpeg qui échoue avec ce message."""
+
+    def __init__(self, stderr: str):
+        import io
+        self.stdout = io.StringIO("progress=end\n")
+        self.stderr = io.StringIO(stderr)
+
+    def wait(self) -> int:
+        return 1
+
+
+def test_un_sous_titre_image_est_dit_image(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(sync.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(sync.subprocess, "Popen", lambda *a, **k: _FauxProcessus(
+        "Subtitle encoding currently only possible from text to text or "
+        "bitmap to bitmap\n"))
+    with pytest.raises(sync.ExtractionImpossible, match="image"):
+        sync.extract_subtitle(tmp_path / "donneur.mkv", 0)
+
+
+def test_un_autre_echec_n_accuse_pas_un_sous_titre_image(tmp_path: Path, monkeypatch):
+    """Un gros donneur sur un partage tuait ffmpeg à 120 s, et le refus
+    accusait un « sous-titre image » pour un SRT (CR-35)."""
+    monkeypatch.setattr(sync.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(sync.subprocess, "Popen", lambda *a, **k: _FauxProcessus(
+        "donneur.mkv: Input/output error\n"))
+    with pytest.raises(sync.ExtractionImpossible) as e:
+        sync.extract_subtitle(tmp_path / "donneur.mkv", 0)
+    assert "image" not in str(e.value)
+    assert "Input/output error" in texte_erreur(e.value)
+
+
+def test_l_extraction_n_a_pas_de_delai_fixe():
+    """Elle lit le donneur entier : aucun délai ne convient à tous les disques."""
+    import inspect
+    assert "timeout" not in inspect.getsource(sync.extract_subtitle)
 
 
 def test_measure_subtitle_refuses_an_image_track(tmp_path: Path):
     video = tmp_path / "film.mkv"
-    with mock.patch("core.sync.extract_subtitle", return_value=None):
+    with mock.patch("core.sync.extract_subtitle", side_effect=sync.ExtractionImpossible(
+            sync.N_("image subtitle (PGS, VobSub) — no text to correlate"))):
         res = sync.measure_subtitle(video, tmp_path / "donneur.mkv",
                                     donor_track=0)
     assert not res.ok

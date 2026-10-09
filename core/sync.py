@@ -26,7 +26,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from .i18n import N_, ErreurAffichable, _, ngettext, pgettext
+from .i18n import N_, ErreurAffichable, _, ngettext, pgettext, texte_erreur
 
 # Rapporte l'avancement entre 0 et 1
 Progress = Callable[[float], None]
@@ -118,7 +118,10 @@ _BOUNDARY_STEP_S     = 1.0
 
 # Sous-titres lisibles directement : tout le reste est une piste embarquée,
 # qu'il faut extraire du conteneur avant d'en tirer des répliques.
-_TEXT_SUB_EXT = {".srt", ".ass", ".ssa", ".vtt", ".sub"}
+# `.sub` n'en est pas : un VobSub est binaire, et un MicroDVD n'est reconnu ni
+# par mkvmerge ni par ffmpeg (mesuré). Lu comme du texte, il rendait « aucune
+# réplique lisible » au lieu de passer par l'extraction, qui le dit (CR-37).
+_TEXT_SUB_EXT = {".srt", ".ass", ".ssa", ".vtt"}
 
 # Bande de la parole. Sur un film, la bande-son occupe surtout les graves et
 # les aigus : sans ce filtre, une musique continue remplit le masque de VAD et
@@ -413,9 +416,24 @@ def _speech_mask(envelope: np.ndarray) -> np.ndarray:
 
 # ─── Lecture des sous-titres ──────────────────────────────────────────────────
 
+# L'heure est facultative en WebVTT (`00:01.000 --> 00:02.500`) : sans elle,
+# un `.vtt` ne rendait aucune réplique (CR-37).
 _SRT_TIME = re.compile(
-    r"(\d+):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d+):(\d{2}):(\d{2})[,.](\d{1,3})"
+    r"(?:(\d+):)?(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*"
+    r"(?:(\d+):)?(\d{2}):(\d{2})[,.](\d{1,3})"
 )
+
+
+def _secondes(h: str | None, m: str, s: str, frac: str) -> float:
+    """Une fraction de moins de trois chiffres se complète à droite : `,5` vaut
+    500 ms, pas 5 (CR-37)."""
+    return int(h or 0) * 3600 + int(m) * 60 + int(s) + int(frac.ljust(3, "0")) / 1000.0
+
+
+def _bornes(m: re.Match) -> tuple[float, float]:
+    """(début, fin) en secondes d'une ligne de temps SRT ou WebVTT."""
+    g = m.groups()
+    return _secondes(*g[:4]), _secondes(*g[4:])
 _ASS_LINE = re.compile(
     r"^Dialogue:[^,]*,\s*(\d+):(\d{2}):(\d{2})[.,](\d{1,2}),\s*(\d+):(\d{2}):(\d{2})[.,](\d{1,2}),"
 )
@@ -453,10 +471,7 @@ def read_cues(path: Path) -> list[tuple[float, float]]:
         return cues
 
     for m in _SRT_TIME.finditer(text):
-        h1, m1, s1, ms1, h2, m2, s2, ms2 = (int(g) for g in m.groups())
-        start = h1 * 3600 + m1 * 60 + s1 + ms1 / 1000.0
-        end   = h2 * 3600 + m2 * 60 + s2 + ms2 / 1000.0
-        cues.append((start, end))
+        cues.append(_bornes(m))
     return cues
 
 
@@ -515,12 +530,11 @@ def _blocs_texte(path: Path) -> list[tuple[float, str]]:
         m = _SRT_TIME.search(bloc)
         if not m:
             continue
-        h, mi, sec, ms = (int(g) for g in m.groups()[:4])
         lignes = [l for l in bloc.splitlines()
                   if "-->" not in l and not l.strip().isdigit()]
         contenu = _nettoie(" ".join(lignes))
         if contenu:
-            out.append((h * 3600 + mi * 60 + sec + ms / 1000.0, contenu))
+            out.append((_bornes(m)[0], contenu))
     return out
 
 
@@ -532,7 +546,17 @@ def _nettoie(texte: str) -> str:
     return re.sub(r"\s+", " ", t).strip()
 
 
-def extract_subtitle(video: Path, ffmpeg_index: int) -> Optional[Path]:
+class ExtractionImpossible(ErreurAffichable):
+    """Une piste de sous-titres qu'on ne sait pas sortir en texte, avec sa cause."""
+
+
+# Ce que ffmpeg répond quand on lui demande du texte depuis une image.
+_ENCODAGE_IMAGE = "only possible from text to text or bitmap to bitmap"
+
+
+def extract_subtitle(video: Path, ffmpeg_index: int,
+                     progress: Callable[[float], None] | None = None,
+                     duration: float = 0.0) -> Path:
     """
     Sort une piste de sous-titres embarquée du conteneur, vers un .srt temporaire.
 
@@ -541,20 +565,43 @@ def extract_subtitle(video: Path, ffmpeg_index: int) -> Optional[Path]:
     même épisode — n'a donc aucune réplique lisible tant qu'elle n'en est pas
     extraite.
 
-    Retourne None si ffmpeg refuse la conversion : c'est ce qui arrive aux
-    sous-titres image (PGS, VobSub), qui ne contiennent pas de texte.
+    Le conteneur se lit **en entier** : les paquets d'un sous-titre sont
+    entrelacés jusqu'à la fin. Aucun délai fixe — 120 s tuaient ffmpeg sur
+    tout gros donneur hors SSD, et le refus accusait un « sous-titre image »
+    (CR-35) — mais une progression, si `progress` et `duration` sont donnés.
+
+    Lève `ExtractionImpossible` : sous-titre image (PGS, VobSub), qui ne
+    contient pas de texte, ou autre échec, dit tel quel.
     """
     out = Path(tempfile.gettempdir()) / f"{video.stem}_{ffmpeg_index}_[sync].srt"
-    cmd = [_ffmpeg_path, "-y", "-v", "error",
+    cmd = [_ffmpeg_path, "-y", "-v", "error", "-nostats", "-progress", "pipe:1",
            "-i", str(video), "-map", f"0:s:{ffmpeg_index}",
            "-c:s", "srt", str(out)]
     try:
-        proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=120)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if proc.returncode != 0 or not out.exists() or out.stat().st_size == 0:
-        return None
-    return out
+        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                encoding="utf-8", errors="replace")
+    except OSError as e:
+        raise ExtractionImpossible(N_("cannot extract the subtitle track: {detail}"),
+                                   detail=e) from e
+    assert proc.stdout is not None and proc.stderr is not None
+    for ligne in proc.stdout:
+        if progress and duration > 0 and ligne.startswith("out_time_us="):
+            try:
+                progress(min(1.0, int(ligne.split("=", 1)[1]) / 1e6 / duration))
+            except ValueError:
+                pass
+    erreurs = proc.stderr.read()
+    code = proc.wait()
+    if code == 0 and out.exists() and out.stat().st_size > 0:
+        return out
+    out.unlink(missing_ok=True)
+    if _ENCODAGE_IMAGE in erreurs:
+        raise ExtractionImpossible(N_("image subtitle (PGS, VobSub) — no text to "
+                                      "correlate"))
+    detail = (erreurs.strip().splitlines() or [f"code {code}"])[-1]
+    raise ExtractionImpossible(N_("cannot extract the subtitle track: {detail}"),
+                               detail=detail)
 
 
 def delay_at(segments: list[Segment], t: float) -> int:
@@ -574,10 +621,14 @@ def delay_at(segments: list[Segment], t: float) -> int:
 
 
 def _srt_stamp(seconds: float) -> str:
-    s = max(0.0, seconds)
-    h, r = divmod(int(s), 3600)
-    m, sec = divmod(r, 60)
-    return f"{h:02d}:{m:02d}:{sec:02d},{int(round((s % 1) * 1000)):03d}"
+    # Arrondir aux millisecondes **d'abord** : `8.450 - 2.450` vaut
+    # 5,999999999999999, et arrondir la seule fraction écrivait `05,1000`, que
+    # mkvmerge lit 5,100 s — 900 ms trop tôt (CR-36).
+    ms = round(max(0.0, seconds) * 1000)
+    h, ms = divmod(ms, 3_600_000)
+    m, ms = divmod(ms, 60_000)
+    sec, ms = divmod(ms, 1000)
+    return f"{h:02d}:{m:02d}:{sec:02d},{ms:03d}"
 
 
 def shift_srt(src: Path, segments: list[Segment], out: Path) -> Path:
@@ -595,9 +646,7 @@ def shift_srt(src: Path, segments: list[Segment], out: Path) -> Path:
     text = _read_text(src)
 
     def _rewrite(m: re.Match) -> str:
-        h1, m1, s1, ms1, h2, m2, s2, ms2 = (int(g) for g in m.groups())
-        start = h1 * 3600 + m1 * 60 + s1 + ms1 / 1000.0
-        end   = h2 * 3600 + m2 * 60 + s2 + ms2 / 1000.0
+        start, end = _bornes(m)
         d = delay_at(segments, start) / 1000.0
         return f"{_srt_stamp(start + d)} --> {_srt_stamp(end + d)}"
 
@@ -1425,10 +1474,10 @@ def measure_with_anchor(video: Path, subtitle: Path, *,
         if donor_track is None:
             return SyncResult(0, None, 0.0, False,
                               _("embedded track without a track index"))
-        path = extract_subtitle(subtitle, donor_track)
-        if path is None:
-            return SyncResult(0, None, 0.0, False,
-                              _("image subtitle — no text to correlate"))
+        try:
+            path = extract_subtitle(subtitle, donor_track, progress, duration)
+        except ExtractionImpossible as e:
+            return SyncResult(0, None, 0.0, False, texte_erreur(e))
 
     cues = read_cues(path)
     if not cues:
@@ -1513,11 +1562,10 @@ def measure_subtitle(video: Path, subtitle: Path,
             return SyncResult(0, None, 0.0, False,
                               _("embedded track without a track index — "
                                 "cannot extract it"))
-        path = extract_subtitle(subtitle, donor_track)
-        if path is None:
-            return SyncResult(0, None, 0.0, False,
-                              _("image subtitle (PGS, VobSub) — no text to "
-                                "correlate"))
+        try:
+            path = extract_subtitle(subtitle, donor_track, progress, duration)
+        except ExtractionImpossible as e:
+            return SyncResult(0, None, 0.0, False, texte_erreur(e))
 
     cues = read_cues(path)
     if not cues:

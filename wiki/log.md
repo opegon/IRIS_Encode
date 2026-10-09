@@ -341,3 +341,9 @@ Constats CR-20, 23, 25, 50 de la revue, reproduits en tests de bout en bout
 Mots de titre pris pour des langues (CR-26) ; sous-titre greffé tardif en MP4
 reproduit de bout en bout, décalage négatif par `-ss` vérifié sur un `.srt`.
 Pages touchées : [[sous-titres]].
+
+## [2026-10-09] ingest | Formats texte et extraction (IE-125 3/3)
+
+MicroDVD refusé par mkvmerge et ffmpeg, WebVTT sans heures, horodatage à
+quatre chiffres, extraction d'un sous-titre embarqué sans délai fixe.
+Pages touchées : [[sous-titres]].

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.104 — document de référence courant
+**Version** : 0.8.9.105 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -1601,13 +1601,24 @@ sur une grille de ratios.
 | `measure_audio(target, donor, …)` | enveloppe d'énergie de la cible | enveloppe d'énergie du donneur |
 | `measure_subtitle(video, subtitle, …, donor_track)` | VAD appliqué à la parole du film | répliques du sous-titre |
 
-`read_cues()` lit les timings SRT/ASS ; `_speech_mask()` construit le masque de parole.
+`read_cues()` lit les timings SRT, WebVTT (heure facultative) et ASS ; une fraction
+de moins de trois chiffres se complète à droite (`,5` = 500 ms, CR-37).
+`_speech_mask()` construit le masque de parole. Formats lus comme du texte
+(`_TEXT_SUB_EXT`) : `.srt`, `.ass`, `.ssa`, `.vtt`. Un `.sub` n'en est pas : VobSub
+est binaire, et un MicroDVD n'est reconnu ni par mkvmerge ni par ffmpeg (mesuré,
+2026-10-09) — il ne peut donc pas être greffé.
 
 Un sous-titre embarqué dans un conteneur n'a pas de timings lisibles tel quel :
-`extract_subtitle(video, ffmpeg_index)` le sort d'abord vers un `.srt` temporaire
-(`ffmpeg -map 0:s:N -c:s srt`). L'appelant fournit l'index via
-`muxer.ffmpeg_stream_index()`. Un sous-titre image (PGS, VobSub) fait échouer la
-conversion : il est refusé pour ce motif, et non pour un format « mal lu ».
+`extract_subtitle(video, ffmpeg_index, progress, duration)` le sort d'abord vers un
+`.srt` temporaire (`ffmpeg -map 0:s:N -c:s srt`). L'appelant fournit l'index via
+`muxer.ffmpeg_stream_index()`. Le conteneur se lit en entier : **aucun délai fixe**
+(les 120 s d'avant tuaient ffmpeg sur tout gros donneur hors SSD, CR-35), une
+progression par `-progress`. L'échec lève `ExtractionImpossible` avec sa cause : un
+sous-titre image (PGS, VobSub) — ffmpeg répond « only possible from text to text or
+bitmap to bitmap » — est dit tel ; tout autre échec rend la dernière ligne de
+ffmpeg, jamais « image ». Dans l'écran de recalage, l'extraction (repère `A`,
+correction par plages, aperçu mpv) tourne hors du fil de l'écran, avec sa barre
+(`SyncScreen._en_texte`).
 
 ### 10.3 Garde-fou
 
@@ -1656,6 +1667,14 @@ balisage passent tels quels, quel que soit l'encodage du fichier source.
 
 Au-delà de la dernière plage, celle-ci est prolongée plutôt que ramenée à zéro : un
 générique de fin suit le même montage que ce qui le précède.
+
+`_srt_stamp()` arrondit aux millisecondes **avant** de découper : arrondir la seule
+fraction écrivait `00:00:05,1000` pour 5,999999999999999 s, que mkvmerge lit 5,100 s —
+900 ms trop tôt (CR-36).
+
+Le recalage d'une piste audio désigne sa piste par l'**objet**, comme la mesure :
+par son rang, `D` pendant le recalage faisait écrire l'audio recalée sur la piste
+voisine (CR-92). `D` est en outre refusé tant qu'une opération tourne.
 
 Les plages viennent de l'**audio du donneur**, jamais du sous-titre lui-même : son
 signal est trop creux pour les retrouver seul, et les trois pistes d'un même donneur
@@ -3282,6 +3301,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.105 | 2026-10-09 | **Écran de recalage** (§ 10.2, § 10.5, IE-125 3/3) : `extract_subtitle` sans délai fixe, avec progression et `ExtractionImpossible` qui dit la cause (CR-35), hors du fil de l'écran (`SyncScreen._en_texte`) ; `_srt_stamp` arrondit avant de découper (CR-36) ; WebVTT sans heures, fractions courtes complétées, `.sub` hors des formats texte (CR-37) ; mpv reçoit la piste extraite (`preview.build_command(…, sub_file=)`, CR-52) ; recalage audio désigné par l'objet, `D` refusé pendant une opération (CR-92) · `tests/test_recalage_ecran.py`, `tests/test_sync.py` |
 | 0.8.9.104 | 2026-10-09 | **Greffes : temps en MP4, langue, index** (§ 8.6, § 9.3, § 9.8, IE-125 2/3) : les sous-titres greffés passent par le porteur (`greffes_a_porter`, `build_extraction_greffe`, CR-34 ; réencodage DV : lus dans le Matroska recomposé, étirement compris) ; `guess_language` ne prend plus un mot du titre pour une langue (CR-26) ; un téléchargement OpenSubtitles porte son code ISO 639-2 (CR-51) ; `ffmpeg_stream_index` et `mkvmerge_tid` refusent au lieu de deviner (CR-27) · `tests/test_greffes_encodage.py` |
 | 0.8.9.103 | 2026-10-09 | **Greffes : règle audio du profil, jeu de caractères, drapeaux, polices** (§ 9.5, § 12.0, IE-125 1/3) : `decision.audio_greffee`, `decide_codec_audio`, `scanner.pistes_audio` ; `sous_titres.encodage_texte` (CR-50) ; `muxer.types_par_defaut` (CR-23, CR-25) ; `-map 0:t?` en MKV (CR-20) · `tests/test_greffes_encodage.py` |
 | 0.8.9.102 | 2026-10-08 | **Jonction** (§ 9bis, IE-136) : marqueur de numérotation retiré seulement comme mot entier, une fois (`Le Fantome 1` ne devient plus `Le Fan`) · langues inversées de même rang annoncées, fréquence différente bloquante (`AudioTrack.sample_rate`, lu au scan) · CR-29, 30 · `tests/test_collage.py` |

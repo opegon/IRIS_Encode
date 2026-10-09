@@ -34,7 +34,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from .bluray import TitreDisque, nom_disque
+from .bluray import TitreDisque, memoriser, nom_disque
 
 _log = logging.getLogger("iris_encode.dvd")
 
@@ -212,6 +212,12 @@ def est_disque(dossier: Path) -> bool:
 
 
 def titres(racine: Path, duree_min: float = 0) -> list[TitreDisque]:
+    """Les titres d'un DVD d'au moins `duree_min` s, relus seulement si
+    `VIDEO_TS` a changé (`bluray.memoriser`, CR-02)."""
+    return [t for t in _titres(racine, _video_ts(racine)) if t.duree >= duree_min]
+
+
+def _lire_titres(racine: Path) -> list[TitreDisque]:
     """Les titres d'un DVD, par numéro.
 
     Deux titres qui jouent les mêmes PGC d'un même VTS n'en font qu'un (le
@@ -264,7 +270,10 @@ def titres(racine: Path, duree_min: float = 0) -> list[TitreDisque]:
     for t in liste:
         t.nom = nom
         t.principal = t is principal
-    return [t for t in liste if t.duree >= duree_min]
+    return liste
+
+
+_titres = memoriser(_lire_titres)
 
 
 def _lire_tout(t: TitreDisque, liste: list[TitreDisque], lus: dict) -> bool:

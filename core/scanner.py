@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import functools
 import json
+import os
 import logging
 import re
 import subprocess
@@ -1034,20 +1035,31 @@ def scan_directory_recursive(
     est appelé après chaque fichier, depuis le fil qui l'a analysé.
     """
     # Un disque donne son titre principal, pas ses fichiers (IE-120, IE-121) ;
-    # chiffré, ou DVD sans outil pour le lire, rien.
+    # chiffré, ou DVD sans outil pour le lire, rien. Un seul parcours, qui
+    # note les disques en passant et n'entre pas dans `BDMV` ni `VIDEO_TS` :
+    # il y en avait trois, sur un partage réseau autant de fois le coût de la
+    # liste (CR-12).
     from . import dvd
-    disques = {}
-    for marque, dossier in (("index.bdmv", "BDMV"), ("VIDEO_TS.IFO", "VIDEO_TS")):
-        for f in root.rglob(marque):
-            module = module_disque(f.parent.parent)
-            if f.parent.name.upper() == dossier and module is not None:
-                disques[f.parent] = (f.parent.parent, module)
-    chemins = [p for p in sorted(root.rglob("*"))
-               if p.is_file()
-               and p.suffix.lower() in SUPPORTED_EXTENSIONS
-               and not deja_produit(p.stem)
-               and not any(p.is_relative_to(d) for d in disques)]
-    for racine, module in disques.values():
+    disques = []
+    chemins = []
+    # Lancé depuis `BDMV` ou `VIDEO_TS` même : le disque est le dossier parent.
+    module = (module_disque(root.parent)
+              if root.name.upper() in ("BDMV", "VIDEO_TS") else None)
+    if module is not None:
+        disques.append((root.parent, module))
+    for dossier, sous, fichiers in (os.walk(root) if module is None else ()):
+        ici = Path(dossier)
+        noms = {s.upper(): s for s in sous}
+        if {"BDMV", "VIDEO_TS"} & noms.keys():
+            module = module_disque(ici)
+            if module is not None:
+                disques.append((ici, module))
+                for marque in {"BDMV", "VIDEO_TS"} & noms.keys():
+                    sous.remove(noms[marque])
+        chemins += [ici / f for f in fichiers
+                    if Path(f).suffix.lower() in SUPPORTED_EXTENSIONS
+                    and not deja_produit(Path(f).stem)]
+    for racine, module in disques:
         if module is dvd and dvd.outils()[1] is None:
             continue
         t = None if module.disque_chiffre(racine) else module.principal(racine)

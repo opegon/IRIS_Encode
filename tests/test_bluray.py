@@ -513,3 +513,32 @@ def test_l_etiquette_du_volume_devient_un_nom_valide(monkeypatch, etiquette, att
     """CR-04 : ffmpeg échouait sur l'ouverture de la sortie, après l'analyse."""
     monkeypatch.setattr(bluray, "_etiquette_volume", lambda racine: etiquette)
     assert bluray.nom_disque(Path(Path.cwd().anchor)) == attendu
+
+
+# ─── CR-02 : les playlists d'un disque se lisent une fois ────────────────────
+
+def test_analyser_n_titres_ne_relit_pas_n_fois_le_disque(tmp_path, monkeypatch):
+    """Retrouver un titre relisait toutes les playlists : N² lectures pour
+    analyser N titres (7 min pour 600 playlists obscurcies)."""
+    n = 30
+    racine = _disque(tmp_path / "Obscurci", {
+        f"{i:05d}": _mpls([("00001", 0, 600 + i)]) for i in range(n)},
+        {"00001": _clip_clair()})
+    lus = []
+    reel = bluray.lire_mpls
+    monkeypatch.setattr(bluray, "lire_mpls", lambda p: lus.append(p) or reel(p))
+    for mpls in sorted((racine / "BDMV" / "PLAYLIST").iterdir()):
+        bluray.titre(mpls)
+    bluray.disque_chiffre(racine)
+    assert len(lus) <= n + 2
+
+
+def test_une_playlist_ajoutee_est_vue(tmp_path):
+    import os
+    racine = _disque(tmp_path / "D", {"00001": _mpls([("00001", 0, 600)])},
+                     {"00001": _clip_clair()})
+    assert len(bluray.titres(racine)) == 1
+    dossier = racine / "BDMV" / "PLAYLIST"
+    (dossier / "00002.mpls").write_bytes(_mpls([("00001", 0, 300)]))
+    os.utime(dossier, ns=(dossier.stat().st_atime_ns, dossier.stat().st_mtime_ns + 10**9))
+    assert len(bluray.titres(racine)) == 2

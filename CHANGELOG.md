@@ -1,5 +1,20 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.111] — 2026-10-09
+
+### Disques et dossiers : moins de lectures (IE-127, 3/3)
+
+Revue IE-114, constats CR-02, 12. IE-127 est close.
+
+- **Titres d'un disque lus une fois.** Analyser les titres d'un Blu-ray
+  relisait toutes ses playlists pour chacun : sur une sauvegarde aux
+  centaines de playlists, plusieurs minutes avant la première analyse. La
+  liste est maintenant gardée tant que le disque ne change pas.
+- **Mode récursif (`R`).** L'arborescence était parcourue trois fois avant
+  la première analyse — sensible sur un partage réseau. Une seule fois
+  désormais, sans descendre dans les dossiers d'un disque ; un disque à la
+  fois Blu-ray et DVD n'est plus analysé deux fois.
+
 ## [v0.8.9.110] — 2026-10-09
 
 ### DVD : les épisodes, le « Lire tout », la piste LPCM (IE-127, 2/3)

@@ -75,3 +75,58 @@ def test_un_echec_n_arrete_pas_le_reste(tmp_path, monkeypatch):
 def test_dossier_sans_video(tmp_path):
     (tmp_path / "notes.txt").touch()
     assert scanner.scan_directory_recursive(tmp_path) == []
+
+
+# ─── CR-12 : un seul parcours ─────────────────────────────────────────────────
+
+def _bluray(racine: Path) -> Path:
+    from test_bluray import _clip_clair, _disque, _mpls
+    return _disque(racine, {"00001": _mpls([("00001", 0, 4000)])},
+                   {"00001": _clip_clair()})
+
+
+def _compter_scandir(monkeypatch) -> list:
+    import os
+    vus: list = []
+    reel = os.scandir
+
+    def compte(chemin="."):
+        vus.append(Path(chemin))
+        return reel(chemin)
+    monkeypatch.setattr(os, "scandir", compte)
+    return vus
+
+
+def test_un_seul_parcours_qui_n_entre_pas_dans_le_disque(tmp_path, monkeypatch):
+    """`rglob` des deux marques de disque puis de tout : trois parcours. Un
+    seul suffit, et rien sous `BDMV` n'a à être listé."""
+    _arborescence(tmp_path, 4)
+    _bluray(tmp_path / "Film (2020)")
+    monkeypatch.setattr(scanner, "scan", _Faux(attente=0))
+    vus = _compter_scandir(monkeypatch)
+    infos = scanner.scan_directory_recursive(tmp_path)
+
+    # La lecture des titres du disque liste `PLAYLIST` (iterdir) : hors parcours.
+    parcourus = [v for v in vus if "PLAYLIST" not in v.parts]
+    assert sorted(parcourus) == sorted([tmp_path, tmp_path / "Saison 1",
+                                        tmp_path / "Saison 2", tmp_path / "Film (2020)"])
+    noms = [i.path.name for i in infos]
+    assert noms.count("00001.mpls") == 1 and "00001.m2ts" not in noms
+
+
+def test_un_disque_hybride_ne_compte_qu_une_fois(tmp_path, monkeypatch):
+    racine = _bluray(tmp_path / "Film")
+    video_ts = racine / "VIDEO_TS"
+    video_ts.mkdir()
+    (video_ts / "VIDEO_TS.IFO").write_bytes(b"DVDVIDEO-VMG")
+    (video_ts / "VTS_01_1.VOB").write_bytes(b"\0")
+    monkeypatch.setattr(scanner, "scan", _Faux(attente=0))
+    noms = [i.path.name for i in scanner.scan_directory_recursive(tmp_path)]
+    assert noms == ["00001.mpls"]
+
+
+def test_lance_depuis_bdmv_le_disque_reste_un_titre(tmp_path, monkeypatch):
+    racine = _bluray(tmp_path / "Film")
+    monkeypatch.setattr(scanner, "scan", _Faux(attente=0))
+    noms = [i.path.name for i in scanner.scan_directory_recursive(racine / "BDMV")]
+    assert noms == ["00001.mpls"]

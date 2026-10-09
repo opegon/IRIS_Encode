@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.110 — document de référence courant
+**Version** : 0.8.9.111 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -3170,7 +3170,19 @@ du premier clip du titre principal : AACS chiffre chaque unité au-delà de ses
 Chiffré, le dossier ne liste aucun titre et le navigateur le dit.
 
 **Mode récursif** — un disque n'y donne que son titre principal (non chiffré) ;
-ses fichiers sous `BDMV` sont écartés.
+ses fichiers sous `BDMV` sont écartés. Un seul parcours (`os.walk`), qui note les
+disques en passant et n'entre ni dans `BDMV` ni dans `VIDEO_TS` ; lancé depuis l'un
+d'eux, le disque est le dossier parent (v0.8.9.111, CR-12 : trois `rglob`
+parcouraient l'arborescence avant le premier ffprobe, et un disque hybride
+comptait deux fois).
+
+**Titres mémorisés** (v0.8.9.111, CR-02) — `bluray.titres` et `dvd.titres` passent
+par `bluray.memoriser` : la liste d'un disque est gardée par (racine, dates des
+dossiers `PLAYLIST` et `STREAM`, ou `VIDEO_TS`), et ne se relit que si l'un change.
+Retrouver un titre (`titre`, `principal`, `disque_chiffre`) relisait toutes les
+playlists, et l'analyse le fait pour chacun : 600 playlists obscurcies, ≈ 7 min de
+lecture avant le moindre ffprobe. Les `TitreDisque` rendus sont partagés.
+
 
 ### 15.6 Titres de DVD — `core/dvd.py`
 
@@ -3402,6 +3414,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.111 | 2026-10-09 | **Titres de disque : coûts de lecture** (§ 15.5, IE-127 3/3) : `bluray.memoriser` / `signature` pour les titres des deux modules (CR-02) ; mode récursif en un seul `os.walk` (CR-12) · `tests/test_bluray.py`, `tests/test_scan_recursif.py` |
 | 0.8.9.110 | 2026-10-09 | **Titres de DVD : cellules, « Lire tout », chapitres, LPCM** (§ 15.6, IE-127 2/3) : taille et VOB d'un titre par ses cellules (`_cellules`, `TitreDisque.octets`, CR-06) ; un « Lire tout » n'est plus le principal (`_lire_tout`) ; `nb_chapitres` (CR-07) ; `pcm_dvd` extrait en PCM de même profondeur (`AudioTrack.bits`, CR-05) · `tests/test_dvd.py` |
 | 0.8.9.109 | 2026-10-09 | **Titres de Blu-ray : partiel, assemblage vérifié, étiquette** (§ 15.5, IE-127 1/3) : `TitreDisque.partiel` posé par `_scan_titre`, extrait par mkvmerge (CR-01) ; `bluray.ecart_pistes` après `_remux_titre` (CR-03) ; `nom_disque` assainit l'étiquette du volume (CR-04) · `tests/test_bluray.py` |
 | 0.8.9.108 | 2026-10-09 | **Chemins Dolby Vision : dovi_tool arrêtable** (§ 7.1, § 7.4, § 12.4, IE-126 3/3) : `TuyauRpu`, `build_remove_command`, `build_inject_command`, `rpu_valide` remplacent les appels bloquants à délai fixe (CR-32) ; `RunScreen._executer` les publie ; `S` arrête aussi mkvmerge, un SKIPPED n'est plus réécrit en ERROR (CR-61) · `tests/test_dv_chemins.py` |

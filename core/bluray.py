@@ -23,6 +23,7 @@ synchronisation des paquets n'y sont plus lisibles. Il est refusé, pas lu.
 """
 from __future__ import annotations
 
+import functools
 import logging
 import struct
 import sys
@@ -220,7 +221,44 @@ def nom_disque(racine: Path, defaut: str = "BLURAY") -> str:
     return nom or defaut
 
 
+def signature(*dossiers: Path) -> Optional[tuple[int, ...]]:
+    """Les dates de ces dossiers : ce qui change quand on y ajoute, retire ou
+    renomme un fichier. None s'ils ne se lisent pas."""
+    try:
+        return tuple(d.stat().st_mtime_ns for d in dossiers)
+    except OSError:
+        return None
+
+
+def memoriser(lire):
+    """`lire(racine)` gardé par (racine, `signature`) : les titres d'un disque
+    ne se relisent que s'il change.
+
+    Retrouver un titre relisait toutes les playlists du disque, et l'analyse
+    le fait pour chacun de ses titres : 600 playlists obscurcies, 7 min de
+    lecture avant le moindre ffprobe (CR-02). Les titres rendus sont partagés
+    — ce que l'analyse y apprend (`partiel`) vaut pour les suivantes.
+    """
+    @functools.lru_cache(maxsize=32)
+    def _lu(racine: Path, _sig: tuple) -> tuple:
+        return tuple(lire(racine))
+
+    def memo(racine: Path, *dossiers: Path) -> list:
+        sig = signature(*dossiers)
+        return lire(racine) if sig is None else list(_lu(racine, sig))
+    memo.cache_clear = _lu.cache_clear
+    return memo
+
+
 def titres(racine: Path, duree_min: float = 0) -> list[TitreDisque]:
+    """Les titres d'un disque d'au moins `duree_min` s, relus seulement si
+    ses playlists ou ses clips ont changé (`memoriser`, CR-02)."""
+    bdmv = racine / "BDMV"
+    return [t for t in _titres(racine, bdmv / "PLAYLIST", bdmv / "STREAM")
+            if t.duree >= duree_min]
+
+
+def _lire_titres(racine: Path) -> list[TitreDisque]:
     """Les titres d'un disque, par numéro de playlist.
 
     Les doublons (mêmes clips, mêmes bornes) se réduisent à celui qui porte le
@@ -252,7 +290,10 @@ def titres(racine: Path, duree_min: float = 0) -> list[TitreDisque]:
     for t in liste:
         t.nom = nom
         t.principal = t is principal
-    return [t for t in liste if t.duree >= duree_min]
+    return liste
+
+
+_titres = memoriser(_lire_titres)
 
 
 def titre(mpls: Path) -> TitreDisque:

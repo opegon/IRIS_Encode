@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.121 — document de référence courant
+**Version** : 0.9.0.0 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -3555,6 +3555,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.9.0.0 | 2026-10-09 | **Release v0.9.0** (IE-96) : bump de MINOR, décidé par l'utilisateur à la fin de la revue IE-114 — localisation anglais/français (IE-86 à IE-95), sources disque (IE-118 à IE-122), revue de code complète et ses quinze entrées de corrections (IE-123 à IE-137). Vérifications sur le G3 et Weblate reportées après la release |
 | 0.8.9.121 | 2026-10-09 | **Code mort** (§ 7, § 14.1, § 15, IE-137) : retirés `scan_directory`, `scanner.list_subdirs`, `set_dovi_path`, trois propriétés de `VideoInfo` (CR-13), `extract_hevc_stream`, `extract_rpu`, `get_temp_dir`, `cleanup_temp_files` et la doc de `probe_file`/`rpu_info` (CR-33), `summary_line`, `parse_languages` (CR-46), la branche « Volumes » du fil d'Ariane (CR-69) ; outil DVD sans repli sur un ffmpeg nu (CR-08) ; annotations `X \| None` dans `run.py` (CR-66) ; **un dossier passé en argument s'ouvre** (CR-73) · `same_language` et `validate_id` gardés (appelants depuis IE-136 et CR-99) · `tests/test_code_mort.py` |
 | 0.8.9.120 | 2026-10-09 | **Libellés** (§ 14.1, § 14.2, IE-135 3/3 — IE-135 close) : en-têtes « ETA », « Dolby V. », « DV », « Release » au catalogue (CR-79, CR-97), « oui » d'OpenSubtitles traduit (CR-97) · pistes : « défaut » d'après le drapeau, conteneur réel (CR-83) · identifiant de profil validé par `profiles.validate_id` (CR-99) · `tests/test_libelles_revue.py` |
 | 0.8.9.119 | 2026-10-09 | **L'accueil et la navigation** (§ 14.1, IE-135 2/3) : lettre du lecteur gardée, `abspath` au lieu de `resolve()` (CR-68) · fichiers illisibles listés avec leur cause (CR-75) · espace des volumes mesuré dans le worker (CR-78) · `on_key` sans `super()`, règle G4 remplacée (CR-80) · guide intégré : `D`, `R`, `A`, `Ctrl+Home` exacts, `R` sur un fichier le dit (CR-102) · `tests/test_accueil_revue.py` |

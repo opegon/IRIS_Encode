@@ -1,5 +1,43 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.0] — 2026-10-09
+
+### IRIS ENCODE 0.9.0
+
+La version qui clôt la feuille de route 0.9.0 : une application **en anglais
+et en français**, qui lit **Blu-ray, DVD et enregistrements TNT**, et qui sort
+d'une **revue de code complète** (112 constats, tous traités).
+
+Depuis la v0.8.9.96, dernière publiée :
+
+- **Fichiers et réglages** : la décision de l'accueil ne se perd plus au rescan,
+  un réglage illisible n'est jamais réécrit, le nom de sortie ne se fige qu'au
+  lancement.
+- **Pistes greffées** : texte en cp1252, `mov_text`, WebVTT, polices, drapeaux et
+  langues ; l'audio greffée suit la règle audio du profil.
+- **Dolby Vision** : un seul effacement de source, greffes et MP4 sur tous les
+  chemins, dovi_tool arrêtable, pistes vides détectées.
+- **Disques** : titres de Blu-ray et de DVD assemblés et vérifiés, LPCM, VTS à
+  plusieurs titres, lectures mémorisées.
+- **Audio et vidéo** : DTS:X IMAX gardé sans perte, pixels carrés, forçage d'un
+  scope, débit inconnu, pas de H264 en HDR.
+- **Arrêts** : `S` et `X` confirmés, pause, sorties ; plus d'exception qui ferme
+  l'application.
+- **Outils et lanceurs** : téléchargements vérifiés par empreinte, installation
+  tout ou rien, dépendances bornées, dossiers aux noms à `!`, apostrophe ou `;`.
+- **Services en ligne** : OMDb en HTTPS, fiches des séries, titres à année.
+- **Affichage** : cause d'échec à chaque étape, progression des passes audio,
+  fichiers illisibles listés, lecteurs réseau qui gardent leur lettre, guide
+  intégré exact, journal en anglais et en UTF-8.
+
+Le détail de chaque version suit. Reportés après la 0.9.0 : les vérifications
+sur le téléviseur (débit « Auto », Dolby Vision profils 5 et 7, réencodage DV
+sur un film entier, lecture directe d'un DVD converti) et la traduction
+participative (Weblate).
+
+**À faire après la mise à jour** : recompiler `IRIS_Encode.exe`
+(`launcher\build.bat`) — le lanceur a changé.
+
 ## [v0.8.9.121] — 2026-10-09
 
 ### Code mort, et un argument qui sert enfin (IE-137)

@@ -392,3 +392,10 @@ de `build.bat` avec apostrophe. Page mise à jour : [[pieges-et-lecons]].
 Mesuré : avec la variable définie, `cmd /c launch.bat` ne trouve pas le script
 du dossier courant, par `wt.exe` comme par le repli `cmd.exe` ; `.\launch.bat`
 passe. Page mise à jour : [[pieges-et-lecons]].
+
+## [2026-10-09] lint | Release v0.9.0
+
+`tests/test_wiki.py` passé. Questions ouvertes relues pour la release : tout ce
+qui reste attend un essai sur le G3 ou un échantillon, reporté après la v0.9.0
+(décision de l'utilisateur) ; trois questions de la revue IE-114 ajoutées.
+Page mise à jour : [[questions-ouvertes]].

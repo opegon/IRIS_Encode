@@ -1,6 +1,6 @@
 ---
 type: synthese
-maj: 2026-10-07
+maj: 2026-10-09
 sources:
   - "[[source-spec]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -16,11 +16,16 @@ sources:
 Ce qui n'est pas vérifié. Retirer une ligne dès qu'elle est tranchée, et
 reporter la réponse dans la page du sujet.
 
+**Reporté après la v0.9.0** (décision de l'utilisateur du 2026-10-09) : tout ce
+qui suit attend un essai sur le téléviseur ou un échantillon, pas du code. La
+release est sortie quand la revue de code a été entièrement traitée.
+
 ## Lecture sur la chaîne Jellyfin → LG G3
 
 | Question | Pour trancher | Depuis |
 |---|---|---|
 | Quel débit le réglage « Auto » du client webOS laisse-t-il passer ? (manuel : 8 à 120 Mb/s) | lire un remux UHD (40-80 Mb/s) en « Auto », relever la méthode de lecture | 2026-09-24 |
+| Un DVD converti (pixels carrés, `setsar=1`) passe-t-il en lecture directe ? | lire sur le G3 une sortie de DVD anamorphique (CR-14, v0.8.9.113) | 2026-10-09 |
 
 ## Dolby Vision
 
@@ -30,6 +35,8 @@ reporter la réponse dans la page du sujet.
 | Le retrait et le réencodage DV d'un **profil 7** fonctionnent-ils ? | éligibles par construction, jamais essayés |
 | Le réencodage DV tient-il sur un film entier, avec changements de plans ? | vérifié sur 48 images de mire synthétique seulement |
 | Le rendu Dolby Vision d'un réencodage DV est-il correct sur le téléviseur ? | jamais contrôlé sur le G3 |
+| Une copie DV **profil 5** en MP4 `hvc1` + `dvcC` s'affiche-t-elle juste sur le G3 ? | seul le 8.1 a été essayé ; un P5 n'a pas de couche de base lisible (question de la revue IE-114) |
+| Le MKV Dolby Vision produit par le mux (SKIP + greffes) se lit-il sur le G3 ? | CR-85 corrigé sans essai sur le téléviseur |
 
 ## Divers
 

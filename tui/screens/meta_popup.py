@@ -131,9 +131,12 @@ class MetaPopup(ModalScreen):
         self._epoque += 1
         title, year = parse_title(self._path)
         query = f"{title}" + (f" ({year})" if year else "")
-        self.query_one("#meta-header", Static).update(
-            f"[bold]{_LIBELLES[self._source]}[/bold] — {query}"
-        )
+        # En `Text` : les crochets d'un nom (« [Final Cut] ») étaient lus
+        # comme des balises, et l'en-tête ne montrait pas la recherche
+        # réellement envoyée (CR-101).
+        entete = Text(f"{_LIBELLES[self._source]} — ", style="bold")
+        entete.append(query)
+        self.query_one("#meta-header", Static).update(entete)
         self.query_one("#meta-hint", Static).update(raccourcis(
             [("tab", _LIBELLES[self._autre_source()]), ("escape", N_("Close"))]))
         body = self.query_one("#meta-body", ScrollableContainer)

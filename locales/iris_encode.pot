@@ -56,7 +56,7 @@ msgstr ""
 #. {error} is OMDb's own message, in English (L-08).
 #. {error} is OMDb's own message, in English.
 #: core/cles.py:135
-#: core/meta.py:135
+#: core/meta.py:155
 #, python-brace-format
 msgid "OMDb: “{error}”"
 msgstr ""
@@ -356,29 +356,29 @@ msgstr ""
 msgid "Output path identical to one of the parts ({file}). Join refused to avoid corrupting the source file."
 msgstr ""
 
-#: core/meta.py:136
+#: core/meta.py:156
 msgid "result not found"
 msgstr ""
 
-#: core/meta.py:183
+#: core/meta.py:203
 msgid "Unexpected IMDB answer"
 msgstr ""
 
-#: core/meta.py:196
+#: core/meta.py:216
 #, python-brace-format
 msgid "No IMDB result for “{title}”"
 msgstr ""
 
-#: core/meta.py:212
+#: core/meta.py:232
 msgid "Rating and synopsis available with an OMDb key (omdbapi.com — free)."
 msgstr ""
 
-#: core/meta.py:293
+#: core/meta.py:313
 #, python-brace-format
 msgid "No AlloCiné result for “{title}”"
 msgstr ""
 
-#: core/meta.py:309
+#: core/meta.py:329
 msgid "Cannot read the AlloCiné data (no JSON-LD)"
 msgstr ""
 
@@ -1832,7 +1832,7 @@ msgstr ""
 #: tui/screens/aide.py:444
 #: tui/screens/meta_popup.py:48
 #: tui/screens/meta_popup.py:49
-#: tui/screens/meta_popup.py:138
+#: tui/screens/meta_popup.py:141
 #: tui/screens/segments.py:64
 #: tui/screens/segments.py:65
 #: tui/screens/segments.py:66
@@ -2546,7 +2546,7 @@ msgid "Track"
 msgstr ""
 
 #: tui/screens/donor_picker.py:269
-#: tui/screens/meta_popup.py:188
+#: tui/screens/meta_popup.py:191
 msgid "Type"
 msgstr ""
 
@@ -2802,37 +2802,37 @@ msgstr ""
 msgid "Switch source"
 msgstr ""
 
-#: tui/screens/meta_popup.py:183
+#: tui/screens/meta_popup.py:186
 msgid "Match"
 msgstr ""
 
-#: tui/screens/meta_popup.py:189
+#: tui/screens/meta_popup.py:192
 msgid "Year"
 msgstr ""
 
-#: tui/screens/meta_popup.py:190
+#: tui/screens/meta_popup.py:193
 msgid "Rating"
 msgstr ""
 
-#: tui/screens/meta_popup.py:191
+#: tui/screens/meta_popup.py:194
 msgid "Genres"
 msgstr ""
 
-#: tui/screens/meta_popup.py:193
+#: tui/screens/meta_popup.py:196
 msgid "Director"
 msgid_plural "Directors"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/meta_popup.py:195
+#: tui/screens/meta_popup.py:198
 msgid "Cast"
 msgstr ""
 
-#: tui/screens/meta_popup.py:202
+#: tui/screens/meta_popup.py:205
 msgid "Synopsis"
 msgstr ""
 
-#: tui/screens/meta_popup.py:213
+#: tui/screens/meta_popup.py:216
 msgid "Cannot fetch the information:"
 msgstr ""
 

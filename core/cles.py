@@ -119,7 +119,7 @@ def verifier_omdb(saisies: dict[str, str]) -> Optional[str]:
     import requests
     cle = saisies.get("omdb_api_key", "").strip()
     try:
-        r = requests.get("http://www.omdbapi.com/",
+        r = requests.get("https://www.omdbapi.com/",
                          params={"apikey": cle, "i": "tt0111161"},
                          headers={"User-Agent": _UA}, timeout=12)
     except requests.RequestException as e:

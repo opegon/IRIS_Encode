@@ -1,5 +1,28 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.117] — 2026-10-09
+
+### Fiches IMDB et AlloCiné (IE-133)
+
+Revue IE-114, constats CR-47, 48, 49, 101. IE-133 est close.
+
+- **Les séries ont de nouveau leur fiche IMDB avec une clé OMDb.** La
+  recherche ne demandait que des films : dès qu'une clé était saisie, la fiche
+  d'un épisode échouait (« Movie not found! »), alors qu'elle s'affichait sans
+  clé. Les séries sont trouvées, et un titre qu'OMDb ignore est cherché dans
+  les suggestions IMDB.
+- **La clé OMDb ne circule plus en clair** : OMDb est interrogé en HTTPS,
+  comme les autres services.
+- **Les titres qui portent une année.** *2001 : l'odyssée de l'espace*
+  (`2001.A.Space.Odyssey.1968`) et *1917* (`1917.2019`) étaient cherchés sous
+  un titre vide ; *Blade Runner 2049* sous l'année 2049. Ils le sont sous leur
+  vrai titre et leur vraie année — pour la fiche comme pour la recherche
+  OpenSubtitles par nom.
+- **Les crochets d'un nom de fichier** (`[Final Cut]`) disparaissaient de
+  l'en-tête de la fiche. Ils s'affichent.
+- Le mot de passe OpenSubtitles reste enregistré en clair dans `config.toml` :
+  c'est un choix, désormais écrit dans la spécification.
+
 ## [v0.8.9.116] — 2026-10-09
 
 ### Lanceurs : dernières corrections (IE-132, 3/3)

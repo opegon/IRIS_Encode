@@ -12,13 +12,13 @@ from .i18n import N_, ErreurAffichable, _
 
 # ─── Nettoyage nom de fichier ─────────────────────────────────────────────────
 
-# Marqueurs qui indiquent la fin du titre — on tronque au premier trouvé
+# Marqueurs techniques qui indiquent la fin du titre — on tronque au premier
+# trouvé. L'année n'en fait pas partie : elle se traite à part (`parse_title`).
 _CUT_RE = re.compile(
     r"""(?ix)
     [\[\(]?                              # bracket optionnel avant
     \b(
       \d{3,4}p | 4k | uhd |             # résolution
-      (19|20)\d{2} |                     # année
       S\d{1,2}E\d{1,2} |                # épisode série
       blu[\-\.]?ray | bdrip |            # source
       web[\-\.]?dl | webrip | dvdrip |
@@ -33,19 +33,33 @@ _YEAR_RE    = re.compile(r"\b(19|20)\d{2}\b")
 
 
 def parse_title(path: Path) -> tuple[str, Optional[int]]:
-    """Tronque au premier marqueur de format, retourne (titre, année)."""
+    """(titre, année) d'un nom de release.
+
+    Le titre s'arrête au premier marqueur technique (résolution, source,
+    épisode…). Avant lui, l'année est la **dernière** année plausible qui
+    n'ouvre pas le nom : l'année prise où qu'elle soit vidait `2001.A.Space.
+    Odyssey.1968` et `1917.2019`, et donnait 2049 à `Blade.Runner.2049.2017`
+    (CR-49).
+    """
     name = path.stem
 
-    # Extraire l'année depuis le nom complet avant de couper
-    year: Optional[int] = None
-    m = _YEAR_RE.search(name)
-    if m:
-        year = int(m.group())
-
-    # Tronquer au premier marqueur (résolution, année, source…)
     m_cut = _CUT_RE.search(name)
-    if m_cut:
-        name = name[: m_cut.start()]
+    fin = m_cut.start() if m_cut else len(name)
+
+    annees = [m for m in _YEAR_RE.finditer(name, 0, fin) if m.start() > 0]
+    year: Optional[int] = None
+    if annees:
+        year = int(annees[-1].group())
+        fin = annees[-1].start()
+        while fin > 0 and name[fin - 1] in "[(":
+            fin -= 1
+    else:
+        # Une année après les marqueurs techniques (`Film.1080p.2020`) date
+        # encore le film, sans toucher au titre.
+        m = _YEAR_RE.search(name)
+        if m:
+            year = int(m.group())
+    name = name[:fin]
 
     name = _SEPARATORS.sub(" ", name)
     name = _SPACES.sub(" ", name).strip()
@@ -124,12 +138,18 @@ def _fetch_imdb_omdb(title: str, year: Optional[int], key: str) -> MovieMeta:
     import requests
     from urllib.parse import quote
 
-    params = f"t={quote(title)}&apikey={key}&type=movie"
+    # Pas de `type=movie` : il excluait les séries, et configurer une clé
+    # faisait échouer la fiche de tous les épisodes (CR-48). En HTTPS : la
+    # clé et les titres consultés passaient en clair (CR-47).
+    params = f"t={quote(title)}&apikey={key}"
     if year:
         params += f"&y={year}"
-    r = requests.get(f"http://www.omdbapi.com/?{params}", headers=_HEADERS, timeout=12)
+    r = requests.get(f"https://www.omdbapi.com/?{params}", headers=_HEADERS, timeout=12)
     r.raise_for_status()
     d = r.json()
+    if d.get("Response") == "False" and "not found" in str(d.get("Error", "")).lower():
+        # OMDb ignore ce titre : les suggestions IMDB le connaissent peut-être.
+        return _fetch_imdb_suggestions(title, year)
     if d.get("Response") == "False":
         # TRANSLATORS: {error} is OMDb's own message, in English.
         raise ErreurAffichable(N_("OMDb: “{error}”"),

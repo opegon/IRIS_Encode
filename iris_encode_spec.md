@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.116 — document de référence courant
+**Version** : 0.8.9.117 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -1583,7 +1583,10 @@ sous 128 Kio (algorithme de l'extension Kodi officielle).
 Configuration, section `[opensubtitles]` de `config.toml` (non suivi par git) :
 `api_key` (clé d'application, opensubtitles.com/consumers — exigée à chaque
 appel), `username` et `password` (exigés au téléchargement seulement ; 20 par
-jour en compte gratuit). Ils se saisissent dans l'application (§ 14.8,
+jour en compte gratuit). Le mot de passe est enregistré **en clair** dans
+`config.toml` — choix assumé (arbitrage du 2026-10-09) : poste personnel, dossier
+portable sur clé USB ; le coffre de Windows (`keyring`) ajouterait une dépendance et
+ne suivrait pas la clé. Il n'est jamais écrit dans le journal. Ils se saisissent dans l'application (§ 14.8,
 v0.8.9.37) ; les messages d'erreur y renvoient (`F5`, `K`), plus à
 config.toml. Une clé refusée répond **403**, un compte refusé **401**. `User-Agent` : `IRIS Encode v<version>`. Le jeton de
 connexion vit le temps de l'écran ; un compte VIP est servi par l'hôte que
@@ -2118,13 +2121,20 @@ mobile de `[stats.encode_speed]`, qui nourrit la colonne « ETA ».
 
 ### 13.1 Extraction du titre
 
-`parse_title(path)` tronque le nom au premier marqueur de format (résolution, année,
-source, épisode…) et retourne `(titre, année)`.
+`parse_title(path)` tronque le nom au premier marqueur technique (résolution,
+source, épisode…) et retourne `(titre, année)`. Avant ce marqueur, l'année est la
+**dernière** année plausible (1900-2099) qui n'ouvre pas le nom ; le titre s'arrête
+devant elle (et devant sa parenthèse ou son crochet). Sans année dans cette zone, une
+année placée après les marqueurs date encore le film, sans toucher au titre.
 
 ```python
-parse_title(Path("Titre.Film.2022.2160p.BluRay.mkv"))
-# → ("Titre Film", 2022)
+parse_title(Path("Titre.Film.2022.2160p.BluRay.mkv"))   # → ("Titre Film", 2022)
+parse_title(Path("2001.A.Space.Odyssey.1968.1080p.mkv"))  # → ("2001 A Space Odyssey", 1968)
+parse_title(Path("Blade.Runner.2049.2017.2160p.mkv"))     # → ("Blade Runner 2049", 2017)
 ```
+
+L'année était prise où qu'elle soit et servait aussi de coupe : `2001.A.Space.Odyssey`
+et `1917.2019` donnaient un titre vide (CR-49).
 
 ### 13.2 IMDB — deux modes
 
@@ -2135,6 +2145,15 @@ parse_title(Path("Titre.Film.2022.2160p.BluRay.mkv"))
 
 L'API suggestions est l'endpoint JSON `v2.sg.media-imdb.com/suggests/` — non officielle
 mais stable et sans clé.
+
+OMDb est interrogé en **HTTPS** (`https://www.omdbapi.com/`, fiche comme vérification
+de la clé), **sans filtre de type** : `type=movie` excluait les séries, et saisir une
+clé faisait échouer la fiche de tous les épisodes. Quand OMDb répond « not found »,
+la fiche vient des suggestions IMDB ; toute autre erreur (clé refusée, limite
+atteinte) est montrée telle quelle.
+
+L'en-tête de la fiche est composé en `Text` : les crochets d'un nom de fichier
+(`[Final Cut]`, `[HorribleSubs]`) s'affichent tels quels, comme la recherche envoyée.
 
 ### 13.3 AlloCiné — scraping
 
@@ -3502,6 +3521,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.117 | 2026-10-09 | **Fiches et services en ligne** (§ 9.8, § 13, IE-133) : OMDb en HTTPS (CR-47), sans `type=movie`, repli sur les suggestions IMDB quand OMDb ne trouve pas (CR-48) · année d'un titre : la dernière avant les marqueurs, jamais en tête (CR-49) · en-tête de la fiche en `Text` (CR-101) · mot de passe OpenSubtitles en clair, choix documenté · `tests/test_fiches.py` |
 | 0.8.9.116 | 2026-10-09 | **Lanceurs, fin** (§ 2.1, § 3.1, § 3.1.2, IE-132 3/3 — IE-132 close) : `cmd /c .\launch.bat` dans le lanceur C# (`NoDefaultCurrentDirectoryInExePath`, mesuré) · origine de Python par `sys.prefix` (CR-105) · fichiers protégés de `updater.py` comparés sans la casse (CR-106) · `tests/test_banniere.py`, `tests/test_updater.py`, `tests/test_lanceurs.py` |
 | 0.8.9.115 | 2026-10-09 | **Lanceurs** (§ 3.1, § 17.2, IE-132 2/3) : bornes hautes et basses des dépendances, contrôlées par `dependances.py` au lancement et au bootstrap (CR-109, CR-110) · `launch.bat` sans expansion retardée, dossier par `IRIS_DIR` (CR-108), sans purge des `__pycache__` (CR-107) · `;` échappé pour `wt.exe` (CR-111) · raccourci par `$env:ROOT` (CR-112) · essais réels sous Windows dans `Test!x`, `l'essai`, `A;B` · `tests/test_lanceurs.py` |
 | 0.8.9.114 | 2026-10-09 | **Installation des outils** (§ 4.2 à 4.4, IE-132 1/3) : empreinte SHA256 exigée pour tout téléchargement, lue chez l'amont ou épinglée (CR-40) · tous ou aucun, par provisoires et `os.replace` (CR-38) · tar.gz/tar.xz extraits, exécutable nu reconnu à son en-tête (CR-39) · installation sur les seules sources statiques, le cache ne les masque plus (CR-41) · `tests/test_outils_installation.py` |

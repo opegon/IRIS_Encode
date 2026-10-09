@@ -49,6 +49,13 @@ class PlatformProfile:
             return None
         return encodeur in self.encodeurs_ok
 
+    def peut_encoder_10_bits(self, encodeur: str) -> bool | None:
+        """True / False pour un encodeur NVENC sondé aussi en 10 bits, None
+        pour les autres (encodeurs logiciels, sondage absent)."""
+        if self.encodeurs_ok is None or not avec_essai_10_bits(encodeur):
+            return None
+        return dix_bits(encodeur) in self.encodeurs_ok
+
     def __str__(self) -> str:
         gpu_str = self.gpu.name
         return (
@@ -69,8 +76,26 @@ def encodeurs_a_sonder(profil: "PlatformProfile") -> list[str]:
     mesure qui n'avait pas eu lieu.
     """
     from .encoder import ENCODEUR_HDR10_QUALITY
-    return [profil.encoder_hevc, profil.encoder_h264, profil.encoder_av1,
-            ENCODEUR_HDR10_QUALITY]
+    encodeurs = [profil.encoder_hevc, profil.encoder_h264, profil.encoder_av1,
+                 ENCODEUR_HDR10_QUALITY]
+    return encodeurs + [dix_bits(e) for e in encodeurs if avec_essai_10_bits(e)]
+
+
+# Le suffixe d'un essai en 10 bits dans la liste des encodeurs sondés.
+_DIX_BITS = "@10"
+
+
+def dix_bits(encodeur: str) -> str:
+    """Le nom sous lequel le sondage range l'essai 10 bits d'un encodeur."""
+    return encodeur + _DIX_BITS
+
+
+def avec_essai_10_bits(encodeur: str) -> bool:
+    """Un encodeur NVENC qui peut sortir du HDR : HEVC et AV1. Une carte
+    Maxwell (GTX 9xx) encode le HEVC en 8 bits, pas en 10 : ouvrir l'encodeur
+    en 8 bits seulement le disait capable, et un fichier HDR échouait dans
+    ffmpeg sur un message que rien ne reconnaissait (CR-42)."""
+    return "nvenc" in encodeur and ("hevc" in encodeur or "av1" in encodeur)
 
 
 def sonder_encodeurs(encodeurs: list[str], ffmpeg_path: str = "ffmpeg",
@@ -90,11 +115,17 @@ def sonder_encodeurs(encodeurs: list[str], ffmpeg_path: str = "ffmpeg",
     import subprocess
 
     def essai(nom: str) -> tuple[str, bool, str]:
+        encodeur, _sep, dix = nom.partition(_DIX_BITS)
+        # L'essai 10 bits : le format de pixels de `build_command`, et le
+        # profil main10 pour le HEVC (`av1_nvenc` n'a pas d'option profil).
+        options = (["-pix_fmt", "p010le"]
+                   + (["-profile:v", "main10"] if "hevc" in encodeur else [])
+                   if _sep else [])
         try:
             r = subprocess.run(
                 [ffmpeg_path, "-v", "error",
                  "-f", "lavfi", "-i", "nullsrc=s=256x144:d=0.05:r=25",
-                 "-c:v", nom, "-frames:v", "1", "-f", "null", "-"],
+                 "-c:v", encodeur, *options, "-frames:v", "1", "-f", "null", "-"],
                 stdin=subprocess.DEVNULL, capture_output=True, timeout=20)
             return nom, r.returncode == 0, r.stderr.decode("utf-8", "replace")
         except Exception as e:

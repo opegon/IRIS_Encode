@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.113] — 2026-10-09
+
+### Vidéo et encodeurs : DVD lisibles en direct, pas de H264 en HDR (IE-130)
+
+Revue IE-114, constats CR-14, 16, 17, 19, 22, 42, et une question de la revue
+tranchée. IE-130 est close.
+
+- **DVD, TNT SD : pixels carrés.** Une vidéo anamorphique (un DVD 16:9 est
+  un 720×480 aux pixels étirés) gardait sa forme de pixels, et Jellyfin la
+  transcodait. Elle sort en pixels carrés, au même rapport d'image.
+- **Pas de H264 en HDR.** Choisir H264 pour une source HDR donnait une image
+  en bandes dans les dégradés. La sortie est maintenant convertie en SDR, et
+  l'écran le dit au moment du choix ; HEVC garde le HDR.
+- **Forcer un film au format scope** (1920×800) le réencodait en H264 au même
+  débit, donc en moins bonne qualité : il part en HEVC, comme la décision
+  automatique. Une source HDR forcée reste en HEVC.
+- **AV1 affiché « → H264 »** dans l'accueil, l'aperçu, l'assistant et la file :
+  chaque codec s'affiche sous son nom.
+- **Débit inconnu.** Un fichier dont le débit ne se lit pas (en cours
+  d'écriture) passait pour « débit OK » ou recevait un débit inventé comme
+  cible. Il est réencodé à la cible du profil, et la raison le dit.
+- **Sans carte NVIDIA**, x265 recevait le réglage de débit de NVENC et ne
+  dépensait que 94 % de sa cible ; il reçoit le sien.
+- **Carte qui n'encode pas en 10 bits** (GTX 9xx) : un fichier HDR échouait
+  en cours d'encodage sur un message obscur. Le démarrage le sait désormais,
+  et le fichier est refusé d'emblée, cause nommée.
+
 ## [v0.8.9.112] — 2026-10-09
 
 ### Audio : DTS:X IMAX, et des noms qui disent ce que le fichier contient (IE-128)

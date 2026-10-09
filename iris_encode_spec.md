@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.112 — document de référence courant
+**Version** : 0.8.9.113 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -910,6 +910,7 @@ params = [
 
 | Cas | Condition | Action |
 |---|---|---|
+| **CAS 1 bis** | débit vidéo **inconnu** (0 : fichier en cours d'écriture, flux sans durée) | Réencodage au débit cible, raison « Débit inconnu » (v0.8.9.113, CR-19 — l'analyse posait 9 999 999 b/s, qui restait sous une cible 4K et devenait la cible d'un codec à convertir) |
 | **CAS 1** | bitrate source > seuil cible + 10 % (`TOLERANCE_DEBIT_PCT`) | Réencodage HEVC (ou H264 si cible < 1080p) au bitrate cible |
 | **CAS 2** | bitrate OK mais résolution trop grande | Redimensionnement HEVC, bitrate original |
 | **CAS 3** | bitrate OK, résolution OK, **codec hors `CODECS_LISIBLES`** | Réencodage, bitrate conservé — H264 sous 1080p, HEVC au-dessus |
@@ -956,6 +957,8 @@ en 3832×1600 n'a ni 3840 de large ni 2160 de haut, et passait pour un 1080p gar
 à sa définition. Sans `keep_4k`, il est rabattu en 1920×1080 comme toute 4K.
 
 **Pixels carrés** : le filtre `scale=W:H:force_original_aspect_ratio=decrease:force_divisible_by=2` est suivi de `setsar=1`. Sans lui, `scale` rattrape l'arrondi par un SAR (3832×1600 → 1920×802 en 192079:192000 ; 1918×802, étiré à 1920, en 959:960) et Jellyfin transcode une vidéo qu'il croit anamorphique. Le filtre n'est posé que si la source dépasse la cible en largeur ou en hauteur : une source qui y tient garde sa définition (1918×802 était étiré en 1920×802). Seule exception, une dimension impaire, que le 4:2:0 refuse : `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1` lui retire un pixel.
+
+**Source anamorphique** (v0.8.9.113, CR-14) — un DVD (720×480 en 8:9 ou 32:27, 720×576 en 16:15 ou 64:45), la TNT SD, le HDV 1440×1080 tiennent dans la cible et gardaient leur SAR : Jellyfin les transcodait. L'analyse lit `sample_aspect_ratio` (`VideoInfo.sar`, `pixels_non_carres`, `largeur_affichee`) ; une source non carrée passe d'abord par `scale=trunc(iw*sar/2)*2:trunc(ih/2)*2,setsar=1` (en largeur, rien n'est perdu en hauteur), puis par la boîte de la cible si sa largeur affichée la dépasse. Mesuré : 720×480 en 32:27 → 852×480 en 1:1, rapport 1,775 pour 1,778.
 
 **Désentrelacement** (v0.8.9.96, IE-122) : `VideoInfo.field_order` (lu au
 scan) en `tt`, `bb`, `tb` ou `bt` fait `entrelace` ; `FileDecision.desentrelace`
@@ -1991,7 +1994,10 @@ où le CBR de NVENC ne voyait qu'un plafond. Desserrer le plafond y fait donc
 
 Au preset `slow`, celui de `cinema_4k_basic` : 99,6 %. Les deux branches de
 `build_command` se ressemblent et **doivent différer** ; `tests/test_x265_debit.py`
-fait échouer toute harmonisation.
+fait échouer toute harmonisation. Depuis la v0.8.9.113 (CR-22), la règle suit
+l'**encodeur effectif** (`encoder.regle_debit`) : sur un poste sans NVIDIA, la
+branche standard et la passe vidéo du réencodage DV donnent aussi à libx265 un
+`-maxrate` égal à la cible ; `-rc vbr` n'est posé que pour NVENC.
 
 ### 12.2 Pause / Reprise
 
@@ -2137,6 +2143,14 @@ Conventions transverses :
   refuse en nommant la cause plutôt que de laisser ffmpeg échouer.
   Une vidéo recopiée (`-c:v copy`) n'est pas contrôlée : `copy` n'est pas un
   encodeur (`encodeur_a_controler`, v0.8.9.60).
+  **Le 10 bits aussi** (v0.8.9.113, CR-42) : `hevc_nvenc` et `av1_nvenc` sont
+  sondés une seconde fois en `p010le` (`main10` pour le HEVC), rangés sous
+  `<encodeur>@10`. Une carte qui ouvre le HEVC en 8 bits seulement (Maxwell)
+  était dite capable, et un fichier HDR échouait dans ffmpeg sur un message
+  inconnu. `RunScreen._refuser_encodeur` refuse alors une commande 10 bits
+  (`sortie_10_bits`), cause nommée, avant la passe principale comme avant la
+  passe vidéo du réencodage DV. Les encodeurs logiciels ne sont pas sondés en
+  10 bits (`peut_encoder_10_bits` → None).
   La sonde garde la sortie d'erreur des refus (`refus=`) : si ffmpeg y dit que
   le pilote est trop ancien pour son API NVENC, `alerte_pilote_nvenc()` en tire
   un message (pilote exigé, API exigée et fournie), rangé dans
@@ -2305,9 +2319,24 @@ L'étape 4 annonce la décision forcée et le nom qui en sort. Un retrait du DV
 part tel quel.
 
 **Un codec choisi à la main** (`F6` ici, dans l'aperçu et l'écran des pistes,
-et la coche forcée) passe par `decision.choisir_codec` : H264 retire le DV,
-HEVC avec le DV conservé devient `ENCODE_DV` quand `peut_reencoder_en_dv`
-l'accepte, et un débit nul hérité d'un SKIP prend celui de la source.
+et la coche forcée) passe par `decision.choisir_codec` : HEVC avec le DV
+conservé devient `ENCODE_DV` quand `peut_reencoder_en_dv` l'accepte, et un débit
+nul hérité d'un SKIP prend celui de la source — ou la cible du profil si le
+débit est inconnu (`debit_source_ou_cible`, CR-19).
+
+**Pas de H264 en HDR** (v0.8.9.113, question de la revue tranchée le
+2026-10-09) — NVENC n'encode pas le H264 en 10 bits : une source HDR (PQ, HLG ou
+Dolby Vision) en H264 sortait en PQ sur 8 bits, du banding dans chaque dégradé,
+sans un mot. `h264_force_sdr` : H264 sur une source HDR sort en **SDR** (tone
+mapping, `dv_action = SDR`), et chaque point de choix l'annonce
+(`tui.common.avertir_h264_sdr` : assistant, aperçu, écran des pistes, dont la
+colonne DV montre SDR). La coche forcée, qui n'est pas un choix de codec, garde
+une source HDR en HEVC quelle que soit sa tranche. Elle suit la **tranche** de
+définition et non la hauteur (CR-16) : un 1920×800 au format scope se force en
+HEVC, plus en H264 au même débit. Le libellé de décision nomme chaque codec
+(`CODEC_PAR_ACTION`) : un AV1 s'affichait « → H264 » (CR-17). La conversion SDR
+demande une source étiquetée (primaires et courbe) : sans étiquettes, zscale
+répond « no path between colorspaces » (mesuré).
 
 **La mesure passe par `sync.measure_external_track`**, seul point d'entrée pour
 mesurer une piste externe. Il traduit le tid mkvmerge en index ffmpeg — les deux
@@ -3427,6 +3456,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.113 | 2026-10-09 | **Vidéo et encodeurs** (§ 8.1, § 11, § 12, § 14.0, IE-130) : pixels carrés pour une source anamorphique (`VideoInfo.sar`, CR-14) ; forçage par tranche, HDR gardé en HEVC (CR-16) ; `CODEC_PAR_ACTION` (CR-17) ; débit inconnu réencodé à la cible (CR-19) ; `regle_debit` selon l'encodeur effectif (CR-22) ; sonde 10 bits NVENC, `_refuser_encodeur` (CR-42) ; H264 sur une source HDR → SDR, averti (`h264_force_sdr`, arbitrage du 2026-10-09) · `tests/test_video_revue.py` |
 | 0.8.9.112 | 2026-10-09 | **Audio : DTS:X IMAX, marques collées, pistes écartées** (§ 8.5, § 8.7, IE-128) : profil DTS sans perte par préfixe (CR-09) ; marque collée à sa disposition reconnue et réécrite (`colle_a_une_disposition`, CR-10) ; famille d'une piste écartée réécrite vers la piste gardée (CR-18) · `tests/test_audio_revue.py` |
 | 0.8.9.111 | 2026-10-09 | **Titres de disque : coûts de lecture** (§ 15.5, IE-127 3/3) : `bluray.memoriser` / `signature` pour les titres des deux modules (CR-02) ; mode récursif en un seul `os.walk` (CR-12) · `tests/test_bluray.py`, `tests/test_scan_recursif.py` |
 | 0.8.9.110 | 2026-10-09 | **Titres de DVD : cellules, « Lire tout », chapitres, LPCM** (§ 15.6, IE-127 2/3) : taille et VOB d'un titre par ses cellules (`_cellules`, `TitreDisque.octets`, CR-06) ; un « Lire tout » n'est plus le principal (`_lire_tout`) ; `nb_chapitres` (CR-07) ; `pcm_dvd` extrait en PCM de même profondeur (`AudioTrack.bits`, CR-05) · `tests/test_dvd.py` |

@@ -29,6 +29,7 @@ from core.decision import (AudioAction, FileDecision, VideoAction,
 from core.encoder import (
     EncoderProcess, audio_pass_needed, audio_prepass_needed,
     build_audio_command, build_command, diagnostiquer, encodeur_a_controler,
+    sortie_10_bits,
     pistes_audio_vides,
 )
 from core.muxer import (
@@ -510,18 +511,7 @@ class RunScreen(TableNavMixin, Screen):
         # Le sondage du démarrage a déjà répondu : inutile de lancer ffmpeg
         # pour apprendre ce qu'on sait, ni de laisser l'utilisateur lire
         # « Error opening output files » à la place de la cause.
-        choisi = encodeur_a_controler(cmd)
-        if choisi and self._platform.peut_encoder(choisi) is False:
-            s.state     = FileState.ERROR
-            s.error_msg = _("{encoder} unavailable here").format(encoder=choisi)[:60]
-            if "nvenc" in choisi and self._platform.alerte_nvenc:
-                s.last_line = self._platform.alerte_nvenc
-            else:
-                s.last_line = _(
-                    "This machine cannot encode with “{encoder}” — probed at "
-                    "startup. AV1 through NVENC needs an RTX 40 or newer; HEVC "
-                    "and H264 remain available.").format(encoder=choisi)
-            self.app.call_from_thread(self._update_row, next_idx)
+        if self._refuser_encodeur(next_idx, cmd):
             self._liberer(dec, audio_tmp, porteur, chapitres)
             self._encode_next()
             return
@@ -735,6 +725,41 @@ class RunScreen(TableNavMixin, Screen):
             out.unlink(missing_ok=True)
             return None
         return out
+
+    def _refuser_encodeur(self, index: int, cmd: list[str]) -> bool:
+        """Refuse, avec sa cause, une commande que le sondage du démarrage
+        sait vouée à l'échec. True si refusée (l'état est posé).
+
+        Un encodeur NVENC qui s'ouvre en 8 bits mais pas en 10 (Maxwell) :
+        un fichier HDR est refusé ici plutôt que d'échouer dans ffmpeg sur un
+        message qu'aucune signature ne reconnaît (CR-42).
+        """
+        s = self._statuses[index]
+        choisi = encodeur_a_controler(cmd)
+        if not choisi:
+            return False
+        if self._platform.peut_encoder(choisi) is False:
+            s.state     = FileState.ERROR
+            s.error_msg = _("{encoder} unavailable here").format(encoder=choisi)[:60]
+            if "nvenc" in choisi and self._platform.alerte_nvenc:
+                s.last_line = self._platform.alerte_nvenc
+            else:
+                s.last_line = _(
+                    "This machine cannot encode with “{encoder}” — probed at "
+                    "startup. AV1 through NVENC needs an RTX 40 or newer; HEVC "
+                    "and H264 remain available.").format(encoder=choisi)
+        elif sortie_10_bits(cmd) and self._platform.peut_encoder_10_bits(choisi) is False:
+            s.state     = FileState.ERROR
+            s.error_msg = _("{encoder}: no 10-bit here").format(encoder=choisi)[:60]
+            s.last_line = _(
+                "This graphics card opens “{encoder}” in 8 bits only — probed at "
+                "startup. An HDR output needs 10 bits: choose SDR for this file, "
+                "or encode it on a machine with a more recent card.").format(
+                    encoder=choisi)
+        else:
+            return False
+        self.app.call_from_thread(self._update_row, index)
+        return True
 
     def _porter_sous_titres(self, index: int, dec: FileDecision,
                             recompose: Optional[Path] = None,
@@ -1302,6 +1327,8 @@ class RunScreen(TableNavMixin, Screen):
 
             # 3 — l'encodage vidéo, seul
             cmd = build_dv_video_command(dec, self._platform, enc, ffmpeg_path)
+            if self._refuser_encodeur(index, cmd):
+                return
             annoncer(_("Encoding the video…"), " ".join(cmd))
             proc = EncoderProcess(cmd, dec.info.duration)
             self._demarrer(proc)

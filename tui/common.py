@@ -496,6 +496,14 @@ def footer_line2(
     return line
 
 
+def avertir_h264_sdr(ecran, info, action: VideoAction) -> None:
+    """Le dire au moment du choix : H264 sur une source HDR la fait passer en
+    SDR (`decision.h264_force_sdr`, arbitrage du 2026-10-09)."""
+    from core.decision import AVERTISSEMENT_H264_SDR, h264_force_sdr
+    if h264_force_sdr(info, action):
+        ecran.notify(_(AVERTISSEMENT_H264_SDR), severity="warning", timeout=8)
+
+
 def confier_a_la_file(app, decisions: list) -> None:
     """Met des décisions en file d'encodage depuis un écran de travail.
 

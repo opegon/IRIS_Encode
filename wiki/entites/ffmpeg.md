@@ -1,7 +1,7 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-10-08
+maj: 2026-10-09
 sources:
   - "[[source-2026-10-08-disques]]"
   - "[[source-2026-10-06-sar-scale]]"
@@ -105,3 +105,15 @@ ffmpeg annonce la cause **avant** de constater l'échec : la dernière ligne
 rien. Chercher dans les ~40 lignes précédentes. Exemple réel : « Subtitle
 encoding currently only possible from text to text or bitmap to bitmap » pour
 un PGS forcé en `mov_text`. *(mesuré)*
+
+## Conversion HDR → SDR et pixels carrés
+
+- La chaîne `zscale=t=linear…tonemap…zscale=t=bt709` exige une source dont
+  primaires et courbe sont étiquetées : sur un HEVC PQ aux étiquettes
+  `unknown`, « code 3074: no path between colorspaces », échec (*mesuré*,
+  ffmpeg du projet, 2026-10-09). Étiquetée (`bt2020`, `smpte2084`), la sortie
+  H264 est en `bt709`. Pour fabriquer une source PQ d'essai, les options
+  `-color_trc` seules ne suffisent pas avec libx265 : `setparams` et
+  `-x265-params colorprim/transfer/colormatrix`.
+- `scale=trunc(iw*sar/2)*2:trunc(ih/2)*2,setsar=1` ramène un anamorphique en
+  pixels carrés : 720×480 en 32:27 → 852×480 en 1:1 (*mesuré*, 2026-10-09).

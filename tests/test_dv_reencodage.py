@@ -262,8 +262,10 @@ def test_hevc_avec_le_dv_retire_reste_un_hevc_simple():
 
 
 def test_h264_ne_porte_pas_le_dv():
+    """Ni le DV ni le HDR10 : H264 sur une source HDR sort en SDR
+    (arbitrage du 2026-10-09, `h264_force_sdr`)."""
     v = D.choisir_codec(_skip_dv(), VideoAction.ENCODE_H264)
-    assert v.dv_action is DVAction.HDR10
+    assert v.dv_action is DVAction.SDR
 
 
 def test_av1_avec_le_dv_conserve_est_une_copie_nommee_comme_telle():

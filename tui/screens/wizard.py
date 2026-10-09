@@ -46,6 +46,7 @@ from core.decision import (ACTION_CYCLE, AudioAction,
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import measure_external_track
 
+from ..common import avertir_h264_sdr
 from ..common import (confier_a_la_file, langue_affichee, nom_codec, bitrate_picker_config, codec_picker_opts, fmt_duration,
                       footer_line2, retour_accueil, tronquer_milieu,
                       libelle_ecartee, actions_ecran, cellule, colonne_fixe,
@@ -488,6 +489,7 @@ class WizardScreen(TableNavMixin, Screen):
             self._dec.video = dc_replace(
                 choisir_codec(self._dec, ACTION_CYCLE[choix]),
                 reason=_("Chosen in guided mode"))
+            avertir_h264_sdr(self, self._dec.info, ACTION_CYCLE[choix])
             # Le suffixe vient de changer : le nom de sortie déjà résolu ne
             # vaut plus. Il sera reposé à l'affichage.
             self._dec.output_override = None

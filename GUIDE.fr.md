@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.112
+**Version** : 0.8.9.113
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -254,6 +254,11 @@ ligne vidéo en tête.
 
 Écarter tous les sous-titres image (PGS, VobSub) libère le conteneur MP4 ;
 en garder un impose le MKV.
+
+**H264 ne porte pas le HDR.** Choisir H264 pour une source HDR (HDR10, HLG,
+Dolby Vision) convertit le fichier en SDR — un message le dit au moment du
+choix, et la colonne Dolby Vision affiche `SDR`. Choisissez HEVC pour garder le
+HDR.
 
 Un PGS qu'un SRT de même langue et de même nature double arrive **décoché** :
 Jellyfin l'incrusterait, donc transcoderait, pour afficher ce que le SRT dit

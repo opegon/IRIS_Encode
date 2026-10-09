@@ -507,6 +507,9 @@ class VideoInfo:
     # Ordre des trames déclaré par le flux : « progressive », « tt », « bb »,
     # « tb », « bt », ou « » s'il ne dit rien (IE-122).
     field_order:     str                 = ""
+    # Forme des pixels (`sample_aspect_ratio`) : « 32:27 » pour un DVD 16:9
+    # NTSC, « 1:1 » ou « » pour des pixels carrés (CR-14).
+    sar:             str                 = ""
     # ── Métadonnées Dolby Vision enrichies (dovi_tool, optionnel) ────────────
     dv_subprofile:   Optional[str]              = None   # "5", "7.06", "8.1"…
     hdr10_master_display: Optional[str]         = None   # G(...)B(...)R(...)WP(...)L(...)
@@ -517,6 +520,22 @@ class VideoInfo:
     titre: Optional["TitreDisque"] = None
 
     # ── Propriétés dérivées ──────────────────────────────────────────────────
+
+    @property
+    def pixels_non_carres(self) -> bool:
+        """Source anamorphique (DVD, TNT SD, HDV) : Jellyfin transcode toute
+        vidéo dont les pixels ne sont pas carrés."""
+        num, _sep, den = self.sar.partition(":")
+        return (num.isdigit() and den.isdigit() and int(num) > 0 and int(den) > 0
+                and num != den)
+
+    @property
+    def largeur_affichee(self) -> int:
+        """La largeur à l'écran, en pixels carrés."""
+        if not self.pixels_non_carres:
+            return self.width
+        num, _sep, den = self.sar.partition(":")
+        return self.width * int(num) // int(den)
 
     @property
     def lecture(self) -> Path:
@@ -919,9 +938,10 @@ def scan(path: Path) -> VideoInfo:
 
     # Débit **vidéo**, jamais celui du conteneur : c'est à un débit vidéo
     # cible qu'il sera comparé, et c'est un débit vidéo que l'encodeur reçoit.
+    # 0 = inconnu, porté tel quel : la décision le réencode à la cible
+    # (CR-19). Un 9 999 999 « supposé élevé » restait sous une cible 4K et
+    # devenait la cible d'un codec à convertir.
     bitrate = _video_bitrate(vid, streams, fmt)
-    if bitrate == 0:
-        bitrate = 9_999_999   # inconnu → on suppose élevé (force re-encode)
 
     duration    = _safe_float(fmt.get("duration"))
     frame_count = _safe_int(vid.get("nb_frames"))
@@ -992,6 +1012,7 @@ def scan(path: Path) -> VideoInfo:
         color_transfer=vid.get("color_transfer", ""),
         frame_rate=vid.get("r_frame_rate", ""),
         field_order=vid.get("field_order", "") or "",
+        sar=vid.get("sample_aspect_ratio", "") or "",
         titre=titre_dvd,
     )
 

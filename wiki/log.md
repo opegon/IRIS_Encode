@@ -367,3 +367,8 @@ par Matroska en copie, accepté en PCM. Pages touchées : [[disques-optiques]].
 ## [2026-10-09] ingest | DTS:X IMAX (IE-128)
 
 Troisième variante sans perte du profil DTS de ffmpeg. Pages touchées : [[audio]].
+
+## [2026-10-09] ingest | zscale et étiquettes, SAR (IE-130)
+
+La conversion SDR échoue sans étiquettes de couleur ; filtre de pixels carrés
+mesuré. Pages touchées : [[ffmpeg]].

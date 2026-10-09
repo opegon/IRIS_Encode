@@ -223,6 +223,14 @@ def encodeur_de(cmd: list[str]) -> Optional[str]:
         return None
 
 
+def sortie_10_bits(cmd: list[str]) -> bool:
+    """La commande encode-t-elle en 10 bits (sortie HDR) ?"""
+    try:
+        return cmd[cmd.index("-pix_fmt") + 1] in ("p010le", "yuv420p10le")
+    except (ValueError, IndexError):
+        return False
+
+
 def encodeur_a_controler(cmd: list[str]) -> Optional[str]:
     """Encodeur à confronter au sondage du démarrage, ou None.
 
@@ -423,6 +431,32 @@ def audio_args(included_audio: list, debut: int = 0) -> list[str]:
     return args
 
 
+def regle_debit(encodeur: str, cible: int) -> list[str]:
+    """Les options de débit d'un encodage, d'après l'encodeur **effectif**.
+
+    NVENC : un `-maxrate` égal à la cible fait du débit demandé un plafond que
+    rien ne compense — chaque scène facile tire la moyenne vers le bas. Mesuré
+    sur un film en prises de vues réelles, la cible n'était honorée qu'à 92 % ;
+    avec 50 % de marge en VBR, 99 %. La marge ne gonfle pas les fichiers
+    faciles : NVENC ne dépense que ce que le contenu exige.
+
+    libx265 : le réglage inverse (wiki `codecs-video`, mesuré) — c'est un VBV
+    serré qui l'oblige à dépenser son budget ; à 1,5 × la cible, 93,6 % au lieu
+    de 99,9 %. Sur un poste sans NVIDIA, la branche standard et le réencodage
+    DV lui appliquaient la règle de NVENC (CR-22). `-rc` n'existe que chez
+    NVENC : ailleurs, ffmpeg l'ignorait en avertissant.
+    """
+    if encodeur == "libx265":
+        maxrate, bufsize_k = cible, max(cible * 2 // 1000, 1)
+    else:
+        maxrate = cible * 3 // 2
+        bufsize_k = max(maxrate * 2 // 1000, 1)
+    args = ["-b:v", str(cible), "-maxrate", str(maxrate), "-bufsize", f"{bufsize_k}k"]
+    if "nvenc" in encodeur and "av1" not in encodeur:
+        args += ["-rc", "vbr"]
+    return args
+
+
 def build_dv_video_command(decision, platform, sortie_hevc: Path,
                            ffmpeg_path: str | None = None) -> list[str]:
     """Encode la seule vidéo, en Annex-B brut, pour un réencodage DV.
@@ -450,16 +484,11 @@ def build_dv_video_command(decision, platform, sortie_hevc: Path,
 
     # Le Dolby Vision est du 10 bits par construction : la couche de base d'un
     # profil 8.1 est du HDR10, et un encodage 8 bits la trahirait.
-    maxrate   = vid.target_bitrate * 3 // 2
-    bufsize_k = max(maxrate * 2 // 1000, 1)
     cmd += [
         "-map",       "0:v:0",
         "-c:v",       platform.encoder_hevc,
         "-pix_fmt",   "p010le" if "nvenc" in platform.encoder_hevc else "yuv420p10le",
-        "-b:v",       str(vid.target_bitrate),
-        "-maxrate",   str(maxrate),
-        "-bufsize",   f"{bufsize_k}k",
-        "-rc",        "vbr",
+        *regle_debit(platform.encoder_hevc, vid.target_bitrate),
         "-preset",    profile.get("preset_encoder", "medium"),
         "-profile:v", "main10",
         "-f",         "hevc",
@@ -628,14 +657,21 @@ def build_command(
         # Avant la mise à l'échelle : réduire des trames mêlées les mélange.
         if decision.desentrelace:
             filtres.append(FILTRE_DESENTRELACEMENT)
-        if info.width > vid.target_width or info.height > vid.target_height:
+        # Une source anamorphique (DVD 720×480 en 32:27, TNT SD, HDV) tenait
+        # dans la cible et gardait son SAR : Jellyfin la transcodait. Elle
+        # passe d'abord en pixels carrés, en largeur — rien n'est perdu en
+        # hauteur (CR-14).
+        largeur = info.largeur_affichee
+        if info.pixels_non_carres:
+            filtres.append("scale=trunc(iw*sar/2)*2:trunc(ih/2)*2,setsar=1")
+        if largeur > vid.target_width or info.height > vid.target_height:
             filtres.append(
                 f"scale={vid.target_width}:{vid.target_height}"
                 ":force_original_aspect_ratio=decrease"
                 ":force_divisible_by=2"
                 ",setsar=1"
             )
-        elif info.width % 2 or info.height % 2:
+        elif not info.pixels_non_carres and (info.width % 2 or info.height % 2):
             filtres.append("scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1")
         if vid.dv_action == DVAction.SDR:
             filtres.append(_SDR_TONEMAP_FILTER)
@@ -693,26 +729,10 @@ def build_command(
             if not is_av1:
                 prof_str = "main10"
 
-        # Un `-maxrate` égal à la cible fait du débit demandé un plafond que
-        # rien ne peut compenser : chaque scène facile tire la moyenne vers le
-        # bas, aucune scène difficile ne peut la remonter. Mesuré sur un film
-        # en prises de vues réelles, la cible n'était honorée qu'à 92 % ; avec
-        # 50 % de marge en VBR, 99 %. La marge ne gonfle pas les fichiers
-        # faciles : NVENC ne dépense que ce que le contenu exige.
-        maxrate   = vid.target_bitrate * 3 // 2
-        bufsize_k = max(maxrate * 2 // 1000, 1)
-        preset    = profile.get("preset_encoder", "medium")
-
-        cmd += [
-            "-c:v",      encoder,
-            "-pix_fmt",  pix_fmt,
-            "-b:v",      str(vid.target_bitrate),
-            "-maxrate",  str(maxrate),
-            "-bufsize",  f"{bufsize_k}k",
-        ]
-        if not is_av1:
-            cmd += ["-rc", "vbr"]
-        cmd += ["-preset", preset]
+        # La règle de débit dépend de l'encodeur effectif (`regle_debit`).
+        preset = profile.get("preset_encoder", "medium")
+        cmd += ["-c:v", encoder, "-pix_fmt", pix_fmt,
+                *regle_debit(encoder, vid.target_bitrate), "-preset", preset]
         # `av1_nvenc` n'expose aucune option `profile` : lui en passer une fait
         # échouer la commande avant même que la carte soit interrogée —
         # « Unable to parse "profile" option value ». L'AV1 était donc cassé

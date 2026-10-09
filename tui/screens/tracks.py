@@ -34,6 +34,7 @@ from core import dovi
 from core.i18n import N_, _, pgettext
 from core.decision import (
     Emphase,
+    h264_force_sdr,
     STYLE_PAR_EMPHASE,
     style_dv,
     style_video,
@@ -46,6 +47,7 @@ from core.decision import (
     DV_SORTIE, EXCLU_MANUELLEMENT, libelle_copie,
 )
 from ..common import sauver_config
+from ..common import avertir_h264_sdr
 from ..common import (langue_affichee, nom_codec, barre_etat, 
     libelle_ecartee,
     actions_ecran,
@@ -196,6 +198,9 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
     def _eff_bitrate(self) -> int:
         return self._ov_bitrate if self._ov_bitrate is not None else self._decision.video.target_bitrate
     def _eff_dv(self)      -> DVAction:
+        # H264 sur une source HDR sort en SDR : l'écran le montre tel quel.
+        if h264_force_sdr(self._decision.info, self._eff_action()):
+            return DVAction.SDR
         return self._ov_dv      if self._ov_dv      is not None else self._decision.video.dv_action
     def _eff_delete(self)  -> bool:
         if self._ov_delete is not None:
@@ -580,6 +585,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             cur  = self._eff_action()
             nxt  = _ACTION_CYCLE[(cycle_index(cur) + delta) % len(_ACTION_CYCLE)]
             self._ov_action = None if same_intent(nxt, self._decision.video.action) else nxt
+            avertir_h264_sdr(self, self._decision.info, nxt)
 
         elif field == "bitrate":
             cur_k = self._eff_bitrate() // 1000
@@ -679,6 +685,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 nxt = _ACTION_CYCLE[idx]
                 s._ov_action = (None if same_intent(nxt, s._decision.video.action)
                                 else nxt)
+                avertir_h264_sdr(s, s._decision.info, nxt)
                 if nxt == VideoAction.ENCODE_AV1 and s._ov_bitrate is None:
                     s._ov_bitrate = 1500 * 1000
                 s._update_video_row(); s._update_status()

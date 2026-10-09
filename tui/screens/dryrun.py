@@ -28,6 +28,7 @@ from core.decision import (
     video_recopiee,
 )
 from ..common import sauver_config
+from ..common import avertir_h264_sdr
 from ..common import (confier_a_la_file, langue_affichee, barre_etat, 
     actions_ecran,
     touche,
@@ -381,6 +382,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 return
             new_action = ACTION_CYCLE[idx]
             self._apply_codec(d, new_action)
+            avertir_h264_sdr(self, d.info, new_action)
             # AV1 a sa propre échelle de débits — clamp si le débit courant ne s'y trouve pas
             if new_action == VideoAction.ENCODE_AV1:
                 cur_k = d.video.target_bitrate // 1000

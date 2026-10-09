@@ -140,8 +140,8 @@ class VideoDecision:
             return f"→ {DV_SORTIE[DVAction.HDR10]}"
         if video_recopiee(self.action, self.dv_action):
             return f"→ DV ({pgettext('track action', 'copy')})"
-        codec = ("HEVC" if self.action in (VideoAction.ENCODE_HEVC,
-                                           VideoAction.ENCODE_DV) else "H264")
+        # Un libellé par action : AV1 s'affichait « → H264 » (CR-17).
+        codec = CODEC_PAR_ACTION[self.action]
         dv = (f" → {DV_SORTIE[self.dv_action]}"
               if self.dv_action in DV_SORTIE else "")
         return f"→ {codec}{dv}"
@@ -315,6 +315,14 @@ def _needs_mkv_codec(codec: str) -> bool:
 #
 # Chaque suffixe est une caractéristique suivie de la marque `-iris` (§ 8.7).
 SUFFIX_DV_COPIE = f".dv{MARQUE_IRIS}"
+
+# Le codec qu'écrit chaque action qui encode, tel que l'écran le nomme.
+CODEC_PAR_ACTION: dict["VideoAction", str] = {
+    VideoAction.ENCODE_HEVC: "HEVC",
+    VideoAction.ENCODE_DV:   "HEVC",
+    VideoAction.ENCODE_H264: "H264",
+    VideoAction.ENCODE_AV1:  "AV1",
+}
 
 SUFFIX_BY_ACTION: dict["VideoAction", str] = {
     VideoAction.ENCODE_HEVC: f".hevc{MARQUE_IRIS}",
@@ -868,6 +876,21 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
             return _("{reason} · DV kept → video copied").format(reason=base)
         return base
 
+    # CAS 1 bis — Débit inconnu (fichier en cours d'écriture, flux sans
+    # durée) : rien ne garantit qu'il tient sous la cible. Réencodé à la cible,
+    # et la raison le dit (CR-19).
+    if not info.bitrate:
+        return VideoDecision(
+            action=action,
+            reason=_raison(_("Unknown bitrate → {target}k target").format(
+                target=target_bps // 1000)),
+            target_bitrate=target_bps,
+            target_width=limit_w,
+            target_height=limit_h,
+            dv_action=dv_action,
+            output_suffix=suffix,
+        )
+
     # CAS 1 — Bitrate source au-delà de la cible + tolérance
     if debit_au_dessus_de_la_cible(info.bitrate, target_bps):
         return VideoDecision(
@@ -1417,8 +1440,9 @@ def choisir_codec(dec: FileDecision, action: VideoAction,
     choisir HEVC sur une source Dolby Vision donnait une copie du flux nommée
     `.hevc-iris`, avec un débit cible nul hérité du SKIP.
 
-    - H264 ne porte pas de RPU : le DV conservé devient HDR10.
-    - Depuis SKIP ou un retrait de DV, sans débit cible : celui de la source.
+    - H264 sur une source HDR sort en SDR (`h264_force_sdr`).
+    - Depuis SKIP ou un retrait de DV, sans débit cible : celui de la source,
+      ou la cible du profil s'il est inconnu (CR-19).
     - HEVC avec le DV conservé : `ENCODE_DV` si `peut_reencoder_en_dv`.
     - Vidéo recopiée malgré tout : suffixe de copie.
     `reason` est laissé à l'appelant.
@@ -1428,14 +1452,14 @@ def choisir_codec(dec: FileDecision, action: VideoAction,
     dv = v.dv_action if dv_action is None else dv_action
     if action == VideoAction.ENCODE_DV:
         action = VideoAction.ENCODE_HEVC     # le choix porte sur le codec
-    if action == VideoAction.ENCODE_H264 and dv == DVAction.DV:
-        dv = DVAction.HDR10
+    if h264_force_sdr(dec.info, action):
+        dv = DVAction.SDR
     if action in (VideoAction.SKIP, VideoAction.STRIP_DV):
         return dc_replace(v, action=action, target_bitrate=0, dv_action=dv,
                           output_suffix=SUFFIX_BY_ACTION[action])
     debit = v.target_bitrate
     if v.action in (VideoAction.SKIP, VideoAction.STRIP_DV) or not debit:
-        debit = dec.info.bitrate
+        debit = debit_source_ou_cible(dec.info, dec.profile)
     if (dv == DVAction.DV and action == VideoAction.ENCODE_HEVC
             and peut_reencoder_en_dv(dec.info, v.target_width, v.target_height)):
         action = VideoAction.ENCODE_DV
@@ -1445,20 +1469,57 @@ def choisir_codec(dec: FileDecision, action: VideoAction,
                       output_suffix=suffixe)
 
 
-def force_skip_to_encode(dec: FileDecision) -> FileDecision:
-    """Force un fichier SKIP en encodage (HEVC ou H264 si < 1080p).
+def source_hdr(info: VideoInfo) -> bool:
+    """La source porte-t-elle du HDR (PQ, HLG ou Dolby Vision) ?"""
+    return info.is_hdr or info.dv_profile is not None
 
-    Conserve le débit source (pas de gonflement), ajuste dv_action :
-    - H264 ne peut pas porter de RPU DV → DV→HDR10 forcé si source DV
+
+def h264_force_sdr(info: VideoInfo, action: VideoAction) -> bool:
+    """H264 choisi sur une source HDR : la sortie passe en SDR.
+
+    NVENC n'encode pas le H264 en 10 bits : la courbe PQ y étalait dix bits de
+    source sur 256 niveaux, du banding dans chaque dégradé, sans un mot
+    (question de la revue IE-114). Tranché le 2026-10-09 : pas de H264 en
+    HDR — la sortie est convertie en SDR, et l'écran le dit au moment du
+    choix (`AVERTISSEMENT_H264_SDR`).
+    """
+    return action == VideoAction.ENCODE_H264 and source_hdr(info)
+
+
+AVERTISSEMENT_H264_SDR = N_(
+    "H264 does not carry HDR: this file will be converted to SDR (tone "
+    "mapping, slower). Choose HEVC to keep HDR.")
+
+
+def debit_source_ou_cible(info: VideoInfo, profile: Profile) -> int:
+    """Le débit de la source, ou la cible du profil quand il est inconnu (0) :
+    un débit fabriqué de 9 999 999 b/s devenait sinon la cible (CR-19)."""
+    if info.bitrate:
+        return info.bitrate
+    return profile.bitrate_for_height(_resolve_limits(info, profile)[2])
+
+
+def force_skip_to_encode(dec: FileDecision) -> FileDecision:
+    """Force un fichier SKIP en encodage : HEVC, ou H264 sous la tranche 1080p.
+
+    La tranche, pas la hauteur : un film au format scope (1920×800) est un
+    1080p, et la hauteur le faisait réencoder en H264 au même débit, donc en
+    moins bonne qualité (CR-16). Une source HDR reste en HEVC quelle que soit
+    sa tranche : H264 la ferait passer en SDR (`h264_force_sdr`), ce qu'un
+    forçage n'a pas à décider.
+
+    Conserve le débit source (pas de gonflement) ; dv_action suit
+    `choisir_codec`.
     """
     from dataclasses import replace as dc_replace
     if dec.video.action not in (VideoAction.SKIP, VideoAction.STRIP_DV):
         return dec
-    sub_1080   = dec.info.height < 1080
-    forced_act = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
+    sub_1080   = _resolve_limits(dec.info, dec.profile)[2] < 1080
+    forced_act = (VideoAction.ENCODE_H264 if sub_1080 and not source_hdr(dec.info)
+                  else VideoAction.ENCODE_HEVC)
     return dc_replace(dec, video=dc_replace(
         choisir_codec(dec, forced_act),
-        target_bitrate= dec.info.bitrate,
+        target_bitrate= debit_source_ou_cible(dec.info, dec.profile),
         reason        = (_("Forced manually (was SKIP)")
                          if dec.video.action == VideoAction.SKIP
                          else _("Forced manually (was DV removal)")),

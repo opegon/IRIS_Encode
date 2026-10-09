@@ -772,10 +772,12 @@ class RunScreen(TableNavMixin, Screen):
         srts = [c for _cmd, chemins in travaux for c in chemins]
 
         def echouer(detail: str) -> tuple[bool, None]:
+            porteur.unlink(missing_ok=True)
+            if s.state == FileState.SKIPPED:      # `S` ou `X` (CR-61)
+                return False, None
             s.state, s.error_msg = FileState.ERROR, _("subtitles: preparation failed")
             s.last_line = detail
             self.app.call_from_thread(self._update_row, index)
-            porteur.unlink(missing_ok=True)
             return False, None
 
         try:
@@ -821,6 +823,22 @@ class RunScreen(TableNavMixin, Screen):
         finally:
             for chemin in srts:
                 chemin.unlink(missing_ok=True)
+
+    def _executer(self, index: int, proc) -> int:
+        """Une étape des chemins DV, publiée comme les autres : `S`, `X`,
+        la pause et la sortie l'atteignent, et aucun délai fixe ne la tue
+        (CR-32, CR-61). La progression, quand le processus en donne."""
+        s = self._statuses[index]
+        self._demarrer(proc)
+        for ligne, progress in proc.iter_progress():
+            if ligne:
+                s.last_line = ligne
+            if progress:
+                s.percent = progress.percent
+                self.app.call_from_thread(self._update_row, index)
+        code = proc.wait()
+        self._process = None
+        return code
 
     @staticmethod
     def _playlist_chapitres(dec: FileDecision) -> Optional[Path]:
@@ -909,6 +927,10 @@ class RunScreen(TableNavMixin, Screen):
         sortie = dec.output_path
 
         def echouer(resume: str, detail: str) -> None:
+            # `S` ou `X` a déjà tranché : l'étape interrompue échoue, mais le
+            # fichier reste abandonné, comme le bilan l'affiche (CR-61).
+            if s.state == FileState.SKIPPED:
+                return
             s.state, s.error_msg, s.last_line = FileState.ERROR, resume[:60], detail
             self.app.call_from_thread(self._update_row, index)
 
@@ -989,16 +1011,18 @@ class RunScreen(TableNavMixin, Screen):
                     return
 
                 # 2/N — retrait du RPU
-                self.app.call_from_thread(
-                    self._update_cmd_lines,
-                    f"{dovi_path} remove -i {brut.name} -o {nodv.name}")
+                cmd = dovi.build_remove_command(brut, nodv, dovi_path)
+                self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
                     f"▶ 2/{n_etapes} " + _("Removing the Dolby Vision RPU with dovi_tool…"))
                 s.percent = -1
                 self.app.call_from_thread(self._update_row, index)
 
-                if not dovi.remove_dv(brut, nodv, dovi_path):
+                code = self._executer(index, EncoderProcess(cmd))
+                if s.state == FileState.SKIPPED:
+                    return
+                if code != 0 or not nodv.exists():
                     echouer(_("dovi_tool remove failed"),
                             _("dovi_tool could not remove the RPU from the stream."))
                     return
@@ -1193,6 +1217,10 @@ class RunScreen(TableNavMixin, Screen):
         sortie = dec.output_path
 
         def echouer(resume: str, detail: str) -> None:
+            # `S` ou `X` a déjà tranché : l'étape interrompue échoue, mais le
+            # fichier reste abandonné, comme le bilan l'affiche (CR-61).
+            if s.state == FileState.SKIPPED:
+                return
             s.state, s.error_msg, s.last_line = FileState.ERROR, resume[:60], detail
             self.app.call_from_thread(self._update_row, index)
 
@@ -1242,16 +1270,19 @@ class RunScreen(TableNavMixin, Screen):
 
         try:
             # 1 — le RPU, en tuyau
+            tuyau = dovi.TuyauRpu(source, rpu, dovi_path, ffmpeg_path,
+                                  dec.info.duration)
             annoncer(_("Extracting the Dolby Vision metadata…"),
-                     f"{dovi_path.name} extract-rpu - -o {rpu.name}")
-            if not dovi.extract_rpu_depuis_source(source, rpu, dovi_path, ffmpeg_path):
+                     " ".join(tuyau.cmd) + " | " + " ".join(tuyau.cmd_dt))
+            code = self._executer(index, tuyau)
+            if s.state == FileState.SKIPPED:
+                return
+            if code != 0 or not dovi.rpu_valide(rpu):
                 echouer(_("RPU extraction failed"),
                         _("dovi_tool could not extract the Dolby Vision metadata "
                           "from the source. The re-encode would have destroyed "
                           "it: stopping rather than producing a file without "
                           "Dolby Vision."))
-                return
-            if s.state == FileState.SKIPPED:
                 return
 
             # 2 — profil 7 → 8.1
@@ -1286,15 +1317,16 @@ class RunScreen(TableNavMixin, Screen):
                 return
 
             # 4 — le RPU revient
-            annoncer(_("Re-injecting Dolby Vision…"),
-                     f"{dovi_path.name} inject-rpu -i {enc.name} --rpu-in {rpu.name}")
-            if not dovi.inject_rpu(enc, rpu, inj, dovi_path):
+            cmd = dovi.build_inject_command(enc, rpu, inj, dovi_path)
+            annoncer(_("Re-injecting Dolby Vision…"), " ".join(cmd))
+            code = self._executer(index, EncoderProcess(cmd))
+            if s.state == FileState.SKIPPED:
+                return
+            if code != 0 or not inj.exists():
                 echouer(_("RPU re-injection failed"),
                         _("dovi_tool could not re-inject the RPU. The most "
                           "common cause is a different frame count between the "
                           "source and the encode."))
-                return
-            if s.state == FileState.SKIPPED:
                 return
 
             # 5 — pistes audio finales, quand la décision en transcode une
@@ -1449,6 +1481,8 @@ class RunScreen(TableNavMixin, Screen):
                     s.state, s.percent = FileState.SUCCESS, 1.0
                 return
             sortie.unlink(missing_ok=True)
+            if s.state == FileState.SKIPPED:          # `S` ou `X` (CR-61)
+                return
             detail = proc.errors[-1] if proc.errors else f"code {code}"
             s.state, s.error_msg = (FileState.ERROR,
                                     _("mux: {detail}").format(detail=detail)[:60])
@@ -1515,6 +1549,8 @@ class RunScreen(TableNavMixin, Screen):
         # mkvmerge rend 1 pour de simples avertissements.
         if not mkvmerge_reussi(code, sortie):
             sortie.unlink(missing_ok=True)
+            if s.state == FileState.SKIPPED:          # `S` ou `X` (CR-61)
+                return False
             detail = proc.errors[-1] if proc.errors else f"code {code}"
             s.state, s.error_msg = (FileState.ERROR,
                                     _("mux: {detail}").format(detail=detail)[:60])
@@ -1565,6 +1601,8 @@ class RunScreen(TableNavMixin, Screen):
 
         if code != 0 or not sortie.exists():
             sortie.unlink(missing_ok=True)
+            if s.state == FileState.SKIPPED:          # `S` ou `X` (CR-61)
+                return False
             detail = journal[-1] if journal else f"code {code}"
             s.state, s.error_msg = (FileState.ERROR,
                                     _("DVD: {detail}").format(detail=detail)[:60])
@@ -1626,6 +1664,8 @@ class RunScreen(TableNavMixin, Screen):
         if not mkvmerge_reussi(code, sortie):
             # Interrompu ou échoué, l'intermédiaire pèse le poids du film.
             sortie.unlink(missing_ok=True)
+            if s.state == FileState.SKIPPED:          # `S` ou `X` (CR-61)
+                return False
             detail = proc.errors[-1] if proc.errors else f"code {code}"
             s.state, s.error_msg = (FileState.ERROR,
                                     _("mux: {detail}").format(detail=detail)[:60])
@@ -1782,8 +1822,18 @@ class RunScreen(TableNavMixin, Screen):
             self._paused = True
 
     def action_skip_current(self) -> None:
-        """Termine l'encodage en cours et passe au fichier suivant."""
-        if self._process is None or self._done:
+        """Termine l'encodage en cours et passe au fichier suivant.
+
+        Une étape mkvmerge (assemblage d'un titre, mux préalable, remux des
+        chemins DV) s'arrête aussi : `S` n'y faisait rien, sans un mot (CR-61).
+        """
+        if self._done:
+            return
+        if self._process is None and self._mux is None:
+            if self._started:
+                # Entre deux étapes : un instant, la suivante sera arrêtable.
+                self.notify(_("No step to skip at this instant — try again in a "
+                              "moment."), timeout=3)
             return
         if 0 <= self._current_idx < len(self._statuses):
             s = self._statuses[self._current_idx]
@@ -1794,10 +1844,13 @@ class RunScreen(TableNavMixin, Screen):
         # _encode_next() enchaîne automatiquement sur le suivant. Un processus
         # suspendu doit d'abord reprendre : sous POSIX, l'arrêt resterait en
         # attente, et le fichier suivant ne démarrerait jamais (CR-60).
-        if self._paused:
-            self._process.resume()
-            self._paused = False
-        self._process.terminate()
+        if self._process is not None:
+            if self._paused:
+                self._process.resume()
+                self._paused = False
+            self._process.terminate()
+        else:
+            self._mux.terminate()
 
     # ─── Sortie ───────────────────────────────────────────────────────────────
 

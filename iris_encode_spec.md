@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.107 — document de référence courant
+**Version** : 0.8.9.108 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -666,7 +666,7 @@ Module wrapper autour de `dovi_tool`, utilisé en trois phases :
 1. **Scan** (`probe_file`) : enrichit chaque `VideoInfo` avec sous-profil, master
    display, MaxCLL/FALL
 2. **Encodage** (`make_x265_hdr_params`) : fournit les `-x265-params` du mode HDR10 quality
-3. **Retrait du RPU** (`remove_dv`) : supprime le Dolby Vision sans réencoder, quand
+3. **Retrait du RPU** (`build_remove_command`) : supprime le Dolby Vision sans réencoder, quand
    la couche de base est déjà du HDR10 (§ 7.3)
 
 ### 7.1 API publique
@@ -679,7 +679,10 @@ Module wrapper autour de `dovi_tool`, utilisé en trois phases :
 | `extract_hevc_stream(…)` | Extrait le flux HEVC brut Annex-B via ffmpeg |
 | `extract_rpu(…)` | Extrait le RPU depuis un `.hevc` brut |
 | `build_extract_hevc_command(…)` | Commande ffmpeg de l'extraction (progression côté TUI) |
-| `remove_dv(hevc_in, hevc_out, dovi_path)` | `dovi_tool remove` : retire RPU et couche d'amélioration |
+| `build_remove_command(hevc_in, hevc_out, dovi_path)` | `dovi_tool remove` : retire RPU et couche d'amélioration — lancée par l'écran, arrêtable, sans délai fixe |
+| `build_inject_command(hevc_in, rpu_in, hevc_out, dovi_path)` | `dovi_tool inject-rpu`, même régime |
+| `TuyauRpu(source, rpu, dovi_path, ffmpeg_path, duration)` | ffmpeg en tuyau sur `dovi_tool extract-rpu`, avec l'interface d'`EncoderProcess` (progression de ffmpeg, pause, arrêt) ; `wait()` n'est nul que si les deux le sont (CR-31) |
+| `rpu_valide(rpu)` | Le RPU existe et n'est pas vide (une source sans RPU donne un fichier vide, code 0) |
 | `build_strip_mp4(source, output, …)` | Retrait vers du MP4 sans greffe : une passe ffmpeg depuis la source, filtre `dovi_rpu=strip=1` ; `chapitres` (FFMETADATA) et langues complétées d'un titre de Blu-ray |
 | `strip_bsf_disponible(ffmpeg_path)` | ffmpeg connaît-il le filtre `dovi_rpu` (7.1+) ? |
 | `convert_p7_to_p8(…)` | Convertit RPU profil 7 → profil 8 (mode `-m 2`) |
@@ -865,6 +868,14 @@ L'étape 1 est un tuyau : `dovi_tool extract-rpu` accepte `-` en entrée, ce qui
 évite une recopie du film entier pour en tirer quelques kilo-octets.
 L'injection, elle, exige de vrais fichiers — elle relit son entrée une première
 fois pour reconstituer l'ordre des images.
+
+**Les étapes dovi_tool sont des processus du lot** (v0.8.9.108, CR-32, CR-61) : le
+tuyau (`TuyauRpu`), `remove` et `inject-rpu` passent par `RunScreen._executer`,
+publiés comme ffmpeg. `S`, `X`, la pause et la sortie les atteignent ; aucun délai
+fixe ne les tue — 30 min pour `remove`, 2 h pour `inject-rpu`, 1 h pour le tuyau
+pouvaient ne pas suffire sur un disque USB ou un partage, et l'étape mourait après
+des dizaines de minutes de travail. Seul `convert` (quelques kilo-octets de RPU)
+garde un appel bloquant court.
 
 **La passe vidéo ne porte aucun filtre**, pas même un `scale` aux dimensions
 d'origine : le nombre d'images doit correspondre au RPU, et un `-vf` ajouté
@@ -2027,6 +2038,13 @@ mobile de `[stats.encode_speed]`, qui nourrit la colonne « ETA ».
   OpenSubtitles : une réponse 200 qui n'est pas du JSON (portail captif) devient
   une `ErreurOpenSubtitles`, et les deux workers attrapent aussi `OSError`
   (CR-95).
+- **`S` sur une étape mkvmerge** (v0.8.9.108, CR-61) — assemblage d'un titre, mux
+  préalable, mux, remux Dolby Vision : `S` l'arrête aussi (`self._mux`) ; entre deux
+  étapes, un message dit d'attendre un instant au lieu de ne rien faire. **Un
+  abandon reste un abandon** : l'échec d'une étape que `S` ou `X` vient
+  d'interrompre ne réécrit plus l'état SKIPPED en ERROR (chemins DV,
+  `_porter_sous_titres`, `_muxer`, `_remux_titre`, `_extraire_dvd`, `_premux`) — le
+  bilan affiché « Arrêté » était contredit ensuite.
 - **Annexes partagées** (CR-24) — `annexes_jellyfin` ne rend rien quand une
   autre vidéo du dossier porte le même nom (`Film.avi`, `Film.iso`) : Jellyfin
   rattache les annexes aux deux.
@@ -3344,6 +3362,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.108 | 2026-10-09 | **Chemins Dolby Vision : dovi_tool arrêtable** (§ 7.1, § 7.4, § 12.4, IE-126 3/3) : `TuyauRpu`, `build_remove_command`, `build_inject_command`, `rpu_valide` remplacent les appels bloquants à délai fixe (CR-32) ; `RunScreen._executer` les publie ; `S` arrête aussi mkvmerge, un SKIPPED n'est plus réécrit en ERROR (CR-61) · `tests/test_dv_chemins.py` |
 | 0.8.9.107 | 2026-10-09 | **Chemins Dolby Vision : greffes, chapitres, langues** (§ 7.3, § 8.6, § 12.0, IE-126 2/3) : retrait DV vers MP4 avec greffes recomposé par mkvmerge puis remuxé (CR-55) ; audio greffée à la règle du profil sur les deux chemins DV (`_transcoder_greffes`, reporté d'IE-125) ; chapitres d'un titre de Blu-ray par `--chapters <playlist>` ou FFMETADATA, langues du `.clpi` écrites par `build_audio_command` et `build_strip_mp4` (CR-63) ; CR-56 vérifié couvert depuis la v0.8.9.104 · `tests/test_dv_chemins.py` |
 | 0.8.9.106 | 2026-10-09 | **Chemins Dolby Vision : source, pistes vides, RPU, mux** (§ 14.0, § 14.7, IE-126 1/3) : `RunScreen._supprimer_source`, une règle pour les trois chemins — titre de disque gardé, annexes supprimées, rien après `S` (CR-54) ; `_audio_vide` sur chaque sortie finale (CR-65) ; code de retour de ffmpeg exigé dans le tuyau du RPU (CR-31) ; `_muxable` limité au SKIP (CR-85) · `tests/test_dv_chemins.py` |
 | 0.8.9.105 | 2026-10-09 | **Écran de recalage** (§ 10.2, § 10.5, IE-125 3/3) : `extract_subtitle` sans délai fixe, avec progression et `ExtractionImpossible` qui dit la cause (CR-35), hors du fil de l'écran (`SyncScreen._en_texte`) ; `_srt_stamp` arrondit avant de découper (CR-36) ; WebVTT sans heures, fractions courtes complétées, `.sub` hors des formats texte (CR-37) ; mpv reçoit la piste extraite (`preview.build_command(…, sub_file=)`, CR-52) ; recalage audio désigné par l'objet, `D` refusé pendant une opération (CR-92) · `tests/test_recalage_ecran.py`, `tests/test_sync.py` |

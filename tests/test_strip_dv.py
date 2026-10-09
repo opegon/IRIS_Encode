@@ -180,12 +180,8 @@ def test_aucune_commande_ffmpeg_pour_un_retrait(tmp_path):
 
 
 def test_remove_dv_appelle_le_bon_sous_programme(tmp_path):
-    with mock.patch("subprocess.run") as run:
-        run.return_value = mock.Mock(returncode=0)
-        (tmp_path / "out.hevc").write_bytes(b"")
-        dovi.remove_dv(tmp_path / "in.hevc", tmp_path / "out.hevc",
-                       tmp_path / "dovi_tool.exe")
-    cmd = run.call_args[0][0]
+    cmd = dovi.build_remove_command(tmp_path / "in.hevc", tmp_path / "out.hevc",
+                                    tmp_path / "dovi_tool.exe")
     assert cmd[1] == "remove"
     assert "-i" in cmd and "-o" in cmd
 

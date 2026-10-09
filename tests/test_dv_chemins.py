@@ -91,13 +91,13 @@ def test_chaque_sortie_finale_est_controlee():
 # ─── CR-31 : ffmpeg en erreur dans le tuyau du RPU ───────────────────────────
 
 class _Processus:
+    """Un Popen simulé : code de retour fixe, flux vides."""
     def __init__(self, code: int):
-        self.code = code
-        self.returncode = code
+        import io
+        self.code = self.returncode = code
+        self.pid = 0
         self.stdout = SimpleNamespace(close=lambda: None)
-
-    def communicate(self, timeout=None):
-        return b"", b""
+        self.stderr = io.BytesIO(b"")
 
     def wait(self, timeout=None):
         return self.code
@@ -106,25 +106,37 @@ class _Processus:
         return self.code
 
 
-def test_un_ffmpeg_en_erreur_invalide_le_rpu(tmp_path, monkeypatch):
-    """Une lecture cassée en route : dovi_tool rend 0 sur le flux tronqué."""
-    rpu = tmp_path / "x.rpu"
-    rpu.write_bytes(b"rpu partiel")
-    codes = iter([1, 0])                       # ffmpeg, puis dovi_tool
+def _tuyau(tmp_path, monkeypatch, code_ff, code_dt) -> int:
+    codes = iter([code_ff, code_dt])           # ffmpeg, puis dovi_tool
     monkeypatch.setattr(dovi.subprocess, "Popen",
                         lambda *a, **k: _Processus(next(codes)))
-    assert dovi.extract_rpu_depuis_source(tmp_path / "s.mkv", rpu,
-                                          tmp_path / "dovi_tool.exe") is False
+    tuyau = dovi.TuyauRpu(tmp_path / "s.mkv", tmp_path / "x.rpu",
+                          tmp_path / "dovi_tool.exe")
+    tuyau.start()
+    list(tuyau.iter_progress())
+    return tuyau.wait()
+
+
+def test_un_ffmpeg_en_erreur_invalide_le_rpu(tmp_path, monkeypatch):
+    """Une lecture cassée en route : dovi_tool rend 0 sur le flux tronqué."""
+    assert _tuyau(tmp_path, monkeypatch, 1, 0) != 0
 
 
 def test_les_deux_a_zero_rendent_le_rpu(tmp_path, monkeypatch):
+    assert _tuyau(tmp_path, monkeypatch, 0, 0) == 0
+
+
+def test_un_dovi_tool_en_erreur_invalide_le_rpu(tmp_path, monkeypatch):
+    assert _tuyau(tmp_path, monkeypatch, 0, 2) != 0
+
+
+def test_un_rpu_vide_n_est_pas_un_rpu(tmp_path):
     rpu = tmp_path / "x.rpu"
+    assert not dovi.rpu_valide(rpu)
+    rpu.write_bytes(b"")
+    assert not dovi.rpu_valide(rpu)
     rpu.write_bytes(b"rpu")
-    codes = iter([0, 0])
-    monkeypatch.setattr(dovi.subprocess, "Popen",
-                        lambda *a, **k: _Processus(next(codes)))
-    assert dovi.extract_rpu_depuis_source(tmp_path / "s.mkv", rpu,
-                                          tmp_path / "dovi_tool.exe") is True
+    assert dovi.rpu_valide(rpu)
 
 
 # ─── CR-85 : un retrait du DV avec greffe ne part pas en mux ─────────────────
@@ -188,6 +200,8 @@ class _Ecran:
     _ecrire_chapitres   = RunScreen._ecrire_chapitres
     _supprimer_source   = RunScreen._supprimer_source
     _demarrer           = RunScreen._demarrer
+    _arreter            = RunScreen._arreter
+    _executer           = RunScreen._executer
     _playlist_chapitres = staticmethod(RunScreen._playlist_chapitres)
     _audio_vide         = staticmethod(RunScreen._audio_vide)
 
@@ -197,7 +211,8 @@ class _Ecran:
             dovi_path=_DOVI, mkvmerge_available=True, ffmpeg_path=str(_FFMPEG))
         self._statuses = [FileRunStatus(decision=dec, state=FileState.RUNNING)]
         self._process = self._mux = None
-        self._abandon = False
+        self._abandon = self._paused = False
+        self._current_idx = 0
 
     def _update_row(self, *a): pass
     def _update_header(self, *a): pass
@@ -377,3 +392,93 @@ def test_le_retrait_vers_mp4_ecrit_chapitres_et_langues(tmp_path):
     assert cmd[cmd.index("-map_chapters") + 1] == "1"
     assert cmd[cmd.index("-metadata:s:a:0") + 1] == "language=fre"
     assert cmd[cmd.index("-metadata:s:s:0") + 1] == "language=fre"
+
+
+
+# ─── CR-32, CR-61 : dovi_tool arrêtable, `S` sur mkvmerge, SKIPPED tenu ──────
+
+DOVI = (RACINE / "core" / "dovi.py").read_text(encoding="utf-8")
+
+
+def test_aucun_delai_fixe_sur_une_etape_qui_lit_le_film():
+    """remove, inject-rpu et le tuyau du RPU passent par des processus
+    publiés : plus de `subprocess.run(…, timeout=…)` qui les tue (CR-32)."""
+    for ancien in ("def remove_dv", "def inject_rpu", "def extract_rpu_depuis_source"):
+        assert ancien not in DOVI
+    assert "dovi.TuyauRpu(" in RUN
+    assert RUN.count("self._executer(index, ") == 3
+
+
+class _Bloque:
+    """Une étape dovi_tool qui ne finirait jamais seule ; `X` tombe pendant."""
+    lances: list = []
+
+    def __init__(self, cmd, duree=0.0):
+        self.cmd, self.termine = cmd, False
+
+    def start(self):
+        _Bloque.lances.append(self)
+        if self.cmd[1:2] == ["remove"]:
+            ecran = _Bloque.ecran
+            ecran._statuses[0].state = FileState.SKIPPED   # `X` : l'état d'abord
+            ecran._abandon = True
+        else:
+            Path(self.cmd[-1]).write_bytes(b"hevc")
+
+    def iter_progress(self):
+        return iter(())
+
+    def terminate(self):
+        self.termine = True
+
+    def wait(self):
+        return 1 if self.termine else 0
+
+
+@outils
+def test_x_pendant_dovi_tool_l_arrete_et_rien_ne_suit(tmp_path, vrais_outils,
+                                                      monkeypatch):
+    """`X` pendant `dovi_tool remove` ne trouvait rien à arrêter : dovi_tool
+    écrivait encore des dizaines de Go, puis l'échec de l'étape suivante
+    réécrivait le SKIPPED en ERROR, contre le bilan affiché."""
+    import tui.screens.run as run
+    dec = _retrait_avec_greffes(tmp_path, "mkv")
+    ecran = _Ecran(dec)
+    _Bloque.ecran, _Bloque.lances = ecran, []
+    monkeypatch.setattr(run, "EncoderProcess", _Bloque)
+    monkeypatch.setattr(run, "MuxProcess", _Bloque)
+    ecran._strip_dv(0, dec)
+
+    assert [p.cmd[1:2] for p in _Bloque.lances][-1] == ["remove"]
+    assert _Bloque.lances[-1].termine
+    assert ecran._statuses[0].state == FileState.SKIPPED
+
+
+def _ecran_skip(process=None, mux=None):
+    statut = SimpleNamespace(state=FileState.RUNNING, last_line="")
+    notes: list = []
+    return SimpleNamespace(
+        _done=False, _process=process, _mux=mux, _paused=False, _started=True,
+        _current_idx=0, _statuses=[statut], _update_row=lambda i: None,
+        notify=lambda msg, **k: notes.append(msg), notes=notes)
+
+
+def test_s_arrete_aussi_une_etape_mkvmerge():
+    mux = SimpleNamespace(termine=False)
+    mux.terminate = lambda: setattr(mux, "termine", True)
+    ecran = _ecran_skip(mux=mux)
+    RunScreen.action_skip_current(ecran)
+    assert mux.termine and ecran._statuses[0].state == FileState.SKIPPED
+
+
+def test_s_entre_deux_etapes_le_dit():
+    ecran = _ecran_skip()
+    RunScreen.action_skip_current(ecran)
+    assert ecran.notes and ecran._statuses[0].state == FileState.RUNNING
+
+
+def test_un_abandon_n_est_jamais_reecrit_en_echec():
+    """Après chaque étape mkvmerge hors DV, l'échec d'une étape interrompue
+    par `S` ou `X` ne repasse pas le fichier en erreur."""
+    assert RUN.count("if s.state == FileState.SKIPPED:          # `S` ou `X` (CR-61)") == 4
+    assert RUN.count("# fichier reste abandonné, comme le bilan l'affiche (CR-61).") == 2

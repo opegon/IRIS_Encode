@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.108] — 2026-10-09
+
+### Dolby Vision : des étapes qu'on peut arrêter, et sans délai fixe (IE-126, 3/3)
+
+Revue IE-114, constats CR-32, 61. IE-126 est close.
+
+- **dovi_tool sans minuterie.** Le retrait du RPU, sa réinjection et sa
+  lecture étaient tués au bout de 30 min, 2 h et 1 h : sur un disque USB ou
+  un partage, un remux UHD pouvait échouer après des dizaines de minutes de
+  travail, sans autre explication. Ces étapes durent maintenant le temps
+  qu'il faut, et la lecture du RPU affiche sa progression.
+- **`X`, `S`, la pause et Quitter atteignent dovi_tool.** `X` pendant un
+  retrait affichait « Arrêté » pendant que dovi_tool continuait d'écrire des
+  dizaines de Go ; l'étape suivante échouait ensuite et le fichier passait
+  « en échec ». dovi_tool est arrêté, et le fichier reste « passé ».
+- **`S` pendant une étape mkvmerge** (assemblage d'un titre de Blu-ray, mux,
+  remux Dolby Vision) ne faisait rien, sans un mot : il l'arrête. Entre deux
+  étapes, un message invite à réessayer.
+- **Un fichier passé ne devient plus « en échec »** quand l'étape qu'on
+  vient d'interrompre se termine en erreur.
+
 ## [v0.8.9.107] — 2026-10-09
 
 ### Dolby Vision : les pistes greffées, les chapitres, les langues (IE-126, 2/3)

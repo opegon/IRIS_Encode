@@ -3133,339 +3133,343 @@ msgid "Preparing the audio tracks failed (code {code})."
 msgstr ""
 
 #: tui/screens/run.py:755
-#: tui/screens/run.py:775
+#: tui/screens/run.py:778
 msgid "subtitles: preparation failed"
 msgstr ""
 
-#: tui/screens/run.py:784
+#: tui/screens/run.py:786
 msgid "Reading the subtitles — a long silence skews their timings in MP4…"
 msgstr ""
 
-#: tui/screens/run.py:800
+#: tui/screens/run.py:802
 #, python-brace-format
 msgid "Extracting the subtitles failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:818
+#: tui/screens/run.py:820
 #, python-brace-format
 msgid "Grouping the subtitles failed: {detail}"
 msgstr ""
 
-#: tui/screens/run.py:870
+#: tui/screens/run.py:888
 #, python-brace-format
 msgid "Transcoding the added audio track “{name}”…"
 msgstr ""
 
-#: tui/screens/run.py:887
-#: tui/screens/run.py:1031
-#: tui/screens/run.py:1316
+#: tui/screens/run.py:905
+#: tui/screens/run.py:1055
+#: tui/screens/run.py:1348
 #, python-brace-format
 msgid "audio transcoding: code {code}"
 msgstr ""
 
-#: tui/screens/run.py:888
+#: tui/screens/run.py:906
 #, python-brace-format
 msgid "Transcoding the added audio track “{name}” failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:917
-#: tui/screens/run.py:1201
+#: tui/screens/run.py:939
+#: tui/screens/run.py:1229
 msgid "dovi_tool + mkvmerge required"
 msgstr ""
 
-#: tui/screens/run.py:918
+#: tui/screens/run.py:940
 msgid "Removing Dolby Vision needs dovi_tool and mkvmerge. Run the preflight again to install them."
 msgstr ""
 
-#: tui/screens/run.py:947
+#: tui/screens/run.py:969
 msgid "ffmpeg 7.1+ required (dovi_rpu filter)"
 msgstr ""
 
-#: tui/screens/run.py:948
+#: tui/screens/run.py:970
 msgid "Removing Dolby Vision to MP4 needs the dovi_rpu filter, which came with ffmpeg 7.1. Update ffmpeg from the preflight."
 msgstr ""
 
-#: tui/screens/run.py:968
+#: tui/screens/run.py:990
 msgid "Extracting the HEVC stream — copy, no re-encoding…"
 msgstr ""
 
-#: tui/screens/run.py:986
+#: tui/screens/run.py:1008
 #, python-brace-format
 msgid "HEVC extraction: code {code}"
 msgstr ""
 
-#: tui/screens/run.py:987
+#: tui/screens/run.py:1009
 #, python-brace-format
 msgid "Extracting the HEVC stream failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:997
+#: tui/screens/run.py:1018
 msgid "Removing the Dolby Vision RPU with dovi_tool…"
 msgstr ""
 
-#: tui/screens/run.py:1002
+#: tui/screens/run.py:1026
 msgid "dovi_tool remove failed"
 msgstr ""
 
-#: tui/screens/run.py:1003
+#: tui/screens/run.py:1027
 msgid "dovi_tool could not remove the RPU from the stream."
 msgstr ""
 
-#: tui/screens/run.py:1014
-#: tui/screens/run.py:1303
+#: tui/screens/run.py:1038
+#: tui/screens/run.py:1335
 msgid "Transcoding the audio tracks…"
 msgstr ""
 
-#: tui/screens/run.py:1032
-#: tui/screens/run.py:1317
+#: tui/screens/run.py:1056
+#: tui/screens/run.py:1349
 #, python-brace-format
 msgid "Transcoding the audio tracks failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:1053
+#: tui/screens/run.py:1077
 msgid "Removing the RPU and remuxing with ffmpeg — copy, no re-encoding…"
 msgstr ""
 
-#: tui/screens/run.py:1085
-#: tui/screens/run.py:1337
+#: tui/screens/run.py:1109
+#: tui/screens/run.py:1369
 msgid "Remuxing the tracks with mkvmerge…"
 msgstr ""
 
-#: tui/screens/run.py:1103
-#: tui/screens/run.py:1350
+#: tui/screens/run.py:1127
+#: tui/screens/run.py:1382
 #, python-brace-format
 msgid "remux: {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1104
-#: tui/screens/run.py:1351
+#: tui/screens/run.py:1128
+#: tui/screens/run.py:1383
 #, python-brace-format
 msgid "Remux failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1118
-#: tui/screens/run.py:1362
+#: tui/screens/run.py:1142
+#: tui/screens/run.py:1394
 msgid "Remuxing to MP4 with ffmpeg…"
 msgstr ""
 
-#: tui/screens/run.py:1131
-#: tui/screens/run.py:1375
+#: tui/screens/run.py:1155
+#: tui/screens/run.py:1407
 #, python-brace-format
 msgid "MP4 remux: code {code}"
 msgstr ""
 
-#: tui/screens/run.py:1132
-#: tui/screens/run.py:1376
+#: tui/screens/run.py:1156
+#: tui/screens/run.py:1408
 #, python-brace-format
 msgid "The MP4 remux failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:1202
+#: tui/screens/run.py:1230
 msgid "Preserving Dolby Vision through a re-encode needs dovi_tool and mkvmerge. Run the preflight again to install them."
 msgstr ""
 
-#: tui/screens/run.py:1245
+#: tui/screens/run.py:1275
 msgid "Extracting the Dolby Vision metadata…"
 msgstr ""
 
-#: tui/screens/run.py:1248
+#: tui/screens/run.py:1281
 msgid "RPU extraction failed"
 msgstr ""
 
-#: tui/screens/run.py:1249
+#: tui/screens/run.py:1282
 msgid "dovi_tool could not extract the Dolby Vision metadata from the source. The re-encode would have destroyed it: stopping rather than producing a file without Dolby Vision."
 msgstr ""
 
-#: tui/screens/run.py:1259
+#: tui/screens/run.py:1290
 msgid "Converting the RPU to profile 8.1…"
 msgstr ""
 
-#: tui/screens/run.py:1262
+#: tui/screens/run.py:1293
 msgid "RPU 7 → 8.1 conversion failed"
 msgstr ""
 
-#: tui/screens/run.py:1263
+#: tui/screens/run.py:1294
 msgid "dovi_tool could not convert the RPU from profile 7 to profile 8.1."
 msgstr ""
 
-#: tui/screens/run.py:1270
+#: tui/screens/run.py:1301
 msgid "Encoding the video…"
 msgstr ""
 
-#: tui/screens/run.py:1284
+#: tui/screens/run.py:1315
 #, python-brace-format
 msgid "video encoding: code {code}"
 msgstr ""
 
-#: tui/screens/run.py:1285
+#: tui/screens/run.py:1316
 #, python-brace-format
 msgid "Encoding the video failed (code {code})."
 msgstr ""
 
-#: tui/screens/run.py:1289
+#: tui/screens/run.py:1321
 msgid "Re-injecting Dolby Vision…"
 msgstr ""
 
-#: tui/screens/run.py:1292
+#: tui/screens/run.py:1326
 msgid "RPU re-injection failed"
 msgstr ""
 
-#: tui/screens/run.py:1293
+#: tui/screens/run.py:1327
 msgid "dovi_tool could not re-inject the RPU. The most common cause is a different frame count between the source and the encode."
 msgstr ""
 
-#: tui/screens/run.py:1422
+#: tui/screens/run.py:1454
 msgid "mkvmerge required"
 msgstr ""
 
-#: tui/screens/run.py:1423
+#: tui/screens/run.py:1455
 msgid "Adding tracks without re-encoding needs mkvmerge. Run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/run.py:1435
+#: tui/screens/run.py:1467
 msgid "Adding the tracks with mkvmerge, no re-encoding…"
 msgstr ""
 
-#: tui/screens/run.py:1454
-#: tui/screens/run.py:1520
-#: tui/screens/run.py:1631
+#: tui/screens/run.py:1488
+#: tui/screens/run.py:1556
+#: tui/screens/run.py:1671
 #, python-brace-format
 msgid "mux: {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1455
+#: tui/screens/run.py:1489
 #, python-brace-format
 msgid "Mux failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1491
+#: tui/screens/run.py:1525
 msgid "mkvmerge required (Blu-ray title)"
 msgstr ""
 
-#: tui/screens/run.py:1492
+#: tui/screens/run.py:1526
 msgid "This Blu-ray title spans several clips: only mkvmerge can join them. Run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/run.py:1502
+#: tui/screens/run.py:1536
 msgid "Joining the clips of the Blu-ray title with mkvmerge…"
 msgstr ""
 
-#: tui/screens/run.py:1521
+#: tui/screens/run.py:1557
 #, python-brace-format
 msgid "Joining the Blu-ray title failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1539
+#: tui/screens/run.py:1575
 msgid "DVD tool required"
 msgstr ""
 
-#: tui/screens/run.py:1540
+#: tui/screens/run.py:1576
 msgid "Reading a DVD title needs the DVD tool (an ffmpeg with libdvdnav). Restart IRIS ENCODE and accept its installation."
 msgstr ""
 
-#: tui/screens/run.py:1551
+#: tui/screens/run.py:1587
 msgid "Extracting the DVD title (lossless copy)…"
 msgstr ""
 
-#: tui/screens/run.py:1570
+#: tui/screens/run.py:1608
 #, python-brace-format
 msgid "DVD: {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1571
+#: tui/screens/run.py:1609
 #, python-brace-format
 msgid "Extracting the DVD title failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1591
+#: tui/screens/run.py:1629
 msgid "mkvmerge required (stretch)"
 msgstr ""
 
-#: tui/screens/run.py:1592
+#: tui/screens/run.py:1630
 msgid "A track needs a stretch factor: only mkvmerge can apply it. Run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/run.py:1613
+#: tui/screens/run.py:1651
 msgid "Adding the tracks with mkvmerge (stretch) before encoding…"
 msgstr ""
 
-#: tui/screens/run.py:1632
+#: tui/screens/run.py:1672
 #, python-brace-format
 msgid "Pre-mux failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1658
+#: tui/screens/run.py:1698
 #, python-brace-format
 msgid "Done — succeeded: {success} · failed: {failed} · skipped: {skipped}"
 msgstr ""
 
-#: tui/screens/run.py:1667
+#: tui/screens/run.py:1707
 #, python-brace-format
 msgid "… and {count} other"
 msgid_plural "… and {count} others"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/run.py:1681
+#: tui/screens/run.py:1721
 #, python-brace-format
 msgid "Encoding batch done — {key} for the summary."
 msgstr ""
 
-#: tui/screens/run.py:1701
+#: tui/screens/run.py:1741
 msgid "Only a pending file can be moved or removed — the running one and the finished ones stay."
 msgstr ""
 
-#: tui/screens/run.py:1739
+#: tui/screens/run.py:1779
 #, python-brace-format
 msgid "{file} removed from the queue."
 msgstr ""
 
-#: tui/screens/run.py:1753
+#: tui/screens/run.py:1793
 msgid "Sleep and shutdown are only managed under Windows."
 msgstr ""
 
-#: tui/screens/run.py:1758
+#: tui/screens/run.py:1798
 #, python-brace-format
 msgid "After the batch: nothing is planned. Choose an action in the options ({key}, then {option_key})."
 msgstr ""
 
-#: tui/screens/run.py:1765
+#: tui/screens/run.py:1805
 #, python-brace-format
 msgid "After the batch: {action}, after a {seconds} s countdown."
 msgstr ""
 
-#: tui/screens/run.py:1769
+#: tui/screens/run.py:1809
 msgid "After the batch: nothing."
 msgstr ""
 
-#: tui/screens/run.py:1791
+#: tui/screens/run.py:1835
+msgid "No step to skip at this instant — try again in a moment."
+msgstr ""
+
+#: tui/screens/run.py:1841
 msgid "Skipped manually"
 msgstr ""
 
-#: tui/screens/run.py:1874
+#: tui/screens/run.py:1927
 msgid "Stopped"
 msgstr ""
 
-#: tui/screens/run.py:1882
+#: tui/screens/run.py:1935
 msgid "The current file is abandoned, its partial output deleted."
 msgstr ""
 
-#: tui/screens/run.py:1884
+#: tui/screens/run.py:1937
 #, python-brace-format
 msgid "The pending file will not be encoded."
 msgid_plural "The {count} pending files will not be encoded."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/run.py:1888
+#: tui/screens/run.py:1941
 msgid "Stop all encodes?"
 msgstr ""
 
-#: tui/screens/run.py:1889
+#: tui/screens/run.py:1942
 msgid "Stop"
 msgstr ""
 
-#: tui/screens/run.py:1889
+#: tui/screens/run.py:1942
 #: tui/screens/wizard.py:141
 msgid "Continue"
 msgstr ""

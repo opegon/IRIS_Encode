@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.0 — document de référence courant
+**Version** : 0.9.0.1 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -610,7 +610,7 @@ ne voit plus de Dolby Vision (IE-109). Les sources sans DV sont encodées normal
 | 2 | `data/profiles.default.toml` | les **profils livrés** : sèment le fichier au premier lancement, tiennent la session si le TOML de l'utilisateur devient illisible |
 | 3 | `_default_` | plancher codé en dur, dernier recours si le fichier livré manque |
 
-**Les profils livrés** (v0.8.8.4 ; quatorze depuis la v0.8.9.54) sont versionnés avec le code et donc
+**Les profils livrés** (v0.8.8.4 ; quinze depuis la v0.9.0.1) sont versionnés avec le code et donc
 présents dans l'archive d'une release — `profiles.toml`, lui, est ignoré par
 git : c'est le fichier de travail de chaque poste. Jusque-là le plancher semait
 seul, et le sélecteur d'une installation neuve s'ouvrait sur une liste d'un
@@ -620,12 +620,14 @@ changer.
 Le premier du fichier livré est `series_anime`, et il porte
 `delete_source = false` : c'est lui que `get_active_profile` retient au premier
 lancement, tant que rien n'a été choisi (`tests/test_profils_livres.py` y
-veille). Trois profils livrés portent `delete_source = true` —
-`series_anime_delete`, `series_basic_delete` et `video_basic_delete` —, chacun
+veille). Quatre profils livrés portent `delete_source = true` —
+`series_anime_delete`, `series_basic_delete`, `movie_basic_delete` et
+`video_basic_delete` —, chacun
 signalé « ⚠ suppr. » dans `F4` et `F5` ; aucun n'est en tête.
 
 Depuis la v0.8.9.54, le fichier livré est la bibliothèque de profils de
-l'auteur, recopiée telle quelle : une installation neuve la reçoit au premier
+l'auteur, recopiée telle quelle (reprise le 2026-10-09 pour la v0.9.0.1 :
+`movie_basic_delete` ajouté, `series_basic` en preset `fast`) : une installation neuve la reçoit au premier
 lancement, une mise à jour ne touche jamais le `profiles.toml` existant — à
 une exception près, le renommage des profils livrés.
 
@@ -694,7 +696,7 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 
 ```
 ⚠ profiles.toml illisible (erreur syntaxe ligne 12).
-  Session tenue sur les 14 profils livrés — votre fichier n'a pas été touché.
+  Session tenue sur les 15 profils livrés — votre fichier n'a pas été touché.
 ```
 
 L'écriture du fichier semé passe par `save_all`, donc par l'écriture atomique de
@@ -3555,6 +3557,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.9.0.1 | 2026-10-09 | **Profils livrés** (§ 6) : `data/profiles.default.toml` reprend tel quel le `profiles.toml` de l'utilisateur, à la demande, pour la release — `movie_basic_delete` en plus (quinze profils), `series_basic` en preset `fast` avec `hdr10_quality = "compat"` explicite. Une installation existante garde son fichier |
 | 0.9.0.0 | 2026-10-09 | **Release v0.9.0** (IE-96) : bump de MINOR, décidé par l'utilisateur à la fin de la revue IE-114 — localisation anglais/français (IE-86 à IE-95), sources disque (IE-118 à IE-122), revue de code complète et ses quinze entrées de corrections (IE-123 à IE-137). Vérifications sur le G3 et Weblate reportées après la release |
 | 0.8.9.121 | 2026-10-09 | **Code mort** (§ 7, § 14.1, § 15, IE-137) : retirés `scan_directory`, `scanner.list_subdirs`, `set_dovi_path`, trois propriétés de `VideoInfo` (CR-13), `extract_hevc_stream`, `extract_rpu`, `get_temp_dir`, `cleanup_temp_files` et la doc de `probe_file`/`rpu_info` (CR-33), `summary_line`, `parse_languages` (CR-46), la branche « Volumes » du fil d'Ariane (CR-69) ; outil DVD sans repli sur un ffmpeg nu (CR-08) ; annotations `X \| None` dans `run.py` (CR-66) ; **un dossier passé en argument s'ouvre** (CR-73) · `same_language` et `validate_id` gardés (appelants depuis IE-136 et CR-99) · `tests/test_code_mort.py` |
 | 0.8.9.120 | 2026-10-09 | **Libellés** (§ 14.1, § 14.2, IE-135 3/3 — IE-135 close) : en-têtes « ETA », « Dolby V. », « DV », « Release » au catalogue (CR-79, CR-97), « oui » d'OpenSubtitles traduit (CR-97) · pistes : « défaut » d'après le drapeau, conteneur réel (CR-83) · identifiant de profil validé par `profiles.validate_id` (CR-99) · `tests/test_libelles_revue.py` |

@@ -53,7 +53,7 @@ bitrate_1080p_kbps = 2200
 bitrate_4k_kbps = 3500
 keep_4k = false
 delete_source = false
-preset_encoder = "medium"
+preset_encoder = "fast"
 dolby_vision = "sdr"
 preserve_hd_audio = false
 audio_languages = [
@@ -70,6 +70,7 @@ audio_surround_7_1_kbps = 640
 audio_copy_compatible = true
 audio_hd_codec = "none"
 container = "auto"
+hdr10_quality = "compat"
 
 [series_basic_delete]
 bitrate_720p_kbps = 1500
@@ -169,6 +170,31 @@ audio_copy_compatible = true
 audio_hd_codec = "none"
 container = "auto"
 hdr10_quality = "compat"
+
+[movie_basic_delete]
+bitrate_720p_kbps = 2000
+bitrate_1080p_kbps = 3000
+bitrate_4k_kbps = 5000
+dolby_vision = "sdr"
+preset_encoder = "medium"
+hdr10_quality = "compat"
+keep_4k = false
+delete_source = true
+audio_languages = [
+    "fre",
+    "eng",
+]
+subtitle_languages = [
+    "fre",
+    "eng",
+]
+audio_stereo_kbps = 320
+audio_surround_kbps = 448
+audio_surround_7_1_kbps = 640
+preserve_hd_audio = false
+audio_hd_codec = "none"
+container = "auto"
+audio_copy_compatible = true
 
 [movie_hdr]
 bitrate_720p_kbps = 3000

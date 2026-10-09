@@ -1,5 +1,15 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.1] — 2026-10-09
+
+### Profils livrés
+
+Les profils proposés à une installation neuve reprennent la bibliothèque de
+l'auteur : un profil de plus, **`movie_basic_delete`** (comme `movie_basic`,
+en supprimant la source), et `series_basic` en preset `fast`. Une
+installation existante garde ses propres profils : une mise à jour ne touche
+jamais `profiles.toml`.
+
 ## [v0.9.0.0] — 2026-10-09
 
 ### IRIS ENCODE 0.9.0

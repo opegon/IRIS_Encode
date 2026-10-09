@@ -379,3 +379,10 @@ Mesuré : gyan.dev publie `<archive>.sha256` (l'URL roulante redirige en 303 ver
 celui du build courant), BtbN et quietvoid/dovi_tool un `digest` par asset
 (absent sur dovi_tool 2.1.0, antérieure), MKVToolNix un `sha256sums.txt` par
 release. Page mise à jour : [[ffmpeg]].
+
+## [2026-10-09] ingest | Lanceurs sous Windows (IE-132 2/3)
+
+Essais réels, ancien et nouveau lanceur : `launch.bat` dans `Test!x` (le `!`
+effacé fait démarrer le `main.py` du dossier courant), `l'essai` (bandeau sans
+version), lanceur C# dans `A;B` (`wt.exe` coupe au `;`, `\;` passe), raccourci
+de `build.bat` avec apostrophe. Page mise à jour : [[pieges-et-lecons]].

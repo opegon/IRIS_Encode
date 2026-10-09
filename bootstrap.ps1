@@ -62,9 +62,11 @@ function Test-EnvComplet {
     if (-not (Test-Path $VenvPy)) { return $false }
     # Un venv peut exister et lui manquer une dépendance : une installation
     # interrompue laisse exactement cet état. On vérifie ce qui compte —
-    # que les modules s'importent — plutôt que la seule présence du dossier.
+    # chaque paquet présent et dans les bornes de requirements.txt
+    # (dependances.py) — plutôt que la seule présence du dossier. Un venv
+    # hors bornes est reconstruit.
     try {
-        & $VenvPy -c "import textual, rich, requests, tomli_w, bs4, numpy" 2>$null | Out-Null
+        & $VenvPy (Join-Path $Racine 'dependances.py') 2>$null | Out-Null
     } catch {
         # Un python.exe présent mais que Windows refuse de lancer : c'est l'état
         # que laisse un venv construit par `uv venv` sur une machine où Smart App

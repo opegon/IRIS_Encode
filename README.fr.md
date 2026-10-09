@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.114 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.115 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -292,7 +292,8 @@ Un Python système qui convient est *utilisé*, jamais remplacé. À l'inverse, 
 ### 1.3 Reconstruire l'environnement
 
 Si quelque chose s'est mal passé, ou après une mise à jour de
-`requirements.txt` :
+`requirements.txt` (un environnement dont les paquets sortent des bornes de
+`requirements.txt` est reconstruit de lui-même) :
 
 ```
 powershell -ExecutionPolicy Bypass -File bootstrap.ps1 -Force

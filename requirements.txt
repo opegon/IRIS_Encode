@@ -1,6 +1,9 @@
-textual>=0.47.0
-rich>=13.0.0
-tomli-w>=1.0.0
-requests>=2.31.0
-beautifulsoup4>=4.12.0
-numpy>=1.26.0
+# Bornes : plancher = ce que le code emploie, plafond = la version majeure
+# suivante, jamais eprouvee (CR-109, CR-110). dependances.py les controle
+# au lancement ; les relever se fait avec les tests.
+textual>=8.2,<9
+rich>=13.0.0,<16
+tomli-w>=1.0.0,<2
+requests>=2.31.0,<3
+beautifulsoup4>=4.12.0,<5
+numpy>=1.26.0,<3

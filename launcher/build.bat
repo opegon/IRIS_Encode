@@ -52,7 +52,7 @@ echo.
 choice /c YN /n /m "Create an 'IRIS ENCODE' shortcut on the Desktop? [Y/N] "
 if errorlevel 2 goto :fin
 
-powershell -NoProfile -Command "$s = (New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop') + '\IRIS ENCODE.lnk'); $s.TargetPath = '%ROOT%\IRIS_Encode.exe'; $s.WorkingDirectory = '%ROOT%'; $s.Description = 'IRIS ENCODE'; $s.Save()"
+powershell -NoProfile -Command "$s = (New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop') + '\IRIS ENCODE.lnk'); $s.TargetPath = $env:ROOT + '\IRIS_Encode.exe'; $s.WorkingDirectory = $env:ROOT; $s.Description = 'IRIS ENCODE'; $s.Save()"
 if errorlevel 1 (
     echo  [ERROR] The shortcut could not be created. Right-click
     echo  IRIS_Encode.exe ^> "Send to" ^> "Desktop" does the same.

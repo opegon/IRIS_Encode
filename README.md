@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.8.9.114 — Windows (macOS/Linux support planned)
+**Version**: 0.8.9.115 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -289,7 +289,8 @@ stopping.
 
 ### 1.3 Rebuild the environment
 
-If something went wrong, or after an update of `requirements.txt`:
+If something went wrong (an environment whose packages fall outside the
+bounds of `requirements.txt` is rebuilt on its own):
 
 ```
 powershell -ExecutionPolicy Bypass -File bootstrap.ps1 -Force

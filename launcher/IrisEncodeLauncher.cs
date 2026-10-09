@@ -40,9 +40,11 @@ static class IrisEncodeLauncher
 
         // Un « \ » final serait lu « \" » — guillemet échappé — par wt.exe :
         // cas d'un dossier à la racine d'un disque (« D:\ »). Le doubler le
-        // rend inerte.
+        // rend inerte. Un « ; » sépare deux sous-commandes de wt.exe, même
+        // entre guillemets : seul « \; » est littéral (CR-111).
+        string chemin = dossier.Replace(";", "\\;");
         string entreGuillemets =
-            "\"" + (dossier.EndsWith("\\") ? dossier + "\\" : dossier) + "\"";
+            "\"" + (chemin.EndsWith("\\") ? chemin + "\\" : chemin) + "\"";
 
         // wt.exe est un alias d'exécution (fichier de 0 octet sous
         // WindowsApps) : CreateProcess ne sait pas le résoudre, seul

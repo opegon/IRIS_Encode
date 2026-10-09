@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.114 — document de référence courant
+**Version** : 0.8.9.115 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -35,6 +35,7 @@ iris_encode/
 ├── GUIDE.md                      ← guide d'utilisation (procédures, cas), en anglais
 ├── GUIDE.fr.md                   ← le même, en français
 ├── launch.bat                    ← choix de l'interpréteur, point d'entrée Windows
+├── dependances.py                ← bornes de requirements.txt contrôlées (lanceurs)
 ├── bootstrap.ps1                 ← installe uv + CPython + .venv, sans droits admin
 ├── main.py                       ← point d'entrée Python (autonome)
 ├── version.py                    ← source unique de la version
@@ -235,8 +236,8 @@ Choisit un interpréteur, dans cet ordre — le premier qui convient :
 
 | Rang | Candidat | Retenu si |
 |---|---|---|
-| 1 | `.venv\Scripts\python.exe` | les six modules de `requirements.txt` s'importent |
-| 2 | `python` du PATH | il annonce 3.11 ou mieux |
+| 1 | `.venv\Scripts\python.exe` | chaque paquet de `requirements.txt` est installé et dans ses bornes (`dependances.py`) |
+| 2 | `python` du PATH | il est en 3.11 ou mieux (`sys.version_info`, jugé par Python lui-même) |
 | 3 | `bootstrap.ps1` | les deux précédents ont échoué — il construit le rang 1 |
 
 Le `.venv` passe devant le Python du système : c'est le seul dont les versions
@@ -247,11 +248,36 @@ permissions), le lanceur bascule sur `bootstrap.ps1` plutôt que de s'arrêter.
 - Propose la mise à jour de l'application avant tout (§ 3.1.2), puis se
   relance sur la version neuve si elle a été installée
 - Délègue à `main.py` en passant les arguments (`%*`)
-- Utilise `%~dp0` pour garantir la portabilité du chemin
+- Utilise `%~dp0` pour garantir la portabilité du chemin, **sans expansion
+  retardée** : avec elle, cmd effaçait tout `!` d'un chemin développé — dans
+  un dossier `Test!x`, le `.venv` n'était pas trouvé et c'était le `main.py`
+  du dossier courant qui démarrait (mesuré)
 - Lit la version depuis `version.py` (aucune version en dur), avec
   l'interpréteur retenu — donc après son choix. Les `^"` encadrant l'appel
   `for /f` sont nécessaires : sans eux, une commande dont l'exécutable *et*
-  l'argument sont entre guillemets se casse, et la version reste vide
+  l'argument sont entre guillemets se casse, et la version reste vide. Le
+  dossier passe par la variable `IRIS_DIR`, jamais dans le code Python : une
+  apostrophe du chemin y fermait la chaîne
+- Ne purge plus les `__pycache__` : la purge descendait dans `.venv` et faisait
+  recompiler toutes les dépendances à chaque lancement. Python invalide seul un
+  `.pyc` dont la source a changé
+
+**Bornes des dépendances.** `requirements.txt` porte pour chaque paquet un
+plancher (ce que le code emploie : Textual 8.2) et un plafond (la version
+majeure suivante, jamais éprouvée) — arbitrage du 2026-10-09, contre des
+versions figées. `dependances.py`, bibliothèque standard seule, compare les
+versions installées à ces bornes (`importlib.metadata`) et rend 1 sur un
+paquet absent ou hors bornes ; `launch.bat` (rangs 1 et 2) et `bootstrap.ps1`
+(`Test-EnvComplet`) l'appellent. Un `.venv` hors bornes est reconstruit par
+`bootstrap.ps1` ; un Python du système hors bornes est remis dans les bornes
+par `pip install -r requirements.txt`.
+
+**Lanceur `IRIS_Encode.exe`** (`launcher/IrisEncodeLauncher.cs`) : le dossier
+est passé à `wt.exe -d` avec ses `;` échappés en `\;` — `wt.exe` lit `;` comme
+séparateur de sous-commandes, même entre guillemets (mesuré : dans `A;B`, la
+TUI ne démarrait pas). `launcher/build.bat` passe le chemin du raccourci par
+`$env:ROOT` : incrusté entre apostrophes PowerShell, un dossier `l'essai`
+faisait échouer la création (mesuré).
 
 ### 3.1.1 `bootstrap.ps1` — l'environnement Python, sans droits admin
 
@@ -3366,9 +3392,11 @@ beautifulsoup4 ← scraping AlloCiné
 numpy          ← corrélation FFT (core/sync.py)
 ```
 
-`tests/test_deps.py` vérifie que les listes de `main.py`, `launch.bat` et
-`bootstrap.ps1` couvrent `requirements.txt` — et que les quatre appels répartis
-sur les deux scripts disent tous la même chose.
+Chaque ligne porte un plancher et un plafond (§ 3.1). `tests/test_deps.py`
+vérifie que la liste de `main.py` couvre `requirements.txt`, et que
+`launch.bat` et `bootstrap.ps1` passent par `dependances.py` plutôt que par une
+liste à tenir à la main ; `tests/test_lanceurs.py`, que l'environnement des
+tests est dans les bornes.
 
 ### 17.3 Binaires externes et licences
 
@@ -3469,6 +3497,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.115 | 2026-10-09 | **Lanceurs** (§ 3.1, § 17.2, IE-132 2/3) : bornes hautes et basses des dépendances, contrôlées par `dependances.py` au lancement et au bootstrap (CR-109, CR-110) · `launch.bat` sans expansion retardée, dossier par `IRIS_DIR` (CR-108), sans purge des `__pycache__` (CR-107) · `;` échappé pour `wt.exe` (CR-111) · raccourci par `$env:ROOT` (CR-112) · essais réels sous Windows dans `Test!x`, `l'essai`, `A;B` · `tests/test_lanceurs.py` |
 | 0.8.9.114 | 2026-10-09 | **Installation des outils** (§ 4.2 à 4.4, IE-132 1/3) : empreinte SHA256 exigée pour tout téléchargement, lue chez l'amont ou épinglée (CR-40) · tous ou aucun, par provisoires et `os.replace` (CR-38) · tar.gz/tar.xz extraits, exécutable nu reconnu à son en-tête (CR-39) · installation sur les seules sources statiques, le cache ne les masque plus (CR-41) · `tests/test_outils_installation.py` |
 | 0.8.9.113 | 2026-10-09 | **Vidéo et encodeurs** (§ 8.1, § 11, § 12, § 14.0, IE-130) : pixels carrés pour une source anamorphique (`VideoInfo.sar`, CR-14) ; forçage par tranche, HDR gardé en HEVC (CR-16) ; `CODEC_PAR_ACTION` (CR-17) ; débit inconnu réencodé à la cible (CR-19) ; `regle_debit` selon l'encodeur effectif (CR-22) ; sonde 10 bits NVENC, `_refuser_encodeur` (CR-42) ; H264 sur une source HDR → SDR, averti (`h264_force_sdr`, arbitrage du 2026-10-09) · `tests/test_video_revue.py` |
 | 0.8.9.112 | 2026-10-09 | **Audio : DTS:X IMAX, marques collées, pistes écartées** (§ 8.5, § 8.7, IE-128) : profil DTS sans perte par préfixe (CR-09) ; marque collée à sa disposition reconnue et réécrite (`colle_a_une_disposition`, CR-10) ; famille d'une piste écartée réécrite vers la piste gardée (CR-18) · `tests/test_audio_revue.py` |

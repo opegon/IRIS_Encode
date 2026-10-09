@@ -1,5 +1,31 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.115] — 2026-10-09
+
+### Lanceurs : les dossiers aux noms ordinaires, et des dépendances éprouvées (IE-132, 2/3)
+
+Revue IE-114, constats CR-107 à CR-112. Essayés pour de vrai sous Windows,
+ancien et nouveau lanceur côte à côte.
+
+- **Un `!` dans le nom du dossier.** Dans `D:\Test!x\IRIS`, le lanceur ne
+  trouvait pas son environnement et démarrait le `main.py` du dossier
+  courant — n'importe lequel. Il trouve maintenant le sien.
+- **Une apostrophe** (`D:\Vidéos d'été\IRIS`) faisait perdre la version du
+  bandeau, et échouer la création du raccourci sur le Bureau
+  (`launcher\build.bat`). Les deux marchent.
+- **Un `;` dans le nom du dossier** (`A;B`) : `IRIS_Encode.exe` ouvrait
+  Windows Terminal sans démarrer l'application. Corrigé — à recompiler avec
+  `launcher\build.bat`.
+- **Des versions de dépendances éprouvées.** `requirements.txt` ne donnait que
+  des minimums trop bas : un Python du système avec un vieux Textual était
+  accepté, et une installation neuve pouvait recevoir une version majeure que
+  l'application n'a jamais vue. Chaque dépendance a désormais un minimum réel
+  et un maximum (la version majeure suivante), contrôlés à chaque lancement ;
+  un environnement hors bornes est remis à niveau.
+- **Démarrage plus rapide.** Le lanceur effaçait à chaque lancement les fichiers
+  compilés de toutes les bibliothèques, qui se recompilaient aussitôt —
+  sensible sur une clé USB. Il ne le fait plus.
+
 ## [v0.8.9.114] — 2026-10-09
 
 ### Installation des outils : vérifiée, et jamais à moitié (IE-132, 1/3)

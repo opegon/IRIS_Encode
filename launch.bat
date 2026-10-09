@@ -1,5 +1,7 @@
 @echo off
-setlocal enabledelayedexpansion
+REM Sans expansion retardée : avec elle, cmd efface tout « ! » d'un chemin
+REM développé (« D:\Films!\IRIS ») et le .venv n'était jamais retrouvé (CR-108).
+setlocal
 
 REM ============================================================
 REM  IRIS ENCODE — Lanceur Windows
@@ -23,21 +25,19 @@ REM ============================================================
 
 set "PY="
 
+REM dependances.py compare les paquets installés aux bornes de
+REM requirements.txt : un simple import laissait passer un Textual trop
+REM ancien (CR-109).
 if exist "%~dp0.venv\Scripts\python.exe" (
-    "%~dp0.venv\Scripts\python.exe" -c "import textual, rich, requests, tomli_w, bs4, numpy" >nul 2>&1
+    "%~dp0.venv\Scripts\python.exe" "%~dp0dependances.py" >nul 2>&1
     if not errorlevel 1 set "PY=%~dp0.venv\Scripts\python.exe"
 )
 
+REM La version, c'est Python qui la juge : plus de découpage de
+REM « python --version » par cmd, qui exigeait l'expansion retardée.
 if not defined PY (
-    python --version >nul 2>&1
-    if not errorlevel 1 (
-        for /f "tokens=2 delims= " %%v in ('python --version 2^>^&1') do set "pyver=%%v"
-        for /f "tokens=1,2 delims=." %%a in ("!pyver!") do (
-            set "pymaj=%%a"
-            set "pymin=%%b"
-        )
-        if !pymaj! GEQ 3 if !pymin! GEQ 11 set "PY=python"
-    )
+    python -c "import sys; sys.exit(sys.version_info < (3, 11))" >nul 2>&1
+    if not errorlevel 1 set "PY=python"
 )
 
 REM --- Aucun interpréteur utilisable : on installe le nôtre ---
@@ -75,9 +75,9 @@ if "%WT_SESSION%"=="" (
 
 REM --- Dépendances : l'interpréteur du PATH peut en manquer ---
 REM Le .venv a déjà été vérifié plus haut ; ce cas ne concerne que le Python
-REM du système. La liste doit suivre requirements.txt : un module oublié ici
-REM ne déclenche pas l'installation, et main.py s'arrête ensuite dessus.
-"%PY%" -c "import textual, rich, requests, tomli_w, bs4, numpy" >nul 2>&1
+REM du système. pip ramène dans les bornes de requirements.txt un paquet
+REM absent, trop ancien ou d'une version majeure jamais éprouvée.
+"%PY%" "%~dp0dependances.py" >nul 2>&1
 if errorlevel 1 (
     echo.
     echo  [INFO] Missing dependencies - installing...
@@ -121,7 +121,10 @@ REM deux finiraient par diverger. main.py affiche la même source.
 set "APPVER="
 REM Les `^"` encadrants : sans eux, `for /f` casse une commande dont
 REM l'exécutable *et* l'argument sont entre guillemets, et APPVER reste vide.
-for /f "usebackq delims=" %%v in (`^""%PY%" -c "import sys;sys.path.insert(0,r'%~dp0.');from version import __version__;print(__version__)" 2^>nul^"`) do set "APPVER=%%v"
+REM Le dossier passe par l'environnement, pas dans le code Python : une
+REM apostrophe (« D:\Vidéos d'été ») y fermait la chaîne (CR-108).
+set "IRIS_DIR=%~dp0."
+for /f "usebackq delims=" %%v in (`^""%PY%" -c "import os,sys;sys.path.insert(0,os.environ['IRIS_DIR']);from version import __version__;print(__version__)" 2^>nul^"`) do set "APPVER=%%v"
 if defined APPVER (
     title IRIS ENCODE v%APPVER%
     echo  IRIS ENCODE v%APPVER%
@@ -130,13 +133,12 @@ if defined APPVER (
 )
 echo.
 
-REM --- Nettoyage des caches .pyc (évite les conflits après mise à jour) ---
-cd /d "%~dp0"
-for /d /r . %%d in (__pycache__) do (
-    if exist "%%d" rd /s /q "%%d" >nul 2>&1
-)
-
 REM --- Lancement depuis le dossier du script (portabilité clé USB) ---
+REM Plus de purge des __pycache__ : elle descendait dans .venv et faisait
+REM recompiler toutes les dépendances à chaque lancement (CR-107). Python
+REM invalide lui-même un .pyc dont la source a changé, et n'en charge
+REM jamais un de __pycache__ sans sa source.
+cd /d "%~dp0"
 "%PY%" main.py %*
 
 if errorlevel 1 (

@@ -388,18 +388,10 @@ def same_language(a: str, b: str) -> bool:
     return bool(a) and normalize_language(a) == normalize_language(b)
 _COPY_COMPAT_CODECS = frozenset({"aac", "ac3", "eac3"})
 
-# ── Chemin dovi_tool (singleton, settable par l'app au démarrage) ────────────
-_dovi_path: Optional[Path] = None
 # Chemin de ffprobe. Le preflight installe les binaires dans ./bin/ sans
 # toucher au PATH : les appeler par leur nom nu fait echouer tout scan sur une
 # installation neuve, et chaque fichier est alors ecarte comme illisible.
 _ffprobe_path: str = "ffprobe"
-
-
-def set_dovi_path(path: Optional[Path]) -> None:
-    """Active l'enrichissement DV au scan en fournissant le chemin dovi_tool."""
-    global _dovi_path
-    _dovi_path = path
 
 
 def set_ffprobe_path(path: str) -> None:
@@ -572,15 +564,6 @@ class VideoInfo:
         return self.field_order in ("tt", "bb", "tb", "bt")
 
     @property
-    def has_image_subs(self) -> bool:
-        return any(s.is_image_based for s in self.subtitle_tracks)
-
-    @property
-    def is_already_encoded(self) -> bool:
-        """Vrai si le fichier porte la marque `-iris` d'une sortie d'encodage."""
-        return deja_produit(self.path.stem)
-
-    @property
     def is_4k(self) -> bool:
         """Vrai pour une source 4K, recadrée comprise.
 
@@ -591,16 +574,6 @@ class VideoInfo:
         ~4/5 de la hauteur — hors de portée de toute source HD, 2K DCI compris.
         """
         return self.width >= 3200 or self.height >= 1700
-
-    @property
-    def resolution_label(self) -> str:
-        if self.is_4k:
-            return "4K"
-        if self.height >= 1080 or self.width >= 1920:
-            return "1080p"
-        if self.height >= 720:
-            return "720p"
-        return f"{self.width}x{self.height}"
 
     @property
     def is_hdr(self) -> bool:
@@ -1046,32 +1019,13 @@ def module_disque(dossier: Path):
     return None
 
 
-def scan_directory(directory: Path) -> list[VideoInfo]:
-    """
-    Scanne tous les fichiers vidéo supportés dans un répertoire (non récursif).
-    Ignore ce que l'application a elle-même produit (`deja_produit`).
-    Les erreurs de scan sont silencieuses (fichier ignoré).
-    """
-    results: list[VideoInfo] = []
-    for path in sorted(directory.iterdir()):
-        if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
-            continue
-        if deja_produit(path.stem):
-            continue
-        try:
-            results.append(scan(path))
-        except Exception as e:
-            _log.warning("scan failed for %s: %s", path, e)
-    return results
-
-
 def scan_directory_recursive(
     root: Path,
     progres: Callable[[int, int], None] | None = None,
 ) -> list[VideoInfo]:
     """
     Scanne récursivement tous les fichiers vidéo sous root (tous niveaux).
-    Même filtres que scan_directory : extensions supportées, pas d'encodés.
+    Filtres : extensions supportées, pas ce que l'application a produit.
     Tri par chemin complet pour un ordre prévisible (saison → épisode).
 
     Les analyses tournent à `SCAN_WORKERS` à la fois, comme sur l'accueil
@@ -1132,11 +1086,3 @@ def scan_directory_recursive(
     with ThreadPoolExecutor(max_workers=min(SCAN_WORKERS, total),
                             thread_name_prefix="scan-rec") as pool:
         return [i for i in pool.map(_un, chemins) if i is not None]
-
-
-def list_subdirs(directory: Path) -> list[Path]:
-    """Liste les sous-répertoires (pour la navigation du browser)."""
-    try:
-        return sorted(p for p in directory.iterdir() if p.is_dir())
-    except PermissionError:
-        return []

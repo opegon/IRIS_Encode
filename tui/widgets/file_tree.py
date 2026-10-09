@@ -161,6 +161,7 @@ class FileNavigator:
     # ── Breadcrumb ────────────────────────────────────────────────────────────
 
     def breadcrumb(self) -> str:
-        if self._virtual:
-            return "\U0001f4c1  Volumes"
+        """Le dossier courant. La liste des volumes a son propre libellé dans
+        la barre d'état (« Choose a volume ») : la branche qui rendait
+        « Volumes » en dur n'était jamais atteinte (CR-69)."""
         return str(self._current)

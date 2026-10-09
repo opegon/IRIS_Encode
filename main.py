@@ -7,6 +7,7 @@ Peut être lancé directement (`python main.py`) ou via launch.bat.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -107,7 +108,7 @@ def main() -> None:
         "path",
         nargs="?",
         default=None,
-        help="Working directory (default: current directory)",
+        help="Folder to open at start (default: the list of volumes)",
     )
     parser.add_argument(
         "--preflight-only",
@@ -116,7 +117,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    start_path = Path(args.path).resolve() if args.path else Path.cwd()
+    # `abspath`, pas `resolve()` : un lecteur réseau garde sa lettre (CR-68).
+    start_path = Path(os.path.abspath(args.path)) if args.path else Path.cwd()
     if not start_path.exists():
         print(f"✗ Path not found: {start_path}")
         sys.exit(1)
@@ -158,7 +160,9 @@ def main() -> None:
     # ── Lancement TUI ─────────────────────────────────────────────────────────
     from tui.app import IrisEncodeApp
 
-    app = IrisEncodeApp(start_path=start_path)
+    # Un dossier donné s'ouvre ; sans argument, l'accueil part des volumes.
+    # L'argument était vérifié puis sans effet, contre son aide (CR-73).
+    app = IrisEncodeApp(start_path=start_path, ouvrir_dossier=args.path is not None)
     app.run()
 
 

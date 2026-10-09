@@ -362,7 +362,6 @@ def _encode_decision(ext: list[ExternalTrack], *, subs=None):
     info.height          = 1080
     info.largeur_affichee  = 1920
     info.pixels_non_carres = False
-    info.has_image_subs  = False
     info.subtitle_tracks = subs if subs is not None else []
     info.duration        = 100.0
     info.hdr10_master_display = ""
@@ -569,7 +568,6 @@ def test_skip_with_external_track_gets_a_distinct_name():
     info.stem_sortie     = info.path.stem
     info.width           = 1920
     info.height          = 1080
-    info.has_image_subs  = False
     info.subtitle_tracks = []
 
     video = VideoDecision(

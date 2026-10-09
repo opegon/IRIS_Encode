@@ -85,8 +85,12 @@ class IrisEncodeApp(App):
     MODE_FICHIERS  = "fichiers"
     MODE_ENCODAGES = "encodages"
 
-    def __init__(self, start_path: Path | None = None) -> None:
+    def __init__(self, start_path: Path | None = None,
+                 ouvrir_dossier: bool = False) -> None:
         super().__init__()
+        # Vrai quand l'utilisateur a nommé un dossier (`launch.bat D:\Films`) :
+        # l'accueil s'y ouvre au lieu de la liste des volumes (CR-73).
+        self.ouvrir_dossier    = ouvrir_dossier
         _setup_logging()
         self.start_path        = Path(os.path.abspath(start_path or Path.cwd()))   # pas resolve() : CR-68
         self.cfg               = cfg_mod.load()
@@ -110,12 +114,11 @@ class IrisEncodeApp(App):
         self.veille      = GardeVeille()
         self._fin_armee  = False
         self._decompte   = False
-        # Câble dovi_tool dans le scanner (enrichissement DV au scan)
+        # dovi_tool sert aux chemins Dolby Vision de la file, pas au scan : le
+        # sous-profil et le HDR10 viennent de ffprobe (CR-33).
         from core import dovi, scanner
         bin_dir   = cfg_mod.get_bin_dir(self.cfg)
         dovi_path = dovi.get_path(bin_dir)
-        if dovi_path is not None:
-            scanner.set_dovi_path(dovi_path)
         # Précise le chemin ffmpeg utilisé pour le probing DV
         from core.preflight import get_tool_path
         # ffprobe est appelé à chaque scan : sans ce câblage, une installation
@@ -192,7 +195,8 @@ class IrisEncodeApp(App):
     def on_mount(self) -> None:
         from tui.screens.browser import BrowserScreen
         self.add_mode(self.MODE_FICHIERS,
-                      lambda: BrowserScreen(self.start_path, start_virtual=True))
+                      lambda: BrowserScreen(self.start_path,
+                                            start_virtual=not self.ouvrir_dossier))
         self.switch_mode(self.MODE_FICHIERS)
         # Les clés d'API manquantes, une fois l'accueil affiché. Pas en test :
         # une application sans terminal n'a personne pour répondre.

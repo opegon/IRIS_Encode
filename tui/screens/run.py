@@ -659,7 +659,7 @@ class RunScreen(TableNavMixin, Screen):
         # Son .nfo et ses images Jellyfin ne décrivent plus rien (IE-116).
         supprimer_annexes(dec.info.path)
 
-    def _liberer(self, dec: FileDecision, *tmps: Optional[Path]) -> None:
+    def _liberer(self, dec: FileDecision, *tmps: Path | None) -> None:
         """Efface les intermédiaires d'un fichier, que le traitement ait abouti
         ou non : ils pèsent le poids du film et se refabriquent. Appelé sur
         **chaque** sortie de la passe principale — une sortie anticipée laissait
@@ -683,7 +683,7 @@ class RunScreen(TableNavMixin, Screen):
                 dec.external_tracks = dec.premuxed_tracks
                 dec.premuxed_tracks = []
 
-    def _audio_prepass(self, index: int, dec: FileDecision) -> Optional[Path]:
+    def _audio_prepass(self, index: int, dec: FileDecision) -> Path | None:
         """Produit les pistes audio finales avant l'encodage. None si échec.
 
         Voir `encoder.audio_prepass_needed` pour le défaut ffmpeg que cette
@@ -763,8 +763,8 @@ class RunScreen(TableNavMixin, Screen):
         return True
 
     def _porter_sous_titres(self, index: int, dec: FileDecision,
-                            recompose: Optional[Path] = None,
-                            ) -> tuple[bool, Optional[Path]]:
+                            recompose: Path | None = None,
+                            ) -> tuple[bool, Path | None]:
         """Les sous-titres texte d'une sortie MP4, réécrits s'il le faut.
 
         Rend (réussite, porteur). Le porteur est None quand aucune piste n'a
@@ -883,7 +883,7 @@ class RunScreen(TableNavMixin, Screen):
         return code
 
     @staticmethod
-    def _playlist_chapitres(dec: FileDecision) -> Optional[Path]:
+    def _playlist_chapitres(dec: FileDecision) -> Path | None:
         """La playlist d'un titre de Blu-ray à chapitres, où mkvmerge les lit
         (CR-63). La règle de `ffmetadata_chapitres` : deux au moins."""
         titre = dec.info.titre
@@ -892,7 +892,7 @@ class RunScreen(TableNavMixin, Screen):
         return titre.chemin
 
     def _transcoder_greffes(self, index: int, dec: FileDecision,
-                            produits: list[Path]) -> Optional[list[ExternalTrack]]:
+                            produits: list[Path]) -> list[ExternalTrack] | None:
         """Les pistes greffées d'un chemin DV, l'audio à la règle du profil.
 
         mkvmerge ne sait que recopier : un DTS greffé sortait en DTS, quand la
@@ -1004,8 +1004,8 @@ class RunScreen(TableNavMixin, Screen):
         direct = mp4 and not dec.external_tracks
         mkv    = (dec.dossier_sortie / f"{source.stem}.iris_strip.mkv"
                   if mp4 and not direct else sortie)
-        porteur: Optional[Path] = None
-        chapitres: Optional[Path] = None
+        porteur: Path | None = None
+        chapitres: Path | None = None
         produits: list[Path] = []
         ffmpeg_path = getattr(self.app, "ffmpeg_path", "ffmpeg")
         if direct and not dovi.strip_bsf_disponible(ffmpeg_path):
@@ -1294,7 +1294,7 @@ class RunScreen(TableNavMixin, Screen):
         # En sortie MP4, mkvmerge écrit d'abord ce Matroska, que ffmpeg remuxe.
         en_mp4 = sortie.suffix.lower() == ".mp4"
         mkv    = dec.dossier_sortie / f"{source.stem}.iris_dv.mkv" if en_mp4 else sortie
-        porteur: Optional[Path] = None
+        porteur: Path | None = None
         produits: list[Path] = []
 
         passe_audio = audio_pass_needed(dec.audio)
@@ -1549,7 +1549,7 @@ class RunScreen(TableNavMixin, Screen):
             self.app.call_from_thread(self._update_header)
             self._encode_next()
 
-    def _ecrire_chapitres(self, dec: FileDecision) -> Optional[Path]:
+    def _ecrire_chapitres(self, dec: FileDecision) -> Path | None:
         """Les chapitres d'un titre de Blu-ray d'un seul clip, écrits pour
         ffmpeg (IE-120). None sans titre, sans chapitres, ou quand l'entrée
         est un assemblage : mkvmerge les y a déjà mis."""

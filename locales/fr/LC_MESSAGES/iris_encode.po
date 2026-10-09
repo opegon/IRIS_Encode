@@ -699,26 +699,26 @@ msgstr "dans mpv : z / Z décalent les sous-titres par pas de 100 ms"
 msgid "in mpv: Ctrl++ / Ctrl+- shift the audio by 100 ms steps"
 msgstr "dans mpv : Ctrl++ / Ctrl+- décalent l'audio par pas de 100 ms"
 
-#: core/profiles.py:133
-#: core/profiles.py:136
+#: core/profiles.py:125
+#: core/profiles.py:128
 msgctxt "profile value"
 msgid "yes"
 msgstr "oui"
 
-#: core/profiles.py:135
-#: core/profiles.py:137
+#: core/profiles.py:127
+#: core/profiles.py:129
 msgctxt "profile value"
 msgid "no"
 msgstr "non"
 
-#: core/profiles.py:222
+#: core/profiles.py:214
 #, python-brace-format
 msgid "profiles.toml unreadable ({error}). Session running on the {count} built-in profile — your file was not touched."
 msgid_plural "profiles.toml unreadable ({error}). Session running on the {count} built-in profiles — your file was not touched."
 msgstr[0] "profiles.toml illisible ({error}). Session tenue sur le {count} profil livré — votre fichier n'a pas été touché."
 msgstr[1] "profiles.toml illisible ({error}). Session tenue sur les {count} profils livrés — votre fichier n'a pas été touché."
 
-#: core/profiles.py:229
+#: core/profiles.py:221
 #, python-brace-format
 msgid "profiles.toml unreadable ({error}). Loading the built-in profile [{profile}]."
 msgstr "profiles.toml illisible ({error}). Chargement du profil [{profile}] intégré."
@@ -994,99 +994,99 @@ msgstr "Aide"
 msgid "Encodes"
 msgstr "Encodages"
 
-#: tui/app.py:202
+#: tui/app.py:206
 msgid "Graphics card"
 msgstr "Carte graphique"
 
-#: tui/app.py:217
+#: tui/app.py:221
 #, python-brace-format
 msgid "{file} unreadable ({error}): this session runs on the defaults and will not rewrite it. Fix it by hand, then restart."
 msgstr "{file} illisible ({error}) : cette session tourne sur les valeurs par défaut et ne le réécrira pas. Corrigez-le à la main, puis relancez."
 
-#: tui/app.py:267
+#: tui/app.py:271
 #, python-brace-format
 msgid "The folder of {count} source is read-only (mounted disc image?): its output cannot be written next to it."
 msgid_plural "The folders of {count} sources are read-only (mounted disc image?): their outputs cannot be written next to them."
 msgstr[0] "Le dossier de {count} source est en lecture seule (image disque montée ?) : sa sortie ne peut pas s'écrire à côté d'elle."
 msgstr[1] "Les dossiers de {count} sources sont en lecture seule (image disque montée ?) : leurs sorties ne peuvent pas s'écrire à côté d'elles."
 
-#: tui/app.py:294
+#: tui/app.py:298
 #, python-brace-format
 msgid "Already in the queue: {files}"
 msgstr "Déjà dans la file : {files}"
 
-#: tui/app.py:300
+#: tui/app.py:304
 #, python-brace-format
 msgid "{count} file added to the queue — {key} to follow it."
 msgid_plural "{count} files added to the queue — {key} to follow it."
 msgstr[0] "{count} fichier ajouté à la file — {key} pour la suivre."
 msgstr[1] "{count} fichiers ajoutés à la file — {key} pour la suivre."
 
-#: tui/app.py:343
+#: tui/app.py:347
 #: tui/screens/run.py:97
 #: tui/screens/run.py:98
 #: tui/screens/run.py:225
 msgid "Files"
 msgstr "Fichiers"
 
-#: tui/app.py:345
+#: tui/app.py:349
 msgid "Batch done"
 msgstr "Lot terminé"
 
-#: tui/app.py:347
+#: tui/app.py:351
 #, python-brace-format
 msgid "Encoding in progress · {done}/{total} · {percent}%"
 msgstr "Encodages en cours · {done}/{total} · {percent}%"
 
-#: tui/app.py:395
+#: tui/app.py:399
 msgid "sleep blocked"
 msgstr "veille bloquée"
 
-#: tui/app.py:397
+#: tui/app.py:401
 #, python-brace-format
 msgid "then {action}"
 msgstr "puis {action}"
 
-#: tui/app.py:430
+#: tui/app.py:434
 msgid "After-batch action canceled."
 msgstr "Action d'après lot annulée."
 
-#: tui/app.py:434
+#: tui/app.py:438
 msgid "A task has resumed: after-batch action canceled."
 msgstr "Un traitement a repris : action d'après lot annulée."
 
-#: tui/app.py:440
+#: tui/app.py:444
 #, python-brace-format
 msgid "Cannot {action}: {error}"
 msgstr "{action} impossible : {error}"
 
-#: tui/app.py:453
+#: tui/app.py:457
 msgid "No encoding in progress."
 msgstr "Aucun encodage en cours."
 
-#: tui/app.py:481
+#: tui/app.py:485
 msgid "The running encode will be stopped, its partial output deleted."
 msgstr "L'encodage en cours sera arrêté, sa sortie partielle effacée."
 
-#: tui/app.py:482
+#: tui/app.py:486
 msgid "The running mux will be stopped, its partial output deleted."
 msgstr "Le mux en cours sera arrêté, sa sortie partielle effacée."
 
-#: tui/app.py:483
+#: tui/app.py:487
 msgid "The running join will be stopped, its partial output deleted."
 msgstr "La jonction en cours sera arrêtée, sa sortie partielle effacée."
 
-#: tui/app.py:484
-#: tui/app.py:485
-#: tui/app.py:486
+#: tui/app.py:488
+#: tui/app.py:489
+#: tui/app.py:490
 msgid "The running measurement will be lost."
 msgstr "La mesure en cours sera perdue."
 
-#: tui/app.py:487
+#: tui/app.py:491
 msgid "The running resync will be lost."
 msgstr "Le recalage en cours sera perdu."
 
-#: tui/app.py:506
+#: tui/app.py:510
 #, python-brace-format
 msgid "{count} waiting file will not be encoded."
 msgid_plural "{count} waiting files will not be encoded."
@@ -4587,30 +4587,30 @@ msgid "The profile “{profile}” already exists."
 msgstr "Le profil « {profile} » existe déjà."
 
 #. where the Python interpreter comes from, in the start banner.
-#: main.py:78
+#: main.py:79
 msgctxt "python origin"
 msgid "local .venv"
 msgstr ".venv local"
 
 #. the Python installed on the computer, in the start banner.
-#: main.py:81
+#: main.py:82
 msgctxt "python origin"
 msgid "system"
 msgstr "système"
 
-#: main.py:142
+#: main.py:144
 #, python-brace-format
 msgid "config.toml unreadable ({error}). Session running on the default settings — your file was not touched, and will not be until it is fixed."
 msgstr "config.toml illisible ({error}). Session tenue sur les réglages par défaut — votre fichier n'a pas été touché, et ne le sera pas tant qu'il n'est pas corrigé."
 
-#: main.py:147
+#: main.py:149
 msgid "Checking tools:"
 msgstr "Vérification des outils :"
 
-#: main.py:151
+#: main.py:153
 msgid "Tools missing. Stopping."
 msgstr "Outils manquants. Arrêt."
 
-#: main.py:155
+#: main.py:157
 msgid "Preflight OK."
 msgstr "Preflight OK."

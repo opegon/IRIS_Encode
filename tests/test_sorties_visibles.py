@@ -73,14 +73,12 @@ def test_la_vue_liste_les_sorties_de_l_application(tmp_path):
 
 def test_le_scan_automatique_les_ecarte_toujours(tmp_path, monkeypatch):
     """Le garde-fou d'IE-49 vit dans le scanner, pas dans la vue : c'est lui
-    qui alimente le scan récursif et les lots que l'utilisateur ne compose pas
-    lui-même."""
+    qui alimente le scan récursif (`R`), le seul lot que l'utilisateur ne
+    compose pas lui-même."""
     from core import scanner
     for nom in ("Film.mkv", "Film.av1-iris.mkv"):
         (tmp_path / nom).touch()
     monkeypatch.setattr(scanner, "scan", _info)
-    vus = {i.path.name for i in scanner.scan_directory(tmp_path)}
-    assert vus == {"Film.mkv"}
     vus_rec = {i.path.name for i in scanner.scan_directory_recursive(tmp_path)}
     assert vus_rec == {"Film.mkv"}
 

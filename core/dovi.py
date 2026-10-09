@@ -2,13 +2,14 @@
 core/dovi.py — Wrapper autour de dovi_tool pour le traitement Dolby Vision.
 
 Fonctions principales :
-  - get_path()             : chemin vers dovi_tool ou None
-  - probe_file()           : sous-profil DV + métadonnées HDR10 statiques (scan)
-  - extract_hevc_stream()  : extrait le flux HEVC brut d'un fichier
-  - extract_rpu()          : extrait le RPU depuis un .hevc brut
-  - convert_p7_to_p8()     : convertit un RPU profil 7 vers profil 8
-  - rpu_info()             : interroge un RPU pour metadata HDR10
-  - make_x265_hdr_params() : forge la chaîne -x265-params pour HDR10
+  - get_path()                   : chemin vers dovi_tool ou None
+  - build_extract_hevc_command() : commande ffmpeg du flux HEVC brut
+  - TuyauRpu                     : ffmpeg branché sur `dovi_tool extract-rpu`
+  - convert_p7_to_p8()           : convertit un RPU profil 7 vers profil 8
+  - make_x265_hdr_params()       : forge la chaîne -x265-params pour HDR10
+
+Le sous-profil DV et les métadonnées HDR10 statiques viennent de ffprobe, au
+scan (`core/scanner.py`), depuis la v0.8.1.19 : dovi_tool n'y intervient pas.
 
 Retrait pur du DV (orchestré par tui/screens/run.py), sans réencodage :
   MKV : 1. ffmpeg     : extract HEVC brut     (input.mkv  → temp.hevc)
@@ -60,26 +61,6 @@ def is_available(bin_dir: Optional[Path] = None) -> bool:
 
 
 # ─── Probing d'un fichier source ──────────────────────────────────────────────
-
-def extract_hevc_stream(input_path: Path, output_hevc: Path,
-                        ffmpeg_path: str = "ffmpeg",
-                        duration_limit: Optional[int] = None,
-                        timeout: Optional[int] = 120) -> bool:
-    """
-    Extrait le flux HEVC brut (.hevc Annex-B) via ffmpeg.
-    duration_limit (secondes) : tronque la copie — utile pour probing.
-    timeout : None pour un fichier entier — 120 s suffisent aux 30 s du
-    probing, pas à recopier 30 Go.
-    """
-    cmd = build_extract_hevc_command(input_path, output_hevc, ffmpeg_path,
-                                     duration_limit)
-    try:
-        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=timeout)
-        return r.returncode == 0 and output_hevc.exists()
-    except Exception as e:
-        _log.warning("extract_hevc_stream failed: %s", e)
-        return False
-
 
 def build_extract_hevc_command(input_path: Path, output_hevc: Path,
                                ffmpeg_path: str = "ffmpeg",
@@ -221,17 +202,6 @@ def strip_bsf_disponible(ffmpeg_path: str = "ffmpeg") -> bool:
         return "strip" in r.stdout
     except Exception as e:
         _log.warning("strip_bsf_disponible failed: %s", e)
-        return False
-
-
-def extract_rpu(hevc_path: Path, rpu_path: Path, dovi_path: Path) -> bool:
-    """Extrait le RPU DV depuis un flux HEVC Annex-B."""
-    cmd = [str(dovi_path), "extract-rpu", str(hevc_path), "-o", str(rpu_path)]
-    try:
-        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=300)
-        return r.returncode == 0 and rpu_path.exists()
-    except Exception as e:
-        _log.warning("extract_rpu failed: %s", e)
         return False
 
 
@@ -399,22 +369,3 @@ def make_x265_hdr_params(
 def x265_params_string(params: list[str]) -> str:
     """Concatène les tokens en chaîne `key=val:key=val` pour -x265-params."""
     return ":".join(params)
-
-
-# ─── Helpers temp dir ─────────────────────────────────────────────────────────
-
-def get_temp_dir(bin_dir: Path) -> Path:
-    """Retourne (et crée) le dossier temp pour les artefacts DV."""
-    tmp = bin_dir / "temp"
-    tmp.mkdir(parents=True, exist_ok=True)
-    return tmp
-
-
-def cleanup_temp_files(*paths: Path) -> None:
-    """Supprime silencieusement les fichiers temporaires."""
-    for p in paths:
-        try:
-            if p.exists():
-                p.unlink()
-        except Exception as e:
-            _log.debug("cleanup_temp failed for %s: %s", p, e)

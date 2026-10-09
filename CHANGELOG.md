@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.121] — 2026-10-09
+
+### Code mort, et un argument qui sert enfin (IE-137)
+
+Revue IE-114, constats CR-08, 13, 33, 46, 66, 69, 73. IE-137 est close : les
+quinze entrées de la revue sont faites.
+
+- **`launch.bat D:\Films` ouvre ce dossier.** Le chemin donné au lancement
+  était vérifié, puis l'accueil partait quand même de la liste des volumes.
+  Sans argument, rien ne change.
+- Retirés, faute d'appelant : l'ancien enrichissement Dolby Vision au scan
+  (remplacé par ffprobe depuis la v0.8.1.19) et ses fonctions, une analyse de
+  dossier que plus rien n'appelait, quelques propriétés et fonctions de
+  profils. La spécification ne décrit plus de fonction absente.
+- L'extraction d'un titre de DVD n'a plus de repli sur un ffmpeg quelconque
+  du système, qui ne savait pas lire un DVD.
+
 ## [v0.8.9.120] — 2026-10-09
 
 ### Libellés (IE-135, 3/3)

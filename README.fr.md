@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.8.9.120 — Windows (support macOS/Linux prévu)
+**Version** : 0.8.9.121 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -259,6 +259,10 @@ l'application soit connue.
 
 Comptez deux à trois minutes et environ 140 Mo la première fois. Les fois
 suivantes, `launch.bat` constate que tout est en place et démarre aussitôt.
+
+IRIS ENCODE s'ouvre sur la liste des volumes. Avec un dossier —
+`launch.bat D:\Films`, ou un raccourci qui porte cet argument — il s'ouvre
+directement dedans.
 
 **Aucun droit administrateur n'est requis, et rien n'est écrit hors du dossier
 de l'application** — ni dans le PATH, ni dans le registre, ni dans les dossiers

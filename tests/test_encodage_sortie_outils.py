@@ -92,7 +92,7 @@ def test_un_fichier_au_titre_hors_cp1252_est_bien_lu(tmp_path, ffmpeg):
 
 
 def test_le_repertoire_entier_ne_perd_pas_ce_fichier(tmp_path, ffmpeg):
-    """`scan_directory` avale les erreurs par fichier : c'est précisément ce
+    """Le scan d'un dossier avale les erreurs par fichier : c'est précisément ce
     qui rendait la perte invisible. On vérifie donc le compte, pas le log."""
     from core import scanner
     from core.config import get_bin_dir, load
@@ -107,5 +107,5 @@ def test_le_repertoire_entier_ne_perd_pas_ce_fichier(tmp_path, ffmpeg):
             capture_output=True, timeout=120, check=True)
 
     scanner.set_ffprobe_path(get_tool_path("ffprobe", get_bin_dir(load())))
-    noms = {v.path.name for v in scanner.scan_directory(tmp_path)}
+    noms = {v.path.name for v in scanner.scan_directory_recursive(tmp_path)}
     assert noms == {"sobre.mkv", "orne.mkv"}

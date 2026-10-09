@@ -100,7 +100,6 @@ def test_un_fichier_reel_rend_le_nom_de_ses_sous_titres():
         pytest.skip("silo.s03e09.1080p.mkv absent du dossier de travail")
 
     bd = get_bin_dir(load())
-    scanner.set_dovi_path(dovi.get_path(bd))
     scanner.set_ffprobe_path(get_tool_path("ffprobe", bd))
     info = scanner.scan(p)
 

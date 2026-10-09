@@ -115,7 +115,7 @@ def test_un_4k_recadre_est_rabattu_en_1080p(tmp_path):
     dec = decide(_source(tmp_path, nom, largeur=3832, hauteur=1600,
                          bitrate=8_312_000), _profile())
     assert (dec.video.target_width, dec.video.target_height) == (1920, 1080)
-    assert dec.info.resolution_label == "4K"
+    assert dec.info.is_4k
     assert "2160p" not in dec.output_path.stem
     assert "4Klight" not in dec.output_path.stem
     assert ".1080p." in dec.output_path.stem

@@ -370,8 +370,11 @@ def build_extraction_command(t: TitreDisque, sortie: Path,
     pour 20 et 24 (arbitrage du 2026-10-09). Sans perte, sans calcul ; la
     décision audio le traite ensuite comme une autre piste.
     """
-    ffmpeg = _ffmpeg or "ffmpeg"
-    cmd = [ffmpeg, "-y", "-loglevel", "error", "-stats", *entree(t),
+    # L'outil DVD, jamais un `ffmpeg` du PATH (sans `dvdvideo`, CR-08) :
+    # `_extraire_dvd` refuse avant d'arriver ici quand il manque.
+    if _ffmpeg is None:
+        raise ValueError("the DVD tool (an ffmpeg with libdvdnav) is missing")
+    cmd = [_ffmpeg, "-y", "-loglevel", "error", "-stats", *entree(t),
            "-map", "0", "-c", "copy"]
     for piste in audio:
         if piste.codec == "pcm_dvd":

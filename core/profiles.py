@@ -113,14 +113,6 @@ class Profile:
             return self.data.get("bitrate_1080p_kbps", 2500) * 1000
         return self.data.get("bitrate_720p_kbps", 1500) * 1000
 
-    def summary_line(self) -> str:
-        """Une ligne résumant les paramètres clés (pour l'écran Config)."""
-        dv   = self.data.get("dolby_vision", "sdr")
-        p1   = self.data.get("bitrate_1080p_kbps", "?")
-        pre  = self.data.get("preset_encoder", "?")
-        hd   = "oui" if self.data.get("preserve_hd_audio") else "non"
-        return f"dv: {dv}  · 1080p: {p1}k  · preset: {pre}  · hd-audio: {hd}"
-
     def summary_fields(self) -> dict[str, str]:
         """Valeurs individuelles pour affichage en colonnes séparées."""
         k4   = self.data.get("keep_4k", False)
@@ -317,9 +309,3 @@ def _write_defaults() -> None:
 
 def validate_id(name: str) -> bool:
     return bool(ID_PATTERN.match(name))
-
-
-def parse_languages(raw: str) -> list[str]:
-    """Parse une chaîne de codes langue séparés par , ; ou espace."""
-    parts = re.split(r"[,;\s]+", raw.strip())
-    return [p.strip().lower() for p in parts if p.strip()]

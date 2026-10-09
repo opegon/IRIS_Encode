@@ -34,7 +34,6 @@ def langue(request):
 # (module, nom de la variable) — l'état global que l'application pose.
 _GLOBALES = [
     ("core.muxer",    "_mkvmerge_path"),
-    ("core.scanner",  "_dovi_path"),
     ("core.scanner",  "_ffprobe_path"),
     ("core.encoder",  "_ffmpeg_path"),
     ("core.sync",     "_ffmpeg_path"),

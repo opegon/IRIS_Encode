@@ -107,20 +107,6 @@ def test_plus_aucun_litteral_de_suffixe_dans_les_filtres():
     assert not fautifs, f"suffixes encore écrits en dur : {fautifs}"
 
 
-def test_la_propriete_de_videoinfo_suit_le_meme_predicat(tmp_path):
-    from core.scanner import VideoInfo
-
-    def _info(nom: str) -> VideoInfo:
-        return VideoInfo(path=tmp_path / f"{nom}.mkv", width=1920, height=1080,
-                         bitrate=8_000_000, codec="hevc", duration=1.0,
-                         frame_count=0, dv_profile=None)
-
-    assert _info("Film.av1-iris").is_already_encoded
-    assert _info("Film.HDR10-iris").is_already_encoded
-    assert not _info("Film.mux-iris").is_already_encoded
-    assert not _info("Film").is_already_encoded
-
-
 def test_le_scan_ecarte_ce_qu_il_a_produit(tmp_path, monkeypatch):
     """Bout à bout : le fichier n'est pas seulement non proposé, il n'est pas lu."""
     from core import scanner
@@ -132,7 +118,7 @@ def test_le_scan_ecarte_ce_qu_il_a_produit(tmp_path, monkeypatch):
     scannes: list[str] = []
     monkeypatch.setattr(scanner, "scan",
                         lambda p: scannes.append(p.name) or _FAUX_INFO(p))
-    scanner.scan_directory(tmp_path)
+    scanner.scan_directory_recursive(tmp_path)
     assert sorted(scannes) == ["Film.join-iris.mkv", "Film.mkv",
                                "Film.mux-iris.mkv"], scannes
 

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.120 — document de référence courant
+**Version** : 0.8.9.121 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -51,7 +51,7 @@ iris_encode/
 │   ├── updates.py                ← fraîcheur des outils au démarrage
 │   ├── config.py                 ← lecture/écriture config.toml
 │   ├── profiles.py               ← lecture/écriture profiles.toml
-│   ├── scanner.py                ← analyse fichiers via ffprobe + enrichissement DV
+│   ├── scanner.py                ← analyse fichiers via ffprobe (DV et HDR10 compris)
 │   ├── bluray.py                 ← titres d'un dossier Blu-ray (playlists .mpls, AACS)
 │   ├── dvd.py                    ← titres d'un dossier DVD (IFO, CSS), outil DVD
 │   ├── decision.py               ← logique métier encodage
@@ -705,13 +705,18 @@ tronqué derrière elle.
 
 ## 7. Dolby Vision — `core/dovi.py`
 
-Module wrapper autour de `dovi_tool`, utilisé en trois phases :
+Module wrapper autour de `dovi_tool`, utilisé en deux phases :
 
-1. **Scan** (`probe_file`) : enrichit chaque `VideoInfo` avec sous-profil, master
-   display, MaxCLL/FALL
-2. **Encodage** (`make_x265_hdr_params`) : fournit les `-x265-params` du mode HDR10 quality
-3. **Retrait du RPU** (`build_remove_command`) : supprime le Dolby Vision sans réencoder, quand
-   la couche de base est déjà du HDR10 (§ 7.3)
+1. **Encodage** (`make_x265_hdr_params`) : fournit les `-x265-params` du mode HDR10 quality
+2. **Retrait du RPU** (`build_remove_command`) : supprime le Dolby Vision sans réencoder, quand
+   la couche de base est déjà du HDR10 (§ 7.3) ; réencodage qui le garde (`TuyauRpu`,
+   `build_inject_command`)
+
+Le sous-profil DV et les métadonnées HDR10 statiques (master display, MaxCLL/FALL) sont
+lus par **ffprobe** au scan (`core/scanner.py`), depuis la v0.8.1.19 : dovi_tool n'y
+intervient pas. L'ancien enrichissement au scan (`probe_file`, `rpu_info`) n'existe
+plus, et ses restes — `extract_hevc_stream`, `extract_rpu`, `get_temp_dir`,
+`cleanup_temp_files`, `scanner.set_dovi_path` — sont retirés (v0.8.9.121, CR-33).
 
 ### 7.1 API publique
 
@@ -719,9 +724,6 @@ Module wrapper autour de `dovi_tool`, utilisé en trois phases :
 |---|---|
 | `get_path(bin_dir)` | Chemin vers `dovi_tool` (PATH puis `./bin/`) ou None |
 | `is_available(bin_dir)` | Bool |
-| `probe_file(path, dovi_path, ffmpeg_path)` | Sous-profil DV + master display + MaxCLL |
-| `extract_hevc_stream(…)` | Extrait le flux HEVC brut Annex-B via ffmpeg |
-| `extract_rpu(…)` | Extrait le RPU depuis un `.hevc` brut |
 | `build_extract_hevc_command(…)` | Commande ffmpeg de l'extraction (progression côté TUI) |
 | `build_remove_command(hevc_in, hevc_out, dovi_path)` | `dovi_tool remove` : retire RPU et couche d'amélioration — lancée par l'écran, arrêtable, sans délai fixe |
 | `build_inject_command(hevc_in, rpu_in, hevc_out, dovi_path)` | `dovi_tool inject-rpu`, même régime |
@@ -730,19 +732,8 @@ Module wrapper autour de `dovi_tool`, utilisé en trois phases :
 | `build_strip_mp4(source, output, …)` | Retrait vers du MP4 sans greffe : une passe ffmpeg depuis la source, filtre `dovi_rpu=strip=1` ; `chapitres` (FFMETADATA) et langues complétées d'un titre de Blu-ray |
 | `strip_bsf_disponible(ffmpeg_path)` | ffmpeg connaît-il le filtre `dovi_rpu` (7.1+) ? |
 | `convert_p7_to_p8(…)` | Convertit RPU profil 7 → profil 8 (mode `-m 2`) |
-| `rpu_info(…)` | `{dv_subprofile, master_display, max_cll}` |
 | `make_x265_hdr_params(…)` | Liste de tokens `-x265-params` HDR10 |
 | `x265_params_string(params)` | Concatène en `key=val:key=val` |
-
-### 7.2 Flux probe (au scan)
-
-```
-1. ffmpeg  : extrait 30 s de flux HEVC brut  (input.mkv → temp.hevc)
-2. dovi_tool extract-rpu                     (temp.hevc  → temp.rpu)
-3. dovi_tool info -f 1                       → sous-profil, master_display, MaxCLL
-```
-
-Coût : ~50–150 ms par fichier. Ne lève pas en cas d'échec (retourne un dict vide).
 
 ### 7.3 Retrait du Dolby Vision sans réencodage
 
@@ -2578,7 +2569,10 @@ sans rien écrire quand `F2` partait de l'écran des pistes.
 #### Démarrage virtuel
 
 L'application démarre en mode virtuel (`start_virtual=True`) : la première vue liste les
-volumes disponibles (icône 💾), pas un chemin fixe.
+volumes disponibles (icône 💾), pas un chemin fixe. **Un dossier passé en argument**
+(`launch.bat D:\Films`, `python main.py D:\Films`) **s'ouvre directement**
+(`IrisEncodeApp(ouvrir_dossier=True)`) ; il était vérifié puis sans effet, contre son
+aide (v0.8.9.121, CR-73). Normalisé par `os.path.abspath`, comme la navigation (CR-68).
 
 #### Colonnes
 
@@ -3199,7 +3193,7 @@ class VideoInfo:
     dv_profile:           int | None
     audio_tracks:         list[AudioTrack]
     subtitle_tracks:      list[SubtitleTrack]
-    # Enrichissement DV (dovi_tool, optionnel)
+    # Dolby Vision et HDR10 statique, lus par ffprobe
     dv_subprofile:        str | None            # "5", "7.06", "8.1", "8.4"…
     hdr10_master_display: str | None
     hdr10_max_cll:        tuple[int, int] | None
@@ -3211,8 +3205,8 @@ class VideoInfo:
 ### 15.2 Scan récursif
 
 `scan_directory_recursive(root, progres=None)` — tous les fichiers vidéo sous `root`,
-tous niveaux, triés par chemin. Mêmes filtres que `scan_directory` : extensions
-supportées, exclusion de ce que l'application a elle-même encodé. Depuis la v0.8.9.90
+tous niveaux, triés par chemin. Filtres : extensions supportées, exclusion de ce
+que l'application a elle-même encodé. Depuis la v0.8.9.90
 (IE-117), les ffprobe tournent à `scanner.SCAN_WORKERS` (4) à la fois, comme sur
 l'accueil ; l'ordre des résultats reste celui du tri, un échec n'arrête pas le reste.
 `progres(fait, total)` est appelé après chaque fichier (sur 38 fichiers locaux :
@@ -3237,16 +3231,12 @@ fonction de son objet.
 
 **L'exclusion ne vaut que pour le scan, plus pour la vue.** Depuis la v0.8.8.3,
 `FileNavigator.list_videos()` liste aussi les sorties de l'application, grisées
-(§ 14.1). Les deux fonctions ci-dessus gardent leur filtre : ce sont elles qui
-alimentent le scan récursif et les lots que l'utilisateur ne compose pas
-lui-même, et c'est là que le garde-fou porte. Cocher soi-même une sortie pour la
+(§ 14.1). Le scan récursif garde son filtre : c'est le seul lot que
+l'utilisateur ne compose pas lui-même, et c'est là que le garde-fou porte
+(`scan_directory`, qui le partageait, n'avait plus d'appelant : retiré en
+v0.8.9.121, CR-13). Cocher soi-même une sortie pour la
 réencoder demande deux gestes explicites ; `delete_source` reste actif sur ce
 chemin.
-
-### 15.3 Enrichissement DV au scan
-
-Si `dovi_tool` est disponible (câblé dans `app.py` via `scanner.set_dovi_path()`), chaque
-fichier DV est enrichi via `dovi.probe_file()`.
 
 ### 15.4 Navigation virtuelle
 
@@ -3565,6 +3555,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.121 | 2026-10-09 | **Code mort** (§ 7, § 14.1, § 15, IE-137) : retirés `scan_directory`, `scanner.list_subdirs`, `set_dovi_path`, trois propriétés de `VideoInfo` (CR-13), `extract_hevc_stream`, `extract_rpu`, `get_temp_dir`, `cleanup_temp_files` et la doc de `probe_file`/`rpu_info` (CR-33), `summary_line`, `parse_languages` (CR-46), la branche « Volumes » du fil d'Ariane (CR-69) ; outil DVD sans repli sur un ffmpeg nu (CR-08) ; annotations `X \| None` dans `run.py` (CR-66) ; **un dossier passé en argument s'ouvre** (CR-73) · `same_language` et `validate_id` gardés (appelants depuis IE-136 et CR-99) · `tests/test_code_mort.py` |
 | 0.8.9.120 | 2026-10-09 | **Libellés** (§ 14.1, § 14.2, IE-135 3/3 — IE-135 close) : en-têtes « ETA », « Dolby V. », « DV », « Release » au catalogue (CR-79, CR-97), « oui » d'OpenSubtitles traduit (CR-97) · pistes : « défaut » d'après le drapeau, conteneur réel (CR-83) · identifiant de profil validé par `profiles.validate_id` (CR-99) · `tests/test_libelles_revue.py` |
 | 0.8.9.119 | 2026-10-09 | **L'accueil et la navigation** (§ 14.1, IE-135 2/3) : lettre du lecteur gardée, `abspath` au lieu de `resolve()` (CR-68) · fichiers illisibles listés avec leur cause (CR-75) · espace des volumes mesuré dans le worker (CR-78) · `on_key` sans `super()`, règle G4 remplacée (CR-80) · guide intégré : `D`, `R`, `A`, `Ctrl+Home` exacts, `R` sur un fichier le dit (CR-102) · `tests/test_accueil_revue.py` |
 | 0.8.9.118 | 2026-10-09 | **La file d'encodage** (§ 12.4, § 14.7, § 16.1, IE-135 1/3) : `S` confirmé · cause d'échec à chaque étape ffmpeg (`EncoderProcess.journal`, `RunScreen._cause`, CR-62) · progression des passes audio (`-stats`, CR-21) · « 4200% » des étapes mkvmerge (CR-59) · journal en anglais et en UTF-8, motif `powercfg` en anglais (CR-53, CR-72) · `tests/test_file_encodage.py` |

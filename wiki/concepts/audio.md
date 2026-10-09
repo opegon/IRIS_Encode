@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-10-07
+maj: 2026-10-09
 sources:
   - "[[2026-10-07-piste-vide-ffmpeg-81]]"
   - "[[source-2026-10-01-entrelacement]]"
@@ -30,7 +30,9 @@ sources:
 TrueHD, MLP, DTS-HD MA. **ffprobe nomme `dts` toutes les variantes DTS** et
 met la famille dans `profile` : « DTS », « DTS-ES », « DTS-HD HR »,
 « DTS-HD MA », « DTS-HD MA + DTS:X ». Sans lire `profile`, un DTS-HD MA passe
-pour un DTS ordinaire. *(mesuré)*
+pour un DTS ordinaire. *(mesuré)* ffmpeg (≥ 6.1) connaît aussi « DTS-HD MA +
+DTS:X IMAX » (*documenté* : relevé par la revue de code du 2026-10-08 dans
+`libavcodec`) : la famille se reconnaît au préfixe « DTS-HD MA ».
 
 ## Transcoder au débit de la source
 

@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.112] — 2026-10-09
+
+### Audio : DTS:X IMAX, et des noms qui disent ce que le fichier contient (IE-128)
+
+Revue IE-114, constats CR-09, 10, 18. IE-128 est close.
+
+- **DTS:X IMAX gardé sans perte.** Avec `preserve_hd_audio`, une piste
+  « DTS-HD MA + DTS:X IMAX » était transcodée en AC-3 5.1 et la sortie
+  partait en MP4 ; avec la suppression de la source, la piste sans perte
+  était perdue. Elle est recopiée, en MKV, comme les autres DTS-HD MA.
+- **`DTS5.1`, `TrueHD7.1` dans le nom.** Une famille audio collée à ses
+  canaux n'était pas reconnue : le nom annonçait encore du TrueHD 7.1 Atmos
+  sur un fichier en E-AC3 5.1. Il est corrigé comme `DTS.5.1` l'était.
+- **Piste écartée.** Une TrueHD Atmos écartée au profit de son cœur AC-3
+  laissait `TrueHD.7.1.Atmos` dans le nom d'un fichier en AC-3 5.1 : le nom
+  dit maintenant `AC3.5.1`.
+
 ## [v0.8.9.111] — 2026-10-09
 
 ### Disques et dossiers : moins de lectures (IE-127, 3/3)

@@ -651,24 +651,41 @@ class FileDecision:
         la disposition comme la mention Atmos ne bougent qu'avec le codec —
         les objets sonores ne survivent pas à une conversion vers AC3 ou
         E-AC3, mais un nom qui ne dit rien du format n'a jamais menti.
+
+        Une piste **écartée** dont plus aucune piste gardée ne porte la
+        famille ment autant : une TrueHD Atmos écartée au profit de son cœur
+        AC-3 laissait `TrueHD.7.1.Atmos` sur un fichier en AC-3 5.1 (CR-18).
+        Sa marque prend le format de la première piste gardée.
         """
         gardees = {famille_audio(ad.track.codec) for ad in self.audio
                    if ad.action == AudioAction.COPY}
+        sortie = next((ad for ad in self.audio if ad.action != AudioAction.EXCLUDE),
+                      None)
         for ad in self.audio:
-            if ad.action != AudioAction.TRANSCODE:
+            if ad.action == AudioAction.TRANSCODE:
+                codec, canaux = ad.output_codec, ad.output_channels or ad.track.channels
+            elif ad.action == AudioAction.EXCLUDE and sortie is not None:
+                if sortie.action == AudioAction.TRANSCODE:
+                    codec = sortie.output_codec
+                    canaux = sortie.output_channels or sortie.track.channels
+                else:
+                    codec, canaux = sortie.track.codec, sortie.track.channels
+                if famille_audio(codec) == famille_audio(ad.track.codec):
+                    continue
+            else:
                 continue
             jetons = JETONS_AUDIO.get(famille_audio(ad.track.codec))
             if not jetons or famille_audio(ad.track.codec) in gardees:
                 continue
-            label  = _CODEC_LABELS.get(ad.output_codec, ad.output_codec.upper())
+            label  = _CODEC_LABELS.get(codec, codec.upper())
             ecrit  = stem_marques_remplacees(stem, jetons, label)
             if ecrit == stem:
                 continue
             stem = stem_marques_retirees(ecrit, ("atmos",))
-            if ad.output_channels and ad.output_channels != ad.track.channels:
+            if canaux != ad.track.channels:
                 stem = stem_marques_remplacees(
                     stem, (channel_layout_label(ad.track.channels),),
-                    channel_layout_label(ad.output_channels))
+                    channel_layout_label(canaux))
         return stem
 
     @property

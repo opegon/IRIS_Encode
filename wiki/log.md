@@ -363,3 +363,7 @@ bornes (mesure de la revue de code). Pages touchées : [[disques-optiques]].
 
 Table C_PBKT validée sur le DVD d'essai (lue dans l'ISO) ; `pcm_dvd` refusé
 par Matroska en copie, accepté en PCM. Pages touchées : [[disques-optiques]].
+
+## [2026-10-09] ingest | DTS:X IMAX (IE-128)
+
+Troisième variante sans perte du profil DTS de ffmpeg. Pages touchées : [[audio]].

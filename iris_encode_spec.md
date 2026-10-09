@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.111 — document de référence courant
+**Version** : 0.8.9.112 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -1125,7 +1125,11 @@ jamais menti. Une piste copiée n'est jamais retitrée.
 **Détection des variantes DTS.** ffprobe nomme `dts` toutes les déclinaisons et
 met la famille dans `profile` : « DTS », « DTS-ES », « DTS-HD HR »,
 « DTS-HD MA ». `AudioTrack.profile` est donc lu au scan — sans lui, un DTS-HD MA
-passait pour un DTS ordinaire et échappait à `preserve_hd_audio`.
+passait pour un DTS ordinaire et échappait à `preserve_hd_audio`. Est sans perte
+tout profil qui **commence** par « DTS-HD MA » (`_PREFIXE_DTS_SANS_PERTE`,
+v0.8.9.112, CR-09) : ffmpeg écrit aussi « DTS-HD MA + DTS:X » et « DTS-HD MA +
+DTS:X IMAX », et ce dernier, comparé à l'égalité, était transcodé malgré
+`preserve_hd_audio`, sortie en MP4.
 
 ### 8.6 Sous-titres et conteneur de sortie
 
@@ -1349,7 +1353,16 @@ devient l'étiquette du codec de sortie, `E-AC3` ou `AC3`. Suivent ce que la
 conversion emporte : la disposition si elle se replie (`7.1` → `5.1`) et la
 mention `Atmos`, les objets sonores ne survivant pas à une conversion vers
 AC3 ou E-AC3. Une famille qu'une autre piste conserve n'est pas touchée — un
-AC3 recopié à côté d'un TrueHD transcodé garde sa marque.
+AC3 recopié à côté d'un TrueHD transcodé garde sa marque. Une piste **écartée**
+dont plus aucune piste gardée ne porte la famille la cède au format de la première
+piste gardée (v0.8.9.112, CR-18) : une TrueHD Atmos écartée au profit de son cœur
+AC-3 laissait `TrueHD.7.1.Atmos` sur un fichier en AC-3 5.1.
+
+**Marque collée à sa disposition** (v0.8.9.112, CR-10) — `DTS5.1`, `TrueHD7.1`,
+`DDP5.1` : une marque suivie sans séparateur d'une disposition (`[1-9].[0-9]`)
+reste une marque. Remplacée, elle reçoit un point (`TrueHD7.1` → `E-AC3.7.1`, puis
+`E-AC3.5.1` si la disposition se replie) ; retirée, elle laisse son séparateur
+(`Film.DTS5.1` → `Film.5.1`).
 
 **SKIP est écarté d'un bloc.** La seule sortie qu'il produit est une greffe
 de pistes (`.mux-iris`, § 10.4), que mkvmerge recopie sans rien convertir : le
@@ -3414,6 +3427,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.112 | 2026-10-09 | **Audio : DTS:X IMAX, marques collées, pistes écartées** (§ 8.5, § 8.7, IE-128) : profil DTS sans perte par préfixe (CR-09) ; marque collée à sa disposition reconnue et réécrite (`colle_a_une_disposition`, CR-10) ; famille d'une piste écartée réécrite vers la piste gardée (CR-18) · `tests/test_audio_revue.py` |
 | 0.8.9.111 | 2026-10-09 | **Titres de disque : coûts de lecture** (§ 15.5, IE-127 3/3) : `bluray.memoriser` / `signature` pour les titres des deux modules (CR-02) ; mode récursif en un seul `os.walk` (CR-12) · `tests/test_bluray.py`, `tests/test_scan_recursif.py` |
 | 0.8.9.110 | 2026-10-09 | **Titres de DVD : cellules, « Lire tout », chapitres, LPCM** (§ 15.6, IE-127 2/3) : taille et VOB d'un titre par ses cellules (`_cellules`, `TitreDisque.octets`, CR-06) ; un « Lire tout » n'est plus le principal (`_lire_tout`) ; `nb_chapitres` (CR-07) ; `pcm_dvd` extrait en PCM de même profondeur (`AudioTrack.bits`, CR-05) · `tests/test_dvd.py` |
 | 0.8.9.109 | 2026-10-09 | **Titres de Blu-ray : partiel, assemblage vérifié, étiquette** (§ 15.5, IE-127 1/3) : `TitreDisque.partiel` posé par `_scan_titre`, extrait par mkvmerge (CR-01) ; `bluray.ecart_pistes` après `_remux_titre` (CR-03) ; `nom_disque` assainit l'étiquette du volume (CR-04) · `tests/test_bluray.py` |

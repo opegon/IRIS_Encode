@@ -130,6 +130,15 @@ def _motif_marque(jeton: str) -> str:
     return r"[ ._-]?".join(re.escape(p) for p in re.split(r"[ -]", jeton))
 
 
+# Une disposition de canaux collée à la marque qui la précède : `DTS5.1`.
+_DISPOSITION = r"[1-9]\.[0-9](?![0-9])"
+
+
+def colle_a_une_disposition(m: re.Match) -> bool:
+    """La marque trouvée est-elle suivie, sans séparateur, d'une disposition ?"""
+    return not m.group("apres") and re.match(_DISPOSITION, m.string[m.end():]) is not None
+
+
 @functools.cache
 def _re_marques(jetons: tuple[str, ...]) -> re.Pattern:
     """Le motif qui reconnaît l'une de ces marques dans un stem.
@@ -144,6 +153,10 @@ def _re_marques(jetons: tuple[str, ...]) -> re.Pattern:
     - **la paire de crochets ou de parenthèses part avec la marque**, sans
       quoi retirer le `hevc` de `Film [hevc]` laisserait un `[]` vide.
 
+    Une marque collée à une disposition de canaux (`DTS5.1`, `TrueHD7.1`,
+    `DDP5.1`) en reste une : le nom gardait sinon la famille de la source
+    (CR-10). `colle_a_une_disposition` le dit à ceux qui la remplacent.
+
     La ponctuation qui entoure la marque est capturée avec elle : elle doit se
     recoller quand la marque disparaît.
     """
@@ -151,7 +164,7 @@ def _re_marques(jetons: tuple[str, ...]) -> re.Pattern:
     return re.compile(
         rf"(?P<avant>[ ._-]*)"
         rf"(?:(?P<ouvre>[\[(])(?:{alt})[\])]"
-        rf"|(?<![0-9A-Za-z])(?:{alt})(?![0-9A-Za-z+]))"
+        rf"|(?<![0-9A-Za-z])(?:{alt})(?:(?![0-9A-Za-z+])|(?={_DISPOSITION})))"
         rf"(?P<apres>[ ._-]*)",
         re.IGNORECASE,
     )
@@ -172,8 +185,11 @@ def stem_marques_retirees(stem: str, jetons: tuple[str, ...]) -> str:
     Un nom qui ne serait fait que de marques est rendu tel quel : mieux vaut
     un nom redondant qu'un fichier nommé par son seul suffixe.
     """
+    # Une marque collée à sa disposition (`.DTS5.1`) laisse son séparateur
+    # devant elle : `.5.1`, pas `5.1` soudé au mot précédent.
     sans = _re_marques(jetons).sub(
-        lambda m: m.group("apres") if m.group("avant") else "", stem)
+        lambda m: m.group("avant") if colle_a_une_disposition(m)
+        else (m.group("apres") if m.group("avant") else ""), stem)
     if sans == stem:
         return stem
     # Deux marques en fin de nom laissent le séparateur de la première, qui
@@ -203,6 +219,10 @@ def stem_marques_remplacees(stem: str, jetons: tuple[str, ...],
         if m.group("ouvre"):
             ferme = "]" if m.group("ouvre") == "[" else ")"
             return f"{m['avant']}{m['ouvre']}{remplacement}{ferme}{m['apres']}"
+        # `TrueHD7.1` → `E-AC3.7.1` : collé, `E-AC37.1` ne se lirait plus, et
+        # la disposition ne se remplacerait pas ensuite (CR-10).
+        if colle_a_une_disposition(m):
+            return f"{m['avant']}{remplacement}."
         return f"{m['avant']}{remplacement}{m['apres']}"
 
     ecrit = _re_marques(jetons).sub(_sub, stem)
@@ -308,7 +328,11 @@ _LOSSLESS_CODECS = frozenset({"truehd", "dts-hd ma", "dtshd", "mlp"})
 # ffprobe nomme toutes les variantes DTS « dts » et met la famille dans
 # `profile` : « DTS », « DTS-ES », « DTS-HD HR », « DTS-HD MA ». Sans lire le
 # profil, un DTS-HD MA passe pour un DTS ordinaire.
-_LOSSLESS_PROFILES = frozenset({"dts-hd ma", "dts-hd ma + dts:x"})
+# Les profils DTS sans perte : « DTS-HD MA » et ses variantes objet, que
+# ffmpeg écrit « DTS-HD MA + DTS:X » et « DTS-HD MA + DTS:X IMAX ». Comparé à
+# l'égalité, le troisième passait pour avec perte : `preserve_hd_audio` le
+# transcodait et la sortie partait en MP4 (CR-09). Un préfixe, ici seulement.
+_PREFIXE_DTS_SANS_PERTE = "dts-hd ma"
 # Familles qu'aucun lecteur de fichier grand public ne prend en charge : c'est
 # sur elles que porte le transcodage au débit de la source.
 _HD_AUDIO_CODECS = frozenset({"truehd", "mlp", "dts", "dts-hd ma", "dtshd"})
@@ -412,7 +436,7 @@ class AudioTrack:
     def is_lossless(self) -> bool:
         if self.codec.lower() in _LOSSLESS_CODECS:
             return True
-        return self.profile.lower() in _LOSSLESS_PROFILES
+        return self.profile.lower().startswith(_PREFIXE_DTS_SANS_PERTE)
 
     @property
     def is_hd_audio(self) -> bool:

@@ -140,3 +140,240 @@ def test_seul_un_skip_avec_greffe_se_contente_d_un_mux(tmp_path, action, attendu
     faux = SimpleNamespace(_dec=SimpleNamespace(
         video=SimpleNamespace(action=action), external_tracks=[piste]))
     assert WizardScreen._muxable(faux) is attendu
+
+
+# ─── IE-126 2/3 : greffes, chapitres et langues des chemins DV ───────────────
+# CR-55, CR-63 et la règle audio des greffes (reportée d'IE-125). Les cas de
+# bout en bout passent par le ffmpeg, le dovi_tool et le mkvmerge de `bin/`.
+
+import json
+import subprocess
+
+from core import encoder, muxer, scanner
+from core.decision import AudioAction, decide
+from core.profiles import Profile
+from core.scanner import AudioTrack, SubtitleTrack
+from tui.screens.run import FileRunStatus
+
+_BIN = RACINE / "bin"
+_FFMPEG, _FFPROBE, _MKVMERGE, _DOVI = (_BIN / "ffmpeg.exe", _BIN / "ffprobe.exe",
+                                       _BIN / "mkvmerge.exe", _BIN / "dovi_tool.exe")
+outils = pytest.mark.skipif(
+    not all(p.exists() for p in (_FFMPEG, _FFPROBE, _MKVMERGE, _DOVI)),
+    reason="outils du projet absents")
+
+SRT = ("1\r\n00:00:00,200 --> 00:00:00,900\r\nBonjour\r\n\r\n"
+       "2\r\n00:00:01,000 --> 00:00:01,800\r\nAu revoir\r\n")
+
+
+def _ff(*args: str) -> None:
+    subprocess.run([str(_FFMPEG), "-y", "-loglevel", "error", *args],
+                   check=True, stdin=subprocess.DEVNULL, capture_output=True)
+
+
+def _flux(chemin: Path) -> list[dict]:
+    r = subprocess.run([str(_FFPROBE), "-v", "error", "-print_format", "json",
+                        "-show_streams", str(chemin)],
+                       capture_output=True, encoding="utf-8", check=True)
+    return json.loads(r.stdout)["streams"]
+
+
+class _Ecran:
+    """Le strict nécessaire de RunScreen pour dérouler un chemin DV hors de
+    Textual : ses vraies méthodes, un `app` qui exécute sur place."""
+    _strip_dv           = RunScreen._strip_dv
+    _encode_dv          = RunScreen._encode_dv
+    _transcoder_greffes = RunScreen._transcoder_greffes
+    _porter_sous_titres = RunScreen._porter_sous_titres
+    _ecrire_chapitres   = RunScreen._ecrire_chapitres
+    _supprimer_source   = RunScreen._supprimer_source
+    _demarrer           = RunScreen._demarrer
+    _playlist_chapitres = staticmethod(RunScreen._playlist_chapitres)
+    _audio_vide         = staticmethod(RunScreen._audio_vide)
+
+    def __init__(self, dec):
+        self.app = SimpleNamespace(
+            call_from_thread=lambda f, *a, **k: f(*a, **k),
+            dovi_path=_DOVI, mkvmerge_available=True, ffmpeg_path=str(_FFMPEG))
+        self._statuses = [FileRunStatus(decision=dec, state=FileState.RUNNING)]
+        self._process = self._mux = None
+        self._abandon = False
+
+    def _update_row(self, *a): pass
+    def _update_header(self, *a): pass
+    def _update_cmd_lines(self, *a): pass
+    def _update_ffmpeg_line(self, *a): pass
+    def _encode_next(self): pass
+
+
+@pytest.fixture
+def vrais_outils():
+    encoder.set_ffmpeg_path(str(_FFMPEG))
+    scanner.set_ffprobe_path(str(_FFPROBE))
+    muxer.set_mkvmerge_path(str(_MKVMERGE))
+
+
+def _retrait_avec_greffes(tmp_path: Path, conteneur: str):
+    """Une source HEVC (sans RPU : `dovi_tool remove` la traverse telle
+    quelle), une VF en FLAC et un `.srt` français greffés."""
+    source = tmp_path / "film.mkv"
+    _ff("-f", "lavfi", "-i", "testsrc=size=640x360:rate=25:duration=2",
+        "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+        "-c:v", "libx265", "-preset", "ultrafast", "-x265-params", "log-level=none",
+        "-c:a", "aac", str(source))
+    vf = tmp_path / "vf.mka"
+    _ff("-f", "lavfi", "-i", "sine=frequency=660:duration=2", "-c:a", "flac", str(vf))
+    srt = tmp_path / "vf.fr.srt"
+    srt.write_text(SRT, encoding="utf-8")
+
+    profil = Profile(id="test", data={
+        "bitrate_720p_kbps": 2000, "bitrate_1080p_kbps": 5000,
+        "bitrate_4k_kbps": 8000, "audio_languages": ["fre", "eng"],
+        "audio_copy_compatible": True, "preserve_hd_audio": False,
+        "container": conteneur})
+    dec = decide(scanner.scan(source), profil)
+    # Forcé sur une source sans DV : le suffixe resterait celui d'un SKIP
+    # (`.mux-iris.mkv`), d'où un nom posé à la main.
+    dec.video.action = VideoAction.STRIP_DV
+    dec.output_override = tmp_path / f"film.hdr10-iris.{conteneur}"
+    dec.external_tracks += [
+        ExternalTrack(source_path=vf, source_tid=0, kind=TrackKind.AUDIO,
+                      language="fre", track_name="VF"),
+        ExternalTrack(source_path=srt, source_tid=0, kind=TrackKind.SUBTITLE,
+                      language="fre")]
+    return dec
+
+
+@outils
+@pytest.mark.parametrize("conteneur", ["mp4", "mkv"])
+def test_le_retrait_du_dv_garde_les_greffes_a_la_regle_du_profil(
+        tmp_path, vrais_outils, conteneur):
+    """CR-55 : en MP4, la commande n'avait que la source pour entrée — VF et
+    sous-titre perdus, succès annoncé. Et en MKV comme en MP4, mkvmerge
+    recopiait le FLAC greffé que la règle du profil transcode."""
+    dec = _retrait_avec_greffes(tmp_path, conteneur)
+    assert dec.output_container == f".{conteneur}"
+    ecran = _Ecran(dec)
+    ecran._strip_dv(0, dec)
+
+    s = ecran._statuses[0]
+    assert s.state == FileState.SUCCESS, (s.error_msg, s.last_line)
+    flux = _flux(dec.output_path)
+    audio = [f for f in flux if f["codec_type"] == "audio"]
+    st = [f for f in flux if f["codec_type"] == "subtitle"]
+    assert len(audio) == 2 and audio[1]["codec_name"] != "flac"
+    assert audio[1]["tags"].get("language") == "fre"
+    assert len(st) == 1 and st[0]["tags"].get("language") == "fre"
+    # Rien ne traîne : ni Matroska recomposé, ni audio greffée transcodée.
+    assert not [p for p in tmp_path.iterdir() if ".iris_" in p.name]
+
+
+def test_le_reencodage_dv_greffe_aussi_a_la_regle_du_profil():
+    """Les deux chemins DV passent par la même préparation des greffes, et
+    mkvmerge ne reçoit plus `dec.external_tracks` tels quels."""
+    assert RUN.count("self._transcoder_greffes(index, dec, produits)") == 2
+    assert "tracks=dec.external_tracks" not in RUN
+    assert RUN.count("chapitres=self._playlist_chapitres(dec)") == 2
+
+
+class _FauxFfmpeg:
+    """Écrit la sortie demandée et réussit."""
+    def __init__(self, cmd, duree=0.0):
+        self.cmd = cmd
+    def start(self):
+        Path(self.cmd[-1]).write_bytes(b"mka")
+    def iter_progress(self):
+        return iter(())
+    def wait(self):
+        return 0
+
+
+def test_un_donneur_qui_perd_son_audio_garde_sa_place(tmp_path, monkeypatch):
+    """mkvmerge range les pistes par donneur : le sous-titre de X, dont
+    l'audio part dans un `.mka`, doit rester avant celui de Y — c'est dans cet
+    ordre que `greffes_a_porter` lit le Matroska recomposé."""
+    import core.decision as decision
+    import tui.screens.run as run
+    monkeypatch.setattr(decision, "audio_greffee", lambda ext, profil: SimpleNamespace(
+        action=AudioAction.TRANSCODE, output_title="VF E-AC3 5.1",
+        track=SimpleNamespace(index=0, language="fre", langue_completee=False),
+        output_codec="eac3", output_bitrate=640_000, output_channels=0))
+    monkeypatch.setattr(run, "EncoderProcess", _FauxFfmpeg)
+    x, y = tmp_path / "x.mkv", tmp_path / "y.srt"
+    pistes = [ExternalTrack(source_path=x, source_tid=1, kind=TrackKind.AUDIO,
+                            language="fre", track_name="VF DTS"),
+              ExternalTrack(source_path=y, source_tid=0, kind=TrackKind.SUBTITLE,
+                            language="fre"),
+              ExternalTrack(source_path=x, source_tid=2, kind=TrackKind.SUBTITLE,
+                            language="eng")]
+    dec = SimpleNamespace(external_tracks=pistes, profile={}, dossier_sortie=tmp_path,
+                          info=SimpleNamespace(lecture=tmp_path / "film.mkv",
+                                               duration=60.0))
+    ecran = _Ecran(dec)
+    produits: list[Path] = []
+    rendues = ecran._transcoder_greffes(0, dec, produits)
+
+    assert [p.name for p in produits] == ["film.iris_greffe0.mka"]
+    assert [(t.source_path.name, t.source_tid) for t in rendues] == [
+        ("film.iris_greffe0.mka", 0), ("x.mkv", 2), ("y.srt", 0)]
+    assert rendues[0].track_name == "VF E-AC3 5.1"
+    assert [t.language for t in muxer.premux_track_order(rendues)
+            if t.kind == TrackKind.SUBTITLE] == [
+        t.language for t in muxer.premux_track_order(pistes)
+        if t.kind == TrackKind.SUBTITLE]
+
+
+# ─── CR-63 : chapitres et langues d'un titre de Blu-ray ──────────────────────
+
+def _titre(chapitres, dvd=False):
+    return SimpleNamespace(chemin=Path("BDMV/PLAYLIST/00800.mpls"),
+                           chapitres=chapitres, est_dvd=dvd)
+
+
+@pytest.mark.parametrize("titre,attendu", [
+    (None, None),
+    (_titre([0.0]), None),
+    (_titre([0.0, 340.0], dvd=True), None),
+    (_titre([0.0, 340.0]), Path("BDMV/PLAYLIST/00800.mpls")),
+])
+def test_la_playlist_donne_les_chapitres_a_mkvmerge(titre, attendu):
+    dec = SimpleNamespace(info=SimpleNamespace(titre=titre))
+    assert RunScreen._playlist_chapitres(dec) == attendu
+
+
+def test_mkvmerge_recoit_les_chapitres_de_la_playlist(tmp_path):
+    cmd = muxer.build_strip_command(tmp_path / "v.hevc", tmp_path / "00001.m2ts",
+                                    tmp_path / "s.mkv",
+                                    chapitres=tmp_path / "00800.mpls")
+    i = cmd.index("--chapters")
+    assert cmd[i + 1] == str(tmp_path / "00800.mpls")
+
+
+def _audio(langue_completee):
+    return SimpleNamespace(
+        action=AudioAction.COPY, output_title=None,
+        track=AudioTrack(index=0, codec="ac3", channels=6, language="fre",
+                         title="", bitrate=640_000,
+                         langue_completee=langue_completee))
+
+
+def test_l_audio_produite_a_part_garde_la_langue_du_clpi(tmp_path):
+    cmd = encoder.build_audio_command(tmp_path / "00001.m2ts", tmp_path / "a.mka",
+                                      [_audio(True)])
+    assert "language=fre" in cmd
+    cmd = encoder.build_audio_command(tmp_path / "00001.m2ts", tmp_path / "a.mka",
+                                      [_audio(False)])
+    assert "language=fre" not in cmd
+
+
+def test_le_retrait_vers_mp4_ecrit_chapitres_et_langues(tmp_path):
+    st = SubtitleTrack(index=3, codec="subrip", language="fre", title="",
+                       forced=False, default=False, langue_completee=True)
+    cmd = dovi.build_strip_mp4(tmp_path / "00001.m2ts", tmp_path / "s.mp4",
+                               sous_titres=[3], audio=[_audio(True)],
+                               chapitres=tmp_path / "c.txt", pistes_st=[st])
+    i = cmd.index("ffmetadata")
+    assert cmd[i + 2] == str(tmp_path / "c.txt")
+    assert cmd[cmd.index("-map_chapters") + 1] == "1"
+    assert cmd[cmd.index("-metadata:s:a:0") + 1] == "language=fre"
+    assert cmd[cmd.index("-metadata:s:s:0") + 1] == "language=fre"

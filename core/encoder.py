@@ -259,6 +259,10 @@ def build_audio_command(source: Path, output: Path, audio: list,
 
     Les pistes déjà au bon format sont recopiées, pas réencodées — l'étape ne
     coûte que ce que la décision demande vraiment.
+
+    Ce Matroska remplace l'audio de la source : une langue lue dans le `.clpi`
+    d'un Blu-ray (IE-119), que ffmpeg ne voit pas, y est écrite — sans elle,
+    les pistes sortaient en `und` (CR-63).
     """
     gardees = [ad for ad in audio if ad.action != AudioAction.EXCLUDE]
     cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(source),
@@ -266,6 +270,9 @@ def build_audio_command(source: Path, output: Path, audio: list,
     for ad in gardees:
         cmd += ["-map", f"0:a:{ad.track.index}"]
     cmd += audio_args(gardees)
+    for n, ad in enumerate(gardees):
+        if ad.track.langue_completee:
+            cmd += [f"-metadata:s:a:{n}", f"language={ad.track.language}"]
     cmd += [str(output)]
     return cmd
 

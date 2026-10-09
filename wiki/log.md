@@ -347,3 +347,9 @@ Pages touchées : [[sous-titres]].
 MicroDVD refusé par mkvmerge et ffmpeg, WebVTT sans heures, horodatage à
 quatre chiffres, extraction d'un sous-titre embarqué sans délai fixe.
 Pages touchées : [[sous-titres]].
+
+## [2026-10-09] ingest | Chapitres d'une playlist par mkvmerge (IE-126 2/3)
+
+`mkvmerge --chapters` accepte une `.mpls` et y lit les marques (mesuré, v102.0) :
+les chemins Dolby Vision d'un titre de Blu-ray gardent ainsi leurs chapitres.
+Pages touchées : [[mkvmerge]].

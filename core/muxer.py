@@ -476,6 +476,7 @@ def build_strip_command(
     audio_source:    Path | None      = None,
     audio_indices:   list[int] | None = None,
     sous_titres:     list[int] | None = None,
+    chapitres:       Path | None      = None,
 ) -> list[str]:
     """
     Remuxe le flux HEVC `video` (RPU retiré) avec les pistes de `source`.
@@ -493,6 +494,8 @@ def build_strip_command(
     - `audio_indices` : index ffmpeg des pistes de la source à garder, quand
       il n'y a rien à transcoder mais des pistes à écarter.
     - `sous_titres` : index ffmpeg des sous-titres à garder. `None` = tous.
+    - `chapitres` : la playlist `.mpls` d'un titre de Blu-ray (IE-120) —
+      mkvmerge y lit les chapitres (mesuré), que le `.m2ts` ne porte pas (CR-63).
     """
     if output.resolve() == source.resolve():
         raise ErreurAffichable(N_(
@@ -501,6 +504,8 @@ def build_strip_command(
         )
 
     cmd = [_mkvmerge_path, "--gui-mode", "-o", str(output)]
+    if chapitres is not None:
+        cmd += ["--chapters", str(chapitres)]
     if fps:
         # ffprobe donne "24/1" ou "24000/1001" ; mkvmerge accepte la fraction,
         # mais "24/1p" se lit plus mal que "24p" dans le journal.

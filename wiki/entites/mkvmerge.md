@@ -1,7 +1,7 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-10-08
+maj: 2026-10-09
 sources:
   - "[[source-spec]]"
   - "[[source-2026-10-08-disques]]"
@@ -46,3 +46,8 @@ DLL, 22 Mo. Licence GPL-2.0.
   seule source du débit d'une piste sans perte ([[audio]]).
 - Sur un `.m2ts` de Blu-ray, lit les langues dans le `.clpi` voisin, là où
   ffprobe n'en donne aucune (*mesuré*, [[disques-optiques]]).
+- **`--chapters <playlist>.mpls`** lit les marques de chapitre d'une playlist de
+  Blu-ray : trois marques à 0, 2 et 4 s donnent trois chapitres « Chapter 01 »
+  à « 03 » sur un Matroska de 5 s, la dernière fermée à la fin du fichier
+  (*mesuré*, mkvmerge v102.0, playlist de synthèse, 2026-10-09). Un `.m2ts` seul
+  n'en porte aucun ([[disques-optiques]]).

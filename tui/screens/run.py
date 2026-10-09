@@ -32,8 +32,8 @@ from core.encoder import (
     pistes_audio_vides,
 )
 from core.muxer import (
-    MuxProcess, build_mux_command, build_strip_command, needs_premux,
-    mkvmerge_reussi, premux_output_path,
+    ExternalTrack, MuxProcess, TrackKind, build_mux_command, build_strip_command,
+    needs_premux, mkvmerge_reussi, premux_output_path, premux_track_order,
 )
 from core.platform import PlatformProfile
 from core.scanner import est_intermediaire
@@ -734,7 +734,7 @@ class RunScreen(TableNavMixin, Screen):
 
     def _porter_sous_titres(self, index: int, dec: FileDecision,
                             recompose: Optional[Path] = None,
-                            greffes: bool = True) -> tuple[bool, Optional[Path]]:
+                            ) -> tuple[bool, Optional[Path]]:
         """Les sous-titres texte d'une sortie MP4, réécrits s'il le faut.
 
         Rend (réussite, porteur). Le porteur est None quand aucune piste n'a
@@ -743,16 +743,14 @@ class RunScreen(TableNavMixin, Screen):
         la source, payée seulement par les sorties MP4 qui gardent du texte.
         Les sous-titres greffés y passent aussi (CR-34) : extraits un par un,
         décalage et jeu de caractères appliqués — ou lus dans `recompose`, le
-        Matroska du réencodage DV, où mkvmerge les a déjà recalés et étirés.
-        `greffes=False` : le retrait DV vers MP4 ne les prend pas (CR-55,
-        IE-126) ; les extraire n'y servirait à rien.
+        Matroska des chemins DV, où mkvmerge les a déjà recalés et étirés.
         """
         from core import sous_titres as st_mod
 
         s       = self._statuses[index]
         pistes  = st_mod.pistes_a_porter(dec)
         try:
-            greffes = st_mod.greffes_a_porter(dec, recompose) if greffes else []
+            greffes = st_mod.greffes_a_porter(dec, recompose)
         except ValueError as e:          # piste introuvable (CR-27)
             s.state, s.error_msg = FileState.ERROR, _("subtitles: preparation failed")
             s.last_line = texte_erreur(e)
@@ -824,6 +822,78 @@ class RunScreen(TableNavMixin, Screen):
             for chemin in srts:
                 chemin.unlink(missing_ok=True)
 
+    @staticmethod
+    def _playlist_chapitres(dec: FileDecision) -> Optional[Path]:
+        """La playlist d'un titre de Blu-ray à chapitres, où mkvmerge les lit
+        (CR-63). La règle de `ffmetadata_chapitres` : deux au moins."""
+        titre = dec.info.titre
+        if titre is None or titre.est_dvd or len(titre.chapitres) < 2:
+            return None
+        return titre.chemin
+
+    def _transcoder_greffes(self, index: int, dec: FileDecision,
+                            produits: list[Path]) -> Optional[list[ExternalTrack]]:
+        """Les pistes greffées d'un chemin DV, l'audio à la règle du profil.
+
+        mkvmerge ne sait que recopier : un DTS greffé sortait en DTS, quand la
+        passe principale le transcode (IE-125). Chaque piste que la règle
+        transcode passe par ffmpeg vers un Matroska audio, qui remplace son
+        donneur (piste 0) ; décalage, étirement, langue et drapeaux restent à
+        mkvmerge. Les fichiers produits sont ajoutés à `produits`, à effacer
+        par l'appelant. None si une transcription échoue ou si `S` l'abandonne.
+
+        L'ordre est celui de `premux_track_order` : mkvmerge range les pistes
+        par donneur, et un donneur qui perd son audio au profit d'un `.mka`
+        doit garder sa place — les sous-titres du Matroska recomposé sont lus
+        dans cet ordre (`greffes_a_porter`).
+        """
+        from dataclasses import replace
+        from core.decision import audio_greffee
+
+        s      = self._statuses[index]
+        ffmpeg = getattr(self.app, "ffmpeg_path", "ffmpeg")
+        pistes: list[ExternalTrack] = []
+        for n, ext in enumerate(premux_track_order(dec.external_tracks)):
+            if ext.kind != TrackKind.AUDIO:
+                pistes.append(ext)
+                continue
+            ad = audio_greffee(ext, dec.profile)
+            if ad.action != AudioAction.TRANSCODE:
+                pistes.append(ext)
+                continue
+            mka = dec.dossier_sortie / f"{dec.info.lecture.stem}.iris_greffe{n}.mka"
+            produits.append(mka)
+            cmd = build_audio_command(ext.source_path, mka, [ad], ffmpeg)
+            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+            self.app.call_from_thread(
+                self._update_ffmpeg_line,
+                "▶ " + _("Transcoding the added audio track “{name}”…").format(
+                    name=ext.source_path.name))
+            s.percent = -1
+            self.app.call_from_thread(self._update_row, index)
+            proc = EncoderProcess(cmd, dec.info.duration)
+            self._demarrer(proc)
+            for ligne, progress in proc.iter_progress():
+                s.last_line = ligne
+                if progress:
+                    s.percent = progress.percent
+                    self.app.call_from_thread(self._update_row, index)
+            code = proc.wait()
+            self._process = None
+            if s.state == FileState.SKIPPED:
+                return None
+            if code != 0 or not mka.exists():
+                s.state     = FileState.ERROR
+                s.error_msg = _("audio transcoding: code {code}").format(code=code)[:60]
+                s.last_line = _("Transcoding the added audio track “{name}” failed "
+                                "(code {code}).").format(name=ext.source_path.name,
+                                                         code=code)
+                self.app.call_from_thread(self._update_row, index)
+                return None
+            pistes.append(replace(ext, source_path=mka, source_tid=0,
+                                  track_name=ad.output_title or ext.track_name))
+        return pistes
+
     def _strip_dv(self, index: int, dec: FileDecision) -> None:
         """Retire le RPU Dolby Vision sans réencoder, puis passe au suivant.
 
@@ -861,23 +931,33 @@ class RunScreen(TableNavMixin, Screen):
         mka  = dec.dossier_sortie / f"{source.stem}.iris_audio.mka"
         # Le MP4 est recomposé par ffmpeg en une passe depuis la source : le
         # filtre `dovi_rpu` retire le RPU, l'audio se transcode au passage.
-        mp4 = dec.output_container == ".mp4"
+        # Avec des greffes, ffmpeg ne saurait ni les étirer ni les recaler
+        # comme mkvmerge : les pistes greffées disparaissaient, l'encodage
+        # était déclaré réussi (CR-55). mkvmerge recompose alors un Matroska,
+        # que ffmpeg passe en MP4 — le chemin du réencodage DV.
+        mp4    = dec.output_container == ".mp4"
+        direct = mp4 and not dec.external_tracks
+        mkv    = (dec.dossier_sortie / f"{source.stem}.iris_strip.mkv"
+                  if mp4 and not direct else sortie)
         porteur: Optional[Path] = None
+        chapitres: Optional[Path] = None
+        produits: list[Path] = []
         ffmpeg_path = getattr(self.app, "ffmpeg_path", "ffmpeg")
-        if mp4 and not dovi.strip_bsf_disponible(ffmpeg_path):
+        if direct and not dovi.strip_bsf_disponible(ffmpeg_path):
             echouer(_("ffmpeg 7.1+ required (dovi_rpu filter)"),
                     _("Removing Dolby Vision to MP4 needs the dovi_rpu filter, "
                       "which came with ffmpeg 7.1. Update ffmpeg from the "
                       "preflight."))
             self._encode_next()
             return
-        passe_audio = not mp4 and audio_pass_needed(dec.audio)
-        n_etapes = 1 if mp4 else (4 if passe_audio else 3)
+        passe_audio = not direct and audio_pass_needed(dec.audio)
+        n_etapes = 1 if direct else (4 if passe_audio else 3) + (mkv != sortie)
         s.percent = -1
 
         try:
-            # Le MP4 n'a pas d'intermédiaire : sa passe unique est la dernière.
-            if not mp4:
+            # Le MP4 direct n'a pas d'intermédiaire : sa passe unique est la
+            # dernière.
+            if not direct:
                 # 1/N — extraction du flux HEVC (copie)
                 cmd = dovi.build_extract_hevc_command(
                     source, brut, getattr(self.app, "ffmpeg_path", "ffmpeg"),
@@ -954,17 +1034,19 @@ class RunScreen(TableNavMixin, Screen):
                     return
 
             # N/N — remux avec les pistes de la source. mkvmerge ne sait
-            # écrire que du Matroska : quand le profil demande du MP4, c'est
-            # ffmpeg qui recompose, depuis la source.
-            if mp4:
-                ok, porteur = self._porter_sous_titres(index, dec, greffes=False)
+            # écrire que du Matroska : quand le profil demande du MP4 sans
+            # greffe, c'est ffmpeg qui recompose, depuis la source.
+            if direct:
+                ok, porteur = self._porter_sous_titres(index, dec)
                 if not ok:
                     return
+                chapitres = self._ecrire_chapitres(dec)
                 cmd = dovi.build_strip_mp4(
                     source, sortie,
                     sous_titres=[st.index for st in dec.subtitles_finales],
                     ffmpeg_path=ffmpeg_path,
-                    audio=dec.audio, porteur=porteur)
+                    audio=dec.audio, porteur=porteur, chapitres=chapitres,
+                    pistes_st=dec.subtitles_finales)
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
@@ -981,21 +1063,26 @@ class RunScreen(TableNavMixin, Screen):
                 self._process = None
                 erreurs: list[str] = []
             else:
+                pistes = self._transcoder_greffes(index, dec, produits)
+                if pistes is None:
+                    return
                 exclues = [ad for ad in dec.audio
                            if ad.action == AudioAction.EXCLUDE]
                 cmd = build_strip_command(
-                    nodv, source, sortie,
+                    nodv, source, mkv,
                     fps=dec.info.frame_rate,
-                    tracks=dec.external_tracks,
+                    tracks=pistes,
                     audio_source=mka if passe_audio else None,
                     audio_indices=([ad.track.index for ad in dec.audio
                                     if ad.action != AudioAction.EXCLUDE]
                                    if exclues and not passe_audio else None),
-                    sous_titres=[st.index for st in dec.subtitles_finales])
+                    sous_titres=[st.index for st in dec.subtitles_finales],
+                    chapitres=self._playlist_chapitres(dec))
+                etape = n_etapes - (mkv != sortie)
                 self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
                 self.app.call_from_thread(
                     self._update_ffmpeg_line,
-                    f"▶ {n_etapes}/{n_etapes} " + _("Remuxing the tracks with mkvmerge…"))
+                    f"▶ {etape}/{n_etapes} " + _("Remuxing the tracks with mkvmerge…"))
 
                 mux = MuxProcess(cmd)
                 self._demarrer(mux)
@@ -1008,14 +1095,42 @@ class RunScreen(TableNavMixin, Screen):
                 code = mux.wait()
                 self._mux = None
                 erreurs = mux.errors
-                if mkvmerge_reussi(code, sortie):
+                if mkvmerge_reussi(code, mkv):
                     code = 0              # des avertissements : la sortie vaut (CR-89)
 
-            if code != 0 or not sortie.exists():
+            if code != 0 or not mkv.exists():
                 detail = erreurs[-1] if erreurs else f"code {code}"
                 echouer(_("remux: {detail}").format(detail=detail),
                         _("Remux failed — {detail}").format(detail=detail))
                 return
+
+            # N/N — le Matroska recomposé passe en MP4 (CR-55).
+            if mkv != sortie:
+                if s.state == FileState.SKIPPED:
+                    return
+                ok, porteur = self._porter_sous_titres(index, dec, recompose=mkv)
+                if not ok:
+                    return
+                cmd = dovi.build_dv_mp4_remux(mkv, sortie, ffmpeg_path, porteur)
+                self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+                self.app.call_from_thread(
+                    self._update_ffmpeg_line,
+                    f"▶ {n_etapes}/{n_etapes} " + _("Remuxing to MP4 with ffmpeg…"))
+                proc = EncoderProcess(cmd, dec.info.duration)
+                self._demarrer(proc)
+                for ligne, progress in proc.iter_progress():
+                    s.last_line = ligne
+                    if progress:
+                        s.percent = progress.percent
+                        self.app.call_from_thread(self._update_row, index)
+                code = proc.wait()
+                self._process = None
+                if s.state == FileState.SKIPPED:
+                    return
+                if code != 0 or not sortie.exists():
+                    echouer(_("MP4 remux: code {code}").format(code=code),
+                            _("The MP4 remux failed (code {code}).").format(code=code))
+                    return
             vide = self._audio_vide(dec, sortie)
             if vide:
                 echouer(vide, vide)
@@ -1039,7 +1154,8 @@ class RunScreen(TableNavMixin, Screen):
                 sortie.unlink(missing_ok=True)      # partielle (CR-57)
             # Les deux flux bruts pèsent chacun le poids du film : les laisser
             # traîner remplirait le disque, que l'opération ait abouti ou non.
-            for tmp in (brut, nodv, mka, porteur):
+            for tmp in (brut, nodv, mka, porteur, chapitres, *produits) + (
+                    (mkv,) if mkv != sortie else ()):
                 try:
                     if tmp is not None and tmp.exists():
                         tmp.unlink()
@@ -1103,6 +1219,7 @@ class RunScreen(TableNavMixin, Screen):
         en_mp4 = sortie.suffix.lower() == ".mp4"
         mkv    = dec.dossier_sortie / f"{source.stem}.iris_dv.mkv" if en_mp4 else sortie
         porteur: Optional[Path] = None
+        produits: list[Path] = []
 
         passe_audio = audio_pass_needed(dec.audio)
         n_etapes    = 5 if passe_audio else 4
@@ -1203,16 +1320,20 @@ class RunScreen(TableNavMixin, Screen):
 
             # N — remux par mkvmerge, vers la sortie ou vers l'intermédiaire
             # que l'étape suivante passera en MP4.
+            pistes = self._transcoder_greffes(index, dec, produits)
+            if pistes is None:
+                return
             exclues = [ad for ad in dec.audio if ad.action == AudioAction.EXCLUDE]
             cmd = build_strip_command(
                 inj, source, mkv,
                 fps=dec.info.frame_rate,
-                tracks=dec.external_tracks,
+                tracks=pistes,
                 audio_source=mka if passe_audio else None,
                 audio_indices=([ad.track.index for ad in dec.audio
                                 if ad.action != AudioAction.EXCLUDE]
                                if exclues and not passe_audio else None),
-                sous_titres=[st.index for st in dec.subtitles_finales])
+                sous_titres=[st.index for st in dec.subtitles_finales],
+                chapitres=self._playlist_chapitres(dec))
             annoncer(_("Remuxing the tracks with mkvmerge…"), " ".join(cmd))
             mux = MuxProcess(cmd)
             self._demarrer(mux)
@@ -1277,7 +1398,8 @@ class RunScreen(TableNavMixin, Screen):
                 sortie.unlink(missing_ok=True)      # partielle (CR-57)
             # Deux flux bruts de la taille de la vidéo encodée : les laisser
             # traîner remplirait le disque, que l'opération ait abouti ou non.
-            for tmp in (rpu, p8, enc, inj, mka, porteur) + ((mkv,) if en_mp4 else ()):
+            for tmp in (rpu, p8, enc, inj, mka, porteur, *produits) + (
+                    (mkv,) if en_mp4 else ()):
                 try:
                     if tmp is not None and tmp.exists():
                         tmp.unlink()

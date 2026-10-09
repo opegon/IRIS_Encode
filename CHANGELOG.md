@@ -1,5 +1,25 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.107] — 2026-10-09
+
+### Dolby Vision : les pistes greffées, les chapitres, les langues (IE-126, 2/3)
+
+Revue IE-114, constats CR-55, 63, et la règle audio des greffes reportée
+d'IE-125.
+
+- **Retrait du Dolby Vision vers MP4 avec une greffe.** La VF ou le `.srt`
+  ajoutés depuis l'écran des pistes disparaissaient, et l'encodage était
+  annoncé réussi. Avec des greffes, le fichier est maintenant recomposé par
+  mkvmerge, qui les décale et les étire, puis passé en MP4 — le chemin du
+  réencodage Dolby Vision.
+- **Audio greffée sur les chemins Dolby Vision.** Elle suit désormais la règle
+  audio du profil, comme à l'encodage : un DTS ou un FLAC greffé n'est plus
+  recopié tel quel, ce qui faisait transcoder Jellyfin.
+- **Titre de Blu-ray.** Le retrait et le réencodage du Dolby Vision perdaient
+  les chapitres du titre et, dès qu'une piste audio était transcodée ou la
+  sortie en MP4, les langues lues sur le disque (pistes `und`). Les deux sont
+  gardés.
+
 ## [v0.8.9.106] — 2026-10-09
 
 ### Dolby Vision : la source, les pistes vides, le RPU, le mux (IE-126, 1/3)

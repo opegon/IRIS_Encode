@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.106 — document de référence courant
+**Version** : 0.8.9.107 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -680,7 +680,7 @@ Module wrapper autour de `dovi_tool`, utilisé en trois phases :
 | `extract_rpu(…)` | Extrait le RPU depuis un `.hevc` brut |
 | `build_extract_hevc_command(…)` | Commande ffmpeg de l'extraction (progression côté TUI) |
 | `remove_dv(hevc_in, hevc_out, dovi_path)` | `dovi_tool remove` : retire RPU et couche d'amélioration |
-| `build_strip_mp4(source, output, …)` | Retrait vers du MP4 : une passe ffmpeg depuis la source, filtre `dovi_rpu=strip=1` |
+| `build_strip_mp4(source, output, …)` | Retrait vers du MP4 sans greffe : une passe ffmpeg depuis la source, filtre `dovi_rpu=strip=1` ; `chapitres` (FFMETADATA) et langues complétées d'un titre de Blu-ray |
 | `strip_bsf_disponible(ffmpeg_path)` | ffmpeg connaît-il le filtre `dovi_rpu` (7.1+) ? |
 | `convert_p7_to_p8(…)` | Convertit RPU profil 7 → profil 8 (mode `-m 2`) |
 | `rpu_info(…)` | `{dv_subprofile, master_display, max_cll}` |
@@ -719,6 +719,37 @@ En MP4, une seule passe, depuis la source :
 ```
 1. ffmpeg -c copy -bsf:v dovi_rpu=strip=1   (source → <nom>.hdr10-iris.mp4)
 ```
+
+En MP4 **avec des pistes greffées** (v0.8.9.107, CR-55), le chemin Matroska, puis
+un remux :
+
+```
+1–4. comme en Matroska, vers                 (→ *.iris_strip.mkv)
+5.   ffmpeg : remux MP4 (build_dv_mp4_remux) (→ <nom>.hdr10-iris.mp4)
+```
+
+La passe unique n'avait que la source pour entrée : VF et sous-titres greffés
+disparaissaient, l'encodage était déclaré réussi. ffmpeg ne saurait pas étirer une
+greffe ; mkvmerge décale, étire et nomme, et ffmpeg remuxe son Matroska comme au
+réencodage DV — les horodatages du flux brut sont reconstitués par mkvmerge,
+le défaut décrit plus bas ne s'y présente pas.
+
+**Les greffes des deux chemins DV** (v0.8.9.107) passent par
+`RunScreen._transcoder_greffes` avant mkvmerge : une piste audio que la règle du
+profil transcode (§ 12.0) est produite par `build_audio_command` depuis son
+donneur, dans un `*.iris_greffe<n>.mka` qui le remplace (piste 0) ; décalage,
+étirement, langue et drapeaux restent à mkvmerge. Les pistes sont prises dans
+l'ordre de `premux_track_order` : un donneur qui perd son audio garde sa place, et
+les sous-titres du Matroska recomposé restent dans l'ordre que lit
+`greffes_a_porter`.
+
+**Un titre de Blu-ray** (IE-120) garde ses chapitres et ses langues sur les chemins
+DV (v0.8.9.107, CR-63) : mkvmerge reçoit sa playlist en `--chapters` (il y lit les
+marques, mesuré) — `_playlist_chapitres`, deux chapitres au moins comme
+`ffmetadata_chapitres` ; la passe MP4 directe reçoit le fichier FFMETADATA de
+`_ecrire_chapitres`. Les langues lues dans le `.clpi` sont écrites par
+`build_audio_command`, dont le `.mka` remplace l'audio de la source, et par
+`build_strip_mp4`.
 
 **Pourquoi deux chemins.** mkvmerge n'écrit que du Matroska. Jusqu'à la
 v0.8.8.14, le MP4 était recomposé par ffmpeg **à partir du flux brut** de
@@ -1183,9 +1214,9 @@ extraite de son donneur — ffmpeg n'y appliquerait que le décalage, une dériv
 `greffes_a_porter` refuse celle qui arriverait autrement. Le réencodage DV vers MP4
 lit ses greffes dans le Matroska que mkvmerge vient de recomposer
 (`greffes_a_porter(dec, recompose=mkv)`), à la suite des sous-titres gardés de la
-source : décalage et étirement y sont déjà appliqués. `build_strip_mp4` ne les prend
-pas encore (`_porter_sous_titres(…, greffes=False)`) : les greffes du retrait DV vers
-MP4 relèvent d'IE-126 (CR-55).
+source : décalage et étirement y sont déjà appliqués. Le retrait DV vers MP4 qui
+porte des greffes recompose lui aussi un Matroska et les y lit (v0.8.9.107, CR-55,
+§ 7.3) ; sans greffe, sa passe unique ne lit que la source.
 
 ### 8.7 Nommage des sorties
 
@@ -1808,6 +1839,9 @@ la revue IE-114) : `decision.audio_greffee()` relit le donneur par ffprobe
 pistes de la source. Un DTS, un Opus, un FLAC greffés étaient recopiés et faisaient
 transcoder Jellyfin. Un donneur illisible est refusé plutôt que recopié. Le titre de la
 piste est réécrit comme celui d'une piste de la source transcodée (`retitle`).
+Les chemins Dolby Vision, qui greffent par mkvmerge, appliquent la même règle depuis
+la v0.8.9.107 (`_transcoder_greffes`, § 7.3). Le mux seul (SKIP + greffes,
+`_muxer`, écran du mux) recopie toujours la piste telle quelle.
 
 **Drapeau par défaut.** Une greffée marquée « par défaut » ôte celui des pistes de la
 source de même type, audio comme sous-titres (`-disposition:s:N 0`, CR-23) — même
@@ -3310,6 +3344,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.107 | 2026-10-09 | **Chemins Dolby Vision : greffes, chapitres, langues** (§ 7.3, § 8.6, § 12.0, IE-126 2/3) : retrait DV vers MP4 avec greffes recomposé par mkvmerge puis remuxé (CR-55) ; audio greffée à la règle du profil sur les deux chemins DV (`_transcoder_greffes`, reporté d'IE-125) ; chapitres d'un titre de Blu-ray par `--chapters <playlist>` ou FFMETADATA, langues du `.clpi` écrites par `build_audio_command` et `build_strip_mp4` (CR-63) ; CR-56 vérifié couvert depuis la v0.8.9.104 · `tests/test_dv_chemins.py` |
 | 0.8.9.106 | 2026-10-09 | **Chemins Dolby Vision : source, pistes vides, RPU, mux** (§ 14.0, § 14.7, IE-126 1/3) : `RunScreen._supprimer_source`, une règle pour les trois chemins — titre de disque gardé, annexes supprimées, rien après `S` (CR-54) ; `_audio_vide` sur chaque sortie finale (CR-65) ; code de retour de ffmpeg exigé dans le tuyau du RPU (CR-31) ; `_muxable` limité au SKIP (CR-85) · `tests/test_dv_chemins.py` |
 | 0.8.9.105 | 2026-10-09 | **Écran de recalage** (§ 10.2, § 10.5, IE-125 3/3) : `extract_subtitle` sans délai fixe, avec progression et `ExtractionImpossible` qui dit la cause (CR-35), hors du fil de l'écran (`SyncScreen._en_texte`) ; `_srt_stamp` arrondit avant de découper (CR-36) ; WebVTT sans heures, fractions courtes complétées, `.sub` hors des formats texte (CR-37) ; mpv reçoit la piste extraite (`preview.build_command(…, sub_file=)`, CR-52) ; recalage audio désigné par l'objet, `D` refusé pendant une opération (CR-92) · `tests/test_recalage_ecran.py`, `tests/test_sync.py` |
 | 0.8.9.104 | 2026-10-09 | **Greffes : temps en MP4, langue, index** (§ 8.6, § 9.3, § 9.8, IE-125 2/3) : les sous-titres greffés passent par le porteur (`greffes_a_porter`, `build_extraction_greffe`, CR-34 ; réencodage DV : lus dans le Matroska recomposé, étirement compris) ; `guess_language` ne prend plus un mot du titre pour une langue (CR-26) ; un téléchargement OpenSubtitles porte son code ISO 639-2 (CR-51) ; `ffmpeg_stream_index` et `mkvmerge_tid` refusent au lieu de deviner (CR-27) · `tests/test_greffes_encodage.py` |

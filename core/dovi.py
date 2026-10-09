@@ -107,7 +107,9 @@ def build_extract_hevc_command(input_path: Path, output_hevc: Path,
 def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
                     ffmpeg_path: str = "ffmpeg",
                     audio: list | None = None,
-                    porteur: Path | None = None) -> list[str]:
+                    porteur: Path | None = None,
+                    chapitres: Path | None = None,
+                    pistes_st: list | None = None) -> list[str]:
     """Retrait du RPU vers du MP4, en une passe ffmpeg depuis la source.
 
     mkvmerge ne sait écrire que du Matroska : quand le profil demande du MP4,
@@ -131,12 +133,20 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
     est recopiée en bloc.
 
     `porteur` : les mêmes sous-titres, réécrits par `core/sous_titres.py`.
+
+    Un titre de Blu-ray (IE-120) : `chapitres`, le fichier FFMETADATA de sa
+    playlist — le `.m2ts` n'en porte aucun ; `pistes_st`, les sous-titres de
+    `sous_titres`, dont les langues lues dans le `.clpi` (IE-119) sont écrites
+    comme le fait `build_command`. Sans elles, pistes `und` (CR-63).
     """
     from .decision import AudioAction
     from .encoder import audio_args
     cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(source)]
     if porteur is not None:
         cmd += ["-i", str(porteur)]
+    if chapitres is not None:
+        n_chap = cmd.count("-i")
+        cmd += ["-f", "ffmetadata", "-i", str(chapitres)]
     cmd += ["-map", "0:v:0"]
     gardees = [ad for ad in (audio or []) if ad.action != AudioAction.EXCLUDE]
     if audio is None:
@@ -149,6 +159,14 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
     cmd += ["-c", "copy", "-bsf:v", "dovi_rpu=strip=1"]
     # `-c copy` vaut pour tout ; les options par piste, plus précises, gagnent.
     cmd += audio_args(gardees)
+    for n, ad in enumerate(gardees):
+        if ad.track.langue_completee:
+            cmd += [f"-metadata:s:a:{n}", f"language={ad.track.language}"]
+    for n, st in enumerate(pistes_st or []):
+        if st.langue_completee:
+            cmd += [f"-metadata:s:s:{n}", f"language={st.language}"]
+    if chapitres is not None:
+        cmd += ["-map_chapters", str(n_chap)]
     if sous_titres:
         cmd += ["-c:s", "mov_text"]
     # Du HEVC par construction : `hvc1`, que les lecteurs Apple exigent.
@@ -176,6 +194,9 @@ def build_dv_mp4_remux(mkv: Path, output: Path,
 
     `porteur` : les sous-titres réécrits par `core/sous_titres.py`, pris à la
     place de ceux du Matroska.
+
+    Sert aussi au retrait DV vers MP4 qui porte des greffes (CR-55) : sans
+    enregistrement de configuration DV, `-strict unofficial` n'écrit rien.
     """
     cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(mkv)]
     if porteur is not None:

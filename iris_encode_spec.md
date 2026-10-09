@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.118 — document de référence courant
+**Version** : 0.8.9.119 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -2491,6 +2491,27 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 | `I` | fichier | Fiche du film : AlloCiné, `Tab` bascule sur IMDB |
 | `F10` | — | Quitter |
 
+**Ce que l'accueil montre, et d'où** (v0.8.9.119, IE-135 2/3) :
+
+- **Les chemins tels que l'utilisateur les connaît.** `FileNavigator` normalise
+  par `os.path.abspath`, jamais par `resolve()`, qui remplace la lettre d'un
+  lecteur réseau ou `subst` par sa cible (mesuré : `Z:\Films` devenait le chemin
+  visé) — fil d'Ariane, sorties et `⌫` suivaient ce chemin-là (CR-68).
+- **Un fichier illisible reste dans la liste**, grisé, « illisible : <cause> »
+  (dernière ligne de l'erreur d'analyse), jamais cochable ; la barre d'état les
+  compte. Il disparaissait sans un mot, et un dossier dont tout échouait se
+  disait vide (CR-75).
+- **L'espace des volumes se mesure dans le worker** (`_load_directory`) :
+  `disk_usage` d'un NAS en veille figeait l'écran de démarrage (CR-78).
+- **`R` sur une ligne de fichier** le dit, au lieu de ne rien faire (UX-17,
+  CR-102).
+
+**`on_key` d'un écran : pas de `super().on_key`.** Textual appelle l'`on_key` de
+chaque classe de la MRO, mixins compris ; l'appel en plus faisait traiter deux fois
+`PgUp`/`PgDn` (pistes, recalage : deux pages). Pour retenir un mixin sur une touche
+que l'écran consomme : `event.prevent_default()` (règle remplacée le 2026-10-09,
+CR-80).
+
 **Une touche de fonction, un seul sens** (v0.8.9.18, UX-07). Sur tous les
 écrans : `F1` dry-run, `F2` action principale (encoder ; joindre sur l'écran
 de collage, valider un ancrage), `F3` muxer, `F4` profil, `F5` gérer les
@@ -3541,6 +3562,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.119 | 2026-10-09 | **L'accueil et la navigation** (§ 14.1, IE-135 2/3) : lettre du lecteur gardée, `abspath` au lieu de `resolve()` (CR-68) · fichiers illisibles listés avec leur cause (CR-75) · espace des volumes mesuré dans le worker (CR-78) · `on_key` sans `super()`, règle G4 remplacée (CR-80) · guide intégré : `D`, `R`, `A`, `Ctrl+Home` exacts, `R` sur un fichier le dit (CR-102) · `tests/test_accueil_revue.py` |
 | 0.8.9.118 | 2026-10-09 | **La file d'encodage** (§ 12.4, § 14.7, § 16.1, IE-135 1/3) : `S` confirmé · cause d'échec à chaque étape ffmpeg (`EncoderProcess.journal`, `RunScreen._cause`, CR-62) · progression des passes audio (`-stats`, CR-21) · « 4200% » des étapes mkvmerge (CR-59) · journal en anglais et en UTF-8, motif `powercfg` en anglais (CR-53, CR-72) · `tests/test_file_encodage.py` |
 | 0.8.9.117 | 2026-10-09 | **Fiches et services en ligne** (§ 9.8, § 13, IE-133) : OMDb en HTTPS (CR-47), sans `type=movie`, repli sur les suggestions IMDB quand OMDb ne trouve pas (CR-48) · année d'un titre : la dernière avant les marqueurs, jamais en tête (CR-49) · en-tête de la fiche en `Text` (CR-101) · mot de passe OpenSubtitles en clair, choix documenté · `tests/test_fiches.py` |
 | 0.8.9.116 | 2026-10-09 | **Lanceurs, fin** (§ 2.1, § 3.1, § 3.1.2, IE-132 3/3 — IE-132 close) : `cmd /c .\launch.bat` dans le lanceur C# (`NoDefaultCurrentDirectoryInExePath`, mesuré) · origine de Python par `sys.prefix` (CR-105) · fichiers protégés de `updater.py` comparés sans la casse (CR-106) · `tests/test_banniere.py`, `tests/test_updater.py`, `tests/test_lanceurs.py` |

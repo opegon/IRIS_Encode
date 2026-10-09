@@ -62,8 +62,11 @@ _COMMUNES: dict[str, str] = {
                           "the terminal: beyond it, the last columns would "
                           "leave the screen without anything saying so."),
     "accueil":         N_("Goes straight back to the list of volumes, without "
-                          "going back up the screens one by one. Asks for "
-                          "confirmation if work is in progress."),
+                          "going back up the screens one by one. The Tracks "
+                          "and Resync screens ask for confirmation before "
+                          "dropping their changes; a mux or a join in "
+                          "progress stops, as with Backspace; the encoding "
+                          "queue goes on."),
     "aide":            N_("Opens this guide."),
     "request_quit":    N_("Quits the application, after confirmation."),
     "encodages":       N_("Switches from the files to the encoding queue, and "
@@ -76,7 +79,9 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "toggle_select":       N_("Checks or unchecks the file under the "
                                   "cursor. Only checked files go to dry run or "
                                   "encoding."),
-        "select_all":          N_("Checks every file in the folder."),
+        "select_all":          N_("Checks every file in the folder, except "
+                                  "the outputs IRIS ENCODE already produced "
+                                  "(check those with Space)."),
         "select_none":         N_("Unchecks everything."),
         "enter_dir":           N_("Opens the folder under the cursor. On a "
                                   "file: opens the Tracks screen in manual "
@@ -95,8 +100,9 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                                   "doing anything."),
         "open_run":            N_("Adds the checked files to the encoding "
                                   "queue, which starts if it was empty."),
-        "recursive_run":       N_("Encodes the whole tree under the current "
-                                  "folder, with the active profile."),
+        "recursive_run":       N_("On a folder row: analyzes its whole tree "
+                                  "with the active profile, after confirmation, "
+                                  "and opens the dry run of the files to encode."),
         "open_profile_picker": N_("Changes the active profile."),
         "open_config":         N_("Manages the profiles: create, edit, "
                                   "delete."),
@@ -263,8 +269,10 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "edit_focused":   N_("Edits the profile under the cursor."),
         "copy_focused":   N_("Creates a profile from the one under the cursor: "
                              "same settings, name to choose."),
-        "delete_focused": N_("Deletes the profile. The profiles shipped with "
-                             "the application are protected."),
+        "delete_focused": N_("Deletes the profile, after confirmation — "
+                             "including a profile shipped with the "
+                             "application. Only the last profile cannot be "
+                             "deleted."),
         "go_back":        N_("Returns to the Home screen."),
     },
     "WizardScreen": {

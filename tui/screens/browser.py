@@ -249,6 +249,9 @@ def libelle_filtre(filtre: str) -> str:
 _ROW_TYPE_DIR   = "dir"
 _ROW_TYPE_FILE  = "file"
 _ROW_TYPE_EMPTY = "empty"  # placeholder dossier vide
+# Un fichier que l'analyse n'a pas lu : montré grisé avec sa cause, jamais
+# cochable — il disparaissait sans un mot (CR-75).
+_ROW_TYPE_ILLISIBLE = "unreadable"
 
 
 class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
@@ -350,6 +353,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._filtre       = FILTRE_TOUS
         self._masquer_skip = False
         self._dossier:    list[Path] = []
+        # Fichiers que l'analyse n'a pas lus, et leur cause (CR-75).
+        self._illisibles: dict[Path, str] = {}
+        # Espace des volumes, mesuré dans le worker : `disk_usage` d'un NAS en
+        # veille figeait l'accueil sur le fil de l'interface (CR-78).
+        self._cellules_volumes: dict[Path, tuple] = {}
         # Le dossier de disque dont le titre principal a été coché d'office
         # (IE-120) : une fois par visite, pour qu'un rescan ne recoche pas ce
         # que l'utilisateur a décoché ni ce qui vient d'être encodé.
@@ -548,10 +556,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             _("without SKIP") if self._masquer_skip else "") if f)
         masques_txt = ngettext("{count} hidden", "{count} hidden",
                                masques).format(count=masques)
+        n_illisibles = len(self._illisibles)
         self.query_one("#status-bar", Static).update(barre_etat(
             "", self._nav.breadcrumb(),
             ngettext("{selected}/{total} selected", "{selected}/{total} selected",
                      sel_count).format(selected=sel_count, total=total_files),
+            ngettext("{count} unreadable", "{count} unreadable",
+                     n_illisibles).format(count=n_illisibles) if n_illisibles else "",
             _("Filter: {filter} ({hidden})").format(filter=filtre, hidden=masques_txt)
             if filtre else "",
             _("Col: {column}").format(column=self.resize_col_label) + "  </>",
@@ -612,15 +623,23 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     def _populate_table(
         self,
-        subdirs:   list[Path],
-        decisions: list[FileDecision],
-        epoch:     int = -1,
+        subdirs:    list[Path],
+        decisions:  list[FileDecision],
+        epoch:      int = -1,
+        illisibles: dict[Path, str] | None = None,
+        volumes:    dict[Path, tuple] | None = None,
     ) -> None:
         """Appelé depuis le worker (thread-safe via call_from_thread).
         epoch : -1 = appel direct (rebuild colonnes) ; >= 0 = validé contre _scan_epoch.
+        illisibles, volumes : ce que le worker a constaté ; absents, ceux du
+        dernier passage (reconstruction des colonnes).
         """
         if epoch >= 0 and epoch != self._scan_epoch:
             return                                  # callback stale — navigation entre-temps
+        if illisibles is not None:
+            self._illisibles = illisibles
+        if volumes is not None:
+            self._cellules_volumes = volumes
         table = self.query_one(DataTable)
         table.clear()
         self._rows = []
@@ -631,9 +650,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         for d in subdirs:
             row_key = str(d)
             if is_virtual:
+                tiret = Text("—", style="dim", no_wrap=True)
                 table.add_row(
                     Text(f"{_DISK_ICON} {d}", style="bold cyan"),
-                    *_cellules_volume(d),
+                    *self._cellules_volumes.get(d, (tiret, tiret, tiret)),
                     key=row_key,
                 )
             else:
@@ -671,8 +691,17 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 key=row_key,
             )
 
+        # ── Fichiers illisibles ──────────────────────────────────────────────
+        for chemin, cause in sorted(self._illisibles.items()):
+            ligne = Text(f"{_FILE_ICON} {chemin.name}", style="dim")
+            ligne.append("  —  " + _("unreadable: {cause}").format(cause=cause),
+                         style="dim italic")
+            table.add_row("", ligne, "", "", "", "", "", "", "", "",
+                          key=f"__illisible__{chemin}")
+            self._rows.append((_ROW_TYPE_ILLISIBLE, chemin))
+
         # ── Dossier vide ──────────────────────────────────────────────────────
-        if not subdirs and not decisions:
+        if not subdirs and not decisions and not self._illisibles:
             texte = ("⚠  " + _("All files are hidden") + "  —  "
                      + _("{filter_key} filter, {skip_key} SKIP").format(
                          filter_key=touche("l"), skip_key=touche("z"))
@@ -813,6 +842,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._nav.duree_min_titre = 60 * cfg_mod.get_min_title_minutes(self._app.cfg)
         subdirs = self._nav.list_subdirs()
         videos  = self._nav.list_videos()
+        volumes = ({d: _cellules_volume(d) for d in subdirs}
+                   if self._nav.is_virtual else None)
+        illisibles: dict[Path, str] = {}
         if self._nav.disque_chiffre:
             self.app.call_from_thread(
                 self.notify,
@@ -867,8 +899,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                         self._audio_overrides.get(vpath),
                         self._subtitle_overrides.get(vpath),
                     )
-            except Exception:
+            except Exception as e:
                 _LOG.warning("scan failed: %s", vpath, exc_info=True)
+                lignes = [l for l in texte_erreur(e).splitlines() if l.strip()]
+                with lock:
+                    illisibles[vpath] = (lignes[-1].strip() if lignes else
+                                         type(e).__name__)[:80]
             with lock:
                 done += 1
                 _set_notice("⏳ " + _("Analyzing… {done} / {total}").format(
@@ -884,7 +920,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
         if self._scan_epoch != epoch:
             return                          # navigation entre-temps : ne pas peupler
-        self.app.call_from_thread(self._populate_table, subdirs, decisions, epoch)
+        self.app.call_from_thread(self._populate_table, subdirs, decisions, epoch,
+                                  illisibles, volumes)
 
     # ─── Sélection de profil (F4) ──────────────────────────────────────────────
 
@@ -1403,6 +1440,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def action_recursive_run(self) -> None:
         row_type, path = self._current_row_info()
         if row_type != _ROW_TYPE_DIR or path is None:
+            # Une touche sans effet ni message se lit comme une touche cassée
+            # (UX-17, CR-102).
+            self.notify(_("{key}: place the cursor on a folder — its whole tree "
+                          "is analyzed.").format(key=touche("r")),
+                        severity="warning", timeout=4)
             return
         from .recursive_confirm import RecursiveConfirmModal
         def _on_confirm(ok: bool) -> None:

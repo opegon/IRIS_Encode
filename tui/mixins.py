@@ -28,8 +28,10 @@ class TableNavMixin:
     Les bindings sont quand même déclarés pour apparaître dans le footer,
     mais l'action réelle passe par on_key.
 
-    ⚠ Un écran qui définit son propre on_key doit appeler super().on_key(event)
-    pour les touches qu'il ne consomme pas, sous peine de perdre cette navigation.
+    ⚠ Un écran qui définit son propre on_key **n'appelle pas** super().on_key :
+    Textual appelle déjà l'`on_key` de chaque classe de la MRO, et l'appel en
+    plus faisait traiter deux fois PageUp/PageDown (deux pages, CR-80). Pour
+    retenir le mixin sur une touche que l'écran consomme : event.prevent_default().
     """
 
     BINDINGS = [
@@ -116,8 +118,9 @@ class ColumnResizeMixin:
     (après le widget focalisé, comme TableNavMixin pour Home/End/PageUp/PageDown),
     pour éviter que DataTable les capture et les bloque.
 
-    ⚠ Un écran qui définit son propre on_key doit appeler super().on_key(event)
-    pour les touches qu'il ne consomme pas.
+    ⚠ Un écran qui définit son propre on_key **n'appelle pas** super().on_key
+    (Textual parcourt déjà la MRO, CR-80) ; event.prevent_default() retient le
+    mixin sur une touche que l'écran consomme.
     """
 
     RESIZE_COLS:        list[str]      = []

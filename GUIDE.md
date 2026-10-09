@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.8.9.118
+**Version**: 0.8.9.119
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -138,7 +138,9 @@ recalls it. Same for a `→ HDR10` row (Dolby Vision removal): checked, it is
 re-encoded. A Dolby Vision source checked under a profile that keeps DV is
 re-encoded keeping DV (`→ HEVC → DV`), at the source bitrate. `F1` and `F2`
 with nothing checked say so instead of doing nothing. Checked files go in the
-alphabetical order of the list.
+alphabetical order of the list. A file the analysis cannot read (truncated,
+damaged) stays in the list, greyed, with the cause: `unreadable: …`; it cannot
+be checked.
 
 **Filtering the list.** `L` shows only one picture type; the choice only offers
 the types present in the folder, with their count. `Z` hides the `SKIP` files.

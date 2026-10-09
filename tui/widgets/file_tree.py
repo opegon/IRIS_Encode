@@ -37,6 +37,17 @@ def list_volumes() -> list[Path]:
     return [Path("/")]
 
 
+def _absolu(chemin: Path) -> Path:
+    r"""Le chemin absolu, normalisé, **sans suivre les liens**.
+
+    `resolve()` remplace la lettre d'un lecteur réseau ou `subst` par sa cible
+    (`Z:\Films` → `\\nas\media\Films`, mesuré avec `subst`) : le fil
+    d'Ariane et les sorties montraient un chemin que l'utilisateur ne reconnaît
+    pas, et `⌫` remontait aux volumes au lieu de `Z:\` (CR-68).
+    """
+    return Path(os.path.abspath(chemin))
+
+
 # ─── Sentinelle racine virtuelle ───────────────────────────────────────────────
 
 class FileNavigator:
@@ -49,7 +60,7 @@ class FileNavigator:
     """
 
     def __init__(self, start: Path, start_virtual: bool = False) -> None:
-        self._current = start.resolve()
+        self._current = _absolu(start)
         self._history: list[Path] = []
         self._virtual = start_virtual            # True = écran "Volumes"
         # Titres d'un Blu-ray (IE-120) : la durée minimale d'un titre listé,
@@ -74,11 +85,11 @@ class FileNavigator:
             # Les volumes sont la racine : rien au-dessus à mémoriser. Garder
             # le dossier d'avant ferait remonter `⌫` vers lui, pas vers eux.
             self._history.clear()
-            self._current = subdir.resolve()
+            self._current = _absolu(subdir)
             self._virtual = False
         else:
             self._history.append(self._current)
-            self._current = subdir.resolve()
+            self._current = _absolu(subdir)
 
     def go_up(self) -> bool:
         if self._virtual:

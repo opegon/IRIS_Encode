@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.8.9.118
+**Version** : 0.8.9.119
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -135,7 +135,9 @@ chose pour une ligne `→ HDR10` (retrait du Dolby Vision) : cochée, elle est
 réencodée. Une source Dolby Vision cochée sous un profil qui garde le DV est
 réencodée en gardant le DV (`→ HEVC → DV`), au débit de la source.
 `F1` et `F2` sans rien de coché le disent au lieu de ne rien faire.
-Les fichiers cochés partent dans l'ordre alphabétique de la liste.
+Les fichiers cochés partent dans l'ordre alphabétique de la liste. Un fichier
+que l'analyse ne lit pas (tronqué, abîmé) reste dans la liste, grisé, avec sa
+cause : `illisible : …` ; il ne se coche pas.
 
 **Filtrer la liste.** `L` ne montre qu'un type d'image ; le choix ne propose
 que les types présents dans le dossier, avec leur nombre. `Z` masque les

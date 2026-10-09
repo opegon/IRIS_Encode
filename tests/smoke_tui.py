@@ -196,13 +196,15 @@ async def scenario_parallel_scan() -> None:
             await pilot.pause(4.0)   # laisse le pool de scan terminer
             scr   = app.screen
             table = scr.query_one(DataTable)
-            # 3 clips valides scannes en parallele ; le corrompu est ecarte (et logue)
-            assert table.row_count == 3, f"row_count={table.row_count}"
+            # 3 clips valides scannes en parallele ; le corrompu reste visible,
+            # grise avec sa cause, sans decision (CR-75)
+            assert table.row_count == 4, f"row_count={table.row_count}"
             assert len(scr._decisions) == 3, f"decisions={len(scr._decisions)}"
+            assert list(scr._illisibles) == [td / "corrompu.mkv"], scr._illisibles
             # Refresh : l'epoch invalide le worker precedent, repopulation propre
             scr._refresh_view()
             await pilot.pause(2.5)
-            assert table.row_count == 3, f"apres refresh : {table.row_count}"
+            assert table.row_count == 4, f"apres refresh : {table.row_count}"
             # Selection complete via la touche A
             await pilot.press("a")
             await pilot.pause(0.3)
@@ -210,9 +212,9 @@ async def scenario_parallel_scan() -> None:
             # Resize : la table se reconstruit, selection conservee
             await pilot.press("tab", "greater_than_sign")
             await pilot.pause(0.5)
-            assert table.row_count == 3
+            assert table.row_count == 4
             assert len(scr._selected) == 3
-            print("[8] Scan parallele reel : 3 clips + 1 corrompu ecarte, selection A, refresh, resize OK")
+            print("[8] Scan parallele reel : 3 clips + 1 corrompu montre illisible, selection A, refresh, resize OK")
 
             # 'v' : visualisation du fichier sous le curseur. On intercepte mpv
             # pour verifier la cible sans faire surgir de fenetre.
@@ -267,7 +269,7 @@ async def scenario_parallel_scan() -> None:
             await pilot.press("escape")
             await pilot.pause(0.4)
             assert cible.exists(), "Esc a supprime le fichier"
-            assert table.row_count == 3, f"apres annulation : {table.row_count}"
+            assert table.row_count == 4, f"apres annulation : {table.row_count}"   # + la ligne illisible
             # 2e passage : le focus part sur Annuler, -> puis Enter confirment
             await pilot.press("ctrl+d")
             await pilot.pause(0.4)
@@ -278,10 +280,10 @@ async def scenario_parallel_scan() -> None:
             assert all(p.exists() for p in gardes), "srt ou season.nfo supprime"
             for p in gardes:
                 p.unlink()
-            assert table.row_count == 2, f"apres suppression : {table.row_count}"
+            assert table.row_count == 3, f"apres suppression : {table.row_count}"
             assert len(scr._decisions) == 2, f"decisions={len(scr._decisions)}"
             assert cible not in scr._selected
-            print(f"[9b] Ctrl+D : Esc annule, confirmation supprime {cible.name} (3 -> 2 lignes)")
+            print(f"[9b] Ctrl+D : Esc annule, confirmation supprime {cible.name} (3 -> 2 fichiers)")
 
 
 _SRT = """1

@@ -6,6 +6,7 @@ Point d'entrée TUI. Maintient l'état global (profils, config, platform).
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 from textual.app import App
@@ -87,7 +88,7 @@ class IrisEncodeApp(App):
     def __init__(self, start_path: Path | None = None) -> None:
         super().__init__()
         _setup_logging()
-        self.start_path        = (start_path or Path.cwd()).resolve()
+        self.start_path        = Path(os.path.abspath(start_path or Path.cwd()))   # pas resolve() : CR-68
         self.cfg               = cfg_mod.load()
         self.profiles          = prof_mod.load_all()
         # Le profil retenu au dernier lancement, ou le premier du fichier.

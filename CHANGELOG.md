@@ -1,5 +1,27 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.119] — 2026-10-09
+
+### L'accueil et la navigation (IE-135, 2/3)
+
+Revue IE-114, constats CR-68, 75, 78, 80, 102.
+
+- **Un fichier illisible ne disparaît plus.** Un `.mkv` tronqué ou abîmé
+  manquait à la liste sans un mot ; un dossier où tout échouait se disait
+  « vide ». Il apparaît grisé, avec la cause, et la barre d'état les compte.
+- **Les lecteurs réseau gardent leur lettre.** Entrer dans `Z:\Films`
+  affichait le chemin réseau complet (`\\nas\media\Films`), et `⌫` remontait
+  aux volumes au lieu de `Z:\`. La lettre reste.
+- **L'accueil ne se fige plus** sur un NAS en veille : l'espace des volumes
+  se mesure en arrière-plan.
+- **`PgUp` / `PgDn` sautaient deux pages** dans l'écran des pistes et le
+  recalage. Une seule.
+- **Le guide intégré (`H`) dit vrai** : les profils livrés se suppriment
+  (seul le dernier est protégé), `A` ne coche pas les sorties déjà produites,
+  `R` part du dossier sous le curseur — et sur un fichier, il le dit
+  maintenant —, `Ctrl+Home` ne demande confirmation que pour les pistes et le
+  recalage.
+
 ## [v0.8.9.118] — 2026-10-09
 
 ### La file d'encodage (IE-135, 1/3)

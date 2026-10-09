@@ -398,12 +398,12 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     # ── Navigation entre champs ───────────────────────────────────────────────
 
     def on_key(self, event: Key) -> None:
+        # Pas de super().on_key : Textual appelle déjà celui des mixins, et
+        # l'appel en plus doublait PageUp/PageDown (CR-80).
         if event.key in ("left", "right"):
             event.stop()
+            event.prevent_default()
             self.action_field_prev() if event.key == "left" else self.action_field_next()
-            return
-        # Laisse TableNavMixin gérer Home/End/PageUp/PageDown
-        super().on_key(event)
 
     def action_field_prev(self) -> None:
         self._field_idx = (self._field_idx - 1) % len(_FIELDS)

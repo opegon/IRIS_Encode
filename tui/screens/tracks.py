@@ -527,15 +527,15 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
     # ── Actions pistes ────────────────────────────────────────────────────────
 
     def on_key(self, event: Key) -> None:
+        # Pas de super().on_key : Textual appelle déjà celui des mixins, et
+        # l'appel en plus doublait PageUp/PageDown (CR-80).
         if self._on_video_row() and event.key in ("left", "right"):
             event.stop()
+            event.prevent_default()
             if event.key == "left":
                 self.action_field_prev()
             else:
                 self.action_field_next()
-            return
-        # Laisse TableNavMixin gérer Home/End/PageUp/PageDown
-        super().on_key(event)
 
     def action_toggle_row(self) -> None:
         info = self._current_row()

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.109 — document de référence courant
+**Version** : 0.8.9.110 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -3186,9 +3186,28 @@ durée (BCD, cadence dans les deux bits de poids fort des images). Validé sur
 le DVD d'essai : un titre, 26 chapitres, 6 573,0 s contre 6 572,5 s pour
 ffprobe. Deux titres jouant les mêmes PGC d'un même VTS n'en font qu'un ; un
 VTS sans VOB ne donne rien. Identité : un nom fictif
-`VIDEO_TS\TITLE_nn.dvd` (`chemin`), le numéro dans `numero` ; `clips` = les
-VOB du contenu du VTS (`lecture` : le premier, pour mpv) ; `nom_disque(…,
-defaut="DVD")`.
+`VIDEO_TS\TITLE_nn.dvd` (`chemin`), le numéro dans `numero` ; `nom_disque(…,
+defaut="DVD")`. Le nombre de chapitres de l'IFO va dans `nb_chapitres` ;
+`chapitres` (des temps) reste vide — il portait n zéros (v0.8.9.110, CR-07).
+
+**Cellules** (v0.8.9.110, CR-06) — un VTS porte souvent plusieurs titres (les
+épisodes d'une série). Chaque PGC donne sa table C_PBKT (pointée en `0xE8` du
+PGC, 24 octets par cellule : premier secteur en +8, dernier en +20, relatifs au
+début de `VTS_xx_1.VOB`) ; `_lire_vts` en réunit les plages par titre. `octets`
+= leurs secteurs × 2 048 (`TitreDisque.taille` le préfère à la somme des clips),
+`clips` = les VOB que ces secteurs touchent (`lecture` : le premier, pour mpv).
+Chaque épisode pesait le VTS entier, son débit estimé en était multiplié
+d'autant. Sans table lisible, l'ancien comportement : tous les VOB du VTS. Validé
+sur le DVD d'essai (lu dans l'ISO, sans montage) : 2 227 717 secteurs, la
+somme exacte des cinq VOB du contenu.
+
+**« Lire tout » n'est pas le principal** (v0.8.9.110, question de la revue
+tranchée le 2026-10-09) — un titre qui enchaîne au moins deux autres titres de
+son VTS (`_lire_tout` : leurs PGC parmi les siens, ou leurs cellules couvertes
+par les siennes), chacun d'au moins un dixième de sa durée, n'est pas retenu
+comme principal ; il reste listé et cochable. Le plus long devenait le principal
+d'un DVD de série, et le mode récursif sortait le disque en un seul fichier. Le
+dixième garde le film d'un disque dont chaque scène est aussi publiée en titre.
 
 **Outil DVD** — le démultiplexeur `dvdvideo` (libdvdnav) n'est que dans un
 build comme le BtbN GPL. `dvd.chercher_outils` : `bin/dvd/ffmpeg(.exe)` et
@@ -3206,7 +3225,12 @@ lance `ffmpeg -y -loglevel error -stats -f dvdvideo -title N -i <VIDEO_TS>
 -map 0 -c copy <dossier_sortie>\TITLE_nn.iris_titre.mkv` (progression par
 `EncoderProcess`), qui devient `encode_source` et part après l'encodage.
 Langues, chapitres et palette des sous-titres viennent de l'IFO. Mesuré :
-4,4 Go en 34 s, 26 chapitres.
+4,4 Go en 34 s, 26 chapitres. Une piste **LPCM** (`pcm_dvd`) n'a pas d'étiquette
+Matroska : recopiée, l'extraction échouait (« No wav codec tag found ») et tout
+le titre avec elle. Elle devient un PCM de même profondeur (`-c:a:N pcm_s16le`,
+ou `pcm_s24le` pour 20 et 24 bits ; `AudioTrack.bits`, lu dans
+`bits_per_raw_sample`), sans perte ni calcul (v0.8.9.110, CR-05, arbitrage du
+2026-10-09) ; la décision audio la traite ensuite comme une autre piste.
 
 **CSS** — `vob_chiffre` lit les 512 premiers paquets de 2 048 octets du
 premier VOB du titre principal : un PES vidéo (`0xE0`), audio (`0xBD`,
@@ -3378,6 +3402,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.110 | 2026-10-09 | **Titres de DVD : cellules, « Lire tout », chapitres, LPCM** (§ 15.6, IE-127 2/3) : taille et VOB d'un titre par ses cellules (`_cellules`, `TitreDisque.octets`, CR-06) ; un « Lire tout » n'est plus le principal (`_lire_tout`) ; `nb_chapitres` (CR-07) ; `pcm_dvd` extrait en PCM de même profondeur (`AudioTrack.bits`, CR-05) · `tests/test_dvd.py` |
 | 0.8.9.109 | 2026-10-09 | **Titres de Blu-ray : partiel, assemblage vérifié, étiquette** (§ 15.5, IE-127 1/3) : `TitreDisque.partiel` posé par `_scan_titre`, extrait par mkvmerge (CR-01) ; `bluray.ecart_pistes` après `_remux_titre` (CR-03) ; `nom_disque` assainit l'étiquette du volume (CR-04) · `tests/test_bluray.py` |
 | 0.8.9.108 | 2026-10-09 | **Chemins Dolby Vision : dovi_tool arrêtable** (§ 7.1, § 7.4, § 12.4, IE-126 3/3) : `TuyauRpu`, `build_remove_command`, `build_inject_command`, `rpu_valide` remplacent les appels bloquants à délai fixe (CR-32) ; `RunScreen._executer` les publie ; `S` arrête aussi mkvmerge, un SKIPPED n'est plus réécrit en ERROR (CR-61) · `tests/test_dv_chemins.py` |
 | 0.8.9.107 | 2026-10-09 | **Chemins Dolby Vision : greffes, chapitres, langues** (§ 7.3, § 8.6, § 12.0, IE-126 2/3) : retrait DV vers MP4 avec greffes recomposé par mkvmerge puis remuxé (CR-55) ; audio greffée à la règle du profil sur les deux chemins DV (`_transcoder_greffes`, reporté d'IE-125) ; chapitres d'un titre de Blu-ray par `--chapters <playlist>` ou FFMETADATA, langues du `.clpi` écrites par `build_audio_command` et `build_strip_mp4` (CR-63) ; CR-56 vérifié couvert depuis la v0.8.9.104 · `tests/test_dv_chemins.py` |

@@ -1602,7 +1602,8 @@ class RunScreen(TableNavMixin, Screen):
             return False
 
         sortie = dec.dossier_sortie / f"{dec.info.path.stem}.iris_titre.mkv"
-        cmd = dvd.build_extraction_command(dec.info.titre, sortie)
+        cmd = dvd.build_extraction_command(dec.info.titre, sortie,
+                                           dec.info.audio_tracks)
         self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
         self.app.call_from_thread(
             self._update_ffmpeg_line,

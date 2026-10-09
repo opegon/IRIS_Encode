@@ -99,18 +99,57 @@ def _duree_pgc(data: bytes, pos: int) -> float:
     return _bcd(h) * 3600 + _bcd(m) * 60 + _bcd(s) + _bcd(f & 0x3F) / cadence
 
 
-def _lire_vts(ifo: Path) -> dict[int, tuple[tuple[int, ...], float]]:
-    """Pour chaque titre d'un VTS (rang dans le jeu) : ses PGC, sa durée."""
+def _cellules(data: bytes, pgc: int) -> Optional[list[tuple[int, int]]]:
+    """Les secteurs (premier, dernier) de chaque cellule d'un PGC, relatifs au
+    début du contenu du VTS (`VTS_xx_1.VOB`). None si l'IFO ne les donne pas.
+
+    Table C_PBKT, pointée en `0xE8` du PGC : 24 octets par cellule, premier
+    secteur du premier VOBU en +8, dernier secteur du dernier VOBU en +20.
+    """
+    try:
+        nb = data[pgc + 3]
+        table = struct.unpack_from(">H", data, pgc + 0xE8)[0]
+        if not nb or not table:
+            return None
+        cellules = []
+        for i in range(nb):
+            base = pgc + table + 24 * i
+            premier, dernier = struct.unpack_from(">I", data, base + 8)[0], \
+                struct.unpack_from(">I", data, base + 20)[0]
+            if dernier < premier:
+                return None
+            cellules.append((premier, dernier))
+        return cellules
+    except (IndexError, struct.error):
+        return None
+
+
+def _reunir(plages: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Plages de secteurs triées, celles qui se touchent fondues."""
+    reunies: list[tuple[int, int]] = []
+    for a, b in sorted(plages):
+        if reunies and a <= reunies[-1][1] + 1:
+            reunies[-1] = (reunies[-1][0], max(reunies[-1][1], b))
+        else:
+            reunies.append((a, b))
+    return reunies
+
+
+def _lire_vts(ifo: Path) -> dict[int, tuple[tuple[int, ...], float,
+                                            Optional[list[tuple[int, int]]]]]:
+    """Pour chaque titre d'un VTS (rang dans le jeu) : ses PGC, sa durée, ses
+    secteurs (plages réunies, None si l'IFO ne les donne pas)."""
     data = ifo.read_bytes()
     if data[:12] != b"DVDVIDEO-VTS":
         raise ValueError(f"not a VTS IFO: {ifo.name}")
     ptt, pgci = (s * _SECTEUR for s in struct.unpack_from(">II", data, 0xC8))
 
     nb_pgc = struct.unpack_from(">H", data, pgci)[0]
-    durees = {}
+    durees, cellules = {}, {}
     for i in range(nb_pgc):
         decalage = struct.unpack_from(">I", data, pgci + 8 + 8 * i + 4)[0]
         durees[i + 1] = _duree_pgc(data, pgci + decalage + 4)
+        cellules[i + 1] = _cellules(data, pgci + decalage)
 
     nb_titres, _r, fin = struct.unpack_from(">HHI", data, ptt)
     debuts = [struct.unpack_from(">I", data, ptt + 8 + 4 * i)[0] for i in range(nb_titres)]
@@ -122,8 +161,31 @@ def _lire_vts(ifo: Path) -> dict[int, tuple[tuple[int, ...], float]]:
             pgc = struct.unpack_from(">H", data, pos)[0]
             if pgc not in pgcs:
                 pgcs.append(pgc)
-        titres[i + 1] = (tuple(pgcs), sum(durees.get(p, 0.0) for p in pgcs))
+        plages = [cellules.get(p) for p in pgcs]
+        secteurs = (None if any(c is None for c in plages)
+                    else _reunir([c for cs in plages for c in cs]))
+        titres[i + 1] = (tuple(pgcs), sum(durees.get(p, 0.0) for p in pgcs), secteurs)
     return titres
+
+
+def _vobs_couverts(vobs: list[Path], secteurs: list[tuple[int, int]]) -> list[Path]:
+    """Les VOB que ces secteurs touchent : le contenu d'un VTS est une suite
+    de secteurs découpée en VOB de 1 Go au plus, dans l'ordre."""
+    couverts, debut = [], 0
+    for vob in vobs:
+        try:
+            fin = debut + vob.stat().st_size // _SECTEUR
+        except OSError:
+            return vobs
+        if any(a < fin and b >= debut for a, b in secteurs):
+            couverts.append(vob)
+        debut = fin
+    return couverts or vobs
+
+
+def _couvre(grand: list[tuple[int, int]], petit: list[tuple[int, int]]) -> bool:
+    """Chaque plage de `petit` tient-elle dans une plage de `grand` ?"""
+    return all(any(a <= c and d <= b for a, b in grand) for c, d in petit)
 
 
 def _vobs(video_ts: Path, vts: int) -> list[Path]:
@@ -168,6 +230,7 @@ def titres(racine: Path, duree_min: float = 0) -> list[TitreDisque]:
     jeux: dict[int, dict] = {}
     vus: set[tuple] = set()
     liste: list[TitreDisque] = []
+    lus: dict[int, tuple] = {}         # numéro → (vts, PGC, secteurs)
     for i in range(nb):
         base = srpt + 8 + 12 * i
         try:
@@ -175,7 +238,7 @@ def titres(racine: Path, duree_min: float = 0) -> list[TitreDisque]:
             vts, rang = vmg[base + 6], vmg[base + 7]
             if vts not in jeux:
                 jeux[vts] = _lire_vts(video_ts / f"VTS_{vts:02d}_0.IFO")
-            pgcs, duree = jeux[vts][rang]
+            pgcs, duree, secteurs = jeux[vts][rang]
         except (OSError, ValueError, KeyError, IndexError, struct.error) as e:
             _log.debug("DVD title %d ignored: %s", i + 1, e)
             continue
@@ -183,20 +246,54 @@ def titres(racine: Path, duree_min: float = 0) -> list[TitreDisque]:
         if not vobs or (vts, pgcs) in vus:
             continue
         vus.add((vts, pgcs))
+        lus[i + 1] = (vts, pgcs, secteurs)
+        # Un VTS porte souvent plusieurs titres (les épisodes d'une série) :
+        # ses cellules disent lesquels de ses VOB sont les siens, et combien
+        # d'octets il pèse. Sans elles, tout le VTS, comme avant (CR-06).
         liste.append(TitreDisque(
             chemin=video_ts / f"TITLE_{i + 1:02d}{SUFFIXE}", racine=racine,
-            clips=vobs, duree=duree, numero=i + 1,
-            # Le nombre seul : les temps viennent de l'extraction.
-            chapitres=[0.0] * chapitres))
+            clips=_vobs_couverts(vobs, secteurs) if secteurs else vobs,
+            duree=duree, numero=i + 1, nb_chapitres=chapitres,
+            octets=sum(b - a + 1 for a, b in secteurs) * _SECTEUR if secteurs else 0))
     if not liste:
         return []
 
     nom = nom_disque(racine, defaut="DVD")
-    principal = max(liste, key=lambda t: t.duree)
+    principal = max([t for t in liste if not _lire_tout(t, liste, lus)] or liste,
+                    key=lambda t: t.duree)
     for t in liste:
         t.nom = nom
         t.principal = t is principal
     return [t for t in liste if t.duree >= duree_min]
+
+
+def _lire_tout(t: TitreDisque, liste: list[TitreDisque], lus: dict) -> bool:
+    """Ce titre enchaîne-t-il au moins deux autres titres de son VTS ?
+
+    C'est le « Lire tout » d'un DVD de série : le plus long, il devenait le
+    principal, et le mode récursif sortait le disque en un seul fichier au
+    lieu de ses épisodes (question de la revue IE-114, tranchée le
+    2026-10-09). Il reste listé et cochable. Deux formes : un titre aux PGC
+    de plusieurs autres, ou un PGC dont les cellules couvrent les leurs.
+
+    Seuls comptent les titres d'au moins un dixième de sa durée : un film
+    dont chaque scène est aussi publiée en titre (« accès aux scènes ») les
+    couvre tous, et reste le film. Un épisode fait le quart ou la moitié
+    d'un « Lire tout », une scène quelques pour cent.
+    """
+    vts, pgcs, secteurs = lus[t.numero]
+    couverts = 0
+    for autre in liste:
+        if autre is t or autre.duree < t.duree / 10:
+            continue
+        vts_a, pgcs_a, secteurs_a = lus[autre.numero]
+        if vts_a != vts:
+            continue
+        if set(pgcs_a) < set(pgcs) or (
+                secteurs and secteurs_a and secteurs_a != secteurs
+                and _couvre(secteurs, secteurs_a)):
+            couverts += 1
+    return couverts >= 2
 
 
 def titre(chemin: Path) -> TitreDisque:
@@ -252,9 +349,23 @@ def entree(t: TitreDisque) -> list[str]:
             str(_video_ts(t.racine))]
 
 
-def build_extraction_command(t: TitreDisque, sortie: Path) -> list[str]:
+def build_extraction_command(t: TitreDisque, sortie: Path,
+                             audio: list = ()) -> list[str]:
     """Le titre recopié sans perte en Matroska : vidéo, audio, sous-titres
-    (palette comprise), langues et chapitres lus dans l'IFO."""
+    (palette comprise), langues et chapitres lus dans l'IFO.
+
+    Le LPCM d'un DVD (`pcm_dvd`) n'a pas d'étiquette Matroska : recopié, il
+    faisait échouer l'extraction (« No wav codec tag found », CR-05), et tout
+    le disque avec elle. `audio`, les pistes vues à l'analyse : chaque
+    `pcm_dvd` devient un PCM ordinaire de même profondeur — 16 bits, ou 24
+    pour 20 et 24 (arbitrage du 2026-10-09). Sans perte, sans calcul ; la
+    décision audio le traite ensuite comme une autre piste.
+    """
     ffmpeg = _ffmpeg or "ffmpeg"
-    return [ffmpeg, "-y", "-loglevel", "error", "-stats", *entree(t),
-            "-map", "0", "-c", "copy", str(sortie)]
+    cmd = [ffmpeg, "-y", "-loglevel", "error", "-stats", *entree(t),
+           "-map", "0", "-c", "copy"]
+    for piste in audio:
+        if piste.codec == "pcm_dvd":
+            pcm = "pcm_s16le" if 0 < piste.bits <= 16 else "pcm_s24le"
+            cmd += [f"-c:a:{piste.index}", pcm]
+    return cmd + [str(sortie)]

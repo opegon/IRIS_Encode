@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.110] — 2026-10-09
+
+### DVD : les épisodes, le « Lire tout », la piste LPCM (IE-127, 2/3)
+
+Revue IE-114, constats CR-05, 06, 07, et une question de la revue tranchée.
+
+- **Piste LPCM.** Un DVD dont un titre porte une piste LPCM (concert, film
+  musical) ne s'extrayait pas, et le titre entier était perdu. La piste
+  devient un PCM de même profondeur, sans perte.
+- **Épisodes d'un même jeu de titres.** Chaque épisode affichait la taille du
+  disque entier, et un débit estimé faussé d'autant ; l'aperçu `V` montrait
+  le premier épisode quel que soit le titre. La taille et les fichiers d'un
+  titre viennent maintenant de ses propres cellules.
+- **« Lire tout » n'est plus le titre principal.** Sur un DVD de série, le
+  titre qui enchaîne les épisodes, le plus long, était choisi en mode
+  récursif : le disque sortait en un seul fichier. Il reste dans la liste, à
+  cocher si on le veut.
+
 ## [v0.8.9.109] — 2026-10-09
 
 ### Blu-ray : une chanson n'est plus tout le concert (IE-127, 1/3)

@@ -358,3 +358,8 @@ Pages touchées : [[mkvmerge]].
 
 Une playlist peut ne jouer qu'une partie de son clip ; mkvmerge respecte ses
 bornes (mesure de la revue de code). Pages touchées : [[disques-optiques]].
+
+## [2026-10-09] ingest | Cellules d'un DVD et LPCM (IE-127 2/3)
+
+Table C_PBKT validée sur le DVD d'essai (lue dans l'ISO) ; `pcm_dvd` refusé
+par Matroska en copie, accepté en PCM. Pages touchées : [[disques-optiques]].

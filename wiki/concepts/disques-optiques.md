@@ -14,6 +14,19 @@ sources:
   (1 073 739 776 o) d'un même VTS (*mesuré*). `VIDEO_TS.VOB` et `VTS_xx_0.VOB`
   sont des menus. Un VOB isolé ne porte **aucune langue** (*mesuré*, ffprobe et
   mkvmerge).
+- **Cellules d'un PGC** — table C_PBKT pointée en `0xE8` du PGC, 24 octets
+  par cellule : premier secteur du premier VOBU en +8, dernier secteur du
+  dernier VOBU en +20, relatifs au début de `VTS_xx_1.VOB`. Sur le DVD d'essai
+  (IFO lus dans l'ISO), le titre couvre 2 227 717 secteurs, la somme exacte
+  des cinq VOB du contenu (*mesuré*, 2026-10-09). Un VTS à plusieurs titres
+  (épisodes) se partage ainsi ses VOB ; un « Lire tout » couvre les cellules
+  des épisodes.
+- **LPCM de DVD** — ffmpeg le livre en `pcm_dvd` (`bits_per_raw_sample` 16 ou
+  24) ; le muxeur Matroska le refuse en copie (« No wav codec tag found for
+  codec pcm_dvd »), et l'accepte converti en `pcm_s16le` / `pcm_s24le`
+  (*mesuré*, ffmpeg du projet, VOB synthétique, 2026-10-09). La vidéo
+  `mpeg2video` d'un VOB fabriqué par ffmpeg n'a pas tous ses horodatages : sa
+  copie en Matroska demande `-fflags +genpts` en entrée.
 - **Titres d'un DVD** — `VIDEO_TS.IFO` (TT_SRPT, secteur en `0xC4`) liste
   les titres et leur VTS ; `VTS_xx_0.IFO` (PTT_SRPT en `0xC8`, PGCI en `0xCC`)
   donne leurs PGC et leur durée en BCD. Lu sans outil sur le DVD d'essai :

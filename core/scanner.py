@@ -401,6 +401,7 @@ class AudioTrack:
     # recopiera pas, l'encodeur doit l'écrire (IE-119).
     langue_completee: bool = False
     sample_rate: int = 0     # Hz, 0 si inconnu — la jonction le compare (CR-30)
+    bits:     int = 0        # profondeur d'un PCM, 0 si inconnue (CR-05)
 
     @property
     def channel_layout(self) -> str:
@@ -843,6 +844,7 @@ def _pistes_audio(streams: list) -> list[AudioTrack]:
             profile=s.get("profile", "") if isinstance(s.get("profile"), str) else "",
             pid=_pid(s),
             sample_rate=_safe_int(s.get("sample_rate")),
+            bits=_safe_int(s.get("bits_per_raw_sample")),
         ))
     return pistes
 

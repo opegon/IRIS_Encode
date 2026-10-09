@@ -56,6 +56,11 @@ class TitreDisque:
     # Blu-ray d'un seul clip qui n'en joue qu'une partie (concert, épisodes) :
     # posé par l'analyse, qui connaît la durée du clip (CR-01).
     partiel:   bool = False
+    # DVD : le nombre de chapitres de l'IFO — leurs temps ne viennent qu'à
+    # l'extraction, `chapitres` reste vide (CR-07).
+    nb_chapitres: int = 0
+    # DVD : les octets de ses cellules, quand l'IFO les donne ; 0 = ses clips.
+    octets:    int = 0
 
     @property
     def est_dvd(self) -> bool:
@@ -72,7 +77,11 @@ class TitreDisque:
 
     @property
     def taille(self) -> int:
-        """Octets lus pour ce titre : la somme de ses clips."""
+        """Octets lus pour ce titre : ceux de ses cellules pour un DVD qui
+        les donne — un VTS porte souvent plusieurs titres (CR-06) —, sinon la
+        somme de ses clips."""
+        if self.octets:
+            return self.octets
         total = 0
         for clip in self.clips:
             try:

@@ -3332,7 +3332,7 @@ msgstr ""
 
 #: tui/screens/run.py:1492
 #: tui/screens/run.py:1560
-#: tui/screens/run.py:1693
+#: tui/screens/run.py:1694
 #, python-brace-format
 msgid "mux: {detail}"
 msgstr ""
@@ -3376,113 +3376,113 @@ msgstr ""
 msgid "Reading a DVD title needs the DVD tool (an ffmpeg with libdvdnav). Restart IRIS ENCODE and accept its installation."
 msgstr ""
 
-#: tui/screens/run.py:1609
+#: tui/screens/run.py:1610
 msgid "Extracting the DVD title (lossless copy)…"
-msgstr ""
-
-#: tui/screens/run.py:1630
-#, python-brace-format
-msgid "DVD: {detail}"
 msgstr ""
 
 #: tui/screens/run.py:1631
 #, python-brace-format
+msgid "DVD: {detail}"
+msgstr ""
+
+#: tui/screens/run.py:1632
+#, python-brace-format
 msgid "Extracting the DVD title failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1651
+#: tui/screens/run.py:1652
 msgid "mkvmerge required (stretch)"
 msgstr ""
 
-#: tui/screens/run.py:1652
+#: tui/screens/run.py:1653
 msgid "A track needs a stretch factor: only mkvmerge can apply it. Run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/run.py:1673
+#: tui/screens/run.py:1674
 msgid "Adding the tracks with mkvmerge (stretch) before encoding…"
 msgstr ""
 
-#: tui/screens/run.py:1694
+#: tui/screens/run.py:1695
 #, python-brace-format
 msgid "Pre-mux failed — {detail}"
 msgstr ""
 
-#: tui/screens/run.py:1720
+#: tui/screens/run.py:1721
 #, python-brace-format
 msgid "Done — succeeded: {success} · failed: {failed} · skipped: {skipped}"
 msgstr ""
 
-#: tui/screens/run.py:1729
+#: tui/screens/run.py:1730
 #, python-brace-format
 msgid "… and {count} other"
 msgid_plural "… and {count} others"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/run.py:1743
+#: tui/screens/run.py:1744
 #, python-brace-format
 msgid "Encoding batch done — {key} for the summary."
 msgstr ""
 
-#: tui/screens/run.py:1763
+#: tui/screens/run.py:1764
 msgid "Only a pending file can be moved or removed — the running one and the finished ones stay."
 msgstr ""
 
-#: tui/screens/run.py:1801
+#: tui/screens/run.py:1802
 #, python-brace-format
 msgid "{file} removed from the queue."
 msgstr ""
 
-#: tui/screens/run.py:1815
+#: tui/screens/run.py:1816
 msgid "Sleep and shutdown are only managed under Windows."
 msgstr ""
 
-#: tui/screens/run.py:1820
+#: tui/screens/run.py:1821
 #, python-brace-format
 msgid "After the batch: nothing is planned. Choose an action in the options ({key}, then {option_key})."
 msgstr ""
 
-#: tui/screens/run.py:1827
+#: tui/screens/run.py:1828
 #, python-brace-format
 msgid "After the batch: {action}, after a {seconds} s countdown."
 msgstr ""
 
-#: tui/screens/run.py:1831
+#: tui/screens/run.py:1832
 msgid "After the batch: nothing."
 msgstr ""
 
-#: tui/screens/run.py:1857
+#: tui/screens/run.py:1858
 msgid "No step to skip at this instant — try again in a moment."
 msgstr ""
 
-#: tui/screens/run.py:1863
+#: tui/screens/run.py:1864
 msgid "Skipped manually"
 msgstr ""
 
-#: tui/screens/run.py:1949
+#: tui/screens/run.py:1950
 msgid "Stopped"
 msgstr ""
 
-#: tui/screens/run.py:1957
+#: tui/screens/run.py:1958
 msgid "The current file is abandoned, its partial output deleted."
 msgstr ""
 
-#: tui/screens/run.py:1959
+#: tui/screens/run.py:1960
 #, python-brace-format
 msgid "The pending file will not be encoded."
 msgid_plural "The {count} pending files will not be encoded."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/run.py:1963
+#: tui/screens/run.py:1964
 msgid "Stop all encodes?"
 msgstr ""
 
-#: tui/screens/run.py:1964
+#: tui/screens/run.py:1965
 msgid "Stop"
 msgstr ""
 
-#: tui/screens/run.py:1964
+#: tui/screens/run.py:1965
 #: tui/screens/wizard.py:141
 msgid "Continue"
 msgstr ""

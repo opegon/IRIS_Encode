@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.106] — 2026-10-09
+
+### Dolby Vision : la source, les pistes vides, le RPU, le mux (IE-126, 1/3)
+
+Revue IE-114, constats CR-31, 54, 65, 85.
+
+- **Suppression de la source.** Le retrait et le réencodage du Dolby Vision
+  avaient leur propre règle : ils pouvaient effacer le `.m2ts` d'un titre de
+  Blu-ray, laissaient le `.nfo` et les images Jellyfin d'un fichier, et
+  supprimaient la source **avant** de regarder si `S` avait abandonné le
+  fichier — la sortie abandonnée était effacée ensuite, on perdait les deux.
+  Une seule règle sert désormais tous les chemins.
+- **Piste audio vide.** Comme la passe principale, les chemins Dolby Vision
+  relisent leur sortie : une piste audio vide est un échec, pas un succès.
+- **Métadonnées Dolby Vision tronquées.** Une lecture coupée en route
+  (partage réseau, fichier abîmé) donnait des métadonnées partielles, acceptées
+  comme complètes. L'échec de la lecture est maintenant vu.
+- **Assistant.** Un retrait du Dolby Vision avec une piste greffée proposait un
+  mux, qui gardait le Dolby Vision en MKV — la forme qui plante l'appli
+  Jellyfin du G3. Il part maintenant par la file d'encodage.
+
 ## [v0.8.9.105] — 2026-10-09
 
 ### Écran de recalage : gros donneurs, VTT, mpv, la bonne piste (IE-125, 3/3)

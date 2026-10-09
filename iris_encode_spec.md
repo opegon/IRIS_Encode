@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.105 — document de référence courant
+**Version** : 0.8.9.106 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -1859,7 +1859,9 @@ indemne. Cette restriction repose sur deux mesures, un codec de chaque famille
 piste audio à celle attendue. En dessous du dixième, le fichier est déclaré en
 erreur au lieu d'être compté comme réussi. Le seuil est grossier à dessein — il
 sépare « 54 millisecondes au lieu de trois heures et demie » de tout ce qui est
-légitime, y compris une piste de commentaires écourtée. Facteurs éliminés par mesure — le codec de sortie (l'AC3 meurt comme
+légitime, y compris une piste de commentaires écourtée. Le contrôle vaut pour
+chaque sortie finale, chemins Dolby Vision compris (`RunScreen._audio_vide`,
+v0.8.9.106, CR-65). Facteurs éliminés par mesure — le codec de sortie (l'AC3 meurt comme
 l'E-AC3), la durée, l'encodage matériel, les drapeaux de piste, et six réglages
 de muxeur (`max_muxing_queue_size`, `max_interleave_delta`,
 `avoid_negative_ts`, `copyts`, `muxdelay`, l'ordre des `-map`). Transcoder
@@ -2258,7 +2260,9 @@ non confirmé.
 
 **Les deux lancements sont toujours proposés.** `↵` prend le recommandé — mux si
 rien n'est à réencoder mais qu'il y a à greffer, encodage sinon — et `F3` / `F2`
-forcent l'autre. Un mux sans piste externe est refusé avec sa raison, pas
+forcent l'autre. Un retrait du Dolby Vision n'est pas « rien à réencoder » : le mux
+recopierait la vidéo RPU compris, en MKV Dolby Vision (CR-85) ; il part par la file,
+qui greffe elle-même (`_muxable` ne vaut que pour un SKIP). Un mux sans piste externe est refusé avec sa raison, pas
 exécuté à vide.
 
 **Ce qu'on retire, c'est la navigation, jamais l'information.** Un assistant qui
@@ -2698,7 +2702,12 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
 - Barre individuelle sous le fichier actif, barre globale en pied de liste
 - Zone basse : commande ffmpeg complète + dernière ligne de retour (live)
 - `⏸ Pause` suspend le processus (multiplateforme)
-- Suppression source après succès selon `delete_source` (ou override par fichier).
+- Suppression source après succès selon `delete_source` (ou override par fichier),
+  par une seule fonction pour les trois chemins — passe principale, retrait et
+  réencodage du Dolby Vision (`_supprimer_source`, v0.8.9.106, CR-54) : jamais un
+  titre de disque, jamais un fichier abandonné par `S`. Les chemins DV refaisaient
+  leur propre règle : ils effaçaient le `.m2ts` d'un titre, oubliaient les annexes,
+  et supprimaient avant de regarder `S` — la sortie abandonnée partait ensuite.
   Ses **annexes Jellyfin** partent avec elle (`core/annexes.py`, v0.8.9.86) :
   `<nom>.nfo` et `<nom>-*.jpg|jpeg|png|webp`, le format observé sur la
   bibliothèque. Restent : les fichiers du dossier (`season.nfo`, `poster.jpg`,
@@ -3301,6 +3310,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.106 | 2026-10-09 | **Chemins Dolby Vision : source, pistes vides, RPU, mux** (§ 14.0, § 14.7, IE-126 1/3) : `RunScreen._supprimer_source`, une règle pour les trois chemins — titre de disque gardé, annexes supprimées, rien après `S` (CR-54) ; `_audio_vide` sur chaque sortie finale (CR-65) ; code de retour de ffmpeg exigé dans le tuyau du RPU (CR-31) ; `_muxable` limité au SKIP (CR-85) · `tests/test_dv_chemins.py` |
 | 0.8.9.105 | 2026-10-09 | **Écran de recalage** (§ 10.2, § 10.5, IE-125 3/3) : `extract_subtitle` sans délai fixe, avec progression et `ExtractionImpossible` qui dit la cause (CR-35), hors du fil de l'écran (`SyncScreen._en_texte`) ; `_srt_stamp` arrondit avant de découper (CR-36) ; WebVTT sans heures, fractions courtes complétées, `.sub` hors des formats texte (CR-37) ; mpv reçoit la piste extraite (`preview.build_command(…, sub_file=)`, CR-52) ; recalage audio désigné par l'objet, `D` refusé pendant une opération (CR-92) · `tests/test_recalage_ecran.py`, `tests/test_sync.py` |
 | 0.8.9.104 | 2026-10-09 | **Greffes : temps en MP4, langue, index** (§ 8.6, § 9.3, § 9.8, IE-125 2/3) : les sous-titres greffés passent par le porteur (`greffes_a_porter`, `build_extraction_greffe`, CR-34 ; réencodage DV : lus dans le Matroska recomposé, étirement compris) ; `guess_language` ne prend plus un mot du titre pour une langue (CR-26) ; un téléchargement OpenSubtitles porte son code ISO 639-2 (CR-51) ; `ffmpeg_stream_index` et `mkvmerge_tid` refusent au lieu de deviner (CR-27) · `tests/test_greffes_encodage.py` |
 | 0.8.9.103 | 2026-10-09 | **Greffes : règle audio du profil, jeu de caractères, drapeaux, polices** (§ 9.5, § 12.0, IE-125 1/3) : `decision.audio_greffee`, `decide_codec_audio`, `scanner.pistes_audio` ; `sous_titres.encodage_texte` (CR-50) ; `muxer.types_par_defaut` (CR-23, CR-25) ; `-map 0:t?` en MKV (CR-20) · `tests/test_greffes_encodage.py` |

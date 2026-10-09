@@ -237,10 +237,16 @@ def extract_rpu_depuis_source(source: Path, rpu_path: Path, dovi_path: Path,
         # Sans ça, ffmpeg ne reçoit jamais le SIGPIPE si dovi_tool s'arrête.
         ff.stdout.close()
         _, err = dt.communicate(timeout=timeout)
-        ff.wait(timeout=30)
+        code_ff = ff.wait(timeout=30)
         if dt.returncode != 0:
             _log.warning("extract-rpu (tuyau) a échoué : %s",
                          err.decode("utf-8", "replace")[:200])
+            return False
+        # Une lecture cassée en route (partage, fichier abîmé) arrête ffmpeg en
+        # erreur ; dovi_tool, lui, rend 0 sur le flux tronqué, et le RPU partiel
+        # passait pour complet (CR-31, la règle d'IE-41).
+        if code_ff != 0:
+            _log.warning("extract-rpu (tuyau) : ffmpeg a rendu %s", code_ff)
             return False
         # Un fichier vide est un succès pour dovi_tool — la source n'avait
         # simplement aucun RPU. Pour nous c'est un échec : il n'y a rien à

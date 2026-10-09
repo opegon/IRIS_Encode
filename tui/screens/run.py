@@ -568,16 +568,10 @@ class RunScreen(TableNavMixin, Screen):
         # audio — voir `encoder.audio_prepass_needed`. Le succès se vérifie,
         # il ne se déduit pas du code de retour.
         if success and dec.output_path.exists():
-            vides = pistes_audio_vides(dec.output_path, dec.info.duration)
-            if vides:
+            vide = self._audio_vide(dec, dec.output_path)
+            if vide:
                 success = False
-                # Le bloc de conclusion retronque `last_line` dans `error_msg` :
-                # l'essentiel doit tenir dans les soixante premiers caractères.
-                s.last_line = _(
-                    "Empty audio track in the output: {tracks}. The encode "
-                    "nevertheless finished without error. The file is unusable "
-                    "as it is, and this case is outside the known scope — "
-                    "please report it.").format(tracks=" · ".join(vides))
+                s.last_line = vide
 
         # Une sortie qui n'a pas abouti — échec de ffmpeg, piste vidée, `S` —
         # porterait le nom d'une sortie réussie : Jellyfin l'indexerait, le
@@ -593,20 +587,8 @@ class RunScreen(TableNavMixin, Screen):
             self.app.call_from_thread(record_measured_speed, self.app.cfg,  # type: ignore[attr-defined]
                                       dec.video.action, s._last_progress.speed)
 
-        should_delete = (
-            dec.delete_source_override
-            if dec.delete_source_override is not None
-            else dec.profile.get("delete_source", False)
-        )
-        # Un titre de disque ne se supprime pas : ce sont les fichiers du disque.
-        if success and should_delete and dec.info.titre is None:
-            try:
-                dec.info.path.unlink()
-            except Exception:
-                pass
-            else:
-                # Son .nfo et ses images Jellyfin ne décrivent plus rien (IE-116).
-                supprimer_annexes(dec.info.path)
+        if success:
+            self._supprimer_source(dec, s)
 
         # Les pistes audio produites à part ont été recopiées dans la sortie,
         # les sous-titres réécrits aussi ; l'intermédiaire d'un mux préalable
@@ -638,6 +620,50 @@ class RunScreen(TableNavMixin, Screen):
 
         # Enchaîne le suivant
         self._encode_next()
+
+    @staticmethod
+    def _audio_vide(dec: FileDecision, sortie: Path) -> str:
+        """Le message d'échec si une piste audio de `sortie` est vide, sinon "".
+
+        Le succès se vérifie, il ne se déduit pas du code de retour : voir
+        `encoder.audio_prepass_needed`. Les chemins Dolby Vision ne le
+        vérifiaient pas (CR-65) — le retrait vers MP4 transcode pourtant l'audio
+        dans la même passe que les sous-titres.
+        """
+        vides = pistes_audio_vides(sortie, dec.info.duration)
+        if not vides:
+            return ""
+        # Le bloc de conclusion retronque `last_line` dans `error_msg` :
+        # l'essentiel doit tenir dans les soixante premiers caractères.
+        return _(
+            "Empty audio track in the output: {tracks}. The encode "
+            "nevertheless finished without error. The file is unusable "
+            "as it is, and this case is outside the known scope — "
+            "please report it.").format(tracks=" · ".join(vides))
+
+    def _supprimer_source(self, dec: FileDecision, s: FileRunStatus) -> None:
+        """Supprime la source d'une sortie réussie, si le profil le demande.
+
+        Une seule règle pour tous les chemins (CR-54). Les chemins Dolby Vision
+        refaisaient la leur : ils effaçaient le `.m2ts` d'un titre de Blu-ray et
+        laissaient le `.nfo` et les images Jellyfin d'un fichier. Et ils
+        supprimaient avant de regarder si `S` avait abandonné le fichier — la
+        sortie, abandonnée, était effacée ensuite : on perdait les deux.
+        """
+        if s.state == FileState.SKIPPED:
+            return
+        voulu = (dec.delete_source_override
+                 if dec.delete_source_override is not None
+                 else dec.profile.get("delete_source", False))
+        # Un titre de disque ne se supprime pas : ce sont les fichiers du disque.
+        if not voulu or dec.info.titre is not None:
+            return
+        try:
+            dec.info.path.unlink()
+        except OSError:
+            return
+        # Son .nfo et ses images Jellyfin ne décrivent plus rien (IE-116).
+        supprimer_annexes(dec.info.path)
 
     def _liberer(self, dec: FileDecision, *tmps: Optional[Path]) -> None:
         """Efface les intermédiaires d'un fichier, que le traitement ait abouti
@@ -990,17 +1016,12 @@ class RunScreen(TableNavMixin, Screen):
                 echouer(_("remux: {detail}").format(detail=detail),
                         _("Remux failed — {detail}").format(detail=detail))
                 return
+            vide = self._audio_vide(dec, sortie)
+            if vide:
+                echouer(vide, vide)
+                return
 
-            should_delete = (
-                dec.delete_source_override
-                if dec.delete_source_override is not None
-                else dec.profile.get("delete_source", False)
-            )
-            if should_delete:
-                try:
-                    source.unlink()
-                except OSError:
-                    pass
+            self._supprimer_source(dec, s)
 
             if s.state != FileState.SKIPPED:
                 s.state   = FileState.SUCCESS
@@ -1233,17 +1254,12 @@ class RunScreen(TableNavMixin, Screen):
                     echouer(_("MP4 remux: code {code}").format(code=code),
                             _("The MP4 remux failed (code {code}).").format(code=code))
                     return
+            vide = self._audio_vide(dec, sortie)
+            if vide:
+                echouer(vide, vide)
+                return
 
-            should_delete = (
-                dec.delete_source_override
-                if dec.delete_source_override is not None
-                else dec.profile.get("delete_source", False)
-            )
-            if should_delete:
-                try:
-                    source.unlink()
-                except OSError:
-                    pass
+            self._supprimer_source(dec, s)
 
             if s.state != FileState.SKIPPED:
                 s.state   = FileState.SUCCESS

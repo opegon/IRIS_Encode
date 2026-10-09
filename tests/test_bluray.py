@@ -322,9 +322,13 @@ def test_l_assemblage_est_confié_à_mkvmerge_sur_la_playlist(disque, tmp_path):
 # ─── Garde-fous ───────────────────────────────────────────────────────────────
 
 def test_un_titre_n_est_jamais_supprimé_après_encodage():
-    """`delete_source` viserait la playlist, et ses clips sont ceux du disque."""
+    """`delete_source` viserait la playlist, et ses clips sont ceux du disque.
+    Une seule règle pour tous les chemins, Dolby Vision compris (CR-54) :
+    voir `tests/test_dv_chemins.py`."""
     texte = (RACINE_DEPOT / "tui" / "screens" / "run.py").read_text(encoding="utf-8")
-    assert "should_delete and dec.info.titre is None" in texte
+    assert "dec.info.titre is not None" in texte
+    assert texte.count(".unlink()") == texte.count("tmp.unlink()") + 1, \
+        "une seule suppression de source, dans `_supprimer_source`"
 
 
 def test_les_outils_lisent_le_clip_pas_la_playlist():

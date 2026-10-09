@@ -364,9 +364,13 @@ class WizardScreen(TableNavMixin, Screen):
     # ── Étape 4 — lancer ──────────────────────────────────────────────────────
 
     def _muxable(self) -> bool:
-        """Un mux suffit quand rien n'est à réencoder mais qu'il y a à greffer."""
-        return (self._dec.video.action in (VideoAction.SKIP,
-                                           VideoAction.STRIP_DV)
+        """Un mux suffit quand rien n'est à réencoder mais qu'il y a à greffer.
+
+        Pas sur un retrait du Dolby Vision : le mux recopie la vidéo telle
+        quelle, RPU compris, et rendait un MKV Dolby Vision — la forme qui
+        plante l'appli Jellyfin du G3 (CR-85). Le retrait greffe lui-même.
+        """
+        return (self._dec.video.action == VideoAction.SKIP
                 and bool(self._dec.external_tracks))
 
     def _a_encoder(self) -> FileDecision:

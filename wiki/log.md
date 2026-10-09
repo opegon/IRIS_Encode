@@ -372,3 +372,10 @@ Troisième variante sans perte du profil DTS de ffmpeg. Pages touchées : [[audi
 
 La conversion SDR échoue sans étiquettes de couleur ; filtre de pixels carrés
 mesuré. Pages touchées : [[ffmpeg]].
+
+## [2026-10-09] ingest | Empreintes publiées des outils (IE-132 1/3)
+
+Mesuré : gyan.dev publie `<archive>.sha256` (l'URL roulante redirige en 303 vers
+celui du build courant), BtbN et quietvoid/dovi_tool un `digest` par asset
+(absent sur dovi_tool 2.1.0, antérieure), MKVToolNix un `sha256sums.txt` par
+release. Page mise à jour : [[ffmpeg]].

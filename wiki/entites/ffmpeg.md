@@ -49,7 +49,10 @@ nvenc API version ») ; sans, seulement « Function not implemented ». Test :
 `ffmpeg -loglevel verbose -f lavfi -i testsrc2=d=1 -c:v hevc_nvenc -f null -`.
 
 Build installé par le preflight : *essentials* (~30 Mo), gyan.dev ou BtbN,
-SHA256 vérifié. Licence GPL (libx265 inclus). Un ffmpeg peut être construit
+SHA256 vérifié — gyan.dev publie `<archive>.sha256` à côté de chaque ZIP, et son
+URL roulante (`ffmpeg-release-essentials.zip.sha256`) redirige (303) vers celui du
+build courant ; BtbN, comme toute release GitHub, porte un `digest` par asset
+*(mesuré le 2026-10-09)*. Sans empreinte, le preflight refuse le téléchargement. Licence GPL (libx265 inclus). Un ffmpeg peut être construit
 sans libx265 : `ffmpeg -encoders | findstr x265`.
 
 ## Filtres de flux (`-bsf:v`)

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.113 — document de référence courant
+**Version** : 0.8.9.114 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -391,8 +391,18 @@ fonction correspondante avec un message explicite.
 
 - Proposition à l'utilisateur (sans exiger un terminal interactif)
 - Téléchargement depuis `config.toml` → `[ffmpeg] fetch_url`, ou `data/ffmpeg_releases.toml`
-- Vérification SHA256 après téléchargement
-- Extraction dans `./bin/`, aplatie par nom de fichier
+- **Empreinte SHA256 exigée** (`preflight._download`) : sans empreinte, rien n'est
+  téléchargé ; une empreinte fausse fait rejeter l'archive. Elle est épinglée dans
+  `data/ffmpeg_releases.toml` (dovi_tool, mkvmerge, mpv) ou lue chez l'amont : le
+  `<url>.sha256` publié à côté de l'archive (gyan.dev, pour `fetch_url`), le `digest`
+  des assets GitHub (BtbN, dovi_tool, mpv), `sha256sums.txt` de MKVToolNix
+- Extraction dans `./bin/`, aplatie par nom de fichier, depuis un ZIP ou un tar
+  (gz, xz — les builds Linux). dovi_tool publié en exécutable nu n'est écrit tel
+  quel que s'il en a l'en-tête (`MZ`, `ELF`) : un `.tar.gz` y passait comme binaire
+- **Tous ou aucun** (`preflight._poser_tous`) : chaque exécutable est écrit dans un
+  provisoire du même dossier (`.iris_tmp`), puis tous sont remplacés par
+  `os.replace`. Un échec d'écriture laisse les outils d'origine intacts, et
+  l'archive doit contenir tous les exécutables attendus (ffmpeg **et** ffprobe)
 - Build ffmpeg cible : **essentials** (~30 Mo)
 - Outil DVD : `updates.latest_ffmpeg_dvd` choisit dans la release `latest` de
   BtbN le ZIP `ffmpeg-nX.Y-latest-win64-gpl-X.Y.zip` de la branche la plus
@@ -407,9 +417,12 @@ fonction correspondante avec un message explicite.
 
 ### 4.3 Fetch des sources
 
-Fetch à chaque lancement, mis en cache dans `data/ffmpeg_releases_cache.toml`. En cas
-d'échec réseau, fallback silencieux sur `data/ffmpeg_releases.toml` embarqué, avec
-message d'information.
+Les dernières versions publiées sont interrogées au plus une fois par jour (§ 4.4) et
+mises en cache dans `data/ffmpeg_releases_cache.toml`, avec leur URL et leur empreinte.
+Ce cache ne sert **qu'aux mises à jour** : l'installation d'un outil absent lit les
+seules sources statiques, `data/ffmpeg_releases.toml` (`preflight._load_releases`).
+Elle lisait le cache en priorité, sous une forme qui n'est pas la sienne : dès le second
+lancement, installer dovi_tool, mkvmerge ou mpv échouait sur « URL not found ».
 
 ### 4.4 Vérification des mises à jour — `core/updates.py`
 
@@ -423,8 +436,8 @@ Piloté par `[updates] check_on_startup` — lu dans cette section-là, et non s
 dovi_tool tantôt en ZIP, tantôt en exécutable nu, mpv en 7z, le reste en ZIP. La mise à
 jour appelait auparavant l'extracteur ZIP en direct : une release dovi_tool livrée en
 binaire nu échouait à chaque lancement, pendant qu'une installation neuve de la même
-release réussissait. Aucune empreinte n'est vérifiée sur ce chemin, et il n'y en a pas à
-vérifier : l'URL vient d'une découverte dynamique, pas d'une source épinglée (§ 4.2).
+release réussissait. L'empreinte suit la release découverte (`Release.sha256`,
+`Update.sha256`), et la mise à jour la vérifie comme l'installation (§ 4.2).
 
 **Le relevé des versions est parallèle** (`check_tools`). `_get_version` essaie deux
 drapeaux à 5 s de délai chacun, et mkvmerge comme dovi_tool échouent sur le premier :
@@ -3456,6 +3469,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.114 | 2026-10-09 | **Installation des outils** (§ 4.2 à 4.4, IE-132 1/3) : empreinte SHA256 exigée pour tout téléchargement, lue chez l'amont ou épinglée (CR-40) · tous ou aucun, par provisoires et `os.replace` (CR-38) · tar.gz/tar.xz extraits, exécutable nu reconnu à son en-tête (CR-39) · installation sur les seules sources statiques, le cache ne les masque plus (CR-41) · `tests/test_outils_installation.py` |
 | 0.8.9.113 | 2026-10-09 | **Vidéo et encodeurs** (§ 8.1, § 11, § 12, § 14.0, IE-130) : pixels carrés pour une source anamorphique (`VideoInfo.sar`, CR-14) ; forçage par tranche, HDR gardé en HEVC (CR-16) ; `CODEC_PAR_ACTION` (CR-17) ; débit inconnu réencodé à la cible (CR-19) ; `regle_debit` selon l'encodeur effectif (CR-22) ; sonde 10 bits NVENC, `_refuser_encodeur` (CR-42) ; H264 sur une source HDR → SDR, averti (`h264_force_sdr`, arbitrage du 2026-10-09) · `tests/test_video_revue.py` |
 | 0.8.9.112 | 2026-10-09 | **Audio : DTS:X IMAX, marques collées, pistes écartées** (§ 8.5, § 8.7, IE-128) : profil DTS sans perte par préfixe (CR-09) ; marque collée à sa disposition reconnue et réécrite (`colle_a_une_disposition`, CR-10) ; famille d'une piste écartée réécrite vers la piste gardée (CR-18) · `tests/test_audio_revue.py` |
 | 0.8.9.111 | 2026-10-09 | **Titres de disque : coûts de lecture** (§ 15.5, IE-127 3/3) : `bluray.memoriser` / `signature` pour les titres des deux modules (CR-02) ; mode récursif en un seul `os.walk` (CR-12) · `tests/test_bluray.py`, `tests/test_scan_recursif.py` |

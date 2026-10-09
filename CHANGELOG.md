@@ -1,5 +1,28 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.114] — 2026-10-09
+
+### Installation des outils : vérifiée, et jamais à moitié (IE-132, 1/3)
+
+Revue IE-114, constats CR-38, 39, 40, 41.
+
+- **dovi_tool, mkvmerge, mpv s'installent encore au second lancement.** Dès
+  que la vérification des mises à jour avait écrit son cache, accepter l'un
+  de ces outils échouait sur « URL not found in the sources » : l'installation
+  lisait ce cache au lieu de ses sources. Elle ne lit plus que ses sources.
+- **Chaque téléchargement est vérifié.** L'empreinte SHA256 n'était contrôlée
+  que pour mpv et mkvmerge ; ffmpeg, dovi_tool et l'outil DVD passaient sans.
+  Elle est lue là où l'amont la publie (fichier `.sha256` de gyan.dev,
+  empreinte des releases GitHub, liste de MKVToolNix), et un téléchargement
+  sans empreinte est refusé.
+- **Une mise à jour ratée garde vraiment l'ancienne version.** Un disque plein
+  ou un antivirus pendant l'écriture pouvait laisser un `ffmpeg.exe` neuf ou
+  tronqué à côté de l'ancien `ffprobe.exe`. Les outils sont écrits à côté,
+  puis remplacés tous ensemble ; en cas d'échec, rien ne change.
+- **Linux : dovi_tool n'est plus une archive renommée.** Le `.tar.gz` publié
+  pour Linux était écrit tel quel comme exécutable, avec « Installed ». Il est
+  extrait ; la source épinglée passe en 2.3.3, comme celle de Windows.
+
 ## [v0.8.9.113] — 2026-10-09
 
 ### Vidéo et encodeurs : DVD lisibles en direct, pas de H264 en HDR (IE-130)

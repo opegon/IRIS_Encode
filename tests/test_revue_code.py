@@ -200,8 +200,8 @@ def test_un_zip_illisible_nest_pas_ecrit_sous_le_nom_dun_executable(tmp_path,
         z.writestr("dovi_tool.exe", b"MZ vrai binaire")
     octets = tampon.read_bytes()
 
-    monkeypatch.setattr(preflight, "_download", lambda url: octets)
-    monkeypatch.setattr(preflight, "_install_from_zip",
+    monkeypatch.setattr(preflight, "_download", lambda url, sha="": octets)
+    monkeypatch.setattr(preflight, "_install_from_archive",
                         lambda *a, **k: (_ for _ in ()).throw(OSError("disque plein")))
     bin_dir = tmp_path / "bin"
     releases = {"dovi_tool": {"windows": {"url": "http://x/z.zip"},
@@ -215,7 +215,7 @@ def test_un_zip_illisible_nest_pas_ecrit_sous_le_nom_dun_executable(tmp_path,
 def test_un_binaire_nu_reste_installe_directement(tmp_path, monkeypatch):
     """Le repli garde sa raison d'être : certaines releases ne sont pas zippées."""
     octets = b"MZ\x90\x00 binaire nu"
-    monkeypatch.setattr(preflight, "_download", lambda url: octets)
+    monkeypatch.setattr(preflight, "_download", lambda url, sha="": octets)
     bin_dir = tmp_path / "bin"
     releases = {"dovi_tool": {"windows": {"url": "http://x/dovi_tool.exe"},
                               "linux":   {"url": "http://x/dovi_tool"}}}

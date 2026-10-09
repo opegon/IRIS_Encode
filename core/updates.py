@@ -31,6 +31,9 @@ _UA = {"User-Agent": "iris-encode"}
 class Release:
     version: str
     url:     str
+    # Empreinte publiée par l'amont pour cette archive ; vide si introuvable,
+    # et `preflight._download` refuse alors de télécharger (CR-40).
+    sha256:  str = ""
 
 
 @dataclass
@@ -39,6 +42,7 @@ class Update:
     installed: str
     latest:    str
     url:       str
+    sha256:    str = ""
 
     def label(self) -> str:
         # TRANSLATORS: an installed version that could not be read.
@@ -88,6 +92,29 @@ def _get(url: str):
     return requests.get(url, timeout=HTTP_TIMEOUT, headers=_UA)
 
 
+_SHA256_RE = re.compile(r"\b[0-9a-fA-F]{64}\b")
+
+
+def sha256_publie(url: str) -> str:
+    """L'empreinte publiée à côté d'une archive (`<url>.sha256`), ou "".
+
+    C'est la convention de gyan.dev ; son URL roulante redirige le `.sha256`
+    vers celui du build courant, comme l'archive elle-même.
+    """
+    try:
+        r = _get(url + ".sha256")
+    except Exception:
+        return ""
+    m = _SHA256_RE.search(r.text) if r.ok else None
+    return m.group(0).lower() if m else ""
+
+
+def _digest(asset: dict) -> str:
+    """Le `digest` d'un asset GitHub (`sha256:…`), ou ""."""
+    algo, _sep, valeur = str(asset.get("digest") or "").partition(":")
+    return valeur.lower() if algo == "sha256" else ""
+
+
 def _github_asset(repo: str, pattern: str) -> Optional[Release]:
     """Dernière release d'un dépôt GitHub, et l'asset correspondant au motif."""
     r = _get(f"https://api.github.com/repos/{repo}/releases/latest")
@@ -98,7 +125,7 @@ def _github_asset(repo: str, pattern: str) -> Optional[Release]:
     for asset in data.get("assets", []):
         if rx.fullmatch(asset["name"]):
             return Release(str(data["tag_name"]).lstrip("v"),
-                           asset["browser_download_url"])
+                           asset["browser_download_url"], _digest(asset))
     return None
 
 
@@ -107,10 +134,8 @@ def _latest_ffmpeg() -> Optional[Release]:
     r = _get("https://www.gyan.dev/ffmpeg/builds/release-version")
     if not r.ok:
         return None
-    return Release(
-        r.text.strip(),
-        "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
-    )
+    url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+    return Release(r.text.strip(), url, sha256_publie(url))
 
 
 def latest_ffmpeg_dvd() -> Optional[Release]:
@@ -127,11 +152,11 @@ def latest_ffmpeg_dvd() -> Optional[Release]:
         m = rx.fullmatch(asset.get("name", ""))
         if m:
             branches.append(((int(m.group(1)), int(m.group(2))),
-                             asset["browser_download_url"]))
+                             asset["browser_download_url"], _digest(asset)))
     if not branches:
         return None
-    (majeur, mineur), url = max(branches)
-    return Release(f"{majeur}.{mineur}", url)
+    (majeur, mineur), url, sha = max(branches)
+    return Release(f"{majeur}.{mineur}", url, sha)
 
 
 def _latest_mkvtoolnix() -> Optional[Release]:
@@ -142,11 +167,21 @@ def _latest_mkvtoolnix() -> Optional[Release]:
     if not m:
         return None
     v = m.group(1).strip()
-    return Release(
-        v,
-        f"https://mkvtoolnix.download/windows/releases/{v}/"
-        f"mkvtoolnix-64-bit-{v}.zip",
-    )
+    dossier = f"https://mkvtoolnix.download/windows/releases/{v}/"
+    archive = f"mkvtoolnix-64-bit-{v}.zip"
+    # L'empreinte vient de la liste publiée avec la release. Sans elle, la
+    # version reste signalée ; seul le téléchargement sera refusé.
+    sha = ""
+    try:
+        liste = _get(dossier + "sha256sums.txt")
+    except Exception:
+        liste = None
+    if liste is not None and liste.ok:
+        for ligne in liste.text.splitlines():
+            champs = ligne.split()
+            if len(champs) == 2 and champs[1] == archive:
+                sha = champs[0].lower()
+    return Release(v, dossier + archive, sha)
 
 
 def _latest_dovi_tool() -> Optional[Release]:
@@ -200,7 +235,8 @@ def load_cache(path: Path) -> Optional[dict[str, Release]]:
     if time.time() - float(data.get("checked_at", 0)) > CACHE_TTL_SECONDS:
         return None
     return {
-        tool: Release(str(entry.get("version", "")), str(entry.get("url", "")))
+        tool: Release(str(entry.get("version", "")), str(entry.get("url", "")),
+                      str(entry.get("sha256", "")))
         for tool, entry in data.get("tools", {}).items()
         if entry.get("version")
     }
@@ -213,7 +249,8 @@ def save_cache(path: Path, releases: dict[str, Release]) -> None:
         with path.open("wb") as f:
             tomli_w.dump({
                 "checked_at": time.time(),
-                "tools": {t: {"version": r.version, "url": r.url}
+                "tools": {t: {"version": r.version, "url": r.url,
+                              "sha256": r.sha256}
                           for t, r in releases.items()},
             }, f)
     except Exception:
@@ -229,5 +266,5 @@ def pending(installed: dict[str, str],
     for tool, version in installed.items():
         rel = releases.get(tool)
         if rel and is_newer(rel.version, version):
-            out.append(Update(tool, version, rel.version, rel.url))
+            out.append(Update(tool, version, rel.version, rel.url, rel.sha256))
     return out

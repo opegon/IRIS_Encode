@@ -9,9 +9,11 @@ from __future__ import annotations
 import concurrent.futures
 import hashlib
 import io
+import os
 import platform
 import shutil
 import subprocess
+import tarfile
 import tempfile
 import tomllib
 import zipfile
@@ -165,27 +167,36 @@ def check_tools(bin_dir: Path) -> list[ToolStatus]:
 
 
 def _load_releases() -> dict:
-    for path in (CACHE_FILE, STATIC_FILE):
-        if path.exists():
-            try:
-                with path.open("rb") as f:
-                    return tomllib.load(f)
-            except Exception:
-                continue
-    return {}
+    """Les sources statiques, et elles seules.
+
+    Le cache des mises à jour (`CACHE_FILE`) était lu en priorité, alors
+    qu'`updates.save_cache` l'écrit sous une autre forme (`tools.<outil>`, pas
+    `<outil>.windows`) : dès le second lancement, installer dovi_tool,
+    mkvmerge ou mpv échouait sur « URL not found » (CR-41).
+    """
+    try:
+        with STATIC_FILE.open("rb") as f:
+            return tomllib.load(f)
+    except Exception:
+        return {}
 
 
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest().lower()
 
 
-def _download(url: str, expected_sha256: str = "") -> Optional[bytes]:
+def _download(url: str, expected_sha256: str) -> Optional[bytes]:
     """
-    Télécharge, et vérifie l'empreinte quand la source en fournit une.
+    Télécharge, et refuse ce dont l'empreinte ne correspond pas.
 
-    Les URL découvertes dynamiquement n'ont pas d'empreinte connue : on ne
-    vérifie que ce qui est épinglé dans les sources statiques.
+    Sans empreinte, rien n'est téléchargé (CR-40) : chaque source en publie
+    une — fichier `.sha256` de gyan.dev, `digest` des assets GitHub,
+    `sha256sums.txt` de MKVToolNix — ou l'épingle dans les sources statiques.
     """
+    if not expected_sha256:
+        _dire(_("No SHA256 checksum published for {url} — download refused.")
+              .format(url=url), "✗")
+        return None
     try:
         import requests
         r = requests.get(url, stream=True, timeout=120)
@@ -195,36 +206,82 @@ def _download(url: str, expected_sha256: str = "") -> Optional[bytes]:
         _dire(_("Download failed: {error}").format(error=e), "✗")
         return None
 
-    if expected_sha256:
-        got = _sha256(data)
-        if got != expected_sha256.lower():
-            _dire(_("Wrong SHA256 checksum — download rejected."), "✗")
-            # TRANSLATORS: "expected" and "got" lines are aligned on their colon.
-            print("    " + _("expected: {value}").format(value=expected_sha256.lower()))
-            print("    " + _("got:      {value}").format(value=got))
-            return None
+    got = _sha256(data)
+    if got != expected_sha256.lower():
+        _dire(_("Wrong SHA256 checksum — download rejected."), "✗")
+        # TRANSLATORS: "expected" and "got" lines are aligned on their colon.
+        print("    " + _("expected: {value}").format(value=expected_sha256.lower()))
+        print("    " + _("got:      {value}").format(value=got))
+        return None
     return data
 
 
-def _install_from_zip(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
-    """Extrait les exécutables ciblés depuis un ZIP vers bin_dir."""
-    bin_dir.mkdir(parents=True, exist_ok=True)
-    installed = 0
+def _poser_tous(fichiers: dict[Path, bytes]) -> bool:
+    """Pose les exécutables tous ou aucun, chacun par remplacement atomique.
+
+    L'écriture en place laissait, sur un disque plein ou un antivirus, un
+    `ffmpeg.exe` neuf ou tronqué à côté de l'ancien `ffprobe.exe`, sous le
+    message « previous version kept » (CR-38). Chaque contenu est d'abord
+    écrit dans un provisoire du même dossier ; les remplacements n'ont lieu
+    qu'une fois tous les provisoires écrits.
+    """
+    provisoires: list[Path] = []
     try:
-        with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            for member in zf.namelist():
-                fname = Path(member).name
-                if fname in targets:
-                    target = bin_dir / fname
-                    target.write_bytes(zf.read(member))
-                    if not _is_windows():
-                        target.chmod(0o755)
-                    _dire(_("Installed: {path}").format(path=target), "✓")
-                    installed += 1
-    except zipfile.BadZipFile:
-        _dire(_("Invalid archive (not a ZIP)."), "✗")
+        for cible, contenu in fichiers.items():
+            cible.parent.mkdir(parents=True, exist_ok=True)
+            provisoire = cible.with_name(cible.name + ".iris_tmp")
+            provisoires.append(provisoire)
+            provisoire.write_bytes(contenu)
+            if not _is_windows():
+                provisoire.chmod(0o755)
+        for cible, provisoire in zip(fichiers, provisoires):
+            os.replace(provisoire, cible)
+    except OSError as e:
+        _dire(_("Cannot write the tool: {error}").format(error=e), "✗")
         return False
-    return installed > 0
+    finally:
+        for provisoire in provisoires:
+            provisoire.unlink(missing_ok=True)
+    for cible in fichiers:
+        _dire(_("Installed: {path}").format(path=cible), "✓")
+    return True
+
+
+def _install_from_archive(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
+    """Extrait les exécutables ciblés d'un ZIP ou d'un tar (gz, xz) vers bin_dir.
+
+    Le tar est celui des builds Linux (dovi_tool, ffmpeg statique) : il était
+    écrit tel quel comme exécutable (CR-39). Tous les exécutables ciblés
+    doivent s'y trouver, sinon rien n'est posé.
+    """
+    trouves: dict[str, bytes] = {}
+    try:
+        if zipfile.is_zipfile(io.BytesIO(data)):
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                for member in zf.namelist():
+                    if Path(member).name in targets:
+                        trouves[Path(member).name] = zf.read(member)
+        else:
+            with tarfile.open(fileobj=io.BytesIO(data), mode="r:*") as tf:
+                for member in tf.getmembers():
+                    if member.isfile() and Path(member.name).name in targets:
+                        trouves[Path(member.name).name] = (
+                            tf.extractfile(member).read())
+    except (zipfile.BadZipFile, tarfile.TarError, EOFError, OSError):
+        _dire(_("Invalid archive (neither ZIP nor tar)."), "✗")
+        return False
+    manquants = sorted(targets - trouves.keys())
+    if manquants:
+        _dire(_("The archive does not contain {names}.").format(
+            names=", ".join(manquants)), "✗")
+        return False
+    return _poser_tous({bin_dir / nom: contenu
+                        for nom, contenu in sorted(trouves.items())})
+
+
+def _est_executable(data: bytes) -> bool:
+    """Un exécutable Windows (MZ) ou Linux (ELF), et non une archive."""
+    return data[:2] == b"MZ" or data[:4] == b"\x7fELF"
 
 
 def poser(nom: str, data: bytes, bin_dir: Path) -> bool:
@@ -249,29 +306,30 @@ def poser(nom: str, data: bytes, bin_dir: Path) -> bool:
         # tronquée — faisait écrire **les octets du ZIP** dans `dovi_tool.exe`,
         # en annonçant « ✓ Installé ». Le défaut ne se serait vu qu'au premier
         # fichier Dolby Vision, très loin de sa cause.
-        if zipfile.is_zipfile(io.BytesIO(data)):
-            return _install_from_zip(data, bin_dir, {cible})
-        bin_dir.mkdir(parents=True, exist_ok=True)
-        dest = bin_dir / cible
-        dest.write_bytes(data)
-        if not _is_windows():
-            dest.chmod(0o755)
-        _dire(_("Installed: {path}").format(path=dest), "✓")
-        return True
+        #
+        # Seul un contenu qui a l'en-tête d'un exécutable s'écrit tel quel :
+        # le `.tar.gz` Linux, qui n'est pas un ZIP, devenait sinon
+        # `bin/dovi_tool` (CR-39).
+        if _est_executable(data):
+            return _poser_tous({bin_dir / cible: data})
+        return _install_from_archive(data, bin_dir, {cible})
     if nom == "mpv":
         return _install_from_7z(data, bin_dir, {_exe("mpv")})
     if nom == "ffmpeg":
-        return _install_from_zip(data, bin_dir,
-                                 {_exe("ffmpeg"), _exe("ffprobe")})
+        return _install_from_archive(data, bin_dir,
+                                     {_exe("ffmpeg"), _exe("ffprobe")})
     if nom == "ffmpeg_dvd":
-        return _install_from_zip(data, bin_dir / "dvd",
-                                 {_exe("ffmpeg"), _exe("ffprobe")})
-    return _install_from_zip(data, bin_dir, {_exe(nom)})
+        return _install_from_archive(data, bin_dir / "dvd",
+                                     {_exe("ffmpeg"), _exe("ffprobe")})
+    return _install_from_archive(data, bin_dir, {_exe(nom)})
 
 
 def install_ffmpeg(bin_dir: Path, fetch_url: str) -> bool:
+    """ffmpeg depuis `[ffmpeg] fetch_url`, vérifié par le `.sha256` publié à
+    côté de l'archive (gyan.dev le fait pour chaque build)."""
+    from . import updates
     _dire(_("Downloading from {url}").format(url=fetch_url))
-    data = _download(fetch_url)
+    data = _download(fetch_url, updates.sha256_publie(fetch_url))
     if data is None:
         return False
     return poser("ffmpeg", data, bin_dir)
@@ -286,7 +344,7 @@ def install_dovi_tool(bin_dir: Path, releases: dict) -> bool:
         _dire(_("{tool} URL not found in the sources.").format(tool="dovi_tool"), "✗")
         return False
     _dire(_("Downloading from {url}").format(url=url))
-    data = _download(url)
+    data = _download(url, info.get("sha256", ""))
     if data is None:
         return False
     return poser("dovi_tool", data, bin_dir)
@@ -300,8 +358,7 @@ def _install_from_7z(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
     évite une dépendance Python supplémentaire pour la seule archive du lot
     qui n'est pas publiée en ZIP.
     """
-    bin_dir.mkdir(parents=True, exist_ok=True)
-    installed = 0
+    trouves: dict[str, bytes] = {}
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
         archive = tmp_dir / "download.7z"
@@ -322,13 +379,14 @@ def _install_from_7z(data: bytes, bin_dir: Path, targets: set[str]) -> bool:
 
         for found in extract_dir.rglob("*"):
             if found.is_file() and found.name in targets:
-                target = bin_dir / found.name
-                shutil.copy2(found, target)
-                if not _is_windows():
-                    target.chmod(0o755)
-                _dire(_("Installed: {path}").format(path=target), "✓")
-                installed += 1
-    return installed > 0
+                trouves[found.name] = found.read_bytes()
+    manquants = sorted(targets - trouves.keys())
+    if manquants:
+        _dire(_("The archive does not contain {names}.").format(
+            names=", ".join(manquants)), "✗")
+        return False
+    return _poser_tous({bin_dir / nom: contenu
+                        for nom, contenu in sorted(trouves.items())})
 
 
 def install_mpv(bin_dir: Path, releases: dict) -> bool:
@@ -510,7 +568,7 @@ def install_ffmpeg_dvd(bin_dir: Path) -> bool:
         _dire(_("{tool} URL not found in the sources.").format(tool="ffmpeg (BtbN)"), "✗")
         return False
     _dire(_("Downloading from {url}").format(url=rel.url))
-    data = _download(rel.url)
+    data = _download(rel.url, rel.sha256)
     if data is None:
         return False
     return poser("ffmpeg_dvd", data, bin_dir)
@@ -539,16 +597,15 @@ def _installer_for(name: str):
     devenait `b""` — remis à un extracteur qui n'avait plus qu'à échouer sur
     une archive vide, en nommant la mauvaise cause.
 
-    Aucune empreinte à vérifier ici : `Update` n'en porte pas, et pour cause —
-    l'URL vient d'une découverte dynamique, pas d'une source épinglée. C'est
-    la limite que `_download` documente déjà.
+    L'empreinte est celle que l'amont publie avec la release (`Update.sha256`) :
+    sans elle, `_download` refuse.
     """
     if name not in OUTILS_INSTALLABLES:
         return None
 
-    def _installer(bin_dir: Path, url: str) -> bool:
+    def _installer(bin_dir: Path, url: str, sha256: str = "") -> bool:
         _dire(_("Downloading from {url}").format(url=url))
-        data = _download(url)
+        data = _download(url, sha256)
         if data is None:
             return False
         return poser(name, data, bin_dir)
@@ -610,7 +667,7 @@ def check_for_updates(cfg: dict, statuses: list[ToolStatus],
             continue
         _dire(_("{tool}: downloading {version}…").format(tool=u.tool, version=u.latest))
         try:
-            ok = installer(bin_dir, u.url)
+            ok = installer(bin_dir, u.url, u.sha256)
         except Exception as e:
             ok = False
             _dire(str(e), "✗")

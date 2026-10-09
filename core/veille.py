@@ -117,7 +117,7 @@ class _MoteurWindows:
         etat = self._ES_CONTINUOUS | self._ES_SYSTEM_REQUIRED
         if self._k.SetThreadExecutionState(etat):
             return ("thread", None)
-        log.warning("veille : aucune demande acceptée (erreur %s)",
+        log.warning("sleep: no power request accepted (error %s)",
                     self._ct.get_last_error())
         return None
 
@@ -230,7 +230,7 @@ class GardeVeille:
             try:
                 self._moteur = _MoteurWindows()
             except (OSError, AttributeError) as e:
-                log.warning("veille : API indisponible (%s)", e)
+                log.warning("sleep: power API unavailable (%s)", e)
                 self._moteur = False
         return self._moteur or None
 
@@ -256,8 +256,8 @@ class GardeVeille:
             self._motif = motif
             if ancien is not None:
                 moteur.retirer(ancien)
-            log.info("veille : %s", f"suspendue — {motif}" if self._jeton
-                     else "rendue au système")
+            log.info("sleep: %s", f"blocked — {motif}" if self._jeton
+                     else "back to the system")
 
     def relacher(self) -> None:
         self.maintenir(None)
@@ -270,5 +270,5 @@ class GardeVeille:
         moteur = self._le_moteur()
         if moteur is None:
             return _("unavailable on this system")
-        log.info("veille : fin de lot, %s", action)   # le journal garde la clé
+        log.info("sleep: end of batch, %s", action)   # le journal garde la clé
         return moteur.executer(action)

@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.8.9.117
+**Version**: 0.8.9.118
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -372,7 +372,7 @@ progress · 1/3 · 42%", then "F12 Batch done"; from the queue, "F12 Files".
 | Key | Action |
 |---|---|
 | `P` | Pause / resume |
-| `S` | Skip the current file, without canceling the rest |
+| `S` | Skip the current file, without canceling the rest — after confirmation |
 | `Ctrl+↑` / `Ctrl+↓` | Move the waiting file under the cursor up / down one place |
 | `Del` | Remove the waiting file under the cursor from the queue |
 | `X` | **Stop all** — the current file and the queue; asks for confirmation |

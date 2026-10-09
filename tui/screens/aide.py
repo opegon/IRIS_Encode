@@ -205,7 +205,7 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
     },
     "RunScreen": {
         "pause_resume": N_("Pauses or resumes the current encode."),
-        "skip_current": N_("Abandons the current file and moves to the next."),
+        "skip_current": N_("Abandons the current file, after confirmation, and moves to the next."),
         "monter":       N_("Moves the waiting file under the cursor up one "
                            "place."),
         "descendre":    N_("Moves the waiting file under the cursor down one "

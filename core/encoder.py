@@ -90,13 +90,15 @@ _SDR_TONEMAP_FILTER = (
     "format=yuv420p"
 )
 
-# Regex pour parser la ligne de progression ffmpeg
+# Regex pour parser la ligne de progression ffmpeg. `frame=` et `fps=` sont
+# facultatifs : une sortie sans vidéo (passes audio) écrit `size= … time= …
+# bitrate= … speed=`, et sa barre restait indéterminée (CR-21) ; `time=` suffit
+# au pourcentage.
 _PROGRESS_RE = re.compile(
-    r"frame=\s*(?P<frame>\d+)"
-    r".*?fps=\s*(?P<fps>[\d.]+)"
-    r".*?time=(?P<time>\d{2}:\d{2}:\d{2}\.\d{2})"
-    r".*?bitrate=(?P<bitrate>[\d.]+)kbits/s"
-    r".*?speed=(?P<speed>[\d.]+)x"
+    r"(?:frame=\s*(?P<frame>\d+).*?fps=\s*(?P<fps>[\d.]+).*?)?"
+    r"time=(?P<time>\d{2}:\d{2}:\d{2}\.\d{2})"
+    r".*?bitrate=\s*(?P<bitrate>[\d.]+)kbits/s"
+    r".*?speed=\s*(?P<speed>[\d.]+)x"
 )
 
 
@@ -156,8 +158,8 @@ def parse_progress(line: str, total_duration: float) -> Optional[ProgressInfo]:
     # Si durée inconnue, montre au moins la progression temporelle
     percent = (elapsed / total_duration) if total_duration > 0 else elapsed
     return ProgressInfo(
-        frame=int(m.group("frame")),
-        fps=float(m.group("fps")),
+        frame=int(m.group("frame") or 0),
+        fps=float(m.group("fps") or 0),
         elapsed=elapsed,
         bitrate=float(m.group("bitrate")),
         speed=float(m.group("speed")),
@@ -273,7 +275,9 @@ def build_audio_command(source: Path, output: Path, audio: list,
     les pistes sortaient en `und` (CR-63).
     """
     gardees = [ad for ad in audio if ad.action != AudioAction.EXCLUDE]
-    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(source),
+    # `-stats` : sous `-loglevel error`, ffmpeg n'écrit plus sa ligne de
+    # progression, et la barre restait indéterminée (CR-21, mesuré).
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-stats", "-i", str(source),
            "-vn", "-sn", "-dn"]
     for ad in gardees:
         cmd += ["-map", f"0:a:{ad.track.index}"]
@@ -897,6 +901,9 @@ class EncoderProcess:
         self.duration = duration
         self._proc:   Optional[subprocess.Popen] = None
         self._paused  = False
+        # Les dernières lignes de stderr : la cause d'un échec précède le
+        # constat de quelques lignes (`diagnostiquer`, CR-62).
+        self.journal: list[str] = []
 
     def start(self) -> None:
         self._proc = subprocess.Popen(
@@ -921,6 +928,9 @@ class EncoderProcess:
     def iter_progress(self) -> Iterator[tuple[str, Optional[ProgressInfo]]]:
         """Itère en retournant (ligne_brute, ProgressInfo|None)."""
         for line in self.iter_lines():
+            if line:
+                self.journal.append(line)
+                del self.journal[:-40]
             progress = parse_progress(line, self.duration)
             yield line, progress
 

@@ -868,7 +868,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                         self._subtitle_overrides.get(vpath),
                     )
             except Exception:
-                _LOG.warning("Échec du scan : %s", vpath, exc_info=True)
+                _LOG.warning("scan failed: %s", vpath, exc_info=True)
             with lock:
                 done += 1
                 _set_notice("⏳ " + _("Analyzing… {done} / {total}").format(

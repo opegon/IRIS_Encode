@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.117 — document de référence courant
+**Version** : 0.8.9.118 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -2104,6 +2104,10 @@ mobile de `[stats.encode_speed]`, qui nourrit la colonne « ETA ».
   OpenSubtitles : une réponse 200 qui n'est pas du JSON (portail captif) devient
   une `ErreurOpenSubtitles`, et les deux workers attrapent aussi `OSError`
   (CR-95).
+- **`S` demande confirmation** (v0.8.9.118, arbitrage du 2026-10-09) — comme `X`,
+  par `ConfirmModal` : une frappe jetait des heures d'encodage. Si le fichier
+  change pendant la question (fin, échec), le « oui » ne touche à rien
+  (`_passer_courant` n'agit que sur l'index de la question).
 - **`S` sur une étape mkvmerge** (v0.8.9.108, CR-61) — assemblage d'un titre, mux
   préalable, mux, remux Dolby Vision : `S` l'arrête aussi (`self._mux`) ; entre deux
   étapes, un message dit d'attendre un instant au lieu de ne rien faire. **Un
@@ -2223,7 +2227,18 @@ Conventions transverses :
   l'échec ; l'écran ne gardait que la dernière ligne, la seule qui n'apprend
   rien. `encoder.diagnostiquer()` cherche des signatures connues dans les
   quarante dernières lignes — chacune reproduite avant d'être ajoutée — et
-  retombe sur la ligne brute plutôt que d'inventer un message.
+  retombe sur la ligne brute plutôt que d'inventer un message. **Chaque étape
+  ffmpeg en dit autant** (v0.8.9.118, CR-62) : `EncoderProcess.journal` garde les
+  quarante dernières lignes de tout processus, et `RunScreen._cause` met la cause en
+  tête du constat — passe audio préalable, sous-titres, greffes, étapes Dolby
+  Vision (HEVC, RPU, vidéo, audio, MP4), titre de DVD. Un disque plein sous les
+  intermédiaires du retrait DV disait « code 1 ». Le réencodage DV refuse un
+  encodeur que le sondage sait inutilisable **avant** de lire le film pour son RPU.
+- **Les passes audio avancent** (v0.8.9.118, CR-21) : `build_audio_command` passe
+  `-stats` (sous `-loglevel error`, ffmpeg n'écrit plus sa ligne de progression —
+  mesuré), et `_PROGRESS_RE` lit une ligne sans `frame=` ni `fps=` : `time=`
+  suffit au pourcentage. Les étapes mkvmerge (assemblage d'un titre, mux
+  préalable) ramènent leur 0–100 à l'unité : elles affichaient « 4200% » (CR-59).
 - **Les binaires viennent de la configuration, jamais du `PATH`.** Le preflight
   installe ffmpeg, ffprobe, dovi_tool, mkvmerge et mpv dans `./bin/` **sans
   toucher au `PATH`**. Les appeler par leur nom nu échoue donc sur une
@@ -2917,8 +2932,9 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   `core/veille.py`. Windows met la machine en veille sur inactivité sans voir
   ffmpeg travailler. `GardeVeille` pose une demande d'alimentation
   (`PowerCreateRequest` + `PowerSetRequest(PowerRequestSystemRequired)`) au
-  motif lisible dans `powercfg /requests` (« IRIS ENCODE : encodage, mesure en
-  cours »). **Pas `SetThreadExecutionState`** : son état appartient au thread
+  motif lisible dans `powercfg /requests` (« IRIS ENCODE: encoding, measurement in
+  progress » — en anglais depuis la v0.8.9.118 : il part vers un programme, comme
+  les journaux, et ne se traduit pas). **Pas `SetThreadExecutionState`** : son état appartient au thread
   appelant, et `_encode_next` est un worker qui se relance à chaque fichier —
   la demande tomberait entre deux fichiers. Elle ne sert qu'en secours, depuis
   le fil principal. `IrisEncodeApp.surveiller_veille()` relève l'état toutes
@@ -3373,8 +3389,12 @@ Configuré dans `app.py` à chaque lancement :
 
 ```python
 log_path = Path.home() / ".iris_encode" / "iris_encode.log"
-logging.basicConfig(level=logging.WARNING, …)
+logging.basicConfig(filename=…, encoding="utf-8", level=logging.WARNING, …)
 ```
+
+En UTF-8 : dans l'encodage local (cp1252), une ligne citant un nom de fichier
+hors de cette page était perdue (CR-72). Les messages sont en anglais, langue
+stable du diagnostic (CR-53, `tests/test_file_encodage.py` le vérifie).
 
 Les modules `core/` logguent via `logging.getLogger("iris_encode.*")`. Warnings et
 erreurs persistés silencieusement.
@@ -3521,6 +3541,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.118 | 2026-10-09 | **La file d'encodage** (§ 12.4, § 14.7, § 16.1, IE-135 1/3) : `S` confirmé · cause d'échec à chaque étape ffmpeg (`EncoderProcess.journal`, `RunScreen._cause`, CR-62) · progression des passes audio (`-stats`, CR-21) · « 4200% » des étapes mkvmerge (CR-59) · journal en anglais et en UTF-8, motif `powercfg` en anglais (CR-53, CR-72) · `tests/test_file_encodage.py` |
 | 0.8.9.117 | 2026-10-09 | **Fiches et services en ligne** (§ 9.8, § 13, IE-133) : OMDb en HTTPS (CR-47), sans `type=movie`, repli sur les suggestions IMDB quand OMDb ne trouve pas (CR-48) · année d'un titre : la dernière avant les marqueurs, jamais en tête (CR-49) · en-tête de la fiche en `Text` (CR-101) · mot de passe OpenSubtitles en clair, choix documenté · `tests/test_fiches.py` |
 | 0.8.9.116 | 2026-10-09 | **Lanceurs, fin** (§ 2.1, § 3.1, § 3.1.2, IE-132 3/3 — IE-132 close) : `cmd /c .\launch.bat` dans le lanceur C# (`NoDefaultCurrentDirectoryInExePath`, mesuré) · origine de Python par `sys.prefix` (CR-105) · fichiers protégés de `updater.py` comparés sans la casse (CR-106) · `tests/test_banniere.py`, `tests/test_updater.py`, `tests/test_lanceurs.py` |
 | 0.8.9.115 | 2026-10-09 | **Lanceurs** (§ 3.1, § 17.2, IE-132 2/3) : bornes hautes et basses des dépendances, contrôlées par `dependances.py` au lancement et au bootstrap (CR-109, CR-110) · `launch.bat` sans expansion retardée, dossier par `IRIS_DIR` (CR-108), sans purge des `__pycache__` (CR-107) · `;` échappé pour `wt.exe` (CR-111) · raccourci par `$env:ROOT` (CR-112) · essais réels sous Windows dans `Test!x`, `l'essai`, `A;B` · `tests/test_lanceurs.py` |

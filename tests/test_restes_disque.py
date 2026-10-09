@@ -191,7 +191,7 @@ def test_un_échec_de_ffmpeg_efface_la_sortie_partielle(faux, tmp_path):
 def test_passer_un_fichier_efface_sa_sortie_partielle(faux, tmp_path):
     """CR-57 : `S`."""
     from tui.screens.run import FileState
-    etat, existe = asyncio.run(_encoder(tmp_path, lambda lot: lot.action_skip_current()))
+    etat, existe = asyncio.run(_encoder(tmp_path, lambda lot: lot._passer_courant()))
     assert etat == FileState.SKIPPED and not existe
 
 

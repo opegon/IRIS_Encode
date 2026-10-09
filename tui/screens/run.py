@@ -597,7 +597,7 @@ class RunScreen(TableNavMixin, Screen):
                     except OSError:
                         pass
 
-        # Préserve l'état SKIPPED posé par action_skip_current()
+        # Préserve l'état SKIPPED posé par _passer_courant()
         if s.state != FileState.SKIPPED:
             s.state = FileState.SUCCESS if success else FileState.ERROR
             if not success:
@@ -718,9 +718,10 @@ class RunScreen(TableNavMixin, Screen):
 
         if code != 0 or not out.exists():
             s.state     = FileState.ERROR
-            s.error_msg = _("audio preparation: code {code}").format(code=code)[:60]
-            s.last_line = _("Preparing the audio tracks failed (code {code}).").format(
-                code=code)
+            resume, s.last_line = self._cause(
+                proc, _("audio preparation: code {code}").format(code=code),
+                _("Preparing the audio tracks failed (code {code}).").format(code=code))
+            s.error_msg = resume[:60]
             self.app.call_from_thread(self._update_row, index)
             out.unlink(missing_ok=True)
             return None
@@ -828,8 +829,9 @@ class RunScreen(TableNavMixin, Screen):
                 code = proc.wait()
                 self._process = None
                 if code != 0 or not all(p.exists() for p in chemins):
-                    return echouer(_("Extracting the subtitles failed (code {code}).").format(
-                        code=code))
+                    return echouer(self._cause(
+                        proc, "", _("Extracting the subtitles failed (code {code}).")
+                        .format(code=code))[1])
 
             combles = 0
             for chemin in srts:
@@ -852,6 +854,17 @@ class RunScreen(TableNavMixin, Screen):
         finally:
             for chemin in srts:
                 chemin.unlink(missing_ok=True)
+
+    @staticmethod
+    def _cause(proc, resume: str, detail: str) -> tuple[str, str]:
+        """(résumé, détail) d'une étape ffmpeg en échec, la cause en tête quand
+        sa sortie la nomme — comme la passe principale. Hors d'elle, un disque
+        plein ou un pilote NVENC trop ancien ne disaient que « code 1 » (CR-62).
+        """
+        cause = diagnostiquer(getattr(proc, "journal", []))
+        if cause is None:
+            return resume, detail
+        return cause, cause + "  —  " + detail
 
     def _executer(self, index: int, proc) -> int:
         """Une étape des chemins DV, publiée comme les autres : `S`, `X`,
@@ -931,10 +944,11 @@ class RunScreen(TableNavMixin, Screen):
                 return None
             if code != 0 or not mka.exists():
                 s.state     = FileState.ERROR
-                s.error_msg = _("audio transcoding: code {code}").format(code=code)[:60]
-                s.last_line = _("Transcoding the added audio track “{name}” failed "
-                                "(code {code}).").format(name=ext.source_path.name,
-                                                         code=code)
+                resume, s.last_line = self._cause(
+                    proc, _("audio transcoding: code {code}").format(code=code),
+                    _("Transcoding the added audio track “{name}” failed "
+                      "(code {code}).").format(name=ext.source_path.name, code=code))
+                s.error_msg = resume[:60]
                 self.app.call_from_thread(self._update_row, index)
                 return None
             pistes.append(replace(ext, source_path=mka, source_tid=0,
@@ -1034,9 +1048,10 @@ class RunScreen(TableNavMixin, Screen):
                 if s.state == FileState.SKIPPED:
                     return
                 if code != 0 or not brut.exists():
-                    echouer(_("HEVC extraction: code {code}").format(code=code),
-                            _("Extracting the HEVC stream failed (code {code}).").format(
-                                code=code))
+                    echouer(*self._cause(
+                        proc, _("HEVC extraction: code {code}").format(code=code),
+                        _("Extracting the HEVC stream failed (code {code}).").format(
+                            code=code)))
                     return
 
                 # 2/N — retrait du RPU
@@ -1081,9 +1096,10 @@ class RunScreen(TableNavMixin, Screen):
                 if s.state == FileState.SKIPPED:
                     return
                 if code != 0 or not mka.exists():
-                    echouer(_("audio transcoding: code {code}").format(code=code),
-                            _("Transcoding the audio tracks failed (code "
-                              "{code}).").format(code=code))
+                    echouer(*self._cause(
+                        proc, _("audio transcoding: code {code}").format(code=code),
+                        _("Transcoding the audio tracks failed (code "
+                          "{code}).").format(code=code)))
                     return
 
             # N/N — remux avec les pistes de la source. mkvmerge ne sait
@@ -1153,8 +1169,10 @@ class RunScreen(TableNavMixin, Screen):
 
             if code != 0 or not mkv.exists():
                 detail = erreurs[-1] if erreurs else f"code {code}"
-                echouer(_("remux: {detail}").format(detail=detail),
-                        _("Remux failed — {detail}").format(detail=detail))
+                resume, texte = (_("remux: {detail}").format(detail=detail),
+                                 _("Remux failed — {detail}").format(detail=detail))
+                echouer(*(self._cause(proc, resume, texte) if direct
+                          else (resume, texte)))
                 return
 
             # N/N — le Matroska recomposé passe en MP4 (CR-55).
@@ -1181,8 +1199,9 @@ class RunScreen(TableNavMixin, Screen):
                 if s.state == FileState.SKIPPED:
                     return
                 if code != 0 or not sortie.exists():
-                    echouer(_("MP4 remux: code {code}").format(code=code),
-                            _("The MP4 remux failed (code {code}).").format(code=code))
+                    echouer(*self._cause(
+                        proc, _("MP4 remux: code {code}").format(code=code),
+                        _("The MP4 remux failed (code {code}).").format(code=code)))
                     return
             vide = self._audio_vide(dec, sortie)
             if vide:
@@ -1298,6 +1317,12 @@ class RunScreen(TableNavMixin, Screen):
             self.app.call_from_thread(self._update_row, index)
 
         try:
+            # Le sondage du démarrage a déjà répondu pour l'encodeur : refuser
+            # avant de lire tout le film pour en tirer le RPU (CR-62).
+            cmd_video = build_dv_video_command(dec, self._platform, enc, ffmpeg_path)
+            if self._refuser_encodeur(index, cmd_video):
+                return
+
             # 1 — le RPU, en tuyau
             tuyau = dovi.TuyauRpu(source, rpu, dovi_path, ffmpeg_path,
                                   dec.info.duration)
@@ -1307,11 +1332,12 @@ class RunScreen(TableNavMixin, Screen):
             if s.state == FileState.SKIPPED:
                 return
             if code != 0 or not dovi.rpu_valide(rpu):
-                echouer(_("RPU extraction failed"),
-                        _("dovi_tool could not extract the Dolby Vision metadata "
-                          "from the source. The re-encode would have destroyed "
-                          "it: stopping rather than producing a file without "
-                          "Dolby Vision."))
+                echouer(*self._cause(
+                    tuyau, _("RPU extraction failed"),
+                    _("dovi_tool could not extract the Dolby Vision metadata "
+                      "from the source. The re-encode would have destroyed "
+                      "it: stopping rather than producing a file without "
+                      "Dolby Vision.")))
                 return
 
             # 2 — profil 7 → 8.1
@@ -1326,11 +1352,8 @@ class RunScreen(TableNavMixin, Screen):
                 p8.replace(rpu)
 
             # 3 — l'encodage vidéo, seul
-            cmd = build_dv_video_command(dec, self._platform, enc, ffmpeg_path)
-            if self._refuser_encodeur(index, cmd):
-                return
-            annoncer(_("Encoding the video…"), " ".join(cmd))
-            proc = EncoderProcess(cmd, dec.info.duration)
+            annoncer(_("Encoding the video…"), " ".join(cmd_video))
+            proc = EncoderProcess(cmd_video, dec.info.duration)
             self._demarrer(proc)
             for ligne, progress in proc.iter_progress():
                 s.last_line = ligne
@@ -1343,8 +1366,9 @@ class RunScreen(TableNavMixin, Screen):
             if s.state == FileState.SKIPPED:
                 return
             if code != 0 or not enc.exists():
-                echouer(_("video encoding: code {code}").format(code=code),
-                        _("Encoding the video failed (code {code}).").format(code=code))
+                echouer(*self._cause(
+                    proc, _("video encoding: code {code}").format(code=code),
+                    _("Encoding the video failed (code {code}).").format(code=code)))
                 return
 
             # 4 — le RPU revient
@@ -1376,9 +1400,10 @@ class RunScreen(TableNavMixin, Screen):
                 if s.state == FileState.SKIPPED:
                     return
                 if code != 0 or not mka.exists():
-                    echouer(_("audio transcoding: code {code}").format(code=code),
-                            _("Transcoding the audio tracks failed (code "
-                              "{code}).").format(code=code))
+                    echouer(*self._cause(
+                        proc, _("audio transcoding: code {code}").format(code=code),
+                        _("Transcoding the audio tracks failed (code "
+                          "{code}).").format(code=code)))
                     return
 
             # N — remux par mkvmerge, vers la sortie ou vers l'intermédiaire
@@ -1435,8 +1460,9 @@ class RunScreen(TableNavMixin, Screen):
                 if s.state == FileState.SKIPPED:
                     return
                 if code != 0 or not sortie.exists():
-                    echouer(_("MP4 remux: code {code}").format(code=code),
-                            _("The MP4 remux failed (code {code}).").format(code=code))
+                    echouer(*self._cause(
+                        proc, _("MP4 remux: code {code}").format(code=code),
+                        _("The MP4 remux failed (code {code}).").format(code=code)))
                     return
             vide = self._audio_vide(dec, sortie)
             if vide:
@@ -1570,7 +1596,7 @@ class RunScreen(TableNavMixin, Screen):
         self._demarrer(proc)
         for ligne, pourcent in proc.iter_progress():
             if pourcent is not None:
-                s.percent = pourcent
+                s.percent = pourcent / 100.0     # mkvmerge rend 0–100 (CR-59)
                 self.app.call_from_thread(self._update_row, index)
             elif ligne:
                 self.app.call_from_thread(self._update_ffmpeg_line, ligne)
@@ -1645,7 +1671,6 @@ class RunScreen(TableNavMixin, Screen):
                 self.app.call_from_thread(self._update_row, index)
             elif ligne:
                 journal.append(ligne)
-                del journal[:-5]
         code = proc.wait()
         self._process = None
 
@@ -1654,10 +1679,10 @@ class RunScreen(TableNavMixin, Screen):
             if s.state == FileState.SKIPPED:          # `S` ou `X` (CR-61)
                 return False
             detail = journal[-1] if journal else f"code {code}"
-            s.state, s.error_msg = (FileState.ERROR,
-                                    _("DVD: {detail}").format(detail=detail)[:60])
-            s.last_line = _("Extracting the DVD title failed — {detail}").format(
-                detail=detail)
+            resume, s.last_line = self._cause(
+                proc, _("DVD: {detail}").format(detail=detail),
+                _("Extracting the DVD title failed — {detail}").format(detail=detail))
+            s.state, s.error_msg = FileState.ERROR, resume[:60]
             self.app.call_from_thread(self._update_row, index)
             return False
 
@@ -1704,7 +1729,7 @@ class RunScreen(TableNavMixin, Screen):
         self._demarrer(proc)
         for ligne, pourcent in proc.iter_progress():
             if pourcent is not None:
-                s.percent = pourcent
+                s.percent = pourcent / 100.0     # mkvmerge rend 0–100 (CR-59)
                 self.app.call_from_thread(self._update_row, index)
             elif ligne:
                 self.app.call_from_thread(self._update_ffmpeg_line, ligne)
@@ -1872,7 +1897,37 @@ class RunScreen(TableNavMixin, Screen):
             self._paused = True
 
     def action_skip_current(self) -> None:
-        """Termine l'encodage en cours et passe au fichier suivant.
+        """Abandonne le fichier en cours, après confirmation, et passe au
+        suivant.
+
+        Confirmé comme `X` : une frappe jetait des heures d'encodage, ce
+        qu'UX-02 avait écarté partout ailleurs (arbitrage du 2026-10-09). Si le
+        fichier a changé pendant la question, la réponse ne touche à rien.
+        """
+        if self._done:
+            return
+        if self._process is None and self._mux is None:
+            if self._started:
+                # Entre deux étapes : un instant, la suivante sera arrêtable.
+                self.notify(_("No step to skip at this instant — try again in a "
+                              "moment."), timeout=3)
+            return
+        from .confirm import ConfirmModal
+        index = self._current_idx
+
+        def _reponse(ok) -> None:
+            if ok and not self._done and self._current_idx == index:
+                self._passer_courant()
+
+        corps = (_("The current file is abandoned, its partial output deleted.")
+                 + "\n" + _("The queue moves on to the next file."))
+        self.app.push_screen(ConfirmModal(
+            _("Skip this file?"), corps,
+            confirm_label=_("Skip"), cancel_label=_("Continue"), danger=True),
+            _reponse)
+
+    def _passer_courant(self) -> None:
+        """Termine l'étape en cours ; la boucle enchaîne sur le fichier suivant.
 
         Une étape mkvmerge (assemblage d'un titre, mux préalable, remux des
         chemins DV) s'arrête aussi : `S` n'y faisait rien, sans un mot (CR-61).
@@ -1881,7 +1936,6 @@ class RunScreen(TableNavMixin, Screen):
             return
         if self._process is None and self._mux is None:
             if self._started:
-                # Entre deux étapes : un instant, la suivante sera arrêtable.
                 self.notify(_("No step to skip at this instant — try again in a "
                               "moment."), timeout=3)
             return

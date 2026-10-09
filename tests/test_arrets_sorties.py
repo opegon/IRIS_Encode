@@ -34,7 +34,7 @@ def test_passer_un_encodage_en_pause_le_reprend_avant_de_l_arrêter():
     faux = SimpleNamespace(_process=proc, _done=False, _current_idx=0,
                            _statuses=[statut], _paused=True,
                            _update_row=lambda i: None)
-    RunScreen.action_skip_current(faux)
+    RunScreen._passer_courant(faux)
     assert ordre == ["resume", "terminate"]
     assert faux._paused is False
 

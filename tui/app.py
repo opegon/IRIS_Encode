@@ -23,8 +23,11 @@ def _setup_logging() -> None:
     """Logge dans iris_encode.log à côté du dossier de l'app (warnings et +)."""
     log_path = Path.home() / ".iris_encode" / "iris_encode.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    # En UTF-8 : dans l'encodage local (cp1252), une ligne citant un nom de
+    # fichier japonais ou cyrillique était perdue (CR-72).
     logging.basicConfig(
         filename=str(log_path),
+        encoding="utf-8",
         level=logging.WARNING,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
@@ -348,23 +351,26 @@ class IrisEncodeApp(App):
     # Worker → ce qu'il fait, pour le motif lu dans `powercfg /requests`. Les
     # mêmes que `_TRAVAUX` : ce que quitter interromprait est ce qui doit
     # tenir la machine éveillée.
+    # En anglais, comme les journaux : ils forment le motif de la demande
+    # d'alimentation, lu par `powercfg /requests`, pas par l'interface
+    # (arbitrage du 2026-10-09, avec CR-53).
     _NATURES = {
-        "encoder":       "encodage",
+        "encoder":       "encoding",
         "muxer":         "mux",
-        "joiner":        "jonction",
-        "sync-measure":  "mesure",
-        "sync-ancrage":  "mesure",
-        "wizard-mesure": "mesure",
-        "sync-retime":   "recalage",
+        "joiner":        "join",
+        "sync-measure":  "measurement",
+        "sync-ancrage":  "measurement",
+        "wizard-mesure": "measurement",
+        "sync-retime":   "resync",
     }
 
     def natures_en_cours(self) -> list[str]:
-        """Ce qui tourne, sans doublon : « encodage », « mesure »…"""
+        """Ce qui tourne, sans doublon : « encoding », « measurement »…"""
         natures: list[str] = []
         # Le lot se compte en entier : entre deux fichiers, aucun worker ne
         # tourne pendant un instant, et la file n'est pas finie pour autant.
         if self._lot is not None and not self._lot.termine:
-            natures.append("encodage")
+            natures.append("encoding")
         for w in self.workers:
             nature = self._NATURES.get(w.name or "")
             if w.is_running and nature and nature not in natures:
@@ -396,7 +402,7 @@ class IrisEncodeApp(App):
         natures = self.natures_en_cours()
         motif   = None
         if natures and cfg_mod.get_empecher_veille(self.cfg):
-            motif = f"IRIS ENCODE : {', '.join(natures)} en cours"
+            motif = f"IRIS ENCODE: {', '.join(natures)} in progress"
         self.veille.maintenir(motif)
         if self._fin_armee and not natures and not self._decompte:
             self._fin_armee = False

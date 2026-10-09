@@ -207,7 +207,7 @@ def test_un_lot_en_cours_bloque_la_veille_et_sa_fin_la_rend(faux, tmp_path):
     pendant, apres, journal = asyncio.run(_run())
     assert pendant == (True, "☾ veille bloquée")
     assert apres == (False, "")
-    assert journal[0] == ("poser", "IRIS ENCODE : encodage en cours")
+    assert journal[0] == ("poser", "IRIS ENCODE: encoding in progress")
     assert not any(e[0] == "executer" for e in journal), \
         "une action d'après lot est partie sans qu'on l'ait demandée"
 

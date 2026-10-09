@@ -467,13 +467,13 @@ def test_s_arrete_aussi_une_etape_mkvmerge():
     mux = SimpleNamespace(termine=False)
     mux.terminate = lambda: setattr(mux, "termine", True)
     ecran = _ecran_skip(mux=mux)
-    RunScreen.action_skip_current(ecran)
+    RunScreen._passer_courant(ecran)
     assert mux.termine and ecran._statuses[0].state == FileState.SKIPPED
 
 
 def test_s_entre_deux_etapes_le_dit():
     ecran = _ecran_skip()
-    RunScreen.action_skip_current(ecran)
+    RunScreen._passer_courant(ecran)
     assert ecran.notes and ecran._statuses[0].state == FileState.RUNNING
 
 

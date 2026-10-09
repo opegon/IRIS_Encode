@@ -1,5 +1,27 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.118] — 2026-10-09
+
+### La file d'encodage (IE-135, 1/3)
+
+Revue IE-114, constats CR-21, 53, 59, 62, 72, et deux arbitrages de la revue.
+
+- **`S` demande confirmation**, comme `X` : une frappe abandonnait des heures
+  d'encodage. Si le fichier se termine pendant la question, la réponse ne
+  touche pas au suivant.
+- **Un échec dit pourquoi, à chaque étape.** Hors de l'encodage principal —
+  préparation de l'audio, sous-titres, étapes Dolby Vision, titre de DVD — un
+  disque plein ne donnait que « code 1 ». La cause est nommée, comme pour
+  l'encodage. Le réencodage Dolby Vision refuse une carte inutilisable avant de
+  lire tout le film.
+- **Les passes audio avancent.** La barre restait indéterminée pendant le
+  transcodage d'une piste de trois heures ; elle progresse.
+- **« 4200% »** pendant l'assemblage d'un titre de Blu-ray ou un mux préalable :
+  la ligne affiche le vrai pourcentage, et la barre globale ne saute plus à 100 %.
+- **Le journal** (`~/.iris_encode/iris_encode.log`) est entièrement en anglais
+  et en UTF-8 : une ligne citant un nom japonais ou cyrillique n'est plus
+  perdue. Le motif visible dans `powercfg /requests` passe en anglais.
+
 ## [v0.8.9.117] — 2026-10-09
 
 ### Fiches IMDB et AlloCiné (IE-133)

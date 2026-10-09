@@ -289,6 +289,11 @@ class TuyauRpu:
     def iter_progress(self):
         return self._ff.iter_progress()
 
+    @property
+    def journal(self) -> list[str]:
+        """Les dernières lignes de ffmpeg, pour nommer la cause d'un échec."""
+        return self._ff.journal
+
     def pause(self) -> None:
         self._ff.pause()
 
@@ -308,10 +313,10 @@ class TuyauRpu:
         if self._lecteur is not None:
             self._lecteur.join()
         if code_dt != 0:
-            _log.warning("extract-rpu (tuyau) a échoué : %s", self._erreur_dt[:200])
+            _log.warning("extract-rpu (pipe) failed: %s", self._erreur_dt[:200])
             return code_dt
         if code_ff != 0:
-            _log.warning("extract-rpu (tuyau) : ffmpeg a rendu %s", code_ff)
+            _log.warning("extract-rpu (pipe): ffmpeg returned %s", code_ff)
         return code_ff
 
 

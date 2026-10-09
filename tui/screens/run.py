@@ -436,10 +436,14 @@ class RunScreen(TableNavMixin, Screen):
             if dec.video.action in (VideoAction.STRIP_DV, VideoAction.ENCODE_DV):
                 s.state     = FileState.ERROR
                 s.error_msg = _("Dolby Vision: single-clip titles only")
-                s.last_line = _("This Blu-ray title spans {count} clips: its Dolby "
-                                "Vision cannot be kept. Choose a re-encode without "
-                                "Dolby Vision in guided mode.").format(
-                                    count=len(titre.clips))
+                s.last_line = (_("This Blu-ray title plays only part of its clip: "
+                                 "its Dolby Vision cannot be kept. Choose a "
+                                 "re-encode without Dolby Vision in guided mode.")
+                               if titre.partiel and len(titre.clips) == 1 else
+                               _("This Blu-ray title spans {count} clips: its Dolby "
+                                 "Vision cannot be kept. Choose a re-encode without "
+                                 "Dolby Vision in guided mode.").format(
+                                    count=len(titre.clips)))
                 self.app.call_from_thread(self._update_row, next_idx)
                 self._encode_next()
                 return
@@ -1556,6 +1560,24 @@ class RunScreen(TableNavMixin, Screen):
                                     _("mux: {detail}").format(detail=detail)[:60])
             s.last_line = _("Joining the Blu-ray title failed — {detail}").format(
                 detail=detail)
+            self.app.call_from_thread(self._update_row, index)
+            return False
+
+        # La décision a numéroté les pistes du premier clip : l'assemblage doit
+        # avoir les mêmes, sinon `-map` en prendrait une autre (CR-03).
+        from core.bluray import ecart_pistes
+        from core.scanner import _ffprobe_json
+        try:
+            flux = _ffprobe_json(["-show_streams", str(sortie)]).get("streams", [])
+            ecart = ecart_pistes(dec.info, flux)
+        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as e:
+            ecart = texte_erreur(e)
+        if ecart:
+            sortie.unlink(missing_ok=True)
+            s.state, s.error_msg = FileState.ERROR, _("title: tracks differ")
+            s.last_line = _("The joined Blu-ray title does not have the tracks the "
+                            "analysis saw ({detail}): encoding it would label one "
+                            "track as another.").format(detail=ecart)
             self.app.call_from_thread(self._update_row, index)
             return False
 

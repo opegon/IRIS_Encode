@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-10-08
+maj: 2026-10-09
 sources:
   - "[[source-2026-10-08-disques]]"
 ---
@@ -44,6 +44,13 @@ sources:
   titre.mpls` assemble un titre de plusieurs clips, durée complète, code 0
   (*mesuré* sur une playlist de deux clips fabriquée). IRIS : voir spec
   § 15.5.
+- **Playlist partielle** — plusieurs playlists peuvent pointer dans un même
+  clip avec des bornes différentes (concert : une chanson par playlist ;
+  série : un épisode). Lu seul, le `.m2ts` donne le clip entier ; `mkvmerge -o
+  x.mkv 00010.mpls` respecte les bornes (20,006 s pour une playlist de 20 s
+  dans un clip de 60 s — *mesuré* par la revue de code du 2026-10-08,
+  mkvmerge v82, disque synthétique). IRIS compare la durée du clip à celle de
+  la playlist (spec § 15.5).
 - **AACS** — chaque unité de 6 144 octets (32 paquets de 192) d'un clip
   chiffré ne garde en clair que ses 16 premiers octets : la synchronisation
   `0x47` des paquets suivants disparaît. Le disque d'essai : 2 000 paquets sur

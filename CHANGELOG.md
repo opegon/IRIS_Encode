@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.109] — 2026-10-09
+
+### Blu-ray : une chanson n'est plus tout le concert (IE-127, 1/3)
+
+Revue IE-114, constats CR-01, 03, 04.
+
+- **Titre qui ne joue qu'une partie de son clip.** Un concert dont chaque
+  chanson est une playlist dans le même fichier, une série dont chaque
+  épisode en est une : chaque titre sortait avec le disque entier. Ces titres
+  passent maintenant par mkvmerge, qui respecte leurs bornes.
+- **Assemblage vérifié.** Quand mkvmerge assemble un titre sans l'une des
+  pistes vues à l'analyse, l'encodage pouvait donner à une piste la langue
+  d'une autre, sans erreur. Le titre est maintenant refusé, avec les pistes
+  attendues et trouvées.
+- **Étiquette du volume.** À la racine d'un lecteur, une étiquette comme
+  « Film: Director's Cut » donnait un nom de fichier que Windows refuse ; les
+  caractères interdits deviennent des espaces.
+
 ## [v0.8.9.108] — 2026-10-09
 
 ### Dolby Vision : des étapes qu'on peut arrêter, et sans délai fixe (IE-126, 3/3)

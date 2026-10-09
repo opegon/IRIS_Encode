@@ -353,3 +353,8 @@ Pages touchées : [[sous-titres]].
 `mkvmerge --chapters` accepte une `.mpls` et y lit les marques (mesuré, v102.0) :
 les chemins Dolby Vision d'un titre de Blu-ray gardent ainsi leurs chapitres.
 Pages touchées : [[mkvmerge]].
+
+## [2026-10-09] ingest | Playlist partielle d'un clip (IE-127 1/3)
+
+Une playlist peut ne jouer qu'une partie de son clip ; mkvmerge respecte ses
+bornes (mesure de la revue de code). Pages touchées : [[disques-optiques]].

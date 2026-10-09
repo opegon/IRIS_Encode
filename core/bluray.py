@@ -53,6 +53,9 @@ class TitreDisque:
     nom:       str = ""           # le nom du disque
     principal: bool = False       # le plus long du disque
     numero:    int = 0            # titre de DVD ; 0 pour un Blu-ray
+    # Blu-ray d'un seul clip qui n'en joue qu'une partie (concert, épisodes) :
+    # posé par l'analyse, qui connaît la durée du clip (CR-01).
+    partiel:   bool = False
 
     @property
     def est_dvd(self) -> bool:
@@ -62,8 +65,10 @@ class TitreDisque:
     def a_extraire(self) -> bool:
         """Faut-il en faire un Matroska avant l'encodage ? Un DVD toujours —
         ffmpeg ne le lit que par son démultiplexeur `dvdvideo` —, un Blu-ray
-        quand ses clips sont plusieurs."""
-        return self.est_dvd or len(self.clips) > 1
+        quand ses clips sont plusieurs, ou quand il ne joue qu'une partie du
+        sien : lu tel quel, le clip donnait tout le concert pour une chanson
+        (CR-01). mkvmerge, lui, respecte les bornes de la playlist."""
+        return self.est_dvd or len(self.clips) > 1 or self.partiel
 
     @property
     def taille(self) -> int:
@@ -182,16 +187,27 @@ def _etiquette_volume(racine: Path) -> str:
     return tampon.value if ok else ""
 
 
+# Ce que Windows refuse dans un nom de fichier, contrôles compris.
+_INTERDITS = set('<>:"/\\|?*') | {chr(c) for c in range(32)}
+
+
 def nom_disque(racine: Path, defaut: str = "BLURAY") -> str:
     """Le nom que prennent les sorties d'un disque.
 
     Le dossier qui contient `BDMV` — un rip se range sous « Film (2020) ». À
     la racine d'un lecteur, un ISO monté, l'étiquette du volume, ses
     soulignés en espaces (`WITHIN_TEMPTATION_` → « WITHIN TEMPTATION »).
+
+    Une étiquette UDF peut porter ce que Windows refuse dans un nom (« Film:
+    Director's Cut ») : ffmpeg échouait sur l'ouverture de la sortie, après
+    l'analyse (CR-04). Ces caractères deviennent des espaces, et les points
+    et espaces finaux tombent.
     """
     if racine.parent != racine and racine.name:
         return racine.name
-    nom = " ".join(_etiquette_volume(racine).replace("_", " ").split())
+    etiquette = "".join(" " if c in _INTERDITS or c == "_" else c
+                        for c in _etiquette_volume(racine))
+    nom = " ".join(etiquette.split()).rstrip(". ")
     return nom or defaut
 
 
@@ -282,6 +298,31 @@ def disque_chiffre(racine: Path) -> bool:
 
 
 # ─── Pour l'encodage ──────────────────────────────────────────────────────────
+
+def _famille(codec: str) -> str:
+    """Le codec tel que les deux lectures le comparent : mkvmerge réécrit le
+    `pcm_bluray` d'un clip en PCM ordinaire, c'est la même piste."""
+    return "pcm" if codec.startswith("pcm_") else codec
+
+
+def ecart_pistes(info, flux: list[dict]) -> str:
+    """Ce qui manque à l'assemblage d'un titre au regard de l'analyse, ou « ».
+
+    La décision numérote les pistes par type d'après ffprobe sur le premier
+    clip, puis l'encodage lit le Matroska de mkvmerge. Qu'une piste y manque
+    — une AAC d'un `.m2ts` que ffprobe voit et mkvmerge non —, et `-map 0:a:1`
+    prenait une autre langue, étiquetée comme la piste voulue (CR-03).
+    `flux` : les flux de l'assemblage, lus par ffprobe.
+    """
+    for genre, pistes in (("audio", info.audio_tracks),
+                          ("subtitle", info.subtitle_tracks)):
+        attendus = [_famille(p.codec) for p in pistes]
+        lus = [_famille(f.get("codec_name", "")) for f in flux
+               if f.get("codec_type") == genre]
+        if lus != attendus:
+            return f"{genre}: {', '.join(attendus) or '-'} → {', '.join(lus) or '-'}"
+    return ""
+
 
 def ffmetadata_chapitres(t: TitreDisque) -> str:
     """Les chapitres du titre au format FFMETADATA, ou « » s'il n'en a pas

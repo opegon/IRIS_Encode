@@ -10,6 +10,7 @@ contre mkvmerge (durées et nombres de chapitres identiques).
 from __future__ import annotations
 
 import struct
+from types import SimpleNamespace
 import subprocess
 from pathlib import Path
 
@@ -385,3 +386,130 @@ def test_le_titre_principal_est_coché_une_fois_par_visite(tmp_path):
     taille = (racine / "BDMV" / "STREAM" / "00001.m2ts").stat().st_size
     assert releve["tailles"]["00001.mpls"] == taille
     assert releve["apres_rescan"] == []
+
+
+# ─── IE-127 1/3 : titre partiel, assemblage vérifié, étiquette ───────────────
+# Constats CR-01, CR-03 et CR-04 de `revue_code_2026-10-08.md`.
+
+def _concert(tmp_path) -> Path:
+    """Un clip de 60 s, deux playlists : une chanson de 0 à 20 s (deux
+    chapitres), le reste de 20 à 60 s ; et une qui le couvre en entier."""
+    return _disque(tmp_path / "Concert (2020)", {
+        "00010": _mpls([("00001", 0, 20)], [(0, 0), (0, 10)]),
+        "00011": _mpls([("00001", 20, 60)]),
+        "00012": _mpls([("00001", 0, 60)]),
+    }, {"00001": _clip_clair()})
+
+
+def _scan_clip(monkeypatch, duree_clip: float):
+    from core import scanner
+    reel = scanner.scan
+
+    def faux_scan(p):
+        return VideoInfo(path=p, width=1920, height=1080, bitrate=30_000_000,
+                         codec="h264", duration=duree_clip, frame_count=1500,
+                         dv_profile=None, audio_tracks=[], subtitle_tracks=[])
+    monkeypatch.setattr(scanner, "scan",
+                        lambda p: reel(p) if p.suffix == ".mpls" else faux_scan(p))
+    return scanner.scan
+
+
+@pytest.mark.parametrize("playlist,partiel", [
+    ("00010", True), ("00011", True), ("00012", False)])
+def test_un_titre_qui_ne_joue_qu_une_partie_de_son_clip_est_extrait(
+        tmp_path, monkeypatch, playlist, partiel):
+    """CR-01 : lu tel quel, le clip donnait 60 s — tout le concert — pour une
+    chanson de 20 s. mkvmerge respecte les bornes de la playlist."""
+    racine = _concert(tmp_path)
+    scan = _scan_clip(monkeypatch, 60.0)
+    info = scan(racine / "BDMV" / "PLAYLIST" / f"{playlist}.mpls")
+    assert info.titre.partiel is partiel
+    assert info.titre.a_extraire is partiel
+
+
+def test_un_ecart_d_une_seconde_reste_un_titre_entier(tmp_path, monkeypatch):
+    racine = _concert(tmp_path)
+    info = _scan_clip(monkeypatch, 60.8)(racine / "BDMV" / "PLAYLIST" / "00012.mpls")
+    assert not info.titre.partiel
+
+
+def _piste(index, codec):
+    return AudioTrack(index=index, codec=codec, channels=2, language="fre",
+                      title="", bitrate=0)
+
+
+def test_une_piste_absente_de_l_assemblage_est_un_ecart():
+    """CR-03 : une AAC que ffprobe voit dans le `.m2ts` et mkvmerge non —
+    `-map 0:a:1` aurait pris une autre langue."""
+    info = SimpleNamespace(audio_tracks=[_piste(0, "ac3"), _piste(1, "aac"),
+                                         _piste(2, "dts")], subtitle_tracks=[])
+    flux = [{"codec_type": "video", "codec_name": "h264"},
+            {"codec_type": "audio", "codec_name": "ac3"},
+            {"codec_type": "audio", "codec_name": "dts"}]
+    assert "aac" in bluray.ecart_pistes(info, flux)
+
+
+def test_le_pcm_reecrit_par_mkvmerge_reste_la_meme_piste():
+    info = SimpleNamespace(audio_tracks=[_piste(0, "pcm_bluray"), _piste(1, "truehd"),
+                                         _piste(2, "ac3")],
+                           subtitle_tracks=[SimpleNamespace(codec="hdmv_pgs_subtitle")])
+    flux = [{"codec_type": "audio", "codec_name": "pcm_s24le"},
+            {"codec_type": "audio", "codec_name": "truehd"},
+            {"codec_type": "audio", "codec_name": "ac3"},
+            {"codec_type": "subtitle", "codec_name": "hdmv_pgs_subtitle"}]
+    assert bluray.ecart_pistes(info, flux) == ""
+
+
+def test_un_assemblage_aux_pistes_differentes_est_refuse(tmp_path, monkeypatch):
+    """Le fichier passe en erreur avec la cause, l'intermédiaire est effacé, et
+    l'encodage ne lit pas l'assemblage."""
+    import core.scanner as scanner
+    import tui.screens.run as run
+    from tui.screens.run import FileRunStatus, FileState, RunScreen
+
+    class FauxMux:
+        def __init__(self, cmd):
+            self.cmd, self.errors = cmd, []
+        def start(self):
+            Path(self.cmd[self.cmd.index("-o") + 1]).write_bytes(b"mkv")
+        def iter_progress(self):
+            return iter(())
+        def wait(self):
+            return 0
+    monkeypatch.setattr(run, "MuxProcess", FauxMux)
+    monkeypatch.setattr(scanner, "_ffprobe_json", lambda args, outil=None: {
+        "streams": [{"codec_type": "audio", "codec_name": "ac3"}]})
+
+    titre = bluray.TitreDisque(chemin=tmp_path / "00800.mpls", racine=tmp_path,
+                               clips=[tmp_path / "a.m2ts", tmp_path / "b.m2ts"],
+                               duree=60.0)
+    dec = SimpleNamespace(
+        info=SimpleNamespace(titre=titre, path=titre.chemin,
+                             audio_tracks=[_piste(0, "ac3"), _piste(1, "aac")],
+                             subtitle_tracks=[]),
+        dossier_sortie=tmp_path, encode_source=None)
+    statut = FileRunStatus(decision=dec, state=FileState.RUNNING)
+    ecran = SimpleNamespace(
+        _statuses=[statut], _mux=None, _abandon=False,
+        app=SimpleNamespace(call_from_thread=lambda f, *a: f(*a),
+                            mkvmerge_available=True),
+        _update_row=lambda i: None, _update_cmd_lines=lambda c: None,
+        _update_ffmpeg_line=lambda l: None)
+    ecran._demarrer = lambda proc: RunScreen._demarrer(ecran, proc)
+
+    assert RunScreen._remux_titre(ecran, 0, dec) is False
+    assert statut.state == FileState.ERROR and "aac" in statut.last_line
+    assert dec.encode_source is None
+    assert not (tmp_path / "00800.iris_titre.mkv").exists()
+
+
+@pytest.mark.parametrize("etiquette,attendu", [
+    ('Film: Director\'s Cut', "Film Director's Cut"),
+    ('A<B>C"D/E\\F|G?H*I', "A B C D E F G H I"),
+    ("TITRE_DU_FILM. ", "TITRE DU FILM"),
+    ("\x01:?.", "BLURAY"),
+])
+def test_l_etiquette_du_volume_devient_un_nom_valide(monkeypatch, etiquette, attendu):
+    """CR-04 : ffmpeg échouait sur l'ouverture de la sortie, après l'analyse."""
+    monkeypatch.setattr(bluray, "_etiquette_volume", lambda racine: etiquette)
+    assert bluray.nom_disque(Path(Path.cwd().anchor)) == attendu

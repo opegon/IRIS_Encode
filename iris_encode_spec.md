@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.108 — document de référence courant
+**Version** : 0.8.9.109 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -3133,15 +3133,31 @@ ffmpeg, mkvmerge et mpv — le premier clip), `dossier` (le dossier qui contient
 `BDMV`, jamais dedans ; base de `dossier_sortie` et de `sorties_bloquees`),
 `stem_sortie` (`nom_disque` : le nom de ce dossier, ou à la racine d'un lecteur
 son étiquette, soulignés en espaces ; suivi de ` - 01000` hors du titre
-principal). `taille` : la somme des clips.
+principal). `taille` : la somme des clips. L'étiquette perd ce que Windows refuse
+dans un nom (`<>:"/\|?*`, contrôles, points et espaces finaux), remplacé par des
+espaces : « Film: Director's Cut » faisait échouer ffmpeg à l'ouverture de la
+sortie (v0.8.9.109, CR-04).
+
+**Titre partiel** (v0.8.9.109, CR-01) — plusieurs playlists peuvent pointer dans
+un même clip avec des bornes différentes (une chanson par playlist d'un concert,
+un épisode par playlist). `_scan_titre` compare la durée du clip (ffprobe) à celle
+de la playlist : au-delà d'une seconde d'écart, `TitreDisque.partiel`, et le titre
+est `a_extraire` comme un titre de plusieurs clips. Lu tel quel, le clip donnait
+tout le concert pour une chanson de 20 s ; mkvmerge respecte les bornes (mesuré
+par la revue, v82).
 
 À l'encodage (`RunScreen`) : un titre de plusieurs clips est d'abord assemblé
 par `mkvmerge --gui-mode -o <dossier_sortie>\<n>.iris_titre.mkv <playlist>`
 (`_remux_titre`, code 1 = avertissements accepté), qui devient
 `encode_source` et part après l'encodage comme l'intermédiaire d'un mux
 préalable ; ses pistes suivent l'ordre de celles du premier clip, que la
-décision a numérotées. Dolby Vision sur un titre de plusieurs clips : refusé
-avec un message. Un titre d'un seul clip lit son `.m2ts` ; ses chapitres
+décision a numérotées. L'assemblage est **relu** (ffprobe) et comparé par type à
+l'analyse (`bluray.ecart_pistes`, v0.8.9.109, CR-03 ; un `pcm_bluray` réécrit en PCM
+reste la même piste) : une AAC que ffprobe voit dans le `.m2ts` et mkvmerge non
+décalait les index, et `-map 0:a:1` prenait une autre langue sous le nom de la
+piste voulue. Un écart met le fichier en erreur avec les deux listes, et
+l'assemblage est effacé. Dolby Vision sur un titre de plusieurs clips, ou partiel :
+refusé avec un message. Un titre d'un seul clip lit son `.m2ts` ; ses chapitres
 (deux au moins) sont écrits en FFMETADATA (`<n>.iris_chap.txt`, « Chapter
 01 »…) et passés à `build_command(chapitres=…)` : `-f ffmetadata -i …` en
 dernière entrée, `-map_chapters`. Un titre n'est jamais supprimé après
@@ -3362,6 +3378,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.109 | 2026-10-09 | **Titres de Blu-ray : partiel, assemblage vérifié, étiquette** (§ 15.5, IE-127 1/3) : `TitreDisque.partiel` posé par `_scan_titre`, extrait par mkvmerge (CR-01) ; `bluray.ecart_pistes` après `_remux_titre` (CR-03) ; `nom_disque` assainit l'étiquette du volume (CR-04) · `tests/test_bluray.py` |
 | 0.8.9.108 | 2026-10-09 | **Chemins Dolby Vision : dovi_tool arrêtable** (§ 7.1, § 7.4, § 12.4, IE-126 3/3) : `TuyauRpu`, `build_remove_command`, `build_inject_command`, `rpu_valide` remplacent les appels bloquants à délai fixe (CR-32) ; `RunScreen._executer` les publie ; `S` arrête aussi mkvmerge, un SKIPPED n'est plus réécrit en ERROR (CR-61) · `tests/test_dv_chemins.py` |
 | 0.8.9.107 | 2026-10-09 | **Chemins Dolby Vision : greffes, chapitres, langues** (§ 7.3, § 8.6, § 12.0, IE-126 2/3) : retrait DV vers MP4 avec greffes recomposé par mkvmerge puis remuxé (CR-55) ; audio greffée à la règle du profil sur les deux chemins DV (`_transcoder_greffes`, reporté d'IE-125) ; chapitres d'un titre de Blu-ray par `--chapters <playlist>` ou FFMETADATA, langues du `.clpi` écrites par `build_audio_command` et `build_strip_mp4` (CR-63) ; CR-56 vérifié couvert depuis la v0.8.9.104 · `tests/test_dv_chemins.py` |
 | 0.8.9.106 | 2026-10-09 | **Chemins Dolby Vision : source, pistes vides, RPU, mux** (§ 14.0, § 14.7, IE-126 1/3) : `RunScreen._supprimer_source`, une règle pour les trois chemins — titre de disque gardé, annexes supprimées, rien après `S` (CR-54) ; `_audio_vide` sur chaque sortie finale (CR-65) ; code de retour de ffmpeg exigé dans le tuyau du RPU (CR-31) ; `_muxable` limité au SKIP (CR-85) · `tests/test_dv_chemins.py` |

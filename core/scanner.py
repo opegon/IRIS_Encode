@@ -977,6 +977,10 @@ def _scan_titre(mpls: Path) -> VideoInfo:
     t = lire_titre(mpls)
     info = scan(t.clips[0])
     info.path, info.titre = mpls, t
+    # Une playlist qui ne joue qu'une partie de son clip unique (CR-01) : la
+    # durée du clip le dit, sans lire son `.clpi`.
+    if len(t.clips) == 1 and info.duration > 0 and abs(info.duration - t.duree) > 1:
+        t.partiel = True
     if t.duree > 0 and info.duration > 0:
         info.frame_count = round(info.frame_count * t.duree / info.duration)
         info.duration = t.duree

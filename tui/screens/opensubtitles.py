@@ -87,7 +87,9 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
         # TRANSLATORS: column header, subtitles for the deaf and hard of
         # hearing (French: SME); 4 characters at most.
         colonne_fixe(table, _("SDH"),      4,  key="hi")
-        table.add_column("Release", width=None, key="release")
+        # TRANSLATORS: column header, the release name of the subtitle file
+        # (scene term, usually kept as is).
+        table.add_column(_("Release"), width=None, key="release")
         self._etat(_("Searching for {file}…").format(file=self._video.name))
         self._chercher()
         table.focus()
@@ -117,7 +119,7 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
                 Text("≡" if r.empreinte else "", style="bold green"),
                 Text(r.langue),
                 Text(str(r.telechargements), style="dim"),
-                Text("oui" if r.malentendants else "", style="dim"),
+                Text(_("yes") if r.malentendants else "", style="dim"),
                 Text(r.release, no_wrap=True, overflow="ellipsis"),
                 key=str(i),
             )

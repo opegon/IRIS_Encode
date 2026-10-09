@@ -290,9 +290,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                      # TRANSLATORS: column header, short for "Resolution".
                      "resolution": N_("Res."),
                      "duree": N_("Duration"), "debit": N_("Bitrate"), "codec": N_("Codec"),
-                     "dolby_vision": "Dolby V.", "decision": N_("Decision"),
+                     # TRANSLATORS: "Dolby V." is short for Dolby Vision; keep it short.
+                     "dolby_vision": N_("Dolby V."), "decision": N_("Decision"),
                      "estim": N_("Est. (Δ%)"),
-                     "temps_estim": "ETA", "audio": N_("Audio")}
+                     # TRANSLATORS: column header, estimated encoding time
+                     # (0:38:12); 9 characters at most (French keeps "ETA").
+                     "temps_estim": N_("ETA"), "audio": N_("Audio")}
     # Les planchers imposés par le contenu viennent de core.config, seule
     # source de vérité : ils valent aussi à la lecture d'une largeur persistée.
     # Fichier à 20 : à 160 colonnes, les autres ne lui en laissent que 29.

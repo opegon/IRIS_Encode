@@ -16,6 +16,7 @@ from textual.widget import Widget
 from textual.widgets import Checkbox, Input, Label, Select, Static
 
 from core.i18n import _, N_
+from core.profiles import validate_id
 from ..common import raccourcis
 
 
@@ -597,10 +598,13 @@ class ProfileForm(Widget):
             pid = self.query_one("#field-id", Input).value.strip()
             if not pid:
                 errors.append(_("The identifier cannot be empty."))
-            elif not all(c.isalnum() or c in "-_" for c in pid):
-                errors.append(_("Identifier: allowed characters a-z, 0-9, - _"))
             elif len(pid) > 32:
                 errors.append(_("Identifier: 32 characters at most."))
+            elif not validate_id(pid):
+                # `isalnum()` acceptait toute lettre Unicode (« Série_été »),
+                # contre son propre message : la règle est celle de
+                # `profiles.ID_PATTERN` (CR-99).
+                errors.append(_("Identifier: allowed characters a-z, A-Z, 0-9, - _"))
             elif pid in self._ids_pris:
                 # Sans ce refus, l'enregistrement écrasait le profil du même nom.
                 errors.append(_("The profile “{profile}” already exists.").format(

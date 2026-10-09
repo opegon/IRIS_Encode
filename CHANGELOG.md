@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.8.9.120] — 2026-10-09
+
+### Libellés (IE-135, 3/3)
+
+Revue IE-114, constats CR-79, 83, 97, 99. IE-135 est close.
+
+- **Écran des pistes, sous-titres.** « défaut » marquait toujours la première
+  piste ; il marque celle que la source déclare par défaut, que la sortie
+  garde. La cible annonçait « copie MP4 » même pour une sortie MKV : elle dit
+  le vrai conteneur.
+- **Identifiant d'un profil.** Le formulaire acceptait des lettres accentuées
+  que son propre message disait refuser (« Série_été ») ; il les refuse, et le
+  message dit exactement ce qui est permis.
+- **Interface en anglais** : la colonne SDH d'OpenSubtitles affichait « oui ».
+  Les en-têtes « ETA », « DV » et « Release » passent par le catalogue de
+  traduction (le français garde « ETA »).
+
 ## [v0.8.9.119] — 2026-10-09
 
 ### L'accueil et la navigation (IE-135, 2/3)

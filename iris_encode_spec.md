@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.8.9.119 — document de référence courant
+**Version** : 0.8.9.120 — document de référence courant
 **Date** : 2026-10-09
 **Statut** : stable
 
@@ -2731,8 +2731,11 @@ sous-profil DV connu. ⚠ si HDR10 quality demandé sans `dovi_tool`.
 #### Pistes AUDIO / SOUS-TITRES
 
 `Espace` bascule la sélection (piste audio 0 verrouillée — ⚑). Décision affichée par
-piste : `→ copie` / `→ aac 192k` / `—`. Sous-titres : `image` → `→ copie MKV`,
-`texte` → `→ copie MP4`. Toutes sélectionnées par défaut.
+piste : `→ copie` / `→ aac 192k` / `—`. Sous-titres : `→ copie <conteneur>`, le
+conteneur réel de la sortie (`output_container`) — « copie MP4 » s'affichait aussi
+pour un MKV (CR-83). Toutes sélectionnées par défaut. La raison « défaut » suit le
+drapeau de la source (`SubtitleTrack.default`), que la sortie garde, et non la
+position de la piste.
 
 #### `F9` — ajouter une piste externe
 
@@ -3562,6 +3565,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.8.9.120 | 2026-10-09 | **Libellés** (§ 14.1, § 14.2, IE-135 3/3 — IE-135 close) : en-têtes « ETA », « Dolby V. », « DV », « Release » au catalogue (CR-79, CR-97), « oui » d'OpenSubtitles traduit (CR-97) · pistes : « défaut » d'après le drapeau, conteneur réel (CR-83) · identifiant de profil validé par `profiles.validate_id` (CR-99) · `tests/test_libelles_revue.py` |
 | 0.8.9.119 | 2026-10-09 | **L'accueil et la navigation** (§ 14.1, IE-135 2/3) : lettre du lecteur gardée, `abspath` au lieu de `resolve()` (CR-68) · fichiers illisibles listés avec leur cause (CR-75) · espace des volumes mesuré dans le worker (CR-78) · `on_key` sans `super()`, règle G4 remplacée (CR-80) · guide intégré : `D`, `R`, `A`, `Ctrl+Home` exacts, `R` sur un fichier le dit (CR-102) · `tests/test_accueil_revue.py` |
 | 0.8.9.118 | 2026-10-09 | **La file d'encodage** (§ 12.4, § 14.7, § 16.1, IE-135 1/3) : `S` confirmé · cause d'échec à chaque étape ffmpeg (`EncoderProcess.journal`, `RunScreen._cause`, CR-62) · progression des passes audio (`-stats`, CR-21) · « 4200% » des étapes mkvmerge (CR-59) · journal en anglais et en UTF-8, motif `powercfg` en anglais (CR-53, CR-72) · `tests/test_file_encodage.py` |
 | 0.8.9.117 | 2026-10-09 | **Fiches et services en ligne** (§ 9.8, § 13, IE-133) : OMDb en HTTPS (CR-47), sans `type=movie`, repli sur les suggestions IMDB quand OMDb ne trouve pas (CR-48) · année d'un titre : la dernière avant les marqueurs, jamais en tête (CR-49) · en-tête de la fiche en `Text` (CR-101) · mot de passe OpenSubtitles en clair, choix documenté · `tests/test_fiches.py` |

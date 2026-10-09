@@ -325,13 +325,18 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 sel   = st.index in self._sel_subs
                 style = "" if sel else "dim"
                 type_str = _("image") if st.is_image_based else _("text")
-                cont_str = f"{libelle_copie()} {'MKV' if st.is_image_based else 'MP4'}"
+                # Le conteneur réel de la sortie : « copie MP4 » s'affichait
+                # aussi pour un MKV (CR-83).
+                cont_str = (f"{libelle_copie()} "
+                            f"{self._decision.output_container.lstrip('.').upper()}")
 
                 # Raison simplifiée pour l'affichage
                 if not st.portable:
                     reason = _("teletext — not carried")
                 elif sel:
-                    reason = (pgettext("track", "default") if st.index == 0
+                    # Le drapeau de la source, que la sortie garde ; la
+                    # première piste n'est pas forcément celle-là (CR-83).
+                    reason = (pgettext("track", "default") if st.default
                               else _("selected"))
                 else:
                     reason = _(EXCLU_MANUELLEMENT)

@@ -110,10 +110,13 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         "duree":       N_("Duration"),
         # TRANSLATORS: estimated output size and its change; keep it short.
         "estim":       N_("Est. (Δ%)"),
-        "temps_estim": "ETA",
+        # TRANSLATORS: column header, estimated encoding time (0:38:12);
+        # 9 characters at most (French keeps "ETA").
+        "temps_estim": N_("ETA"),
         "action":      N_("Action"),
         "conteneur":   N_("Container"),
-        "dv":          "DV",
+        # TRANSLATORS: column header, Dolby Vision; usually kept as is.
+        "dv":          N_("DV"),
         "bitrate":     N_("Target bitrate"),
         "res":         N_("Resolution"),
         "audio":       "Audio",

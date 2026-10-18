@@ -38,9 +38,13 @@ from core.muxer import (
 )
 from core.platform import PlatformProfile
 from core.scanner import est_intermediaire
-from ..common import (barre_etat, actions_ecran, colonne_fixe, footer_line2,
-                      record_measured_speed,
+from ..common import (barre_etat, actions_ecran, colonne_fixe, fmt_bytes,
+                      footer_line2, record_measured_speed,
                       retour_accueil)
+# La même estimation et le même dégradé que la colonne Estim de l'accueil :
+# un fichier ne doit pas annoncer deux tailles selon l'écran. L'accueil
+# n'importe `run` que dans ses fonctions, il n'y a pas de cycle.
+from .browser import _estimate_output_bytes, _sortie_recopiee, _teinte_estimation
 from ..mixins import TableNavMixin
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
@@ -264,12 +268,20 @@ class RunScreen(TableNavMixin, Screen):
         def _cw(header: str, vals: list[str]) -> int:
             return max(len(header), max((len(v) for v in vals), default=0))
 
-        names   = [s.decision.info.path.name for s in self._statuses]
-        actions = [s.decision.video.label()  for s in self._statuses]
+        names    = [s.decision.info.path.name for s in self._statuses]
+        actions  = [s.decision.video.label()  for s in self._statuses]
+        profils  = [s.decision.profile.id     for s in self._statuses]
+        tailles  = [self._taille(s.decision)  for s in self._statuses]
 
         table.add_column("",        width=3,                              key="icon")
         fichier, action = _("File"), _("Action")
+        # TRANSLATORS: column header — source size, then the estimated output
+        # size: "4.2 GB → 1.8 GB (-57%)".
+        profil, taille = _("Profile"), _("Size → est.")
         table.add_column(fichier, width=max(20, _cw(fichier, names)), key="file")
+        table.add_column(profil,  width=_cw(profil, profils),         key="profile")
+        table.add_column(taille,  width=_cw(taille, [t.plain for t in tailles]),
+                         key="size")
         table.add_column(action,  width=_cw(action, actions),         key="action")
         colonne_fixe(table, _("State"),    50,     key="state")
 
@@ -280,10 +292,36 @@ class RunScreen(TableNavMixin, Screen):
             table.add_row(
                 self._icon(s),
                 Text(name, overflow="ellipsis", no_wrap=True),
+                Text(dec.profile.id, style="dim"),
+                tailles[i],
                 Text(action_label, style=dec.video.style()),
                 _("pending"),
                 key=str(i),
             )
+
+    @staticmethod
+    def _taille(dec: FileDecision) -> Text:
+        """« taille source → taille estimée (Δ %) », comme l'accueil l'estime.
+
+        Sans estimation (rien à réencoder, durée inconnue), la taille source
+        seule ; une sortie recopiée pèse la source, sans teinte ni écart."""
+        try:
+            src = dec.info.taille
+        except OSError:
+            src = 0
+        t = Text(fmt_bytes(src) if src else "—", style="dim")
+        est = _estimate_output_bytes(dec, src or None)
+        if not est:
+            return t
+        t.append(" → ", style="dim")
+        if _sortie_recopiee(dec) or not src:
+            t.append(fmt_bytes(est), style="dim")
+            return t
+        delta = (est - src) * 100 / src
+        signe = "+" if delta > 0 else ""
+        t.append(f"{fmt_bytes(est)} ({signe}{delta:.0f}%)",
+                 style=_teinte_estimation(delta))
+        return t
 
     def _icon(self, s: FileRunStatus) -> str:
         return {

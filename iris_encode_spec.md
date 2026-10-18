@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.1 — document de référence courant
-**Date** : 2026-10-09
+**Version** : 0.9.0.2 — document de référence courant
+**Date** : 2026-10-18
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -2929,6 +2929,13 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   de la vue (`_liberer_lot`). `Ctrl+D` refuse un fichier en file ; `F10`
   annonce les fichiers en attente et arrête le lot, même hors de la pile
   affichée.
+- **Colonnes de la file** (v0.9.0.2) : icône, fichier, **profil** de la
+  décision (`dec.profile.id`, figé à l'ajout), **taille source → taille
+  estimée (Δ %)**, action, état. L'estimation et son dégradé sont ceux de la
+  colonne Estim de l'accueil (`_estimate_output_bytes`, `_teinte_estimation`
+  de `browser.py`) : un fichier n'annonce pas deux tailles selon l'écran. Sans
+  estimation (SKIP, durée inconnue), la taille source seule ; une sortie
+  recopiée, sans teinte ni écart.
 - **Réordonner la file** (v0.8.9.36) : `Ctrl+↑/↓` échange deux fichiers **en
   attente**, `Suppr` en retire un ; le fichier en cours et les fichiers finis
   ne bougent pas (message). Sous le même verrou que le choix du suivant : le
@@ -3557,6 +3564,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.9.0.2 | 2026-10-18 | **Colonnes de la file d'encodage** (§ 14.7) : le profil de chaque fichier et sa taille source → taille estimée (Δ %), même calcul et même teinte que l'accueil (`RunScreen._taille`) |
 | 0.9.0.1 | 2026-10-09 | **Profils livrés** (§ 6) : `data/profiles.default.toml` reprend tel quel le `profiles.toml` de l'utilisateur, à la demande, pour la release — `movie_basic_delete` en plus (quinze profils), `series_basic` en preset `fast` avec `hdr10_quality = "compat"` explicite. Une installation existante garde son fichier |
 | 0.9.0.0 | 2026-10-09 | **Release v0.9.0** (IE-96) : bump de MINOR, décidé par l'utilisateur à la fin de la revue IE-114 — localisation anglais/français (IE-86 à IE-95), sources disque (IE-118 à IE-122), revue de code complète et ses quinze entrées de corrections (IE-123 à IE-137). Vérifications sur le G3 et Weblate reportées après la release |
 | 0.8.9.121 | 2026-10-09 | **Code mort** (§ 7, § 14.1, § 15, IE-137) : retirés `scan_directory`, `scanner.list_subdirs`, `set_dovi_path`, trois propriétés de `VideoInfo` (CR-13), `extract_hevc_stream`, `extract_rpu`, `get_temp_dir`, `cleanup_temp_files` et la doc de `probe_file`/`rpu_info` (CR-33), `summary_line`, `parse_languages` (CR-46), la branche « Volumes » du fil d'Ariane (CR-69) ; outil DVD sans repli sur un ffmpeg nu (CR-08) ; annotations `X \| None` dans `run.py` (CR-66) ; **un dossier passé en argument s'ouvre** (CR-73) · `same_language` et `validate_id` gardés (appelants depuis IE-136 et CR-99) · `tests/test_code_mort.py` |

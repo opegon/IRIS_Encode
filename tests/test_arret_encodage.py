@@ -24,6 +24,7 @@ from textual.screen import Screen
 
 from core.decision import DVAction, FileDecision, VideoAction, VideoDecision
 from core.platform import GPU, OS, PlatformProfile
+from core.profiles import Profile
 from core.scanner import VideoInfo
 from tui.screens import run as run_mod
 from tui.screens.confirm import ConfirmModal
@@ -117,7 +118,7 @@ def _dec(path: Path) -> FileDecision:
                      codec="h264", duration=60.0, frame_count=0,
                      dv_profile=None)
     return FileDecision(
-        info=info, profile={},
+        info=info, profile=Profile("test", {}),
         video=VideoDecision(action=VideoAction.ENCODE_HEVC, reason="",
                             target_bitrate=3_000_000, target_width=1920,
                             target_height=1080, dv_action=DVAction.NONE,

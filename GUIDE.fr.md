@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.0.1
+**Version** : 0.9.0.2
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -369,6 +369,10 @@ qu'un lot existe, l'en-tête l'annonce au centre, sur tous les écrans :
 « F12 Encodages en cours · 1/3 · 42 % », puis « F12 Lot terminé » ; depuis la
 file, « F12 Fichiers ».
 
+- Chaque ligne montre le fichier, le **profil** avec lequel il a été confié, sa
+  taille et la **taille de sortie estimée** (`4.2 Go → 2.1 Go (-50%)`, en vert
+  si elle maigrit, en orange si elle grossit — la même estimation que
+  l'accueil), l'action et l'état.
 - Un fichier déjà dans la file est refusé, avec un message.
 - Chaque fichier garde les réglages qu'il avait au moment de l'ajout : changer
   de profil ensuite ne le touche pas.

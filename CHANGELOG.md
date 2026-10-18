@@ -1,5 +1,15 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.2] — 2026-10-18
+
+### File d'encodage : profil et taille prévue
+
+La liste des fichiers de la file affiche deux colonnes de plus, après le nom :
+le **profil** avec lequel chaque fichier a été confié, et sa **taille source →
+taille estimée** avec l'écart en pourcentage (« 4.2 GB → 2.1 GB (-50%) »),
+teintée en vert quand la sortie maigrit, en orange quand elle grossit — la
+même estimation que la colonne « Estim. » de l'accueil.
+
 ## [v0.9.0.1] — 2026-10-09
 
 ### Profils livrés

@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.0.1
+**Version**: 0.9.0.2
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -364,6 +364,10 @@ others. `F12` switches between the files and the queue. As long as a batch
 exists, the header shows it in the middle, on every screen: "F12 Encoding in
 progress · 1/3 · 42%", then "F12 Batch done"; from the queue, "F12 Files".
 
+- Each line shows the file, the **profile** it was queued with, its size and
+  the **estimated output size** (`4.2 GB → 2.1 GB (-50%)`, green when it
+  shrinks, orange when it grows — the same estimate as the Home screen), the
+  action and the state.
 - A file already in the queue is refused, with a message.
 - Each file keeps the settings it had when added: changing profile afterwards
   does not affect it.

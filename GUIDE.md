@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.0.2
+**Version**: 0.9.0.3
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -109,6 +109,11 @@ one described below.
 
 The entry point. One row per file, with its encoding decision computed from the
 active profile.
+
+A folder opens at once, even a large one: its files appear by name, greyed,
+with `…` as the decision, and fill in as the analysis reads them; a gauge next
+to the counter ("Analyzing… 12 / 40") shows how far it has got. You can move
+through the list meanwhile; a row still waiting cannot be checked yet.
 
 | Key | Action |
 |---|---|

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.0.2
+**Version** : 0.9.0.3
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -106,6 +106,12 @@ reste celui décrit ci-dessous.
 
 Le point d'entrée. Une ligne par fichier, avec sa décision d'encodage calculée
 d'après le profil actif.
+
+Un dossier s'ouvre tout de suite, même chargé : ses fichiers apparaissent par
+leur nom, grisés, avec `…` en décision, et se remplissent au fil de l'analyse ;
+une jauge à côté du compteur (« Analyse en cours… 12 / 40 ») montre où elle en
+est. On parcourt la liste pendant ce temps ; une ligne encore en attente ne se
+coche pas.
 
 | Touche | Action |
 |---|---|

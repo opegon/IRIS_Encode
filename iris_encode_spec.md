@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.2 — document de référence courant
-**Date** : 2026-10-18
+**Version** : 0.9.0.3 — document de référence courant
+**Date** : 2026-10-19
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -2664,10 +2664,22 @@ Couleurs DV : `hdr10` → jaune · `dv` → vert · `sdr` → `bold dark_orange`
 
 #### Scan progressif
 
-Un pool de 4 workers scanne les fichiers en parallèle (ffprobe est I/O bound). La notice
-affiche `⏳ Analyse en cours… 3 / 12`. Un compteur d'époque invalide les résultats d'un
-scan devenu obsolète si l'utilisateur navigue entre-temps. Une fois terminé, la notice
-affiche le chemin du fichier survolé.
+Un pool de 4 workers scanne les fichiers en parallèle (ffprobe est I/O bound). Un compteur
+d'époque invalide les résultats d'un scan devenu obsolète si l'utilisateur navigue
+entre-temps.
+
+Depuis la v0.9.0.3, l'entrée dans un dossier vide la table aussitôt (`_refresh_view`) et
+montre une jauge indéterminée pendant le listage (`os.scandir`, une seule passe par
+liste). Dès le listage, `_populate_table` pose les sous-dossiers et une ligne **en
+attente** par fichier (`_ROW_TYPE_ATTENTE` : nom grisé, `…` en Décision ; aucune action ne
+la prend). Les workers déposent leurs résultats dans un `_Releve` ; une minuterie de
+l'écran (`_relever_analyse`, toutes les 0,25 s) les reporte sur place dans la table
+(`_lignes_analysees` : `update_cell`, ligne retirée si le filtre la masque, illisible
+grisée) et avance la jauge à droite de la notice (`#scan-count` « ⏳ Analyse en cours…
+3 / 12 », `#scan-bar`). La vue finale reconstruit la table dans l'ordre définitif
+(illisibles en fin de liste, coche du titre principal d'un disque) en gardant le curseur
+sur la ligne où l'utilisateur l'a posé, puis masque la jauge. La notice reste libre pour le
+chemin du fichier survolé, pendant l'analyse comme après.
 
 #### Encoder le dossier (`R`)
 
@@ -3564,6 +3576,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.9.0.3 | 2026-10-19 | **Ouverture immédiate d'un dossier** (§ 14.1, Scan progressif) : la table se vide à l'entrée, les fichiers apparaissent dès le listage en attente puis se remplissent au fil de l'analyse (relevé toutes les 0,25 s), jauge `#scan-bar` ; curseur gardé par la vue finale ; listage par `os.scandir` · `tests/test_accueil_progressif.py` |
 | 0.9.0.2 | 2026-10-18 | **Colonnes de la file d'encodage** (§ 14.7) : le profil de chaque fichier et sa taille source → taille estimée (Δ %), même calcul et même teinte que l'accueil (`RunScreen._taille`) |
 | 0.9.0.1 | 2026-10-09 | **Profils livrés** (§ 6) : `data/profiles.default.toml` reprend tel quel le `profiles.toml` de l'utilisateur, à la demande, pour la release — `movie_basic_delete` en plus (quinze profils), `series_basic` en preset `fast` avec `hdr10_quality = "compat"` explicite. Une installation existante garde son fichier |
 | 0.9.0.0 | 2026-10-09 | **Release v0.9.0** (IE-96) : bump de MINOR, décidé par l'utilisateur à la fin de la revue IE-114 — localisation anglais/français (IE-86 à IE-95), sources disque (IE-118 à IE-122), revue de code complète et ses quinze entrées de corrections (IE-123 à IE-137). Vérifications sur le G3 et Weblate reportées après la release |

@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.3] — 2026-10-19
+
+### Accueil : le dossier s'ouvre tout de suite
+
+Entrer dans un dossier de nombreux fichiers laissait l'ancien affiché, sans
+retour, de longues secondes : la table n'était remplie qu'une fois le dernier
+fichier analysé par ffprobe. Le dossier quitté disparaît désormais à `↵`, une
+jauge s'affiche, et le nouveau se montre dès son listage — sous-dossiers, puis
+chaque fichier par son nom, en attente (`…` dans la colonne Décision). Les
+lignes se remplissent au fil de l'analyse, relevées toutes les 0,25 s ; on
+parcourt la liste pendant ce temps, et la vue finale garde le curseur où on
+l'a laissé. Une ligne en attente ne se coche pas encore.
+
+Le listage passe par `os.scandir` : sous Windows le type de chaque entrée
+vient avec la liste, là où `is_dir` relisait chaque entrée — un aller-retour
+réseau par fichier sur un partage.
+
 ## [v0.9.0.2] — 2026-10-18
 
 ### File d'encodage : profil et taille prévue

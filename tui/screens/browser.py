@@ -18,8 +18,9 @@ from rich.text import Text
 from textual import events, on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
+from textual.containers import Horizontal
 from textual.screen import Screen
-from textual.widgets import DataTable, Static
+from textual.widgets import DataTable, ProgressBar, Static
 
 from core.i18n import N_, _, ngettext, texte_erreur
 from core import config as cfg_mod
@@ -252,6 +253,37 @@ _ROW_TYPE_EMPTY = "empty"  # placeholder dossier vide
 # Un fichier que l'analyse n'a pas lu : montré grisé avec sa cause, jamais
 # cochable — il disparaissait sans un mot (CR-75).
 _ROW_TYPE_ILLISIBLE = "unreadable"
+# Un fichier listé que l'analyse n'a pas encore atteint : son nom seul, aucune
+# action ne le prend tant que sa décision n'est pas connue.
+_ROW_TYPE_ATTENTE = "pending"
+
+# Intervalle auquel l'interface relève les lignes analysées : un appel par
+# fichier depuis les analyses aurait chargé la table sur un dossier de
+# plusieurs centaines, et un relevé déclenché par l'arrivée d'un résultat
+# retenait les lignes prêtes derrière un fichier lent.
+_INTERVALLE_LIGNES = 0.25
+
+
+class _Releve:
+    """Ce que les analyses d'un dossier ont rendu, en attendant que
+    l'interface le relève (`BrowserScreen._relever_analyse`)."""
+
+    def __init__(self, epoch: int, total: int) -> None:
+        self.epoch  = epoch
+        self.total  = total
+        self.fait   = 0
+        self.lignes: list[tuple[Path, "FileDecision | None", str]] = []
+        self.verrou = threading.Lock()
+
+    def ajouter(self, chemin: Path, dec: "FileDecision | None", cause: str) -> None:
+        with self.verrou:
+            self.fait += 1
+            self.lignes.append((chemin, dec, cause))
+
+    def relever(self) -> tuple[int, list]:
+        with self.verrou:
+            lignes, self.lignes = self.lignes, []
+            return self.fait, lignes
 
 
 class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
@@ -316,10 +348,25 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         padding: 0 1;
         border-bottom: solid $primary;
     }
+    #scan-row {
+        height: 1;
+    }
     #scan-notice {
+        width: 1fr;
         height: 1;
         color: $text-muted;
         padding: 0 2;
+    }
+    #scan-count {
+        width: auto;
+        height: 1;
+        color: $text-muted;
+        padding: 0 1;
+    }
+    #scan-bar {
+        width: auto;
+        height: 1;
+        padding: 0 2 0 0;
     }
     #file-table { height: 1fr; }
     """
@@ -365,6 +412,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # (IE-120) : une fois par visite, pour qu'un rescan ne recoche pas ce
         # que l'utilisateur a décoché ni ce qui vient d'être encodé.
         self._precoche:   Path | None = None
+        # Les fichiers listés que l'analyse n'a pas encore rendus, dans l'ordre
+        # du dossier : la table les montre dès le listage (lignes en attente).
+        self._en_attente: list[Path] = []
+        # L'analyse dont la table montre les lignes : la vue finale garde le
+        # curseur là où l'utilisateur l'a posé pendant l'analyse.
+        self._epoch_affichee: int = -1
+        self._releve: _Releve | None = None
 
     # ─── Accesseurs app ───────────────────────────────────────────────────────
 
@@ -382,8 +436,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         yield Static("", id="status-bar", classes="status-bar", markup=False)
         yield Static("", id="spacer-1")
         yield Static("", id="profile-bar")
-        analyse = "⏳ " + _("Analyzing…")
-        yield Static(analyse, id="scan-notice", markup=False)
+        with Horizontal(id="scan-row"):
+            yield Static("", id="scan-notice", markup=False)
+            yield Static("⏳ " + _("Analyzing…"), id="scan-count", markup=False)
+            yield ProgressBar(id="scan-bar", show_eta=False)
         yield DataTable(id="file-table", cursor_type="row", zebra_stripes=True)
         yield KeyFooter(
             actions=self._RACCOURCIS_FICHIERS,
@@ -436,6 +492,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._update_profile_bar()
         self._refresh_view()
         self.query_one(DataTable).focus()
+        self.set_interval(_INTERVALLE_LIGNES, self._relever_analyse)
 
     # ─── Table ────────────────────────────────────────────────────────────────
 
@@ -537,6 +594,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             table.clear(columns=True)
             self._build_columns()
             self._footer_suit_le_mode()
+        # Le dossier quitté disparaît tout de suite : il restait affiché, et
+        # actionnable, pendant toute l'analyse du nouveau.
+        self.query_one(DataTable).clear()
+        self._rows = []
+        self._en_attente = []
+        self._afficher_progression(None, None)
         self._update_profile_bar()
         self._update_status()
         self._load_directory()
@@ -631,11 +694,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         epoch:      int = -1,
         illisibles: dict[Path, str] | None = None,
         volumes:    dict[Path, tuple] | None = None,
+        en_attente: list[Path] | None = None,
     ) -> None:
         """Appelé depuis le worker (thread-safe via call_from_thread).
         epoch : -1 = appel direct (rebuild colonnes) ; >= 0 = validé contre _scan_epoch.
-        illisibles, volumes : ce que le worker a constaté ; absents, ceux du
-        dernier passage (reconstruction des colonnes).
+        illisibles, volumes, en_attente : ce que le worker a constaté ; absents,
+        ceux du dernier passage (reconstruction des colonnes).
         """
         if epoch >= 0 and epoch != self._scan_epoch:
             return                                  # callback stale — navigation entre-temps
@@ -643,7 +707,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self._illisibles = illisibles
         if volumes is not None:
             self._cellules_volumes = volumes
+        if en_attente is not None:
+            self._en_attente = list(en_attente)
         table = self.query_one(DataTable)
+        suivie = None
+        if epoch >= 0:
+            if epoch == self._epoch_affichee:
+                suivie = self._current_row_info()[1]
+            self._epoch_affichee = epoch
         table.clear()
         self._rows = []
         self._produits = set()
@@ -694,17 +765,21 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 key=row_key,
             )
 
+        # ── Fichiers pas encore analysés ─────────────────────────────────────
+        for chemin in self._en_attente:
+            table.add_row(*self._cellules_attente(chemin), key=str(chemin))
+            self._rows.append((_ROW_TYPE_ATTENTE, chemin))
+
         # ── Fichiers illisibles ──────────────────────────────────────────────
         for chemin, cause in sorted(self._illisibles.items()):
-            ligne = Text(f"{_FILE_ICON} {chemin.name}", style="dim")
-            ligne.append("  —  " + _("unreadable: {cause}").format(cause=cause),
-                         style="dim italic")
-            table.add_row("", ligne, "", "", "", "", "", "", "", "",
+            table.add_row("", self._cellule_illisible(chemin, cause),
+                          "", "", "", "", "", "", "", "",
                           key=f"__illisible__{chemin}")
             self._rows.append((_ROW_TYPE_ILLISIBLE, chemin))
 
         # ── Dossier vide ──────────────────────────────────────────────────────
-        if not subdirs and not decisions and not self._illisibles:
+        if (not subdirs and not decisions and not self._illisibles
+                and not self._en_attente):
             texte = ("⚠  " + _("All files are hidden") + "  —  "
                      + _("{filter_key} filter, {skip_key} SKIP").format(
                          filter_key=touche("l"), skip_key=touche("z"))
@@ -719,7 +794,99 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             )
             self._rows.append((_ROW_TYPE_EMPTY, None))
 
-        self.query_one("#scan-notice", Static).update("")
+        if suivie is not None:
+            idx = next((i for i, (_t, p) in enumerate(self._rows) if p == suivie),
+                       None)
+            if idx is not None:
+                table.move_cursor(row=idx)
+        if epoch >= 0:
+            if self._en_attente:
+                self._afficher_progression(0, len(self._en_attente))
+            else:
+                self.query_one("#scan-notice", Static).update("")
+                self._afficher_progression(0, 0)
+        self._update_status()
+
+    def _cellules_attente(self, chemin: Path) -> tuple:
+        """La ligne d'un fichier listé, avant son analyse : le nom seul."""
+        return (Text("", no_wrap=True),
+                cellule(f"{_FILE_ICON} {chemin.name}", style="dim"),
+                "", "", "", "", "", "", Text("…", style="dim"), "", "", "")
+
+    def _cellule_illisible(self, chemin: Path, cause: str) -> Text:
+        ligne = Text(f"{_FILE_ICON} {chemin.name}", style="dim")
+        ligne.append("  —  " + _("unreadable: {cause}").format(cause=cause),
+                     style="dim italic")
+        return ligne
+
+    def _afficher_progression(self, fait: int | None, total: int | None) -> None:
+        """La jauge de l'analyse. `None` : le dossier est encore en cours de
+        listage (jauge indéterminée) ; `total` à 0 : analyse finie, jauge masquée."""
+        compte = self.query_one("#scan-count", Static)
+        jauge  = self.query_one("#scan-bar", ProgressBar)
+        visible = total is None or total > 0
+        compte.display = jauge.display = visible
+        if total is None:
+            compte.update("⏳ " + _("Analyzing…"))
+            jauge.update(total=None, progress=0)
+        elif total > 0:
+            compte.update("⏳ " + _("Analyzing… {done} / {total}").format(
+                done=fait, total=total))
+            jauge.update(total=total, progress=fait)
+
+    def _relever_analyse(self) -> None:
+        """Minuterie : reporte dans la table ce que l'analyse a rendu depuis
+        le dernier relevé, et avance la jauge."""
+        releve = self._releve
+        if (releve is None or releve.epoch != self._scan_epoch
+                or not self._en_attente):
+            return
+        fait, lignes = releve.relever()
+        if lignes:
+            self._lignes_analysees(lignes, releve.epoch)
+        self._afficher_progression(fait, releve.total)
+
+    def _lignes_analysees(self, resultats: list[tuple[Path, FileDecision | None, str]],
+                          epoch: int) -> None:
+        """Remplit, sur place, les lignes en attente que l'analyse vient de rendre.
+
+        Ni reconstruction ni déplacement : l'utilisateur parcourt la table
+        pendant qu'elle se remplit. L'ordre définitif (illisibles en fin de
+        liste) vient avec la vue finale.
+        """
+        if epoch != self._scan_epoch:
+            return
+        table = self.query_one(DataTable)
+        for chemin, dec, cause in resultats:
+            if chemin not in self._en_attente:
+                continue
+            self._en_attente.remove(chemin)
+            idx = next((i for i, (t, p) in enumerate(self._rows)
+                        if t == _ROW_TYPE_ATTENTE and p == chemin), None)
+            if idx is None:
+                continue
+            cle = str(chemin)
+            if dec is None:
+                self._illisibles[chemin] = cause
+                self._rows[idx] = (_ROW_TYPE_ILLISIBLE, chemin)
+                table.update_cell(cle, "fichier", self._cellule_illisible(chemin, cause),
+                                  update_width=False)
+                table.update_cell(cle, "decision", "", update_width=False)
+                continue
+            self._decisions[chemin] = dec
+            self._dossier.append(chemin)
+            if not ligne_visible(dec, self._filtre, self._masquer_skip,
+                                 chemin in self._selected):
+                table.remove_row(cle)
+                del self._rows[idx]
+                continue
+            produit = deja_produit(chemin.stem)
+            if produit:
+                self._produits.add(chemin)
+            self._rows[idx] = (_ROW_TYPE_FILE, chemin)
+            cells = self._row_cells(dec, self._check_str(chemin), produit)
+            for col, cell in zip(["check", *self.RESIZE_COLS], cells):
+                table.update_cell(cle, col, cell, update_width=False)
         self._update_status()
 
     # Une ligne cochée que F1/F2 réencoderont malgré la décision automatique.
@@ -864,24 +1031,24 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         total   = len(videos)
         profile = self._active_profile()
 
-        def _set_notice(msg: str) -> None:
+        # Le dossier s'affiche dès son listage : sous-dossiers, et fichiers en
+        # attente de leur analyse, remplis au fil de l'eau (_relever_analyse).
+        releve = _Releve(epoch, total)
+        self._releve = releve
+        if videos:
             if self._scan_epoch != epoch:
-                return                      # navigation entre-temps : abandon silencieux
-            self.app.call_from_thread(
-                self.query_one("#scan-notice", Static).update, msg
-            )
-
-        _set_notice("⏳ " + _("Analyzing… {done} / {total}").format(done=0, total=total))
+                return
+            self.app.call_from_thread(self._populate_table, subdirs, [], epoch,
+                                      {}, volumes, videos)
 
         # Scans ffprobe parallélisés (ordre des résultats préservé par map)
-        done = 0
         lock = threading.Lock()
 
         def _scan_one(vpath: Path) -> FileDecision | None:
-            nonlocal done
             if self._scan_epoch != epoch:
                 return None                 # navigation entre-temps : abandon anticipé
             dec: FileDecision | None = None
+            cause = ""
             try:
                 self._tailles[vpath] = vpath.stat().st_size
             except OSError:
@@ -905,13 +1072,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             except Exception as e:
                 _LOG.warning("scan failed: %s", vpath, exc_info=True)
                 lignes = [l for l in texte_erreur(e).splitlines() if l.strip()]
+                cause = (lignes[-1].strip() if lignes else type(e).__name__)[:80]
                 with lock:
-                    illisibles[vpath] = (lignes[-1].strip() if lignes else
-                                         type(e).__name__)[:80]
-            with lock:
-                done += 1
-                _set_notice("⏳ " + _("Analyzing… {done} / {total}").format(
-                    done=done, total=total))
+                    illisibles[vpath] = cause
+            releve.ajouter(vpath, dec, cause)
             return dec
 
         decisions: list[FileDecision] = []
@@ -924,7 +1088,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if self._scan_epoch != epoch:
             return                          # navigation entre-temps : ne pas peupler
         self.app.call_from_thread(self._populate_table, subdirs, decisions, epoch,
-                                  illisibles, volumes)
+                                  illisibles, volumes, [])
 
     # ─── Sélection de profil (F4) ──────────────────────────────────────────────
 

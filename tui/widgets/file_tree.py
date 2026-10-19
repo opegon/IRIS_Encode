@@ -119,8 +119,12 @@ class FileNavigator:
     def list_subdirs(self) -> list[Path]:
         if self._virtual:
             return list_volumes()
+        # `os.scandir` : sous Windows le type de chaque entrée vient avec le
+        # listage. `iterdir` + `is_dir` relisait chaque entrée — un aller-retour
+        # par fichier sur un partage réseau.
         try:
-            return sorted(p for p in self._current.iterdir() if p.is_dir())
+            with os.scandir(self._current) as entrees:
+                return sorted(Path(e.path) for e in entrees if e.is_dir())
         except (PermissionError, OSError):
             return []
 
@@ -138,11 +142,12 @@ class FileNavigator:
         if self._virtual:
             return []
         try:
-            fichiers = sorted(
-                p for p in self._current.iterdir()
-                if p.is_file()
-                and p.suffix.lower() in SUPPORTED_EXTENSIONS
-            )
+            with os.scandir(self._current) as entrees:
+                fichiers = sorted(
+                    Path(e.path) for e in entrees
+                    if os.path.splitext(e.name)[1].lower() in SUPPORTED_EXTENSIONS
+                    and e.is_file()
+                )
         except (PermissionError, OSError):
             return []
         # Le dossier d'un disque présente ses titres : les playlists d'un

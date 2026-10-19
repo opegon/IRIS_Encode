@@ -986,7 +986,7 @@ msgid "Quit"
 msgstr ""
 
 #: tui/app.py:75
-#: tui/widgets/entete.py:56
+#: tui/widgets/entete.py:68
 msgid "Help"
 msgstr ""
 
@@ -4348,6 +4348,10 @@ msgstr ""
 
 #: tui/screens/wizard.py:648
 msgid "The operation produced no file. Go back to the previous step."
+msgstr ""
+
+#: tui/widgets/entete.py:65
+msgid "Full screen"
 msgstr ""
 
 #: tui/widgets/profile_form.py:42

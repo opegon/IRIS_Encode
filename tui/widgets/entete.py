@@ -13,6 +13,7 @@ plus de la façon dont le moteur résout deux ancrages concurrents.
 """
 from __future__ import annotations
 
+import os
 from datetime import datetime
 
 from rich.cells import cell_len
@@ -30,8 +31,15 @@ from ..common import touche
 _LARGEUR = 21
 
 
+def plein_ecran_disponible() -> bool:
+    """F11 bascule le plein écran de Windows Terminal, qui capte la touche
+    avant l'application. Ailleurs (console héritée, autre terminal) elle ne
+    fait rien : on ne l'annonce que là où elle marche."""
+    return bool(os.environ.get("WT_SESSION"))
+
+
 class AideEtHeure(Widget):
-    """« H Aide · 00:12:34 », docké à droite de l'en-tête."""
+    """« F11 Plein écran · H Aide · 00:12:34 », docké à droite de l'en-tête."""
 
     DEFAULT_CSS = f"""
     AideEtHeure {{
@@ -52,6 +60,10 @@ class AideEtHeure(Widget):
 
     def render(self) -> Text:
         t = Text(no_wrap=True, overflow="ellipsis")
+        if plein_ecran_disponible():
+            t.append(touche("f11"), style="bold yellow")
+            t.append(" " + _("Full screen"))
+            t.append("  ·  ", style="dim")
         t.append(touche("h"), style="bold yellow")
         t.append(" " + _("Help"))
         t.append("  ·  ", style="dim")

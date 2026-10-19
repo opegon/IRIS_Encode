@@ -1,5 +1,15 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.4] — 2026-10-20
+
+### « F11 Plein écran » dans l'en-tête
+
+Windows Terminal bascule le plein écran par `F11`, mais rien ne le disait.
+L'en-tête l'annonce désormais en haut à droite, à côté de « H Aide » :
+« F11 Plein écran · H Aide · 00:12:34 ». Le rappel n'apparaît que sous
+Windows Terminal (`WT_SESSION`) : c'est lui qui capte la touche, et ailleurs
+elle ne ferait rien.
+
 ## [v0.9.0.3] — 2026-10-19
 
 ### Accueil : le dossier s'ouvre tout de suite

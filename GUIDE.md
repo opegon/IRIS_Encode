@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.0.3
+**Version**: 0.9.0.4
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -23,6 +23,10 @@ without an executable, in **README § 5.1**.
 
 Otherwise `launch.bat` works — preferably started *from* Windows Terminal
 rather than by double-click.
+
+**Full screen**: `F11` switches Windows Terminal to full screen and back. The
+header recalls it at the top right ("F11 Full screen"), only when IRIS runs in
+Windows Terminal — elsewhere the key does nothing.
 
 **When a new version is published**, startup says so before opening the
 application:

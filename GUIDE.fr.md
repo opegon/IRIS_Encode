@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.0.3
+**Version** : 0.9.0.4
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -22,6 +22,10 @@ Détail et alternative sans exécutable au **README.fr.md § 5.1**.
 
 À défaut, `launch.bat` fonctionne — de préférence lancé *depuis* Windows
 Terminal plutôt qu'au double-clic.
+
+**Plein écran** : `F11` passe Windows Terminal en plein écran, et l'en fait
+sortir. L'en-tête le rappelle en haut à droite (« F11 Plein écran »), seulement
+quand IRIS tourne dans Windows Terminal — ailleurs la touche ne fait rien.
 
 **Quand une nouvelle version est publiée**, le lancement le dit avant d'ouvrir
 l'application :

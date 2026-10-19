@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.3 — document de référence courant
-**Date** : 2026-10-19
+**Version** : 0.9.0.4 — document de référence courant
+**Date** : 2026-10-20
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -2957,6 +2957,11 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   titre centré l'état rendu par `IrisEncodeApp.etat_file()`, rafraîchi chaque
   seconde — « F12 Encodages en cours · 1/3 · 42 % », « F12 Lot terminé », et
   « F12 Fichiers » depuis la vue des encodages. Vide sans lot.
+- **Le rappel du plein écran** (v0.9.0.4) : à droite de l'en-tête,
+  `AideEtHeure` rend « F11 Plein écran · H Aide · 00:12:34 ». Le rappel F11
+  n'apparaît que si `WT_SESSION` est posée (`entete.plein_ecran_disponible`) :
+  c'est Windows Terminal qui capte F11 et bascule le plein écran, l'application
+  ne la reçoit jamais ; ailleurs la touche ne ferait rien.
 - **Arrêter se confirme** (v0.8.9.5, par `X` depuis la v0.8.9.34) : une
   `ConfirmModal` (« Arrêter » / « Continuer », focus sur Continuer).
   Confirmer lève `_abandon` et arrête le processus en cours, ffmpeg ou
@@ -3576,6 +3581,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.9.0.4 | 2026-10-20 | **« F11 Plein écran » dans l'en-tête** (§ 14.7, à côté de « H Aide ») : affiché seulement sous Windows Terminal (`WT_SESSION`), qui gère la bascule lui-même · `tests/test_entete_plein_ecran.py` |
 | 0.9.0.3 | 2026-10-19 | **Ouverture immédiate d'un dossier** (§ 14.1, Scan progressif) : la table se vide à l'entrée, les fichiers apparaissent dès le listage en attente puis se remplissent au fil de l'analyse (relevé toutes les 0,25 s), jauge `#scan-bar` ; curseur gardé par la vue finale ; listage par `os.scandir` · `tests/test_accueil_progressif.py` |
 | 0.9.0.2 | 2026-10-18 | **Colonnes de la file d'encodage** (§ 14.7) : le profil de chaque fichier et sa taille source → taille estimée (Δ %), même calcul et même teinte que l'accueil (`RunScreen._taille`) |
 | 0.9.0.1 | 2026-10-09 | **Profils livrés** (§ 6) : `data/profiles.default.toml` reprend tel quel le `profiles.toml` de l'utilisateur, à la demande, pour la release — `movie_basic_delete` en plus (quinze profils), `series_basic` en preset `fast` avec `hdr10_quality = "compat"` explicite. Une installation existante garde son fichier |

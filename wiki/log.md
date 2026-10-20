@@ -399,3 +399,10 @@ passe. Page mise à jour : [[pieges-et-lecons]].
 qui reste attend un essai sur le G3 ou un échantillon, reporté après la v0.9.0
 (décision de l'utilisateur) ; trois questions de la revue IE-114 ajoutées.
 Page mise à jour : [[questions-ouvertes]].
+
+## [2026-10-20] ingest | `.ts` IPTV et paquet AAC corrompu (v0.9.0.5)
+
+Mesuré, ffmpeg n8.1.3 : trois `.ts` IPTV fournis par l'utilisateur échouent à
+la recopie de l'AAC en MP4 (`aac_adtstoasc`) sur un paquet marqué corrompu ;
+`-fflags +discardcorrupt` les sauve. Reproduit sur un `.ts` de synthèse (136
+cas sur 143). Pages mises à jour : [[audio]], [[ffmpeg]].

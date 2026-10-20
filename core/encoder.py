@@ -258,6 +258,21 @@ def diagnostiquer(lignes: list[str]) -> Optional[str]:
 
 # ─── Construction commande ────────────────────────────────────────────────────
 
+# Un flux MPEG enregistré (TNT, IPTV) a souvent un trou : un paquet audio
+# tronqué, que le démuxeur marque corrompu. Recopiée en MP4, l'AAC bute dessus
+# dans `aac_adtstoasc` et tout l'encodage échoue pour un seul paquet (« Error
+# parsing ADTS frame header! », mesuré sur trois `.ts` IPTV). `discardcorrupt`
+# écarte ces paquets marqués, déjà illisibles ; un paquet sain n'y perd rien.
+_FLUX_MPEG = frozenset({".ts", ".m2ts", ".mts", ".mpg", ".mpeg", ".vob"})
+
+
+def lecture_tolerante(source: Path) -> list[str]:
+    """Les options d'entrée à poser avant le `-i` d'une source MPEG."""
+    if Path(source).suffix.lower() in _FLUX_MPEG:
+        return ["-fflags", "+discardcorrupt"]
+    return []
+
+
 def build_audio_command(source: Path, output: Path, audio: list,
                         ffmpeg_path: str = "ffmpeg") -> list[str]:
     """Reconstruit les pistes audio d'un fichier, sans toucher à la vidéo.
@@ -277,7 +292,8 @@ def build_audio_command(source: Path, output: Path, audio: list,
     gardees = [ad for ad in audio if ad.action != AudioAction.EXCLUDE]
     # `-stats` : sous `-loglevel error`, ffmpeg n'écrit plus sa ligne de
     # progression, et la barre restait indéterminée (CR-21, mesuré).
-    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-stats", "-i", str(source),
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-stats",
+           *lecture_tolerante(source), "-i", str(source),
            "-vn", "-sn", "-dn"]
     for ad in gardees:
         cmd += ["-map", f"0:a:{ad.track.index}"]
@@ -561,7 +577,8 @@ def build_command(
 
     # Après un mux préalable, l'entrée est l'intermédiaire, pas la source.
     # `info.path` reste la source : c'est d'elle que dépend le nom de sortie.
-    cmd += ["-i", str(decision.encode_source or info.lecture)]
+    entree = decision.encode_source or info.lecture
+    cmd += [*lecture_tolerante(entree), "-i", str(entree)]
 
     # ── Entrées supplémentaires : pistes externes greffées ────────────────────
     # ffmpeg les absorbe dans la même passe que l'encodage : inutile de muxer
@@ -638,7 +655,7 @@ def build_command(
     sub_input = 0
     if audio_a_part and sous_titres_source:
         sub_input = len(ext_tracks) + 1 + (audio_source is not None)
-        cmd += ["-i", str(decision.encode_source or info.lecture)]
+        cmd += [*lecture_tolerante(entree), "-i", str(entree)]
 
     porteur_input = None
     if sous_titres_porteur is not None:

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.4 — document de référence courant
+**Version** : 0.9.0.5 — document de référence courant
 **Date** : 2026-10-20
 **Statut** : stable
 
@@ -3190,6 +3190,14 @@ les `.clpi` eux-mêmes.
 annexes et le choix du donneur la lisent (`DONOR_EXTS` l'étend des pistes
 isolées). Le conteneur de sortie n'en dépend pas (§ 8.6).
 
+**Flux MPEG abîmés** (v0.9.0.5) — `encoder.lecture_tolerante()` pose
+`-fflags +discardcorrupt` devant le `-i` d'une source `.ts .m2ts .mts .mpg
+.mpeg .vob` (`_FLUX_MPEG`, casse ignorée), dans `build_command` (entrée
+principale et seconde lecture pour les sous-titres) et `build_audio_command`.
+Un paquet audio tronqué, marqué corrompu par le démuxeur, faisait échouer
+`aac_adtstoasc` à la recopie de l'AAC en MP4, et tout l'encodage avec lui ; il
+est écarté. Les autres conteneurs et les chemins Dolby Vision ne changent pas.
+
 ### 15.1 `VideoInfo`
 
 `bitrate` porte le débit du **flux vidéo**, jamais celui du conteneur.
@@ -3581,6 +3589,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.9.0.5 | 2026-10-20 | **Flux MPEG abîmés** (§ 15, Extensions) : une source `.ts .m2ts .mts .mpg .mpeg .vob` est lue avec `-fflags +discardcorrupt` — un paquet AAC tronqué faisait échouer `aac_adtstoasc` et l'encodage entier · `tests/test_flux_mpeg_abimes.py` |
 | 0.9.0.4 | 2026-10-20 | **« F11 Plein écran » dans l'en-tête** (§ 14.7, à côté de « H Aide ») : affiché seulement sous Windows Terminal (`WT_SESSION`), qui gère la bascule lui-même · `tests/test_entete_plein_ecran.py` |
 | 0.9.0.3 | 2026-10-19 | **Ouverture immédiate d'un dossier** (§ 14.1, Scan progressif) : la table se vide à l'entrée, les fichiers apparaissent dès le listage en attente puis se remplissent au fil de l'analyse (relevé toutes les 0,25 s), jauge `#scan-bar` ; curseur gardé par la vue finale ; listage par `os.scandir` · `tests/test_accueil_progressif.py` |
 | 0.9.0.2 | 2026-10-18 | **Colonnes de la file d'encodage** (§ 14.7) : le profil de chaque fichier et sa taille source → taille estimée (Δ %), même calcul et même teinte que l'accueil (`RunScreen._taille`) |

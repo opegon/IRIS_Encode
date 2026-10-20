@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.5] — 2026-10-20
+
+### Un `.ts` dont l'audio a un trou s'encode
+
+Trois enregistrements IPTV (`.TS`, H.264 720p, AAC) échouaient à quelques
+secondes de la fin : « Error parsing ADTS frame header! », puis « Conversion
+failed! ». Chacun porte un paquet audio tronqué — un paquet TS perdu à la
+réception, que le démuxeur marque corrompu. L'AAC recopiée en MP4 passe par le
+filtre `aac_adtstoasc`, qui refuse ce paquet et arrête tout l'encodage.
+
+Une source MPEG (`.ts .m2ts .mts .mpg .mpeg .vob`) est désormais lue avec
+`-fflags +discardcorrupt`, dans l'encodage comme dans la passe audio séparée :
+ffmpeg écarte les paquets qu'il a lui-même marqués corrompus, déjà illisibles,
+et continue. Les trois épisodes sortent entiers, audio comprise. Mesuré sur un
+`.ts` de synthèse (ffmpeg n8.1.3, recopie en MP4) : sur 143 paquets audio
+retirés un à un, 136 faisaient échouer la sortie ; avec l'option, aucun.
+
 ## [v0.9.0.4] — 2026-10-20
 
 ### « F11 Plein écran » dans l'en-tête

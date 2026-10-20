@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-10-09
+maj: 2026-10-20
 sources:
+  - "[[source-2026-10-20-ts-aac-corrompu]]"
   - "[[source-2026-10-08-disques]]"
   - "[[source-2026-10-06-sar-scale]]"
   - "[[source-spec]]"
@@ -92,6 +93,10 @@ sans libx265 : `ffmpeg -encoders | findstr x265`.
   Ajouter `setsar=1` pour des pixels carrés. *(mesuré, [[jellyfin]])*
   `decrease` **agrandit** aussi une source plus petite que la boîte : ne poser
   `scale` que si la source la dépasse. *(mesuré)*
+- **Un paquet marqué corrompu est transmis, pas écarté** : le démuxeur MPEG-TS
+  le signale (« Packet corrupt ») et le passe à la suite, où un filtre comme
+  `aac_adtstoasc` peut arrêter toute la sortie. `-fflags +discardcorrupt` en
+  entrée l'écarte. *(mesuré, [[audio]])*
 - Chapitres d'un MP4 : piste `bin_data` (voir [[conteneurs#Chapitres]]).
 - Écrit **`hev1`** par défaut pour du HEVC en MP4 ; `-tag:v hvc1` le change sans toucher au flux, et IRIS le passe depuis la v0.8.9.39 ([[conteneurs]]).
 - Lit `stdin` pour son clavier interactif (`q` l'arrête) : voir [[sous-processus]].

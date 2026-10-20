@@ -1,7 +1,9 @@
 ---
 type: concept
-maj: 2026-10-09
+maj: 2026-10-20
 sources:
+  - "[[2026-10-20-ts-aac-corrompu]]"
+  - "[[source-2026-10-20-ts-aac-corrompu]]"
   - "[[2026-10-07-piste-vide-ffmpeg-81]]"
   - "[[source-2026-10-01-entrelacement]]"
   - "[[source-spec]]"
@@ -133,6 +135,15 @@ Voir [[sous-titres#Langues|Sous-titres]] : l'audio a le même piège
   *Supposé* : c'est l'ordonnanceur de ffmpeg 7+ qui bride l'entrée audio, et
   le défaut des pistes sans perte vides ci-dessus pourrait avoir la même
   cause. Non vérifié.
+- **Un paquet AAC corrompu dans un `.ts` fait échouer la recopie en MP4.**
+  Un paquet TS audio perdu (réception IPTV ou TNT) laisse un PES trop court ;
+  le démuxeur le marque corrompu (`flags=K_C`) mais le transmet, et
+  `aac_adtstoasc` l'arrête : « Error parsing ADTS frame header! », la sortie
+  entière échoue. `-fflags +discardcorrupt` en entrée écarte ces paquets, la
+  durée de l'audio reste celle de la source. *(mesuré, ffmpeg n8.1.3, trois
+  `.ts` réels et 136 cas synthétiques sur 143,
+  [[2026-10-20-ts-aac-corrompu]])* IRIS le pose sur toute source MPEG depuis
+  la v0.9.0.5.
 - **L'AAC est forcé à 48 kHz** (`-ar:a:N 48000`).
 
 ## Voir aussi

@@ -116,9 +116,9 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         # TRANSLATORS: {key_tab} is the key that switches to IMDB.
         "open_fiche":          N_("Opens the movie's Info card: AlloCiné, then "
                                   "IMDB with {key_tab}."),
-        "filtre_type":         N_("Shows only one image type: Dolby Vision, one "
-                                  "DV profile, HDR without DV, or SDR. A checked "
-                                  "row stays visible."),
+        "filtre_type":         N_("Shows only one image type (Dolby Vision, one "
+                                  "DV profile, HDR without DV, SDR) or one video "
+                                  "codec. A checked row stays visible."),
         "trier":               N_("Sorts the files by name, size, resolution, "
                                   "duration, bitrate, codec or estimated size "
                                   "change. Choosing the current sort again "

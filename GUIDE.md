@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.0.7
+**Version**: 0.9.0.8
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -141,7 +141,7 @@ through the list meanwhile; a row still waiting cannot be checked yet.
 | `F4` / `F5` | Choose a profile / manage profiles |
 | `J` | **Join** the checked files end to end into one (§ 2.1bis) |
 | `I` | Movie Info card: AlloCiné, then IMDB with `Tab` |
-| `L` | **Filter** by picture type: Dolby Vision (all profiles or one), HDR without DV, SDR |
+| `L` | **Filter** by picture type (Dolby Vision, all profiles or one; HDR without DV; SDR) or by video codec |
 | `O` | **Sort** by name, size, resolution, duration, bitrate, codec or estimate |
 | `Z` | Hide / show the `SKIP` files |
 | `Tab` / `Shift+Tab` | Next / previous column |
@@ -159,8 +159,9 @@ alphabetical order, whatever the sort. A file the analysis cannot read (truncate
 damaged) stays in the list, greyed, with the cause: `unreadable: …`; it cannot
 be checked.
 
-**Filtering the list.** `L` shows only one picture type; the choice only offers
-the types present in the folder, with their count. `Z` hides the `SKIP` files.
+**Filtering the list.** `L` shows only one picture type, or only one video
+codec (`hevc`, `h264`…); the choice only offers the types and codecs present in
+the folder, with their count, and holds one of them at a time. `Z` hides the `SKIP` files.
 Both add up, hold from one folder to the next during the session, and the
 status bar says how many files are hidden. Folders stay visible. **A checked
 row is never hidden**: what will go to encoding stays in sight. `A` only checks

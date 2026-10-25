@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.0.7
+**Version** : 0.9.0.8
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -138,7 +138,7 @@ coche pas.
 | `F4` / `F5` | Choisir un profil / gérer les profils |
 | `J` | **Joindre** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
 | `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |
-| `L` | **Filtrer** par type d'image : Dolby Vision (tous profils ou un seul), HDR sans DV, SDR |
+| `L` | **Filtrer** par type d'image (Dolby Vision, tous profils ou un seul ; HDR sans DV ; SDR) ou par codec vidéo |
 | `O` | **Trier** par nom, taille, résolution, durée, débit, codec ou estimation |
 | `Z` | Masquer / afficher les fichiers `SKIP` |
 | `Tab` / `Maj+Tab` | Colonne suivante / précédente |
@@ -156,8 +156,9 @@ Les fichiers cochés partent dans l'ordre alphabétique, quel que soit le tri. U
 que l'analyse ne lit pas (tronqué, abîmé) reste dans la liste, grisé, avec sa
 cause : `illisible : …` ; il ne se coche pas.
 
-**Filtrer la liste.** `L` ne montre qu'un type d'image ; le choix ne propose
-que les types présents dans le dossier, avec leur nombre. `Z` masque les
+**Filtrer la liste.** `L` ne montre qu'un type d'image, ou qu'un codec vidéo
+(`hevc`, `h264`…) ; le choix ne propose que les types et les codecs présents
+dans le dossier, avec leur nombre, et n'en retient qu'un à la fois. `Z` masque les
 fichiers `SKIP`. Les deux se cumulent, tiennent d'un dossier à l'autre pendant
 la session, et la barre d'état dit combien de fichiers sont masqués. Les
 dossiers restent affichés. **Une ligne cochée ne se masque jamais** : ce qui

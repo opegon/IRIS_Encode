@@ -1,5 +1,15 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.8] — 2026-10-25
+
+### Le filtre de l'accueil prend les codecs
+
+`L` proposait seulement les types d'image (Dolby Vision, HDR, SDR). Il propose
+désormais aussi les codecs vidéo présents dans le dossier, avec leur nombre
+(« Codec : h264 (12) »). Le filtre retient un seul choix à la fois, type
+d'image ou codec ; `Z` (masquer les SKIP) s'y ajoute comme avant, et une ligne
+cochée reste visible. La fenêtre du choix s'intitule « Filtre ».
+
 ## [v0.9.0.7] — 2026-10-25
 
 ### L'accueil se trie

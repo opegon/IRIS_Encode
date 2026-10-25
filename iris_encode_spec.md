@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.7 — document de référence courant
+**Version** : 0.9.0.8 — document de référence courant
 **Date** : 2026-10-25
 **Statut** : stable
 
@@ -2329,6 +2329,9 @@ Conventions transverses :
   ligne cochée. Le filtre vit sur l'écran (session, pas `config.toml`) ;
   `_dossier` garde tous les fichiers du dossier pour pouvoir refiltrer sans
   rescanner. La barre d'état nomme le filtre et compte les masqués.
+  Depuis v0.9.0.8, le même choix propose aussi les **codecs vidéo** du dossier
+  (`codec:<nom ffprobe en minuscules>`, `FILTRE_CODEC`), triés, avec leur
+  nombre ; un seul critère à la fois, type d'image ou codec.
 - **Tri de l'accueil** (v0.9.0.7). `O` choisit un critère parmi les colonnes
   Fichier, Taille, Résol., Durée, Débit, Codec et Estim. (`browser.TRIS`, qui
   porte le sens par défaut : décroissant pour les grandeurs, croissant pour le
@@ -3617,6 +3620,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
 | 0.9.0.7 | 2026-10-25 | **Tri de l'accueil** (§ 14) : `O` trie par nom, taille, résolution, durée, débit, codec ou estimation ; rechoisir inverse le sens ; valeur inconnue en fin · `tests/test_tri_accueil.py` |
 | 0.9.0.6 | 2026-10-21 | **L'assistant ouvre le recalage** (§ 14.0, IE-142) : `R` à l'étape 3 ouvre `SyncScreen` en mode assistant, pré-chargé de la dernière mesure ; refus et mesure non sûre renvoient vers `R` · `tests/test_assistant_recalage.py` |
 | 0.9.0.5 | 2026-10-20 | **Flux MPEG abîmés** (§ 15, Extensions) : une source `.ts .m2ts .mts .mpg .mpeg .vob` est lue avec `-fflags +discardcorrupt` — un paquet AAC tronqué faisait échouer `aac_adtstoasc` et l'encodage entier · `tests/test_flux_mpeg_abimes.py` |

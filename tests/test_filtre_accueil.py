@@ -15,14 +15,16 @@ import pytest
 
 from core.decision import VideoAction
 from core.scanner import VideoInfo
-from tui.screens.browser import (FILTRE_DV, FILTRE_TOUS, ligne_visible,
+from tui.screens.browser import (FILTRE_CODEC, FILTRE_DV, FILTRE_TOUS,
+                                 libelle_filtre, ligne_visible,
                                  options_filtre, type_image)
 
 
 def _dec(nom: str, dv: int | None = None, compat: int | None = None,
-         transfert: str = "", action: VideoAction = VideoAction.ENCODE_HEVC):
+         transfert: str = "", action: VideoAction = VideoAction.ENCODE_HEVC,
+         codec: str = "hevc"):
     info = VideoInfo(path=Path(f"{nom}.mkv"), width=3840, height=2160,
-                     bitrate=20_000_000, codec="hevc", duration=60.0,
+                     bitrate=20_000_000, codec=codec, duration=60.0,
                      frame_count=0, dv_profile=dv, dv_bl_compat=compat,
                      color_transfer=transfert)
     return SimpleNamespace(info=info, video=SimpleNamespace(action=action))
@@ -33,6 +35,7 @@ DV7  = _dec("b", dv=7, transfert="smpte2084")
 HDR  = _dec("c", transfert="smpte2084")
 HLG  = _dec("d", transfert="arib-std-b67")
 SDR  = _dec("e", action=VideoAction.SKIP)
+H264 = _dec("f", codec="h264")
 
 
 @pytest.mark.parametrize("dec, attendu", [
@@ -64,7 +67,27 @@ def test_une_ligne_cochee_reste_visible():
 
 def test_options_limitees_aux_types_presents():
     cles = [c for c, _ in options_filtre([DV81, DV7, SDR])]
-    assert cles == [FILTRE_TOUS, FILTRE_DV, "DV:P7", "DV:P8.1", "SDR"]
+    assert cles == [FILTRE_TOUS, FILTRE_DV, "DV:P7", "DV:P8.1", "SDR",
+                    "codec:hevc"]
+
+
+# ─── Filtre par codec (IE-144) ────────────────────────────────────────────────
+
+def test_filtre_par_codec():
+    visibles = [d for d in (DV81, SDR, H264)
+                if ligne_visible(d, FILTRE_CODEC + "h264", False, False)]
+    assert visibles == [H264]
+
+
+def test_options_codecs_presents_tries_avec_leur_nombre():
+    options = [o for o in options_filtre([DV81, H264, SDR, HDR])
+               if o[0].startswith(FILTRE_CODEC)]
+    assert [c for c, _ in options] == ["codec:h264", "codec:hevc"]
+    assert options[1][1].endswith("(3)")
+
+
+def test_la_barre_d_etat_nomme_le_codec():
+    assert libelle_filtre(FILTRE_CODEC + "hevc") == "hevc"
 
 
 def test_options_portent_leur_nombre():
@@ -126,4 +149,5 @@ def test_l_et_z_sur_l_accueil(tmp_path, monkeypatch):
     assert "sans SKIP" in r["barre"] and "2 masqués" in r["barre"]
     assert r["skip"] in r["cochee"], "une ligne cochée ne se masque pas"
     assert len(r["cochee"]) == 2
-    assert len(r["picker"]) == 2 and "SDR (3)" in r["picker"][1]
+    assert len(r["picker"]) == 3 and "SDR (3)" in r["picker"][1]
+    assert "h264 (3)" in r["picker"][2]

@@ -197,6 +197,7 @@ def _estimate_output_bytes(dec: FileDecision,
 
 FILTRE_TOUS = "tous"
 FILTRE_DV   = "dv"      # Dolby Vision, tous profils
+FILTRE_CODEC = "codec:"  # préfixe : `codec:hevc`, codec vidéo de la source
 
 
 def type_image(info) -> str:
@@ -219,6 +220,8 @@ def ligne_visible(dec: FileDecision, filtre: str, masquer_skip: bool,
         return False
     if filtre == FILTRE_TOUS:
         return True
+    if filtre.startswith(FILTRE_CODEC):
+        return dec.info.codec.lower() == filtre[len(FILTRE_CODEC):]
     genre = type_image(dec.info)
     if filtre == FILTRE_DV:
         return genre.startswith("DV:")
@@ -226,7 +229,8 @@ def ligne_visible(dec: FileDecision, filtre: str, masquer_skip: bool,
 
 
 def options_filtre(decisions: list[FileDecision]) -> list[tuple[str, str]]:
-    """Les choix du filtre, limités aux types présents, avec leur nombre."""
+    """Les choix du filtre, limités aux types et aux codecs présents, avec
+    leur nombre. Un seul choix à la fois : type d'image ou codec."""
     genres  = [type_image(d.info) for d in decisions]
     dv      = sorted({g for g in genres if g.startswith("DV:")})
     options = [(FILTRE_TOUS, _("All files ({count})").format(count=len(genres)))]
@@ -239,10 +243,16 @@ def options_filtre(decisions: list[FileDecision]) -> list[tuple[str, str]]:
             count=genres.count('HDR'))))
     if "SDR" in genres:
         options.append(("SDR", f"SDR ({genres.count('SDR')})"))
+    codecs = [d.info.codec.lower() for d in decisions if d.info.codec]
+    options += [(FILTRE_CODEC + c,
+                 _("Codec: {codec} ({count})").format(codec=c, count=codecs.count(c)))
+                for c in sorted(set(codecs))]
     return options
 
 
 def libelle_filtre(filtre: str) -> str:
+    if filtre.startswith(FILTRE_CODEC):
+        return filtre[len(FILTRE_CODEC):]
     return {FILTRE_TOUS: "", FILTRE_DV: "Dolby Vision"}.get(filtre, filtre)
 
 
@@ -1440,7 +1450,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             self._filtre = cles[idx]
             self._refiltrer()
         self.app.push_screen(
-            ValuePickerScreen(_("Picture type"), [l for _c, l in options], courant),
+            ValuePickerScreen(_("Filter"), [l for _c, l in options], courant),
             _on_pick)
 
     def _libelle_tri(self) -> str:

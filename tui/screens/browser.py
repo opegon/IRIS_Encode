@@ -246,6 +246,66 @@ def libelle_filtre(filtre: str) -> str:
     return {FILTRE_TOUS: "", FILTRE_DV: "Dolby Vision"}.get(filtre, filtre)
 
 
+# ─── Tri de l'accueil (O) ─────────────────────────────────────────────────────
+
+# Les critères, dans l'ordre du choix ; chacun porte le nom de sa colonne.
+# Sens par défaut : le nom et le codec de A à Z, les grandeurs de la plus
+# grande à la plus petite, l'estimation du plus fort gain à la plus forte perte.
+TRI_NOM = "fichier"
+TRIS: dict[str, bool] = {      # critère → décroissant par défaut
+    "fichier": False, "taille": True, "resolution": True, "duree": True,
+    "debit": True, "codec": False, "estim": False,
+}
+
+
+def cle_tri(dec: FileDecision, critere: str,
+            taille: int | None) -> float | str | None:
+    """La valeur d'une ligne pour le critère ; `None` si elle est inconnue."""
+    info = dec.info
+    if critere == "taille":
+        return taille
+    if critere == "resolution":
+        return info.width * info.height or None
+    if critere == "duree":
+        return info.duration if info.duration > 0 else None
+    if critere == "debit":
+        return info.kbps or None
+    if critere == "codec":
+        return info.codec.lower() or None
+    if critere == "estim":
+        # L'écart affiché par la colonne Estim : un SKIP n'en a pas.
+        est = _estimate_output_bytes(dec, taille)
+        if not est or not taille:
+            return None
+        return 0.0 if _sortie_recopiee(dec) else (est - taille) * 100 / taille
+    return None
+
+
+def trier(decisions: list[FileDecision], critere: str, decroissant: bool,
+          tailles: dict[Path, int | None],
+          cochees: set[Path] = frozenset()) -> list[FileDecision]:
+    """Les lignes dans l'ordre du critère.
+
+    Le nom garde l'ordre du dossier (alphabétique). Une valeur inconnue va en
+    fin de liste dans les deux sens ; à égalité, l'ordre du dossier tient.
+    Une ligne SKIP cochée est triée sur l'estimation qu'elle affiche, celle
+    du réencodage forcé.
+    """
+    if critere == TRI_NOM:
+        return list(reversed(decisions)) if decroissant else list(decisions)
+    valeurs = []
+    for d in decisions:
+        vue = (force_skip_to_encode(d)
+               if d.info.path in cochees
+               and d.video.action in (VideoAction.SKIP, VideoAction.STRIP_DV)
+               else d)
+        valeurs.append((d, cle_tri(vue, critere, tailles.get(d.info.path))))
+    connues   = [(d, v) for d, v in valeurs if v is not None]
+    inconnues = [d for d, v in valeurs if v is None]
+    connues.sort(key=lambda dv: dv[1], reverse=decroissant)
+    return [d for d, _v in connues] + inconnues
+
+
 # Marqueurs de ligne dans la table
 _ROW_TYPE_DIR   = "dir"
 _ROW_TYPE_FILE  = "file"
@@ -308,6 +368,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("i",         "open_fiche",         N_("Info"),     show=True),
         Binding("ctrl+d",    "delete_file",        N_("Delete"),   show=True),
         Binding("l",         "filtre_type",        N_("Filter"),   show=True),
+        Binding("o",         "trier",              N_("Sort"),     show=True),
         Binding("z",         "masquer_skip",       N_("Hide SKIP"), show=True),
         Binding("f1",       "open_dryrun",        N_("Dry run"),  show=True),
         Binding("f2",        "open_run",           N_("Encode"),   show=True),
@@ -402,6 +463,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # `_dossier` garde tous les fichiers du dossier, masqués compris.
         self._filtre       = FILTRE_TOUS
         self._masquer_skip = False
+        # Tri de la vue (S) : tient pour la session, comme le filtre.
+        self._tri          = TRI_NOM
+        self._tri_decroissant = TRIS[TRI_NOM]
         self._dossier:    list[Path] = []
         # Fichiers que l'analyse n'a pas lus, et leur cause (CR-75).
         self._illisibles: dict[Path, str] = {}
@@ -543,6 +607,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         ("i",         N_("Info")),
         ("ctrl+d",    N_("Delete")),
         ("l",         N_("Filter")),
+        ("o",         N_("Sort")),
         ("z",         N_("Hide SKIP")),
         ("backspace", N_("Up")),
         ("home",      N_("Start")),
@@ -631,6 +696,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                      n_illisibles).format(count=n_illisibles) if n_illisibles else "",
             _("Filter: {filter} ({hidden})").format(filter=filtre, hidden=masques_txt)
             if filtre else "",
+            self._libelle_tri(),
             _("Col: {column}").format(column=self.resize_col_label) + "  </>",
         ))
 
@@ -745,6 +811,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         decisions = [d for d in decisions
                      if ligne_visible(d, self._filtre, self._masquer_skip,
                                       d.info.path in self._selected)]
+        decisions = trier(decisions, self._tri, self._tri_decroissant,
+                          self._tailles, self._selected)
         for dec in tous:
             self._decisions[dec.info.path] = dec
         if epoch >= 0 and self._nav.current != self._precoche:
@@ -1375,6 +1443,38 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             ValuePickerScreen(_("Picture type"), [l for _c, l in options], courant),
             _on_pick)
 
+    def _libelle_tri(self) -> str:
+        """Le tri en place, pour la barre d'état ; rien pour l'ordre par défaut."""
+        if self._tri == TRI_NOM and not self._tri_decroissant:
+            return ""
+        sens = "▼" if self._tri_decroissant else "▲"
+        return _("Sort: {column}").format(
+            column=f"{_(self.RESIZE_LABELS[self._tri])} {sens}")
+
+    def action_trier(self) -> None:
+        """Choisit le critère de tri ; rechoisir le critère en place inverse le sens."""
+        if self._nav.is_virtual:
+            return
+        from .value_picker import ValuePickerScreen
+        cles = list(TRIS)
+        libelles = [_(self.RESIZE_LABELS[c])
+                    + (("  ▼" if self._tri_decroissant else "  ▲")
+                       if c == self._tri else "")
+                    for c in cles]
+
+        def _on_pick(idx: int | None) -> None:
+            if idx is None:
+                return
+            critere = cles[idx]
+            if critere == self._tri:
+                self._tri_decroissant = not self._tri_decroissant
+            else:
+                self._tri, self._tri_decroissant = critere, TRIS[critere]
+            self._refiltrer()
+        self.app.push_screen(
+            ValuePickerScreen(_("Sort by"), libelles, cles.index(self._tri)),
+            _on_pick)
+
     def action_masquer_skip(self) -> None:
         if self._nav.is_virtual:
             return
@@ -1490,7 +1590,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self.notify(texte, severity="warning", timeout=4)
 
     def _cochees(self) -> list[FileDecision]:
-        """Les décisions cochées, dans l'ordre du tableau : alphabétique.
+        """Les décisions cochées, dans l'ordre alphabétique, quel que soit le
+        tri de la vue (O).
 
         `_selected` est un ensemble : le parcourir tel quel donnait l'ordre des
         hachages, et un lot partait — et s'affichait — dans un ordre que rien

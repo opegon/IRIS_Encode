@@ -1,5 +1,42 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.7] — 2026-10-25
+
+### L'accueil se trie
+
+L'accueil listait les fichiers par nom seulement : retrouver les plus gros, ou
+ceux qui gagneront le plus à l'encodage, demandait de lire toute la liste.
+
+`O` (Trier) propose Fichier, Taille, Résol., Durée, Débit, Codec et Estim. Les
+grandeurs se trient de la plus grande à la plus petite, le nom et le codec de
+A à Z, l'estimation de la plus forte réduction de taille à la plus faible.
+Rechoisir le tri en place en inverse le sens. Une valeur inconnue (un `SKIP`
+n'a pas d'estimation) reste en fin de liste ; les dossiers restent en tête. Le
+tri tient pour la session, comme le filtre `L`, et la barre d'état le nomme
+(`Tri : Taille ▼`). Les fichiers cochés partent toujours dans l'ordre
+alphabétique.
+
+`O` a désormais deux sens, sur deux écrans sans lien : Trier sur l'accueil,
+OpenSubtitles dans le choix du donneur. `S` restait réservée à « Passer le
+fichier ».
+
+## [v0.9.0.6] — 2026-10-21
+
+### L'assistant laisse vérifier une mesure
+
+Une mesure refusée à l'étape 3 laissait le décalage à zéro avec « à vérifier
+avant de lancer », sans aucun moyen de le faire depuis l'assistant : il fallait
+le quitter pour le parcours libre et tout remesurer. Une mesure acceptée mais
+incertaine (« à vérifier » dans le recalage) était, elle, appliquée sans un mot.
+
+`R` ouvre désormais l'écran de recalage sur les pistes ajoutées, la dernière
+mesure déjà chargée : le curseur est sur la piste concernée, le compte rendu
+affiché, et `F` (forcer le candidat), `G`/`P` (plages), `R` (point de repère),
+`V`/`K` (écoute) et `+`/`-` sont disponibles sans remesurer. Les deux cas
+ajoutent « `R` pour vérifier » à la note de l'étape. Ajouter une piste et lancer
+restent à l'assistant : `F1`, `F2`, `F3` et `F9` ne sont pas proposés dans ce
+recalage. `⌫` ramène à l'assistant.
+
 ## [v0.9.0.5] — 2026-10-20
 
 ### Un `.ts` dont l'audio a un trou s'encode

@@ -119,6 +119,10 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "filtre_type":         N_("Shows only one image type: Dolby Vision, one "
                                   "DV profile, HDR without DV, or SDR. A checked "
                                   "row stays visible."),
+        "trier":               N_("Sorts the files by name, size, resolution, "
+                                  "duration, bitrate, codec or estimated size "
+                                  "change. Choosing the current sort again "
+                                  "reverses it. Folders stay on top."),
         "masquer_skip":        N_("Hides or shows again the SKIP files. A "
                                   "checked row stays visible."),
     },
@@ -286,6 +290,10 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "debit":    N_("Changes the target bitrate (step 2)."),
         "donneur":  N_("Presents a donor file (step 3). The offset "
                        "measurement is started and applied at once."),
+        "recaler":  N_("Opens the Sync screen on the added tracks (step 3), "
+                       "with the last measurement: force its candidate, see "
+                       "its segments, give an anchor point, listen, adjust by "
+                       "hand. Backspace returns to guided mode."),
         "retirer":  N_("Removes the last added track (step 3)."),
         "muxer":    N_("Muxes without re-encoding (step 4)."),
         "encoder":  N_("Re-encodes (step 4)."),

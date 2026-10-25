@@ -406,3 +406,10 @@ Mesuré, ffmpeg n8.1.3 : trois `.ts` IPTV fournis par l'utilisateur échouent à
 la recopie de l'AAC en MP4 (`aac_adtstoasc`) sur un paquet marqué corrompu ;
 `-fflags +discardcorrupt` les sauve. Reproduit sur un `.ts` de synthèse (136
 cas sur 143). Pages mises à jour : [[audio]], [[ffmpeg]].
+
+## [2026-10-21] ingest | Audio anglaise contre VF, et vérification depuis l'assistant (v0.9.0.6)
+
+Mesuré, code v0.9.0.5 : une E-AC-3 anglaise contre une VFF du même montage sort
+à +260 ms, confiance 0,86, tiers à 10 ms ; la VF du donneur confirme à 1,00.
+L'assistant ne permettait pas de vérifier une mesure refusée : `R` ouvre
+désormais le recalage (IE-142). Page mise à jour : [[synchronisation]].

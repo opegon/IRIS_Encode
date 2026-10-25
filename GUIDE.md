@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.0.5
+**Version**: 0.9.0.7
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -90,7 +90,7 @@ In the list, `↵` on a file opens the path:
 |---|---|
 | 1 — File | Check the file and the active profile |
 | 2 — Decision | Codec (`F6`), bitrate (`F7`), tracks to keep (`Space`) — all on the same screen, with the name of the file that will come out and the reason for the video decision |
-| 3 — External tracks | `F9` presents a file carrying a dub or subtitles, `D` removes the last one |
+| 3 — External tracks | `F9` presents a file carrying a dub or subtitles, `R` opens the Sync screen to check the offset, `D` removes the last one |
 | 4 — Launch | `↵` takes the recommended choice; `F3` forces the mux, `F2` forces the encode — even of a `SKIP` file, at the source bitrate, keeping Dolby Vision if the profile keeps it |
 | 5 — Done | The result; `↵` goes back to the list |
 
@@ -99,8 +99,15 @@ measured, and the offset found on the audio is carried over to the subtitles
 from the same file. There is nothing to start.
 
 If the measurement fails — different cut, track too short — the offset stays at
-zero and guided mode says so. Then use manual mode (`W`), where the Sync screen
-offers `G`, `P`, `C` (§ 4.5) and the anchor point `R` (§ 4.5bis).
+zero and guided mode says so, followed by "`R` to check". The same note follows
+a measurement that is applied but uncertain (§ 4.2). `R` opens the Sync screen on
+the added tracks, with that measurement already loaded: the cursor sits on the
+track concerned and the report is shown, so nothing has to be measured again.
+There, `F` forces the candidate, `G` and `P` handle the segments (§ 4.5), `R`
+gives an anchor point (§ 4.5bis), `V` and `K` let you listen, `+`/`-` adjust by
+hand. `⌫` returns to guided mode, which shows the new offset. Adding a track and
+launching stay with guided mode: `F1`, `F2`, `F3` and `F9` are not offered
+there.
 
 **In manual mode**, `↵` on a file opens the Tracks screen, and the path is the
 one described below.
@@ -135,6 +142,7 @@ through the list meanwhile; a row still waiting cannot be checked yet.
 | `J` | **Join** the checked files end to end into one (§ 2.1bis) |
 | `I` | Movie Info card: AlloCiné, then IMDB with `Tab` |
 | `L` | **Filter** by picture type: Dolby Vision (all profiles or one), HDR without DV, SDR |
+| `O` | **Sort** by name, size, resolution, duration, bitrate, codec or estimate |
 | `Z` | Hide / show the `SKIP` files |
 | `Tab` / `Shift+Tab` | Next / previous column |
 | `<` / `>` | Narrow / widen the chosen column (widths remembered) |
@@ -146,8 +154,8 @@ check it**: the forced decision replaces `← SKIP`, in orange, and a message
 recalls it. Same for a `→ HDR10` row (Dolby Vision removal): checked, it is
 re-encoded. A Dolby Vision source checked under a profile that keeps DV is
 re-encoded keeping DV (`→ HEVC → DV`), at the source bitrate. `F1` and `F2`
-with nothing checked say so instead of doing nothing. Checked files go in the
-alphabetical order of the list. A file the analysis cannot read (truncated,
+with nothing checked say so instead of doing nothing. Checked files go in
+alphabetical order, whatever the sort. A file the analysis cannot read (truncated,
 damaged) stays in the list, greyed, with the cause: `unreadable: …`; it cannot
 be checked.
 
@@ -157,6 +165,13 @@ Both add up, hold from one folder to the next during the session, and the
 status bar says how many files are hidden. Folders stay visible. **A checked
 row is never hidden**: what will go to encoding stays in sight. `A` only checks
 what is visible.
+
+**Sorting the list.** The list is sorted by name by default. `O` sorts it by
+size, resolution, duration or bitrate (largest first), by codec (A to Z), or
+by **Est.** (largest size reduction first). Choosing the current sort again
+reverses it. A file whose value is unknown — a `SKIP` file has no estimate —
+stays at the end. Folders stay on top. The sort holds from one folder to the
+next during the session, and the status bar names it (`Sort: Size ▼`).
 
 **When coming back from an encode**, the list is read again — the outputs
 appear — and the files that succeeded are unchecked. A file that failed or was

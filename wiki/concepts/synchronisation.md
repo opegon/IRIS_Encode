@@ -1,9 +1,10 @@
 ---
 type: concept
-maj: 2026-09-24
+maj: 2026-10-21
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
+  - "[[source-2026-10-21-mesure-vo-vf]]"
 ---
 
 # Synchronisation de pistes
@@ -47,6 +48,15 @@ piste corrigée**, greffée ensuite sans décalage.
 - *Un chiffre faux est pire que pas de chiffre* : sous le seuil de confiance,
   ou si les sondes se contredisent sans dériver linéairement, le résultat est
   refusé.
+- **Une autre langue ne gêne pas la mesure audio contre audio.** Une audio
+  anglaise (E-AC-3) contre une VFF (AC-3) du même montage : +260 ms, confiance
+  0,86, tiers concordants à 10 ms ; la VF du même donneur donne +260 ms à 1,00.
+  *(mesuré, v0.9.0.5)* Que ce soit la musique et les bruitages communs qui
+  portent la corrélation, malgré le filtre de bande vocale, est *supposé*.
+  Quand un donneur porte aussi une piste dans la langue de la cible, elle est
+  le meilleur témoin pour contrôler une mesure.
+- Un refus, ou une mesure à vérifier, se contrôle à l'écran de recalage —
+  y compris depuis l'assistant, par `R` (v0.9.0.6, spec § 14.0).
 
 ### Leçon : la saillance ne se compare pas d'un ratio à l'autre
 

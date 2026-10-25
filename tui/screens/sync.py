@@ -230,8 +230,19 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     }
     """
 
-    def __init__(self, decision: FileDecision) -> None:
+    # Ouvert depuis l'assistant, l'écran sert à vérifier et corriger, rien de
+    # plus : ajouter une piste et lancer restent à l'assistant, qui mesure ce
+    # qu'on ajoute et mène au lancement (IE-142).
+    _ACTIONS_HORS_ASSISTANT = frozenset({"dryrun", "run", "run_mux", "add_track"})
+
+    def __init__(self, decision: FileDecision, *, assistant: bool = False,
+                 mesures: list[tuple[ExternalTrack, SyncResult]] | None = None
+                 ) -> None:
         super().__init__()
+        self._assistant = assistant
+        # Résultats déjà obtenus par l'assistant : l'écran les reprend au lieu
+        # de faire remesurer — une mesure dure des minutes.
+        self._mesures_initiales = list(mesures or [])
         self._decision  = decision
         self._source    = decision.info.lecture
         tracks          = decision.external_tracks
@@ -266,12 +277,27 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             yield ProgressBar(total=100, show_eta=False, id="sync-bar")
         yield Static("", id="sync-hint", markup=False)
         yield KeyFooter(
-            actions=actions_ecran(self),
+            actions=self._actions_pied(),
             nav=footer_line2(back=True, nav=True, accueil=True),
         )
 
+    def _actions_pied(self) -> list[tuple[str, str]]:
+        """Les touches annoncées — sans celles que l'assistant se réserve."""
+        actions = actions_ecran(self)
+        if not self._assistant:
+            return actions
+        masquees = {b.key.split(",")[0] for b in self.BINDINGS
+                    if b.action in self._ACTIONS_HORS_ASSISTANT}
+        return [(k, lib) for k, lib in actions if k not in masquees]
+
+    def check_action(self, action: str, parameters: tuple) -> bool | None:
+        if self._assistant and action in self._ACTIONS_HORS_ASSISTANT:
+            return False
+        return True
+
     def on_mount(self) -> None:
         self._build_table()
+        self._reprendre_mesure()
         # Curseur aligné sur le champ d'ouverture : s'il pointe la langue,
         # c'est qu'une piste en manque — autant se poser dessus.
         missing = next((i for i, t in enumerate(self._tracks) if not t.language), None)
@@ -602,21 +628,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
             return                                   # piste retirée entre-temps
         if not res.ok:
             self.app.bell()
-            self._set_origin_cell(i, Text(_("failed"), style="bold dark_orange"))
-            # Le candidat refusé reste applicable : il est souvent correct
-            # malgré une confiance basse, et un décalage d'une minute est
-            # hors de portée des touches +/-.
-            self._candidate = (piste, res.best_delay_ms)
-            self._segments  = (piste, res.segments) if res.segments else None
-            if res.segments:
-                # report() porte déjà les paliers et renvoie vers 'g' :
-                # proposer d'appliquer un décalage unique serait ici trompeur.
-                self._set_hint(res.report())
-            else:
-                self._set_hint(res.report() + "\n"
-                               + _("{key} applies {delay} ms anyway — check it "
-                                   "in a player.").format(
-                                   key=touche("f"), delay=f"{res.best_delay_ms:+d}"))
+            self._proposer_refus(i, piste, res)
             return
         self._candidate = None
         self._segments  = None
@@ -628,6 +640,46 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         self._refresh_row(i)
         self._set_hint(res.report() + self._note_propagation(self._propager(i)))
         self._update_status()
+
+    def _proposer_refus(self, i: int, piste: ExternalTrack,
+                        res: SyncResult) -> None:
+        """Une mesure refusée : son candidat et ses plages restent à portée."""
+        self._set_origin_cell(i, Text(_("failed"), style="bold dark_orange"))
+        # Le candidat refusé reste applicable : il est souvent correct
+        # malgré une confiance basse, et un décalage d'une minute est
+        # hors de portée des touches +/-.
+        self._candidate = (piste, res.best_delay_ms)
+        self._segments  = (piste, res.segments) if res.segments else None
+        if res.segments:
+            # report() porte déjà les paliers et renvoie vers 'g' :
+            # proposer d'appliquer un décalage unique serait ici trompeur.
+            self._set_hint(res.report())
+        else:
+            self._set_hint(res.report() + "\n"
+                           + _("{key} applies {delay} ms anyway — check it "
+                               "in a player.").format(
+                               key=touche("f"), delay=f"{res.best_delay_ms:+d}"))
+
+    def _reprendre_mesure(self) -> None:
+        """Montre la mesure de l'assistant qui demande une vérification.
+
+        Un refus d'abord — c'est lui qui laisse une piste à 0 —, sinon une
+        mesure acceptée mais non sûre, ou porteuse d'une réserve. Le curseur se
+        pose sur la piste concernée.
+        """
+        a_voir = [(p, r) for p, r in self._mesures_initiales
+                  if not r.ok or not r.sure or r.warning]
+        a_voir.sort(key=lambda pr: pr[1].ok)          # refus en tête
+        for piste, res in a_voir:
+            i = self._rang(piste)
+            if i is None:
+                continue                              # piste retirée depuis
+            self.query_one(DataTable).move_cursor(row=i)
+            if res.ok:
+                self._set_hint(res.report())
+            else:
+                self._proposer_refus(i, piste, res)
+            return
 
     def _propager(self, i: int) -> int:
         """Reporte la mesure sur les sous-titres du même donneur, et rafraîchit.

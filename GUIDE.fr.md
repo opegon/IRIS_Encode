@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.0.5
+**Version** : 0.9.0.7
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -87,7 +87,7 @@ Dans la liste, `↵` sur un fichier ouvre le parcours :
 |---|---|
 | 1 — Fichier | Vérifier le fichier et le profil actif |
 | 2 — Décision | Codec (`F6`), débit (`F7`), pistes à garder (`Espace`) — tout sur le même écran, et le nom du fichier qui sortira |
-| 3 — Pistes externes | `F9` présente un fichier portant une VF ou des sous-titres, `D` retire la dernière |
+| 3 — Pistes externes | `F9` présente un fichier portant une VF ou des sous-titres, `R` ouvre le recalage pour vérifier le décalage, `D` retire la dernière |
 | 4 — Lancer | `↵` prend le choix recommandé ; `F3` force le mux, `F2` force l'encodage — même d'un fichier en `SKIP`, au débit de la source, en gardant le Dolby Vision si le profil le garde |
 | 5 — Terminé | Le résultat, `↵` ramène à la liste |
 
@@ -96,8 +96,14 @@ est mesurée, et le décalage trouvé sur l'audio est reporté sur les sous-titr
 venus du même fichier. Vous n'avez rien à lancer.
 
 Si la mesure échoue — montage différent, piste trop courte — le décalage reste à
-zéro et l'assistant le dit. Passez alors par le parcours libre (`W`), où l'écran
-de recalage offre `G`, `P`, `C` (§ 4.5) et le point de repère `R` (§ 4.5bis).
+zéro et l'assistant le dit, suivi de « `R` pour vérifier ». La même mention suit
+une mesure appliquée mais incertaine (§ 4.2). `R` ouvre le recalage sur les
+pistes ajoutées, la mesure déjà chargée : le curseur est sur la piste concernée
+et le compte rendu affiché, rien n'est à remesurer. On y trouve `F` pour forcer
+le candidat, `G` et `P` pour les plages (§ 4.5), `R` pour le point de repère
+(§ 4.5bis), `V` et `K` pour écouter, `+`/`-` pour régler à la main. `⌫` revient
+à l'assistant, qui affiche le nouveau décalage. Ajouter une piste et lancer
+restent à l'assistant : `F1`, `F2`, `F3` et `F9` n'y sont pas proposés.
 
 **En mode manuel**, `↵` sur un fichier ouvre l'écran des pistes, et le parcours
 reste celui décrit ci-dessous.
@@ -133,6 +139,7 @@ coche pas.
 | `J` | **Joindre** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
 | `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |
 | `L` | **Filtrer** par type d'image : Dolby Vision (tous profils ou un seul), HDR sans DV, SDR |
+| `O` | **Trier** par nom, taille, résolution, durée, débit, codec ou estimation |
 | `Z` | Masquer / afficher les fichiers `SKIP` |
 | `Tab` / `Maj+Tab` | Colonne suivante / précédente |
 | `<` / `>` | Rétrécir / élargir la colonne choisie (largeurs mémorisées) |
@@ -145,7 +152,7 @@ chose pour une ligne `→ HDR10` (retrait du Dolby Vision) : cochée, elle est
 réencodée. Une source Dolby Vision cochée sous un profil qui garde le DV est
 réencodée en gardant le DV (`→ HEVC → DV`), au débit de la source.
 `F1` et `F2` sans rien de coché le disent au lieu de ne rien faire.
-Les fichiers cochés partent dans l'ordre alphabétique de la liste. Un fichier
+Les fichiers cochés partent dans l'ordre alphabétique, quel que soit le tri. Un fichier
 que l'analyse ne lit pas (tronqué, abîmé) reste dans la liste, grisé, avec sa
 cause : `illisible : …` ; il ne se coche pas.
 
@@ -155,6 +162,14 @@ fichiers `SKIP`. Les deux se cumulent, tiennent d'un dossier à l'autre pendant
 la session, et la barre d'état dit combien de fichiers sont masqués. Les
 dossiers restent affichés. **Une ligne cochée ne se masque jamais** : ce qui
 partira à l'encodage reste sous les yeux. `A` ne coche que ce qui est visible.
+
+**Trier la liste.** La liste est triée par nom par défaut. `O` la trie par
+taille, résolution, durée ou débit (du plus grand au plus petit), par codec
+(de A à Z), ou par **Estim.** (de la plus forte réduction de taille à la plus
+faible). Rechoisir le tri en place en inverse le sens. Un fichier dont la
+valeur est inconnue — un fichier `SKIP` n'a pas d'estimation — reste en fin de
+liste. Les dossiers restent en tête. Le tri tient d'un dossier à l'autre pendant
+la session, et la barre d'état le nomme (`Tri : Taille ▼`).
 
 **Au retour d'un encodage**, la liste est relue — les sorties apparaissent — et
 les fichiers réussis sont décochés. Un fichier en échec ou interrompu reste

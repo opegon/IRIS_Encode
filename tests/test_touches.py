@@ -134,6 +134,8 @@ def test_les_lettres_tranchees_nont_quun_sens():
     UX-12 : `M` voulait dire Mesurer sur le recalage et Muxer dans
     l'assistant ; `S` Plages ou Passer le fichier ; `A` Tout ou Forcer.
     Tranché le 2026-09-30 : chacune de ces lettres n'a plus qu'une action.
+    `O` en est sortie le 2026-10-25 : Trier sur l'accueil, OpenSubtitles dans
+    le choix du donneur — deux écrans sans lien (IE-143).
     """
     import collections, importlib, inspect, pkgutil
     import tui.screens as ecrans
@@ -147,7 +149,7 @@ def test_les_lettres_tranchees_nont_quun_sens():
                 cle, action = (b.key, b.action) if not isinstance(b, tuple) else b[:2]
                 for k in cle.split(","):
                     sens[k].add(action)
-    for lettre in "msafgo":
+    for lettre in "msafg":
         assert len(sens[lettre]) <= 1, (lettre, sens[lettre])
 
 

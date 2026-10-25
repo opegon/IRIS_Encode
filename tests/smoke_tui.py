@@ -487,6 +487,33 @@ async def scenario_external_tracks() -> None:
 
             vf.stretch = None
 
+            # Le recalage ouvert depuis l'assistant (IE-142) : il reprend la
+            # mesure refusee sans remesurer, et ne lance rien lui-meme.
+            from core.sync import SyncResult as _SR
+            from tui.screens.sync import SyncScreen as _Sync
+            from tui.widgets.footer import KeyFooter as _Pied
+            _refus = _SR(0, None, 0.1, False, "x", best_delay_ms=2600,
+                         floor=0.25, n_events=500, speech_ratio=0.4)
+            app.push_screen(_Sync(sync._decision, assistant=True,
+                                  mesures=[(vf, _refus)]))
+            await pilot.pause(0.8)
+            verif = app.screen
+            assert verif is not sync and verif._candidate == (vf, 2600)
+            pied = str(verif.query_one(_Pied).query_one("#footer-body", Static).render())
+            assert _("Encode") not in pied and _("Force") in pied, pied
+            await pilot.press("f2")
+            await pilot.pause(0.5)
+            assert app.screen is verif, type(app.screen).__name__
+            await pilot.press("f")
+            await pilot.pause(0.3)
+            assert vf.delay_ms == 2600, vf.delay_ms
+            await pilot.press("backspace")
+            await pilot.pause(0.5)
+            assert app.screen is sync, type(app.screen).__name__
+            vf.delay_ms = -1100
+            print("[11b2] Recalage depuis l'assistant : mesure reprise, F force, "
+                  "F2 sans effet, retour par backspace")
+
             # Un decalage negatif ne doit jamais sortir en -itsoffset : ffmpeg
             # decalerait tout le fichier vers l'avant et la video ne
             # commencerait plus a zero, ce que des TV refusent de lire.

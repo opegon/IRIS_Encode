@@ -11,7 +11,7 @@ décidé, et l'étape 2 nomme le fichier qui sortira.
 |---|---|
 | 1 — Fichier | Le nom du fichier et le profil actif. Rien à décider |
 | 2 — Décision | Codec, débit et pistes conservées, sur un seul écran |
-| 3 — Pistes externes | Présenter un donneur. La mesure est lancée et appliquée aussitôt |
+| 3 — Pistes externes | Présenter un donneur. La mesure est lancée et appliquée aussitôt ; `R` ouvre le recalage pour la vérifier |
 | 4 — Lancer | Muxer ou encoder — les deux sont toujours offerts |
 | 5 — Terminé | Le résultat, puis retour à l'accueil |
 
@@ -44,7 +44,7 @@ from core.decision import (ACTION_CYCLE, AudioAction,
                            choisir_codec, decide_audio, force_skip_to_encode,
                            sortie_prevue, libelle_copie)
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
-from core.sync import measure_external_track
+from core.sync import SyncResult, measure_external_track
 
 from ..common import avertir_h264_sdr
 from ..common import (confier_a_la_file, langue_affichee, nom_codec, bitrate_picker_config, codec_picker_opts, fmt_duration,
@@ -85,7 +85,7 @@ _TITRES = {
 _TOUCHES_ETAPE.update({
     Etape.FICHIER:  ("enter",),
     Etape.DECISION: ("space", "f6", "f7", "enter"),
-    Etape.PISTES:   ("f9", "d", "enter"),
+    Etape.PISTES:   ("f9", "r", "d", "enter"),
     Etape.LANCER:   ("enter", "f3", "f2"),
     Etape.TERMINE:  ("enter",),
 })
@@ -144,6 +144,9 @@ class WizardScreen(TableNavMixin, Screen):
         Binding("f6",        "codec",    N_("Codec"),   show=True,  priority=True),
         Binding("f7",        "debit",    N_("Bitrate"),   show=True,  priority=True),
         Binding("f9",        "donneur",  N_("Add"), show=True,  priority=True),
+        # `R` : l'écran de recalage, seul endroit où une mesure se vérifie et
+        # se corrige (IE-142).
+        Binding("r",         "recaler",  N_("Sync"),   show=True,  priority=True),
         Binding("d",         "retirer",  N_("Remove"), show=True,  priority=True),
         # F2/F3 comme sur le recalage : `M` y veut dire Mesurer (UX-12).
         Binding("f2",        "encoder",  N_("Encode"), show=True,  priority=True),
@@ -159,6 +162,8 @@ class WizardScreen(TableNavMixin, Screen):
         self._i      = 0
         self._lignes: list[tuple[str, int]] = []
         self._mesure = False
+        # Dernier résultat de chaque piste mesurée, repris par le recalage
+        self._resultats: list[tuple] = []
         self._bilan  = ""            # ce que l'étape 5 annonce
         self._produit: Optional[Path] = None   # le fichier qu'un mux a écrit
 
@@ -534,6 +539,38 @@ class WizardScreen(TableNavMixin, Screen):
 
         pick_external_tracks(self, self._dec, _ajoutees)
 
+    def action_recaler(self) -> None:
+        """Ouvre le recalage sur les pistes ajoutées, avec la dernière mesure.
+
+        L'assistant ne sait qu'appliquer une mesure acceptée. Un refus, ou un
+        résultat à vérifier, demande les outils de l'écran de recalage :
+        candidat forcé, plages, point de repère, écoute, réglage à la main.
+        """
+        if self._etape != Etape.PISTES or self._mesure:
+            return
+        if not self._dec.external_tracks:
+            self.query_one("#wiz-hint", Static).update(
+                _("No track added yet — {key} to present a file.").format(
+                    key=touche("f9")))
+            return
+        from .sync import SyncScreen
+
+        def _retour(_pistes) -> None:
+            # Un résultat ne reste à reprendre que si la piste en est encore
+            # là : décalage changé à la main, candidat appliqué, piste retirée
+            # — il ne décrit plus rien.
+            pistes = self._dec.external_tracks
+            self._resultats = [
+                (t, r) for t, r in self._resultats
+                if any(t is p for p in pistes)
+                and t.sync_origin == (SyncOrigin.MEASURED if r.ok
+                                      else SyncOrigin.NONE)]
+            self._afficher()
+
+        self.app.push_screen(
+            SyncScreen(self._dec, assistant=True, mesures=self._resultats),
+            _retour)
+
     def action_retirer(self) -> None:
         if self._etape != Etape.PISTES or self._mesure:
             return
@@ -562,6 +599,7 @@ class WizardScreen(TableNavMixin, Screen):
         cible  = self._dec.info.lecture
         duree  = self._dec.info.duration
         notes: list[str] = []
+        resultats: list[tuple[object, SyncResult]] = []
 
         # L'audio d'abord : c'est elle qui sert de référence aux sous-titres.
         ordre = sorted(indices,
@@ -588,6 +626,11 @@ class WizardScreen(TableNavMixin, Screen):
                 notes.append(_("{file}: cannot measure ({error})").format(
                     file=t.source_path.name, error=texte_erreur(e)))
                 continue
+            resultats.append((t, res))
+            # Une mesure à vérifier le dit, et dit où : l'assistant ne montre
+            # pas le compte rendu, le recalage si (IE-142).
+            a_verifier = (" — " + _("{key} to check").format(key=touche("r"))
+                          if not res.sure or res.warning else "")
             if res.ok:
                 t.delay_ms    = res.delay_ms
                 t.stretch     = res.stretch
@@ -601,14 +644,20 @@ class WizardScreen(TableNavMixin, Screen):
                              # des durées trop écartées pour être le même
                              # montage. La taire ici la perdrait : l'assistant
                              # ne montre pas le compte rendu détaillé.
-                             + (f" — ⚠ {res.warning}" if res.warning else ""))
+                             + (f" — ⚠ {res.warning}" if res.warning else "")
+                             + a_verifier)
             else:
                 notes.append(_("{language}: {reason} — offset left at 0, check "
                                "it before starting").format(
-                    language=langue_affichee(t.language), reason=res.reason))
-        self.app.call_from_thread(self._mesure_finie, notes)
+                    language=langue_affichee(t.language), reason=res.reason)
+                    + a_verifier)
+        self.app.call_from_thread(self._mesure_finie, notes, resultats)
 
-    def _mesure_finie(self, notes: list[str]) -> None:
+    def _mesure_finie(self, notes: list[str],
+                      resultats: list[tuple[object, SyncResult]] = ()) -> None:
+        nouvelles = [t for t, _r in resultats]
+        self._resultats = [(t, r) for t, r in self._resultats
+                           if not any(t is n for n in nouvelles)] + list(resultats)
         self._mesure = False
         self._jauge(False)
         self._afficher()

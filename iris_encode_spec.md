@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.5 — document de référence courant
-**Date** : 2026-10-20
+**Version** : 0.9.0.7 — document de référence courant
+**Date** : 2026-10-25
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -2329,6 +2329,21 @@ Conventions transverses :
   ligne cochée. Le filtre vit sur l'écran (session, pas `config.toml`) ;
   `_dossier` garde tous les fichiers du dossier pour pouvoir refiltrer sans
   rescanner. La barre d'état nomme le filtre et compte les masqués.
+- **Tri de l'accueil** (v0.9.0.7). `O` choisit un critère parmi les colonnes
+  Fichier, Taille, Résol., Durée, Débit, Codec et Estim. (`browser.TRIS`, qui
+  porte le sens par défaut : décroissant pour les grandeurs, croissant pour le
+  nom, le codec et l'écart estimé en % — le plus fort gain d'abord) ;
+  rechoisir le critère en place inverse le sens. `trier` s'applique aux
+  lignes visibles dans `_populate_table`, après le filtre : le nom garde
+  l'ordre de `list_videos`, une valeur inconnue (`cle_tri` → `None` : taille
+  non lue, durée nulle, SKIP sans estimation) reste en fin dans les deux sens,
+  et une ligne SKIP ou « retrait DV » cochée est triée sur l'estimation de son
+  réencodage forcé. Les dossiers restent en tête ; les lignes en attente
+  d'analyse gardent l'ordre du dossier jusqu'à la vue finale. Le tri vit sur
+  l'écran (session) ; la barre d'état le nomme hors ordre par défaut. L'ordre
+  du lot (`F1`/`F2`) reste alphabétique. `O` sert aussi OpenSubtitles dans le
+  choix du donneur : elle sort des lettres à sens unique (`S` est « Passer le
+  fichier »).
 - **Un afficheur qui montre un nom se construit en `markup=False`.** `Static`
   interprète par défaut ce qui ressemble à une balise entre crochets, et la
   convention de nommage du projet jusqu'à la v0.8.8.10 — `_[mux]`, `_[hevc]`,
@@ -2380,7 +2395,7 @@ demande aucune attention.
 |---|---|---|
 | 1 — Fichier | Le nom du fichier, ses caractéristiques, le profil actif | `↵` |
 | 2 — Décision | Codec, débit et pistes conservées, sur un seul écran | `Espace` `F6` `F7` `↵` |
-| 3 — Pistes externes | Présenter un donneur ; la mesure suit aussitôt | `F9` `D` `↵` |
+| 3 — Pistes externes | Présenter un donneur ; la mesure suit aussitôt ; la vérifier au recalage | `F9` `R` `D` `↵` |
 | 4 — Lancer | Muxer ou encoder — **les deux toujours offerts** | `F3` `F2` `↵` |
 | 5 — Terminé | Le résultat, puis retour à l'accueil | `↵` |
 
@@ -2422,6 +2437,19 @@ décalage reporté sur les sous-titres du même donneur par
 `muxer.propager_recalage()` — leur bon décalage *est* le sien. Une mesure
 refusée laisse le décalage à zéro et le dit, plutôt que d'appliquer un candidat
 non confirmé.
+
+**Une mesure à vérifier se vérifie au recalage** (v0.9.0.6, IE-142). Un refus,
+ou une mesure acceptée mais non sûre (`SyncResult.sure` faux, ou `warning`
+posé), ajoute « `R` pour vérifier » à la note de l'étape 3 — la mesure non sûre
+était jusque-là appliquée sans un mot. L'assistant garde le dernier résultat de
+chaque piste (`WizardScreen._resultats`) ; `R` ouvre `SyncScreen(decision,
+assistant=True, mesures=…)`, qui le reprend sans remesurer
+(`_reprendre_mesure` : refus d'abord, curseur posé sur la piste, candidat `F` et
+plages `G` armés comme après une mesure faite sur place). Dans ce parcours,
+`check_action` refuse `F1`, `F2`, `F3` et `F9` et le pied de page ne les annonce
+pas : ajouter et lancer restent à l'assistant, qui mesure ce qu'on ajoute. Au
+retour, un résultat n'est gardé que si sa piste est restée dans l'état où la
+mesure l'a laissée (`MEASURED` si acceptée, `NONE` si refusée).
 
 **Les deux lancements sont toujours proposés.** `↵` prend le recommandé — mux si
 rien n'est à réencoder mais qu'il y a à greffer, encodage sinon — et `F3` / `F2`
@@ -3589,6 +3617,8 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.7 | 2026-08-27 | **`audio_hd_codec`** : transcodage des pistes TrueHD et DTS en AC3/E-AC3 **au débit présent dans la piste** (§ 8.5), plafonds d'encodeur mesurés, repli 7.1 → 5.1 annoncé · débit réel lu via les tags `BPS`/`NUMBER_OF_BYTES` quand le flux n'en déclare pas · **DTS-HD MA enfin reconnu sans perte** (lecture de `AudioTrack.profile`) |
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
+| 0.9.0.7 | 2026-10-25 | **Tri de l'accueil** (§ 14) : `O` trie par nom, taille, résolution, durée, débit, codec ou estimation ; rechoisir inverse le sens ; valeur inconnue en fin · `tests/test_tri_accueil.py` |
+| 0.9.0.6 | 2026-10-21 | **L'assistant ouvre le recalage** (§ 14.0, IE-142) : `R` à l'étape 3 ouvre `SyncScreen` en mode assistant, pré-chargé de la dernière mesure ; refus et mesure non sûre renvoient vers `R` · `tests/test_assistant_recalage.py` |
 | 0.9.0.5 | 2026-10-20 | **Flux MPEG abîmés** (§ 15, Extensions) : une source `.ts .m2ts .mts .mpg .mpeg .vob` est lue avec `-fflags +discardcorrupt` — un paquet AAC tronqué faisait échouer `aac_adtstoasc` et l'encodage entier · `tests/test_flux_mpeg_abimes.py` |
 | 0.9.0.4 | 2026-10-20 | **« F11 Plein écran » dans l'en-tête** (§ 14.7, à côté de « H Aide ») : affiché seulement sous Windows Terminal (`WT_SESSION`), qui gère la bascule lui-même · `tests/test_entete_plein_ecran.py` |
 | 0.9.0.3 | 2026-10-19 | **Ouverture immédiate d'un dossier** (§ 14.1, Scan progressif) : la table se vide à l'entrée, les fichiers apparaissent dès le listage en attente puis se remplissent au fil de l'analyse (relevé toutes les 0,25 s), jauge `#scan-bar` ; curseur gardé par la vue finale ; listage par `os.scandir` · `tests/test_accueil_progressif.py` |

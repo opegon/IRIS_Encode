@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.10 — document de référence courant
+**Version** : 0.9.0.11 — document de référence courant
 **Date** : 2026-10-28
 **Statut** : stable
 
@@ -1856,10 +1856,12 @@ supposerait de supprimer du contenu.
 Détection GPU NVIDIA via `nvidia-smi`. Sans NVIDIA sur Windows, `avec_qsv()`
 (appelé au lancement, une fois ffmpeg connu) essaie d'ouvrir `hevc_qsv` sur une
 image : s'il s'ouvre, profil `GPU.INTEL` ; sinon, fallback CPU. Rien n'est
-déduit du modèle de puce. Le profil QSV décode au processeur (`-hwaccel` non
-mesuré sur Intel) ; `regle_debit` lui applique la marge de NVENC, sans `-rc`
-(non mesuré). Un `av1_qsv` refusé par la puce est annoncé par le sondage
-général, comme `av1_nvenc` avant Ada.
+déduit du modèle de puce. Le profil QSV n'a pas de `hwaccel` générique : son
+décodage matériel passe par la chaîne tout-puce (§ 12.1), et seulement là.
+`regle_debit` lui applique la marge de NVENC, sans `-rc` — mesuré sur un
+i5-1135G7 : 93-96 % de la cible, contre 74 % avec un plafond égal à la cible
+et 91-95 % à 2 ×. Un `av1_qsv` refusé par la puce est annoncé par le sondage
+général, comme `av1_nvenc` avant Ada, avec un message propre à Quick Sync.
 
 ---
 
@@ -1937,7 +1939,27 @@ une police de repli (CR-20).
 | **DV copy** | `dv_action == DV`, RPU non réinjectable | `-c:v copy` | Pas de réencodage, pas de hwaccel |
 | **HDR10 quality** | `dv_action == HDR10` + `hdr10_quality == "quality"` | `libx265` CPU | Métadonnées via `-x265-params`, `pix_fmt yuv420p10le` |
 | **SDR tone map** | `dv_action == SDR` | nvenc / libx265 (CPU) | Filtre `zscale+tonemap`, pas de hwaccel |
-| **Standard** | Tous autres cas | nvenc / libx265 / libx264 / av1_nvenc | hwaccel si disponible |
+| **Tout-puce Intel** | profil `GPU.INTEL`, `filtre_tout_puce()` non nul | `hevc_qsv` / `h264_qsv` / `av1_qsv` | `-hwaccel qsv -hwaccel_output_format qsv`, `-vf vpp_qsv=[w=…:h=…:]format=nv12\|p010le`, pas de `-pix_fmt`, `-aspect l:h` si réduit |
+| **Standard** | Tous autres cas | nvenc / libx265 / libx264 / av1_nvenc / qsv | hwaccel si disponible |
+
+**Tout-puce Intel** (v0.9.0.11, IE-147). Décodage, réduction et encodage sans
+quitter la puce. Mesuré sur un i5-1135G7, 60 s de 4K HDR10 → 1080p :
+**18 s**, contre 60 s décodé au processeur et 76 s avec `-hwaccel d3d11va`
+(chaque image revient au processeur pour `scale`). `-hwaccel qsv` seul échoue :
+les images restent en mémoire de la puce, et `scale` ne les lit pas. HDR10
+conservé (BT.2020, PQ, écran de mastering), image vérifiée à l'œil.
+`filtre_tout_puce()` n'y envoie que le cas courant : `ENCODE_HEVC/H264/AV1`,
+ni SDR, ni Dolby Vision (`dv_action` ou `dv_profile`), ni `hdr10_quality`, ni
+désentrelacement, ni pixels non carrés, ni dimension impaire, et une source
+de `_DECODABLE_QSV` (HEVC / VP9 / AV1 en 4:2:0 8 ou 10 bits, H264 4:2:0 8
+bits — `VideoInfo.pix_fmt`, vide = inconnu = processeur). Le reste garde le
+chemin processeur. `dimensions_reduites()` reproduit l'arrondi de `scale`
+(au pair le plus proche, mi-chemin vers le haut ; 70 tailles comparées) :
+la puce et le processeur sortent les mêmes dimensions. `-aspect` remplace le
+`setsar=1` : sans lui, une mise à l'échelle matérielle garde le SAR
+compensateur (192079:192000 pour 3832×1600 → 1920×802, mesuré avec
+`scale_cuda`), que Jellyfin transcode. `sortie_10_bits()` lit alors le
+`format=p010le` de `vpp_qsv`.
 
 **Passe audio préalable.** Quand une invocation ffmpeg décode une piste audio
 sans perte *et* mappe un flux de sous-titres dont le premier repère arrive
@@ -3634,6 +3656,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.0.11 | 2026-10-28 | **Tout-puce Intel** (§ 11, § 12.1, IE-147) : `filtre_tout_puce()`, `-hwaccel qsv -hwaccel_output_format qsv` + `vpp_qsv`, 18 s contre 60 pour 60 s de 4K HDR10 → 1080p ; `dimensions_reduites()`, `-aspect` ; `VideoInfo.pix_fmt` · `tests/test_qsv.py` |
 | 0.9.0.10 | 2026-10-28 | **La pause se voit** (§ 12.2) : `⏸ en pause` sur la ligne, barre d'état et bandeau de l'en-tête ; `pause()`/`resume()` rendent l'état obtenu, une suspension refusée est signalée · `tests/test_arret_encodage.py` ; **refus AV1 QSV** (§ 14.0) : message propre à Quick Sync (Arc, Meteor Lake) au lieu de NVENC · `tests/test_qsv.py` |
 | 0.9.0.9 | 2026-10-28 | **Intel Quick Sync** (§ 11, § 14) : sans NVIDIA, `avec_qsv()` sonde `hevc_qsv` au lancement et bascule sur `hevc_qsv`/`h264_qsv`/`av1_qsv` ; sonde 10 bits étendue à QSV ; `p010le` pour la passe DV · `tests/test_qsv.py` |
 | 0.9.0.7 | 2026-10-25 | **Tri de l'accueil** (§ 14) : `O` trie par nom, taille, résolution, durée, débit, codec ou estimation ; rechoisir inverse le sens ; valeur inconnue en fin · `tests/test_tri_accueil.py` |

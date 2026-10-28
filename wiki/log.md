@@ -442,3 +442,10 @@ sortie. Le HDR10 passe entier à travers `hevc_qsv`. Page : [[codecs-video]].
 Observé : `av1_qsv` refusé en 8 et 10 bits (« Current codec type is
 unsupported »). Le message de refus d'IRIS citait NVENC : corrigé en
 v0.9.0.10. Page : [[codecs-video]].
+
+## [2026-10-28] ingest | Décodage matériel Quick Sync (v0.9.0.11)
+
+Observé sur le portable : `d3d11va` ralentit (76 s contre 60), la chaîne
+tout-puce (`vpp_qsv`) accélère (18 s), HDR10 conservé. Mesuré ici : SAR
+compensateur d'une mise à l'échelle matérielle, arrondi de `scale`. Pages
+mises à jour : [[codecs-video]], [[ffmpeg]].

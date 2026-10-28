@@ -6,6 +6,7 @@ sources:
   - "[[source-changelog]]"
   - "[[source-2026-09-26-nvenc-pilote]]"
   - "[[source-2026-10-28-qsv-portable]]"
+  - "[[source-2026-10-28-qsv-decodage]]"
 ---
 
 # Codecs vidéo
@@ -57,6 +58,12 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
   *(observé sur le portable de l'utilisateur, ffmpeg de son PATH)* Le ffmpeg
   fourni contient les encodeurs QSV, pas SVT-AV1 : l'AV1 sans matériel passe
   par libaom. *(mesuré, gyan.dev 8.1.2)*
+- **Intel : tout sur la puce, ou le décodage au processeur.** Décoder sur la
+  puce puis réduire au processeur fait faire l'aller-retour à chaque image :
+  `d3d11va` est *plus lent* (76 s contre 60 s pour 60 s de 4K HDR10 →
+  1080p). Décoder, réduire avec `vpp_qsv` et encoder sans quitter la puce :
+  **18 s**, HDR10 conservé. *(observé, i5-1135G7)* IRIS le fait pour le cas
+  courant (v0.9.0.11) ; voir [[ffmpeg#Mise à l'échelle matérielle et SAR]].
 - **`av1_nvenc` n'a pas d'option `-profile`.** La passer fait refuser la
   commande avant même d'interroger la carte. *(mesuré, v0.8.1.22)*
 - **libx265 en 4K : 0,78 image/s**, soit ~70 h pour un long métrage.

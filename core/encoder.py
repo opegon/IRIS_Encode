@@ -16,7 +16,7 @@ from typing import Callable, Iterator, Optional
 
 from .decision import AudioAction, DVAction, FileDecision, VideoAction
 from .i18n import N_, ErreurAffichable, _
-from .platform import PlatformProfile
+from .platform import GPU, PlatformProfile
 
 # Chemin de ffmpeg, posé au démarrage. Même raison que pour ffprobe : le
 # preflight installe les binaires dans ./bin/ sans toucher au PATH, et les
@@ -226,11 +226,19 @@ def encodeur_de(cmd: list[str]) -> Optional[str]:
 
 
 def sortie_10_bits(cmd: list[str]) -> bool:
-    """La commande encode-t-elle en 10 bits (sortie HDR) ?"""
-    try:
-        return cmd[cmd.index("-pix_fmt") + 1] in ("p010le", "yuv420p10le")
-    except (ValueError, IndexError):
-        return False
+    """La commande encode-t-elle en 10 bits (sortie HDR) ?
+
+    La chaîne tout-puce (`filtre_tout_puce`) ne passe pas `-pix_fmt` : le
+    format y est celui que `vpp_qsv` rend.
+    """
+    if "-pix_fmt" in cmd:
+        i = cmd.index("-pix_fmt") + 1
+        return i < len(cmd) and cmd[i] in ("p010le", "yuv420p10le")
+    if "-vf" in cmd:
+        i = cmd.index("-vf") + 1
+        return (i < len(cmd) and cmd[i].startswith("vpp_qsv")
+                and "format=p010le" in cmd[i])
+    return False
 
 
 def encodeur_a_controler(cmd: list[str]) -> Optional[str]:
@@ -451,6 +459,108 @@ def audio_args(included_audio: list, debut: int = 0) -> list[str]:
     return args
 
 
+# Ce que le décodeur Quick Sync lit à coup sûr, de Tiger Lake à aujourd'hui :
+# codec → formats de pixels. Le H264 10 bits (Hi10P, fréquent en animation)
+# et le 4:2:2 n'y sont pas ; une source hors de cette table reste décodée par
+# le processeur, sans quoi ffmpeg échouerait au lieu de se replier.
+_DECODABLE_QSV: dict[str, frozenset[str]] = {
+    "h264": frozenset({"yuv420p", "yuvj420p"}),
+    "hevc": frozenset({"yuv420p", "yuv420p10le"}),
+    "vp9":  frozenset({"yuv420p", "yuv420p10le"}),
+    "av1":  frozenset({"yuv420p", "yuv420p10le"}),
+}
+
+
+def dimensions_reduites(largeur: int, hauteur: int,
+                        cible_l: int, cible_h: int) -> tuple[int, int]:
+    """Les dimensions de `scale=…:force_original_aspect_ratio=decrease:
+    force_divisible_by=2` : proportions gardées, tenant dans la cible, paires.
+
+    Même arrondi que ffmpeg — la valeur exacte au pair le plus proche,
+    sans dépasser la cible : 3832×1600 donne 1920×802, comme `scale`. Une
+    dimension différente du chemin processeur changerait l'image produite.
+    """
+    from fractions import Fraction
+
+    def pair(v: Fraction, plafond: int) -> int:
+        n = int(v / 2 + Fraction(1, 2)) * 2   # au pair le plus proche, mi-chemin vers le haut
+        return n - 2 if n > plafond else n
+
+    if largeur * cible_h > hauteur * cible_l:
+        return cible_l, pair(Fraction(cible_l * hauteur, largeur), cible_h)
+    return pair(Fraction(cible_h * largeur, hauteur), cible_l), cible_h
+
+
+def _encodeur_et_format(info, vid, platform: PlatformProfile) -> tuple[str, str, str]:
+    """(encodeur, format de pixels, profil) d'un encodage standard.
+
+    Une sortie HDR10 en 8 bits, c'est du banding garanti dans les dégradés :
+    la courbe PQ étale 10 bits de source sur 256 niveaux. HEVC et AV1 savent
+    encoder en 10 bits, H264 non (pas de main10 chez NVENC) — une source HDR
+    ramenée en H264 reste donc en 8 bits, et cela ne concerne que les cibles
+    sous 1080p.
+    """
+    is_av1 = (vid.action == VideoAction.ENCODE_AV1)
+    if vid.action == VideoAction.ENCODE_HEVC:
+        encoder, prof_str = platform.encoder_hevc, "main"
+    elif is_av1:
+        encoder, prof_str = platform.encoder_av1, "main"
+    else:
+        encoder, prof_str = platform.encoder_h264, "high"
+    hdr10_out = (
+        vid.dv_action == DVAction.HDR10
+        or (info.is_hdr and vid.dv_action != DVAction.SDR)
+    )
+    pix_fmt = "yuv420p"
+    if hdr10_out and vid.action in (VideoAction.ENCODE_HEVC,
+                                    VideoAction.ENCODE_AV1):
+        pix_fmt = "yuv420p10le"
+        if not is_av1:
+            prof_str = "main10"
+    return encoder, pix_fmt, prof_str
+
+
+def filtre_tout_puce(decision: FileDecision,
+                     platform: PlatformProfile) -> Optional[str]:
+    """Le filtre `vpp_qsv` d'un encodage tenu entièrement sur la puce Intel,
+    ou None quand il ne s'applique pas.
+
+    Décoder sur la puce puis filtrer au processeur fait aller et venir chaque
+    image : mesuré sur un i5-1135G7 (4K HDR10 → 1080p, 60 s de film), 76 s
+    avec `d3d11va` contre 60 s tout au processeur. Décoder, réduire
+    (`vpp_qsv`) et encoder sans quitter la puce : 18 s, HDR10 et écran de
+    mastering conservés (IE-147).
+
+    Seul le cas courant y passe — changer la taille, ou rien. Le reste garde
+    ses filtres au processeur : conversion en SDR, désentrelacement, pixels
+    non carrés, dimension impaire, Dolby Vision (RPU, couches), et toute
+    source que le décodeur ne lit pas à coup sûr (`_DECODABLE_QSV`). Le mode
+    HDR10 « quality » (libx265) est écarté par `build_command`, seul à
+    décider de ce mode.
+    """
+    info, vid = decision.info, decision.video
+    if platform.gpu != GPU.INTEL or vid.action not in (
+            VideoAction.ENCODE_HEVC, VideoAction.ENCODE_H264,
+            VideoAction.ENCODE_AV1):
+        return None
+    if (vid.dv_action in (DVAction.SDR, DVAction.DV)
+            or info.dv_profile is not None
+            or decision.desentrelace
+            or info.pixels_non_carres
+            or info.width % 2 or info.height % 2
+            or info.pix_fmt not in _DECODABLE_QSV.get(info.codec, ())):
+        return None
+    encoder, pix_fmt, _profil = _encodeur_et_format(info, vid, platform)
+    if "qsv" not in encoder:
+        return None
+    fmt = "p010le" if pix_fmt == "yuv420p10le" else "nv12"
+    if info.width > vid.target_width or info.height > vid.target_height:
+        l, h = dimensions_reduites(info.width, info.height,
+                                   vid.target_width, vid.target_height)
+        return f"vpp_qsv=w={l}:h={h}:format={fmt}"
+    return f"vpp_qsv=format={fmt}"
+
+
 def regle_debit(encodeur: str, cible: int) -> list[str]:
     """Les options de débit d'un encodage, d'après l'encodeur **effectif**.
 
@@ -578,7 +688,13 @@ def build_command(
         and not preserve_video
         and not hdr10_quality
     )
-    if use_hwaccel:
+    # Intel : décodage, mise à l'échelle et encodage sur la puce, quand le
+    # fichier s'y prête (`filtre_tout_puce`). Les images restent dans sa
+    # mémoire : aucun filtre processeur ne peut alors s'intercaler.
+    tout_puce = None if hdr10_quality else filtre_tout_puce(decision, platform)
+    if tout_puce is not None:
+        cmd += ["-hwaccel", "qsv", "-hwaccel_output_format", "qsv"]
+    elif use_hwaccel:
         cmd += ["-hwaccel", platform.hwaccel]
 
     # Après un mux préalable, l'entrée est l'intermédiaire, pas la source.
@@ -674,7 +790,9 @@ def build_command(
         cmd += ["-f", "ffmetadata", "-i", str(chapitres)]
 
     # ── Filtre vidéo ──────────────────────────────────────────────────────────
-    if not preserve_video:
+    if tout_puce is not None:
+        cmd += ["-vf", tout_puce]
+    elif not preserve_video:
         # `scale` rattrape l'arrondi de la hauteur par un SAR : 3832x1600 donne
         # 1920x802 en 192079:192000. Jellyfin y voit une vidéo anamorphique et
         # la transcode. `setsar=1` rend des pixels carrés (écart < 0,05 %).
@@ -733,33 +851,20 @@ def build_command(
         ]
     else:
         is_av1 = (vid.action == VideoAction.ENCODE_AV1)
-        if vid.action == VideoAction.ENCODE_HEVC:
-            encoder, prof_str = platform.encoder_hevc, "main"
-        elif is_av1:
-            encoder, prof_str = platform.encoder_av1, "main"
-        else:
-            encoder, prof_str = platform.encoder_h264, "high"
-
-        # Une sortie HDR10 en 8 bits, c'est du banding garanti dans les
-        # dégradés : la courbe PQ étale 10 bits de source sur 256 niveaux.
-        # HEVC et AV1 savent encoder en 10 bits, H264 non (pas de main10 chez
-        # NVENC) — une source HDR ramenée en H264 reste donc en 8 bits, et
-        # cela ne concerne que les cibles sous 1080p.
-        hdr10_out = (
-            vid.dv_action == DVAction.HDR10
-            or (info.is_hdr and vid.dv_action != DVAction.SDR)
-        )
-        pix_fmt = "yuv420p"
-        if hdr10_out and vid.action in (VideoAction.ENCODE_HEVC,
-                                        VideoAction.ENCODE_AV1):
-            pix_fmt  = "yuv420p10le"
-            if not is_av1:
-                prof_str = "main10"
+        encoder, pix_fmt, prof_str = _encodeur_et_format(info, vid, platform)
 
         # La règle de débit dépend de l'encodeur effectif (`regle_debit`).
+        # Tout sur la puce : le format est celui que rend `vpp_qsv` ; un
+        # `-pix_fmt` forcerait une conversion processeur impossible.
         preset = profile.get("preset_encoder", "medium")
-        cmd += ["-c:v", encoder, "-pix_fmt", pix_fmt,
+        cmd += ["-c:v", encoder,
+                *(["-pix_fmt", pix_fmt] if tout_puce is None else []),
                 *regle_debit(encoder, vid.target_bitrate), "-preset", preset]
+        # Pixels carrés : le `setsar=1` du chemin processeur, en sortie.
+        if tout_puce is not None and "w=" in tout_puce:
+            l, h = dimensions_reduites(info.width, info.height,
+                                       vid.target_width, vid.target_height)
+            cmd += ["-aspect", f"{l}:{h}"]
         # `av1_nvenc` n'expose aucune option `profile` : lui en passer une fait
         # échouer la commande avant même que la carte soit interrogée —
         # « Unable to parse "profile" option value ». L'AV1 était donc cassé

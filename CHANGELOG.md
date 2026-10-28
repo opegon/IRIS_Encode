@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.11] — 2026-10-28
+
+### Intel : tout l'encodage sur la puce, trois fois plus vite
+
+Avec Quick Sync, la puce Intel encodait, mais le processeur décodait la source
+et la réduisait. Mesuré sur un i5-1135G7, 60 s de film 4K HDR10 ramenées en
+1080p : 60 s de travail. Décoder sur la puce sans plus (`d3d11va`) ralentit
+(76 s) : chaque image fait l'aller-retour vers le processeur pour être
+réduite. Décoder, réduire (`vpp_qsv`) et encoder sans quitter la puce :
+**18 s**, HDR10 et écran de mastering conservés, image vérifiée à l'œil.
+
+IRIS prend désormais ce chemin pour le cas courant : changer la taille ou non,
+en SDR comme en HDR10, depuis du HEVC, du H264 8 bits, du VP9 ou de l'AV1 en
+4:2:0. Restent au processeur, comme avant : la conversion en SDR, le
+désentrelacement, les pixels non carrés, les dimensions impaires, le Dolby
+Vision, le H264 10 bits et toute source au format inconnu. Les dimensions de
+sortie sont celles du chemin processeur (même arrondi que `scale`, comparé
+sur 70 tailles), et les pixels restent carrés (`-aspect`).
+
+L'analyse relève désormais le format de pixels de la source (`pix_fmt`).
+
 ## [v0.9.0.10] — 2026-10-28
 
 ### La pause se voit

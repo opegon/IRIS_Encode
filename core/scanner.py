@@ -502,6 +502,9 @@ class VideoInfo:
     # Forme des pixels (`sample_aspect_ratio`) : « 32:27 » pour un DVD 16:9
     # NTSC, « 1:1 » ou « » pour des pixels carrés (CR-14).
     sar:             str                 = ""
+    # Format de pixels du flux (`pix_fmt`) : « yuv420p10le »… « » si inconnu.
+    # Il dit si le décodeur Quick Sync sait lire la source (IE-147).
+    pix_fmt:         str                 = ""
     # ── Métadonnées Dolby Vision enrichies (dovi_tool, optionnel) ────────────
     dv_subprofile:   Optional[str]              = None   # "5", "7.06", "8.1"…
     hdr10_master_display: Optional[str]         = None   # G(...)B(...)R(...)WP(...)L(...)
@@ -986,6 +989,7 @@ def scan(path: Path) -> VideoInfo:
         frame_rate=vid.get("r_frame_rate", ""),
         field_order=vid.get("field_order", "") or "",
         sar=vid.get("sample_aspect_ratio", "") or "",
+        pix_fmt=vid.get("pix_fmt", "") or "",
         titre=titre_dvd,
     )
 

@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-10-20
+maj: 2026-10-28
 sources:
+  - "[[source-2026-10-28-qsv-decodage]]"
   - "[[source-2026-10-20-ts-aac-corrompu]]"
   - "[[source-2026-10-08-disques]]"
   - "[[source-2026-10-06-sar-scale]]"
@@ -125,3 +126,20 @@ un PGS forcé en `mov_text`. *(mesuré)*
   `-x265-params colorprim/transfer/colormatrix`.
 - `scale=trunc(iw*sar/2)*2:trunc(ih/2)*2,setsar=1` ramène un anamorphique en
   pixels carrés : 720×480 en 32:27 → 852×480 en 1:1 (*mesuré*, 2026-10-09).
+
+## Mise à l'échelle matérielle et SAR
+
+- `scale=W:H:force_original_aspect_ratio=decrease:force_divisible_by=2`
+  arrondit la dimension calculée **au pair le plus proche, mi-chemin vers le
+  haut** : 3832×1600 → 1920×802 (801,67), 3840×1606 → 1920×804 (803),
+  4096×2160 → 3840×2026 (2025). *(mesuré, ffmpeg 8.1.2, 70 tailles)*
+  `encoder.dimensions_reduites` le reproduit pour `vpp_qsv`.
+- Une mise à l'échelle matérielle garde le **SAR compensateur** de l'arrondi :
+  `scale_cuda=w=1920:h=802` sur 3832×1600 en 1:1 sort en 192079:192000, que
+  Jellyfin traite comme anamorphique. `-aspect 1920:802` en sortie rend 1:1.
+  *(mesuré, 2026-10-28)* `setsar` n'est pas disponible quand les images
+  restent en mémoire graphique.
+- `-hwaccel qsv` laisse les images dans la mémoire de la puce : un filtre
+  processeur (`scale`) derrière échoue, « Impossible to convert between the
+  formats … src: qsv ». Soit tout sur la puce (`vpp_qsv`), soit le décodage
+  au processeur. *(observé, i5-1135G7)*

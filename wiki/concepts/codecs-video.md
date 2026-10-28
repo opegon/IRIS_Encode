@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-10-28
+maj: 2026-10-29
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -10,6 +10,7 @@ sources:
   - "[[source-2026-10-28-nvdec-tout-carte]]"
   - "[[source-2026-10-28-nvdec-dv-plage]]"
   - "[[source-2026-10-28-qsv-passe-dv]]"
+  - "[[source-2026-10-29-nvenc-preset-slow]]"
 ---
 
 # Codecs vidéo
@@ -76,6 +77,9 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
   La passe vidéo du réencodage DV aussi (v0.9.0.13) : 21 s → 13,5 s pour
   60 s de 4K, flux identique bit à bit. Sur Intel (v0.9.0.14) : 51 s → 38 s
   sur un i5-1135G7, mêmes images, PSNR 62,5 dB — pas identique.
+- **Le gain dépend du preset.** En `slow` et en 4K, c'est l'encodeur qui
+  limite : DV → HDR10 sur la A4500, 38 s pour 60 s, sur la carte ou non.
+  *(mesuré, 2026-10-29)*
 - **`av1_nvenc` n'a pas d'option `-profile`.** La passer fait refuser la
   commande avant même d'interroger la carte. *(mesuré, v0.8.1.22)*
 - **libx265 en 4K : 0,78 image/s**, soit ~70 h pour un long métrage.

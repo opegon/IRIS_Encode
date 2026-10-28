@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.1.0 — Windows (macOS/Linux support planned)
+**Version**: 0.9.1.1 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -246,6 +246,12 @@ longer travel to the processor and back. Measured on 60 s of film:
 | NVIDIA RTX A4500 | 4K Dolby Vision re-encode (video pass) | 21 s | **13.5 s** |
 | Intel i5-1135G7 | 4K HDR10 → 1080p | 60 s | **18 s** |
 | Intel i5-1135G7 | 4K Dolby Vision re-encode (video pass) | 51 s | **38 s** |
+
+These times were measured with the `medium` preset. The gain comes from no
+longer moving frames around; it shrinks when the encoder itself is the
+bottleneck, as with a slow preset in 4K: with `slow` (the
+`cinema_4k_hdr_basic` profile), a 4K Dolby Vision → HDR10 re-encode on the
+RTX A4500 takes 38 s either way.
 
 The result is the same as through the processor: dimensions, square pixels,
 HDR10 metadata and frame count. A few cases still go through the processor:

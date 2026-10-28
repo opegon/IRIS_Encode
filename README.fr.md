@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.1.0 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.1.1 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -247,6 +247,12 @@ sur 60 s de film :
 | NVIDIA RTX A4500 | Réencodage Dolby Vision 4K (passe vidéo) | 21 s | **13,5 s** |
 | Intel i5-1135G7 | 4K HDR10 → 1080p | 60 s | **18 s** |
 | Intel i5-1135G7 | Réencodage Dolby Vision 4K (passe vidéo) | 51 s | **38 s** |
+
+Ces temps sont mesurés avec le preset `medium`. Le gain vient de ce que les
+images ne voyagent plus ; il se réduit quand c'est l'encodeur lui-même qui
+limite, comme avec un preset lent en 4K : en `slow` (profil
+`cinema_4k_hdr_basic`), un réencodage 4K Dolby Vision → HDR10 sur la RTX
+A4500 prend 38 s dans les deux cas.
 
 Le résultat est le même qu'au processeur : dimensions, pixels carrés,
 métadonnées HDR10 et nombre d'images. Quelques cas passent encore par le

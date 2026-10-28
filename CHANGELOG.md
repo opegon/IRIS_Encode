@@ -1,5 +1,15 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.1] — 2026-10-29
+
+### README : le gain de vitesse dépend du preset
+
+Les temps de la section « Accélération matérielle » sont mesurés au preset
+`medium`. Le README précise désormais que le gain se réduit quand
+l'encodeur est le facteur limitant : en `slow` et en 4K (profil
+`cinema_4k_hdr_basic`), un réencodage Dolby Vision → HDR10 prend 38 s pour
+60 s de film sur une RTX A4500, sur la carte comme avec l'ancien chemin.
+
 ## [v0.9.1.0] — 2026-10-28
 
 ### Encodage matériel nettement plus rapide

@@ -469,3 +469,9 @@ la plage pleine comme `scale`. Pages mises à jour : [[codecs-video]],
 Observé sur le portable : la passe vidéo du réencodage DV, gardée sur la
 puce, passe de 51 s à 38 s, mêmes images, HDR10 conservé, PSNR 62,5 dB.
 Page mise à jour : [[codecs-video]].
+
+## [2026-10-29] ingest | DV → HDR10 en 4K, preset slow (v0.9.1.1)
+
+Mesuré sur la RTX A4500 : un réencodage DV → HDR10 ne garde aucune donnée
+DV ; en preset `slow` 4K, garder les images sur la carte ne gagne rien
+(38 s). README nuancé. Page mise à jour : [[codecs-video]].

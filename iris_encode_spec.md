@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.0 — document de référence courant
-**Date** : 2026-10-28
+**Version** : 0.9.1.1 — document de référence courant
+**Date** : 2026-10-29
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -3685,6 +3685,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.1 | 2026-10-29 | README « Accélération matérielle » : le gain dépend du preset (`slow` en 4K : aucun) |
 | 0.9.1.0 | 2026-10-28 | **Encodage matériel tout sur la carte** — version mineure regroupant v0.9.0.11 à v0.9.0.14 (§ 7.4, § 12.1) ; README « Accélération matérielle » |
 | 0.9.0.14 | 2026-10-28 | **Passe DV sur la puce Intel** (§ 7.4, § 12.1, IE-150) : `build_dv_video_command` garde les images sur la puce quand `hevc_qsv@10` est sondé, 38 s contre 51 · `tests/test_qsv.py` |
 | 0.9.0.13 | 2026-10-28 | **Passe DV sur la carte NVIDIA** (§ 7.4, § 12.1, IE-149) : `build_dv_video_command` garde les images sur la carte (`-hwaccel_output_format cuda`, sans `-pix_fmt`), 13,5 s contre 21, flux identique ; `yuvj420p` dans `_DECODABLE_NVDEC` · `tests/test_nvdec.py` |

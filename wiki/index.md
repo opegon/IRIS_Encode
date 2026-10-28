@@ -1,6 +1,6 @@
 ---
 type: index
-maj: 2026-10-28
+maj: 2026-10-29
 ---
 
 # Index du wiki IRIS ENCODE
@@ -66,6 +66,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-10-08-disques]] | ISO DVD / Blu-ray et `.ts` : builds ffmpeg, langues, lecteur monté en lecture seule |
 | [[source-2026-10-20-ts-aac-corrompu]] | `.ts` IPTV : un paquet AAC corrompu fait échouer la recopie en MP4, `discardcorrupt` |
 | [[source-2026-10-21-mesure-vo-vf]] | Audio anglaise contre VF du même montage : confiance 0,86 ; la VF du donneur comme témoin |
+| [[source-2026-10-29-nvenc-preset-slow]] | DV → HDR10 par NVENC : aucune donnée DV en sortie ; en `slow` 4K, rien à gagner sur la carte |
 | [[source-2026-10-28-qsv-passe-dv]] | Passe DV sur la puce Intel : 38 s contre 51, mêmes images, PSNR 62,5 dB |
 | [[source-2026-10-28-nvdec-dv-plage]] | Passe DV sur la carte 1,6 × plus rapide, identique bit à bit ; `scale_cuda` garde la plage pleine comme `scale` |
 | [[source-2026-10-28-nvdec-tout-carte]] | Décodage NVDEC : `-hwaccel cuda` + `scale` ne gagne rien, tout-carte `scale_cuda` 5 × plus rapide |
@@ -97,6 +98,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-04-decisions-localisation]] | Choix de l'utilisateur après l'audit de localisation : citations et options retenues |
 | [[2026-10-20-ts-aac-corrompu]] | Trois `.ts` IPTV : paquet AAC corrompu, échec `aac_adtstoasc`, `discardcorrupt`, reproduction synthétique |
 | [[2026-10-21-mesure-vo-contre-vf]] | *The Thirteenth Floor* : audio anglaise et VF du donneur mesurées contre une VFF, sorties brutes |
+| [[2026-10-29-nvenc-preset-slow-dv-hdr10]] | Commande IRIS DV → HDR10 4K `slow`, NAL 62, actuel contre carte |
 | [[2026-10-28-qsv-passe-dv]] | Passe DV sur i5-1135G7 (processeur, puce), images, HDR10, hachage, PSNR |
 | [[2026-10-28-nvdec-dv-plage]] | Passe DV (actuel, carte, processeur), mire en plage pleine, `signalstats`, étiquette `pc` |
 | [[2026-10-28-nvdec-tout-carte]] | Essais NVDEC sur RTX A4500 (processeur, `-hwaccel cuda`, `scale_cuda`), ffprobe, PSNR, commande d'IRIS |

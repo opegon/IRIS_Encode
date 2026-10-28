@@ -24,6 +24,7 @@ class OS(Enum):
 
 class GPU(Enum):
     NVIDIA = auto()
+    INTEL  = auto()   # Quick Sync (QSV), retenu sur sondage seulement
     APPLE  = auto()
     NONE   = auto()
 
@@ -35,7 +36,8 @@ class PlatformProfile:
     hwaccel:      str | None   # None → pas d'accélération
     encoder_hevc: str
     encoder_h264: str
-    encoder_av1:  str   # av1_nvenc (Ada/RTX40+) ou libaom-av1 (CPU, très lent)
+    encoder_av1:  str   # av1_nvenc (Ada/RTX40+), av1_qsv (Arc, Meteor Lake+)
+                        # ou libaom-av1 (CPU, très lent)
     # Encodeurs réellement utilisables sur cette machine, mesurés au lancement.
     # None tant que le sondage n'a pas eu lieu : on ne préjuge alors de rien.
     encodeurs_ok: frozenset[str] | None = None
@@ -50,7 +52,7 @@ class PlatformProfile:
         return encodeur in self.encodeurs_ok
 
     def peut_encoder_10_bits(self, encodeur: str) -> bool | None:
-        """True / False pour un encodeur NVENC sondé aussi en 10 bits, None
+        """True / False pour un encodeur NVENC ou QSV sondé aussi en 10 bits, None
         pour les autres (encodeurs logiciels, sondage absent)."""
         if self.encodeurs_ok is None or not avec_essai_10_bits(encodeur):
             return None
@@ -91,11 +93,13 @@ def dix_bits(encodeur: str) -> str:
 
 
 def avec_essai_10_bits(encodeur: str) -> bool:
-    """Un encodeur NVENC qui peut sortir du HDR : HEVC et AV1. Une carte
-    Maxwell (GTX 9xx) encode le HEVC en 8 bits, pas en 10 : ouvrir l'encodeur
-    en 8 bits seulement le disait capable, et un fichier HDR échouait dans
-    ffmpeg sur un message que rien ne reconnaissait (CR-42)."""
-    return "nvenc" in encodeur and ("hevc" in encodeur or "av1" in encodeur)
+    """Un encodeur matériel (NVENC, QSV) qui peut sortir du HDR : HEVC et AV1.
+    Une carte Maxwell (GTX 9xx) encode le HEVC en 8 bits, pas en 10 : ouvrir
+    l'encodeur en 8 bits seulement le disait capable, et un fichier HDR
+    échouait dans ffmpeg sur un message que rien ne reconnaissait (CR-42).
+    Chez Intel, le 10 bits n'arrive qu'avec Kaby Lake : même essai."""
+    return (("nvenc" in encodeur or "qsv" in encodeur)
+            and ("hevc" in encodeur or "av1" in encodeur))
 
 
 def sonder_encodeurs(encodeurs: list[str], ffmpeg_path: str = "ffmpeg",
@@ -117,7 +121,8 @@ def sonder_encodeurs(encodeurs: list[str], ffmpeg_path: str = "ffmpeg",
     def essai(nom: str) -> tuple[str, bool, str]:
         encodeur, _sep, dix = nom.partition(_DIX_BITS)
         # L'essai 10 bits : le format de pixels de `build_command`, et le
-        # profil main10 pour le HEVC (`av1_nvenc` n'a pas d'option profil).
+        # profil main10 pour le HEVC (`av1_nvenc` n'a pas d'option profil ;
+        # `av1_qsv` n'en a pas besoin).
         options = (["-pix_fmt", "p010le"]
                    + (["-profile:v", "main10"] if "hevc" in encodeur else [])
                    if _sep else [])
@@ -199,6 +204,34 @@ def _has_nvidia() -> bool:
         return False
 
 
+def avec_qsv(profil: PlatformProfile,
+             ffmpeg_path: str = "ffmpeg") -> PlatformProfile:
+    """Le profil Intel Quick Sync, si ce poste Windows sans NVIDIA sait
+    ouvrir `hevc_qsv` ; sinon `profil` inchangé.
+
+    On sonde au lieu de lire le modèle de puce : QSV dépend du processeur, du
+    pilote graphique et du ffmpeg, et seul ffmpeg sait dire si les trois
+    s'accordent. Coût : un essai (~0,3 s), sur ces postes-là seulement.
+
+    L'AV1 matériel (Arc, Meteor Lake et après) n'est pas présumé : le sondage
+    général dira si `av1_qsv` s'ouvre ; sinon le picker l'annonce indisponible.
+    Le décodage reste au processeur (`hwaccel=None`) tant que `-hwaccel` n'a
+    pas été mesuré sur une puce Intel.
+    """
+    if profil.os != OS.WINDOWS or profil.gpu != GPU.NONE:
+        return profil
+    if "hevc_qsv" not in sonder_encodeurs(["hevc_qsv"], ffmpeg_path):
+        return profil
+    return PlatformProfile(
+        os=profil.os,
+        gpu=GPU.INTEL,
+        hwaccel=None,
+        encoder_hevc="hevc_qsv",
+        encoder_h264="h264_qsv",
+        encoder_av1 ="av1_qsv",
+    )
+
+
 def detect() -> PlatformProfile:
     """Détecte la plateforme courante et retourne le profil adapté."""
     os_ = _detect_os()
@@ -213,7 +246,8 @@ def detect() -> PlatformProfile:
                 encoder_h264="h264_nvenc",
                 encoder_av1 ="av1_nvenc",
             )
-        # Windows sans NVIDIA → CPU (libx265/libx264 via ffmpeg)
+        # Windows sans NVIDIA → CPU (libx265/libx264 via ffmpeg). Intel QSV
+        # demande ffmpeg, connu plus tard : voir `avec_qsv`.
         return PlatformProfile(
             os=os_,
             gpu=GPU.NONE,

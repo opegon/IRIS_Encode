@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.8 — document de référence courant
-**Date** : 2026-10-25
+**Version** : 0.9.0.9 — document de référence courant
+**Date** : 2026-10-28
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -1846,14 +1846,20 @@ supposerait de supprimer du contenu.
 
 ## 11. Abstraction plateforme — `core/platform.py`
 
-| Paramètre | Windows/NVIDIA | Windows/CPU | macOS | Linux/CPU |
-|---|---|---|---|---|
-| hwaccel | `cuda` | *(absent)* | `videotoolbox` | *(absent)* |
-| encoder HEVC | `hevc_nvenc` | `libx265` | `hevc_videotoolbox` | `libx265` |
-| encoder H264 | `h264_nvenc` | `libx264` | `h264_videotoolbox` | `libx264` |
-| encoder AV1 | `av1_nvenc` | `libaom-av1` | `libaom-av1` | `libaom-av1` |
+| Paramètre | Windows/NVIDIA | Windows/Intel QSV | Windows/CPU | macOS | Linux/CPU |
+|---|---|---|---|---|---|
+| hwaccel | `cuda` | *(absent)* | *(absent)* | `videotoolbox` | *(absent)* |
+| encoder HEVC | `hevc_nvenc` | `hevc_qsv` | `libx265` | `hevc_videotoolbox` | `libx265` |
+| encoder H264 | `h264_nvenc` | `h264_qsv` | `libx264` | `h264_videotoolbox` | `libx264` |
+| encoder AV1 | `av1_nvenc` | `av1_qsv` | `libaom-av1` | `libaom-av1` | `libaom-av1` |
 
-Détection GPU NVIDIA via `nvidia-smi`. Sans NVIDIA sur Windows, fallback CPU.
+Détection GPU NVIDIA via `nvidia-smi`. Sans NVIDIA sur Windows, `avec_qsv()`
+(appelé au lancement, une fois ffmpeg connu) essaie d'ouvrir `hevc_qsv` sur une
+image : s'il s'ouvre, profil `GPU.INTEL` ; sinon, fallback CPU. Rien n'est
+déduit du modèle de puce. Le profil QSV décode au processeur (`-hwaccel` non
+mesuré sur Intel) ; `regle_debit` lui applique la marge de NVENC, sans `-rc`
+(non mesuré). Un `av1_qsv` refusé par la puce est annoncé par le sondage
+général, comme `av1_nvenc` avant Ada.
 
 ---
 
@@ -2203,8 +2209,8 @@ Conventions transverses :
   refuse en nommant la cause plutôt que de laisser ffmpeg échouer.
   Une vidéo recopiée (`-c:v copy`) n'est pas contrôlée : `copy` n'est pas un
   encodeur (`encodeur_a_controler`, v0.8.9.60).
-  **Le 10 bits aussi** (v0.8.9.113, CR-42) : `hevc_nvenc` et `av1_nvenc` sont
-  sondés une seconde fois en `p010le` (`main10` pour le HEVC), rangés sous
+  **Le 10 bits aussi** (v0.8.9.113, CR-42) : `hevc_nvenc` et `av1_nvenc` — et
+  `hevc_qsv`, `av1_qsv` depuis v0.9.0.9 — sont sondés une seconde fois en `p010le` (`main10` pour le HEVC), rangés sous
   `<encodeur>@10`. Une carte qui ouvre le HEVC en 8 bits seulement (Maxwell)
   était dite capable, et un fichier HDR échouait dans ffmpeg sur un message
   inconnu. `RunScreen._refuser_encodeur` refuse alors une commande 10 bits
@@ -3621,6 +3627,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.0.9 | 2026-10-28 | **Intel Quick Sync** (§ 11, § 14) : sans NVIDIA, `avec_qsv()` sonde `hevc_qsv` au lancement et bascule sur `hevc_qsv`/`h264_qsv`/`av1_qsv` ; sonde 10 bits étendue à QSV ; `p010le` pour la passe DV · `tests/test_qsv.py` |
 | 0.9.0.7 | 2026-10-25 | **Tri de l'accueil** (§ 14) : `O` trie par nom, taille, résolution, durée, débit, codec ou estimation ; rechoisir inverse le sens ; valeur inconnue en fin · `tests/test_tri_accueil.py` |
 | 0.9.0.6 | 2026-10-21 | **L'assistant ouvre le recalage** (§ 14.0, IE-142) : `R` à l'étape 3 ouvre `SyncScreen` en mode assistant, pré-chargé de la dernière mesure ; refus et mesure non sûre renvoient vers `R` · `tests/test_assistant_recalage.py` |
 | 0.9.0.5 | 2026-10-20 | **Flux MPEG abîmés** (§ 15, Extensions) : une source `.ts .m2ts .mts .mpg .mpeg .vob` est lue avec `-fflags +discardcorrupt` — un paquet AAC tronqué faisait échouer `aac_adtstoasc` et l'encodage entier · `tests/test_flux_mpeg_abimes.py` |

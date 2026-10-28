@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.0.8 — Windows (macOS/Linux support planned)
+**Version**: 0.9.0.9 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -230,6 +230,7 @@ overwritten: a collision gives `(2)`.
 | mpv       | recent          | ✗ (optional — playback) |
 | DVD tool  | ffmpeg BtbN 7+  | ✗ (optional — DVD titles) |
 | NVIDIA GPU | recent driver  | ✗ (recommended — hardware encoding) |
+| Intel Quick Sync | recent graphics driver | ✗ (without NVIDIA — hardware encoding, used if it opens) |
 
 ---
 
@@ -689,7 +690,7 @@ right host*. If you remember one thing from this chapter, make it that one.
 | `python` not recognized | Python not on the PATH | Reinstall Python with *Add to PATH* checked |
 | `pip` not recognized | pip missing | Use `python -m pip` |
 | Black screen at startup | The terminal cannot display the TUI | Use Windows Terminal or the classic cmd.exe |
-| Slow encoding | No NVIDIA GPU detected | Normal — processor encoding is used automatically |
+| Slow encoding | No NVIDIA GPU, and Intel Quick Sync unavailable | Normal — processor encoding is used automatically |
 | `dovi_tool missing` | Optional tool not installed | See chapter 4 — only for Dolby Vision files |
 | Error importing a module | Missing dependencies | Run `pip install -r requirements.txt` again |
 | `os error 4551` during installation | Smart App Control rejects a binary without reputation | See chapter 1.4 |

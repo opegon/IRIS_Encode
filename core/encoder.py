@@ -465,6 +465,10 @@ def regle_debit(encodeur: str, cible: int) -> list[str]:
     de 99,9 %. Sur un poste sans NVIDIA, la branche standard et le réencodage
     DV lui appliquaient la règle de NVENC (CR-22). `-rc` n'existe que chez
     NVENC : ailleurs, ffmpeg l'ignorait en avertissant.
+
+    QSV : même marge que NVENC — un `-maxrate` au-dessus de `-b:v` y
+    sélectionne le VBR. Non mesuré sur puce Intel : à vérifier comme pour
+    libx265.
     """
     if encodeur == "libx265":
         maxrate, bufsize_k = cible, max(cible * 2 // 1000, 1)
@@ -507,7 +511,9 @@ def build_dv_video_command(decision, platform, sortie_hevc: Path,
     cmd += [
         "-map",       "0:v:0",
         "-c:v",       platform.encoder_hevc,
-        "-pix_fmt",   "p010le" if "nvenc" in platform.encoder_hevc else "yuv420p10le",
+        "-pix_fmt",   ("p010le" if ("nvenc" in platform.encoder_hevc
+                                or "qsv" in platform.encoder_hevc)
+                       else "yuv420p10le"),
         *regle_debit(platform.encoder_hevc, vid.target_bitrate),
         "-preset",    profile.get("preset_encoder", "medium"),
         "-profile:v", "main10",

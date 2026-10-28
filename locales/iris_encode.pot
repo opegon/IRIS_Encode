@@ -259,13 +259,13 @@ msgstr ""
 msgid "Writing to this location is not allowed."
 msgstr ""
 
-#: core/encoder.py:547
+#: core/encoder.py:553
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Empty suffix and same container — encoding refused to avoid corrupting the source file."
 msgstr ""
 
 #. -itsoffset is an ffmpeg option, keep it as is.
-#: core/encoder.py:602
+#: core/encoder.py:608
 #, python-brace-format
 msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
 msgstr ""
@@ -476,12 +476,12 @@ msgstr ""
 msgid "Daily download quota used up."
 msgstr ""
 
-#: core/platform.py:163
+#: core/platform.py:168
 #, python-brace-format
 msgid "NVENC refused: this ffmpeg needs NVIDIA driver {driver} or newer (NVENC API {required}, the installed driver provides {found}). Update the driver, or use an ffmpeg built for an older API. Until then, encoding with the graphics card is refused."
 msgstr ""
 
-#: core/platform.py:169
+#: core/platform.py:174
 #, python-brace-format
 msgid "NVENC refused: this ffmpeg needs a newer NVIDIA driver (NVENC API {required}, the installed driver provides {found}). Update the driver, or use an ffmpeg built for an older API. Until then, encoding with the graphics card is refused."
 msgstr ""
@@ -994,99 +994,99 @@ msgstr ""
 msgid "Encodes"
 msgstr ""
 
-#: tui/app.py:206
+#: tui/app.py:208
 msgid "Graphics card"
 msgstr ""
 
-#: tui/app.py:221
+#: tui/app.py:223
 #, python-brace-format
 msgid "{file} unreadable ({error}): this session runs on the defaults and will not rewrite it. Fix it by hand, then restart."
 msgstr ""
 
-#: tui/app.py:271
+#: tui/app.py:273
 #, python-brace-format
 msgid "The folder of {count} source is read-only (mounted disc image?): its output cannot be written next to it."
 msgid_plural "The folders of {count} sources are read-only (mounted disc image?): their outputs cannot be written next to them."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/app.py:298
+#: tui/app.py:300
 #, python-brace-format
 msgid "Already in the queue: {files}"
 msgstr ""
 
-#: tui/app.py:304
+#: tui/app.py:306
 #, python-brace-format
 msgid "{count} file added to the queue — {key} to follow it."
 msgid_plural "{count} files added to the queue — {key} to follow it."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/app.py:347
+#: tui/app.py:349
 #: tui/screens/run.py:101
 #: tui/screens/run.py:102
 #: tui/screens/run.py:229
 msgid "Files"
 msgstr ""
 
-#: tui/app.py:349
+#: tui/app.py:351
 msgid "Batch done"
 msgstr ""
 
-#: tui/app.py:351
+#: tui/app.py:353
 #, python-brace-format
 msgid "Encoding in progress · {done}/{total} · {percent}%"
 msgstr ""
 
-#: tui/app.py:399
+#: tui/app.py:401
 msgid "sleep blocked"
 msgstr ""
 
-#: tui/app.py:401
+#: tui/app.py:403
 #, python-brace-format
 msgid "then {action}"
 msgstr ""
 
-#: tui/app.py:434
+#: tui/app.py:436
 msgid "After-batch action canceled."
 msgstr ""
 
-#: tui/app.py:438
+#: tui/app.py:440
 msgid "A task has resumed: after-batch action canceled."
 msgstr ""
 
-#: tui/app.py:444
+#: tui/app.py:446
 #, python-brace-format
 msgid "Cannot {action}: {error}"
 msgstr ""
 
-#: tui/app.py:457
+#: tui/app.py:459
 msgid "No encoding in progress."
 msgstr ""
 
-#: tui/app.py:485
+#: tui/app.py:487
 msgid "The running encode will be stopped, its partial output deleted."
 msgstr ""
 
-#: tui/app.py:486
+#: tui/app.py:488
 msgid "The running mux will be stopped, its partial output deleted."
 msgstr ""
 
-#: tui/app.py:487
+#: tui/app.py:489
 msgid "The running join will be stopped, its partial output deleted."
 msgstr ""
 
-#: tui/app.py:488
-#: tui/app.py:489
 #: tui/app.py:490
+#: tui/app.py:491
+#: tui/app.py:492
 msgid "The running measurement will be lost."
 msgstr ""
 
-#: tui/app.py:491
+#: tui/app.py:493
 msgid "The running resync will be lost."
 msgstr ""
 
-#: tui/app.py:510
+#: tui/app.py:512
 #, python-brace-format
 msgid "{count} waiting file will not be encoded."
 msgid_plural "{count} waiting files will not be encoded."

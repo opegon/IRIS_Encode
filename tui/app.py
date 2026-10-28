@@ -136,8 +136,10 @@ class IrisEncodeApp(App):
             # qu'à partir d'Ada, et une carte antérieure ne le dit qu'au
             # moment d'échouer. ~0,7 s, en parallèle.
             from dataclasses import replace as _dc
-            from core.platform import (alerte_pilote_nvenc, encodeurs_a_sonder,
-                                       sonder_encodeurs)
+            from core.platform import (alerte_pilote_nvenc, avec_qsv,
+                                       encodeurs_a_sonder, sonder_encodeurs)
+            # Windows sans NVIDIA : Intel Quick Sync, s'il s'ouvre.
+            self.platform = avec_qsv(self.platform, ffmpeg_p)
             refus: dict[str, str] = {}
             ok = sonder_encodeurs(encodeurs_a_sonder(self.platform), ffmpeg_p,
                                   refus)

@@ -301,3 +301,14 @@ def test_f2_de_l_assistant_laisse_le_retrait_du_dv_tel_quel():
     dec = decide(_source(h=1606, bitrate=3_000_000), _profil(dolby_vision="hdr10"))
     assert dec.video.action is VideoAction.STRIP_DV
     assert _assistant(dec)._a_encoder() is dec
+
+
+def test_qsv_recoit_le_format_de_pixels_materiel():
+    """`hevc_qsv` ne connaît que `p010le` en 10 bits, comme NVENC."""
+    qsv = PlatformProfile(os=OS.WINDOWS, gpu=GPU.INTEL, hwaccel=None,
+                          encoder_hevc="hevc_qsv", encoder_h264="h264_qsv",
+                          encoder_av1="av1_qsv")
+    cmd = build_dv_video_command(decide(_source(), _profil()), qsv,
+                                 Path("t.hevc"), "ffmpeg")
+    assert cmd[cmd.index("-c:v") + 1] == "hevc_qsv"
+    assert cmd[cmd.index("-pix_fmt") + 1] == "p010le"

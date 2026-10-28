@@ -259,13 +259,13 @@ msgstr "Le disque de destination est plein."
 msgid "Writing to this location is not allowed."
 msgstr "Écriture refusée à cet emplacement."
 
-#: core/encoder.py:547
+#: core/encoder.py:553
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Empty suffix and same container — encoding refused to avoid corrupting the source file."
 msgstr "Chemin de sortie identique à la source ({path}). Suffixe vide et conteneur identique — encodage refusé pour éviter la corruption du fichier source."
 
 #. -itsoffset is an ffmpeg option, keep it as is.
-#: core/encoder.py:602
+#: core/encoder.py:608
 #, python-brace-format
 msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
 msgstr "La piste « {track} » demande un facteur d'étirement, que ffmpeg ne sait pas appliquer en une passe (-itsoffset ne fait qu'un décalage constant). mkvmerge sait le faire : installez-le pour que la greffe passe par lui."
@@ -476,12 +476,12 @@ msgstr "Quota de téléchargements du jour épuisé — {reset}."
 msgid "Daily download quota used up."
 msgstr "Quota de téléchargements du jour épuisé."
 
-#: core/platform.py:163
+#: core/platform.py:168
 #, python-brace-format
 msgid "NVENC refused: this ffmpeg needs NVIDIA driver {driver} or newer (NVENC API {required}, the installed driver provides {found}). Update the driver, or use an ffmpeg built for an older API. Until then, encoding with the graphics card is refused."
 msgstr "NVENC refusé : ce ffmpeg exige le pilote NVIDIA {driver} ou plus récent (API NVENC {required}, le pilote installé fournit la {found}). Mettre à jour le pilote, ou prendre un ffmpeg compilé pour une API plus ancienne. D'ici là, les encodages par la carte graphique sont refusés."
 
-#: core/platform.py:169
+#: core/platform.py:174
 #, python-brace-format
 msgid "NVENC refused: this ffmpeg needs a newer NVIDIA driver (NVENC API {required}, the installed driver provides {found}). Update the driver, or use an ffmpeg built for an older API. Until then, encoding with the graphics card is refused."
 msgstr "NVENC refusé : ce ffmpeg exige un pilote NVIDIA plus récent (API NVENC {required}, le pilote installé fournit la {found}). Mettre à jour le pilote, ou prendre un ffmpeg compilé pour une API plus ancienne. D'ici là, les encodages par la carte graphique sont refusés."
@@ -994,99 +994,99 @@ msgstr "Aide"
 msgid "Encodes"
 msgstr "Encodages"
 
-#: tui/app.py:206
+#: tui/app.py:208
 msgid "Graphics card"
 msgstr "Carte graphique"
 
-#: tui/app.py:221
+#: tui/app.py:223
 #, python-brace-format
 msgid "{file} unreadable ({error}): this session runs on the defaults and will not rewrite it. Fix it by hand, then restart."
 msgstr "{file} illisible ({error}) : cette session tourne sur les valeurs par défaut et ne le réécrira pas. Corrigez-le à la main, puis relancez."
 
-#: tui/app.py:271
+#: tui/app.py:273
 #, python-brace-format
 msgid "The folder of {count} source is read-only (mounted disc image?): its output cannot be written next to it."
 msgid_plural "The folders of {count} sources are read-only (mounted disc image?): their outputs cannot be written next to them."
 msgstr[0] "Le dossier de {count} source est en lecture seule (image disque montée ?) : sa sortie ne peut pas s'écrire à côté d'elle."
 msgstr[1] "Les dossiers de {count} sources sont en lecture seule (image disque montée ?) : leurs sorties ne peuvent pas s'écrire à côté d'elles."
 
-#: tui/app.py:298
+#: tui/app.py:300
 #, python-brace-format
 msgid "Already in the queue: {files}"
 msgstr "Déjà dans la file : {files}"
 
-#: tui/app.py:304
+#: tui/app.py:306
 #, python-brace-format
 msgid "{count} file added to the queue — {key} to follow it."
 msgid_plural "{count} files added to the queue — {key} to follow it."
 msgstr[0] "{count} fichier ajouté à la file — {key} pour la suivre."
 msgstr[1] "{count} fichiers ajoutés à la file — {key} pour la suivre."
 
-#: tui/app.py:347
+#: tui/app.py:349
 #: tui/screens/run.py:101
 #: tui/screens/run.py:102
 #: tui/screens/run.py:229
 msgid "Files"
 msgstr "Fichiers"
 
-#: tui/app.py:349
+#: tui/app.py:351
 msgid "Batch done"
 msgstr "Lot terminé"
 
-#: tui/app.py:351
+#: tui/app.py:353
 #, python-brace-format
 msgid "Encoding in progress · {done}/{total} · {percent}%"
 msgstr "Encodages en cours · {done}/{total} · {percent}%"
 
-#: tui/app.py:399
+#: tui/app.py:401
 msgid "sleep blocked"
 msgstr "veille bloquée"
 
-#: tui/app.py:401
+#: tui/app.py:403
 #, python-brace-format
 msgid "then {action}"
 msgstr "puis {action}"
 
-#: tui/app.py:434
+#: tui/app.py:436
 msgid "After-batch action canceled."
 msgstr "Action d'après lot annulée."
 
-#: tui/app.py:438
+#: tui/app.py:440
 msgid "A task has resumed: after-batch action canceled."
 msgstr "Un traitement a repris : action d'après lot annulée."
 
-#: tui/app.py:444
+#: tui/app.py:446
 #, python-brace-format
 msgid "Cannot {action}: {error}"
 msgstr "{action} impossible : {error}"
 
-#: tui/app.py:457
+#: tui/app.py:459
 msgid "No encoding in progress."
 msgstr "Aucun encodage en cours."
 
-#: tui/app.py:485
+#: tui/app.py:487
 msgid "The running encode will be stopped, its partial output deleted."
 msgstr "L'encodage en cours sera arrêté, sa sortie partielle effacée."
 
-#: tui/app.py:486
+#: tui/app.py:488
 msgid "The running mux will be stopped, its partial output deleted."
 msgstr "Le mux en cours sera arrêté, sa sortie partielle effacée."
 
-#: tui/app.py:487
+#: tui/app.py:489
 msgid "The running join will be stopped, its partial output deleted."
 msgstr "La jonction en cours sera arrêtée, sa sortie partielle effacée."
 
-#: tui/app.py:488
-#: tui/app.py:489
 #: tui/app.py:490
+#: tui/app.py:491
+#: tui/app.py:492
 msgid "The running measurement will be lost."
 msgstr "La mesure en cours sera perdue."
 
-#: tui/app.py:491
+#: tui/app.py:493
 msgid "The running resync will be lost."
 msgstr "Le recalage en cours sera perdu."
 
-#: tui/app.py:510
+#: tui/app.py:512
 #, python-brace-format
 msgid "{count} waiting file will not be encoded."
 msgid_plural "{count} waiting files will not be encoded."

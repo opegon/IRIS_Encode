@@ -413,3 +413,10 @@ Mesuré, code v0.9.0.5 : une E-AC-3 anglaise contre une VFF du même montage sor
 à +260 ms, confiance 0,86, tiers à 10 ms ; la VF du donneur confirme à 1,00.
 L'assistant ne permettait pas de vérifier une mesure refusée : `R` ouvre
 désormais le recalage (IE-142). Page mise à jour : [[synchronisation]].
+
+## [2026-10-28] ingest | Intel Quick Sync sur le portable (v0.9.0.9)
+
+Observé sur un i5-1135G7 : QSV encode H.264, HEVC 8 et 10 bits, VP9, pas
+l'AV1. IRIS retient désormais QSV sur sondage quand il n'y a pas de NVIDIA.
+Restent à mesurer sur la puce : débit contre cible, HDR10, `-hwaccel qsv`.
+Page mise à jour : [[codecs-video]].

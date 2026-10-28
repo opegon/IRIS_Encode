@@ -1,5 +1,20 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.9] — 2026-10-28
+
+### Intel Quick Sync sans carte NVIDIA
+
+Sur un poste Windows sans NVIDIA, IRIS encodait tout au processeur, même quand
+la puce Intel sait encoder le HEVC en 8 et 10 bits (essai sur un i5-1135G7).
+Au lancement, il essaie désormais d'ouvrir `hevc_qsv` ; s'il s'ouvre, le profil
+devient `hevc_qsv` / `h264_qsv` / `av1_qsv`. Comme pour NVENC, le HEVC et l'AV1
+sont sondés une seconde fois en 10 bits, et un encodeur refusé (l'AV1 avant
+Arc ou Meteor Lake) est annoncé indisponible dans le choix du codec.
+
+Le décodage reste au processeur. La marge de débit est celle de NVENC
+(`-maxrate` à 1,5 × la cible, qui donne du VBR chez QSV), non mesurée sur puce
+Intel. La passe vidéo du réencodage Dolby Vision sort en `p010le`.
+
 ## [v0.9.0.8] — 2026-10-25
 
 ### Le filtre de l'accueil prend les codecs

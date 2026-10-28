@@ -1,6 +1,6 @@
 ---
 type: index
-maj: 2026-10-21
+maj: 2026-10-28
 ---
 
 # Index du wiki IRIS ENCODE
@@ -66,6 +66,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-10-08-disques]] | ISO DVD / Blu-ray et `.ts` : builds ffmpeg, langues, lecteur monté en lecture seule |
 | [[source-2026-10-20-ts-aac-corrompu]] | `.ts` IPTV : un paquet AAC corrompu fait échouer la recopie en MP4, `discardcorrupt` |
 | [[source-2026-10-21-mesure-vo-vf]] | Audio anglaise contre VF du même montage : confiance 0,86 ; la VF du donneur comme témoin |
+| [[source-2026-10-28-qsv-portable]] | Intel Quick Sync sur un i5-1135G7 : codecs encodés, réserves HDR |
 | [[source-2026-10-04-localisation]] | Audit de localisation et décisions de l'utilisateur : politique de traduction, glossaire |
 
 ## Brut (`raw/`, immuable)
@@ -92,3 +93,4 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-04-decisions-localisation]] | Choix de l'utilisateur après l'audit de localisation : citations et options retenues |
 | [[2026-10-20-ts-aac-corrompu]] | Trois `.ts` IPTV : paquet AAC corrompu, échec `aac_adtstoasc`, `discardcorrupt`, reproduction synthétique |
 | [[2026-10-21-mesure-vo-contre-vf]] | *The Thirteenth Floor* : audio anglaise et VF du donneur mesurées contre une VFF, sorties brutes |
+| [[2026-10-28-qsv-portable]] | Essais QSV du portable (i5-1135G7), encodeurs du ffmpeg fourni |

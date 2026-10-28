@@ -1,10 +1,11 @@
 ---
 type: concept
-maj: 2026-09-26
+maj: 2026-10-28
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-26-nvenc-pilote]]"
+  - "[[source-2026-10-28-qsv-portable]]"
 ---
 
 # Codecs vidéo
@@ -38,6 +39,7 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
 | Plateforme | HEVC | H264 | AV1 |
 |---|---|---|---|
 | Windows + NVIDIA | `hevc_nvenc` | `h264_nvenc` | `av1_nvenc` |
+| Windows + Intel QSV, sans NVIDIA | `hevc_qsv` | `h264_qsv` | `av1_qsv` |
 | Windows sans NVIDIA, Linux | `libx265` | `libx264` | `libaom-av1` |
 | macOS | `hevc_videotoolbox` | `h264_videotoolbox` | `libaom-av1` |
 
@@ -48,6 +50,12 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
 - **Un ffmpeg trop récent pour le pilote perd tout NVENC** (HEVC, H264, AV1) :
   la sonde ne garde alors que `libx265`. Voir [[ffmpeg#NVENC et version du pilote]].
   *(mesuré, pilote 597.16)*
+- **Intel Quick Sync est retenu sur sondage** (v0.9.0.9) : sans NVIDIA, IRIS
+  ouvre `hevc_qsv` sur une image au lancement. Tiger Lake (i5-1135G7) encode le
+  H.264 et le HEVC 8 et 10 bits, pas l'AV1 (Arc / Meteor Lake et après).
+  *(observé sur le portable de l'utilisateur, ffmpeg de son PATH)* Le ffmpeg
+  fourni contient les encodeurs QSV, pas SVT-AV1 : l'AV1 sans matériel passe
+  par libaom. *(mesuré, gyan.dev 8.1.2)*
 - **`av1_nvenc` n'a pas d'option `-profile`.** La passer fait refuser la
   commande avant même d'interroger la carte. *(mesuré, v0.8.1.22)*
 - **libx265 en 4K : 0,78 image/s**, soit ~70 h pour un long métrage.
@@ -59,7 +67,8 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
 Sur une courbe PQ, du 8 bits étale 10 bits de dégradés sur 256 niveaux :
 **banding garanti** dans les ciels et les fondus.
 
-- Sortie HDR : `yuv420p10le` (libx265) ou `p010le` (NVENC), `-profile:v main10`.
+- Sortie HDR : `yuv420p10le` (libx265) ou `p010le` (NVENC, QSV), `-profile:v main10`.
+  QSV : la chaîne HDR10 complète (métadonnées recopiées) n'est pas vérifiée. *(supposé)*
 - **H264 n'a pas de profil 10 bits chez NVENC** : une source HDR ramenée en
   H264 reste en 8 bits. Ne concerne que les cibles sous 1080p.
 - Le 10 bits ne coûte pas de qualité quand il dépense moins : sur une
@@ -83,6 +92,12 @@ plafond égal, **99 %** avec la marge. *(mesuré)*
 Un fichier très en dessous de sa cible n'est pas forcément un défaut : une
 animation au dessin plat rend 54 % de la cible, parce que le contenu n'a pas
 besoin des bits. *(mesuré)*
+
+### QSV : la marge de NVENC, non mesurée
+
+IRIS lui passe la règle de NVENC sans `-rc` : un `-maxrate` au-dessus de
+`-b:v` sélectionne le VBR chez QSV. *(documenté)* Le débit obtenu par rapport
+à la cible n'a pas été mesuré. *(supposé)*
 
 ### libx265 : le réglage inverse
 

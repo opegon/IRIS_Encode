@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.0.13
+**Version** : 0.9.0.14
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*

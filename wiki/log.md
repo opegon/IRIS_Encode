@@ -463,3 +463,9 @@ Mesuré sur la RTX A4500 : la passe vidéo du réencodage DV, gardée sur la
 carte, passe de 21 s à 13,5 s, flux identique bit à bit. `scale_cuda` garde
 la plage pleine comme `scale`. Pages mises à jour : [[codecs-video]],
 [[ffmpeg]].
+
+## [2026-10-28] ingest | Passe DV sur la puce Intel (v0.9.0.14)
+
+Observé sur le portable : la passe vidéo du réencodage DV, gardée sur la
+puce, passe de 51 s à 38 s, mêmes images, HDR10 conservé, PSNR 62,5 dB.
+Page mise à jour : [[codecs-video]].

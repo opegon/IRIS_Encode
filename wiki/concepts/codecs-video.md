@@ -9,6 +9,7 @@ sources:
   - "[[source-2026-10-28-qsv-decodage]]"
   - "[[source-2026-10-28-nvdec-tout-carte]]"
   - "[[source-2026-10-28-nvdec-dv-plage]]"
+  - "[[source-2026-10-28-qsv-passe-dv]]"
 ---
 
 # Codecs vidéo
@@ -73,7 +74,8 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
   IRIS le fait depuis v0.9.0.12, à partir de Pascal (garanti par un
   `hevc_nvenc` ouvert en 10 bits) ; l'AV1 seulement si `av1_nvenc` s'ouvre.
   La passe vidéo du réencodage DV aussi (v0.9.0.13) : 21 s → 13,5 s pour
-  60 s de 4K, flux identique bit à bit.
+  60 s de 4K, flux identique bit à bit. Sur Intel (v0.9.0.14) : 51 s → 38 s
+  sur un i5-1135G7, mêmes images, PSNR 62,5 dB — pas identique.
 - **`av1_nvenc` n'a pas d'option `-profile`.** La passer fait refuser la
   commande avant même d'interroger la carte. *(mesuré, v0.8.1.22)*
 - **libx265 en 4K : 0,78 image/s**, soit ~70 h pour un long métrage.

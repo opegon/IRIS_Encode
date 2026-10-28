@@ -635,18 +635,26 @@ def build_dv_video_command(decision, platform, sortie_hevc: Path,
     conversion `-pix_fmt p010le` : 21 s pour 60 s de 4K DV 8.1 sur une RTX
     A4500, plus que tout au processeur (18 s) ; 13,5 s sur la carte, flux
     identique bit à bit (IE-149). La carte rend déjà du `p010le`.
+
+    Intel : de même sur la puce, au lieu d'un décodage au processeur. Mesuré
+    sur un i5-1135G7, 60 s de 4K DV 8.1 : 51 s → 38 s, même nombre d'images,
+    HDR10 conservé ; pas identique bit à bit, PSNR 62,5 dB (IE-150).
     """
     info    = decision.info
     vid     = decision.video
     profile = decision.profile
 
-    sur_carte = (platform.gpu == GPU.NVIDIA
-                 and "nvenc" in platform.encoder_hevc
-                 and platform.peut_encoder_10_bits(platform.encoder_hevc)
-                 and info.codec == "hevc" and info.pix_fmt == "yuv420p10le")
+    acces = None
+    if (info.codec == "hevc" and info.pix_fmt == "yuv420p10le"
+            and platform.peut_encoder_10_bits(platform.encoder_hevc)):
+        if platform.gpu == GPU.NVIDIA and "nvenc" in platform.encoder_hevc:
+            acces = "cuda"
+        elif platform.gpu == GPU.INTEL and "qsv" in platform.encoder_hevc:
+            acces = "qsv"
+    sur_carte = acces is not None
     cmd = [ffmpeg_path or _ffmpeg_path, "-y"]
     if sur_carte:
-        cmd += ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
+        cmd += ["-hwaccel", acces, "-hwaccel_output_format", acces]
     elif platform.hwaccel:
         cmd += ["-hwaccel", platform.hwaccel]
     cmd += ["-i", str(decision.encode_source or info.lecture)]

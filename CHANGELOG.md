@@ -1,5 +1,16 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.14] — 2026-10-28
+
+### Intel : le réencodage Dolby Vision passe sur la puce
+
+La passe vidéo du réencodage Dolby Vision décodait la source au processeur
+avant de l'envoyer à Quick Sync. Elle reste désormais sur la puce, comme sur
+NVIDIA depuis v0.9.0.13. Mesuré sur un i5-1135G7, 60 s de 4K DV 8.1 :
+**38 s** au lieu de 51, même nombre d'images, HDR10 et écran de mastering
+conservés. Le flux n'est pas identique bit à bit à celui d'avant (62,5 dB de
+PSNR, différence invisible). Il faut une puce qui encode le HEVC en 10 bits.
+
 ## [v0.9.0.13] — 2026-10-28
 
 ### NVIDIA : le réencodage Dolby Vision reste sur la carte

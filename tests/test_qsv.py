@@ -213,3 +213,34 @@ def test_le_mode_hdr10_quality_reste_a_libx265(tmp_path):
     cmd = build_command(dec, _INTEL)
     assert cmd[cmd.index("-c:v") + 1] == "libx265"
     assert "-hwaccel" not in cmd and "vpp_qsv" not in " ".join(cmd)
+
+
+# ─── Passe vidéo du réencodage Dolby Vision sur la puce (IE-150) ─────────────
+
+def _intel_sonde(ok=frozenset({"hevc_qsv", "hevc_qsv@10", "h264_qsv"})):
+    return PlatformProfile(os=OS.WINDOWS, gpu=GPU.INTEL, hwaccel=None,
+                           encoder_hevc="hevc_qsv", encoder_h264="h264_qsv",
+                           encoder_av1="av1_qsv", encodeurs_ok=ok)
+
+
+def test_la_passe_dv_reste_sur_la_puce():
+    """51 s → 38 s pour 60 s de 4K DV 8.1 sur un i5-1135G7, mêmes images."""
+    from tests.test_nvdec import _passe_dv
+    cmd = _passe_dv(_intel_sonde())
+    assert _apres(cmd, "-hwaccel") == "qsv"
+    assert _apres(cmd, "-hwaccel_output_format") == "qsv"
+    assert "-pix_fmt" not in cmd
+    assert "-vf" not in cmd
+    assert _apres(cmd, "-c:v") == "hevc_qsv"
+
+
+@pytest.mark.parametrize("ok,pix_fmt", [
+    (None, "yuv420p10le"),                         # pas de sondage
+    (frozenset({"hevc_qsv"}), "yuv420p10le"),      # 10 bits refusé
+    (frozenset({"hevc_qsv", "hevc_qsv@10"}), ""),  # format inconnu
+])
+def test_la_passe_dv_intel_garde_sinon_le_processeur(ok, pix_fmt):
+    from tests.test_nvdec import _passe_dv
+    cmd = _passe_dv(_intel_sonde(ok), pix_fmt)
+    assert "-hwaccel" not in cmd
+    assert _apres(cmd, "-pix_fmt") == "p010le"

@@ -124,8 +124,6 @@ them.
 - **Never install anything outside the application folder**, never require
   administrator rights.
 - **Never add a binary download without checking its SHA256 fingerprint.**
-  (One known exception remains: `uv`, fetched by `bootstrap.ps1` — see
-  [`SECURITY.md`](SECURITY.md).)
 - **Never decrypt a disc.** Protected DVDs and Blu-rays are detected and
   refused; a pull request adding decryption will not be accepted.
 

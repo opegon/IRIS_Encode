@@ -1,6 +1,6 @@
 # IRIS ENCODE
 
-**Version** : 0.9.0.10 — Windows · Linux prévu en 2027, macOS ensuite
+**Version** : 0.9.0.11 — Windows · Linux prévu en 2027, macOS ensuite
 
 *[English version: README.md](README.md)*
 
@@ -364,7 +364,7 @@ il installe le sien et vous n'avez rien d'autre à faire :
  No administrator rights needed; everything is written to this folder.
 
   IRIS ENCODE — Python environment setup
-  Downloading uv (x86_64-pc-windows-msvc)…
+  Downloading uv 0.13.6 (x86_64-pc-windows-msvc)…
   uv installed: bin\uv.exe
   Python 3.12…
   .venv environment…

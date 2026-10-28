@@ -1,5 +1,28 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.11] — 2026-10-28
+
+### uv vérifié par son empreinte
+
+`bootstrap.ps1` téléchargeait la dernière version de `uv` sans la comparer à
+une empreinte : c'était le seul binaire installé par IRIS qui échappait à la
+règle (CR-40). Le script épingle désormais uv 0.13.6 et porte l'empreinte
+SHA256 de chacune de ses trois archives Windows (x86_64, ARM64, 32 bits).
+L'archive téléchargée est comparée à celle de sa cible avant d'être extraite ;
+si les empreintes diffèrent, elle est supprimée, le message le dit
+(« uv archive rejected ») et le script s'arrête en erreur, comme sur un
+téléchargement échoué.
+
+L'empreinte est inscrite dans le script plutôt que lue dans le `.sha256` que uv
+publie à côté de l'archive : venu du même hôte, ce fichier prouverait que
+l'archive n'est pas abîmée, pas qu'elle est la bonne. En contrepartie, monter
+de version se fait à la main : changer `$UvVersion` et reprendre les trois
+empreintes. Celles de la 0.13.6 ont été recoupées par un calcul sur les
+archives. Un `uv.exe` déjà présent dans `bin/` n'est pas retéléchargé.
+
+L'exception disparaît de `SECURITY.md` (limites connues) et de
+`CONTRIBUTING.md`.
+
 ## [v0.9.0.10] — 2026-10-28
 
 ### La pause se voit

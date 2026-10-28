@@ -40,7 +40,7 @@ chooses. The areas where a flaw matters most:
 |---|---|---|
 | **Application updater** (`updater.py`) | Downloads the latest GitHub release, checks its SHA256 against the digest GitHub publishes, replaces the application files | A way to make it install something else, write outside the application folder, or touch `config.toml` / `profiles.toml` |
 | **Tool installer** (`core/updates.py`, `core/preflight.py`) | Downloads ffmpeg, dovi_tool, mkvmerge, mpv into `bin/`, and refuses any download without a published fingerprint | A bypass of the fingerprint check, an archive that writes outside `bin/` |
-| **Python bootstrap** (`bootstrap.ps1`) | Downloads `uv`, which then installs CPython and the Python dependencies | See *Known limitations* |
+| **Python bootstrap** (`bootstrap.ps1`) | Downloads a pinned `uv` release and checks its SHA256 against a fingerprint written in the script; `uv` then installs CPython and the Python dependencies | A bypass of the fingerprint check, a way to make it run another `uv` |
 | **Reading untrusted media** | Parses DVD IFO and Blu-ray MPLS files in Python, and passes file names to ffmpeg, dovi_tool and mkvmerge | A crafted disc folder or file name that leads to code execution, a command injection, or a write outside the output folder |
 | **Online lookups** | OMDb, AlloCiné, IMDb suggestions, OpenSubtitles | Credentials sent elsewhere than their service, or over plain HTTP |
 
@@ -59,12 +59,6 @@ chooses. The areas where a flaw matters most:
 
 Stated here so that nobody has to discover them:
 
-- **`uv` is downloaded without a fingerprint check.** `bootstrap.ps1` fetches
-  the latest `uv` release from GitHub over HTTPS, but does not yet compare it
-  to a SHA256 fingerprint, unlike every other tool. Users who prefer to avoid
-  this can install Python 3.11+ themselves ([`README.md`](README.md),
-  chapter 2): `launch.bat` then uses it and does not download `uv` — unless
-  `pip` fails on that Python, in which case it falls back to the bootstrap.
 - **Online credentials are stored in plain text** in `config.toml`, in the
   application folder: the OMDb key, and the OpenSubtitles key, user name and
   password. Anyone who can read that folder can read them. Use an

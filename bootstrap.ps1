@@ -12,7 +12,8 @@
     Ce script est cette exception, écrite hors de Python. Il suit la même
     convention que le reste de l'outillage :
 
-      1. `uv` — un exécutable unique, téléchargé dans `bin/` depuis GitHub ;
+      1. `uv` — un exécutable unique, téléchargé dans `bin/` depuis GitHub,
+         en version épinglée et vérifié par son empreinte SHA256 ;
       2. un CPython, que `uv` va chercher lui-même, installé sous `bin/python/` ;
       3. un environnement `.venv/` local, garni depuis `requirements.txt`.
 
@@ -53,6 +54,22 @@ $VenvPy  = Join-Path $VenvDir 'Scripts\python.exe'
 # encore soutenue, plutôt que « la plus récente » — une version fraîche casse
 # régulièrement une roue binaire, et numpy en fournit une pour 3.12.
 $PythonDemande = '3.12'
+
+# uv : version épinglée, et empreinte SHA256 de chacune de ses trois archives
+# Windows. Comme tout binaire qu'IRIS installe (CR-40), une archive dont
+# l'empreinte ne correspond pas est refusée. L'empreinte est inscrite ici plutôt
+# que lue dans le `.sha256` que uv publie à côté de l'archive : venu du même
+# hôte, ce fichier prouverait que l'archive n'est pas abîmée, pas qu'elle est la
+# bonne.
+# Monter de version : changer `$UvVersion`, puis reprendre les trois empreintes
+# dans https://github.com/astral-sh/uv/releases/download/<version>/uv-<cible>.zip.sha256
+# en les recoupant par un calcul sur les archives elles-mêmes.
+$UvVersion    = '0.13.6'
+$UvEmpreintes = @{
+    'x86_64-pc-windows-msvc'  = 'a2a8820d5eea32f08ef467ef3b7f66883a9b076d5737a2fc2fbb5f458d1bb50f'
+    'aarch64-pc-windows-msvc' = 'c2426c0c8e28b53d8c440e47a18d96ad4db51e159866c0e81435b196d7f0081c'
+    'i686-pc-windows-msvc'    = '32ceb64db231cbedfd499f7654c72e4c0b564f2846f9e76c0a4a7b2d03d7e67c'
+}
 
 function Dire([string] $texte, [string] $couleur = 'Gray') {
     Write-Host "  $texte" -ForegroundColor $couleur
@@ -158,10 +175,10 @@ if (-not (Test-Path $UvExe)) {
         'AMD64' { $cible = 'x86_64-pc-windows-msvc'  }
         default { $cible = 'i686-pc-windows-msvc'    }
     }
-    $url = "https://github.com/astral-sh/uv/releases/latest/download/uv-$cible.zip"
+    $url = "https://github.com/astral-sh/uv/releases/download/$UvVersion/uv-$cible.zip"
     $zip = Join-Path $env:TEMP "uv-$cible.zip"
 
-    Dire "Downloading uv ($cible)…" 'White'
+    Dire "Downloading uv $UvVersion ($cible)…" 'White'
     try {
         # `ProgressPreference` : la barre de progression d'Invoke-WebRequest
         # divise son débit par dix sur PowerShell 5.1. Bug connu, contournement
@@ -174,6 +191,19 @@ if (-not (Test-Path $UvExe)) {
         Dire "Download failed: $($_.Exception.Message)" 'Red'
         Dire "Check the connection, or install uv by hand:" 'Yellow'
         Dire "  https://github.com/astral-sh/uv/releases" 'Yellow'
+        exit 1
+    }
+
+    # L'empreinte, avant toute extraction. `-ne` ignore la casse : Get-FileHash
+    # rend l'empreinte en majuscules.
+    $attendue = $UvEmpreintes[$cible]
+    $obtenue  = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
+    if ($obtenue -ne $attendue) {
+        Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue
+        Dire "uv archive rejected: its SHA256 fingerprint does not match." 'Red'
+        Dire "  expected: $attendue" 'Yellow'
+        Dire "  received: $obtenue" 'Yellow'
+        Dire "The file may be corrupted or tampered with. Nothing was installed." 'Yellow'
         exit 1
     }
 

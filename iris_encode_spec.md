@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.10 — document de référence courant
+**Version** : 0.9.0.11 — document de référence courant
 **Date** : 2026-10-28
 **Statut** : stable
 
@@ -296,7 +296,7 @@ droits administrateur, sans toucher au PATH ni au registre :
 
 | Étape | Ce qui est récupéré | Où |
 |---|---|---|
-| 1 | `uv`, exécutable unique, depuis GitHub | `bin\uv.exe` |
+| 1 | `uv`, exécutable unique, depuis GitHub — version épinglée, empreinte SHA256 vérifiée | `bin\uv.exe` |
 | 2 | un CPython 3.12, que `uv` va chercher lui-même | `bin\python\` |
 | 3 | l'environnement et `requirements.txt` | `.venv\` |
 
@@ -308,6 +308,16 @@ volumes différents — la copie *est* le comportement voulu ici.
 
 3.12 plutôt que la version la plus récente : une version fraîche casse
 régulièrement une roue binaire, et `numpy` en publie une pour 3.12.
+
+**`uv` est épinglé et vérifié par son empreinte** (v0.9.0.11, CR-40). La version
+(`$UvVersion`) et l'empreinte SHA256 de chacune des trois archives Windows
+(`x86_64`, `aarch64`, `i686`) sont inscrites dans le script ; l'archive est
+comparée par `Get-FileHash` avant toute extraction, et une empreinte qui diffère
+la fait supprimer, avec un arrêt en erreur. L'empreinte n'est pas lue dans le
+`.sha256` que uv publie à côté de l'archive : venu du même hôte, il prouverait
+l'intégrité, pas l'authenticité. Le prix est une montée de version à la main —
+changer `$UvVersion` et reprendre les trois empreintes publiées, recoupées par
+un calcul sur les archives. Un `uv.exe` déjà présent n'est pas re-vérifié.
 
 **Le `.venv` est créé par le module `venv` de l'interpréteur, et non par
 `uv venv`.** Smart App Control, actif par défaut sur une installation *propre* de
@@ -3634,6 +3644,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.0.11 | 2026-10-28 | **uv vérifié par son empreinte** (§ 3.1.1, CR-40) : `bootstrap.ps1` épingle uv 0.13.6 et compare l'archive à l'empreinte SHA256 inscrite pour sa cible avant de l'extraire ; une empreinte qui diffère supprime l'archive et arrête le script · exception retirée de `SECURITY.md` et `CONTRIBUTING.md` · `tests/test_lanceurs.py` |
 | 0.9.0.10 | 2026-10-28 | **La pause se voit** (§ 12.2) : `⏸ en pause` sur la ligne, barre d'état et bandeau de l'en-tête ; `pause()`/`resume()` rendent l'état obtenu, une suspension refusée est signalée · `tests/test_arret_encodage.py` ; **refus AV1 QSV** (§ 14.0) : message propre à Quick Sync (Arc, Meteor Lake) au lieu de NVENC · `tests/test_qsv.py` |
 | 0.9.0.9 | 2026-10-28 | **Intel Quick Sync** (§ 11, § 14) : sans NVIDIA, `avec_qsv()` sonde `hevc_qsv` au lancement et bascule sur `hevc_qsv`/`h264_qsv`/`av1_qsv` ; sonde 10 bits étendue à QSV ; `p010le` pour la passe DV · `tests/test_qsv.py` |
 | 0.9.0.7 | 2026-10-25 | **Tri de l'accueil** (§ 14) : `O` trie par nom, taille, résolution, durée, débit, codec ou estimation ; rechoisir inverse le sens ; valeur inconnue en fin · `tests/test_tri_accueil.py` |

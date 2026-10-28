@@ -111,3 +111,42 @@ def test_le_lanceur_appelle_launch_bat_par_un_chemin_relatif():
     cs = _lire("launcher/IrisEncodeLauncher.cs")
     assert cs.count('.\\\\launch.bat"') == 2
     assert 'c launch.bat"' not in cs
+
+
+# ─── CR-40 — uv vérifié par son empreinte, comme tout binaire ────────────────
+
+_CIBLES_UV = {"x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc",
+              "i686-pc-windows-msvc"}
+
+
+def _etape_uv() -> str:
+    """Le bloc « 1. uv » de bootstrap.ps1, jusqu'à l'étape 2."""
+    txt = _lire("bootstrap.ps1")
+    debut = txt.index("# ── 1. uv")
+    return txt[debut:txt.index("# ── 2.", debut)]
+
+
+def test_bootstrap_epingle_uv_avec_une_empreinte_par_cible():
+    txt = _lire("bootstrap.ps1")
+    assert "releases/latest" not in txt, "uv non épinglé : l'empreinte ne suivrait pas"
+    assert re.search(r"^\$UvVersion\s*=\s*'\d+\.\d+\.\d+'", txt, re.M)
+    assert "releases/download/$UvVersion/uv-$cible.zip" in _etape_uv()
+    empreintes = dict(re.findall(
+        r"'([a-z0-9_]+-pc-windows-msvc)'\s*=\s*'([0-9a-f]{64})'", txt))
+    assert set(empreintes) == _CIBLES_UV
+    # Chaque archive que l'architecture peut désigner a son empreinte.
+    assert set(re.findall(r"\$cible = '([^']+)'", _etape_uv())) == _CIBLES_UV
+
+
+def test_bootstrap_refuse_une_archive_uv_dont_l_empreinte_differe():
+    etape = _etape_uv()
+    telechargement = etape.index("Invoke-WebRequest")
+    empreinte = etape.index("Get-FileHash")
+    extraction = etape.index("ExtractToDirectory")
+    assert telechargement < empreinte < extraction, (
+        "l'empreinte doit être contrôlée avant toute extraction")
+    assert "-Algorithm SHA256" in etape
+    refus = etape[empreinte:extraction]
+    assert re.search(r"if \(\$obtenue -ne \$attendue\)", refus)
+    assert re.search(r"Remove-Item -LiteralPath \$zip", refus)
+    assert re.search(r"^\s*exit [1-9]", refus, re.M)

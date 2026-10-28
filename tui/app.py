@@ -350,6 +350,9 @@ class IrisEncodeApp(App):
         if lot.termine:
             return f"{f12} " + _("Batch done")
         done, total, pct = lot.avancement()
+        if lot.en_pause:
+            return f"{f12} " + _("Encoding paused · {done}/{total} · {percent}%").format(
+                done=done, total=total, percent=pct)
         return f"{f12} " + _("Encoding in progress · {done}/{total} · {percent}%").format(
             done=done, total=total, percent=pct)
 

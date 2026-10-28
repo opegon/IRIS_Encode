@@ -62,8 +62,11 @@ class _FauxFfmpeg:
         """Fin normale : code 0."""
         self._fin.set()
 
-    def pause(self):  pass
-    def resume(self): pass
+    # Comme `EncoderProcess` : l'état obtenu, `refuse` simulant un refus.
+    refuse = False
+
+    def pause(self):  return not self.refuse
+    def resume(self): return False
 
 
 class _Accueil(Screen):
@@ -461,3 +464,47 @@ def test_la_file_se_reordonne_et_se_vide_de_ce_qui_attend(faux, tmp_path):
     assert fixe == list("abdc"), "le fichier en cours a été déplacé"
     assert retrait == list("adc")
     assert garde == list("adc"), "le fichier en cours a été retiré"
+
+
+def _etat_pause(tmp_path, refuse: bool):
+    """`P` pendant un encodage : la ligne, la barre d'état, le bandeau."""
+    async def _run():
+        _FauxFfmpeg.refuse = refuse
+        app = _App([_dec(tmp_path / "a.mkv")])
+        async with app.run_test() as pilot:
+            await pilot.pause(0.3)
+            ecran = app.screen
+            await pilot.press("p")
+            await pilot.pause(0.2)
+            table = ecran.query_one("DataTable")
+            releve = {
+                "icone": str(table.get_cell("0", "icon")),
+                "etat":  str(table.get_cell("0", "state")),
+                "barre": str(ecran.query_one("#run-header-bar").render()),
+            }
+            await pilot.press("backspace")
+            await pilot.pause(0.2)
+            releve["bandeau"] = app.etat_file()
+            app.lot._abandon = True
+            for p in _FauxFfmpeg.lances:
+                p.terminate()
+            await pilot.pause(0.2)
+        _FauxFfmpeg.refuse = False
+        return releve
+    return asyncio.run(_run())
+
+
+def test_la_pause_se_voit(faux, tmp_path):
+    """Une pause ne montrait rien : on la prenait pour un encodage figé."""
+    r = _etat_pause(tmp_path, refuse=False)
+    assert r["icone"] == "⏸"
+    assert r["etat"].startswith("en pause")
+    assert "En pause — P pour reprendre" in r["barre"]
+    assert r["bandeau"].startswith("F12 Encodages en pause · 0/1")
+
+
+def test_une_pause_refusee_ne_se_dit_pas_en_pause(faux, tmp_path):
+    r = _etat_pause(tmp_path, refuse=True)
+    assert r["icone"] != "⏸"
+    assert "En pause" not in r["barre"]
+    assert r["bandeau"].startswith("F12 Encodages en cours")

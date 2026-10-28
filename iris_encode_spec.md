@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.9 — document de référence courant
+**Version** : 0.9.0.10 — document de référence courant
 **Date** : 2026-10-28
 **Statut** : stable
 
@@ -2049,6 +2049,13 @@ branche standard et la passe vidéo du réencodage DV donnent aussi à libx265 u
 
 - Windows : `NtSuspendProcess` / `NtResumeProcess` via ctypes
 - POSIX : `SIGSTOP` / `SIGCONT`
+- `pause()` / `resume()` rendent l'état obtenu (True = en pause) ; `RunScreen`
+  ne se dit en pause que si le système l'a accordé, et avertit sinon.
+- **La pause se voit** (v0.9.0.10) : icône `⏸` et « en pause · <avancement> »
+  sur la ligne du fichier, « En pause — P pour reprendre » dans la barre d'état
+  de l'écran, « Encodages en pause » dans le bandeau de l'en-tête
+  (`RunScreen.en_pause`, `etat_file`). Sans cela, une pause ressemblait à un
+  encodage figé.
 
 ### 12.3 Progression
 
@@ -3627,6 +3634,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.0.10 | 2026-10-28 | **La pause se voit** (§ 12.2) : `⏸ en pause` sur la ligne, barre d'état et bandeau de l'en-tête ; `pause()`/`resume()` rendent l'état obtenu, une suspension refusée est signalée · `tests/test_arret_encodage.py` ; **refus AV1 QSV** (§ 14.0) : message propre à Quick Sync (Arc, Meteor Lake) au lieu de NVENC · `tests/test_qsv.py` |
 | 0.9.0.9 | 2026-10-28 | **Intel Quick Sync** (§ 11, § 14) : sans NVIDIA, `avec_qsv()` sonde `hevc_qsv` au lancement et bascule sur `hevc_qsv`/`h264_qsv`/`av1_qsv` ; sonde 10 bits étendue à QSV ; `p010le` pour la passe DV · `tests/test_qsv.py` |
 | 0.9.0.7 | 2026-10-25 | **Tri de l'accueil** (§ 14) : `O` trie par nom, taille, résolution, durée, débit, codec ou estimation ; rechoisir inverse le sens ; valeur inconnue en fin · `tests/test_tri_accueil.py` |
 | 0.9.0.6 | 2026-10-21 | **L'assistant ouvre le recalage** (§ 14.0, IE-142) : `R` à l'étape 3 ouvre `SyncScreen` en mode assistant, pré-chargé de la dernière mesure ; refus et mesure non sûre renvoient vers `R` · `tests/test_assistant_recalage.py` |

@@ -957,15 +957,19 @@ class EncoderProcess:
             progress = parse_progress(line, self.duration)
             yield line, progress
 
-    def pause(self) -> None:
+    def pause(self) -> bool:
+        """Suspend ffmpeg. Rend l'état obtenu : True s'il est en pause."""
         if self._proc and not self._paused:
             if _suspend_process(self._proc.pid):
                 self._paused = True
+        return self._paused
 
-    def resume(self) -> None:
+    def resume(self) -> bool:
+        """Relance ffmpeg. Rend l'état obtenu : True s'il est encore en pause."""
         if self._proc and self._paused:
             if _resume_process(self._proc.pid):
                 self._paused = False
+        return self._paused
 
     def terminate(self) -> None:
         if self._proc:

@@ -264,11 +264,11 @@ class TuyauRpu:
         """Les dernières lignes de ffmpeg, pour nommer la cause d'un échec."""
         return self._ff.journal
 
-    def pause(self) -> None:
-        self._ff.pause()
+    def pause(self) -> bool:
+        return self._ff.pause()
 
-    def resume(self) -> None:
-        self._ff.resume()
+    def resume(self) -> bool:
+        return self._ff.resume()
 
     def terminate(self) -> None:
         self._ff.terminate()

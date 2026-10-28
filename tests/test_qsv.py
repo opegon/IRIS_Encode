@@ -66,3 +66,22 @@ def test_10_bits_refuse_est_dit():
                         encodeurs_ok=frozenset({"hevc_qsv"}))
     assert p.peut_encoder_10_bits("hevc_qsv") is False
 
+
+
+def test_av1_qsv_refuse_parle_d_intel_pas_de_nvenc():
+    """Le refus de l'AV1 sur un i5-1135G7 citait NVENC et la RTX 40."""
+    from types import SimpleNamespace
+
+    from tui.screens.run import FileState, RunScreen
+    intel = PlatformProfile(os=OS.WINDOWS, gpu=GPU.INTEL, hwaccel=None,
+                            encoder_hevc="hevc_qsv", encoder_h264="h264_qsv",
+                            encoder_av1="av1_qsv",
+                            encodeurs_ok=frozenset({"hevc_qsv", "h264_qsv"}))
+    statut = SimpleNamespace(state=FileState.RUNNING, error_msg="", last_line="")
+    ecran = SimpleNamespace(_statuses=[statut], _platform=intel,
+                            app=SimpleNamespace(call_from_thread=lambda f, *a: f(*a)),
+                            _update_row=lambda i: None)
+    cmd = ["ffmpeg", "-i", "x.mkv", "-c:v", "av1_qsv", "-pix_fmt", "yuv420p", "y.mkv"]
+    assert RunScreen._refuser_encodeur(ecran, 0, cmd) is True
+    assert "Quick Sync" in statut.last_line
+    assert "NVENC" not in statut.last_line

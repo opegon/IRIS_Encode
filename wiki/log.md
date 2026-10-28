@@ -420,3 +420,25 @@ Observé sur un i5-1135G7 : QSV encode H.264, HEVC 8 et 10 bits, VP9, pas
 l'AV1. IRIS retient désormais QSV sur sondage quand il n'y a pas de NVIDIA.
 Restent à mesurer sur la puce : débit contre cible, HDR10, `-hwaccel qsv`.
 Page mise à jour : [[codecs-video]].
+
+## [2026-10-28] ingest | Premiers encodages QSV sur le portable
+
+Observé : SDR et HDR10 corrects en `hevc_qsv`, HDR10 conservé ; débit à
+92-93 % de la cible avec la marge de NVENC. Page mise à jour : [[codecs-video]].
+
+## [2026-10-28] ingest | Plafond de débit QSV
+
+Observé sur le portable : plafond = cible → 74 % ; 1,5 × → 93-96 % ; 2 × →
+91-95 %. La règle de NVENC reste la bonne pour QSV. Page mise à jour :
+[[codecs-video]].
+
+## [2026-10-28] ingest | Source HDR10 de l'essai QSV
+
+La source n'a pas de MaxCLL/MaxFALL ; l'écran de mastering est identique en
+sortie. Le HDR10 passe entier à travers `hevc_qsv`. Page : [[codecs-video]].
+
+## [2026-10-28] ingest | AV1 refusé par Quick Sync sur Tiger Lake
+
+Observé : `av1_qsv` refusé en 8 et 10 bits (« Current codec type is
+unsupported »). Le message de refus d'IRIS citait NVENC : corrigé en
+v0.9.0.10. Page : [[codecs-video]].

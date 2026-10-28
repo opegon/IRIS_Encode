@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.0.9
+**Version** : 0.9.0.10
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -408,7 +408,7 @@ file, « F12 Fichiers ».
 
 | Touche | Action |
 |---|---|
-| `P` | Pause / reprendre |
+| `P` | Pause / reprendre — en pause, le fichier affiche ⏸ « en pause » et la barre d'état « En pause — P pour reprendre » |
 | `S` | Passer le fichier en cours, sans annuler le reste — après confirmation |
 | `Ctrl+↑` / `Ctrl+↓` | Avancer / reculer d'un rang le fichier en attente sous le curseur |
 | `Suppr` | Retirer de la file le fichier en attente sous le curseur |

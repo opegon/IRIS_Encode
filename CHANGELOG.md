@@ -1,5 +1,24 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.10] — 2026-10-28
+
+### La pause se voit
+
+`P` suspendait l'encodage sans que rien ne change à l'écran : une pause
+ressemblait à un encodage figé. Désormais, la ligne du fichier affiche
+« ⏸ en pause » suivi de son avancement, la barre d'état de l'écran
+« En pause — P pour reprendre », et le bandeau de l'en-tête « Encodages en
+pause » quand on est revenu à l'accueil. Si le système refuse de suspendre
+ou de relancer ffmpeg, un message le dit, au lieu d'afficher un état faux.
+
+### L'AV1 refusé sur Intel parle d'Intel
+
+Sur une puce Intel sans encodage AV1 (Tiger Lake et avant), le refus de
+l'AV1 expliquait qu'il fallait une RTX 40 pour NVENC. Il dit maintenant que
+l'AV1 par Quick Sync demande une carte Intel Arc ou un processeur Meteor Lake
+ou plus récent. Constaté sur un i5-1135G7 : `av1_qsv` refusé en 8 et en
+10 bits (« Current codec type is unsupported »).
+
 ## [v0.9.0.9] — 2026-10-28
 
 ### Intel Quick Sync sans carte NVIDIA

@@ -40,7 +40,7 @@ from core.platform import PlatformProfile
 from core.scanner import est_intermediaire
 from ..common import (barre_etat, actions_ecran, colonne_fixe, fmt_bytes,
                       footer_line2, record_measured_speed,
-                      retour_accueil)
+                      retour_accueil, touche)
 # La même estimation et le même dégradé que la colonne Estim de l'accueil :
 # un fichier ne doit pas annoncer deux tailles selon l'écran. L'accueil
 # n'importe `run` que dans ses fonctions, il n'y a pas de cycle.
@@ -338,6 +338,8 @@ class RunScreen(TableNavMixin, Screen):
             table = self.query_one(DataTable)
 
             # Gère le cas où la durée est inconnue (percent = -1)
+            en_pause = (s.state == FileState.RUNNING and self.en_pause
+                        and index == self._current_idx)
             if s.state == FileState.RUNNING:
                 if s.percent < 0:
                     running_txt = _("running…")
@@ -351,7 +353,8 @@ class RunScreen(TableNavMixin, Screen):
                         running_txt = f"{prog_pct} ({elapsed} / {remaining} · {speed})"
                     else:
                         running_txt = prog_pct
-                state_txt = Text(running_txt, style="yellow")
+                state_txt = (Text(_("paused") + f" · {running_txt}", style="bold cyan")
+                             if en_pause else Text(running_txt, style="yellow"))
             else:
                 state_txt = {
                     FileState.PENDING:  Text(_("pending"),      style="dim"),
@@ -362,7 +365,8 @@ class RunScreen(TableNavMixin, Screen):
                                              style="bold dark_orange"),
                     FileState.SKIPPED:  Text(_("skipped"),       style="dim"),
                 }[s.state]
-            table.update_cell(str(index), "icon",  self._icon(s),  update_width=False)
+            table.update_cell(str(index), "icon",  "⏸" if en_pause else self._icon(s),
+                              update_width=False)
             table.update_cell(str(index), "state", state_txt,       update_width=False)
         except Exception:
             pass
@@ -390,6 +394,8 @@ class RunScreen(TableNavMixin, Screen):
                 ngettext("{done}/{total} done", "{done}/{total} done",
                          done).format(done=done, total=total),
                 _("Overall: {percent}%").format(percent=bar_pct),
+                (_("Paused — {key} to resume").format(key=touche("p"))
+                 if self.en_pause else ""),
                 apres,
             ))
             self.query_one("#global-bar", ProgressBar).progress = bar_pct
@@ -782,6 +788,12 @@ class RunScreen(TableNavMixin, Screen):
             s.error_msg = _("{encoder} unavailable here").format(encoder=choisi)[:60]
             if "nvenc" in choisi and self._platform.alerte_nvenc:
                 s.last_line = self._platform.alerte_nvenc
+            elif "qsv" in choisi:
+                s.last_line = _(
+                    "This machine cannot encode with “{encoder}” — probed at "
+                    "startup. AV1 through Quick Sync needs an Intel Arc card or "
+                    "a Meteor Lake processor or newer; HEVC and H264 remain "
+                    "available.").format(encoder=choisi)
             else:
                 s.last_line = _(
                     "This machine cannot encode with “{encoder}” — probed at "
@@ -1925,14 +1937,29 @@ class RunScreen(TableNavMixin, Screen):
     # ─── Pause/Resume ─────────────────────────────────────────────────────────
 
     def action_pause_resume(self) -> None:
+        """Suspend ou relance l'étape en cours, et le montre.
+
+        Sans rien à l'écran, une pause ressemblait à un encodage figé. L'état
+        affiché est celui que le système a accordé : une suspension refusée
+        ne doit pas se dire en pause.
+        """
         if self._process is None:
             return
-        if self._paused:
-            self._process.resume()
-            self._paused = False
-        else:
-            self._process.pause()
-            self._paused = True
+        voulu = not self._paused
+        self._paused = (self._process.pause() if voulu
+                        else self._process.resume())
+        if self._paused != voulu:
+            self.notify(_("The system refused to pause the encode.") if voulu
+                        else _("The system refused to resume the encode."),
+                        severity="warning", timeout=5)
+        if 0 <= self._current_idx < len(self._statuses):
+            self._update_row(self._current_idx)
+        self._update_header()
+
+    @property
+    def en_pause(self) -> bool:
+        """L'étape en cours est suspendue (`P`)."""
+        return self._paused and self._process is not None
 
     def action_skip_current(self) -> None:
         """Abandonne le fichier en cours, après confirmation, et passe au

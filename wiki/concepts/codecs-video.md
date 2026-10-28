@@ -52,7 +52,8 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
   *(mesuré, pilote 597.16)*
 - **Intel Quick Sync est retenu sur sondage** (v0.9.0.9) : sans NVIDIA, IRIS
   ouvre `hevc_qsv` sur une image au lancement. Tiger Lake (i5-1135G7) encode le
-  H.264 et le HEVC 8 et 10 bits, pas l'AV1 (Arc / Meteor Lake et après).
+  H.264 et le HEVC 8 et 10 bits, pas l'AV1 (Arc / Meteor Lake et après) :
+  `av1_qsv` répond « Current codec type is unsupported », en 8 comme en 10 bits.
   *(observé sur le portable de l'utilisateur, ffmpeg de son PATH)* Le ffmpeg
   fourni contient les encodeurs QSV, pas SVT-AV1 : l'AV1 sans matériel passe
   par libaom. *(mesuré, gyan.dev 8.1.2)*
@@ -68,7 +69,9 @@ Sur une courbe PQ, du 8 bits étale 10 bits de dégradés sur 256 niveaux :
 **banding garanti** dans les ciels et les fondus.
 
 - Sortie HDR : `yuv420p10le` (libx265) ou `p010le` (NVENC, QSV), `-profile:v main10`.
-  QSV : la chaîne HDR10 complète (métadonnées recopiées) n'est pas vérifiée. *(supposé)*
+  QSV : HDR10 conservé à travers `hevc_qsv` (BT.2020, PQ, écran de mastering),
+  source 4K ramenée en 1080p : écran de mastering identique à la source (la
+  source n'a pas de MaxCLL). *(observé, i5-1135G7, v0.9.0.9)*
 - **H264 n'a pas de profil 10 bits chez NVENC** : une source HDR ramenée en
   H264 reste en 8 bits. Ne concerne que les cibles sous 1080p.
 - Le 10 bits ne coûte pas de qualité quand il dépense moins : sur une
@@ -93,11 +96,22 @@ Un fichier très en dessous de sa cible n'est pas forcément un défaut : une
 animation au dessin plat rend 54 % de la cible, parce que le contenu n'a pas
 besoin des bits. *(mesuré)*
 
-### QSV : la marge de NVENC, non mesurée
+### QSV : la marge de NVENC, la meilleure des trois
 
 IRIS lui passe la règle de NVENC sans `-rc` : un `-maxrate` au-dessus de
-`-b:v` sélectionne le VBR chez QSV. *(documenté)* Le débit obtenu par rapport
-à la cible n'a pas été mesuré. *(supposé)*
+`-b:v` sélectionne le VBR chez QSV. *(documenté)* Résultat : **92-93 %** de la
+cible sur deux épisodes (SDR 2 320k, HDR10 2 309k, cible 2 500k), plafond
+3 750k bien appliqué. *(observé, i5-1135G7)* Ce n'est **pas** le comportement de
+libx265 : serrer le plafond fait chuter le débit, le desserrer n'apporte rien.
+
+| Plafond (extraits de 180 s, 1080p 10 bits, cible 2 500k) | t=600 | t=1800 |
+|---|---|---|
+| `maxrate` = cible | 74 % | — |
+| `maxrate` = 1,5 × cible (IRIS) | 93 % | 96 % |
+| `maxrate` = 2 × cible | 91 % | 95 % |
+
+*(observé, i5-1135G7, voir [[2026-10-28-qsv-essai-plafond]])* La règle reste
+celle de NVENC.
 
 ### libx265 : le réglage inverse
 

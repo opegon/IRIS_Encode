@@ -94,3 +94,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-20-ts-aac-corrompu]] | Trois `.ts` IPTV : paquet AAC corrompu, échec `aac_adtstoasc`, `discardcorrupt`, reproduction synthétique |
 | [[2026-10-21-mesure-vo-contre-vf]] | *The Thirteenth Floor* : audio anglaise et VF du donneur mesurées contre une VFF, sorties brutes |
 | [[2026-10-28-qsv-portable]] | Essais QSV du portable (i5-1135G7), encodeurs du ffmpeg fourni |
+| [[2026-10-28-qsv-essai-plafond]] | Plafond de débit QSV à 1 ×, 1,5 × et 2 × la cible : 74 %, 93-96 %, 91-95 % |
+| [[2026-10-28-qsv-av1-refuse]] | `av1_qsv` sur i5-1135G7 : « Current codec type is unsupported », 8 et 10 bits |
+| [[2026-10-28-qsv-source-hdr10]] | MediaInfo de la source 4K HDR10 de l'essai QSV : sans MaxCLL |
+| [[2026-10-28-qsv-portable-encodages]] | Deux encodages QSV d'IRIS v0.9.0.9 : SDR et HDR10, débit à 92-93 % |

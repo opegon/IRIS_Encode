@@ -1,15 +1,126 @@
-# IRIS ENCODE — Installation guide
+# IRIS ENCODE
 
-**Version**: 0.9.0.10 — Windows (macOS/Linux support planned)
+**Version**: 0.9.0.10 — Windows · Linux planned for 2027, macOS to follow
 
 *[Version française : README.fr.md](README.fr.md)*
 
-> This document introduces the project, then covers **installation**. For
-> day-to-day use — procedures screen by screen, cases met in practice — see
-> [`GUIDE.md`](GUIDE.md). What the project has learned about formats, tools and
-> the playback chain lives in `wiki/` (in French).
+**Make a movie library play everywhere through Jellyfin — without re-encoding
+what does not need it.**
+
+IRIS ENCODE is a terminal application that looks at each video file, works out
+the least it has to change so that every screen in the house plays it
+directly, and **shows you that decision before doing anything**. Most files are
+left alone; a Dolby Vision profile 8.1 file loses its Dolby Vision layer in a
+few minutes, picture untouched; only what really has to be re-encoded is.
+
+<!-- Screenshot: export one with `python tests/shots_tui.py --langue en`, then
+     link it here, e.g. ![IRIS ENCODE, Home screen](docs/home.svg) -->
+
+| | |
+|---|---|
+| **Platform** | Windows 10 / 11 today · Linux planned for 2027 · macOS after |
+| **Interface** | Terminal (TUI), English or French |
+| **Engine** | ffmpeg, plus dovi_tool and mkvmerge when needed — downloaded and checked for you |
+| **License** | GPL-3.0-or-later |
+
+## At a glance
+
+- **Leaves files alone** when their video is already within bounds — the
+  bitrate compared is the video's own, not the whole container's.
+- **Removes Dolby Vision instead of converting it** (profile 8.1, and profile 7
+  into MKV): bit-identical HDR10 picture, HDR10+ kept, no re-encoding.
+- **Transcodes audio at the source bitrate** when the screen cannot take the
+  original (TrueHD, DTS-HD MA, DTS…), and rewrites the track title so it does
+  not announce a format that is gone.
+- **Drops image subtitles that have a text twin**, so Jellyfin never has to
+  burn them in.
+- **Lets the container follow the content**: MP4 when everything fits, MKV
+  when something would otherwise be lost — never a track sacrificed silently.
+- **One profile per destination** (living-room 4K, phone, series…), with its
+  own thresholds, languages and Dolby Vision handling.
+- **Shows its decision first**: a dry run (`F1`), then a per-file Tracks
+  screen where every branch can be overruled.
+- **Never overwrites anything**: outputs get their own name (`.hevc-iris`,
+  `.hdr10-iris`…). The source is kept, except with the profiles whose name
+  ends in `_delete`.
+- Also: DVD (`VIDEO_TS`) and Blu-ray (`BDMV`) folder titles, adding external
+  audio or subtitle tracks with automatic resync, joining split parts,
+  hardware encoding (NVIDIA NVENC, Intel Quick Sync) or processor.
+- **No administrator rights**: Python, ffmpeg and the other tools install
+  into the application folder — copy the folder, you have copied the
+  installation.
+
+## Who it is for
+
+- **You run Jellyfin**, and some screens (LG webOS TVs above all, but also
+  browsers and iOS clients) make the server transcode or remux on every
+  playback.
+- **You want to prepare files once**, keeping control over what happens to
+  each of them, rather than send a whole library through a uniform recipe.
+- **You care about picture quality**, and would rather not re-encode a file
+  that does not need it.
+
+It is probably **not** the right tool if you want an unattended service that
+watches a library on a server and processes new files on its own — see
+[Alternatives](#alternatives).
+
+## Questions people ask
+
+**Doesn't Jellyfin already remove Dolby Vision on its own?** Recent Jellyfin
+builds can strip it *during playback*. That happens again on every viewing,
+through a remux — the very HLS path that causes audio dropouts on webOS — and
+does nothing for the rest: unsupported audio and image subtitles still get
+transcoded each time. IRIS fixes the file once.
+
+**Plex or Emby?** The outputs are standard MP4 and MKV files, so they play
+there too. The rules and the shipped profiles were tuned against Jellyfin's
+direct play, though.
+
+**Encrypted DVDs and Blu-rays?** No. IRIS reads disc folders that are already
+readable; a CSS- or AACS-protected disc is detected and refused, and IRIS will
+not include any decryption.
+
+**Linux and macOS?** The code already keeps platform-specific parts apart
+(`core/platform.py`). Linux is planned for 2027, macOS after. Help with testing
+is welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+## Alternatives
+
+IRIS is not the only tool in this space, and it is not the right one for every
+setup:
+
+| Tool | Best for |
+|---|---|
+| [Tdarr](https://github.com/HaveAGitGat/Tdarr) | Processing a large library automatically, spread over several machines, through plugins |
+| [Unmanic](https://github.com/Unmanic/unmanic) | Watching a library on a server and bringing new files to one uniform format |
+| [FileFlows](https://fileflows.com/) | Visual processing flows, for video and other media |
+| [PlexCleaner](https://github.com/ptr727/PlexCleaner) | Command-line clean-up for direct play (Plex, Emby, Jellyfin), Docker-friendly |
+| [HandBrake](https://handbrake.fr/) | Encoding a few files by hand, with a graphical interface |
+
+What sets IRIS apart: it decides **file by file** to change as little as
+possible, shows the decision before applying it, and removes Dolby Vision
+without re-encoding.
+
+## Project status and community
+
+- **Actively developed**, with a release at each step (see
+  [`CHANGELOG.md`](CHANGELOG.md), in French) and a test suite covering the
+  decision rules, the interface and the documentation itself.
+- **Language**: issues, discussions and pull requests in **English — French is
+  welcome too**.
+- **Bugs and ideas**: [issues](https://github.com/opegon/IRIS_Encode/issues).
+  Questions and playback reports:
+  [Discussions](https://github.com/opegon/IRIS_Encode/discussions).
+- **Contributing**: [`CONTRIBUTING.md`](CONTRIBUTING.md). **Security**:
+  [`SECURITY.md`](SECURITY.md) — never in a public issue.
 
 ---
+
+> The rest of this document explains **why** the tool decides as it does, then
+> covers **installation** (chapters 1 to 13). For day-to-day use — procedures
+> screen by screen, cases met in practice — see [`GUIDE.md`](GUIDE.md). What
+> the project has learned about formats, tools and the playback chain lives in
+> `wiki/` (in French).
 
 ## Why this tool
 
@@ -562,6 +673,9 @@ iris_encode/
 ├── LICENSE             ← GPL-3.0-or-later license
 ├── README.md           ← This guide (README.fr.md: French)
 ├── GUIDE.md            ← User guide (GUIDE.fr.md: French)
+├── CONTRIBUTING.md     ← How to report, test, translate, contribute
+├── SECURITY.md         ← How to report a vulnerability privately
+├── .github/            ← Issue forms
 ├── .venv/              ← Local Python environment (auto)
 ├── .iris_update/       ← Update cache, backup and manifest (auto)
 ├── bin/                ← uv / python / ffmpeg / ffprobe / dovi_tool / mkvmerge / mpv, dvd/ (auto)

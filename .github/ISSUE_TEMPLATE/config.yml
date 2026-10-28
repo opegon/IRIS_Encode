@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or idea to discuss
+    url: https://github.com/opegon/IRIS_Encode/discussions
+    about: How-to questions, profile sharing, open-ended ideas. English or French.
+  - name: Security vulnerability
+    url: https://github.com/opegon/IRIS_Encode/security/advisories/new
+    about: Report it privately — never in a public issue. See SECURITY.md.

@@ -1,0 +1,114 @@
+name: Bug report
+description: Something does not work as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. English or French, both are fine.
+        **Security issue?** Do not post it here — see [SECURITY.md](https://github.com/opegon/IRIS_Encode/blob/main/SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: IRIS ENCODE version
+      description: Shown at the top of the screen, or in `version.py`.
+      placeholder: "0.9.0.10"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Other (say which below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: terminal
+    attributes:
+      label: Terminal
+      description: The IRIS ENCODE Desktop shortcut opens Windows Terminal; a double-click on launch.bat opens the classic console.
+      options:
+        - Windows Terminal
+        - Classic console (conhost)
+        - Other / don't know
+    validations:
+      required: true
+
+  - type: dropdown
+    id: encoder
+    attributes:
+      label: Encoding hardware
+      options:
+        - NVIDIA (NVENC)
+        - Intel Quick Sync
+        - Processor only
+        - Don't know
+    validations:
+      required: true
+
+  - type: input
+    id: profile
+    attributes:
+      label: Profile used
+      placeholder: "movie_hdr"
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do?
+      description: The steps, screen by screen and key by key if you can.
+      placeholder: |
+        1. Opened D:\Films
+        2. Checked one file, pressed F2
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Error message, wrong output, freeze… A screenshot helps.
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: Source file analysis (if the problem is with a specific file)
+      description: |
+        Output of `ffprobe -hide_banner -show_streams -show_format "your file"`, or a MediaInfo text export.
+        Rename the file in the output if you prefer to keep its name private.
+      render: text
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: |
+        The relevant lines of `%USERPROFILE%\.iris_encode\iris_encode.log`.
+        It contains file paths: remove anything you would rather keep private.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I am on the latest release, or I have checked that the bug is still there on it.
+          required: true
+        - label: I searched the existing issues for this problem.
+          required: true

@@ -1,0 +1,81 @@
+name: Playback report
+description: Tell us how an IRIS ENCODE output plays on your screens — direct play, remux or transcode.
+labels: ["playback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        IRIS decides from what each link of the playback chain accepts. The maintainer can only test the devices at home,
+        so reports from other TVs, clients and servers directly improve the rules and the shipped profiles.
+        **"It plays perfectly" is a useful report too.** English or French, both are fine.
+
+        In the Jellyfin dashboard (*Activity* or *Playback info* during playback), the play method shows as
+        **Direct Play**, **Direct Stream / Remux**, or **Transcode** — with the reason.
+
+  - type: input
+    id: version
+    attributes:
+      label: IRIS ENCODE version
+      placeholder: "0.9.0.10"
+    validations:
+      required: true
+
+  - type: input
+    id: profile
+    attributes:
+      label: Profile used
+      placeholder: "cinema_4k_hdr_basic"
+
+  - type: textarea
+    id: output
+    attributes:
+      label: The output file
+      description: |
+        What IRIS produced — container, video, HDR, audio, subtitles. The output name says most of it
+        (e.g. `Movie.2160p.HDR10-iris.mp4`). An `ffprobe` or MediaInfo export of it is even better.
+    validations:
+      required: true
+
+  - type: input
+    id: server
+    attributes:
+      label: Server and version
+      placeholder: "Jellyfin 10.11.x (or Plex / Emby)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: devices
+    attributes:
+      label: Playback devices
+      description: Brand, model, year, OS version, client app and its version.
+      placeholder: |
+        - LG OLED C3 (2023), webOS 23, Jellyfin app 1.x
+        - iPhone 15, iOS 18, Swiftfin 1.x
+    validations:
+      required: true
+
+  - type: textarea
+    id: audio
+    attributes:
+      label: Audio setup (if relevant)
+      placeholder: "Soundbar over eARC, TV speakers off"
+
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Direct Play — no remux, no transcode
+        - Direct Stream / Remux
+        - Transcode (video)
+        - Transcode (audio only)
+        - Does not play, or plays with problems
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: The transcode reason shown by the server, audio dropouts, seeking problems, missing tracks, subtitles…

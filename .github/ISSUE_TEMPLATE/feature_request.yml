@@ -1,0 +1,57 @@
+name: Feature request
+description: Suggest an improvement or a new feature.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or French, both are fine. For an open-ended idea you would like to discuss first,
+        [Discussions](https://github.com/opegon/IRIS_Encode/discussions) may be a better place.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what gets in the way today?
+      placeholder: "My Samsung TV transcodes every file with … because …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: How you picture the solution. A rough idea is enough.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds or alternatives
+      description: What you do today instead, or other tools that solve it.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Encoding decisions (video, audio, subtitles, container)
+        - Dolby Vision / HDR
+        - Profiles
+        - Interface
+        - Discs (DVD, Blu-ray folders)
+        - External tracks, resync, joining
+        - Installation and updates
+        - Linux / macOS
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would be willing to help implement or test it.

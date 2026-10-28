@@ -1,5 +1,28 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.0] — 2026-10-28
+
+### Encodage matériel nettement plus rapide
+
+Avec une carte NVIDIA ou Intel Quick Sync, toute la chaîne vidéo reste
+désormais sur la puce graphique quand le fichier s'y prête : décodage, mise
+à l'échelle, encodage, et la passe vidéo du réencodage Dolby Vision.
+Jusqu'ici, chaque image faisait l'aller-retour vers le processeur, au point que le
+décodage matériel ne faisait souvent rien gagner. Mesuré sur 60 s de film :
+
+| Matériel | Travail | Avant | Maintenant |
+|---|---|---|---|
+| NVIDIA RTX A4500 | 4K HDR10 → 1080p | 28 s | **5,6 s** (× 5) |
+| NVIDIA RTX A4500 | H264 1080p → 720p | 6,1 s | **3,1 s** (× 2) |
+| NVIDIA RTX A4500 | Réencodage Dolby Vision 4K, passe vidéo | 21 s | **13,5 s** (× 1,6) |
+| Intel i5-1135G7 | 4K HDR10 → 1080p | 60 s | **18 s** (× 3,3) |
+| Intel i5-1135G7 | Réencodage Dolby Vision 4K, passe vidéo | 51 s | **38 s** (× 1,3) |
+
+Les fichiers produits ont les mêmes dimensions, les mêmes pixels carrés, les
+mêmes métadonnées HDR10 et le même nombre d'images qu'avant. Le détail est
+dans les sections v0.9.0.11 à v0.9.0.14 ci-dessous ; le README le résume
+(« Accélération matérielle »).
+
 ## [v0.9.0.14] — 2026-10-28
 
 ### Intel : le réencodage Dolby Vision passe sur la puce

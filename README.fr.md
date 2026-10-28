@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.0.14 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.1.0 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -231,6 +231,29 @@ pas répétée. Rien n'est jamais écrasé : une collision donne `(2)`.
 | Outil DVD | ffmpeg BtbN 7+  | ✗ (optionnel — titres de DVD) |
 | GPU NVIDIA | driver récent  | ✗ (recommandé — encodage accéléré CUDA) |
 | Intel Quick Sync | pilote graphique récent | ✗ (sans NVIDIA — encodage matériel, retenu s'il s'ouvre) |
+
+### Accélération matérielle
+
+Avec une carte NVIDIA ou Intel Quick Sync, IRIS garde toute la chaîne vidéo
+sur la puce graphique quand le fichier s'y prête : décodage, mise à
+l'échelle et encodage, ainsi que la passe vidéo d'un réencodage Dolby
+Vision. Les images ne font plus l'aller-retour vers le processeur. Mesuré
+sur 60 s de film :
+
+| Matériel | Travail | Avant | Depuis 0.9.1 |
+|---|---|---|---|
+| NVIDIA RTX A4500 | 4K HDR10 → 1080p | 28 s | **5,6 s** |
+| NVIDIA RTX A4500 | H264 1080p → 720p | 6,1 s | **3,1 s** |
+| NVIDIA RTX A4500 | Réencodage Dolby Vision 4K (passe vidéo) | 21 s | **13,5 s** |
+| Intel i5-1135G7 | 4K HDR10 → 1080p | 60 s | **18 s** |
+| Intel i5-1135G7 | Réencodage Dolby Vision 4K (passe vidéo) | 51 s | **38 s** |
+
+Le résultat est le même qu'au processeur : dimensions, pixels carrés,
+métadonnées HDR10 et nombre d'images. Quelques cas passent encore par le
+processeur : la conversion en SDR, le désentrelacement, les pixels non
+carrés, les dimensions impaires, le H264 10 bits et les sources au format
+inconnu. Chez NVIDIA, il faut une GTX 10 ou plus récente, et une source AV1
+reste au processeur sauf si la carte encode l'AV1 (RTX 40 et après).
 
 ---
 

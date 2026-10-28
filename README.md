@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.0.14 — Windows (macOS/Linux support planned)
+**Version**: 0.9.1.0 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -231,6 +231,28 @@ overwritten: a collision gives `(2)`.
 | DVD tool  | ffmpeg BtbN 7+  | ✗ (optional — DVD titles) |
 | NVIDIA GPU | recent driver  | ✗ (recommended — hardware encoding) |
 | Intel Quick Sync | recent graphics driver | ✗ (without NVIDIA — hardware encoding, used if it opens) |
+
+### Hardware acceleration
+
+With an NVIDIA card or Intel Quick Sync, IRIS keeps the whole video pipeline
+on the graphics chip whenever the file allows it: decoding, resizing and
+encoding, and also the video pass of a Dolby Vision re-encode. Frames no
+longer travel to the processor and back. Measured on 60 s of film:
+
+| Hardware | Job | Before | Since 0.9.1 |
+|---|---|---|---|
+| NVIDIA RTX A4500 | 4K HDR10 → 1080p | 28 s | **5.6 s** |
+| NVIDIA RTX A4500 | H264 1080p → 720p | 6.1 s | **3.1 s** |
+| NVIDIA RTX A4500 | 4K Dolby Vision re-encode (video pass) | 21 s | **13.5 s** |
+| Intel i5-1135G7 | 4K HDR10 → 1080p | 60 s | **18 s** |
+| Intel i5-1135G7 | 4K Dolby Vision re-encode (video pass) | 51 s | **38 s** |
+
+The result is the same as through the processor: dimensions, square pixels,
+HDR10 metadata and frame count. A few cases still go through the processor:
+conversion to SDR, deinterlacing, non-square pixels, odd dimensions, 10-bit
+H264 and sources of unknown format. On NVIDIA, this needs a GTX 10 or newer,
+and an AV1 source stays on the processor unless the card encodes AV1 (RTX 40
+or newer).
 
 ---
 

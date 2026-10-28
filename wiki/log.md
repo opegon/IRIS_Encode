@@ -449,3 +449,17 @@ Observé sur le portable : `d3d11va` ralentit (76 s contre 60), la chaîne
 tout-puce (`vpp_qsv`) accélère (18 s), HDR10 conservé. Mesuré ici : SAR
 compensateur d'une mise à l'échelle matérielle, arrondi de `scale`. Pages
 mises à jour : [[codecs-video]], [[ffmpeg]].
+
+## [2026-10-28] ingest | Décodage NVDEC et `scale_cuda` (v0.9.0.12)
+
+Mesuré sur la RTX A4500 : `-hwaccel cuda` avec `scale` au processeur ne
+gagne rien (28 s, comme sans décodage matériel) ; tout sur la carte avec
+`scale_cuda` : 5,6 s, sorties identiques. Pages mises à jour :
+[[codecs-video]], [[ffmpeg]].
+
+## [2026-10-28] ingest | Passe DV sur la carte, plage pleine (v0.9.0.13)
+
+Mesuré sur la RTX A4500 : la passe vidéo du réencodage DV, gardée sur la
+carte, passe de 21 s à 13,5 s, flux identique bit à bit. `scale_cuda` garde
+la plage pleine comme `scale`. Pages mises à jour : [[codecs-video]],
+[[ffmpeg]].

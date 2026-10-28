@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.0.11 — document de référence courant
+**Version** : 0.9.0.13 — document de référence courant
 **Date** : 2026-10-28
 **Statut** : stable
 
@@ -918,6 +918,9 @@ garde un appel bloquant court.
 d'origine : le nombre d'images doit correspondre au RPU, et un `-vf` ajouté
 plus tard sans voir la contrainte rendrait des fichiers faux sans rien dire.
 Elle sort en 10 bits (`p010le` pour NVENC, `yuv420p10le` pour libx265).
+Sur une carte NVIDIA sondée en 10 bits, les images restent sur la carte
+(`-hwaccel_output_format cuda`, sans `-pix_fmt` : la carte rend déjà du
+`p010le`) — 13,5 s contre 21 pour 60 s de 4K, flux identique (§ 12.1).
 
 **Les métadonnées HDR10 statiques n'ont pas à être reposées.** ffmpeg recopie
 primaires BT.2020, courbe PQ, master display et MaxCLL de la source vers la
@@ -1940,6 +1943,7 @@ une police de repli (CR-20).
 | **HDR10 quality** | `dv_action == HDR10` + `hdr10_quality == "quality"` | `libx265` CPU | Métadonnées via `-x265-params`, `pix_fmt yuv420p10le` |
 | **SDR tone map** | `dv_action == SDR` | nvenc / libx265 (CPU) | Filtre `zscale+tonemap`, pas de hwaccel |
 | **Tout-puce Intel** | profil `GPU.INTEL`, `filtre_tout_puce()` non nul | `hevc_qsv` / `h264_qsv` / `av1_qsv` | `-hwaccel qsv -hwaccel_output_format qsv`, `-vf vpp_qsv=[w=…:h=…:]format=nv12\|p010le`, pas de `-pix_fmt`, `-aspect l:h` si réduit |
+| **Tout-carte NVIDIA** | profil `GPU.NVIDIA`, `hevc_nvenc@10` sondé, `filtre_tout_puce()` non nul | `hevc_nvenc` / `h264_nvenc` / `av1_nvenc` | `-hwaccel cuda -hwaccel_output_format cuda`, `-vf scale_cuda=[w=…:h=…:]format=nv12\|p010le`, pas de `-pix_fmt`, `-aspect l:h` si réduit |
 | **Standard** | Tous autres cas | nvenc / libx265 / libx264 / av1_nvenc / qsv | hwaccel si disponible |
 
 **Tout-puce Intel** (v0.9.0.11, IE-147). Décodage, réduction et encodage sans
@@ -1959,7 +1963,26 @@ la puce et le processeur sortent les mêmes dimensions. `-aspect` remplace le
 `setsar=1` : sans lui, une mise à l'échelle matérielle garde le SAR
 compensateur (192079:192000 pour 3832×1600 → 1920×802, mesuré avec
 `scale_cuda`), que Jellyfin transcode. `sortie_10_bits()` lit alors le
-`format=p010le` de `vpp_qsv`.
+`format=p010le` de `vpp_qsv` ou de `scale_cuda`.
+
+**Tout-carte NVIDIA** (v0.9.0.12, IE-148). Même fonction, mêmes exclusions,
+filtre `scale_cuda`. Mesuré sur une RTX A4500, 60 s de 4K HDR10 → 1080p :
+**5,6 s**, contre 28 s avec `-hwaccel cuda` et `scale` au processeur — pas
+mieux que sans décodage matériel ; en H264 SDR 1080p → 720p, 3,1 s contre
+6,1 s. Sorties identiques (dimensions, SAR, HDR10, écran de mastering,
+nombre d'images), PSNR 48-53 dB. Condition : `hevc_nvenc` ouvert en 10 bits
+au sondage, ce qui garantit une carte Pascal ou plus récente ; sans sondage
+ou avant Pascal, chemin standard. Sources de `_DECODABLE_NVDEC` : HEVC et
+VP9 en 4:2:0 8 ou 10 bits, H264 4:2:0 8 bits en plage limitée ou pleine
+(`yuvj420p` : `scale_cuda` garde 0-255 et l'étiquette `pc`, comme `scale`,
+v0.9.0.13) ; l'AV1
+4:2:0 8 ou 10 bits seulement si `av1_nvenc` s'ouvre (Ada, qui décode l'AV1 —
+NVDEC le lit dès Ampere, mais rien au sondage ne distingue Ampere de
+Turing). La passe vidéo du réencodage DV (§ 7.4) reste elle aussi sur la
+carte (v0.9.0.13, IE-149) : `-hwaccel cuda -hwaccel_output_format cuda`, pas
+de `-pix_fmt`, quand `hevc_nvenc@10` est sondé et la source en HEVC
+`yuv420p10le` — 13,5 s contre 21 s pour 60 s de 4K DV 8.1, flux identique
+bit à bit ; sinon `-hwaccel cuda` et `-pix_fmt p010le` comme avant.
 
 **Passe audio préalable.** Quand une invocation ffmpeg décode une piste audio
 sans perte *et* mappe un flux de sous-titres dont le premier repère arrive
@@ -3656,6 +3679,8 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.0.13 | 2026-10-28 | **Passe DV sur la carte NVIDIA** (§ 7.4, § 12.1, IE-149) : `build_dv_video_command` garde les images sur la carte (`-hwaccel_output_format cuda`, sans `-pix_fmt`), 13,5 s contre 21, flux identique ; `yuvj420p` dans `_DECODABLE_NVDEC` · `tests/test_nvdec.py` |
+| 0.9.0.12 | 2026-10-28 | **Tout-carte NVIDIA** (§ 12.1, IE-148) : `filtre_tout_puce()` étendu à `GPU.NVIDIA` (`hevc_nvenc@10` sondé), `-hwaccel cuda -hwaccel_output_format cuda` + `scale_cuda`, 5,6 s contre 28 pour 60 s de 4K HDR10 → 1080p ; `_DECODABLE_NVDEC` · `tests/test_nvdec.py` |
 | 0.9.0.11 | 2026-10-28 | **Tout-puce Intel** (§ 11, § 12.1, IE-147) : `filtre_tout_puce()`, `-hwaccel qsv -hwaccel_output_format qsv` + `vpp_qsv`, 18 s contre 60 pour 60 s de 4K HDR10 → 1080p ; `dimensions_reduites()`, `-aspect` ; `VideoInfo.pix_fmt` · `tests/test_qsv.py` |
 | 0.9.0.10 | 2026-10-28 | **La pause se voit** (§ 12.2) : `⏸ en pause` sur la ligne, barre d'état et bandeau de l'en-tête ; `pause()`/`resume()` rendent l'état obtenu, une suspension refusée est signalée · `tests/test_arret_encodage.py` ; **refus AV1 QSV** (§ 14.0) : message propre à Quick Sync (Arc, Meteor Lake) au lieu de NVENC · `tests/test_qsv.py` |
 | 0.9.0.9 | 2026-10-28 | **Intel Quick Sync** (§ 11, § 14) : sans NVIDIA, `avec_qsv()` sonde `hevc_qsv` au lancement et bascule sur `hevc_qsv`/`h264_qsv`/`av1_qsv` ; sonde 10 bits étendue à QSV ; `p010le` pour la passe DV · `tests/test_qsv.py` |

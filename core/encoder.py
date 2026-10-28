@@ -229,14 +229,14 @@ def sortie_10_bits(cmd: list[str]) -> bool:
     """La commande encode-t-elle en 10 bits (sortie HDR) ?
 
     La chaîne tout-puce (`filtre_tout_puce`) ne passe pas `-pix_fmt` : le
-    format y est celui que `vpp_qsv` rend.
+    format y est celui que rend `vpp_qsv` ou `scale_cuda`.
     """
     if "-pix_fmt" in cmd:
         i = cmd.index("-pix_fmt") + 1
         return i < len(cmd) and cmd[i] in ("p010le", "yuv420p10le")
     if "-vf" in cmd:
         i = cmd.index("-vf") + 1
-        return (i < len(cmd) and cmd[i].startswith("vpp_qsv")
+        return (i < len(cmd) and cmd[i].startswith(("vpp_qsv", "scale_cuda"))
                 and "format=p010le" in cmd[i])
     return False
 
@@ -470,6 +470,19 @@ _DECODABLE_QSV: dict[str, frozenset[str]] = {
     "av1":  frozenset({"yuv420p", "yuv420p10le"}),
 }
 
+# Ce que NVDEC lit à coup sûr à partir de Pascal (GTX 10) — génération que
+# garantit un `hevc_nvenc` ouvert en 10 bits, condition de `filtre_tout_puce`.
+# Le H264 10 bits n'arrive qu'avec Blackwell. L'AV1 arrive avec Ampere : il
+# n'y passe que si `av1_nvenc` s'ouvre (Ada). La plage pleine (`yuvj420p`)
+# ressort comme du chemin processeur : valeurs 0-255 gardées, étiquetée `pc`
+# dans le flux HEVC (mesuré, IE-149).
+_DECODABLE_NVDEC: dict[str, frozenset[str]] = {
+    "h264": frozenset({"yuv420p", "yuvj420p"}),
+    "hevc": frozenset({"yuv420p", "yuv420p10le"}),
+    "vp9":  frozenset({"yuv420p", "yuv420p10le"}),
+}
+_DECODABLE_NVDEC_AV1 = frozenset({"yuv420p", "yuv420p10le"})
+
 
 def dimensions_reduites(largeur: int, hauteur: int,
                         cible_l: int, cible_h: int) -> tuple[int, int]:
@@ -522,43 +535,53 @@ def _encodeur_et_format(info, vid, platform: PlatformProfile) -> tuple[str, str,
 
 def filtre_tout_puce(decision: FileDecision,
                      platform: PlatformProfile) -> Optional[str]:
-    """Le filtre `vpp_qsv` d'un encodage tenu entièrement sur la puce Intel,
-    ou None quand il ne s'applique pas.
+    """Le filtre d'un encodage tenu entièrement sur la carte — `vpp_qsv` chez
+    Intel, `scale_cuda` chez NVIDIA —, ou None quand il ne s'applique pas.
 
-    Décoder sur la puce puis filtrer au processeur fait aller et venir chaque
+    Décoder sur la carte puis filtrer au processeur fait aller et venir chaque
     image : mesuré sur un i5-1135G7 (4K HDR10 → 1080p, 60 s de film), 76 s
     avec `d3d11va` contre 60 s tout au processeur. Décoder, réduire
     (`vpp_qsv`) et encoder sans quitter la puce : 18 s, HDR10 et écran de
-    mastering conservés (IE-147).
+    mastering conservés (IE-147). Sur une RTX A4500, même essai : 28 s avec
+    `-hwaccel cuda` et `scale` au processeur — pas mieux que sans décodage
+    matériel —, 5,6 s avec `scale_cuda` (IE-148).
 
     Seul le cas courant y passe — changer la taille, ou rien. Le reste garde
     ses filtres au processeur : conversion en SDR, désentrelacement, pixels
     non carrés, dimension impaire, Dolby Vision (RPU, couches), et toute
-    source que le décodeur ne lit pas à coup sûr (`_DECODABLE_QSV`). Le mode
-    HDR10 « quality » (libx265) est écarté par `build_command`, seul à
-    décider de ce mode.
+    source que le décodeur ne lit pas à coup sûr (`_DECODABLE_QSV`,
+    `_DECODABLE_NVDEC`). Le mode HDR10 « quality » (libx265) est écarté par
+    `build_command`, seul à décider de ce mode.
     """
     info, vid = decision.info, decision.video
-    if platform.gpu != GPU.INTEL or vid.action not in (
-            VideoAction.ENCODE_HEVC, VideoAction.ENCODE_H264,
-            VideoAction.ENCODE_AV1):
+    if platform.gpu == GPU.INTEL:
+        filtre, decodables = "vpp_qsv", _DECODABLE_QSV
+    elif (platform.gpu == GPU.NVIDIA
+          and platform.peut_encoder_10_bits(platform.encoder_hevc)):
+        filtre, decodables = "scale_cuda", _DECODABLE_NVDEC
+        if platform.peut_encoder(platform.encoder_av1):
+            decodables = {**decodables, "av1": _DECODABLE_NVDEC_AV1}
+    else:
+        return None
+    if vid.action not in (VideoAction.ENCODE_HEVC, VideoAction.ENCODE_H264,
+                          VideoAction.ENCODE_AV1):
         return None
     if (vid.dv_action in (DVAction.SDR, DVAction.DV)
             or info.dv_profile is not None
             or decision.desentrelace
             or info.pixels_non_carres
             or info.width % 2 or info.height % 2
-            or info.pix_fmt not in _DECODABLE_QSV.get(info.codec, ())):
+            or info.pix_fmt not in decodables.get(info.codec, ())):
         return None
     encoder, pix_fmt, _profil = _encodeur_et_format(info, vid, platform)
-    if "qsv" not in encoder:
+    if "qsv" not in encoder and "nvenc" not in encoder:
         return None
     fmt = "p010le" if pix_fmt == "yuv420p10le" else "nv12"
     if info.width > vid.target_width or info.height > vid.target_height:
         l, h = dimensions_reduites(info.width, info.height,
                                    vid.target_width, vid.target_height)
-        return f"vpp_qsv=w={l}:h={h}:format={fmt}"
-    return f"vpp_qsv=format={fmt}"
+        return f"{filtre}=w={l}:h={h}:format={fmt}"
+    return f"{filtre}=format={fmt}"
 
 
 def regle_debit(encodeur: str, cible: int) -> list[str]:
@@ -606,24 +629,37 @@ def build_dv_video_command(decision, platform, sortie_hevc: Path,
     display, MaxCLL — n'ont pas à être reposées : ffmpeg les recopie de la
     source vers la sortie en SEI, y compris à travers NVENC. Mesuré, pas
     supposé (voir CHANGELOG v0.8.7.5).
+
+    NVIDIA : les images restent sur la carte, du décodage à l'encodage. Avec
+    `-hwaccel cuda` seul, chacune redescendait au processeur pour la seule
+    conversion `-pix_fmt p010le` : 21 s pour 60 s de 4K DV 8.1 sur une RTX
+    A4500, plus que tout au processeur (18 s) ; 13,5 s sur la carte, flux
+    identique bit à bit (IE-149). La carte rend déjà du `p010le`.
     """
     info    = decision.info
     vid     = decision.video
     profile = decision.profile
 
+    sur_carte = (platform.gpu == GPU.NVIDIA
+                 and "nvenc" in platform.encoder_hevc
+                 and platform.peut_encoder_10_bits(platform.encoder_hevc)
+                 and info.codec == "hevc" and info.pix_fmt == "yuv420p10le")
     cmd = [ffmpeg_path or _ffmpeg_path, "-y"]
-    if platform.hwaccel:
+    if sur_carte:
+        cmd += ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda"]
+    elif platform.hwaccel:
         cmd += ["-hwaccel", platform.hwaccel]
     cmd += ["-i", str(decision.encode_source or info.lecture)]
 
     # Le Dolby Vision est du 10 bits par construction : la couche de base d'un
     # profil 8.1 est du HDR10, et un encodage 8 bits la trahirait.
+    pix_fmt = ("p010le" if ("nvenc" in platform.encoder_hevc
+                            or "qsv" in platform.encoder_hevc)
+               else "yuv420p10le")
     cmd += [
         "-map",       "0:v:0",
         "-c:v",       platform.encoder_hevc,
-        "-pix_fmt",   ("p010le" if ("nvenc" in platform.encoder_hevc
-                                or "qsv" in platform.encoder_hevc)
-                       else "yuv420p10le"),
+        *([] if sur_carte else ["-pix_fmt", pix_fmt]),
         *regle_debit(platform.encoder_hevc, vid.target_bitrate),
         "-preset",    profile.get("preset_encoder", "medium"),
         "-profile:v", "main10",
@@ -688,12 +724,13 @@ def build_command(
         and not preserve_video
         and not hdr10_quality
     )
-    # Intel : décodage, mise à l'échelle et encodage sur la puce, quand le
-    # fichier s'y prête (`filtre_tout_puce`). Les images restent dans sa
-    # mémoire : aucun filtre processeur ne peut alors s'intercaler.
+    # Intel et NVIDIA : décodage, mise à l'échelle et encodage sur la carte,
+    # quand le fichier s'y prête (`filtre_tout_puce`). Les images restent dans
+    # sa mémoire : aucun filtre processeur ne peut alors s'intercaler.
     tout_puce = None if hdr10_quality else filtre_tout_puce(decision, platform)
     if tout_puce is not None:
-        cmd += ["-hwaccel", "qsv", "-hwaccel_output_format", "qsv"]
+        acces = "qsv" if platform.gpu == GPU.INTEL else "cuda"
+        cmd += ["-hwaccel", acces, "-hwaccel_output_format", acces]
     elif use_hwaccel:
         cmd += ["-hwaccel", platform.hwaccel]
 
@@ -854,7 +891,7 @@ def build_command(
         encoder, pix_fmt, prof_str = _encodeur_et_format(info, vid, platform)
 
         # La règle de débit dépend de l'encodeur effectif (`regle_debit`).
-        # Tout sur la puce : le format est celui que rend `vpp_qsv` ; un
+        # Tout sur la carte : le format est celui que rend son filtre ; un
         # `-pix_fmt` forcerait une conversion processeur impossible.
         preset = profile.get("preset_encoder", "medium")
         cmd += ["-c:v", encoder,

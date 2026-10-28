@@ -4,6 +4,8 @@ categorie: outil
 maj: 2026-10-28
 sources:
   - "[[source-2026-10-28-qsv-decodage]]"
+  - "[[source-2026-10-28-nvdec-tout-carte]]"
+  - "[[source-2026-10-28-nvdec-dv-plage]]"
   - "[[source-2026-10-20-ts-aac-corrompu]]"
   - "[[source-2026-10-08-disques]]"
   - "[[source-2026-10-06-sar-scale]]"
@@ -133,7 +135,7 @@ un PGS forcé en `mov_text`. *(mesuré)*
   arrondit la dimension calculée **au pair le plus proche, mi-chemin vers le
   haut** : 3832×1600 → 1920×802 (801,67), 3840×1606 → 1920×804 (803),
   4096×2160 → 3840×2026 (2025). *(mesuré, ffmpeg 8.1.2, 70 tailles)*
-  `encoder.dimensions_reduites` le reproduit pour `vpp_qsv`.
+  `encoder.dimensions_reduites` le reproduit pour `vpp_qsv` et `scale_cuda`.
 - Une mise à l'échelle matérielle garde le **SAR compensateur** de l'arrondi :
   `scale_cuda=w=1920:h=802` sur 3832×1600 en 1:1 sort en 192079:192000, que
   Jellyfin traite comme anamorphique. `-aspect 1920:802` en sortie rend 1:1.
@@ -143,3 +145,10 @@ un PGS forcé en `mov_text`. *(mesuré)*
   processeur (`scale`) derrière échoue, « Impossible to convert between the
   formats … src: qsv ». Soit tout sur la puce (`vpp_qsv`), soit le décodage
   au processeur. *(observé, i5-1135G7)*
+- `-hwaccel cuda` **sans** `-hwaccel_output_format cuda` redescend chaque
+  image en mémoire centrale : `scale` au processeur marche, mais le décodage
+  matériel ne fait alors rien gagner. Avec `-hwaccel_output_format cuda`, le
+  filtre doit être `scale_cuda` (`format=nv12|p010le`, conversion 8 ↔ 10 bits
+  comprise) ; pas de `-pix_fmt`. *(mesuré, RTX A4500, 2026-10-28)*
+- Ni `scale` ni `scale_cuda` ne convertissent la plage pleine (`yuvj420p`) :
+  valeurs 0-255 gardées, flux étiqueté `pc`. *(mesuré, mire, 2026-10-28)*

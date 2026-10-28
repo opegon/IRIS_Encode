@@ -1,5 +1,45 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.0.13] — 2026-10-28
+
+### NVIDIA : le réencodage Dolby Vision reste sur la carte
+
+Pour garder le Dolby Vision en réencodant, IRIS encode la vidéo seule, puis y
+réinjecte les métadonnées DV. Dans cette passe, chaque image décodée par la
+carte redescendait au processeur pour un simple changement de format, puis
+remontait : sur une RTX A4500, 60 s de 4K DV 8.1 prenaient 21 s, plus que
+tout au processeur (18 s). Les images restent maintenant sur la carte :
+**13,5 s**, et le flux produit est identique bit à bit à celui d'avant.
+
+### NVIDIA : le H264 en plage pleine passe aussi sur la carte
+
+v0.9.0.12 laissait au processeur le H264 en plage pleine (`yuvj420p`), faute
+d'avoir vérifié son traitement. Mesuré sur une mire noire et blanche : la
+carte garde les valeurs de 0 à 255 et étiquette le flux en plage pleine,
+exactement comme le chemin processeur. Ce H264 rejoint le chemin sur la
+carte.
+
+## [v0.9.0.12] — 2026-10-28
+
+### NVIDIA : tout l'encodage sur la carte, cinq fois plus vite
+
+Avec une carte NVIDIA, la carte décodait la source et l'encodait, mais
+chaque image redescendait au processeur pour être réduite, puis remontait.
+Mesuré sur une RTX A4500, 60 s de film 4K HDR10 ramenées en 1080p : 28 s,
+pas mieux qu'en décodant au processeur. Décoder, réduire (`scale_cuda`) et
+encoder sans quitter la carte : **5,6 s**. En H264 1080p ramené en 720p :
+3,1 s au lieu de 6,1. Dimensions, pixels carrés, HDR10, écran de mastering
+et nombre d'images sont identiques à ceux du chemin précédent.
+
+C'est la chaîne qu'Intel a reçue en v0.9.0.11, pour les mêmes fichiers :
+changer la taille ou non, en SDR comme en HDR10, depuis du HEVC ou du VP9 en
+8 ou 10 bits, ou du H264 8 bits. L'AV1 n'y passe que sur une carte qui
+encode l'AV1 (RTX 40 et après). Il faut une carte qui encode le HEVC en 10
+bits (GTX 10 et après) ; une carte plus ancienne garde le chemin précédent,
+comme la conversion en SDR, le désentrelacement, les pixels non carrés, les
+dimensions impaires, le Dolby Vision, le H264 10 bits ou en plage pleine, et
+toute source au format inconnu.
+
 ## [v0.9.0.11] — 2026-10-28
 
 ### Intel : tout l'encodage sur la puce, trois fois plus vite

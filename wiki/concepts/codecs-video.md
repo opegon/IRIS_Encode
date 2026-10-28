@@ -7,6 +7,8 @@ sources:
   - "[[source-2026-09-26-nvenc-pilote]]"
   - "[[source-2026-10-28-qsv-portable]]"
   - "[[source-2026-10-28-qsv-decodage]]"
+  - "[[source-2026-10-28-nvdec-tout-carte]]"
+  - "[[source-2026-10-28-nvdec-dv-plage]]"
 ---
 
 # Codecs vidéo
@@ -64,6 +66,14 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
   1080p). Décoder, réduire avec `vpp_qsv` et encoder sans quitter la puce :
   **18 s**, HDR10 conservé. *(observé, i5-1135G7)* IRIS le fait pour le cas
   courant (v0.9.0.11) ; voir [[ffmpeg#Mise à l'échelle matérielle et SAR]].
+- **NVIDIA : même règle.** `-hwaccel cuda` suivi de `scale` au processeur
+  ne gagne rien (28 s, comme tout au processeur, pour 60 s de 4K HDR10 →
+  1080p ; plus lent en H264 SDR). Décoder, réduire avec `scale_cuda` et
+  encoder sur la carte : **5,6 s**, sorties identiques. *(mesuré, RTX A4500)*
+  IRIS le fait depuis v0.9.0.12, à partir de Pascal (garanti par un
+  `hevc_nvenc` ouvert en 10 bits) ; l'AV1 seulement si `av1_nvenc` s'ouvre.
+  La passe vidéo du réencodage DV aussi (v0.9.0.13) : 21 s → 13,5 s pour
+  60 s de 4K, flux identique bit à bit.
 - **`av1_nvenc` n'a pas d'option `-profile`.** La passer fait refuser la
   commande avant même d'interroger la carte. *(mesuré, v0.8.1.22)*
 - **libx265 en 4K : 0,78 image/s**, soit ~70 h pour un long métrage.

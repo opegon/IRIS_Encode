@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.4 — document de référence courant
+**Version** : 0.9.1.5 — document de référence courant
 **Date** : 2026-10-29
 **Statut** : stable
 
@@ -1999,8 +1999,11 @@ arrêt au raccord. `-reinit_filter 0` et `setparams` n'y changent rien
 reconnaît cet échec sur une commande tout-puce ; l'écran d'encodage relance
 alors le fichier une fois, par `build_command(…, tout_puce_permis=False)` —
 le chemin standard, filtres au processeur. Pas de reprise si le fichier a été
-passé (`S`) ou le lot arrêté. La passe vidéo DV (`build_dv_video_command`)
-n'en bénéficie pas. · `tests/test_reprise_hors_puce.py`
+passé (`S`) ou le lot arrêté. La passe vidéo DV sur la carte s'arrête de
+même au raccord, sans aucun filtre : `build_dv_video_command(…,
+sur_carte_permis=False)` la reprend une fois, images au processeur
+(`-pix_fmt p010le`), à la même étape (v0.9.1.5). Avec `vpp_qsv`, le fichier
+signalé passe sans reprise (observé, i5-1135G7). · `tests/test_reprise_hors_puce.py`
 
 **Chaîne affichée** (v0.9.1.3, « Filt. » en v0.9.1.4). L'écran d'encodage
 montre, entre « Action » et « État », les colonnes « Lect. », « Filt. » et
@@ -3711,6 +3714,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.5 | 2026-10-29 | **Reprise de la passe vidéo DV** (§ 12.1) : arrêtée au raccord d'un fichier collé sur NVIDIA, relancée une fois images au processeur · `build_dv_video_command(sur_carte_permis=)` · `tests/test_reprise_hors_puce.py` |
 | 0.9.1.4 | 2026-10-29 | **Colonne « Filt. »** à l'écran d'encodage (§ 12.1) : filtres sur la carte ou au processeur ; une reprise hors puce s'y voit · `chaine_de` rend trois étapes |
 | 0.9.1.3 | 2026-10-29 | **Colonnes « Lect. » et « Enc. »** à l'écran d'encodage (§ 12.1) : décodage et encodage, GPU ou CPU · `chaine_de`, `chaine_prevue` · `tests/test_colonnes_chaine.py` |
 | 0.9.1.2 | 2026-10-29 | **Reprise hors puce** (§ 12.1) : un fichier collé dont les paramètres changent en cours de route arrêtait la chaîne tout-carte au raccord ; relancé une fois par le chemin processeur · `relancer_hors_puce`, `build_command(tout_puce_permis=)` · `tests/test_reprise_hors_puce.py` |

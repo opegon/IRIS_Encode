@@ -1455,18 +1455,36 @@ class RunScreen(TableNavMixin, Screen):
                     return
                 p8.replace(rpu)
 
-            # 3 — l'encodage vidéo, seul
+            # 3 — l'encodage vidéo, seul. Une reprise au plus, images au
+            # processeur, si la passe s'arrête au raccord d'un fichier collé.
             annoncer(_("Encoding the video…"), " ".join(cmd_video))
-            proc = EncoderProcess(cmd_video, dec.info.duration)
-            self._demarrer(proc)
-            for ligne, progress in proc.iter_progress():
-                s.last_line = ligne
-                if progress:
-                    s.percent = progress.percent
-                    self.app.call_from_thread(self._update_row, index)
-                    self.app.call_from_thread(self._update_header)
-            code = proc.wait()
-            self._process = None
+            while True:
+                proc = EncoderProcess(cmd_video, dec.info.duration)
+                self._demarrer(proc)
+                for ligne, progress in proc.iter_progress():
+                    s.last_line = ligne
+                    if progress:
+                        s.percent = progress.percent
+                        self.app.call_from_thread(self._update_row, index)
+                        self.app.call_from_thread(self._update_header)
+                code = proc.wait()
+                self._process = None
+                if (code == 0 or s.state == FileState.SKIPPED or self._abandon
+                        or not relancer_hors_puce(cmd_video, proc.journal)):
+                    break
+                cmd_video = build_dv_video_command(dec, self._platform, enc,
+                                                   ffmpeg_path,
+                                                   sur_carte_permis=False)
+                self.app.call_from_thread(self._afficher_chaine, index, cmd_video)
+                # Même étape, pas une de plus : `annoncer` compterait.
+                self.app.call_from_thread(self._update_cmd_lines,
+                                          " ".join(cmd_video))
+                self.app.call_from_thread(
+                    self._update_ffmpeg_line,
+                    f"▶ {etape}/{n_etapes} "
+                    + _("Video parameters change mid-file: restarting "
+                        "with processor filters…"))
+                s.percent = -1
             if s.state == FileState.SKIPPED:
                 return
             if code != 0 or not enc.exists():

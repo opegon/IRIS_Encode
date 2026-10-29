@@ -1,5 +1,19 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.5] — 2026-10-29
+
+### La relance couvre aussi le réencodage Dolby Vision
+
+Le réencodage qui garde le Dolby Vision encode la vidéo dans une passe à
+part, elle aussi tenue sur la carte NVIDIA. Sur un film fait de deux
+encodages collés, elle s'arrêtait au raccord comme l'encodage normal
+(mesuré sur une mire HEVC 10 bits collée) : le fichier échouait, source
+conservée. Cette passe est désormais relancée une fois avec les images au
+processeur, à la même étape ; les colonnes passent à `GPU CPU GPU`.
+
+Quick Sync n'a pas ce défaut : le fichier signalé en v0.9.1.2 passe sur la
+puce Intel sans relance (constaté sur l'i5-1135G7).
+
 ## [v0.9.1.4] — 2026-10-29
 
 ### Une colonne « Filt. » entre « Lect. » et « Enc. »

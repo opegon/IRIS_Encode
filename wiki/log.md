@@ -481,3 +481,9 @@ DV ; en preset `slow` 4K, garder les images sur la carte ne gagne rien
 Mesuré sur la RTX A4500 : un fichier de deux encodages collés arrête la
 chaîne tout-carte au raccord (« Error reinitializing filters! ») ; le chemin
 processeur passe. Pages mises à jour : [[ffmpeg]], [[pieges-et-lecons]].
+
+## [2026-10-29] ingest | Raccord : Quick Sync et passe vidéo DV
+
+Observé par l'utilisateur : `vpp_qsv` passe le fichier collé sans reprise.
+Mesuré : la passe vidéo DV sur NVIDIA s'arrête au raccord comme le chemin
+standard, sans reprise dans IRIS. Page mise à jour : [[ffmpeg]].

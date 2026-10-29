@@ -3,6 +3,7 @@ type: entite
 categorie: outil
 maj: 2026-10-29
 sources:
+  - "[[source-2026-10-29-raccord-qsv-passe-dv]]"
   - "[[source-2026-10-29-fichier-colle]]"
   - "[[source-2026-10-28-qsv-decodage]]"
   - "[[source-2026-10-28-nvdec-tout-carte]]"
@@ -161,4 +162,7 @@ un PGS forcé en `mov_text`. *(mesuré)*
   n'y changent rien ; images en mémoire centrale, ça passe. Le décodage seul
   (`-f null`) ne signale rien. IRIS relance alors hors puce
   (`encoder.relancer_hors_puce`). *(mesuré, ffmpeg 8.1.2, RTX A4500,
-  2026-10-29)* Même défaut supposé avec `vpp_qsv`, non vérifié.
+  2026-10-29)* Avec `vpp_qsv`, le même fichier passe sans reprise, durées
+  vidéo et audio identiques à la source *(observé, i5-1135G7)*. Sans aucun filtre (passe vidéo DV, `-hwaccel_output_format
+  cuda`), l'arrêt est le même : c'est la reconstruction de la chaîne, pas
+  `scale_cuda`, qui échoue *(mesuré, mire HEVC 10 bits collée)*.

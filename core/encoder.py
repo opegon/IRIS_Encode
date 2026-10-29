@@ -667,7 +667,8 @@ def regle_debit(encodeur: str, cible: int) -> list[str]:
 
 
 def build_dv_video_command(decision, platform, sortie_hevc: Path,
-                           ffmpeg_path: str | None = None) -> list[str]:
+                           ffmpeg_path: str | None = None,
+                           sur_carte_permis: bool = True) -> list[str]:
     """Encode la seule vidéo, en Annex-B brut, pour un réencodage DV.
 
     Le RPU sera réinjecté ensuite entre les tranches d'image : cette passe doit
@@ -691,6 +692,10 @@ def build_dv_video_command(decision, platform, sortie_hevc: Path,
     Intel : de même sur la puce, au lieu d'un décodage au processeur. Mesuré
     sur un i5-1135G7, 60 s de 4K DV 8.1 : 51 s → 38 s, même nombre d'images,
     HDR10 conservé ; pas identique bit à bit, PSNR 62,5 dB (IE-150).
+
+    `sur_carte_permis=False` redescend les images au processeur : la reprise
+    d'une passe arrêtée au raccord d'un fichier collé (`relancer_hors_puce`)
+    — même échec que la chaîne tout-puce, sans aucun filtre (IE-154).
     """
     info    = decision.info
     vid     = decision.video
@@ -703,7 +708,7 @@ def build_dv_video_command(decision, platform, sortie_hevc: Path,
             acces = "cuda"
         elif platform.gpu == GPU.INTEL and "qsv" in platform.encoder_hevc:
             acces = "qsv"
-    sur_carte = acces is not None
+    sur_carte = acces is not None and sur_carte_permis
     cmd = [ffmpeg_path or _ffmpeg_path, "-y"]
     if sur_carte:
         cmd += ["-hwaccel", acces, "-hwaccel_output_format", acces]

@@ -1,5 +1,15 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.4] — 2026-10-29
+
+### Une colonne « Filt. » entre « Lect. » et « Enc. »
+
+L'écran d'encodage montre aussi où les images sont traitées entre le
+décodage et l'encodage (mise à l'échelle, conversion de format) : `GPU` quand
+elles restent sur la carte, `CPU` quand elles passent par le processeur.
+Un fichier relancé hors de la carte (v0.9.1.2) se voit désormais dans le
+tableau : `GPU GPU GPU` devient `GPU CPU GPU`. En anglais : **Filt.**
+
 ## [v0.9.1.3] — 2026-10-29
 
 ### L'écran d'encodage dit où passe la vidéo

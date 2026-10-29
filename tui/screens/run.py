@@ -76,7 +76,8 @@ class FileRunStatus:
     last_line:      str       = ""
     error_msg:      str       = ""
     _last_progress: object    = None  # ProgressInfo pour affichage ETA
-    # (lecture, encodage) de la vidéo : "gpu", "cpu" ou None (`chaine_de`).
+    # (lecture, filtres, encodage) de la vidéo : "gpu", "cpu" ou None
+    # (`chaine_de`).
     chaine:         tuple | None = None
 
 
@@ -278,7 +279,8 @@ class RunScreen(TableNavMixin, Screen):
             if s.chaine is None:
                 s.chaine = chaine_prevue(s.decision, self._platform)
         lectures  = [self._libelle_chaine(s.chaine[0]) for s in self._statuses]
-        encodages = [self._libelle_chaine(s.chaine[1]) for s in self._statuses]
+        filtrages = [self._libelle_chaine(s.chaine[1]) for s in self._statuses]
+        encodages = [self._libelle_chaine(s.chaine[2]) for s in self._statuses]
 
         table.add_column("",        width=3,                              key="icon")
         fichier, action = _("File"), _("Action")
@@ -290,10 +292,12 @@ class RunScreen(TableNavMixin, Screen):
         table.add_column(taille,  width=_cw(taille, [t.plain for t in tailles]),
                          key="size")
         table.add_column(action,  width=_cw(action, actions),         key="action")
-        # TRANSLATORS: column headers — where the video is decoded, then
+        # TRANSLATORS: column headers — where the video is decoded, where
+        # its frames are filtered (scaling, format), then where it is
         # encoded: "GPU" or "CPU".
-        lecture, encodage = _("Read"), _("Enc.")
+        lecture, filtres, encodage = _("Read"), _("Filt."), _("Enc.")
         table.add_column(lecture,  width=_cw(lecture, lectures),      key="read")
+        table.add_column(filtres,  width=_cw(filtres, filtrages),     key="filt")
         table.add_column(encodage, width=_cw(encodage, encodages),    key="enc")
         colonne_fixe(table, _("State"),    50,     key="state")
 
@@ -308,6 +312,7 @@ class RunScreen(TableNavMixin, Screen):
                 tailles[i],
                 Text(action_label, style=dec.video.style()),
                 Text(lectures[i], style="dim"),
+                Text(filtrages[i], style="dim"),
                 Text(encodages[i], style="dim"),
                 _("pending"),
                 key=str(i),
@@ -350,7 +355,7 @@ class RunScreen(TableNavMixin, Screen):
         s.chaine = chaine_de(cmd)
         try:
             table = self.query_one(DataTable)
-            for cle, cote in (("read", s.chaine[0]), ("enc", s.chaine[1])):
+            for cle, cote in zip(("read", "filt", "enc"), s.chaine):
                 table.update_cell(str(index), cle,
                                   Text(self._libelle_chaine(cote), style="dim"),
                                   update_width=False)

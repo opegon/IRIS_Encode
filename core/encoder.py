@@ -267,23 +267,29 @@ def diagnostiquer(lignes: list[str]) -> Optional[str]:
 _ENCODEURS_MATERIELS = ("nvenc", "qsv", "amf", "videotoolbox", "vaapi")
 
 
-def chaine_de(cmd: list[str]) -> tuple[Optional[str], Optional[str]]:
-    """(lecture, encodage) de la vidéo d'une commande : "gpu", "cpu", ou None
-    quand la vidéo n'est ni décodée ni encodée (recopie, remux, rien à faire).
+def chaine_de(cmd: list[str]
+              ) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    """(lecture, filtres, encodage) de la vidéo d'une commande : "gpu" ou
+    "cpu" chacun, ou None partout quand la vidéo n'est ni décodée ni encodée
+    (recopie, remux, rien à faire).
 
-    La lecture est matérielle dès qu'un `-hwaccel` précède l'entrée, que les
-    images restent sur la carte ou redescendent pour les filtres.
+    Lecture sur la carte si un `-hwaccel` précède l'entrée. Filtres sur la
+    carte si les images y restent (`-hwaccel_output_format`) ; sinon elles
+    passent par le processeur entre décodage et encodage — mise à l'échelle,
+    conversion de format, ou reprise hors puce (`relancer_hors_puce`).
     """
     encodeur = encodeur_de(cmd)
     if not encodeur or encodeur == "copy":
-        return None, None
-    lecture = "gpu" if "-hwaccel" in cmd[:cmd.index("-i")] else "cpu"
+        return None, None, None
+    entree = cmd[:cmd.index("-i")]
+    lecture = "gpu" if "-hwaccel" in entree else "cpu"
+    filtres = "gpu" if "-hwaccel_output_format" in entree else "cpu"
     materiel = any(m in encodeur for m in _ENCODEURS_MATERIELS)
-    return lecture, "gpu" if materiel else "cpu"
+    return lecture, filtres, "gpu" if materiel else "cpu"
 
 
 def chaine_prevue(decision, platform: PlatformProfile
-                  ) -> tuple[Optional[str], Optional[str]]:
+                  ) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """La chaîne qu'empruntera un fichier, d'après la commande qu'on lui
     construirait — la passe vidéo pour un réencodage Dolby Vision."""
     try:
@@ -292,7 +298,7 @@ def chaine_prevue(decision, platform: PlatformProfile
                                                     Path("dv.hevc")))
         return chaine_de(build_command(decision, platform))
     except ValueError:
-        return None, None
+        return None, None, None
 
 
 def relancer_hors_puce(cmd: list[str], lignes: list[str]) -> bool:

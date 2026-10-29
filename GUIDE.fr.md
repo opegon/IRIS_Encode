@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.1
+**Version** : 0.9.1.3
 **Date** : 2026-10-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -398,7 +398,10 @@ file, « F12 Fichiers ».
 - Chaque ligne montre le fichier, le **profil** avec lequel il a été confié, sa
   taille et la **taille de sortie estimée** (`4.2 Go → 2.1 Go (-50%)`, en vert
   si elle maigrit, en orange si elle grossit — la même estimation que
-  l'accueil), l'action et l'état.
+  l'accueil), l'action, puis **Lect.** et **Enc.** — où la vidéo est décodée,
+  puis encodée : `GPU` (carte graphique) ou `CPU` (processeur), `—` quand elle
+  est seulement recopiée —, et l'état. Prévues à la mise en file, elles
+  donnent la chaîne réellement prise dès que le fichier démarre.
 - Un fichier déjà dans la file est refusé, avec un message.
 - Chaque fichier garde les réglages qu'il avait au moment de l'ajout : changer
   de profil ensuite ne le touche pas.

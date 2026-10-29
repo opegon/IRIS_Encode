@@ -475,3 +475,9 @@ Page mise à jour : [[codecs-video]].
 Mesuré sur la RTX A4500 : un réencodage DV → HDR10 ne garde aucune donnée
 DV ; en preset `slow` 4K, garder les images sur la carte ne gagne rien
 (38 s). README nuancé. Page mise à jour : [[codecs-video]].
+
+## [2026-10-29] ingest | Fichier collé, reprise hors puce (v0.9.1.2)
+
+Mesuré sur la RTX A4500 : un fichier de deux encodages collés arrête la
+chaîne tout-carte au raccord (« Error reinitializing filters! ») ; le chemin
+processeur passe. Pages mises à jour : [[ffmpeg]], [[pieges-et-lecons]].

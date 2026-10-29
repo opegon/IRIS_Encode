@@ -1,7 +1,8 @@
 ---
 type: synthese
-maj: 2026-10-06
+maj: 2026-10-29
 sources:
+  - "[[source-2026-10-29-fichier-colle]]"
   - "[[source-2026-10-06-sar-scale]]"
   - "[[source-2026-10-04-mov-text]]"
   - "[[source-2026-10-01-entrelacement]]"
@@ -89,6 +90,7 @@ une ligne de moins dans une liste.
 | Le défaut d'audio vide vient de la disposition des sorties | c'est la simultanéité dans un même processus |
 | Le chemin MKV du retrait DV était aussi en cause dans le plantage TV | paquets identiques à la source ; seul le MP4 était cassé |
 | Une release stable de ffmpeg (8.1) suffit pour NVENC sous un vieux pilote | gyan.dev 8.1.2 exige l'API 13.1 ; seul BtbN n8.1.3 passe |
+| Un fichier qui se décode sans erreur s'encode sur la carte | collé de deux encodages, il casse la chaîne tout-carte au raccord ; `-reinit_filter 0` n'y peut rien |
 
 ## Voir aussi
 

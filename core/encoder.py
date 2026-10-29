@@ -264,6 +264,52 @@ def diagnostiquer(lignes: list[str]) -> Optional[str]:
     return None
 
 
+_ENCODEURS_MATERIELS = ("nvenc", "qsv", "amf", "videotoolbox", "vaapi")
+
+
+def chaine_de(cmd: list[str]) -> tuple[Optional[str], Optional[str]]:
+    """(lecture, encodage) de la vidéo d'une commande : "gpu", "cpu", ou None
+    quand la vidéo n'est ni décodée ni encodée (recopie, remux, rien à faire).
+
+    La lecture est matérielle dès qu'un `-hwaccel` précède l'entrée, que les
+    images restent sur la carte ou redescendent pour les filtres.
+    """
+    encodeur = encodeur_de(cmd)
+    if not encodeur or encodeur == "copy":
+        return None, None
+    lecture = "gpu" if "-hwaccel" in cmd[:cmd.index("-i")] else "cpu"
+    materiel = any(m in encodeur for m in _ENCODEURS_MATERIELS)
+    return lecture, "gpu" if materiel else "cpu"
+
+
+def chaine_prevue(decision, platform: PlatformProfile
+                  ) -> tuple[Optional[str], Optional[str]]:
+    """La chaîne qu'empruntera un fichier, d'après la commande qu'on lui
+    construirait — la passe vidéo pour un réencodage Dolby Vision."""
+    try:
+        if decision.video.action == VideoAction.ENCODE_DV:
+            return chaine_de(build_dv_video_command(decision, platform,
+                                                    Path("dv.hevc")))
+        return chaine_de(build_command(decision, platform))
+    except ValueError:
+        return None, None
+
+
+def relancer_hors_puce(cmd: list[str], lignes: list[str]) -> bool:
+    """L'échec vient-il de la chaîne tout-puce, que le chemin processeur évite ?
+
+    Un fichier fait de deux encodages collés change de paramètres en cours de
+    route (espace couleur non précisé, puis `bt709`). Le décodeur se
+    réinitialise, ffmpeg reconstruit ses filtres, et la reconstruction ne sait
+    plus relier des images restées sur la carte à l'encodeur : « Error
+    reinitializing filters! », l'encodage s'arrête au raccord. Mesuré sous
+    ffmpeg 8.1.2 avec `scale_cuda` ; `-reinit_filter 0` et un `setparams` en
+    tête n'y changent rien. Les filtres au processeur passent.
+    """
+    return ("-hwaccel_output_format" in cmd
+            and any("error reinitializing filters" in l.lower() for l in lignes))
+
+
 # ─── Construction commande ────────────────────────────────────────────────────
 
 # Un flux MPEG enregistré (TNT, IPTV) a souvent un trou : un paquet audio
@@ -683,10 +729,14 @@ def build_command(
     audio_source: Path | None = None,
     sous_titres_porteur: Path | None = None,
     chapitres: Path | None = None,
+    tout_puce_permis: bool = True,
 ) -> list[str]:
     """
     Retourne la liste d'arguments ffmpeg pour un FileDecision.
     Retourne [] si l'action est SKIP.
+
+    `tout_puce_permis=False` écarte la chaîne tout-puce : c'est la reprise
+    d'un encodage qu'elle a fait échouer (`relancer_hors_puce`).
 
     `sous_titres_porteur` : le Matroska de `core/sous_titres.py`, d'où les
     sous-titres texte de la source sont pris à la place de la source.
@@ -735,7 +785,8 @@ def build_command(
     # Intel et NVIDIA : décodage, mise à l'échelle et encodage sur la carte,
     # quand le fichier s'y prête (`filtre_tout_puce`). Les images restent dans
     # sa mémoire : aucun filtre processeur ne peut alors s'intercaler.
-    tout_puce = None if hdr10_quality else filtre_tout_puce(decision, platform)
+    tout_puce = (None if hdr10_quality or not tout_puce_permis
+                 else filtre_tout_puce(decision, platform))
     if tout_puce is not None:
         acces = "qsv" if platform.gpu == GPU.INTEL else "cuda"
         cmd += ["-hwaccel", acces, "-hwaccel_output_format", acces]

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.1 — document de référence courant
+**Version** : 0.9.1.3 — document de référence courant
 **Date** : 2026-10-29
 **Statut** : stable
 
@@ -1990,6 +1990,29 @@ de même (v0.9.0.14, IE-150) : `-hwaccel qsv -hwaccel_output_format qsv` quand
 part et d'autre, HDR10 conservé, PSNR 62,5 dB (non identique) ; sinon
 décodage au processeur et `-pix_fmt p010le`.
 
+**Reprise hors puce** (v0.9.1.2). Un fichier fait de deux encodages collés
+change de paramètres en cours de route (espace couleur non précisé, puis
+`tv / bt709`) : ffmpeg reconstruit ses filtres au raccord et, les images
+restant sur la carte, n'y parvient pas — « Error reinitializing filters! »,
+arrêt au raccord. `-reinit_filter 0` et `setparams` n'y changent rien
+(mesuré, ffmpeg 8.1.2, `scale_cuda`). `relancer_hors_puce(cmd, journal)`
+reconnaît cet échec sur une commande tout-puce ; l'écran d'encodage relance
+alors le fichier une fois, par `build_command(…, tout_puce_permis=False)` —
+le chemin standard, filtres au processeur. Pas de reprise si le fichier a été
+passé (`S`) ou le lot arrêté. La passe vidéo DV (`build_dv_video_command`)
+n'en bénéficie pas. · `tests/test_reprise_hors_puce.py`
+
+**Chaîne affichée** (v0.9.1.3). L'écran d'encodage montre, entre « Action » et
+« État », les colonnes « Lect. » et « Enc. » (`Read`, `Enc.`) : `GPU`, `CPU`
+ou `—`. `chaine_de(cmd)` les lit dans la commande — lecture matérielle si un
+`-hwaccel` précède le `-i`, encodage matériel si l'encodeur vidéo est
+`*_nvenc`, `*_qsv`, `*_amf`, `*_videotoolbox` ou `*_vaapi`, rien si la vidéo
+est recopiée (`-c:v copy`) ou s'il n'y a pas de commande ffmpeg (retrait DV,
+SKIP). `chaine_prevue(decision, platform)` les prévoit à la mise en file, sur
+la commande qu'on construirait (passe vidéo pour un réencodage DV) ; la
+commande lancée les remplace au démarrage. Une reprise hors puce reste
+`GPU / GPU` : seuls les filtres changent de côté. · `tests/test_colonnes_chaine.py`
+
 **Passe audio préalable.** Quand une invocation ffmpeg décode une piste audio
 sans perte *et* mappe un flux de sous-titres dont le premier repère arrive
 tardivement, la piste transcodée n'est pas écrite : deux trames sortent, puis
@@ -3685,6 +3708,8 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.3 | 2026-10-29 | **Colonnes « Lect. » et « Enc. »** à l'écran d'encodage (§ 12.1) : décodage et encodage, GPU ou CPU · `chaine_de`, `chaine_prevue` · `tests/test_colonnes_chaine.py` |
+| 0.9.1.2 | 2026-10-29 | **Reprise hors puce** (§ 12.1) : un fichier collé dont les paramètres changent en cours de route arrêtait la chaîne tout-carte au raccord ; relancé une fois par le chemin processeur · `relancer_hors_puce`, `build_command(tout_puce_permis=)` · `tests/test_reprise_hors_puce.py` |
 | 0.9.1.1 | 2026-10-29 | README « Accélération matérielle » : le gain dépend du preset (`slow` en 4K : aucun) |
 | 0.9.1.0 | 2026-10-28 | **Encodage matériel tout sur la carte** — version mineure regroupant v0.9.0.11 à v0.9.0.14 (§ 7.4, § 12.1) ; README « Accélération matérielle » |
 | 0.9.0.14 | 2026-10-28 | **Passe DV sur la puce Intel** (§ 7.4, § 12.1, IE-150) : `build_dv_video_command` garde les images sur la puce quand `hevc_qsv@10` est sondé, 38 s contre 51 · `tests/test_qsv.py` |

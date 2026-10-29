@@ -30,7 +30,7 @@ from core.encoder import (
     EncoderProcess, audio_pass_needed, audio_prepass_needed,
     build_audio_command, build_command, diagnostiquer, encodeur_a_controler,
     sortie_10_bits,
-    pistes_audio_vides,
+    pistes_audio_vides, relancer_hors_puce, chaine_de, chaine_prevue,
 )
 from core.muxer import (
     ExternalTrack, MuxProcess, TrackKind, build_mux_command, build_strip_command,
@@ -76,6 +76,8 @@ class FileRunStatus:
     last_line:      str       = ""
     error_msg:      str       = ""
     _last_progress: object    = None  # ProgressInfo pour affichage ETA
+    # (lecture, encodage) de la vidéo : "gpu", "cpu" ou None (`chaine_de`).
+    chaine:         tuple | None = None
 
 
 # ─── Écran ────────────────────────────────────────────────────────────────────
@@ -272,6 +274,11 @@ class RunScreen(TableNavMixin, Screen):
         actions  = [s.decision.video.label()  for s in self._statuses]
         profils  = [s.decision.profile.id     for s in self._statuses]
         tailles  = [self._taille(s.decision)  for s in self._statuses]
+        for s in self._statuses:
+            if s.chaine is None:
+                s.chaine = chaine_prevue(s.decision, self._platform)
+        lectures  = [self._libelle_chaine(s.chaine[0]) for s in self._statuses]
+        encodages = [self._libelle_chaine(s.chaine[1]) for s in self._statuses]
 
         table.add_column("",        width=3,                              key="icon")
         fichier, action = _("File"), _("Action")
@@ -283,6 +290,11 @@ class RunScreen(TableNavMixin, Screen):
         table.add_column(taille,  width=_cw(taille, [t.plain for t in tailles]),
                          key="size")
         table.add_column(action,  width=_cw(action, actions),         key="action")
+        # TRANSLATORS: column headers — where the video is decoded, then
+        # encoded: "GPU" or "CPU".
+        lecture, encodage = _("Read"), _("Enc.")
+        table.add_column(lecture,  width=_cw(lecture, lectures),      key="read")
+        table.add_column(encodage, width=_cw(encodage, encodages),    key="enc")
         colonne_fixe(table, _("State"),    50,     key="state")
 
         for i, s in enumerate(self._statuses):
@@ -295,6 +307,8 @@ class RunScreen(TableNavMixin, Screen):
                 Text(dec.profile.id, style="dim"),
                 tailles[i],
                 Text(action_label, style=dec.video.style()),
+                Text(lectures[i], style="dim"),
+                Text(encodages[i], style="dim"),
                 _("pending"),
                 key=str(i),
             )
@@ -322,6 +336,26 @@ class RunScreen(TableNavMixin, Screen):
         t.append(f"{fmt_bytes(est)} ({signe}{delta:.0f}%)",
                  style=_teinte_estimation(delta))
         return t
+
+    @staticmethod
+    def _libelle_chaine(cote: str | None) -> str:
+        """« GPU », « CPU », ou un tiret quand la vidéo n'y passe pas."""
+        if cote is None:
+            return "—"
+        return _("GPU") if cote == "gpu" else _("CPU")
+
+    def _afficher_chaine(self, index: int, cmd: list[str]) -> None:
+        """La chaîne réellement prise, une fois la commande construite."""
+        s = self._statuses[index]
+        s.chaine = chaine_de(cmd)
+        try:
+            table = self.query_one(DataTable)
+            for cle, cote in (("read", s.chaine[0]), ("enc", s.chaine[1])):
+                table.update_cell(str(index), cle,
+                                  Text(self._libelle_chaine(cote), style="dim"),
+                                  update_width=False)
+        except Exception:
+            pass
 
     def _icon(self, s: FileRunStatus) -> str:
         return {
@@ -551,6 +585,7 @@ class RunScreen(TableNavMixin, Screen):
             self._update_cmd_lines,
             " ".join(cmd),
         )
+        self.app.call_from_thread(self._afficher_chaine, next_idx, cmd)
 
         # Le sondage du démarrage a déjà répondu : inutile de lancer ffmpeg
         # pour apprendre ce qu'on sait, ni de laisser l'utilisateur lire
@@ -560,46 +595,60 @@ class RunScreen(TableNavMixin, Screen):
             self._encode_next()
             return
 
-        proc = EncoderProcess(cmd, dec.info.duration)
-        self._demarrer(proc)
+        # Une reprise au plus : la chaîne tout-puce bute sur un fichier qui
+        # change de paramètres en cours de route (`relancer_hors_puce`).
+        annonce = _("Encoding started, initializing…")
+        while True:
+            proc = EncoderProcess(cmd, dec.info.duration)
+            self._demarrer(proc)
 
-        # Affiche "Encodage lancé" jusqu'à première ligne
-        self.app.call_from_thread(
-            self._update_ffmpeg_line,
-            "▶ " + _("Encoding started, initializing…")
-        )
-        s.percent = -1  # Force "en cours…" au lieu de "0%"
-        self.app.call_from_thread(self._update_row, next_idx)
-
-        # Affiche toutes les lignes (avec ou sans progression)
-        journal: list[str] = []
-        for line, progress in proc.iter_progress():
-            s.last_line = line
-            # Les dernières lignes suffisent : la cause précède toujours le
-            # constat d'échec de quelques lignes.
-            journal.append(line)
-            del journal[:-40]
-            if progress:
-                s.percent = progress.percent
-                s._last_progress = progress  # Stocke pour affichage ETA
-                # Formate une ligne de statut enrichie pour ffmpeg-line
-                display_line = (
-                    f"frame={progress.frame} fps={progress.fps:.1f} "
-                    f"elapsed={progress.format_elapsed()} remaining≈{progress.format_remaining()} "
-                    f"speed={progress.speed:.2f}x bitrate={progress.bitrate:.0f}kbits/s"
-                )
-            else:
-                display_line = line
+            # Affiche "Encodage lancé" jusqu'à première ligne
             self.app.call_from_thread(
                 self._update_ffmpeg_line,
-                display_line
+                "▶ " + annonce
             )
-            # Met à jour row et header seulement si progression
-            if progress:
-                self.app.call_from_thread(self._update_row, next_idx)
-                self.app.call_from_thread(self._update_header)
+            s.percent = -1  # Force "en cours…" au lieu de "0%"
+            self.app.call_from_thread(self._update_row, next_idx)
 
-        rc = proc.wait()
+            # Affiche toutes les lignes (avec ou sans progression)
+            journal: list[str] = []
+            for line, progress in proc.iter_progress():
+                s.last_line = line
+                # Les dernières lignes suffisent : la cause précède toujours le
+                # constat d'échec de quelques lignes.
+                journal.append(line)
+                del journal[:-40]
+                if progress:
+                    s.percent = progress.percent
+                    s._last_progress = progress  # Stocke pour affichage ETA
+                    # Formate une ligne de statut enrichie pour ffmpeg-line
+                    display_line = (
+                        f"frame={progress.frame} fps={progress.fps:.1f} "
+                        f"elapsed={progress.format_elapsed()} remaining≈{progress.format_remaining()} "
+                        f"speed={progress.speed:.2f}x bitrate={progress.bitrate:.0f}kbits/s"
+                    )
+                else:
+                    display_line = line
+                self.app.call_from_thread(
+                    self._update_ffmpeg_line,
+                    display_line
+                )
+                # Met à jour row et header seulement si progression
+                if progress:
+                    self.app.call_from_thread(self._update_row, next_idx)
+                    self.app.call_from_thread(self._update_header)
+
+            rc = proc.wait()
+            if (rc == 0 or s.state == FileState.SKIPPED or self._abandon
+                    or not relancer_hors_puce(cmd, journal)):
+                break
+            cmd = build_command(dec, self._platform, audio_source=audio_tmp,
+                                sous_titres_porteur=porteur,
+                                chapitres=chapitres, tout_puce_permis=False)
+            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+            self.app.call_from_thread(self._afficher_chaine, next_idx, cmd)
+            annonce = _("Video parameters change mid-file: restarting "
+                        "with processor filters…")
         success = rc == 0
 
         # ffmpeg peut rendre un code nul et un fichier amputé d'une piste

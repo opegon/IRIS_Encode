@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-10-28
+maj: 2026-10-29
 sources:
+  - "[[source-2026-10-29-fichier-colle]]"
   - "[[source-2026-10-28-qsv-decodage]]"
   - "[[source-2026-10-28-nvdec-tout-carte]]"
   - "[[source-2026-10-28-nvdec-dv-plage]]"
@@ -152,3 +153,12 @@ un PGS forcé en `mov_text`. *(mesuré)*
   comprise) ; pas de `-pix_fmt`. *(mesuré, RTX A4500, 2026-10-28)*
 - Ni `scale` ni `scale_cuda` ne convertissent la plage pleine (`yuvj420p`) :
   valeurs 0-255 gardées, flux étiqueté `pc`. *(mesuré, mire, 2026-10-28)*
+- Un flux qui change de paramètres en cours de route (deux encodages collés :
+  espace couleur non précisé, puis `tv / bt709`) fait reconstruire les
+  filtres. Avec `-hwaccel_output_format cuda`, la reconstruction échoue :
+  « Impossible to convert … src: cuda », « Error reinitializing filters! »,
+  l'encodage s'arrête au raccord. `-reinit_filter 0` et un `setparams` en tête
+  n'y changent rien ; images en mémoire centrale, ça passe. Le décodage seul
+  (`-f null`) ne signale rien. IRIS relance alors hors puce
+  (`encoder.relancer_hors_puce`). *(mesuré, ffmpeg 8.1.2, RTX A4500,
+  2026-10-29)* Même défaut supposé avec `vpp_qsv`, non vérifié.

@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.1
+**Version**: 0.9.1.3
 **Date**: 2026-10-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -392,7 +392,10 @@ progress · 1/3 · 42%", then "F12 Batch done"; from the queue, "F12 Files".
 - Each line shows the file, the **profile** it was queued with, its size and
   the **estimated output size** (`4.2 GB → 2.1 GB (-50%)`, green when it
   shrinks, orange when it grows — the same estimate as the Home screen), the
-  action and the state.
+  action, then **Read** and **Enc.** — where the video is decoded, then
+  encoded: `GPU` (graphics card) or `CPU` (processor), `—` when it is only
+  copied —, and the state. Predicted when queued, they show the chain
+  actually used once the file starts.
 - A file already in the queue is refused, with a message.
 - Each file keeps the settings it had when added: changing profile afterwards
   does not affect it.

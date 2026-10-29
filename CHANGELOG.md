@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.3] — 2026-10-29
+
+### L'écran d'encodage dit où passe la vidéo
+
+Deux colonnes, entre « Action » et « État » : **Lect.** (où la vidéo est
+décodée) et **Enc.** (où elle est encodée), `GPU` ou `CPU`, `—` quand elle est
+seulement recopiée. Elles sont prévues dès la mise en file et prennent, au
+démarrage du fichier, la chaîne réellement lancée. En anglais : **Read** et
+**Enc.**
+
+## [v0.9.1.2] — 2026-10-29
+
+### Un fichier collé ne fait plus échouer l'encodage sur la carte
+
+Un fichier fait de deux encodages mis bout à bout échouait au raccord avec
+une carte NVIDIA : le second segment annonce ses couleurs (`bt709`), le
+premier non, et ffmpeg ne sait pas reconstruire sa chaîne de filtres quand
+les images restent sur la carte (« Error reinitializing filters! »). Le
+fichier se décode pourtant sans erreur. Signalé sur un H264 1080p de
+25 min, arrêté à 52 s.
+
+IRIS reconnaît désormais cet échec et relance aussitôt le fichier par le
+chemin classique, filtres au processeur, en l'annonçant sur la ligne ffmpeg.
+Le fichier signalé passe en 90 s. Les autres fichiers gardent l'encodage
+tout sur la carte. `-reinit_filter 0` et `setparams`, essayés, n'y font
+rien. Même défaut supposé avec Quick Sync (`vpp_qsv`), non vérifié.
+
 ## [v0.9.1.1] — 2026-10-29
 
 ### README : le gain de vitesse dépend du preset

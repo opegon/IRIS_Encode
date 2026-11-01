@@ -1,5 +1,18 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.11] — 2026-11-01
+
+### Un AVI sans étiquette de codec ne fait plus échouer l'encodage
+
+Un AVI échouait sur « Conversion failed! » sans qu'aucune image ne soit
+encodée. Malgré « XVID » dans son nom, le fichier contient du HEVC, mais
+l'AVI ne le déclare pas (fourcc vide) : ffmpeg le prenait pour de l'image brute
+non compressée et ne savait rien en tirer.
+
+IRIS lit maintenant le début du flux pour reconnaître le HEVC ou le H.264, et
+indique le bon décodeur à ffmpeg. Le fichier s'encode, et la colonne codec
+affiche `hevc` au lieu de `rawvideo`.
+
 ## [v0.9.1.10] — 2026-11-01
 
 ### Les sous-titres WebVTT muxés par mkvmerge ne font plus échouer l'encodage

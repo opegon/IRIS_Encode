@@ -98,6 +98,16 @@ partie porte plus ou moins de pistes, il n'apparie que les rangs communs,
 **sans refuser**. Deux parties inversées donnent un fichier de la bonne durée,
 donc faux sans que rien ne le signale.
 
+## AVI au fourcc nul
+
+Un AVI peut porter du HEVC en Annex B sans le déclarer (fourcc `0x0000`) :
+ffprobe y voit un flux `rawvideo` (`bgr24`, débit absurde pour de l'image
+brute), et ffmpeg n'en décode aucune image — « Conversion failed! » après
+`frame=0`. Le premier paquet le trahit (`00 00 00 01 40 01`, un VPS HEVC).
+`-c:v hevc` **avant** `-i` répare l'encodage comme la recopie ; ffprobe, lui,
+refuse `-codec:v hevc` sur ce flux (« Codec type or id mismatches »). Mesuré
+sous ffmpeg 8.1.2 sur un concert en AVI (v0.9.1.11).
+
 ## Voir aussi
 
 [[ffmpeg]] · [[mkvmerge]] · [[lg-oled-g3]] · [[sous-titres]] · [[audio]] · [[hdr-dolby-vision]]

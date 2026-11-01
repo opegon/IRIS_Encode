@@ -366,6 +366,7 @@ def _encode_decision(ext: list[ExternalTrack], *, subs=None):
     info.duration        = 100.0
     info.hdr10_master_display = ""
     info.hdr10_max_cll        = ""
+    info.decodeur             = ""
 
     video = VideoDecision(
         action=VideoAction.ENCODE_HEVC, reason="test", target_bitrate=2_000_000,

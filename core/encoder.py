@@ -264,9 +264,14 @@ def _sortie_hevc(cmd: list[str], codec_source: str) -> bool:
 
 
 def encodeur_de(cmd: list[str]) -> Optional[str]:
-    """Encodeur vidéo d'une commande construite, ou None."""
+    """Encodeur vidéo d'une commande construite, ou None.
+
+    Cherché après le premier `-i` : un `-c:v` qui le précède impose le
+    décodeur de la source (`VideoInfo.decodeur`), pas l'encodeur.
+    """
     try:
-        return cmd[cmd.index("-c:v") + 1]
+        debut = cmd.index("-i") if "-i" in cmd else 0
+        return cmd[cmd.index("-c:v", debut) + 1]
     except (ValueError, IndexError):
         return None
 
@@ -879,7 +884,10 @@ def build_command(
     # Après un mux préalable, l'entrée est l'intermédiaire, pas la source.
     # `info.path` reste la source : c'est d'elle que dépend le nom de sortie.
     entree = decision.encode_source or info.lecture
-    cmd += [*lecture_tolerante(entree), "-i", str(entree)]
+    # Un conteneur qui ne nomme pas le codec : ffmpeg prendrait le flux pour
+    # de l'image brute (`scanner._codec_annexe_b`).
+    decodeur = ["-c:v", info.decodeur] if info.decodeur else []
+    cmd += [*lecture_tolerante(entree), *decodeur, "-i", str(entree)]
 
     # ── Entrées supplémentaires : pistes externes greffées ────────────────────
     # ffmpeg les absorbe dans la même passe que l'encodage : inutile de muxer

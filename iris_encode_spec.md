@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.10 — document de référence courant
+**Version** : 0.9.1.11 — document de référence courant
 **Date** : 2026-11-01
 **Statut** : stable
 
@@ -3383,6 +3383,20 @@ Un paquet audio tronqué, marqué corrompu par le démuxeur, faisait échouer
 `aac_adtstoasc` à la recopie de l'AAC en MP4, et tout l'encodage avec lui ; il
 est écarté. Les autres conteneurs et les chemins Dolby Vision ne changent pas.
 
+**Fourcc nul** (v0.9.1.11) — un flux vidéo que ffprobe dit `rawvideo` avec
+`codec_tag` `0x0000` (un AVI dont le fourcc est vide) est examiné par
+`_codec_annexe_b()` : le premier paquet (`-show_packets -show_data`) commence
+par un code de départ Annex B suivi d'un en-tête NAL HEVC (VPS, SPS, PPS, AUD,
+SEI préfixe ; deuxième octet `0x01`) ou H.264 (SEI, SPS, AUD). Le codec
+reconnu remplace `rawvideo` dans `VideoInfo.codec` et va dans
+`VideoInfo.decodeur` ; `pix_fmt` devient inconnu (`bgr24` était celui de
+l'image brute supposée). `build_command` pose `-c:v <decodeur>` devant le `-i`
+de l'entrée principale ; `encoder.encodeur_de()` cherche donc le `-c:v` de
+sortie **après** le premier `-i`. Sans décodeur imposé, ffmpeg ne sortait
+aucune image et finissait sur « Conversion failed! » ; avec, l'encodage et la
+recopie passent (mesuré, ffmpeg 8.1.2). ffprobe, lui, refuse `-codec:v hevc`
+sur ce flux : les propriétés de couleur ne sont pas relues.
+
 ### 15.1 `VideoInfo`
 
 `bitrate` porte le débit du **flux vidéo**, jamais celui du conteneur.
@@ -3775,6 +3789,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.11 | 2026-11-01 | **AVI au fourcc nul** (§ 15) : HEVC ou H.264 reconnu au premier paquet sous `rawvideo`, `VideoInfo.decodeur`, `-c:v` imposé devant le `-i` ; `encodeur_de()` lit le `-c:v` après le premier `-i` · `tests/test_fourcc_nul.py` |
 | 0.9.1.10 | 2026-11-01 | **WebVTT brut** (§ 8.6) : piste `S_TEXT/WEBVTT` reconnue au scan, SRT reconstruit depuis les paquets ffprobe, porteur forcé en MP4, `sous_titres_refaits` en MKV · **cause complète d'un échec** : bilan de fin de lot et journal (`tui.common.JOURNAL`) · `tests/test_webvtt_brut.py`, `tests/test_cause_echec.py` |
 | 0.9.1.9 | 2026-11-01 | **AMD AMF, expérimental** (§ 11, § 12.1) : sans NVIDIA, `avec_amf()` sonde `hevc_amf` avant Quick Sync ; `option_preset()` (`-quality`), `-rc vbr_peak`, `p010le` ; encodage seul sur la carte ; notification au lancement · `tests/test_amf.py` |
 | 0.9.1.8 | 2026-11-01 | **Colonne « Durée »** à l'écran d'encodage (§ 12.1), entre le profil et la taille · `tests/test_colonne_duree.py` |

@@ -503,3 +503,10 @@ Constaté sur un encodage de l'utilisateur (cérémonie de clôture JO 2024) :
 lisent ni ne copient la piste ; ffprobe en lit les paquets. Question ouverte
 de UX-21 tranchée (retirée de [[questions-ouvertes]]). Pages mises à jour :
 [[sous-titres]], [[ffmpeg]].
+
+## [2026-11-01] ingest | AVI au fourcc nul : HEVC pris pour de l'image brute (v0.9.1.11)
+
+Constaté sur un encodage de l'utilisateur (un concert en AVI,
+« Conversion failed! »). Mesuré : ffprobe dit `rawvideo`, le premier paquet
+est un VPS HEVC ; `-c:v hevc` avant `-i` fait passer encodage et recopie.
+Page mise à jour : [[conteneurs]].

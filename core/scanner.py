@@ -510,6 +510,9 @@ class VideoInfo:
     # Format de pixels du flux (`pix_fmt`) : « yuv420p10le »… « » si inconnu.
     # Il dit si le décodeur Quick Sync sait lire la source (IE-147).
     pix_fmt:         str                 = ""
+    # Décodeur à imposer à ffmpeg (`-c:v` avant `-i`) quand le conteneur ne
+    # nomme pas le codec : « hevc » pour un AVI au fourcc nul. « » sinon.
+    decodeur:        str                 = ""
     # ── Métadonnées Dolby Vision enrichies (dovi_tool, optionnel) ────────────
     dv_subprofile:   Optional[str]              = None   # "5", "7.06", "8.1"…
     hdr10_master_display: Optional[str]         = None   # G(...)B(...)R(...)WP(...)L(...)
@@ -852,6 +855,38 @@ def _detect_dv(path: Path) -> tuple[Optional[int], Optional[int]]:
     return (None, None)
 
 
+def _codec_annexe_b(path: Path) -> str:
+    """Le codec d'un flux vidéo que ffprobe dit `rawvideo` faute d'étiquette.
+
+    Un AVI dont le fourcc est nul porte parfois du HEVC en
+    Annex B : ffprobe le prend pour de l'image brute, ffmpeg n'en décode
+    aucune image et finit sur « Conversion failed! ». Le premier paquet le
+    dit : un code de départ, puis l'en-tête d'une unité NAL. Rend "hevc",
+    "h264", ou "" si rien n'est reconnu.
+    """
+    try:
+        data = _ffprobe_json(["-select_streams", "v:0", "-show_packets",
+                              "-show_data", "-read_intervals", "%+#1", str(path)])
+        dump = (data.get("packets") or [{}])[0].get("data", "")
+    except Exception as e:
+        _log.debug("annex B probe failed for %s: %s", path, e)
+        return ""
+    octets = bytes.fromhex("".join(
+        m.replace(" ", "") for m in re.findall(r"^[0-9a-f]{8}: ((?:[0-9a-f]{2,4} )+)",
+                                               dump, re.M)))
+    i = octets.find(b"\x00\x00\x01")
+    if i < 0 or i + 4 >= len(octets):
+        return ""
+    nal, suivant = octets[i + 3], octets[i + 4]
+    # HEVC : VPS, SPS, PPS, AUD ou SEI préfixe, couche 0, temporal_id 0.
+    if not nal & 0x80 and (nal >> 1) & 0x3F in (32, 33, 34, 35, 39) and suivant == 0x01:
+        return "hevc"
+    # H.264 : SEI, SPS ou délimiteur d'unité d'accès.
+    if not nal & 0x80 and nal & 0x1F in (6, 7, 9):
+        return "h264"
+    return ""
+
+
 def _reconnaitre_webvtt_brut(path: Path, pistes: list[SubtitleTrack]) -> None:
     """Une piste de sous-titres que ffprobe dit `unknown` est-elle du WebVTT ?
 
@@ -937,6 +972,14 @@ def scan(path: Path) -> VideoInfo:
     width  = _safe_int(vid.get("width"))
     height = _safe_int(vid.get("height"))
     codec  = vid.get("codec_name", "unknown")
+    pix_fmt = vid.get("pix_fmt", "") or ""
+    # Fourcc nul : le flux est peut-être compressé (`_codec_annexe_b`). Son
+    # format de pixels, déduit de l'image brute supposée, est alors faux.
+    decodeur = ""
+    if codec == "rawvideo" and vid.get("codec_tag") == "0x0000":
+        decodeur = _codec_annexe_b(path)
+        if decodeur:
+            codec, pix_fmt = decodeur, ""
 
     # Débit **vidéo**, jamais celui du conteneur : c'est à un débit vidéo
     # cible qu'il sera comparé, et c'est un débit vidéo que l'encodeur reçoit.
@@ -1017,7 +1060,8 @@ def scan(path: Path) -> VideoInfo:
         frame_rate=vid.get("r_frame_rate", ""),
         field_order=vid.get("field_order", "") or "",
         sar=vid.get("sample_aspect_ratio", "") or "",
-        pix_fmt=vid.get("pix_fmt", "") or "",
+        pix_fmt=pix_fmt,
+        decodeur=decodeur,
         titre=titre_dvd,
     )
 

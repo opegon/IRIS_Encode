@@ -124,7 +124,9 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
     """
     from .decision import AudioAction
     from .encoder import audio_args
-    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(source)]
+    # `-stats` : sous `-loglevel error`, ffmpeg ne dit plus où il en est, et la
+    # barre restait vide pendant tout le remux (CR-21, ici aussi).
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-stats", "-i", str(source)]
     if porteur is not None:
         cmd += ["-i", str(porteur)]
     if chapitres is not None:
@@ -181,7 +183,9 @@ def build_dv_mp4_remux(mkv: Path, output: Path,
     Sert aussi au retrait DV vers MP4 qui porte des greffes (CR-55) : sans
     enregistrement de configuration DV, `-strict unofficial` n'écrit rien.
     """
-    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(mkv)]
+    # `-stats` : sous `-loglevel error`, ffmpeg ne dit plus où il en est, et la
+    # barre restait vide pendant tout le remux (CR-21, ici aussi).
+    cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-stats", "-i", str(mkv)]
     if porteur is not None:
         cmd += ["-i", str(porteur)]
     cmd += ["-map", "0:v:0", "-map", "0:a?",

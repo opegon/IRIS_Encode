@@ -1,5 +1,5 @@
 """
-tests/test_colonnes_chaine.py — colonnes « Lect. », « Filt. » et « Enc. » de
+tests/test_colonnes_chaine.py — colonnes « Read », « Filt. » et « Enc. » de
 l'écran d'encodage : où la vidéo est décodée, filtrée, puis encodée, GPU ou CPU.
 
 Prévues à la mise en file d'après la commande qu'on construirait ; remplacées

@@ -1,7 +1,7 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.5
-**Date** : 2026-10-08
+**Version** : 0.9.1.8
+**Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
 
@@ -395,16 +395,20 @@ qu'un lot existe, l'en-tête l'annonce au centre, sur tous les écrans :
 « F12 Encodages en cours · 1/3 · 42 % », puis « F12 Lot terminé » ; depuis la
 file, « F12 Fichiers ».
 
-- Chaque ligne montre le fichier, le **profil** avec lequel il a été confié, sa
-  taille et la **taille de sortie estimée** (`4.2 Go → 2.1 Go (-50%)`, en vert
+- Chaque ligne montre le fichier, le **profil** avec lequel il a été confié, la
+  **durée** de la source, sa taille et la **taille de sortie estimée** (`4.2 Go → 2.1 Go (-50%)`, en vert
   si elle maigrit, en orange si elle grossit — la même estimation que
-  l'accueil), l'action, puis **Lect.**, **Filt.** et **Enc.** — où la vidéo
+  l'accueil), l'action, puis **Read**, **Filt.** et **Enc.** — où la vidéo
   est décodée, où ses images sont traitées (mise à l'échelle, format), puis où
   elle est encodée : `GPU` (carte graphique) ou `CPU` (processeur), `—` quand
   elle est seulement recopiée —, et l'état. Prévues à la mise en file, elles
   donnent la chaîne réellement prise dès que le fichier démarre. Un fichier
   relancé hors de la carte (deux encodages collés) passe de `GPU GPU GPU` à
   `GPU CPU GPU`.
+- À la fin d'un MP4, la ligne d'avancement affiche « Finalisation du MP4 » :
+  ffmpeg réécrit le fichier pour en mettre l'index en tête. Elle dit ce qui
+  est réécrit, le débit et le temps restant. Sur un partage réseau, cette
+  étape peut durer plusieurs minutes ; le fichier n'est pas bloqué.
 - Un fichier déjà dans la file est refusé, avec un message.
 - Chaque fichier garde les réglages qu'il avait au moment de l'ajout : changer
   de profil ensuite ne le touche pas.

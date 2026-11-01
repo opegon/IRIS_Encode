@@ -1,7 +1,7 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.5
-**Date**: 2026-10-08
+**Version**: 0.9.1.8
+**Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
 
@@ -389,8 +389,8 @@ others. `F12` switches between the files and the queue. As long as a batch
 exists, the header shows it in the middle, on every screen: "F12 Encoding in
 progress · 1/3 · 42%", then "F12 Batch done"; from the queue, "F12 Files".
 
-- Each line shows the file, the **profile** it was queued with, its size and
-  the **estimated output size** (`4.2 GB → 2.1 GB (-50%)`, green when it
+- Each line shows the file, the **profile** it was queued with, the source
+  **duration**, its size and the **estimated output size** (`4.2 GB → 2.1 GB (-50%)`, green when it
   shrinks, orange when it grows — the same estimate as the Home screen), the
   action, then **Read**, **Filt.** and **Enc.** — where the video is
   decoded, where its frames are processed (scaling, format), then where it is
@@ -398,6 +398,10 @@ progress · 1/3 · 42%", then "F12 Batch done"; from the queue, "F12 Files".
   copied —, and the state. Predicted when queued, they show the chain
   actually used once the file starts. A file restarted off the card (two
   encodes joined together) goes from `GPU GPU GPU` to `GPU CPU GPU`.
+- At the end of an MP4, the progress line shows "Finishing the MP4": ffmpeg
+  rewrites the file to move its index to the front. It shows how much is
+  rewritten, the speed and the time left. On a network share this step can
+  take several minutes; the file is not stuck.
 - A file already in the queue is refused, with a message.
 - Each file keeps the settings it had when added: changing profile afterwards
   does not affect it.

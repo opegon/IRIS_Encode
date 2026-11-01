@@ -1,5 +1,39 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.8] — 2026-11-01
+
+### Une colonne « Durée » entre « Profil » et « Taille »
+
+L'écran d'encodage montre la durée de chaque fichier source (`2:41:07`), à
+côté de son profil.
+
+## [v0.9.1.7] — 2026-11-01
+
+### Le remux en MP4 montre où il en est
+
+Le retrait du Dolby Vision vers un MP4, et le passage en MP4 d'un réencodage
+qui garde le Dolby Vision, laissaient la barre vide d'un bout à l'autre :
+ffmpeg n'y disait pas où il en était. Ils la font avancer désormais.
+
+À la fin d'un MP4, ffmpeg réécrit tout le fichier pour en mettre l'index en
+tête, sans rien dire. Sur un partage réseau, un film de 5 Go restait ainsi
+un quart d'heure figé, comme bloqué (constaté le 2026-11-01, 5 Mo/s). La
+ligne d'avancement affiche maintenant cette finalisation :
+`Finalisation du MP4 (index placé en tête) : 1.3 Go / 5.5 Go réécrits ·
+5 Mo/s · encore 14:20 environ`. Elle vaut pour toutes les sorties MP4,
+réencodages compris.
+
+Un remux très rapide (plus de 1000x, sur disque local) rendait sa vitesse en
+notation scientifique, que l'écran ne lisait pas : sa dernière progression se
+perdait.
+
+## [v0.9.1.6] — 2026-10-29
+
+### « Read » aussi en français
+
+La colonne de l'écran d'encodage qui dit où la vidéo est décodée s'appelle
+désormais « Read » en français aussi, au lieu de « Lect. ».
+
 ## [v0.9.1.5] — 2026-10-29
 
 ### La relance couvre aussi le réencodage Dolby Vision

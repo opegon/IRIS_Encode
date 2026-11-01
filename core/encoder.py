@@ -74,6 +74,51 @@ def _resume_process(pid: int) -> bool:
             return False
 
 
+def octets_ecrits(pid: int) -> Optional[int]:
+    """Les octets que le processus a écrits depuis son lancement, comptés par
+    le système. None quand on ne sait pas les lire."""
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        class _Compteurs(ctypes.Structure):
+            _fields_ = [(n, ctypes.c_ulonglong) for n in (
+                "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+                "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+        k32 = ctypes.WinDLL("kernel32")
+        k32.OpenProcess.restype = wintypes.HANDLE
+        k32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        h = k32.OpenProcess(0x1000, False, pid)     # QUERY_LIMITED_INFORMATION
+        if not h:
+            return None
+        try:
+            c = _Compteurs()
+            if not k32.GetProcessIoCounters(wintypes.HANDLE(h), ctypes.byref(c)):
+                return None
+            return c.WriteTransferCount
+        finally:
+            k32.CloseHandle(wintypes.HANDLE(h))
+    try:
+        with open(f"/proc/{pid}/io", encoding="ascii") as f:
+            for ligne in f:
+                if ligne.startswith("wchar:"):
+                    return int(ligne.split()[1])
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+# La finalisation d'un MP4 (`+faststart`) : ffmpeg a écrit le fichier, puis le
+# réécrit en entier pour mettre l'index en tête — sans rien dire. Sur un partage
+# à 5 Mo/s, un film de 5 Go reste ainsi un quart d'heure muet (mesuré le
+# 2026-11-01). Ce silence, et des écritures au-delà de ce qui était fait à la
+# dernière ligne, la reconnaissent ; les octets écrits depuis la mesurent.
+SILENCE_FINALISATION = 2.0          # secondes sans ligne de ffmpeg
+MARGE_FINALISATION   = 8 << 20      # octets écrits depuis : pas un simple en-tête
+FENETRE_DEBIT        = 10.0         # secondes sur lesquelles le débit se lisse
+
+
 # Pipeline tone mapping Dolby Vision P5 → SDR (CPU, algorithme Hable)
 # Le désentrelacement (IE-122) : bwdif, une image par image — la cadence de la
 # source, donc le même débit cible. `deint=interlaced` ne touche que les images
@@ -98,7 +143,8 @@ _PROGRESS_RE = re.compile(
     r"(?:frame=\s*(?P<frame>\d+).*?fps=\s*(?P<fps>[\d.]+).*?)?"
     r"time=(?P<time>\d{2}:\d{2}:\d{2}\.\d{2})"
     r".*?bitrate=\s*(?P<bitrate>[\d.]+)kbits/s"
-    r".*?speed=\s*(?P<speed>[\d.]+)x"
+    # Au-delà de 1000x, ffmpeg écrit `speed=1.06e+03x` : un remux en local.
+    r".*?speed=\s*(?P<speed>[\d.]+(?:e[+-]?\d+)?)x"
 )
 
 
@@ -1139,6 +1185,10 @@ class EncoderProcess:
         # Les dernières lignes de stderr : la cause d'un échec précède le
         # constat de quelques lignes (`diagnostiquer`, CR-62).
         self.journal: list[str] = []
+        # Ce qu'il faut pour suivre la finalisation d'un MP4 (`finalisation`).
+        self._t_ligne = time.monotonic()
+        self._base: Optional[int] = None
+        self._echantillons: list[tuple[float, int]] = []
 
     def start(self) -> None:
         self._proc = subprocess.Popen(
@@ -1167,7 +1217,38 @@ class EncoderProcess:
                 self.journal.append(line)
                 del self.journal[:-40]
             progress = parse_progress(line, self.duration)
+            self._t_ligne = time.monotonic()
+            self._base = self.octets_ecrits()
+            self._echantillons = []
             yield line, progress
+
+    def octets_ecrits(self) -> Optional[int]:
+        if self._proc is None or self._proc.poll() is not None:
+            return None
+        return octets_ecrits(self._proc.pid)
+
+    def finalisation(self) -> Optional[tuple[int, int, float]]:
+        """(réécrits, à réécrire, octets/s) pendant la finalisation d'un MP4,
+        None hors d'elle. À appeler régulièrement : le débit se calcule entre
+        deux appels.
+
+        Le fichier pèse ce que ffmpeg avait écrit à sa dernière ligne ; la
+        finalisation en réécrit autant."""
+        if "+faststart" not in self.cmd or not self._base:
+            return None
+        maintenant = time.monotonic()
+        if maintenant - self._t_ligne < SILENCE_FINALISATION:
+            return None
+        ecrits = self.octets_ecrits()
+        if ecrits is None or ecrits - self._base < MARGE_FINALISATION:
+            return None
+        fait = ecrits - self._base
+        self._echantillons.append((maintenant, fait))
+        while maintenant - self._echantillons[0][0] > FENETRE_DEBIT:
+            del self._echantillons[0]
+        t0, f0 = self._echantillons[0]
+        debit = (fait - f0) / (maintenant - t0) if maintenant > t0 else 0.0
+        return min(fait, self._base), self._base, debit
 
     def pause(self) -> bool:
         """Suspend ffmpeg. Rend l'état obtenu : True s'il est en pause."""

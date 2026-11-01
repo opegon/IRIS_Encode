@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.5 — document de référence courant
-**Date** : 2026-10-29
+**Version** : 0.9.1.8 — document de référence courant
+**Date** : 2026-11-01
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -2006,8 +2006,9 @@ sur_carte_permis=False)` la reprend une fois, images au processeur
 signalé passe sans reprise (observé, i5-1135G7). · `tests/test_reprise_hors_puce.py`
 
 **Chaîne affichée** (v0.9.1.3, « Filt. » en v0.9.1.4). L'écran d'encodage
-montre, entre « Action » et « État », les colonnes « Lect. », « Filt. » et
-« Enc. » (`Read`, `Filt.`, `Enc.`) : `GPU`, `CPU` ou `—`. `chaine_de(cmd)`
+montre, entre « Action » et « État », les colonnes « Read », « Filt. » et
+« Enc. » — « Read » gardé en anglais en français, à la demande de
+l'utilisateur (v0.9.1.6) : `GPU`, `CPU` ou `—`. `chaine_de(cmd)`
 les lit dans la commande — lecture matérielle si un `-hwaccel` précède le
 `-i`, filtres sur la carte si les images y restent
 (`-hwaccel_output_format`), au processeur sinon (mise à l'échelle,
@@ -2018,6 +2019,26 @@ SKIP). `chaine_prevue(decision, platform)` les prévoit à la mise en file, sur
 la commande qu'on construirait (passe vidéo pour un réencodage DV) ; la
 commande lancée les remplace au démarrage. Une reprise hors puce passe de
 `GPU GPU GPU` à `GPU CPU GPU` : seuls les filtres changent de côté. · `tests/test_colonnes_chaine.py`
+
+**Durée** (v0.9.1.8). Entre « Profile » et « Size → est. », la durée de la
+source (`info.duration`, `fmt_duration` : `2:41:07`, `—` si inconnue). ·
+`tests/test_colonne_duree.py`
+
+**Finalisation d'un MP4** (v0.9.1.7). `+faststart` fait réécrire à ffmpeg
+tout le fichier, une fois écrit, pour en mettre l'index en tête ; il ne dit
+rien pendant ce temps (un quart d'heure pour 5 Go sur un partage à 5 Mo/s,
+constaté). `EncoderProcess` relève, à chaque ligne de ffmpeg, les octets que
+le processus a écrits (`octets_ecrits(pid)` : `GetProcessIoCounters` sous
+Windows, `/proc/<pid>/io` ailleurs). `finalisation()` reconnaît la phase —
+commande avec `+faststart`, pas de ligne depuis `SILENCE_FINALISATION`
+(2 s), plus de `MARGE_FINALISATION` (8 Mio) écrits depuis — et rend
+(réécrits, taille à la dernière ligne, débit lissé sur `FENETRE_DEBIT`,
+10 s). Un partage qui ne répond plus se tait sans écrire : il n'est pas pris
+pour une finalisation. L'écran d'encodage l'interroge chaque seconde (hors
+pause) et l'écrit dans la ligne d'avancement, avec le temps restant. Les deux
+remux MP4 de `core/dovi.py` passent `-stats` : sous `-loglevel error`, la
+barre restait vide (même cause que CR-21). La vitesse se lit aussi en
+notation scientifique (`speed=1.06e+03x`). · `tests/test_finalisation_mp4.py`
 
 **Passe audio préalable.** Quand une invocation ffmpeg décode une piste audio
 sans perte *et* mappe un flux de sous-titres dont le premier repère arrive
@@ -3714,6 +3735,9 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.8 | 2026-11-01 | **Colonne « Durée »** à l'écran d'encodage (§ 12.1), entre le profil et la taille · `tests/test_colonne_duree.py` |
+| 0.9.1.7 | 2026-11-01 | **Finalisation MP4 affichée** (§ 12.1) : octets réécrits, débit, temps restant pendant `+faststart` · `-stats` sur les remux MP4 de `core/dovi.py` · vitesse en notation scientifique lue · `tests/test_finalisation_mp4.py` |
+| 0.9.1.6 | 2026-10-29 | Colonne « Read » de l'écran d'encodage gardée en anglais en français (était « Lect. ») ; glossaire |
 | 0.9.1.5 | 2026-10-29 | **Reprise de la passe vidéo DV** (§ 12.1) : arrêtée au raccord d'un fichier collé sur NVIDIA, relancée une fois images au processeur · `build_dv_video_command(sur_carte_permis=)` · `tests/test_reprise_hors_puce.py` |
 | 0.9.1.4 | 2026-10-29 | **Colonne « Filt. »** à l'écran d'encodage (§ 12.1) : filtres sur la carte ou au processeur ; une reprise hors puce s'y voit · `chaine_de` rend trois étapes |
 | 0.9.1.3 | 2026-10-29 | **Colonnes « Lect. » et « Enc. »** à l'écran d'encodage (§ 12.1) : décodage et encodage, GPU ou CPU · `chaine_de`, `chaine_prevue` · `tests/test_colonnes_chaine.py` |

@@ -39,6 +39,7 @@ from core.muxer import (
 from core.platform import PlatformProfile
 from core.scanner import est_intermediaire
 from ..common import (barre_etat, actions_ecran, colonne_fixe, fmt_bytes,
+                      fmt_duration,
                       footer_line2, record_measured_speed,
                       retour_accueil, touche)
 # La même estimation et le même dégradé que la colonne Estim de l'accueil :
@@ -237,6 +238,7 @@ class RunScreen(TableNavMixin, Screen):
         self.app.lots_encodes.append(self._statuses)  # type: ignore[attr-defined]
         self._build_table()
         self._update_header()
+        self.set_interval(1, self._suivre_finalisation, name="finalisation MP4")
         self.action_start()
 
     def on_screen_resume(self) -> None:
@@ -274,6 +276,7 @@ class RunScreen(TableNavMixin, Screen):
         names    = [s.decision.info.path.name for s in self._statuses]
         actions  = [s.decision.video.label()  for s in self._statuses]
         profils  = [s.decision.profile.id     for s in self._statuses]
+        durees   = [fmt_duration(s.decision.info.duration) for s in self._statuses]
         tailles  = [self._taille(s.decision)  for s in self._statuses]
         for s in self._statuses:
             if s.chaine is None:
@@ -289,6 +292,8 @@ class RunScreen(TableNavMixin, Screen):
         profil, taille = _("Profile"), _("Size → est.")
         table.add_column(fichier, width=max(20, _cw(fichier, names)), key="file")
         table.add_column(profil,  width=_cw(profil, profils),         key="profile")
+        duree = _("Duration")
+        table.add_column(duree,   width=_cw(duree, durees),           key="duration")
         table.add_column(taille,  width=_cw(taille, [t.plain for t in tailles]),
                          key="size")
         table.add_column(action,  width=_cw(action, actions),         key="action")
@@ -309,6 +314,7 @@ class RunScreen(TableNavMixin, Screen):
                 self._icon(s),
                 Text(name, overflow="ellipsis", no_wrap=True),
                 Text(dec.profile.id, style="dim"),
+                Text(durees[i], style="dim"),
                 tailles[i],
                 Text(action_label, style=dec.video.style()),
                 Text(lectures[i], style="dim"),
@@ -463,6 +469,24 @@ class RunScreen(TableNavMixin, Screen):
             self.query_one("#ffmpeg-line", Static).update(text)
         except Exception:
             pass
+
+    def _suivre_finalisation(self) -> None:
+        """La finalisation d'un MP4 se tait : la ligne d'avancement dit ce
+        qui est réécrit, à quel débit, et ce qu'il reste (`finalisation`)."""
+        suivre = getattr(self._process, "finalisation", None)
+        if suivre is None or self.en_pause:
+            return
+        etat = suivre()
+        if etat is None:
+            return
+        fait, total, debit = etat
+        texte = "▶ " + _("Finishing the MP4 (index moved to the front): "
+                         "{done} / {total} rewritten · {speed}/s").format(
+            done=fmt_bytes(fait), total=fmt_bytes(total), speed=fmt_bytes(int(debit)))
+        if debit > 0:
+            texte += " · " + _("about {time} left").format(
+                time=fmt_duration((total - fait) / debit))
+        self._update_ffmpeg_line(texte)
 
     # ─── Encodage ─────────────────────────────────────────────────────────────
 

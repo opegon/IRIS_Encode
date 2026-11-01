@@ -1,7 +1,7 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-10-29
+maj: 2026-11-01
 sources:
   - "[[source-2026-10-29-raccord-qsv-passe-dv]]"
   - "[[source-2026-10-29-fichier-colle]]"
@@ -105,6 +105,15 @@ sans libx265 : `ffmpeg -encoders | findstr x265`.
 - Chapitres d'un MP4 : piste `bin_data` (voir [[conteneurs#Chapitres]]).
 - Écrit **`hev1`** par défaut pour du HEVC en MP4 ; `-tag:v hvc1` le change sans toucher au flux, et IRIS le passe depuis la v0.8.9.39 ([[conteneurs]]).
 - Lit `stdin` pour son clavier interactif (`q` l'arrête) : voir [[sous-processus]].
+- **`+faststart` réécrit tout le MP4, sans rien dire** : le fichier écrit, ffmpeg
+  le recopie pour mettre l'index en tête. Pendant ce temps, aucune ligne, la
+  taille du fichier ne bouge pas ; seuls les octets écrits par le processus
+  avancent. 5,5 Go réécrits à ~5 Mo/s sur un partage SMB : un quart d'heure
+  muet *(mesuré, ffmpeg 8.1, 2026-11-01)*. IRIS le suit par les compteurs
+  d'E/S du processus (`EncoderProcess.finalisation`).
+- Sous `-loglevel error`, **pas de ligne de progression sans `-stats`**
+  (CR-21). Au-delà de 1000x, la vitesse s'écrit en notation scientifique :
+  `speed=1.06e+03x` *(mesuré, remux d'une mire en local)*.
 
 ## Encodeurs
 

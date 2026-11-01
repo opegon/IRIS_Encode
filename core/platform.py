@@ -25,6 +25,7 @@ class OS(Enum):
 class GPU(Enum):
     NVIDIA = auto()
     INTEL  = auto()   # Quick Sync (QSV), retenu sur sondage seulement
+    AMD    = auto()   # AMF, retenu sur sondage seulement — expérimental
     APPLE  = auto()
     NONE   = auto()
 
@@ -52,7 +53,7 @@ class PlatformProfile:
         return encodeur in self.encodeurs_ok
 
     def peut_encoder_10_bits(self, encodeur: str) -> bool | None:
-        """True / False pour un encodeur NVENC ou QSV sondé aussi en 10 bits, None
+        """True / False pour un encodeur NVENC, QSV ou AMF sondé aussi en 10 bits, None
         pour les autres (encodeurs logiciels, sondage absent)."""
         if self.encodeurs_ok is None or not avec_essai_10_bits(encodeur):
             return None
@@ -93,12 +94,13 @@ def dix_bits(encodeur: str) -> str:
 
 
 def avec_essai_10_bits(encodeur: str) -> bool:
-    """Un encodeur matériel (NVENC, QSV) qui peut sortir du HDR : HEVC et AV1.
+    """Un encodeur matériel (NVENC, QSV, AMF) qui peut sortir du HDR : HEVC et AV1.
     Une carte Maxwell (GTX 9xx) encode le HEVC en 8 bits, pas en 10 : ouvrir
     l'encodeur en 8 bits seulement le disait capable, et un fichier HDR
     échouait dans ffmpeg sur un message que rien ne reconnaissait (CR-42).
-    Chez Intel, le 10 bits n'arrive qu'avec Kaby Lake : même essai."""
-    return (("nvenc" in encodeur or "qsv" in encodeur)
+    Chez Intel, le 10 bits n'arrive qu'avec Kaby Lake : même essai. Chez AMD,
+    pas avant Polaris (RX 400)."""
+    return (("nvenc" in encodeur or "qsv" in encodeur or "amf" in encodeur)
             and ("hevc" in encodeur or "av1" in encodeur))
 
 
@@ -232,6 +234,35 @@ def avec_qsv(profil: PlatformProfile,
     )
 
 
+def avec_amf(profil: PlatformProfile,
+             ffmpeg_path: str = "ffmpeg") -> PlatformProfile:
+    """Le profil AMD AMF, si ce poste Windows sans NVIDIA sait ouvrir
+    `hevc_amf` ; sinon `profil` inchangé.
+
+    Même méthode que `avec_qsv`, et appelé avant lui : une carte Radeon est en
+    général plus rapide que la puce graphique d'un processeur Intel. Sans
+    carte AMD, ffmpeg refuse en une fraction de seconde (code 171, essayé le
+    2026-11-01).
+
+    **Expérimental** : écrit sans matériel AMD. Ni la tenue du débit, ni la
+    conservation des métadonnées HDR10 n'ont été mesurées. Encodage seul :
+    lecture et filtres restent au processeur (`hwaccel=None`, pas de chaîne
+    tout-puce) tant que rien n'a été mesuré sur une carte AMD.
+    """
+    if profil.os != OS.WINDOWS or profil.gpu != GPU.NONE:
+        return profil
+    if "hevc_amf" not in sonder_encodeurs(["hevc_amf"], ffmpeg_path):
+        return profil
+    return PlatformProfile(
+        os=profil.os,
+        gpu=GPU.AMD,
+        hwaccel=None,
+        encoder_hevc="hevc_amf",
+        encoder_h264="h264_amf",
+        encoder_av1 ="av1_amf",
+    )
+
+
 def detect() -> PlatformProfile:
     """Détecte la plateforme courante et retourne le profil adapté."""
     os_ = _detect_os()
@@ -246,8 +277,9 @@ def detect() -> PlatformProfile:
                 encoder_h264="h264_nvenc",
                 encoder_av1 ="av1_nvenc",
             )
-        # Windows sans NVIDIA → CPU (libx265/libx264 via ffmpeg). Intel QSV
-        # demande ffmpeg, connu plus tard : voir `avec_qsv`.
+        # Windows sans NVIDIA → CPU (libx265/libx264 via ffmpeg). AMD AMF et
+        # Intel QSV demandent ffmpeg, connu plus tard : voir `avec_amf`,
+        # `avec_qsv`.
         return PlatformProfile(
             os=os_,
             gpu=GPU.NONE,

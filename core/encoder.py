@@ -625,7 +625,8 @@ def _encodeur_et_format(info, vid, platform: PlatformProfile) -> tuple[str, str,
     pix_fmt = "yuv420p"
     if hdr10_out and vid.action in (VideoAction.ENCODE_HEVC,
                                     VideoAction.ENCODE_AV1):
-        pix_fmt = "yuv420p10le"
+        # AMF ne prend pas `yuv420p10le` : son format 10 bits est `p010le`.
+        pix_fmt = "p010le" if "amf" in encoder else "yuv420p10le"
         if not is_av1:
             prof_str = "main10"
     return encoder, pix_fmt, prof_str
@@ -682,6 +683,20 @@ def filtre_tout_puce(decision: FileDecision,
     return f"{filtre}=format={fmt}"
 
 
+# AMF n'a que trois vitesses, et refuse les noms de x264/x265 que portent les
+# profils (`Unable to parse "preset" option value "medium"`).
+_QUALITE_AMF = {"ultrafast": "speed", "superfast": "speed", "veryfast": "speed",
+                "faster": "speed", "fast": "speed", "medium": "balanced"}
+
+
+def option_preset(encodeur: str, preset: str) -> list[str]:
+    """L'option de vitesse d'un encodeur : `-preset` du profil, ou sa
+    traduction en `-quality` pour AMF (lent et au-delà → `quality`)."""
+    if "amf" in encodeur:
+        return ["-quality", _QUALITE_AMF.get(preset, "quality")]
+    return ["-preset", preset]
+
+
 def regle_debit(encodeur: str, cible: int) -> list[str]:
     """Les options de débit d'un encodage, d'après l'encodeur **effectif**.
 
@@ -700,6 +715,9 @@ def regle_debit(encodeur: str, cible: int) -> list[str]:
     QSV : même marge que NVENC — un `-maxrate` au-dessus de `-b:v` y
     sélectionne le VBR. Non mesuré sur puce Intel : à vérifier comme pour
     libx265.
+
+    AMF : même marge, en `-rc vbr_peak` (VBR plafonné par `-maxrate`).
+    Expérimental, non mesuré : aucune carte AMD sous la main.
     """
     if encodeur == "libx265":
         maxrate, bufsize_k = cible, max(cible * 2 // 1000, 1)
@@ -709,6 +727,8 @@ def regle_debit(encodeur: str, cible: int) -> list[str]:
     args = ["-b:v", str(cible), "-maxrate", str(maxrate), "-bufsize", f"{bufsize_k}k"]
     if "nvenc" in encodeur and "av1" not in encodeur:
         args += ["-rc", "vbr"]
+    elif "amf" in encodeur:
+        args += ["-rc", "vbr_peak"]
     return args
 
 
@@ -765,14 +785,16 @@ def build_dv_video_command(decision, platform, sortie_hevc: Path,
     # Le Dolby Vision est du 10 bits par construction : la couche de base d'un
     # profil 8.1 est du HDR10, et un encodage 8 bits la trahirait.
     pix_fmt = ("p010le" if ("nvenc" in platform.encoder_hevc
-                            or "qsv" in platform.encoder_hevc)
+                            or "qsv" in platform.encoder_hevc
+                            or "amf" in platform.encoder_hevc)
                else "yuv420p10le")
     cmd += [
         "-map",       "0:v:0",
         "-c:v",       platform.encoder_hevc,
         *([] if sur_carte else ["-pix_fmt", pix_fmt]),
         *regle_debit(platform.encoder_hevc, vid.target_bitrate),
-        "-preset",    profile.get("preset_encoder", "medium"),
+        *option_preset(platform.encoder_hevc,
+                       profile.get("preset_encoder", "medium")),
         "-profile:v", "main10",
         "-f",         "hevc",
         str(sortie_hevc),
@@ -787,6 +809,7 @@ def build_command(
     sous_titres_porteur: Path | None = None,
     chapitres: Path | None = None,
     tout_puce_permis: bool = True,
+    sous_titres_refaits: dict[int, Path] | None = None,
 ) -> list[str]:
     """
     Retourne la liste d'arguments ffmpeg pour un FileDecision.
@@ -797,6 +820,9 @@ def build_command(
 
     `sous_titres_porteur` : le Matroska de `core/sous_titres.py`, d'où les
     sous-titres texte de la source sont pris à la place de la source.
+    `sous_titres_refaits` : index de piste de la source → `.srt` qui la
+    remplace — une piste WebVTT brute, que ffmpeg ne lit pas (sortie MKV ;
+    en MP4, le porteur s'en charge).
     `chapitres` : un fichier FFMETADATA, ceux d'un titre de Blu-ray lus dans
     sa playlist (IE-120) — le `.m2ts` n'en porte aucun.
     """
@@ -937,6 +963,11 @@ def build_command(
         porteur_input = cmd.count("-i")
         cmd += ["-i", str(sous_titres_porteur)]
 
+    refaits_input: dict[int, int] = {}
+    for idx, chemin in (sous_titres_refaits or {}).items():
+        refaits_input[idx] = cmd.count("-i")
+        cmd += ["-i", str(chemin)]
+
     chapitres_input = None
     if chapitres is not None:
         chapitres_input = cmd.count("-i")
@@ -1012,7 +1043,8 @@ def build_command(
         preset = profile.get("preset_encoder", "medium")
         cmd += ["-c:v", encoder,
                 *(["-pix_fmt", pix_fmt] if tout_puce is None else []),
-                *regle_debit(encoder, vid.target_bitrate), "-preset", preset]
+                *regle_debit(encoder, vid.target_bitrate),
+                *option_preset(encoder, preset)]
         # Pixels carrés : le `setsar=1` du chemin processeur, en sortie.
         if tout_puce is not None and "w=" in tout_puce:
             l, h = dimensions_reduites(info.width, info.height,
@@ -1053,17 +1085,19 @@ def build_command(
         for j in range(n_src_subs + n_greffes):
             cmd += ["-map", f"{porteur_input}:s:{j}"]
         subs_sortie = pistes_a_porter(decision)
-    elif tout_garder:
+    elif tout_garder and not refaits_input:
         # `0:s?` prend tout l'intermédiaire, greffées comprises : les mapper
         # une seconde fois les livrerait en double.
         cmd += ["-map", f"{sub_input}:s?"]
         n_src_subs = len(info.subtitle_tracks)
         subs_sortie = list(info.subtitle_tracks)
     else:
-        subs_sortie = decision.subtitles_finales
+        subs_sortie = (list(info.subtitle_tracks) if tout_garder
+                       else decision.subtitles_finales)
         gardes = [st.index for st in subs_sortie]
         for si in gardes:
-            cmd += ["-map", f"{sub_input}:s:{si}"]
+            cmd += ["-map", (f"{refaits_input[si]}:s:0" if si in refaits_input
+                             else f"{sub_input}:s:{si}")]
         n_src_subs = len(gardes)
         for j in range(len(premux_subs)):
             cmd += ["-map", f"{sub_input}:s:{len(info.subtitle_tracks) + j}"]

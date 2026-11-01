@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.1.8 — Windows (macOS/Linux support planned)
+**Version**: 0.9.1.10 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -230,7 +230,8 @@ overwritten: a collision gives `(2)`.
 | mpv       | recent          | ✗ (optional — playback) |
 | DVD tool  | ffmpeg BtbN 7+  | ✗ (optional — DVD titles) |
 | NVIDIA GPU | recent driver  | ✗ (recommended — hardware encoding) |
-| Intel Quick Sync | recent graphics driver | ✗ (without NVIDIA — hardware encoding, used if it opens) |
+| AMD Radeon (AMF) | recent graphics driver | ✗ (without NVIDIA — hardware encoding, used if it opens; **experimental**, see below) |
+| Intel Quick Sync | recent graphics driver | ✗ (without NVIDIA or AMD — hardware encoding, used if it opens) |
 
 ### Hardware acceleration
 
@@ -259,6 +260,15 @@ conversion to SDR, deinterlacing, non-square pixels, odd dimensions, 10-bit
 H264 and sources of unknown format. On NVIDIA, this needs a GTX 10 or newer,
 and an AV1 source stays on the processor unless the card encodes AV1 (RTX 40
 or newer).
+
+**AMD Radeon (AMF): experimental.** Without an NVIDIA card, IRIS tries the AMD
+encoder at startup, before Intel Quick Sync, and uses it if it opens. This
+support was written without AMD hardware: the commands are checked by ffmpeg,
+but no encode has been run on a Radeon yet. Neither the bitrate accuracy nor
+the HDR10 metadata have been verified, so check your first encodes, HDR ones
+especially. Only the encoding runs on the card; decoding and resizing stay on
+the processor. AV1 needs a Radeon RX 7000 or newer. A notification says so at
+startup on such a machine.
 
 ---
 
@@ -718,7 +728,7 @@ right host*. If you remember one thing from this chapter, make it that one.
 | `python` not recognized | Python not on the PATH | Reinstall Python with *Add to PATH* checked |
 | `pip` not recognized | pip missing | Use `python -m pip` |
 | Black screen at startup | The terminal cannot display the TUI | Use Windows Terminal or the classic cmd.exe |
-| Slow encoding | No NVIDIA GPU, and Intel Quick Sync unavailable | Normal — processor encoding is used automatically |
+| Slow encoding | No NVIDIA GPU, and neither AMD AMF nor Intel Quick Sync available | Normal — processor encoding is used automatically |
 | `dovi_tool missing` | Optional tool not installed | See chapter 4 — only for Dolby Vision files |
 | Error importing a module | Missing dependencies | Run `pip install -r requirements.txt` again |
 | `os error 4551` during installation | Smart App Control rejects a binary without reputation | See chapter 1.4 |

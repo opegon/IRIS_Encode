@@ -24,6 +24,9 @@ from core.decision import (
     VideoAction,
 )
 
+# Le journal de l'application (`tui.app`) : avertissements, causes d'échec.
+JOURNAL = Path.home() / ".iris_encode" / "iris_encode.log"
+
 # Codec → clé de stockage des vitesses mesurées (config.toml [stats.encode_speed])
 _CODEC_SPEED_KEYS: dict[VideoAction, str] = {
     VideoAction.ENCODE_HEVC: "hevc",

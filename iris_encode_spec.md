@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.8 — document de référence courant
+**Version** : 0.9.1.10 — document de référence courant
 **Date** : 2026-11-01
 **Statut** : stable
 
@@ -1261,6 +1261,23 @@ drapeaux reportés ; ffmpeg et non mkvmerge, le MKV n'ayant pas le défaut).
 `build_command`, `build_strip_mp4` et `build_dv_mp4_remux` y lisent alors les
 sous-titres à la place de la source. Sans long silence, pas de porteur.
 
+**WebVTT que ffmpeg ne lit pas** (v0.9.1.10). mkvmerge range un WebVTT sous
+le code Matroska `S_TEXT/WEBVTT`, inconnu de ffmpeg 8.1 (8.1.2 et 8.1.3) : la
+piste sort en `codec_name=unknown`, et toute commande qui la lit échoue
+(« no decoder found for: none » en conversion, « Subtitle codec none is not
+supported » en copie). Le scan la reconnaît à son en-tête `WEBVTT`
+(`extradata`, un appel ffprobe pour les seules pistes `unknown`,
+`_reconnaitre_webvtt_brut`) : `codec="webvtt"`, `SubtitleTrack.brut`.
+`ecrire_srt_webvtt_brut` en refait le SRT depuis les paquets que ffprobe lit
+(`-show_data` : texte, début, durée ; balises WebVTT retirées sauf `<i>`,
+`<b>`, `<u>`, entités décodées) — 5 s et 3663 répliques pour 9,5 Go sur
+disque local. En MP4, `build_extraction` laisse ces pistes à part et le
+porteur est **toujours** construit dès qu'il y en a une. En MKV,
+`pistes_brutes_mkv` les liste, `RunScreen._refaire_webvtt` écrit leurs `.srt`
+et `build_command(sous_titres_refaits=)` les mappe à la place de la source
+(sortie `subrip`). Les chemins mkvmerge (Dolby Vision vers MKV, mux) recopient
+la piste telle quelle.
+
 **Les sous-titres greffés y passent aussi** (v0.8.9.104, CR-34) : un `.srt` forcé
 trouvé sur OpenSubtitles, première réplique à 36 min, sortait avec ses répliques à
 0 s et 2 s. `greffes_a_porter` les liste dans l'ordre de sortie — greffes directes
@@ -1851,12 +1868,12 @@ supposerait de supprimer du contenu.
 
 ## 11. Abstraction plateforme — `core/platform.py`
 
-| Paramètre | Windows/NVIDIA | Windows/Intel QSV | Windows/CPU | macOS | Linux/CPU |
-|---|---|---|---|---|---|
-| hwaccel | `cuda` | *(absent)* | *(absent)* | `videotoolbox` | *(absent)* |
-| encoder HEVC | `hevc_nvenc` | `hevc_qsv` | `libx265` | `hevc_videotoolbox` | `libx265` |
-| encoder H264 | `h264_nvenc` | `h264_qsv` | `libx264` | `h264_videotoolbox` | `libx264` |
-| encoder AV1 | `av1_nvenc` | `av1_qsv` | `libaom-av1` | `libaom-av1` | `libaom-av1` |
+| Paramètre | Windows/NVIDIA | Windows/AMD AMF *(expérimental)* | Windows/Intel QSV | Windows/CPU | macOS | Linux/CPU |
+|---|---|---|---|---|---|---|
+| hwaccel | `cuda` | *(absent)* | *(absent)* | *(absent)* | `videotoolbox` | *(absent)* |
+| encoder HEVC | `hevc_nvenc` | `hevc_amf` | `hevc_qsv` | `libx265` | `hevc_videotoolbox` | `libx265` |
+| encoder H264 | `h264_nvenc` | `h264_amf` | `h264_qsv` | `libx264` | `h264_videotoolbox` | `libx264` |
+| encoder AV1 | `av1_nvenc` | `av1_amf` | `av1_qsv` | `libaom-av1` | `libaom-av1` | `libaom-av1` |
 
 Détection GPU NVIDIA via `nvidia-smi`. Sans NVIDIA sur Windows, `avec_qsv()`
 (appelé au lancement, une fois ffmpeg connu) essaie d'ouvrir `hevc_qsv` sur une
@@ -1867,6 +1884,29 @@ décodage matériel passe par la chaîne tout-puce (§ 12.1), et seulement là.
 i5-1135G7 : 93-96 % de la cible, contre 74 % avec un plafond égal à la cible
 et 91-95 % à 2 ×. Un `av1_qsv` refusé par la puce est annoncé par le sondage
 général, comme `av1_nvenc` avant Ada, avec un message propre à Quick Sync.
+
+**AMD AMF, expérimental** (v0.9.1.9). Sans NVIDIA, `avec_amf()` est appelé
+**avant** `avec_qsv()` (`tui/app.py`) : il ouvre `hevc_amf` sur une image et,
+s'il s'ouvre, rend un profil `GPU.AMD` ; `avec_qsv()` ne sonde alors plus
+rien. Ordre NVIDIA → AMD → Intel → processeur. Sans carte AMD, ffmpeg refuse
+en code 171. Écrit sans matériel AMD : seules les options ont été validées
+par ffmpeg 8.1.2, et l'application le dit au lancement (notification
+« expérimental »). Ce que la commande change pour AMF :
+
+- `option_preset()` : AMF refuse `-preset medium` ; le preset du profil
+  devient `-quality speed` (jusqu'à `fast`), `balanced` (`medium`) ou
+  `quality` (`slow` et au-delà) ;
+- `regle_debit()` : la marge de NVENC (1,5 ×), avec `-rc vbr_peak` — non
+  mesuré ;
+- sortie 10 bits en `p010le` (AMF ne prend pas `yuv420p10le`), chemin
+  standard et passe vidéo DV ; sonde 10 bits étendue à `hevc_amf`, `av1_amf` ;
+- pas de `hwaccel` ni de chaîne tout-puce : lecture et filtres au
+  processeur (`filtre_tout_puce()` rend None hors Intel et NVIDIA) ;
+- un `av1_amf` refusé est annoncé avec un message propre à AMD (Radeon
+  RX 7000 et après).
+
+Reste à mesurer sur une Radeon : tenue du débit, HDR10 conservé à travers
+`hevc_amf`, puis une chaîne tout-carte (`vpp_amf`, présent dans le build).
 
 ---
 
@@ -1946,7 +1986,7 @@ une police de repli (CR-20).
 | **SDR tone map** | `dv_action == SDR` | nvenc / libx265 (CPU) | Filtre `zscale+tonemap`, pas de hwaccel |
 | **Tout-puce Intel** | profil `GPU.INTEL`, `filtre_tout_puce()` non nul | `hevc_qsv` / `h264_qsv` / `av1_qsv` | `-hwaccel qsv -hwaccel_output_format qsv`, `-vf vpp_qsv=[w=…:h=…:]format=nv12\|p010le`, pas de `-pix_fmt`, `-aspect l:h` si réduit |
 | **Tout-carte NVIDIA** | profil `GPU.NVIDIA`, `hevc_nvenc@10` sondé, `filtre_tout_puce()` non nul | `hevc_nvenc` / `h264_nvenc` / `av1_nvenc` | `-hwaccel cuda -hwaccel_output_format cuda`, `-vf scale_cuda=[w=…:h=…:]format=nv12\|p010le`, pas de `-pix_fmt`, `-aspect l:h` si réduit |
-| **Standard** | Tous autres cas | nvenc / libx265 / libx264 / av1_nvenc / qsv | hwaccel si disponible |
+| **Standard** | Tous autres cas | nvenc / libx265 / libx264 / av1_nvenc / qsv / amf | hwaccel si disponible ; AMF : `-quality` au lieu de `-preset`, `-rc vbr_peak`, `p010le` en 10 bits |
 
 **Tout-puce Intel** (v0.9.0.11, IE-147). Décodage, réduction et encodage sans
 quitter la puce. Mesuré sur un i5-1135G7, 60 s de 4K HDR10 → 1080p :
@@ -2318,7 +2358,7 @@ Conventions transverses :
   Une vidéo recopiée (`-c:v copy`) n'est pas contrôlée : `copy` n'est pas un
   encodeur (`encodeur_a_controler`, v0.8.9.60).
   **Le 10 bits aussi** (v0.8.9.113, CR-42) : `hevc_nvenc` et `av1_nvenc` — et
-  `hevc_qsv`, `av1_qsv` depuis v0.9.0.9 — sont sondés une seconde fois en `p010le` (`main10` pour le HEVC), rangés sous
+  `hevc_qsv`, `av1_qsv` depuis v0.9.0.9, `hevc_amf`, `av1_amf` depuis v0.9.1.9 — sont sondés une seconde fois en `p010le` (`main10` pour le HEVC), rangés sous
   `<encodeur>@10`. Une carte qui ouvre le HEVC en 8 bits seulement (Maxwell)
   était dite capable, et un fichier HDR échouait dans ffmpeg sur un message
   inconnu. `RunScreen._refuser_encodeur` refuse alors une commande 10 bits
@@ -3735,6 +3775,8 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.10 | 2026-11-01 | **WebVTT brut** (§ 8.6) : piste `S_TEXT/WEBVTT` reconnue au scan, SRT reconstruit depuis les paquets ffprobe, porteur forcé en MP4, `sous_titres_refaits` en MKV · **cause complète d'un échec** : bilan de fin de lot et journal (`tui.common.JOURNAL`) · `tests/test_webvtt_brut.py`, `tests/test_cause_echec.py` |
+| 0.9.1.9 | 2026-11-01 | **AMD AMF, expérimental** (§ 11, § 12.1) : sans NVIDIA, `avec_amf()` sonde `hevc_amf` avant Quick Sync ; `option_preset()` (`-quality`), `-rc vbr_peak`, `p010le` ; encodage seul sur la carte ; notification au lancement · `tests/test_amf.py` |
 | 0.9.1.8 | 2026-11-01 | **Colonne « Durée »** à l'écran d'encodage (§ 12.1), entre le profil et la taille · `tests/test_colonne_duree.py` |
 | 0.9.1.7 | 2026-11-01 | **Finalisation MP4 affichée** (§ 12.1) : octets réécrits, débit, temps restant pendant `+faststart` · `-stats` sur les remux MP4 de `core/dovi.py` · vitesse en notation scientifique lue · `tests/test_finalisation_mp4.py` |
 | 0.9.1.6 | 2026-10-29 | Colonne « Read » de l'écran d'encodage gardée en anglais en français (était « Lect. ») ; glossaire |

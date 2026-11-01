@@ -462,6 +462,11 @@ class SubtitleTrack:
     default:  bool = False
     pid:      int | None = None   # voir AudioTrack.pid
     langue_completee: bool = False  # voir AudioTrack.langue_completee
+    # WebVTT rangé par mkvmerge sous `S_TEXT/WEBVTT`, que ffmpeg ne lit pas
+    # (`codec_name=unknown`) : son SRT se reconstruit depuis les paquets
+    # (`sous_titres.ecrire_srt_webvtt_brut`), aucune commande ffmpeg ne doit
+    # la lire directement.
+    brut:     bool = False
 
     @property
     def is_image_based(self) -> bool:
@@ -847,6 +852,27 @@ def _detect_dv(path: Path) -> tuple[Optional[int], Optional[int]]:
     return (None, None)
 
 
+def _reconnaitre_webvtt_brut(path: Path, pistes: list[SubtitleTrack]) -> None:
+    """Une piste de sous-titres que ffprobe dit `unknown` est-elle du WebVTT ?
+
+    Son en-tête (`extradata`) commence alors par `WEBVTT`. Un appel de plus à
+    ffprobe, pour ces pistes seulement : c'est rare.
+    """
+    from .sous_titres import ENTETE_WEBVTT, octets_hexdump
+    for st in pistes:
+        if st.codec != "unknown":
+            continue
+        try:
+            data = _ffprobe_json(["-select_streams", f"s:{st.index}",
+                                  "-show_entries", "stream=extradata",
+                                  "-show_data", str(path)])
+        except (RuntimeError, ValueError, subprocess.TimeoutExpired):
+            continue
+        flux = data.get("streams") or [{}]
+        if octets_hexdump(flux[0].get("extradata", "")).startswith(ENTETE_WEBVTT):
+            st.codec, st.brut = "webvtt", True
+
+
 # ─── Scan principal ───────────────────────────────────────────────────────────
 
 def _pistes_audio(streams: list) -> list[AudioTrack]:
@@ -948,6 +974,8 @@ def scan(path: Path) -> VideoInfo:
             default=bool((s.get("disposition") or {}).get("default")),
             pid=_pid(s),
         ))
+
+    _reconnaitre_webvtt_brut(path, subtitle_tracks)
 
     if path.suffix.lower() in _EXTENSIONS_CLPI:
         _completer_langues(path, audio_tracks + subtitle_tracks)

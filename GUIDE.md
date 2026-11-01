@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.8
+**Version**: 0.9.1.10
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -920,6 +920,19 @@ No output: it works.
 `dovi_tool`, `mkvmerge` and `mpv` are optional: when one is missing, a feature
 is turned off without blocking startup. The preflight offers to install them at
 each start; answer `y`, or put the binaries in `bin/`.
+
+### 4.15 A file fails: where is the full cause?
+
+The "State" column shows only the start of the cause ("subtitles:
+preparation failed"). When the batch ends, the summary at the bottom of the
+encoding screen gives the full cause of each failed file (the first three),
+and every cause is written to `%USERPROFILE%\.iris_encode\iris_encode.log`,
+which keeps it after the screen is closed.
+
+A WebVTT subtitle muxed by mkvmerge (`S_TEXT/WEBVTT` code) is not readable by
+ffmpeg: up to 0.9.1.9, such a file failed with "subtitles: preparation
+failed". IRIS now rebuilds the track as SRT from its cues, in MP4 and MKV
+alike.
 
 ---
 

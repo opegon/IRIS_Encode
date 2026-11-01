@@ -1,6 +1,6 @@
 ---
 type: synthese
-maj: 2026-10-09
+maj: 2026-11-01
 sources:
   - "[[source-spec]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -43,7 +43,7 @@ release est sortie quand la revue de code a été entièrement traitée.
 | Question | Pourquoi c'est ouvert |
 |---|---|
 | Le preflight et la mise à jour (gyan.dev *release*) installent-ils un ffmpeg sans NVENC sous un pilote < 610 ? | gyan.dev 8.1.2 refuse NVENC sous 597 ; sans ffmpeg au `PATH`, `bin/` servirait ([[ffmpeg#NVENC et version du pilote]]). Depuis la v0.8.9.2, le cas est **annoncé** au lancement ; le choix du build téléchargé reste inchangé |
-| Un sous-titre WebVTT d'un MKV muxé par mkvmerge 102 est-il copié par ffmpeg ? | ffprobe 8.1.2 le voit `codec_name=unknown`, sans autre indice (mkvmerge le nomme « WebVTT ») — constaté le 2026-09-30 en UX-21. L'affichage dit désormais « ? » ; l'encodage d'un tel fichier n'a pas été essayé |
+| AMD AMF (v0.9.1.9) encode-t-il juste sur une vraie carte Radeon ? | écrit sans matériel AMD : seules les options ont été validées par ffmpeg. À mesurer : débit tenu avec `-rc vbr_peak` et 1,5 × de marge, HDR10 conservé (BT.2020, PQ, écran de mastering, MaxCLL) à travers `hevc_amf`, 10 bits sur Polaris et après, AV1 sur RX 7000. Tant que ce n'est pas fait, le support reste « expérimental » |
 | Le pilote 610 est-il sûr sur un Shadow Power (flux, encodage côté Shadow) ? | Shadow autorise la mise à jour manuelle, ne dit rien de la 610 ; demander au support |
 
 ## Voir aussi

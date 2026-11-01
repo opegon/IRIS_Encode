@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.1.8 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.1.10 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -230,7 +230,8 @@ pas répétée. Rien n'est jamais écrasé : une collision donne `(2)`.
 | mpv       | récent          | ✗ (optionnel — visualisation) |
 | Outil DVD | ffmpeg BtbN 7+  | ✗ (optionnel — titres de DVD) |
 | GPU NVIDIA | driver récent  | ✗ (recommandé — encodage accéléré CUDA) |
-| Intel Quick Sync | pilote graphique récent | ✗ (sans NVIDIA — encodage matériel, retenu s'il s'ouvre) |
+| AMD Radeon (AMF) | pilote graphique récent | ✗ (sans NVIDIA — encodage matériel, retenu s'il s'ouvre ; **expérimental**, voir plus bas) |
+| Intel Quick Sync | pilote graphique récent | ✗ (sans NVIDIA ni AMD — encodage matériel, retenu s'il s'ouvre) |
 
 ### Accélération matérielle
 
@@ -260,6 +261,16 @@ processeur : la conversion en SDR, le désentrelacement, les pixels non
 carrés, les dimensions impaires, le H264 10 bits et les sources au format
 inconnu. Chez NVIDIA, il faut une GTX 10 ou plus récente, et une source AV1
 reste au processeur sauf si la carte encode l'AV1 (RTX 40 et après).
+
+**AMD Radeon (AMF) : expérimental.** Sans carte NVIDIA, IRIS essaie
+l'encodeur AMD au lancement, avant Intel Quick Sync, et le retient s'il
+s'ouvre. Cette prise en charge a été écrite sans matériel AMD : les
+commandes sont validées par ffmpeg, mais aucun encodage n'a encore tourné
+sur une Radeon. Ni la tenue du débit ni les métadonnées HDR10 ne sont
+vérifiées : contrôlez vos premiers encodages, surtout en HDR. Seul
+l'encodage se fait sur la carte ; décodage et mise à l'échelle restent au
+processeur. L'AV1 demande une Radeon RX 7000 ou plus récente. Une
+notification le rappelle au lancement sur une telle machine.
 
 ---
 
@@ -711,7 +722,7 @@ chapitre, c'est celle-là.
 | `python` non reconnu | Python absent du PATH | Réinstaller Python en cochant *Add to PATH* |
 | `pip` non reconnu | pip absent | Utiliser `python -m pip` |
 | Écran noir au lancement | Terminal ne supporte pas l'interface TUI | Utiliser Windows Terminal ou cmd.exe classique |
-| Encodage lent | Pas de GPU NVIDIA, et Intel Quick Sync indisponible | Normal — encodage CPU activé automatiquement |
+| Encodage lent | Pas de GPU NVIDIA, ni AMD AMF ni Intel Quick Sync disponibles | Normal — encodage CPU activé automatiquement |
 | `dovi_tool introuvable` | Optionnel non installé | Voir section 4 — uniquement si fichiers Dolby Vision |
 | Erreur à l'import d'un module | Dépendances manquantes | Relancer `pip install -r requirements.txt` |
 | `os error 4551` à l'installation | Smart App Control refuse un binaire sans réputation | Voir chapitre 1.4 |

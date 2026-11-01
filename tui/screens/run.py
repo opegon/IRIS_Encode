@@ -9,6 +9,7 @@ rend la navigation sans rien arrêter.
 """
 from __future__ import annotations
 
+import logging
 import subprocess
 import threading
 from dataclasses import dataclass
@@ -46,7 +47,10 @@ from ..common import (barre_etat, actions_ecran, colonne_fixe, fmt_bytes,
 # un fichier ne doit pas annoncer deux tailles selon l'écran. L'accueil
 # n'importe `run` que dans ses fonctions, il n'y a pas de cycle.
 from .browser import _estimate_output_bytes, _sortie_recopiee, _teinte_estimation
+from .. import common
 from ..mixins import TableNavMixin
+
+_LOG = logging.getLogger(__name__)
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 
@@ -597,17 +601,25 @@ class RunScreen(TableNavMixin, Screen):
             self._liberer(dec, audio_tmp)
             self._encode_next()
             return
+        # Sortie MKV : une piste WebVTT que ffmpeg ne lit pas passe par un
+        # `.srt` refait.
+        ok, refaits = self._refaire_webvtt(next_idx, dec)
+        if not ok:
+            self._liberer(dec, audio_tmp, porteur)
+            self._encode_next()
+            return
 
         chapitres = self._ecrire_chapitres(dec)
         try:
             cmd = build_command(dec, self._platform, audio_source=audio_tmp,
-                                sous_titres_porteur=porteur, chapitres=chapitres)
+                                sous_titres_porteur=porteur, chapitres=chapitres,
+                                sous_titres_refaits=refaits)
         except ValueError as e:
             s.state     = FileState.ERROR
             s.last_line = texte_erreur(e)
             s.error_msg = texte_erreur(e)[:60]
             self.app.call_from_thread(self._update_row, next_idx)
-            self._liberer(dec, audio_tmp, porteur, chapitres)
+            self._liberer(dec, audio_tmp, porteur, chapitres, *refaits.values())
             self._encode_next()  # passe au suivant
             return
         self.app.call_from_thread(
@@ -620,7 +632,7 @@ class RunScreen(TableNavMixin, Screen):
         # pour apprendre ce qu'on sait, ni de laisser l'utilisateur lire
         # « Error opening output files » à la place de la cause.
         if self._refuser_encodeur(next_idx, cmd):
-            self._liberer(dec, audio_tmp, porteur, chapitres)
+            self._liberer(dec, audio_tmp, porteur, chapitres, *refaits.values())
             self._encode_next()
             return
 
@@ -673,7 +685,8 @@ class RunScreen(TableNavMixin, Screen):
                 break
             cmd = build_command(dec, self._platform, audio_source=audio_tmp,
                                 sous_titres_porteur=porteur,
-                                chapitres=chapitres, tout_puce_permis=False)
+                                chapitres=chapitres, tout_puce_permis=False,
+                                sous_titres_refaits=refaits)
             self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
             self.app.call_from_thread(self._afficher_chaine, next_idx, cmd)
             annonce = _("Video parameters change mid-file: restarting "
@@ -709,7 +722,7 @@ class RunScreen(TableNavMixin, Screen):
         # Les pistes audio produites à part ont été recopiées dans la sortie,
         # les sous-titres réécrits aussi ; l'intermédiaire d'un mux préalable
         # ou d'un titre n'a plus de raison d'être.
-        self._liberer(dec, audio_tmp, porteur, chapitres)
+        self._liberer(dec, audio_tmp, porteur, chapitres, *refaits.values())
         if success:
             # Une piste recalée a été recopiée dans la sortie (CR-93).
             for ext in dec.external_tracks:
@@ -872,6 +885,12 @@ class RunScreen(TableNavMixin, Screen):
                     "startup. AV1 through Quick Sync needs an Intel Arc card or "
                     "a Meteor Lake processor or newer; HEVC and H264 remain "
                     "available.").format(encoder=choisi)
+            elif "amf" in choisi:
+                s.last_line = _(
+                    "This machine cannot encode with “{encoder}” — probed at "
+                    "startup. AV1 through AMD AMF needs a Radeon RX 7000 or "
+                    "newer; HEVC and H264 remain available.").format(
+                        encoder=choisi)
             else:
                 s.last_line = _(
                     "This machine cannot encode with “{encoder}” — probed at "
@@ -920,14 +939,22 @@ class RunScreen(TableNavMixin, Screen):
         ffmpeg  = getattr(self.app, "ffmpeg_path", "ffmpeg")
         porteur = dec.dossier_sortie / f"{source.stem}.iris_st.mkv"
         travaux: list[tuple[list[str], list[Path]]] = []
+        srts: list[Path] = []
+        # WebVTT brut : ffmpeg ne le lit pas, son SRT se reconstruit à part.
+        bruts: list[tuple[object, Path]] = []
         if pistes:
-            travaux.append(st_mod.build_extraction(source, pistes,
-                                                   dec.dossier_sortie, ffmpeg))
+            cmd_ext, chemins = st_mod.build_extraction(source, pistes,
+                                                       dec.dossier_sortie, ffmpeg)
+            bruts = [(st, c) for st, c in zip(pistes, chemins) if st.brut]
+            if cmd_ext is not None:
+                travaux.append((cmd_ext, [c for st, c in zip(pistes, chemins)
+                                          if not st.brut]))
+            srts += chemins
         for n, g in enumerate(greffes):
             chemin = dec.dossier_sortie / f"{source.stem}.iris_stg{n}.srt"
             travaux.append((st_mod.build_extraction_greffe(g, chemin, ffmpeg),
                             [chemin]))
-        srts = [c for _cmd, chemins in travaux for c in chemins]
+            srts.append(chemin)
 
         def echouer(detail: str) -> tuple[bool, None]:
             porteur.unlink(missing_ok=True)
@@ -961,13 +988,28 @@ class RunScreen(TableNavMixin, Screen):
                         proc, "", _("Extracting the subtitles failed (code {code}).")
                         .format(code=code))[1])
 
+            if bruts:
+                from core import scanner as scanner_mod
+                ffprobe = getattr(scanner_mod, "_ffprobe_path", "ffprobe")
+                self.app.call_from_thread(
+                    self._update_ffmpeg_line,
+                    "▶ " + _("Rebuilding the WebVTT subtitles, which ffmpeg "
+                             "cannot read…"))
+                for st, chemin in bruts:
+                    erreur = st_mod.ecrire_srt_webvtt_brut(source, st.index,
+                                                           chemin, ffprobe)
+                    if erreur is not None:
+                        return echouer(_("Rebuilding the WebVTT subtitles "
+                                         "failed: {detail}").format(detail=erreur))
+
             combles = 0
             for chemin in srts:
                 texte, n = st_mod.combler_srt(chemin.read_text(encoding="utf-8"))
                 if n:
                     chemin.write_text(texte, encoding="utf-8")
                 combles += n
-            if not combles:
+            # Une piste brute ne se lit que dans le porteur.
+            if not combles and not bruts:
                 return True, None
 
             cmd = st_mod.build_porteur(pistes + [g.piste for g in greffes],
@@ -982,6 +1024,41 @@ class RunScreen(TableNavMixin, Screen):
         finally:
             for chemin in srts:
                 chemin.unlink(missing_ok=True)
+
+    def _refaire_webvtt(self, index: int, dec: FileDecision,
+                        ) -> tuple[bool, dict[int, Path]]:
+        """Les `.srt` des pistes WebVTT brutes d'une sortie MKV, par index
+        de piste de la source (`sous_titres.pistes_brutes_mkv`). Rend
+        (réussite, chemins) ; l'échec est posé sur la ligne."""
+        from core import scanner as scanner_mod
+        from core import sous_titres as st_mod
+
+        pistes = st_mod.pistes_brutes_mkv(dec)
+        if not pistes:
+            return True, {}
+        s = self._statuses[index]
+        source = dec.encode_source or dec.info.lecture
+        ffprobe = getattr(scanner_mod, "_ffprobe_path", "ffprobe")
+        self.app.call_from_thread(
+            self._update_ffmpeg_line,
+            "▶ " + _("Rebuilding the WebVTT subtitles, which ffmpeg "
+                     "cannot read…"))
+        refaits: dict[int, Path] = {}
+        for st in pistes:
+            n = st.index
+            chemin = dec.dossier_sortie / f"{source.stem}.iris_vtt{n}.srt"
+            erreur = st_mod.ecrire_srt_webvtt_brut(source, st.index, chemin, ffprobe)
+            if erreur is not None:
+                for fait in refaits.values():
+                    fait.unlink(missing_ok=True)
+                s.state = FileState.ERROR
+                s.error_msg = _("subtitles: preparation failed")
+                s.last_line = _("Rebuilding the WebVTT subtitles failed: "
+                                "{detail}").format(detail=erreur)
+                self.app.call_from_thread(self._update_row, index)
+                return False, {}
+            refaits[st.index] = chemin
+        return True, refaits
 
     @staticmethod
     def _cause(proc, resume: str, detail: str) -> tuple[str, str]:
@@ -1910,6 +1987,16 @@ class RunScreen(TableNavMixin, Screen):
 
     # Au-delà, la zone de commande déborderait : le reste se compte.
     _SORTIES_LISTEES = 6
+    _ECHECS_LISTES   = 3
+
+    @staticmethod
+    def _cause_complete(s: "FileRunStatus") -> str:
+        """Pourquoi un fichier a échoué, en entier : la colonne État n'en
+        montre que soixante caractères (« sous-titres : préparation écho… »),
+        et le détail n'était affiché nulle part."""
+        if s.last_line and s.error_msg and not s.last_line.startswith(s.error_msg):
+            return f"{s.error_msg} — {s.last_line}"
+        return s.last_line or s.error_msg or "?"
 
     def _resume(self) -> str:
         """Le bilan du lot, et où trouver ce qu'il a produit (UX-16)."""
@@ -1927,11 +2014,26 @@ class RunScreen(TableNavMixin, Screen):
         if reste > 0:
             lignes.append("   " + ngettext("… and {count} other", "… and {count} others",
                                            reste).format(count=reste))
+        echecs = [s for s in self._statuses if s.state == FileState.ERROR]
+        lignes += [f"✗ {s.decision.info.path.name} : {self._cause_complete(s)}"
+                   for s in echecs[:self._ECHECS_LISTES]]
+        reste = len(echecs) - self._ECHECS_LISTES
+        if reste > 0:
+            lignes.append("   " + ngettext("… and {count} other", "… and {count} others",
+                                           reste).format(count=reste))
+        if echecs:
+            lignes.append("   " + _("Failure causes are also written to {log}.")
+                          .format(log=str(common.JOURNAL)))
         return "\n".join(lignes)
 
     def _on_all_done(self) -> None:
         from ..common import touche
         app = self.app
+        # Le journal garde la cause après la fermeture de l'écran.
+        for st in self._statuses:
+            if st.state == FileState.ERROR:
+                _LOG.warning("encode failed: %s — %s", st.decision.info.path,
+                             self._cause_complete(st))
         # Un lot arrêté (`X`, F10) ne déclenche rien : on est là, et on a
         # choisi d'arrêter.
         if self.apres_lot and not self._abandon:

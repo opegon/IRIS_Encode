@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-10-29
+maj: 2026-11-01
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -44,7 +44,8 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
 | Plateforme | HEVC | H264 | AV1 |
 |---|---|---|---|
 | Windows + NVIDIA | `hevc_nvenc` | `h264_nvenc` | `av1_nvenc` |
-| Windows + Intel QSV, sans NVIDIA | `hevc_qsv` | `h264_qsv` | `av1_qsv` |
+| Windows + AMD AMF, sans NVIDIA *(expérimental)* | `hevc_amf` | `h264_amf` | `av1_amf` |
+| Windows + Intel QSV, sans NVIDIA ni AMD | `hevc_qsv` | `h264_qsv` | `av1_qsv` |
 | Windows sans NVIDIA, Linux | `libx265` | `libx264` | `libaom-av1` |
 | macOS | `hevc_videotoolbox` | `h264_videotoolbox` | `libaom-av1` |
 
@@ -68,6 +69,19 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
   1080p). Décoder, réduire avec `vpp_qsv` et encoder sans quitter la puce :
   **18 s**, HDR10 conservé. *(observé, i5-1135G7)* IRIS le fait pour le cas
   courant (v0.9.0.11) ; voir [[ffmpeg#Mise à l'échelle matérielle et SAR]].
+- **AMD AMF, retenu sur sondage, avant Quick Sync** (v0.9.1.9,
+  **expérimental**) : sans NVIDIA, IRIS ouvre `hevc_amf` ; sans carte AMD,
+  ffmpeg refuse en code 171. *(mesuré sur le Shadow, gyan.dev 8.1.2)* Ce que
+  dit `ffmpeg -h encoder=hevc_amf` *(lu, même build)* :
+  - pas de `-preset medium` (« Unable to parse "preset" option value ») : trois
+    vitesses seulement, `-quality speed|balanced|quality` ;
+  - formats `nv12`, `yuv420p`, `p010le`… mais **pas `yuv420p10le`** ;
+  - débit : `-rc vbr_peak` (VBR plafonné par `-maxrate`) ;
+  - profils `main`/`main10` (HEVC), `main`/`high` (H264) ; `av1_amf` a un
+    niveau de plus, `high_quality`.
+  Encodage seul sur la carte : lecture et filtres au processeur, rien
+  n'ayant été mesuré sur une carte AMD. Le ffmpeg fourni a aussi `vpp_amf`,
+  l'équivalent de `vpp_qsv` pour une future chaîne tout-carte.
 - **NVIDIA : même règle.** `-hwaccel cuda` suivi de `scale` au processeur
   ne gagne rien (28 s, comme tout au processeur, pour 60 s de 4K HDR10 →
   1080p ; plus lent en H264 SDR). Décoder, réduire avec `scale_cuda` et
@@ -91,7 +105,7 @@ Vérifié de bout en bout (mesuré, v0.8.1.21) :
 Sur une courbe PQ, du 8 bits étale 10 bits de dégradés sur 256 niveaux :
 **banding garanti** dans les ciels et les fondus.
 
-- Sortie HDR : `yuv420p10le` (libx265) ou `p010le` (NVENC, QSV), `-profile:v main10`.
+- Sortie HDR : `yuv420p10le` (libx265) ou `p010le` (NVENC, QSV, AMF), `-profile:v main10`.
   QSV : HDR10 conservé à travers `hevc_qsv` (BT.2020, PQ, écran de mastering),
   source 4K ramenée en 1080p : écran de mastering identique à la source (la
   source n'a pas de MaxCLL). *(observé, i5-1135G7, v0.9.0.9)*

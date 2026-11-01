@@ -128,6 +128,12 @@ rien. Chercher dans les ~40 lignes précédentes. Exemple réel : « Subtitle
 encoding currently only possible from text to text or bitmap to bitmap » pour
 un PGS forcé en `mov_text`. *(mesuré)*
 
+Hors de la passe principale, IRIS ne gardait la cause qu'en mémoire : la
+colonne État la coupe à 60 caractères. Depuis la v0.9.1.10, le bilan de fin
+de lot et le journal (`~/.iris_encode/iris_encode.log`) la donnent en entier.
+Un sous-titre inconnu de ffmpeg (`codec_name=unknown`) : voir
+[[sous-titres#Formats texte qu'on croit lire]].
+
 ## Conversion HDR → SDR et pixels carrés
 
 - La chaîne `zscale=t=linear…tonemap…zscale=t=bt709` exige une source dont

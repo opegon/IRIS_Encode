@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.8
+**Version** : 0.9.1.10
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -931,6 +931,19 @@ Aucune sortie : il fonctionne.
 `dovi_tool`, `mkvmerge` et `mpv` sont optionnels : leur absence désactive une
 fonction sans bloquer le lancement. Le preflight propose de les installer à
 chaque démarrage ; répondez `o`, ou placez les binaires dans `bin/`.
+
+### 4.15 Un fichier échoue : où lire la cause complète ?
+
+La colonne « État » ne montre que le début de la cause (« sous-titres :
+préparation échouée »). En fin de lot, le bilan en bas de l'écran d'encodage
+donne la cause complète de chaque fichier en échec (les trois premiers), et
+toutes sont écrites dans `%USERPROFILE%\.iris_encode\iris_encode.log`, qui
+les garde après la fermeture de l'écran.
+
+Un sous-titre WebVTT muxé par mkvmerge (code `S_TEXT/WEBVTT`) n'est pas lu
+par ffmpeg : jusqu'à la 0.9.1.9, un tel fichier échouait sur « sous-titres :
+préparation échouée ». IRIS reconstruit désormais la piste en SRT depuis ses
+répliques, en MP4 comme en MKV.
 
 ---
 

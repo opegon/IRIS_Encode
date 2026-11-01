@@ -487,3 +487,19 @@ processeur passe. Pages mises à jour : [[ffmpeg]], [[pieges-et-lecons]].
 Observé par l'utilisateur : `vpp_qsv` passe le fichier collé sans reprise.
 Mesuré : la passe vidéo DV sur NVIDIA s'arrête au raccord comme le chemin
 standard, sans reprise dans IRIS. Page mise à jour : [[ffmpeg]].
+
+## [2026-11-01] ingest | AMD AMF, expérimental (v0.9.1.9)
+
+Écrit sans carte AMD. Lu dans `ffmpeg -h encoder=hevc_amf` (gyan.dev
+8.1.2) : `-quality` au lieu de `-preset`, `p010le` et pas `yuv420p10le`,
+`-rc vbr_peak`. Mesuré sur le Shadow : la sonde refuse en code 171 ; les
+options générées passent l'analyse de ffmpeg. Pages mises à jour :
+[[codecs-video]], [[questions-ouvertes]].
+
+## [2026-11-01] ingest | WebVTT `S_TEXT/WEBVTT` illisible par ffmpeg (v0.9.1.10)
+
+Constaté sur un encodage de l'utilisateur (cérémonie de clôture JO 2024) :
+« sous-titres : préparation échouée ». Mesuré : ffmpeg 8.1.2 et 8.1.3 ne
+lisent ni ne copient la piste ; ffprobe en lit les paquets. Question ouverte
+de UX-21 tranchée (retirée de [[questions-ouvertes]]). Pages mises à jour :
+[[sous-titres]], [[ffmpeg]].

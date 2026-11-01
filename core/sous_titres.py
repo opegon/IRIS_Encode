@@ -24,6 +24,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from .i18n import _
+
 # Marge sous les 2 147,48 s du défaut.
 SEUIL_S = 1800.0
 BOUCHE_TROU = " "
@@ -78,7 +80,7 @@ def instants_bouche_trou(repliques: list[tuple[float, float]]) -> list[float]:
 def combler_srt(texte: str) -> tuple[str, int]:
     """Le SRT avec ses bouche-trous, renuméroté, et leur nombre."""
     repliques = _repliques(texte)
-    instants = instants_bouche_trou([(d, f) for d, f, _ in repliques])
+    instants = instants_bouche_trou([(d, f) for d, f, _texte in repliques])
     if not instants:
         return texte, 0
     bouche_trous = [
@@ -86,8 +88,104 @@ def combler_srt(texte: str) -> tuple[str, int]:
          f"{_horodatage(t)} --> {_horodatage(t + DUREE_BOUCHE_TROU_S)}\n{BOUCHE_TROU}")
         for t in instants]
     tout = sorted(repliques + bouche_trous, key=lambda r: r[0])
-    blocs = [f"{n}\n{bloc}" for n, (_, _, bloc) in enumerate(tout, start=1)]
+    blocs = [f"{n}\n{bloc}" for n, (_d, _f, bloc) in enumerate(tout, start=1)]
     return "\n\n".join(blocs) + "\n", len(instants)
+
+
+# ─── WebVTT que ffmpeg ne lit pas ─────────────────────────────────────────────
+#
+# mkvmerge (au moins depuis v85) range un WebVTT sous le code Matroska
+# `S_TEXT/WEBVTT`, que ffmpeg 8.1 ne connaît pas : la piste sort en
+# `codec_name=unknown`, et toute commande qui la lit échoue — « no decoder
+# found for: none » en conversion, « Subtitle codec none is not supported » en
+# copie (mesuré le 2026-11-01, 8.1.2 et 8.1.3). ffprobe en lit pourtant les
+# paquets : chacun est le texte d'une réplique, avec son début et sa durée. Le
+# SRT se reconstruit donc à partir d'eux, sans ffmpeg.
+
+ENTETE_WEBVTT = b"WEBVTT"
+# Ce que SRT garde de la mise en forme WebVTT ; les autres balises (`<c.white>`,
+# `<v Nom>`, `<ruby>`, horodatages internes) sont retirées, leur texte gardé.
+_BALISES_SRT = {"i", "b", "u"}
+_BALISE = re.compile(r"</?([A-Za-z]+)[^>]*>|<\d[\d:.]*>")
+_ENTITES = {"&amp;": "&", "&lt;": "<", "&gt;": ">", "&nbsp;": "\u00a0",
+            "&lrm;": "\u200e", "&rlm;": "\u200f"}
+
+
+def octets_hexdump(dump: str) -> bytes:
+    """Les octets d'un champ `data` ou `extradata` de ffprobe (`-show_data`),
+    écrit en lignes `00000000: 5745 4256 …  WEBVTT…` : la zone hexadécimale
+    occupe toujours les colonnes 10 à 48, complétée d'espaces en fin."""
+    octets = bytearray()
+    for ligne in dump.splitlines():
+        if len(ligne) > 10 and ligne[8:10] == ": ":
+            octets += bytes.fromhex(ligne[10:49].replace(" ", ""))
+    return bytes(octets)
+
+
+def texte_webvtt_vers_srt(texte: str) -> str:
+    """Le texte d'une réplique WebVTT, en SRT : balises et entités."""
+    def balise(m: re.Match) -> str:
+        nom = (m.group(1) or "").lower()
+        return m.group(0).lower() if nom in _BALISES_SRT else ""
+    texte = _BALISE.sub(balise, texte)
+    for entite, car in _ENTITES.items():
+        texte = texte.replace(entite, car)
+    return texte.strip("\n")
+
+
+def srt_depuis_paquets(paquets: list[dict]) -> tuple[str, int]:
+    """Le SRT des paquets ffprobe d'une piste WebVTT brute, et son nombre de
+    répliques. Un paquet sans durée finit au début du suivant."""
+    repliques = []
+    for n, pq in enumerate(paquets):
+        try:
+            debut = float(pq["pts_time"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        try:
+            fin = debut + float(pq["duration_time"])
+        except (KeyError, TypeError, ValueError):
+            suivant = paquets[n + 1].get("pts_time") if n + 1 < len(paquets) else None
+            fin = float(suivant) if suivant else debut + 2.0
+        texte = texte_webvtt_vers_srt(
+            octets_hexdump(pq.get("data", "")).decode("utf-8", "replace"))
+        if texte.strip():
+            repliques.append((debut, fin, texte))
+    blocs = [f"{n}\n{_horodatage(d)} --> {_horodatage(f)}\n{t}"
+             for n, (d, f, t) in enumerate(repliques, start=1)]
+    return ("\n\n".join(blocs) + "\n" if blocs else ""), len(repliques)
+
+
+def ecrire_srt_webvtt_brut(source: Path, index: int, chemin: Path,
+                           ffprobe_path: str = "ffprobe") -> str | None:
+    """Écrit en SRT la piste de sous-titres `index` (rang parmi les
+    sous-titres) d'une source où elle est en WebVTT brut. None si c'est fait,
+    sinon la cause, lisible.
+
+    ffprobe lit tout le fichier — il n'y a pas d'index des paquets d'une
+    seule piste : 5 s pour 9,5 Go et 3663 répliques, sur disque local.
+    """
+    import json
+    import subprocess
+    cmd = [ffprobe_path, "-v", "error", "-select_streams", f"s:{index}",
+           "-show_entries", "packet=pts_time,duration_time,data", "-show_data",
+           "-of", "json", str(source)]
+    try:
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
+                           encoding="utf-8", errors="replace")
+    except OSError as e:
+        return str(e)
+    if r.returncode != 0:
+        return (r.stderr.strip().splitlines() or [f"code {r.returncode}"])[-1]
+    try:
+        paquets = json.loads(r.stdout).get("packets", [])
+    except ValueError as e:
+        return str(e)
+    texte, n = srt_depuis_paquets(paquets)
+    if not n:
+        return _("the track contains no readable cue")
+    chemin.write_text(texte, encoding="utf-8")
+    return None
 
 
 _EXT_TEXTE = {".srt", ".ass", ".ssa", ".vtt", ".sub"}
@@ -133,6 +231,19 @@ def pistes_a_porter(decision) -> list:
     else:
         pistes = decision.subtitles_finales
     return [st for st in pistes if not st.is_image_based]
+
+
+def pistes_brutes_mkv(decision) -> list:
+    """Les pistes WebVTT brutes qu'une sortie MKV garde : `build_command` les
+    prend dans un `.srt` refait (`sous_titres_refaits`). En MP4, le porteur
+    s'en charge (`pistes_a_porter`)."""
+    if decision.output_container != ".mkv":
+        return []
+    tout_garder = (decision.subtitle_indices is None
+                   and not decision.sous_titres_ecartes)
+    pistes = (decision.info.subtitle_tracks if tout_garder
+              else decision.subtitles_finales)
+    return [st for st in pistes if st.brut]
 
 
 @dataclass
@@ -222,15 +333,21 @@ def build_extraction_greffe(g: Greffe, chemin: Path,
 
 
 def build_extraction(source: Path, pistes: list, dossier: Path,
-                     ffmpeg_path: str = "ffmpeg") -> tuple[list[str], list[Path]]:
-    """Une lecture de la source, un `.srt` par piste."""
+                     ffmpeg_path: str = "ffmpeg") -> tuple[list[str] | None, list[Path]]:
+    """Une lecture de la source, un `.srt` par piste.
+
+    Une piste WebVTT brute (`brut`) a son chemin dans la liste, à son rang,
+    mais pas de place dans la commande : ffmpeg ne la lit pas, elle s'écrit
+    avec `ecrire_srt_webvtt_brut`. Commande None s'il ne reste qu'elles.
+    """
     cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-i", str(source)]
     chemins = []
     for n, st in enumerate(pistes):
         chemin = dossier / f"{source.stem}.iris_st{n}.srt"
-        cmd += ["-map", f"0:s:{st.index}", "-c:s", "srt", str(chemin)]
+        if not getattr(st, "brut", False):
+            cmd += ["-map", f"0:s:{st.index}", "-c:s", "srt", str(chemin)]
         chemins.append(chemin)
-    return cmd, chemins
+    return (cmd if "-map" in cmd else None), chemins
 
 
 def build_porteur(pistes: list, chemins: list[Path], sortie: Path,

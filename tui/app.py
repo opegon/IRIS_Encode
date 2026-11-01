@@ -15,14 +15,14 @@ from textual.binding import Binding
 import core.config as cfg_mod
 import core.profiles as prof_mod
 from core.i18n import _, N_, ngettext
-from core.platform import PlatformProfile, detect as detect_platform
+from core.platform import GPU, PlatformProfile, detect as detect_platform
 from core.veille import GardeVeille
 from version import __version__
 
 
 def _setup_logging() -> None:
     """Logge dans iris_encode.log à côté du dossier de l'app (warnings et +)."""
-    log_path = Path.home() / ".iris_encode" / "iris_encode.log"
+    from tui.common import JOURNAL as log_path
     log_path.parent.mkdir(parents=True, exist_ok=True)
     # En UTF-8 : dans l'encodage local (cp1252), une ligne citant un nom de
     # fichier japonais ou cyrillique était perdue (CR-72).
@@ -136,10 +136,10 @@ class IrisEncodeApp(App):
             # qu'à partir d'Ada, et une carte antérieure ne le dit qu'au
             # moment d'échouer. ~0,7 s, en parallèle.
             from dataclasses import replace as _dc
-            from core.platform import (alerte_pilote_nvenc, avec_qsv,
+            from core.platform import (alerte_pilote_nvenc, avec_amf, avec_qsv,
                                        encodeurs_a_sonder, sonder_encodeurs)
-            # Windows sans NVIDIA : Intel Quick Sync, s'il s'ouvre.
-            self.platform = avec_qsv(self.platform, ffmpeg_p)
+            # Windows sans NVIDIA : AMD AMF, sinon Intel Quick Sync, s'il s'ouvre.
+            self.platform = avec_qsv(avec_amf(self.platform, ffmpeg_p), ffmpeg_p)
             refus: dict[str, str] = {}
             ok = sonder_encodeurs(encodeurs_a_sonder(self.platform), ffmpeg_p,
                                   refus)
@@ -207,6 +207,11 @@ class IrisEncodeApp(App):
         if self.platform.alerte_nvenc:
             self.notify(self.platform.alerte_nvenc, title=_("Graphics card"),
                         severity="warning", timeout=30)
+        if self.platform.gpu == GPU.AMD:
+            self.notify(_("AMD graphics card (AMF): experimental support, not "
+                          "yet verified on AMD hardware. Check the first "
+                          "encodes, HDR ones especially."),
+                        title=_("Graphics card"), severity="warning", timeout=30)
         # Dit dans la console avant l'interface, qui la recouvre : à redire ici.
         self.alerter_fichiers_illisibles()
         # Cinq secondes : la veille sur inactivité se compte en minutes, et un

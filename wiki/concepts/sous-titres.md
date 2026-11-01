@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-10-09
+maj: 2026-11-01
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -87,6 +87,14 @@ mkvmerge. Un `.sub` peut être du MicroDVD (texte) ou du VobSub (binaire, début
 
 ## Formats texte qu'on croit lire
 
+- **WebVTT muxé par mkvmerge : ffmpeg ne le lit pas.** mkvmerge (v85,
+  v103) le range sous `S_TEXT/WEBVTT` ; ffmpeg 8.1.2 et 8.1.3 n'en
+  connaissent pas le code : `codec_name=unknown`, « no decoder found for:
+  none » en conversion, « Subtitle codec none is not supported » en copie,
+  MP4 comme MKV. ffprobe en lit pourtant les paquets (`-show_data`) : le
+  texte de chaque réplique, son début et sa durée ; l'en-tête (`extradata`)
+  commence par `WEBVTT`. *(mesuré le 2026-11-01, cérémonie de clôture des
+  JO 2024, 3663 répliques)* IRIS en refait le SRT (v0.9.1.10).
 - **WebVTT** permet des temps **sans heures** (`00:01.000`) : un lecteur qui
   exige `h:mm:ss` n'en lit aucune réplique. Une fraction courte (`,5`) vaut
   500 ms, pas 5. *(mesuré, revue IE-114, CR-37)*

@@ -81,6 +81,8 @@ TrueHD,TrueHD,Do not translate.
 DTS-HD MA,DTS-HD MA,Do not translate.
 Atmos,Atmos,Do not translate.
 NVENC,NVENC,Do not translate.
+AMF,AMF,"Do not translate: AMD hardware encoder (AMD AMF)."
+WebVTT,WebVTT,"Do not translate: subtitle format."
 PAL,PAL,Do not translate.
 mux,mux,"Do not translate as a term: combine tracks into one file without re-encoding (screen ""Mux"", verb ""muxer"" in French)."
 remux,remux,Do not translate.

@@ -1,5 +1,46 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.10] — 2026-11-01
+
+### Les sous-titres WebVTT muxés par mkvmerge ne font plus échouer l'encodage
+
+La cérémonie de clôture des JO 2024 (MKV, 4 h 10) échouait avant même
+l'encodage sur « sous-titres : préparation échouée ». Sa piste française est
+un WebVTT que mkvmerge range sous le code `S_TEXT/WEBVTT`, que ffmpeg ne
+connaît pas : il ne peut ni la convertir ni la recopier, en MP4 comme en MKV.
+
+IRIS reconnaît maintenant cette piste au scan et en reconstruit le SRT à
+partir de ses répliques, que ffprobe sait lire (texte, début, durée) : 3663
+répliques en 5 secondes sur ce fichier. Les balises de couleur WebVTT sont
+retirées ; italique, gras et souligné sont gardés.
+
+### La cause d'un échec se lit en entier
+
+La colonne « État » coupait la cause à soixante caractères, et le détail
+n'était affiché nulle part. En fin de lot, le bilan donne maintenant la
+cause complète des fichiers en échec, et chacune est écrite dans le journal
+(`%USERPROFILE%\.iris_encode\iris_encode.log`).
+
+## [v0.9.1.9] — 2026-11-01
+
+### Cartes AMD Radeon (AMF), en expérimental
+
+Sans carte NVIDIA, IRIS essaie maintenant l'encodeur AMD au lancement, avant
+Intel Quick Sync, et le retient s'il s'ouvre. Sur un PC avec un processeur
+Intel et une Radeon, c'est la Radeon qui encode.
+
+Cette prise en charge a été écrite sans matériel AMD : les commandes ont été
+validées par ffmpeg, mais aucun encodage n'a encore tourné sur une Radeon.
+Une notification le rappelle au lancement. Ni la tenue du débit ni les
+métadonnées HDR10 ne sont vérifiées.
+
+Remplacer seulement le nom de l'encodeur n'aurait pas suffi : AMF refuse le
+preset des profils (`-preset medium`) et le format 10 bits `yuv420p10le`. Le
+preset devient `-quality speed`, `balanced` ou `quality`, le 10 bits passe en
+`p010le`, le débit en `-rc vbr_peak`. Seul l'encodage se fait sur la carte :
+lecture et mise à l'échelle restent au processeur. Un AV1 refusé (Radeon
+antérieure aux RX 7000) est annoncé avec un message propre à AMD.
+
 ## [v0.9.1.8] — 2026-11-01
 
 ### Une colonne « Durée » entre « Profil » et « Taille »

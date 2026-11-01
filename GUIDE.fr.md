@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.11
+**Version** : 0.9.1.12
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -570,7 +570,9 @@ sous la ligne vidéo. Trois causes possibles :
   fausses. Cochez `keep_4k` pour que le réencodage soit possible.
 - **la source est en Dolby Vision profil 5 ou 8.4.** Leur couche de base n'est
   pas du HDR10 ; il n'y a rien à quoi rattacher les métadonnées. Rien à faire —
-  sinon passer le profil en `hdr10` ou `sdr` si la taille prime.
+  sinon passer le profil en `hdr10` ou `sdr` si la taille prime. Un profil 5
+  ainsi converti demande l'**outil Dolby Vision** (README, outils optionnels) :
+  sans lui, le fichier est en `SKIP` plutôt que de sortir vert et violet.
 - **dovi_tool ou mkvmerge manquent.** Relancez le preflight.
 
 À savoir avant de lancer un lot :

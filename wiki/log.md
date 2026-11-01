@@ -510,3 +510,10 @@ Constaté sur un encodage de l'utilisateur (un concert en AVI,
 « Conversion failed! »). Mesuré : ffprobe dit `rawvideo`, le premier paquet
 est un VPS HEVC ; `-c:v hevc` avant `-i` fait passer encodage et recopie.
 Page mise à jour : [[conteneurs]].
+
+## [2026-11-01] ingest | DV profil 5 converti : vert et violet ; libplacebo (v0.9.1.12)
+
+Signalé par l'utilisateur (Smile 2 en HDR10 « vert »). Mesuré : source en
+profil 5 (compat 0), sortie sans balise de couleur ; `libplacebo` du BtbN
+n8.1.3 rend des couleurs justes en HDR10 et en SDR. Pages mises à jour :
+[[hdr-dolby-vision]], [[ffmpeg]].

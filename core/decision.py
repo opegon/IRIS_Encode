@@ -123,6 +123,13 @@ def peut_reencoder_en_dv(info: "VideoInfo", target_w: int, target_h: int) -> boo
             and target_h == info.height)
 
 
+def conversion_p5(info: "VideoInfo", dv_action: "DVAction") -> bool:
+    """Un profil 5 converti en HDR10 ou en SDR ? Sa couche de base est en
+    IPT-PQ : seul `libplacebo`, en appliquant le RPU, en tire des couleurs
+    justes. Réencodée comme du YUV, l'image sortait verte et violette."""
+    return info.dv_profile == 5 and dv_action in (DVAction.HDR10, DVAction.SDR)
+
+
 @dataclass
 class VideoDecision:
     action:          VideoAction
@@ -842,6 +849,23 @@ def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
     """Applique les 4 cas de la spec et retourne la décision vidéo."""
     limit_w, limit_h, bucket_h    = _resolve_limits(info, profile)
     dv_action                     = _decide_dv(info, profile)
+
+    # Un profil 5 à convertir sans ffmpeg à `libplacebo` : rien plutôt qu'un
+    # fichier aux couleurs fausses.
+    from . import dovi
+    if conversion_p5(info, dv_action) and dovi.ffmpeg_dv() is None:
+        return VideoDecision(
+            action=VideoAction.SKIP,
+            reason=_("{dv} → {target}: needs the Dolby Vision tool "
+                     "(ffmpeg with libplacebo, in ./bin/dv/)").format(
+                dv=info.dv_label,
+                target="HDR10" if dv_action == DVAction.HDR10 else "SDR"),
+            target_bitrate=0,
+            target_width=info.width,
+            target_height=info.height,
+            dv_action=dv_action,
+            output_suffix="",
+        )
 
     # bucket_h = hauteur de référence du bucket de bitrate (720/1080/2160),
     # indépendante de limit_h pour gérer les sources rognées (ex. 1918x1040

@@ -1,5 +1,25 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.12] — 2026-11-01
+
+### Un Dolby Vision profil 5 converti ne sort plus vert
+
+*Smile 2* (WEB, Dolby Vision 4K) converti en HDR10 1080p sortait vert et
+violet. Sa source est en **profil 5** : l'image y est stockée dans un espace
+de couleur propre à Dolby (IPT), que seules les métadonnées Dolby Vision
+remettent en couleurs normales. IRIS la réencodait comme du HDR10 ordinaire,
+sans conversion et sans balise de couleur. Le mode SDR avait le même défaut.
+
+La conversion d'un profil 5, en HDR10 comme en SDR, passe maintenant par le
+filtre `libplacebo` de ffmpeg (Vulkan), qui applique ces métadonnées. Le
+ffmpeg principal (gyan.dev « essentials ») ne l'a pas : un second ffmpeg, le
+build BtbN, est proposé au lancement et installé dans `bin\dv\`. Il n'est
+pas proposé si le ffmpeg principal a déjà le filtre. Sans lui, un profil 5 à
+convertir est marqué `SKIP`, avec la raison, au lieu de sortir faux.
+
+Vérifié sur *Smile 2* : HDR10 en 10 bits balisé BT.2020/PQ, SDR en BT.709,
+couleurs justes dans les deux cas (NVENC).
+
 ## [v0.9.1.11] — 2026-11-01
 
 ### Un AVI sans étiquette de codec ne fait plus échouer l'encodage

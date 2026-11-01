@@ -32,7 +32,11 @@ ESSENTIAL_TOOLS = ("ffmpeg", "ffprobe")
 # `ffmpeg_dvd` : l'outil DVD (IE-121), un ffmpeg BtbN GPL avec libdvdnav posé
 # dans `bin/dvd/`, à part du ffmpeg qui encode. Il n'est cherché que là — le
 # PATH contient le ffmpeg principal, pas lui.
-OPTIONAL_TOOLS  = ("dovi_tool", "mkvmerge", "mpv", "ffmpeg_dvd")
+# `ffmpeg_dv` : le même build BtbN, posé dans `bin/dv/` pour son filtre
+# `libplacebo` — la conversion d'un Dolby Vision profil 5 (`core/dovi.py`).
+OPTIONAL_TOOLS  = ("dovi_tool", "mkvmerge", "mpv", "ffmpeg_dvd", "ffmpeg_dv")
+# Outils rangés dans un sous-dossier de ./bin/, et cherchés là seulement.
+_SOUS_DOSSIER = {"ffmpeg_dvd": "dvd", "ffmpeg_dv": "dv"}
 ALL_TOOLS       = ESSENTIAL_TOOLS + OPTIONAL_TOOLS
 
 
@@ -119,15 +123,16 @@ def _get_version(path: str) -> str:
 
 
 def chemin_local(name: str, bin_dir: Path) -> Path:
-    """Où l'outil est posé dans ./bin/ : `bin/dvd/ffmpeg.exe` pour l'outil DVD."""
-    if name == "ffmpeg_dvd":
-        return bin_dir / "dvd" / _exe("ffmpeg")
+    """Où l'outil est posé dans ./bin/ : `bin/dvd/ffmpeg.exe` pour l'outil DVD,
+    `bin/dv/ffmpeg.exe` pour l'outil Dolby Vision."""
+    if name in _SOUS_DOSSIER:
+        return bin_dir / _SOUS_DOSSIER[name] / _exe("ffmpeg")
     return bin_dir / _exe(name)
 
 
 def _localiser(name: str, bin_dir: Path) -> Optional[Path]:
     """Chemin de l'outil : PATH système d'abord, puis ./bin/. None si absent."""
-    if name == "ffmpeg_dvd":
+    if name in _SOUS_DOSSIER:
         local = chemin_local(name, bin_dir)
         return local if local.exists() else None
     exe = _exe(name)
@@ -321,6 +326,8 @@ def poser(nom: str, data: bytes, bin_dir: Path) -> bool:
     if nom == "ffmpeg_dvd":
         return _install_from_archive(data, bin_dir / "dvd",
                                      {_exe("ffmpeg"), _exe("ffprobe")})
+    if nom == "ffmpeg_dv":
+        return _install_from_archive(data, bin_dir / "dv", {_exe("ffmpeg")})
     return _install_from_archive(data, bin_dir, {_exe(nom)})
 
 
@@ -465,6 +472,7 @@ def run_preflight(cfg: dict) -> bool:
     missing_mkvmerge = next((s for s in statuses if s.name == "mkvmerge"  and not s.found), None)
     missing_mpv      = next((s for s in statuses if s.name == "mpv"       and not s.found), None)
     missing_dvd      = _dvd_manquant(statuses)
+    missing_dv       = _dv_manquant(statuses)
 
     if not missing_essential:
         # ffmpeg OK — proposer les outils optionnels absents
@@ -483,6 +491,11 @@ def run_preflight(cfg: dict) -> bool:
         if missing_dvd:
             _dire(_("DVD tool missing (optional — needed to read DVD titles)."))
             _offer_dvd_install(bin_dir)
+            print()
+        if missing_dv:
+            _dire(_("Dolby Vision tool missing (optional — needed to convert "
+                    "Dolby Vision profile 5 to HDR10 or SDR)."))
+            _offer_dv_install(bin_dir)
             print()
         check_for_updates(cfg, statuses, bin_dir)
         return True
@@ -557,8 +570,22 @@ def _dvd_manquant(statuses: list[ToolStatus]) -> bool:
     return True
 
 
-def install_ffmpeg_dvd(bin_dir: Path) -> bool:
-    """Le dernier ffmpeg BtbN GPL d'une branche publiée, dans `bin/dvd/`."""
+def _dv_manquant(statuses: list[ToolStatus]) -> bool:
+    """L'outil Dolby Vision manque-t-il ? Pas si le ffmpeg principal a
+    `libplacebo` — un BtbN dans le PATH : il convertit alors le profil 5."""
+    if any(s.name == "ffmpeg_dv" and s.found for s in statuses):
+        return False
+    principal = next((s for s in statuses if s.name == "ffmpeg" and s.found), None)
+    if principal is not None:
+        from .dovi import a_libplacebo
+        if a_libplacebo(str(principal.path)):
+            return False
+    return True
+
+
+def install_ffmpeg_dvd(bin_dir: Path, nom: str = "ffmpeg_dvd") -> bool:
+    """Le dernier ffmpeg BtbN GPL d'une branche publiée, dans `bin/dvd/` —
+    ou dans `bin/dv/` pour `nom="ffmpeg_dv"`."""
     from . import updates
     try:
         rel = updates.latest_ffmpeg_dvd()
@@ -571,7 +598,7 @@ def install_ffmpeg_dvd(bin_dir: Path) -> bool:
     data = _download(rel.url, rel.sha256)
     if data is None:
         return False
-    return poser("ffmpeg_dvd", data, bin_dir)
+    return poser(nom, data, bin_dir)
 
 
 def _offer_dvd_install(bin_dir: Path) -> None:
@@ -584,8 +611,20 @@ def _offer_dvd_install(bin_dir: Path) -> None:
         _dire(_("DVD tool skipped — DVD folders will only show their VOB files."))
 
 
+def _offer_dv_install(bin_dir: Path) -> None:
+    """Propose l'outil Dolby Vision si aucun ffmpeg n'a `libplacebo`."""
+    if _oui_non(_("Download and install the Dolby Vision tool (ffmpeg BtbN, "
+                  "about 190 MB) into ./bin/dv/?")):
+        if not install_ffmpeg_dvd(bin_dir, "ffmpeg_dv"):
+            _dire(_("Dolby Vision tool installation failed — profile 5 "
+                    "files will be skipped."), "✗")
+    else:
+        _dire(_("Dolby Vision tool skipped — profile 5 files will be "
+                "skipped instead of converted."))
+
+
 OUTILS_INSTALLABLES = frozenset({"ffmpeg", "mkvmerge", "dovi_tool", "mpv",
-                                 "ffmpeg_dvd"})
+                                 "ffmpeg_dvd", "ffmpeg_dv"})
 
 
 def _installer_for(name: str):

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.1.11 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.1.12 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -229,6 +229,7 @@ pas répétée. Rien n'est jamais écrasé : une collision donne `(2)`.
 | mkvmerge  | 99.x            | ✗ (optionnel — greffe de pistes externes) |
 | mpv       | récent          | ✗ (optionnel — visualisation) |
 | Outil DVD | ffmpeg BtbN 7+  | ✗ (optionnel — titres de DVD) |
+| Outil Dolby Vision | ffmpeg BtbN 7+ | ✗ (optionnel — conversion du Dolby Vision profil 5) |
 | GPU NVIDIA | driver récent  | ✗ (recommandé — encodage accéléré CUDA) |
 | AMD Radeon (AMF) | pilote graphique récent | ✗ (sans NVIDIA — encodage matériel, retenu s'il s'ouvre ; **expérimental**, voir plus bas) |
 | Intel Quick Sync | pilote graphique récent | ✗ (sans NVIDIA ni AMD — encodage matériel, retenu s'il s'ouvre) |
@@ -445,12 +446,20 @@ désactive une fonction, elle ne bloque jamais le lancement.
 | `mkvmerge` | **greffe de pistes externes** (VF, sous-titres), **jonction de parties** (`J`) et extraits de contrôle | ~22 Mo |
 | `mpv` | **visualisation** d'un fichier ou d'un recalage | ~50 Mo |
 | Outil DVD | lecture des **titres d'un DVD** (`VIDEO_TS`) | ~320 Mo |
+| Outil Dolby Vision | conversion du **Dolby Vision profil 5** en HDR10 ou SDR | ~165 Mo |
 
 L'**outil DVD** est un second ffmpeg — le build GPL de BtbN, qui lit les DVD
 (libdvdnav) — installé dans `bin/dvd/`, à part du ffmpeg qui encode. Il ne fait
 qu'extraire un titre de DVD, sans perte ; l'encodage reste au ffmpeg principal.
 Il n'est pas proposé quand le ffmpeg principal lit déjà les DVD (un build BtbN
 dans le PATH, par exemple).
+
+L'**outil Dolby Vision** est le même build BtbN, installé dans `bin/dv/`. Son
+filtre `libplacebo` (Vulkan) applique les métadonnées Dolby Vision d'une source
+en **profil 5** — fréquent sur les releases de streaming —, dont l'image est
+stockée dans un espace de couleur propre à Dolby : sans lui, une conversion en
+HDR10 ou en SDR sort verte et violette. Sans l'outil, un tel fichier est
+ignoré. Il n'est pas proposé quand le ffmpeg principal a déjà `libplacebo`.
 
 ### Option A — Installation automatique (recommandée)
 

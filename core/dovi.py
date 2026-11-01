@@ -60,6 +60,52 @@ def is_available(bin_dir: Optional[Path] = None) -> bool:
     return get_path(bin_dir) is not None
 
 
+# ─── ffmpeg qui applique le RPU (profil 5) ────────────────────────────────────
+#
+# La couche de base d'un profil 5 est en IPT-PQ, propre à Dolby : lue comme du
+# YUV BT.2020, elle sort verte et violette. Seul le filtre `libplacebo`
+# (Vulkan) applique le RPU et rend des couleurs justes. Le ffmpeg principal
+# (gyan « essentials ») ne l'a pas : un BtbN GPL est posé à part dans
+# `bin/dv/`, ou le principal sert s'il a le filtre — un BtbN dans le PATH.
+
+_ffmpeg_dv: Optional[str] = None
+
+
+def a_libplacebo(ffmpeg: str) -> bool:
+    """Ce ffmpeg a-t-il le filtre `libplacebo` ? (~0,1 s ; Vulkan n'est pas
+    sondé ici : son absence fera échouer l'encodage, avec l'erreur de ffmpeg.)"""
+    try:
+        r = subprocess.run([ffmpeg, "-hide_banner", "-filters"],
+                           stdin=subprocess.DEVNULL, capture_output=True,
+                           timeout=10, encoding="utf-8", errors="replace")
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return re.search(r"^\s*\S+\s+libplacebo\b", r.stdout, re.M) is not None
+
+
+def chercher_ffmpeg_dv(bin_dir: Path,
+                       ffmpeg_principal: Optional[str]) -> Optional[str]:
+    """Le ffmpeg qui convertit un profil 5 : `bin/dv/` d'abord, sinon le
+    principal s'il a `libplacebo`, sinon None."""
+    for nom in ("ffmpeg.exe", "ffmpeg"):
+        local = bin_dir / "dv" / nom
+        if local.is_file():
+            return str(local)
+    if ffmpeg_principal and a_libplacebo(ffmpeg_principal):
+        return ffmpeg_principal
+    return None
+
+
+def set_ffmpeg_dv(path: Optional[str]) -> None:
+    global _ffmpeg_dv
+    _ffmpeg_dv = path
+
+
+def ffmpeg_dv() -> Optional[str]:
+    """Le ffmpeg à `libplacebo` retenu au lancement, ou None."""
+    return _ffmpeg_dv
+
+
 # ─── Probing d'un fichier source ──────────────────────────────────────────────
 
 def build_extract_hevc_command(input_path: Path, output_hevc: Path,

@@ -14,7 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterator, Optional
 
-from .decision import AudioAction, DVAction, FileDecision, VideoAction
+from .decision import (AudioAction, DVAction, FileDecision, VideoAction,
+                       conversion_p5)
 from .i18n import N_, ErreurAffichable, _
 from .platform import GPU, PlatformProfile
 
@@ -119,7 +120,8 @@ MARGE_FINALISATION   = 8 << 20      # octets écrits depuis : pas un simple en-t
 FENETRE_DEBIT        = 10.0         # secondes sur lesquelles le débit se lisse
 
 
-# Pipeline tone mapping Dolby Vision P5 → SDR (CPU, algorithme Hable)
+# Pipeline tone mapping HDR → SDR (CPU, algorithme Hable). Pas pour un Dolby
+# Vision profil 5, dont seul `libplacebo` lit la couche de base (`filtre_p5`).
 # Le désentrelacement (IE-122) : bwdif, une image par image — la cadence de la
 # source, donc le même débit cible. `deint=interlaced` ne touche que les images
 # que le flux marque entrelacées : un passage progressif d'une source mixte
@@ -134,6 +136,30 @@ _SDR_TONEMAP_FILTER = (
     "zscale=t=bt709:m=bt709:r=tv,"
     "format=yuv420p"
 )
+
+def filtre_p5(decision: FileDecision) -> str:
+    """`libplacebo` d'un profil 5 converti : applique le RPU, réduit au besoin
+    et rend du HDR10 (BT.2020, PQ) ou du SDR (BT.709, tone mapping BT.2390).
+
+    Les balises de couleur suivent l'image jusqu'au flux de sortie, NVENC
+    compris (mesuré sur Smile 2, ffmpeg BtbN n8.1.3). Le format est le 10 bits
+    planaire même pour AMF : son `-pix_fmt p010le` le convertit ensuite.
+    """
+    info, vid = decision.info, decision.video
+    opts = ["apply_dolbyvision=1"]
+    if info.width > vid.target_width or info.height > vid.target_height:
+        opts += [f"w={vid.target_width}", f"h={vid.target_height}",
+                 "force_original_aspect_ratio=decrease", "force_divisible_by=2"]
+    if vid.dv_action == DVAction.SDR:
+        opts += ["colorspace=bt709", "color_primaries=bt709",
+                 "color_trc=bt709", "range=tv", "format=yuv420p"]
+    else:
+        dix_bits = vid.action in (VideoAction.ENCODE_HEVC, VideoAction.ENCODE_AV1)
+        opts += ["colorspace=bt2020nc", "color_primaries=bt2020",
+                 "color_trc=smpte2084", "range=tv",
+                 "format=" + ("yuv420p10le" if dix_bits else "yuv420p")]
+    return "libplacebo=" + ":".join(opts) + ",setsar=1"
+
 
 # Regex pour parser la ligne de progression ffmpeg. `frame=` et `fps=` sont
 # facultatifs : une sortie sans vidéo (passes audio) écrit `size= … time= …
@@ -847,10 +873,24 @@ def build_command(
             "same container — encoding refused to avoid corrupting the source "
             "file."), path=info.path)
 
-    cmd: list[str] = [_ffmpeg_path]
+    # Un profil 5 converti passe par le ffmpeg à `libplacebo` (`core/dovi.py`),
+    # qui applique le RPU sur Vulkan. Sans lui, la décision a déjà refusé ;
+    # ce garde-fou vaut pour une action forcée à la main.
+    p5 = conversion_p5(info, vid.dv_action)
+    if p5:
+        from . import dovi
+        if dovi.ffmpeg_dv() is None:
+            raise ErreurAffichable(N_(
+                "{dv} → HDR10/SDR needs the Dolby Vision tool (ffmpeg with "
+                "libplacebo, in ./bin/dv/): without it, the colors come out "
+                "wrong."), dv=info.dv_label)
+        cmd: list[str] = [dovi.ffmpeg_dv(), "-init_hw_device", "vulkan"]
+    else:
+        cmd = [_ffmpeg_path]
 
     # hwaccel — absent pour :
     #   - SDR tone map (CPU obligatoire pour zscale)
+    #   - profil 5 converti (libplacebo prend les images en mémoire)
     #   - DV preserve (copy)
     #   - HDR10 quality (libx265 CPU pour metadata propres)
     preserve_video = (vid.dv_action == DVAction.DV)
@@ -867,6 +907,7 @@ def build_command(
     use_hwaccel = (
         platform.hwaccel
         and vid.dv_action != DVAction.SDR
+        and not p5
         and not preserve_video
         and not hdr10_quality
     )
@@ -984,6 +1025,8 @@ def build_command(
     # ── Filtre vidéo ──────────────────────────────────────────────────────────
     if tout_puce is not None:
         cmd += ["-vf", tout_puce]
+    elif p5:
+        cmd += ["-vf", filtre_p5(decision)]
     elif not preserve_video:
         # `scale` rattrape l'arrondi de la hauteur par un SAR : 3832x1600 donne
         # 1920x802 en 192079:192000. Jellyfin y voit une vidéo anamorphique et

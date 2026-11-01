@@ -201,6 +201,7 @@ _SOURCES: dict[str, Callable[[], Optional[Release]]] = {
     "dovi_tool":  _latest_dovi_tool,
     "mpv":        _latest_mpv,
     "ffmpeg_dvd": latest_ffmpeg_dvd,
+    "ffmpeg_dv":  latest_ffmpeg_dvd,     # même build BtbN, dans bin/dv/
 }
 
 

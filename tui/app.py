@@ -155,6 +155,10 @@ class IrisEncodeApp(App):
         # qui encode — `bin\dvd\`, ou le principal s'il sait lire un DVD.
         from core import dvd
         dvd.set_outils(*dvd.chercher_outils(bin_dir, ffmpeg_p, ffprobe_p))
+        # La conversion d'un Dolby Vision profil 5 : un ffmpeg à `libplacebo`,
+        # `bin\dv\` ou le principal s'il l'a.
+        from core import dovi as dovi_mod
+        dovi_mod.set_ffmpeg_dv(dovi_mod.chercher_ffmpeg_dv(bin_dir, ffmpeg_p))
         # Câble mkvmerge pour la greffe de pistes externes (optionnel)
         from core import muxer
         mkvmerge_p = get_tool_path("mkvmerge", bin_dir)

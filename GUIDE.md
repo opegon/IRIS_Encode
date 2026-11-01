@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.11
+**Version**: 0.9.1.12
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -567,7 +567,9 @@ video row. Three possible causes:
   wrong. Check `keep_4k` so that re-encoding becomes possible.
 - **the source is Dolby Vision profile 5 or 8.4.** Their base layer is not
   HDR10; there is nothing to attach the metadata to. Nothing to do — except set
-  the profile to `hdr10` or `sdr` if size comes first.
+  the profile to `hdr10` or `sdr` if size comes first. A profile 5 converted
+  this way needs the **Dolby Vision tool** (README, optional tools): without
+  it, the file is marked `SKIP` rather than coming out green and purple.
 - **dovi_tool or mkvmerge is missing.** Run the preflight again.
 
 Before starting a batch, know that:

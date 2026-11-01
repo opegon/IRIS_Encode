@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.11 — document de référence courant
+**Version** : 0.9.1.12 — document de référence courant
 **Date** : 2026-11-01
 **Statut** : stable
 
@@ -410,10 +410,13 @@ dans `launch.bat`.
 | `mkvmerge` | optionnel | remux de pistes externes, identification `-J` |
 | `mpv` | optionnel | visualisation d'un fichier ou d'un recalage |
 | `ffmpeg_dvd` | optionnel | outil DVD : ffmpeg BtbN GPL dans `bin/dvd/`, analyse et extraction des titres de DVD (§ 15.6) |
+| `ffmpeg_dv` | optionnel | outil Dolby Vision : ffmpeg BtbN GPL dans `bin/dv/` (ffmpeg seul), filtre `libplacebo` pour convertir un profil 5 (§ 8.4) |
 
 Ordre de recherche : **PATH système**, puis dossier local `./bin/`. L'outil DVD
 n'est cherché que dans `./bin/dvd/` (`chemin_local`) ; il n'est pas proposé
 quand le ffmpeg principal a le démultiplexeur `dvdvideo` (`_dvd_manquant`).
+De même, l'outil Dolby Vision n'est cherché que dans `./bin/dv/`, et n'est pas
+proposé quand le ffmpeg principal a le filtre `libplacebo` (`_dv_manquant`).
 
 L'absence d'un outil optionnel ne bloque jamais le lancement — elle désactive la
 fonction correspondante avec un message explicite.
@@ -440,6 +443,8 @@ fonction correspondante avec un message explicite.
   haute (aujourd'hui n9.0), extrait `ffmpeg` et `ffprobe` dans `bin/dvd/`
   (`poser("ffmpeg_dvd")`). Les ZIP étant refaits chaque jour, seule la branche
   se compare : une mise à jour est proposée au changement de branche.
+- Outil Dolby Vision : même source (`latest_ffmpeg_dvd`), seul `ffmpeg` extrait
+  dans `bin/dv/` (`poser("ffmpeg_dv")`), même règle de mise à jour.
 - Sources : gyan.dev / BtbN (ffmpeg), GitHub quietvoid (dovi_tool),
   mkvtoolnix.download (mkvmerge), sourceforge (mpv)
 
@@ -1046,9 +1051,9 @@ est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans
 
 | Option profil | DV Action | Comportement |
 |---|---|---|
-| `"hdr10"` | `DVAction.HDR10` | DV → HDR10 (suppression RPU, réencodage HEVC) |
+| `"hdr10"` | `DVAction.HDR10` | DV → HDR10 (suppression RPU, réencodage HEVC ; profil 5 : `libplacebo`) |
 | `"dv"` | `DVAction.DV` | DV → DV (copy du flux vidéo, pas de réencodage) |
-| `"sdr"` | `DVAction.SDR` | DV → SDR (tone map P5, CPU, lent) |
+| `"sdr"` | `DVAction.SDR` | DV → SDR (tone map CPU, lent ; profil 5 : `libplacebo`) |
 | Aucun DV | `DVAction.NONE` | Sans effet |
 
 **Le profil garde la main sur le réencodage.** Le retrait du RPU seul
@@ -1076,7 +1081,34 @@ retomber le mode sur un encodage sans métadonnées fines, jamais sur une erreur
 ⚠ **Coût réel** : `libx265` mesuré à 0,78 image/s sur du 4K, soit de l'ordre de
 70 heures pour un long métrage. Le mode reste réservé au 1080p en pratique.
 
-**Pipeline tone mapping P5 (SDR) :**
+**Profil 5 vers HDR10 ou SDR** (v0.9.1.12, `decision.conversion_p5`) — la
+couche de base d'un profil 5 est en IPT-PQ, propre à Dolby. Réencodée comme du
+YUV BT.2020, elle sortait verte et violette, sans balise de couleur (Smile 2,
+v0.9.1.11). Elle passe désormais par le filtre `libplacebo` (Vulkan), qui
+applique le RPU (`encoder.filtre_p5`) :
+
+```
+-init_hw_device vulkan … -vf libplacebo=apply_dolbyvision=1[:w=…:h=…:
+  force_original_aspect_ratio=decrease:force_divisible_by=2]:
+  colorspace=bt2020nc:color_primaries=bt2020:color_trc=smpte2084:range=tv:
+  format=yuv420p10le,setsar=1
+```
+
+En SDR : `colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv:
+format=yuv420p` (tone mapping de libplacebo, BT.2390 par défaut). Ni `-hwaccel`
+ni `zscale`. Les balises de couleur suivent jusqu'au flux de sortie, NVENC
+compris. Le ffmpeg est celui de `dovi.ffmpeg_dv()` : `bin/dv/`, sinon le
+principal s'il a le filtre (`dovi.chercher_ffmpeg_dv`, au lancement). Sans lui,
+la décision est `SKIP` avec la raison ; une action forcée à la main lève une
+`ErreurAffichable` à la construction de la commande. Vulkan n'est pas sondé au
+lancement (1,2 s) : son absence fait échouer l'encodage avec l'erreur de ffmpeg.
+
+Mesuré sur Smile 2 (P5, 3840×1920) : sorties HDR10 1080p en `hevc_nvenc`
+(`bt2020nc`/`smpte2084`/`bt2020`, 10 bits) et SDR (`bt709`), couleurs justes.
+Les métadonnées statiques (master display, MaxCLL) ne sont pas tirées du RPU :
+un profil 5 n'a pas de SEI HDR10 à recopier.
+
+**Pipeline tone mapping SDR (hors profil 5) :**
 
 ```
 zscale=t=linear:npl=100,
@@ -1984,6 +2016,7 @@ une police de repli (CR-20).
 | **DV copy** | `dv_action == DV`, RPU non réinjectable | `-c:v copy` | Pas de réencodage, pas de hwaccel |
 | **HDR10 quality** | `dv_action == HDR10` + `hdr10_quality == "quality"` | `libx265` CPU | Métadonnées via `-x265-params`, `pix_fmt yuv420p10le` |
 | **SDR tone map** | `dv_action == SDR` | nvenc / libx265 (CPU) | Filtre `zscale+tonemap`, pas de hwaccel |
+| **Profil 5 converti** | `conversion_p5()` : profil 5 et `dv_action` HDR10 ou SDR | nvenc / libx265 / qsv / amf | ffmpeg `dovi.ffmpeg_dv()`, `-init_hw_device vulkan`, `-vf libplacebo=apply_dolbyvision=1…`, pas de hwaccel (§ 8.4) |
 | **Tout-puce Intel** | profil `GPU.INTEL`, `filtre_tout_puce()` non nul | `hevc_qsv` / `h264_qsv` / `av1_qsv` | `-hwaccel qsv -hwaccel_output_format qsv`, `-vf vpp_qsv=[w=…:h=…:]format=nv12\|p010le`, pas de `-pix_fmt`, `-aspect l:h` si réduit |
 | **Tout-carte NVIDIA** | profil `GPU.NVIDIA`, `hevc_nvenc@10` sondé, `filtre_tout_puce()` non nul | `hevc_nvenc` / `h264_nvenc` / `av1_nvenc` | `-hwaccel cuda -hwaccel_output_format cuda`, `-vf scale_cuda=[w=…:h=…:]format=nv12\|p010le`, pas de `-pix_fmt`, `-aspect l:h` si réduit |
 | **Standard** | Tous autres cas | nvenc / libx265 / libx264 / av1_nvenc / qsv / amf | hwaccel si disponible ; AMF : `-quality` au lieu de `-preset`, `-rc vbr_peak`, `p010le` en 10 bits |
@@ -3789,6 +3822,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.12 | 2026-11-01 | **Dolby Vision profil 5 aux bonnes couleurs** (§ 4.1, § 4.2, § 8.4) : conversion HDR10/SDR par `libplacebo` (`apply_dolbyvision`), ffmpeg à part dans `bin/dv/` (`ffmpeg_dv`) ou principal s'il a le filtre ; sans lui, `SKIP` · `tests/test_dv_p5.py` |
 | 0.9.1.11 | 2026-11-01 | **AVI au fourcc nul** (§ 15) : HEVC ou H.264 reconnu au premier paquet sous `rawvideo`, `VideoInfo.decodeur`, `-c:v` imposé devant le `-i` ; `encodeur_de()` lit le `-c:v` après le premier `-i` · `tests/test_fourcc_nul.py` |
 | 0.9.1.10 | 2026-11-01 | **WebVTT brut** (§ 8.6) : piste `S_TEXT/WEBVTT` reconnue au scan, SRT reconstruit depuis les paquets ffprobe, porteur forcé en MP4, `sous_titres_refaits` en MKV · **cause complète d'un échec** : bilan de fin de lot et journal (`tui.common.JOURNAL`) · `tests/test_webvtt_brut.py`, `tests/test_cause_echec.py` |
 | 0.9.1.9 | 2026-11-01 | **AMD AMF, expérimental** (§ 11, § 12.1) : sans NVIDIA, `avec_amf()` sonde `hevc_amf` avant Quick Sync ; `option_preset()` (`-quality`), `-rc vbr_peak`, `p010le` ; encodage seul sur la carte ; notification au lancement · `tests/test_amf.py` |

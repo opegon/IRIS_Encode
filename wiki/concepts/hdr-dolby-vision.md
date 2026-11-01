@@ -1,7 +1,8 @@
 ---
 type: concept
-maj: 2026-10-03
+maj: 2026-11-01
 sources:
+  - "[[source-2026-11-01-dv-p5-libplacebo]]"
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -70,7 +71,7 @@ la couche de base.
 | **7** (compat 6, UHD Blu-ray) | HDR10 + couche d'amélioration | un HDR10 valide, si l'EL part aussi | retrait par `dovi_tool` seulement |
 | 8.2 (compat 2) | SDR | du SDR | non |
 | **8.4** (compat 4) | HLG | du HLG, pas du HDR10 | non |
-| **5** (compat 0) | IPT-PQ, propre à Dolby | une image **aux couleurs fausses** (violet/vert) | non |
+| **5** (compat 0) | IPT-PQ, propre à Dolby | une image **aux couleurs fausses** (violet/vert) | non ; conversion HDR10/SDR par `libplacebo` seulement |
 | 10 | AV1 | — | non (le chemin est HEVC) |
 
 Un profil 8 sans compatibilité annoncée n'est pas deviné.
@@ -146,9 +147,27 @@ zscale=t=linear:npl=100, format=gbrpf32le, zscale=p=bt709,
 tonemap=tonemap=hable:desat=0, zscale=t=bt709:m=bt709:r=tv, format=yuv420p
 ```
 
-La sortie est en **8 bits** (`yuv420p`). `DV`, `HDR`, `HDR10+` et `10bit`
+Ne vaut pas pour un profil 5 (voir plus haut). La sortie est en **8 bits** (`yuv420p`). `DV`, `HDR`, `HDR10+` et `10bit`
 disparaissent du nom. Un profil sans clé `dolby_vision` se rabat sur `sdr` :
 un HDR10 délavé sur un téléviseur qui ne le gère pas est pire qu'un SDR propre.
+
+### Profil 5 vers HDR10 ou SDR
+
+La couche de base IPT-PQ ne se lit pas comme du YUV : réencodée telle quelle,
+elle sort verte et violette, sans balise de couleur — Smile 2, v0.9.1.11
+*(observé, mesuré)*. `zscale` n'y peut rien : il n'applique pas le RPU.
+
+Le filtre **`libplacebo`** (Vulkan) applique le RPU (`apply_dolbyvision=1`) et
+rend des couleurs justes, réduit l'image au passage
+(`force_original_aspect_ratio=decrease`, `force_divisible_by=2`) et pose les
+balises voulues (`colorspace`, `color_primaries`, `color_trc`), qui suivent
+jusqu'au flux encodé par NVENC sans `-color_*` explicite. 5 s de 4K en
+1080p NVENC : 5,2 s. *(mesuré, BtbN n8.1.3, RTX A4500,
+[[source-2026-11-01-dv-p5-libplacebo]])*
+
+Il faut un build qui l'a : le BtbN GPL, pas le gyan « essentials » ([[ffmpeg]]).
+Un profil 5 n'a pas de SEI HDR10 : la sortie n'a ni master display ni MaxCLL,
+sauf à les tirer du RPU (niveau 6) — non fait.
 
 ## Paramètres x265 pour un HDR10 propre
 

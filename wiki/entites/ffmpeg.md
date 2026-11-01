@@ -3,6 +3,7 @@ type: entite
 categorie: outil
 maj: 2026-11-01
 sources:
+  - "[[source-2026-11-01-dv-p5-libplacebo]]"
   - "[[source-2026-10-29-raccord-qsv-passe-dv]]"
   - "[[source-2026-10-29-fichier-colle]]"
   - "[[source-2026-10-28-qsv-decodage]]"
@@ -35,6 +36,10 @@ décalage). Outil **essentiel**. Voir aussi [[ffprobe]] et [[sous-processus]].
 
 Capacités disque : le gyan « essentials » n'a ni libbluray ni libdvdnav, le
 BtbN GPL les a (`-buildconf`, 2026-10-08, *mesuré*) — voir [[disques-optiques]].
+De même pour le filtre `libplacebo` (Vulkan), seul à appliquer le RPU d'un
+Dolby Vision profil 5 : absent du gyan 8.1.2, présent dans le BtbN n8.1.3
+(2026-11-01, *mesuré*) — voir [[hdr-dolby-vision]]. Un BtbN posé dans `bin/dv/`
+encode lui-même : la règle de pilote NVENC ci-dessous s'y applique.
 
 ## NVENC et version du pilote
 

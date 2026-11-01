@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.1.11 — Windows (macOS/Linux support planned)
+**Version**: 0.9.1.12 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -229,6 +229,7 @@ overwritten: a collision gives `(2)`.
 | mkvmerge  | 99.x            | ✗ (optional — adding external tracks) |
 | mpv       | recent          | ✗ (optional — playback) |
 | DVD tool  | ffmpeg BtbN 7+  | ✗ (optional — DVD titles) |
+| Dolby Vision tool | ffmpeg BtbN 7+ | ✗ (optional — converting Dolby Vision profile 5) |
 | NVIDIA GPU | recent driver  | ✗ (recommended — hardware encoding) |
 | AMD Radeon (AMF) | recent graphics driver | ✗ (without NVIDIA — hardware encoding, used if it opens; **experimental**, see below) |
 | Intel Quick Sync | recent graphics driver | ✗ (without NVIDIA or AMD — hardware encoding, used if it opens) |
@@ -442,12 +443,20 @@ feature is turned off; startup is never blocked.
 | `mkvmerge` | **adding external tracks** (dubs, subtitles), **joining parts** (`J`) and check samples | ~22 MB |
 | `mpv` | **playing** a file or checking a resync | ~50 MB |
 | DVD tool | reading a **DVD's titles** (`VIDEO_TS`) | ~320 MB |
+| Dolby Vision tool | converting **Dolby Vision profile 5** to HDR10 or SDR | ~165 MB |
 
 The **DVD tool** is a second ffmpeg — the BtbN GPL build, which reads DVDs
 (libdvdnav) — installed into `bin/dvd/`, apart from the ffmpeg that encodes. It
 only extracts a DVD title, losslessly; the encode stays with the main ffmpeg.
 It is not offered when the main ffmpeg already reads DVDs (a BtbN build on the
 PATH, for instance).
+
+The **Dolby Vision tool** is the same BtbN build, installed into `bin/dv/`. Its
+`libplacebo` filter (Vulkan) applies the Dolby Vision metadata of a
+**profile 5** source — common on streaming releases — whose picture is stored
+in a Dolby-specific color space: without it, an HDR10 or SDR conversion comes
+out green and purple. Without the tool, such a file is skipped. It is not
+offered when the main ffmpeg already has `libplacebo`.
 
 ### Option A — Automatic installation (recommended)
 

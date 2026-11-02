@@ -1,5 +1,18 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.13] — 2026-11-02
+
+### Une piste FLAC ou PCM est recopiée avec `preserve_hd_audio`
+
+Un concert en FLAC 5.1, avec un profil réglé pour garder l'audio sans perte
+(`preserve_hd_audio = true`), ressortait en AC3 640 kb/s. Seuls TrueHD, MLP et
+DTS-HD MA comptaient comme sans perte ; le FLAC et le PCM, ni sans perte ni
+« compatibles », étaient transcodés quoi qu'il arrive.
+
+Ils sont désormais sans perte : avec `preserve_hd_audio`, la piste est recopiée
+telle quelle et la sortie passe en MKV, y compris pour une piste greffée. Sans
+ce réglage, rien ne change : ils suivent le forfait par canaux.
+
 ## [v0.9.1.12] — 2026-11-01
 
 ### Un Dolby Vision profil 5 converti ne sort plus vert

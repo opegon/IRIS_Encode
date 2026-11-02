@@ -517,3 +517,9 @@ Signalé par l'utilisateur (Smile 2 en HDR10 « vert »). Mesuré : source en
 profil 5 (compat 0), sortie sans balise de couleur ; `libplacebo` du BtbN
 n8.1.3 rend des couleurs justes en HDR10 et en SDR. Pages mises à jour :
 [[hdr-dolby-vision]], [[ffmpeg]].
+
+## [2026-11-02] ingest | FLAC et PCM sans perte (v0.9.1.13)
+
+Signalé par l'utilisateur (concert FLAC, profil `preserve_hd_audio = true`,
+sortie en AC3). Lu dans le code : FLAC ni sans perte ni compatible, donc
+transcodé. Page mise à jour : [[audio]].

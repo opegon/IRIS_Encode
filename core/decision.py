@@ -306,6 +306,7 @@ _MKV_ONLY_CODECS: tuple[str, ...] = (
     "ass", "ssa", "substation",              # sous-titres stylés
     "pgs", "vobsub", "dvdsub", "dvd_sub",    # sous-titres image
     "truehd", "mlp", "dts-hd", "dtshd",      # audio sans perte
+    "flac", "pcm",
 )
 
 

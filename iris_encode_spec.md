@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.12 — document de référence courant
+**Version** : 0.9.1.13 — document de référence courant
 **Date** : 2026-11-01
 **Statut** : stable
 
@@ -678,7 +678,7 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 | `preset_encoder` | str | `fast` / `medium` / `slow` |
 | `dolby_vision` | str | `hdr10` / `dv` / `sdr` |
 | `hdr10_quality` | str | `"quality"` → libx265 CPU + métadonnées HDR10 propres |
-| `preserve_hd_audio` | bool | copier TrueHD / DTS-HD MA au lieu de transcoder |
+| `preserve_hd_audio` | bool | copier TrueHD / DTS-HD MA / MLP / FLAC / PCM au lieu de transcoder |
 | `audio_languages` | list | langues conservées (l'index 0 l'est toujours) |
 | `audio_stereo_kbps` | int | débit AAC stéréo |
 | `audio_surround_kbps` | int | débit AC3 5.1 |
@@ -1146,7 +1146,7 @@ l'écran Pistes).
 **Transcodage par piste conservée :**
 
 ```
-1. Codec lossless (TrueHD / DTS-HD MA / MLP) ?
+1. Codec lossless (TrueHD / DTS-HD MA / MLP / FLAC / PCM) ?
      preserve_hd_audio = true  → copy
      preserve_hd_audio = false → appliquer règle canal
 2. Codec compatible (AAC / AC3 / EAC3) ET audio_copy_compatible = true ?
@@ -1162,7 +1162,7 @@ l'écran Pistes).
 | Stéréo (2.0) | AAC | `audio_stereo_kbps` |
 | Surround 5.1 | AC3 | `audio_surround_kbps` |
 | Surround 7.1 | AC3 | `audio_surround_7_1_kbps`, replié en 5.1 |
-| TrueHD / DTS-HD MA | copy ou règle surround | selon `preserve_hd_audio` |
+| TrueHD / DTS-HD MA / FLAC / PCM | copy ou règle canal | selon `preserve_hd_audio` |
 
 **Transcodage HD au débit de la source — `audio_hd_codec`**
 
@@ -1207,6 +1207,15 @@ tout profil qui **commence** par « DTS-HD MA » (`_PREFIXE_DTS_SANS_PERTE`,
 v0.8.9.112, CR-09) : ffmpeg écrit aussi « DTS-HD MA + DTS:X » et « DTS-HD MA +
 DTS:X IMAX », et ce dernier, comparé à l'égalité, était transcodé malgré
 `preserve_hd_audio`, sortie en MP4.
+
+**FLAC et PCM sont sans perte** (v0.9.1.13) : `flac` figure dans
+`_LOSSLESS_CODECS`, et tout codec qui commence par `pcm` (`pcm_s16le`,
+`pcm_bluray`…, `_PREFIXE_PCM`) l'est aussi. Avant, ni sans perte ni
+compatibles, ils étaient transcodés même avec `preserve_hd_audio` — un concert
+FLAC 5.1 ressortait en AC3 640 kb/s. Recopiés, ils imposent le MKV ; greffés,
+aussi (`_MKV_ONLY_CODECS`). `audio_hd_codec` ne les vise pas (`is_hd_audio` :
+TrueHD et DTS seuls) : sans `preserve_hd_audio`, ils suivent le forfait par
+canaux, et la passe audio préalable (§ encodeur) s'applique à leur transcodage.
 
 ### 8.6 Sous-titres et conteneur de sortie
 
@@ -3822,6 +3831,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.13 | 2026-11-02 | **FLAC et PCM sans perte** (§ 8.5) : recopiés avec `preserve_hd_audio`, MKV imposé, greffes comprises ; avant, transcodés en AC3/AAC · `tests/test_audio_flac_pcm.py` |
 | 0.9.1.12 | 2026-11-01 | **Dolby Vision profil 5 aux bonnes couleurs** (§ 4.1, § 4.2, § 8.4) : conversion HDR10/SDR par `libplacebo` (`apply_dolbyvision`), ffmpeg à part dans `bin/dv/` (`ffmpeg_dv`) ou principal s'il a le filtre ; sans lui, `SKIP` · `tests/test_dv_p5.py` |
 | 0.9.1.11 | 2026-11-01 | **AVI au fourcc nul** (§ 15) : HEVC ou H.264 reconnu au premier paquet sous `rawvideo`, `VideoInfo.decodeur`, `-c:v` imposé devant le `-i` ; `encodeur_de()` lit le `-c:v` après le premier `-i` · `tests/test_fourcc_nul.py` |
 | 0.9.1.10 | 2026-11-01 | **WebVTT brut** (§ 8.6) : piste `S_TEXT/WEBVTT` reconnue au scan, SRT reconstruit depuis les paquets ffprobe, porteur forcé en MP4, `sous_titres_refaits` en MKV · **cause complète d'un échec** : bilan de fin de lot et journal (`tui.common.JOURNAL`) · `tests/test_webvtt_brut.py`, `tests/test_cause_echec.py` |

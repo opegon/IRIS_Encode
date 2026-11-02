@@ -107,128 +107,128 @@ msgctxt "track action"
 msgid "copy"
 msgstr ""
 
-#: core/decision.py:859
+#: core/decision.py:860
 #, python-brace-format
 msgid "{dv} → {target}: needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/)"
 msgstr ""
 
-#: core/decision.py:898
+#: core/decision.py:899
 #, python-brace-format
 msgid "{reason} · DV preserved, RPU reinjected"
 msgstr ""
 
-#: core/decision.py:900
+#: core/decision.py:901
 #, python-brace-format
 msgid "{reason} · DV kept → video copied"
 msgstr ""
 
-#: core/decision.py:909
+#: core/decision.py:910
 #, python-brace-format
 msgid "Unknown bitrate → {target}k target"
 msgstr ""
 
-#: core/decision.py:922
+#: core/decision.py:923
 #, python-brace-format
 msgid "Bitrate {bitrate}k > {target}k target +{tolerance}%"
 msgstr ""
 
-#: core/decision.py:936
+#: core/decision.py:937
 #, python-brace-format
 msgid "Resolution {width}x{height} > {max_width}x{max_height}"
 msgstr ""
 
-#: core/decision.py:950
+#: core/decision.py:951
 #, python-brace-format
 msgid "Codec {codec} not supported by the playback chain"
 msgstr ""
 
-#: core/decision.py:966
+#: core/decision.py:967
 #, python-brace-format
 msgid "{dv} → HDR10 without re-encoding"
 msgstr ""
 
-#: core/decision.py:977
+#: core/decision.py:978
 #, python-brace-format
 msgid "Bitrate within target ±{tolerance}%, resolution OK, codec {codec}"
 msgstr ""
 
-#: core/decision.py:980
+#: core/decision.py:981
 #, python-brace-format
 msgid "Bitrate OK, resolution OK, codec {codec}"
 msgstr ""
 
-#: core/decision.py:1147
+#: core/decision.py:1148
 msgid "manual selection"
 msgstr ""
 
-#: core/decision.py:1150
+#: core/decision.py:1151
 #, python-brace-format
 msgid "replaced by its {codec} core (track {index})"
 msgstr ""
 
-#: core/decision.py:1154
+#: core/decision.py:1155
 #, python-brace-format
 msgid "core of track {index}, which already carries it"
 msgstr ""
 
-#: core/decision.py:1158
+#: core/decision.py:1159
 #, python-brace-format
 msgid "original track (index {index})"
 msgstr ""
 
-#: core/decision.py:1163
+#: core/decision.py:1164
 msgid "language unknown → kept"
 msgstr ""
 
-#: core/decision.py:1166
+#: core/decision.py:1167
 #, python-brace-format
 msgid "language {language}"
 msgstr ""
 
-#: core/decision.py:1169
+#: core/decision.py:1170
 #, python-brace-format
 msgid "language {language} not kept"
 msgstr ""
 
 #. "lossless", "copy" and the profile key preserve_hd_audio stay in English (glossary).
-#: core/decision.py:1204
+#: core/decision.py:1205
 #, python-brace-format
 msgid "{reason} · lossless + preserve_hd_audio → copy"
 msgstr ""
 
-#: core/decision.py:1211
+#: core/decision.py:1212
 #, python-brace-format
 msgid "{reason} · lossless → {codec}"
 msgstr ""
 
-#: core/decision.py:1220
+#: core/decision.py:1221
 #, python-brace-format
 msgid "{reason} · {codec} compatible → copy"
 msgstr ""
 
-#: core/decision.py:1228
+#: core/decision.py:1229
 #, python-brace-format
 msgid "{reason} · → {codec}"
 msgstr ""
 
-#: core/decision.py:1250
+#: core/decision.py:1251
 #, python-brace-format
 msgid "Cannot read the audio track of “{file}” added to this file: the profile's audio rule cannot be applied to it."
 msgstr ""
 
-#: core/decision.py:1255
+#: core/decision.py:1256
 msgid "added track"
 msgstr ""
 
-#: core/decision.py:1513
+#: core/decision.py:1514
 msgid "H264 does not carry HDR: this file will be converted to SDR (tone mapping, slower). Choose HEVC to keep HDR."
 msgstr ""
 
-#: core/decision.py:1547
+#: core/decision.py:1548
 msgid "Forced manually (was SKIP)"
 msgstr ""
 
-#: core/decision.py:1549
+#: core/decision.py:1550
 msgid "Forced manually (was DV removal)"
 msgstr ""
 

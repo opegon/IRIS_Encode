@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-10-20
+maj: 2026-11-02
 sources:
   - "[[2026-10-20-ts-aac-corrompu]]"
   - "[[source-2026-10-20-ts-aac-corrompu]]"
@@ -29,7 +29,11 @@ sources:
 
 ## Les familles sans perte
 
-TrueHD, MLP, DTS-HD MA. **ffprobe nomme `dts` toutes les variantes DTS** et
+TrueHD, MLP, DTS-HD MA, **FLAC et PCM** (ces deux depuis la v0.9.1.13 :
+avant, un concert FLAC 5.1 ressortait en AC3 640 kb/s malgré
+`preserve_hd_audio`). Le PCM a une douzaine de noms ffprobe (`pcm_s16le`,
+`pcm_bluray`…) : reconnu au préfixe `pcm`. `audio_hd_codec` ne vise que
+TrueHD et DTS. **ffprobe nomme `dts` toutes les variantes DTS** et
 met la famille dans `profile` : « DTS », « DTS-ES », « DTS-HD HR »,
 « DTS-HD MA », « DTS-HD MA + DTS:X ». Sans lire `profile`, un DTS-HD MA passe
 pour un DTS ordinaire. *(mesuré)* ffmpeg (≥ 6.1) connaît aussi « DTS-HD MA +

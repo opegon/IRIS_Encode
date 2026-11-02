@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.1.12 — Windows (macOS/Linux support planned)
+**Version**: 0.9.1.13 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -144,12 +144,12 @@ flowchart TD
     A4 -->|no| AX["Excluded"]
     A4 -->|yes| A3
     A1 --> B0
-    A3 --> B0{"Lossless?<br/>TrueHD, DTS-HD MA, MLP"}
+    A3 --> B0{"Lossless?<br/>TrueHD, DTS-HD MA, MLP, FLAC, PCM"}
     B0 -->|"yes, preserve_hd_audio = true"| CP1["Copy<br/>(forces MKV)"]
     B0 -->|"yes, otherwise"| TR["Transcode"]
     B0 -->|no| B1{"AAC, AC3, E-AC3<br/>and audio_copy_compatible?"}
     B1 -->|yes| CP2["Copy"]
-    B1 -->|"no (DTS, FLAC, Opus…)"| TR
+    B1 -->|"no (DTS, Opus…)"| TR
     TR --> T0{"[audio_hd_codec] = ac3 / eac3<br/>and a TrueHD or DTS track<br/>of known bitrate?"}
     T0 -->|yes| T1["At the source bitrate<br/>capped: AC3 640k, E-AC3 1024k"]
     T0 -->|no| T2{"Channels?"}

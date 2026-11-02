@@ -324,7 +324,11 @@ def stem_sans_groupe(stem: str) -> str:
     return reste
 
 
-_LOSSLESS_CODECS = frozenset({"truehd", "dts-hd ma", "dtshd", "mlp"})
+_LOSSLESS_CODECS = frozenset({"truehd", "dts-hd ma", "dtshd", "mlp", "flac"})
+# Le PCM porte une douzaine de noms ffprobe (`pcm_s16le`, `pcm_bluray`…) :
+# un préfixe. Sans lui, un concert en FLAC ou en PCM était transcodé même
+# avec `preserve_hd_audio`.
+_PREFIXE_PCM = "pcm"
 # ffprobe nomme toutes les variantes DTS « dts » et met la famille dans
 # `profile` : « DTS », « DTS-ES », « DTS-HD HR », « DTS-HD MA ». Sans lire le
 # profil, un DTS-HD MA passe pour un DTS ordinaire.
@@ -426,7 +430,8 @@ class AudioTrack:
 
     @property
     def is_lossless(self) -> bool:
-        if self.codec.lower() in _LOSSLESS_CODECS:
+        codec = self.codec.lower()
+        if codec in _LOSSLESS_CODECS or codec.startswith(_PREFIXE_PCM):
             return True
         return self.profile.lower().startswith(_PREFIXE_DTS_SANS_PERTE)
 

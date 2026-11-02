@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.12
+**Version** : 0.9.1.13
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -879,7 +879,8 @@ profil (`F5`, puis éditer) change la règle pour ces pistes :
 - **`→ E-AC3 au débit de la source`** — plafonné à **6 144 kbps**. Un TrueHD à
   3 501 kbps ressort en E-AC3 à 3 501 kbps.
 - **`copier telles quelles`** — la piste reste sans perte
-  (`preserve_hd_audio`), ce qui impose le MKV.
+  (`preserve_hd_audio`), ce qui impose le MKV. Vaut aussi pour les pistes FLAC
+  et PCM (un concert, par exemple) ; sans cela, elles suivent le forfait.
 
 L'E-AC3 est le bon choix pour un téléviseur récent : il est décodé nativement
 et transporté en eARC vers une barre de son. L'AC3 reste le repli universel.

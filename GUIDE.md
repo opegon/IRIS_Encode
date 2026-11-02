@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.12
+**Version**: 0.9.1.13
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -868,7 +868,8 @@ The **Handling** field of the **Lossless audio** section of the profile form
 - **`→ E-AC3 at the source bitrate`** — capped at **6,144 kbps**. A TrueHD at
   3,501 kbps comes out as E-AC3 at 3,501 kbps.
 - **`copy as they are`** — the track is kept lossless (`preserve_hd_audio`),
-  which forces MKV.
+  which forces MKV. This also applies to FLAC and PCM tracks (a concert, for
+  instance); without it, they follow the fixed rate.
 
 E-AC3 is the right choice for a recent TV: it is decoded natively and carried
 over eARC to a soundbar. AC3 remains the universal fallback.

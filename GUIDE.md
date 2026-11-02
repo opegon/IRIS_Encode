@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.13
+**Version**: 0.9.1.14
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -125,6 +125,31 @@ A folder opens at once, even a large one: its files appear by name, greyed,
 with `…` as the decision, and fill in as the analysis reads them; a gauge next
 to the counter ("Analyzing… 12 / 40") shows how far it has got. You can move
 through the list meanwhile; a row still waiting cannot be checked yet.
+
+**Locations — network shares.** Below the drives, the home screen lists the
+shares declared in `config.toml`, by their label (🌐). They open like a drive;
+the breadcrumb shows "Films › Season 1".
+
+```toml
+[[emplacements]]
+libelle = "Films"
+chemin  = '\\10.0.0.10\Films'
+```
+
+Write the path between single quotes: TOML then leaves the backslashes alone.
+The share's account is saved once in the Windows Credential Manager, under the
+server name — IRIS keeps none of it:
+
+```
+cmdkey /add:10.0.0.10 /user:nas\user /pass
+```
+
+`/pass` without a value: the password is asked for, without being shown. IRIS
+connects when the location is opened and, on exit, closes the connections it
+opened; an existing network drive is left alone. Windows allows **one account
+per server**: two shares on the same NAS share theirs. A refusal (password,
+server off, another account already connected) is shown with its cause, and the
+home screen comes back.
 
 | Key | Action |
 |---|---|

@@ -1,5 +1,31 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.14] — 2026-11-02
+
+### Emplacements : les partages réseau sur l'accueil
+
+Un partage du NAS s'ouvrait par une lettre de lecteur réseau, montée à la main
+avec le compte du NAS. L'accueil liste désormais, sous les lecteurs, des
+**emplacements** nommés — « Films » pour `\\10.0.0.10\Films` — déclarés dans
+`config.toml` :
+
+```toml
+[[emplacements]]
+libelle = "Films"
+chemin  = '\\10.0.0.10\Films'
+```
+
+On les ouvre et on y navigue comme dans un lecteur ; le fil d'Ariane montre
+« Films › Saison 1 ». IRIS s'y connecte à l'ouverture, avec le compte enregistré
+pour ce serveur dans le Gestionnaire d'identifiants Windows (`cmdkey /add:10.0.0.10
+/user:nas\utilisateur /pass`) : aucun mot de passe dans `config.toml`. Les
+connexions qu'il a ouvertes se coupent à sa sortie ; un lecteur réseau existant
+n'est pas touché. Un refus (mot de passe, serveur éteint, serveur déjà connecté
+sous un autre compte) s'affiche avec sa cause.
+
+Windows n'admet qu'un compte par serveur : deux partages du même NAS partagent
+le leur. Un écran pour gérer les emplacements sans éditer le fichier suivra.
+
 ## [v0.9.1.13] — 2026-11-02
 
 ### Une piste FLAC ou PCM est recopiée avec `preserve_hd_audio`

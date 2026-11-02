@@ -24,6 +24,7 @@ from textual.widgets import DataTable, ProgressBar, Static
 
 from core.i18n import N_, _, ngettext, texte_erreur
 from core import config as cfg_mod
+from core import emplacements as emp_mod
 from core import preview
 from core.annexes import supprimer_annexes
 from core.decision import (
@@ -59,6 +60,7 @@ _LOG = logging.getLogger(__name__)
 
 _DIR_ICON  = "📁"
 _DISK_ICON = "💾"   # icône volume/disque
+_SHARE_ICON = "🌐"  # emplacement réseau (IE-161)
 _FILE_ICON = "🎬"
 
 
@@ -560,6 +562,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # disposition à chaque lancement, pas celle héritée d'un réglage de la
         # veille. Le redimensionnement reste actif pendant la session.
         cfg_mod.reset_browser_columns(self._app.cfg)
+        self._nav.emplacements = emp_mod.lire(self._app.cfg)
         self._resize_col_idx = 0  # Initialise le focus sur "fichier" (première colonne redimensionnable)
         self._build_columns()
         self._footer_suit_le_mode()
@@ -683,10 +686,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if self._nav.is_virtual:
             # Aucun volume n'est sélectionnable, et les colonnes ne se
             # redimensionnent pas : annoncer l'un ou l'autre serait faux.
-            n = sum(1 for t, _p in self._rows if t == _ROW_TYPE_DIR)
+            m = len(self._nav.emplacements)
+            n = sum(1 for t, _p in self._rows if t == _ROW_TYPE_DIR) - m
             self.query_one("#status-bar", Static).update(
                 barre_etat(_("Choose a volume"),
-                           ngettext("{count} volume", "{count} volumes", n).format(count=n))
+                           ngettext("{count} volume", "{count} volumes", n).format(count=n),
+                           ngettext("{count} location", "{count} locations",
+                                    m).format(count=m) if m else "")
             )
             return
         sel_count   = len(self._selected)
@@ -797,12 +803,19 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
         # ── Volumes, ou sous-répertoires ──────────────────────────────────────
         is_virtual = self._nav.is_virtual
+        libelles = {e.chemin: e.libelle for e in self._nav.emplacements}
         for d in subdirs:
             row_key = str(d)
             if is_virtual:
                 tiret = Text("—", style="dim", no_wrap=True)
+                if d in libelles:
+                    nom = Text(f"{_SHARE_ICON} {libelles[d]}", style="bold cyan",
+                               no_wrap=True)
+                    nom.append(f"  {d}", style="dim")
+                else:
+                    nom = Text(f"{_DISK_ICON} {d}", style="bold cyan")
                 table.add_row(
-                    Text(f"{_DISK_ICON} {d}", style="bold cyan"),
+                    nom,
                     *self._cellules_volumes.get(d, (tiret, tiret, tiret)),
                     key=row_key,
                 )
@@ -1082,15 +1095,50 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 count=len(forcees))
         self.notify(texte, severity="warning", timeout=5)
 
+    # ─── Emplacements réseau (IE-161) ─────────────────────────────────────────
+
+    def _connecter(self, epoch: int) -> bool:
+        """Ouvre la connexion au partage du dossier courant, s'il en est un.
+
+        Sur un refus, la cause s'affiche et l'accueil revient : un dossier
+        illisible resterait vide sans dire pourquoi.
+        """
+        e = emp_mod.contenant(self._nav.emplacements, self._nav.current)
+        if e is None:
+            return True
+        try:
+            emp_mod.connecter(e)
+            return True
+        except emp_mod.ConnexionRefusee as err:
+            if self._scan_epoch == epoch:
+                self.app.call_from_thread(self.notify, str(err),
+                                          severity="error", timeout=12)
+                self.app.call_from_thread(self.action_accueil)
+            return False
+
+    def _mesurer_volumes(self, subdirs: list[Path]) -> dict[Path, tuple]:
+        """L'espace de chaque ligne de l'accueil. Un partage auquel la session
+        n'est pas encore connectée garde ses tirets : le mesurer tenterait une
+        connexion, et attendrait un serveur éteint."""
+        reseau = {e.chemin for e in self._nav.emplacements if e.reseau}
+        connectes = emp_mod.connectes() if reseau else set()
+        tiret = Text("—", style="dim", no_wrap=True)
+        return {d: (_cellules_volume(d)
+                    if d not in reseau or emp_mod.cle(d) in connectes
+                    else (tiret, tiret, tiret))
+                for d in subdirs}
+
     # ─── Worker de scan ───────────────────────────────────────────────────────
 
     @work(thread=True, exclusive=True, name="scanner")
     def _load_directory(self) -> None:
         epoch   = self._scan_epoch          # capture l'epoch au lancement du thread
         self._nav.duree_min_titre = 60 * cfg_mod.get_min_title_minutes(self._app.cfg)
+        if not self._nav.is_virtual and not self._connecter(epoch):
+            return
         subdirs = self._nav.list_subdirs()
         videos  = self._nav.list_videos()
-        volumes = ({d: _cellules_volume(d) for d in subdirs}
+        volumes = (self._mesurer_volumes(subdirs)
                    if self._nav.is_virtual else None)
         illisibles: dict[Path, str] = {}
         if self._nav.disque_chiffre:

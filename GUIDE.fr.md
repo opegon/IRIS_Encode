@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.13
+**Version** : 0.9.1.14
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -122,6 +122,32 @@ leur nom, grisés, avec `…` en décision, et se remplissent au fil de l'analys
 une jauge à côté du compteur (« Analyse en cours… 12 / 40 ») montre où elle en
 est. On parcourt la liste pendant ce temps ; une ligne encore en attente ne se
 coche pas.
+
+**Emplacements — les partages réseau.** Sous les lecteurs, l'accueil liste les
+partages déclarés dans `config.toml`, par leur libellé (🌐). Ils s'ouvrent comme
+un lecteur ; le fil d'Ariane montre « Films › Saison 1 ».
+
+```toml
+[[emplacements]]
+libelle = "Films"
+chemin  = '\\10.0.0.10\Films'
+```
+
+Le chemin s'écrit entre apostrophes simples : TOML n'y lit pas les barres
+obliques inverses. Le compte du partage s'enregistre une fois dans le
+Gestionnaire d'identifiants Windows, sous le nom du serveur — IRIS n'en garde
+rien :
+
+```
+cmdkey /add:10.0.0.10 /user:nas\utilisateur /pass
+```
+
+`/pass` sans valeur : le mot de passe est demandé, sans s'afficher. IRIS se
+connecte à l'ouverture et coupe à sa sortie les connexions qu'il a ouvertes ;
+un lecteur réseau existant n'est pas touché. Windows n'admet **qu'un compte par
+serveur** : deux partages du même NAS partagent le leur. Un refus (mot de
+passe, serveur éteint, autre compte déjà connecté) s'affiche avec sa cause, et
+l'accueil revient.
 
 | Touche | Action |
 |---|---|

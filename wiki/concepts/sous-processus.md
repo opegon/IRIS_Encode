@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-09-29
+maj: 2026-11-02
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -62,6 +62,19 @@ fragment de ligne est exécuté comme une commande. *(mesuré, Windows 11)*
 Parade : placer ce qui peut remplacer le fichier **et tout ce qui suit** dans
 un bloc `( … )`, qui se termine par la relance ou `exit /b`. cmd lit un bloc en
 entier avant de l'exécuter. *(mesuré, voir [[2026-09-24-mise-a-jour-application]])*
+
+## Partages réseau : une connexion pour toute la session
+
+Une connexion SMB ouverte par `WNetAddConnection2W` (sans lettre de lecteur)
+vaut pour la **session Windows**, pas pour le processus : les outils lancés
+ensuite lisent le chemin UNC sans identifiants. C'est ce qui permet aux
+emplacements de l'accueil (v0.9.1.14) de servir à toute la chaîne. *(documenté
+Microsoft ; refus mesurés : un partage inexistant rend 67 en moins d'une seconde)*
+
+Windows n'admet **qu'un compte par serveur** dans une session : une seconde
+connexion sous un autre compte est refusée (erreur 1219). `10.0.0.10` et `nas`
+comptent pour deux serveurs. *(documenté ; non mesuré ici, faute de partage
+d'essai sous un autre compte)*
 
 ## Voir aussi
 

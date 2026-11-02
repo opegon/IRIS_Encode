@@ -59,10 +59,14 @@ def test_une_jonction_garde_son_propre_chemin(tmp_path):
 
 def test_la_table_ne_mesure_pas_les_volumes():
     texte = _source("tui/screens/browser.py")
-    peupler = texte[texte.index("def _populate_table"):texte.index("_FORCABLES =")]
+    peupler = texte[texte.index("def _populate_table"):texte.index("def _cellules_attente")]
     assert "_cellules_volume(" not in peupler and "disk_usage" not in peupler
     charger = texte[texte.index("def _load_directory"):texte.index("def action_open_profile_picker")]
-    assert "_cellules_volume(" in charger
+    # La mesure passe par `_mesurer_volumes`, qui écarte les partages pas
+    # encore connectés (IE-161).
+    assert "_mesurer_volumes(" in charger
+    mesurer = texte[texte.index("def _mesurer_volumes"):texte.index("def _load_directory")]
+    assert "_cellules_volume(" in mesurer
 
 
 # ─── CR-75 — un fichier illisible se voit ────────────────────────────────────

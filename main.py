@@ -163,7 +163,12 @@ def main() -> None:
     # Un dossier donné s'ouvre ; sans argument, l'accueil part des volumes.
     # L'argument était vérifié puis sans effet, contre son aide (CR-73).
     app = IrisEncodeApp(start_path=start_path, ouvrir_dossier=args.path is not None)
-    app.run()
+    try:
+        app.run()
+    finally:
+        # Les partages ouverts depuis l'accueil se referment avec IRIS (IE-161).
+        from core import emplacements
+        emplacements.deconnecter_tout()
 
 
 if __name__ == "__main__":

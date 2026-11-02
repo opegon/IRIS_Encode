@@ -12,7 +12,7 @@ import sys
 import string
 from pathlib import Path
 
-from core import bluray, dvd
+from core import bluray, dvd, emplacements
 from core.scanner import SUPPORTED_EXTENSIONS, module_disque
 
 
@@ -69,6 +69,8 @@ class FileNavigator:
         self.duree_min_titre: float = bluray.DUREE_MIN_DEFAUT_MIN * 60
         self.disque_chiffre = False
         self.dvd_sans_outil = False
+        # Les partages nommés de config.toml, listés sous les volumes (IE-161).
+        self.emplacements: list[emplacements.Emplacement] = []
 
     @property
     def current(self) -> Path:
@@ -118,7 +120,7 @@ class FileNavigator:
 
     def list_subdirs(self) -> list[Path]:
         if self._virtual:
-            return list_volumes()
+            return list_volumes() + [e.chemin for e in self.emplacements]
         # `os.scandir` : sous Windows le type de chaque entrée vient avec le
         # listage. `iterdir` + `is_dir` relisait chaque entrée — un aller-retour
         # par fichier sur un partage réseau.
@@ -169,4 +171,4 @@ class FileNavigator:
         """Le dossier courant. La liste des volumes a son propre libellé dans
         la barre d'état (« Choose a volume ») : la branche qui rendait
         « Volumes » en dur n'était jamais atteinte (CR-69)."""
-        return str(self._current)
+        return emplacements.fil_d_ariane(self.emplacements, self._current)

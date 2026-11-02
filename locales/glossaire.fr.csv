@@ -96,3 +96,5 @@ IMDB,IMDB,Do not translate.
 AlloCiné,AlloCiné,Do not translate.
 OpenSubtitles,OpenSubtitles,Do not translate.
 Read,Read,"Encoding queue column header: where the video is decoded (GPU / CPU). Kept in English in French, at the user's request (2026-10-29)."
+location,emplacement,"Home screen: a named network share (IE-161), listed under the volumes."
+Credential Manager,Gestionnaire d'identifiants,"Windows component that holds the account of a network share."

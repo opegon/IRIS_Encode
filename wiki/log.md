@@ -523,3 +523,9 @@ n8.1.3 rend des couleurs justes en HDR10 et en SDR. Pages mises à jour :
 Signalé par l'utilisateur (concert FLAC, profil `preserve_hd_audio = true`,
 sortie en AC3). Lu dans le code : FLAC ni sans perte ni compatible, donc
 transcodé. Page mise à jour : [[audio]].
+
+## [2026-11-02] ingest | Emplacements : partages SMB de l'accueil (v0.9.1.14)
+
+Demandé par l'utilisateur (IE-161). Mesuré : `WNetAddConnection2W` refuse un
+partage inexistant (67) sans délai ; `WNetOpenEnumW` liste les connexions de
+la session. Page mise à jour : [[sous-processus]].

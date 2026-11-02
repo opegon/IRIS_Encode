@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.13 — document de référence courant
-**Date** : 2026-11-01
+**Version** : 0.9.1.14 — document de référence courant
+**Date** : 2026-11-02
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -573,6 +573,12 @@ dv = 6
 [tui.tracks.columns]
 codec = 12
 src = 26
+
+# Partages nommés de l'accueil (§ 14.1, v0.9.1.14) — un bloc par emplacement.
+# Apostrophes simples : TOML n'interprète pas les barres obliques inverses.
+[[emplacements]]
+libelle = "Films"
+chemin  = '\\10.0.0.10\Films'
 ```
 
 Les largeurs de colonnes sont réécrites automatiquement après tout redimensionnement
@@ -2803,6 +2809,37 @@ volumes disponibles (icône 💾), pas un chemin fixe. **Un dossier passé en ar
 (`IrisEncodeApp(ouvrir_dossier=True)`) ; il était vérifié puis sans effet, contre son
 aide (v0.8.9.121, CR-73). Normalisé par `os.path.abspath`, comme la navigation (CR-68).
 
+#### Emplacements — partages réseau nommés (v0.9.1.14, IE-161)
+
+`core/emplacements.py`. Les blocs `[[emplacements]]` de `config.toml` (§ 5) —
+`libelle`, `chemin` — se listent **sous les volumes** (`FileNavigator.emplacements`,
+ajoutés à `list_subdirs()` en mode virtuel), icône 🌐, libellé puis chemin grisé.
+Une entrée sans libellé ou sans chemin est écartée et journalisée. Le fil d'Ariane
+remplace la racine par le libellé (`fil_d_ariane` : « Films › Saison 1 ») ; `⌫` à
+la racine d'un partage retombe sur l'accueil (pathlib : la racine `\\srv\partage\`
+est son propre parent). La barre d'état compte volumes et emplacements séparément.
+
+- **Identité** : jamais dans `config.toml`. Elle vit dans le Gestionnaire
+  d'identifiants Windows sous le nom du serveur (`cmdkey /add:<serveur>
+  /user:<compte> /pass`) ; le client SMB s'en sert de lui-même.
+- **Connexion** : `connecter()` dans le worker de scan (`BrowserScreen._connecter`,
+  avant le listage), par `WNetAddConnection2W` sans lettre de lecteur, sans compte
+  ni mot de passe, `CONNECT_TEMPORARY`. Rien n'est fait si la session est déjà
+  connectée au partage (`connexions_existantes()` : `WNetOpenEnumW`,
+  `RESOURCE_CONNECTED`). La connexion vaut pour la session Windows : ffmpeg,
+  mkvmerge, dovi_tool et mpv lisent le chemin UNC sans rien de plus.
+- **Refus** : `ConnexionRefusee(code, message)` ; la cause en clair (5, 53, 67, 86,
+  1203, 1219, 1222, 1326, 1327, 1330, 1331, 1909, 2202 ; sinon « erreur Windows N »)
+  est notifiée et l'accueil revient. **1219** : Windows n'admet qu'un compte par
+  serveur — `10.0.0.10` et `nas` comptent cependant pour deux.
+- **Espace libre** d'un partage : mesuré seulement s'il est déjà connecté
+  (`_mesurer_volumes`) — le mesurer avant tenterait une connexion, et attendrait
+  un serveur éteint.
+- **Sortie** : `main.py` appelle `deconnecter_tout()` après `app.run()` (bloc
+  `finally`) : `WNetCancelConnection2W` sans forcer, sur les seules connexions
+  ouvertes par IRIS. Un partage encore utilisé ailleurs reste connecté.
+- Hors Windows : aucune connexion ; le chemin doit être monté.
+
 #### Colonnes
 
 | Colonne | Clé config | Contenu |
@@ -3831,6 +3868,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.14 | 2026-11-02 | **Emplacements** (§ 5, § 14.1, IE-161) : partages réseau nommés listés sous les volumes, ouverts comme un lecteur ; connexion SMB par `WNetAddConnection2W` avec l'identité du Gestionnaire d'identifiants Windows, coupée à la sortie ; fil d'Ariane au libellé · `core/emplacements.py` · `tests/test_emplacements.py` |
 | 0.9.1.13 | 2026-11-02 | **FLAC et PCM sans perte** (§ 8.5) : recopiés avec `preserve_hd_audio`, MKV imposé, greffes comprises ; avant, transcodés en AC3/AAC · `tests/test_audio_flac_pcm.py` |
 | 0.9.1.12 | 2026-11-01 | **Dolby Vision profil 5 aux bonnes couleurs** (§ 4.1, § 4.2, § 8.4) : conversion HDR10/SDR par `libplacebo` (`apply_dolbyvision`), ffmpeg à part dans `bin/dv/` (`ffmpeg_dv`) ou principal s'il a le filtre ; sans lui, `SKIP` · `tests/test_dv_p5.py` |
 | 0.9.1.11 | 2026-11-01 | **AVI au fourcc nul** (§ 15) : HEVC ou H.264 reconnu au premier paquet sous `rawvideo`, `VideoInfo.decodeur`, `-c:v` imposé devant le `-i` ; `encodeur_de()` lit le `-c:v` après le premier `-i` · `tests/test_fourcc_nul.py` |

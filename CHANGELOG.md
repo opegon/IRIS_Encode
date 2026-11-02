@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.16] — 2026-11-02
+
+### Tester la connexion d'un emplacement
+
+Un mauvais mot de passe ne se découvrait qu'en ouvrant l'emplacement depuis
+l'accueil. Le formulaire d'un emplacement a désormais un bouton **Tester la
+connexion** (`Ctrl+T`) : il essaie le chemin avec le compte saisi, sans rien
+enregistrer, dit si le partage se lit ou pourquoi il est refusé, puis referme
+ce que l'essai a ouvert. Si Windows est déjà connecté à ce partage, l'essai le
+dit : un autre compte ne s'essaie pas tant que cette connexion est ouverte.
+
+Hors Windows, IRIS ne se connecte pas aux partages : le formulaire le dit
+désormais (il faut monter le partage d'abord ; compte et mot de passe ne
+servent pas).
+
+Au passage : une cause de refus qui pose une question ne reçoit plus un point
+de trop (« … Windows ?. »).
+
 ## [v0.9.1.15] — 2026-11-02
 
 ### Gérer les emplacements depuis l'accueil

@@ -15,7 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from rich.text import Text
-from textual import on
+from textual import on, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -174,18 +174,24 @@ class EmplacementForm(ModalScreen[bool]):
     .empl-ligne Input { width: 1fr; }
     #empl-note { color: $text-muted; height: auto; margin-top: 1; }
     #empl-erreur { color: darkorange; text-style: bold; height: auto; display: none; }
+    #empl-essai { height: auto; display: none; margin-top: 1; }
+    #empl-essai.ok { color: $success; }
+    #empl-essai.refus { color: darkorange; text-style: bold; }
     #empl-boutons { height: auto; align: center middle; margin-top: 1; }
     #empl-boutons Button { min-width: 16; margin-right: 2; border: none; }
     """
 
     BINDINGS = [
         Binding("ctrl+s", "enregistrer", N_("Save"),   show=False, priority=True),
+        Binding("ctrl+t", "tester",      N_("Test the connection"), show=False,
+                priority=True),
         Binding("escape", "annuler",     N_("Cancel"), show=False, priority=True),
     ]
 
     def __init__(self, ancien: emp.Emplacement | None) -> None:
         super().__init__()
         self._ancien = ancien
+        self._essai_en_cours = False
 
     @property
     def _cfg(self) -> dict:
@@ -211,10 +217,13 @@ class EmplacementForm(ModalScreen[bool]):
                                 id=f"champ-{cle}")
             yield Static("", id="empl-note", markup=False)
             yield Static("", id="empl-erreur", markup=False)
+            yield Static("", id="empl-essai", markup=False)
             with Horizontal(id="empl-boutons"):
                 yield Button("✓  " + _("Save"), id="btn-enregistrer", variant="primary")
+                yield Button("⇄  " + _("Test the connection"), id="btn-tester")
                 yield Button("✗  " + _("Cancel"), id="btn-annuler")
             yield Static(raccourcis([("tab", N_("Next field")), ("ctrl+s", N_("Save")),
+                                     ("ctrl+t", N_("Test")),
                                      ("escape", N_("Cancel"))]), classes="empl-hint")
 
     def on_mount(self) -> None:
@@ -233,6 +242,10 @@ class EmplacementForm(ModalScreen[bool]):
         if srv is None:
             texte = (_("Local folder or drive: no account needed.")
                      if chemin else "")
+            mdp.placeholder = ""
+        elif not emp.SMB_WINDOWS:
+            texte = _("Outside Windows, IRIS does not connect to network shares: "
+                      "mount the share first. Account and password are not used.")
             mdp.placeholder = ""
         else:
             enregistre = emp.compte(srv)
@@ -263,8 +276,56 @@ class EmplacementForm(ModalScreen[bool]):
     def _bouton_annuler(self) -> None:
         self.action_annuler()
 
+    @on(Button.Pressed, "#btn-tester")
+    def _bouton_tester(self) -> None:
+        self.action_tester()
+
     def action_annuler(self) -> None:
         self.dismiss(False)
+
+    # ── Tester la connexion ───────────────────────────────────────────────────
+
+    def _essai(self, texte: str, classe: str) -> None:
+        zone = self.query_one("#empl-essai", Static)
+        zone.set_classes(classe)
+        zone.update(texte)
+        zone.display = bool(texte)
+
+    def action_tester(self) -> None:
+        """Essaie le chemin avec le compte saisi, sans rien enregistrer."""
+        if self._essai_en_cours:
+            return
+        self.query_one("#empl-erreur", Static).display = False
+        chemin = self._valeur("chemin")
+        if not chemin:
+            self._erreur(_("The path is required."))
+            return
+        compte = self._valeur("compte")
+        mdp = self.query_one("#champ-mdp", Input).value
+        srv = emp.serveur(chemin)
+        # Même règle qu'à l'enregistrement : un autre compte que celui
+        # enregistré ne s'essaie pas sans son mot de passe.
+        if (srv is not None and emp.SMB_WINDOWS and compte and not mdp
+                and compte != (emp.compte(srv) or "")):
+            self._erreur(_("Type the password of this account."))
+            return
+        self._essai_en_cours = True
+        self.query_one("#btn-tester", Button).disabled = True
+        self._essai("… " + _("Testing the connection…"), "")
+        self._tester(Path(chemin), compte if mdp else None, mdp or None)
+
+    @work(thread=True, name="emplacement-essai")
+    def _tester(self, chemin: Path, compte: str | None, mdp: str | None) -> None:
+        try:
+            texte, classe = "✓ " + emp.essayer(chemin, compte, mdp), "ok"
+        except emp.ConnexionRefusee as err:
+            texte, classe = "✗ " + str(err), "refus"
+        self.app.call_from_thread(self._fin_essai, texte, classe)
+
+    def _fin_essai(self, texte: str, classe: str) -> None:
+        self._essai_en_cours = False
+        self.query_one("#btn-tester", Button).disabled = False
+        self._essai(texte, classe)
 
     def action_enregistrer(self) -> None:
         libelle, chemin = self._valeur("libelle"), self._valeur("chemin")
@@ -278,7 +339,7 @@ class EmplacementForm(ModalScreen[bool]):
 
         # L'identité, d'abord : un refus de Windows laisse tout en l'état.
         srv = emp.serveur(chemin)
-        if srv is not None:
+        if srv is not None and emp.SMB_WINDOWS:
             enregistre = emp.compte(srv) or ""
             try:
                 if compte and (compte != enregistre or mdp):

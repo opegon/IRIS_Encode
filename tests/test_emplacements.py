@@ -74,10 +74,11 @@ class _FauxMpr:
         self.code = code
         self.ajouts: list[str] = []
         self.coupures: list[tuple[str, bool]] = []
+        self.identifiants: list[tuple[str | None, str | None]] = []
 
     def WNetAddConnection2W(self, ressource, mdp, compte, drapeaux):
         self.ajouts.append(ressource._obj.lpRemoteName)
-        assert mdp is None and compte is None      # l'identité vient de Windows
+        self.identifiants.append((compte, mdp))
         return self.code
 
     def WNetCancelConnection2W(self, nom, drapeaux, forcer):
@@ -109,6 +110,7 @@ def test_iris_coupe_a_la_sortie_ce_qu_il_a_ouvert(faux_windows):
     emp.connecter(films)
     emp.connecter(films)                       # déjà ouverte : pas de second appel
     assert faux.ajouts == [r"\\10.0.0.10\Films"]
+    assert faux.identifiants == [(None, None)]   # l'identité vient de Windows
     assert emp.cle(FILMS) in emp.connectes()
     emp.deconnecter_tout()
     # Sans forcer : un Explorateur ouvert sur le partage n'est pas cassé.
@@ -132,7 +134,7 @@ def test_un_refus_donne_sa_cause_en_clair(faux_windows, code):
         emp.connecter(emp.Emplacement("Films", FILMS))
     assert refus.value.code == code
     assert str(refus.value).startswith("Films")
-    assert str(refus.value) == _("{location}: {cause}.").format(
+    assert str(refus.value) == _("{location}: {cause}").format(
         location="Films", cause=emp._cause(code))
     assert emp.connectes() == set()              # rien à couper à la sortie
 
@@ -456,3 +458,146 @@ def test_la_touche_e_n_agit_que_sur_la_liste_des_volumes(monkeypatch, sans_ecrit
 
     r = asyncio.run(_gestion([], scenario))
     assert r["ecran_final"] == "BrowserScreen"
+
+
+
+# ═══ Tester la connexion ; hors Windows ══════════════════════════════════════
+
+def test_l_essai_ouvre_avec_le_compte_saisi_puis_referme(faux_windows, monkeypatch):
+    faux, _existantes = faux_windows
+    monkeypatch.setattr(emp, "_lisible", lambda c: True)
+    constat = emp.essayer(FILMS, r"nas\olivier", "secret")
+    assert constat == _("Connection successful: the share is readable.")
+    assert faux.identifiants == [(r"nas\olivier", "secret")]
+    assert faux.coupures == [(r"\\10.0.0.10\Films", False)]
+    assert emp.connectes() == set()              # rien laissé ouvert
+
+
+def test_l_essai_d_un_partage_deja_connecte_ne_rouvre_ni_ne_coupe(faux_windows,
+                                                                 monkeypatch):
+    faux, existantes = faux_windows
+    existantes.add(r"\\10.0.0.10\films")
+    monkeypatch.setattr(emp, "_lisible", lambda c: True)
+    constat = emp.essayer(FILMS, r"nas\autre", "x")
+    assert constat == _(
+        "Windows is already connected to this share: it is readable, with the "
+        "account of that connection. Another account cannot be tested while it "
+        "is open.")
+    assert faux.ajouts == [] and faux.coupures == []
+
+
+def test_l_essai_refuse_donne_la_cause(faux_windows):
+    faux, _existantes = faux_windows
+    faux.code = 1326
+    with pytest.raises(emp.ConnexionRefusee) as refus:
+        emp.essayer(FILMS, r"nas\olivier", "faux")
+    assert refus.value.code == 1326
+    assert str(refus.value) == _("Connection refused: {cause}").format(
+        cause=emp._cause(1326))
+    assert faux.coupures == []                   # rien n'a été ouvert
+
+
+def test_l_essai_qui_ouvre_sans_pouvoir_lire_referme_quand_meme(faux_windows,
+                                                               monkeypatch):
+    faux, _existantes = faux_windows
+    monkeypatch.setattr(emp, "_lisible", lambda c: False)
+    with pytest.raises(emp.ConnexionRefusee) as refus:
+        emp.essayer(FILMS)
+    assert refus.value.code == 5
+    assert faux.coupures == [(r"\\10.0.0.10\Films", False)]
+
+
+def test_l_essai_d_un_dossier_local(tmp_path):
+    assert emp.essayer(tmp_path) == _("Folder reachable.")
+    with pytest.raises(emp.ConnexionRefusee):
+        emp.essayer(tmp_path / "absent")
+
+
+def test_hors_windows_un_partage_n_est_qu_un_dossier_monte(monkeypatch, tmp_path):
+    monkeypatch.setattr(emp, "SMB_WINDOWS", False)
+    monkeypatch.setattr(emp, "_lisible", lambda c: False)
+    with pytest.raises(emp.ConnexionRefusee) as refus:
+        emp.essayer(FILMS, r"nas\olivier", "secret")
+    assert str(refus.value) == _("Folder unreachable: is it mounted?")
+
+
+def test_le_bouton_teste_avec_le_compte_saisi(monkeypatch, sans_ecriture):
+    _Coffre(monkeypatch, {"10.0.0.10": r"nas\olivier"})
+    appels = []
+
+    def essayer(chemin, compte=None, mdp=None):
+        appels.append((chemin, compte, mdp))
+        return "OK"
+
+    monkeypatch.setattr(emp, "essayer", essayer)
+
+    async def scenario(app, pilot, r):
+        from textual.widgets import Static
+        await pilot.press("e")
+        await pilot.pause(0.2)
+        await pilot.press("enter")
+        await pilot.pause(0.2)
+        await pilot.press("ctrl+t")              # compte enregistré, sans mot de passe
+        for _ in range(30):
+            await pilot.pause(0.1)
+            if app.screen.query_one("#empl-essai", Static).has_class("ok"):
+                break
+        r["essai"] = str(app.screen.query_one("#empl-essai", Static).render())
+        _remplir(app, compte=r"nas\autre", mdp="secret")
+        await pilot.press("ctrl+t")
+        await pilot.pause(0.5)
+        r["ecran"] = type(app.screen).__name__
+
+    r = asyncio.run(_gestion([{"libelle": "Films", "chemin": str(FILMS)}], scenario))
+    # D'abord l'identité enregistrée (rien de passé), puis le compte saisi.
+    assert appels == [(FILMS, None, None), (FILMS, r"nas\autre", "secret")]
+    assert "✓ OK" in r["essai"]
+    assert r["ecran"] == "EmplacementForm"       # tester n'enregistre ni ne ferme
+    assert r["cfg"] == [{"libelle": "Films", "chemin": str(FILMS)}]
+
+
+def test_le_bouton_refuse_un_autre_compte_sans_mot_de_passe(monkeypatch, sans_ecriture):
+    _Coffre(monkeypatch, {"10.0.0.10": r"nas\olivier"})
+    appels = []
+    monkeypatch.setattr(emp, "essayer", lambda *a: appels.append(a) or "OK")
+
+    async def scenario(app, pilot, r):
+        from textual.widgets import Static
+        await pilot.press("e")
+        await pilot.pause(0.2)
+        await pilot.press("enter")
+        await pilot.pause(0.2)
+        _remplir(app, compte=r"nas\autre")
+        await pilot.press("ctrl+t")
+        await pilot.pause(0.3)
+        r["erreur"] = str(app.screen.query_one("#empl-erreur", Static).render())
+
+    r = asyncio.run(_gestion([{"libelle": "Films", "chemin": str(FILMS)}], scenario))
+    assert appels == []
+    assert _("Type the password of this account.") in r["erreur"]
+
+
+def test_hors_windows_l_ecran_le_dit_et_n_enregistre_pas_d_identite(monkeypatch,
+                                                                    sans_ecriture):
+    coffre = _Coffre(monkeypatch)
+    monkeypatch.setattr(emp, "SMB_WINDOWS", False)
+
+    async def scenario(app, pilot, r):
+        from textual.widgets import Static
+        await pilot.press("e")
+        await pilot.pause(0.2)
+        await pilot.press("insert")
+        await pilot.pause(0.2)
+        _remplir(app, libelle="Films", chemin=str(FILMS), compte=r"nas\olivier",
+                 mdp="secret")
+        await pilot.pause(0.2)
+        r["note"] = str(app.screen.query_one("#empl-note", Static).render())
+        await pilot.press("ctrl+s")
+        await pilot.pause(0.2)
+
+    r = asyncio.run(_gestion([], scenario))
+    assert _("Outside Windows, IRIS does not connect to network shares: mount the "
+             "share first. Account and password are not used.") in r["note"].replace(
+                 "\n", " ")
+    assert coffre.ecrits == []
+    assert r["cfg"] == [{"libelle": "Films", "chemin": emp.texte(FILMS)}]

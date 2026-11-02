@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.15
+**Version** : 0.9.1.16
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -130,6 +130,10 @@ d'Ariane montre « Films › Saison 1 ».
 `E`, sur la liste des volumes, les gère : `Inser` ajoute, `↵` modifie,
 `Ctrl+D` supprime. Le formulaire demande le libellé (« Films »), le chemin
 (`\\10.0.0.10\Films`), le compte (`nas\utilisateur`) et son mot de passe.
+**Tester la connexion** (`Ctrl+T`) essaie le chemin avec le compte saisi, sans
+rien enregistrer, puis referme ce que l'essai a ouvert. Si Windows est déjà
+connecté à ce partage, l'essai le dit : un autre compte ne s'essaie pas tant
+que cette connexion est ouverte.
 
 - **Le compte est celui du serveur.** Windows n'admet qu'un compte par
   serveur : deux partages du même NAS partagent le leur, et le formulaire dit
@@ -144,6 +148,9 @@ IRIS se connecte à l'ouverture et coupe à sa sortie les connexions qu'il a
 ouvertes ; un lecteur réseau existant n'est pas touché. Un refus (mot de
 passe, serveur éteint, autre compte déjà connecté) s'affiche avec sa cause, et
 l'accueil revient.
+
+**Hors Windows**, IRIS ne se connecte pas aux partages : il faut les monter
+d'abord ; le compte et le mot de passe ne servent pas, et le formulaire le dit.
 
 À la main, c'est la même chose : un bloc par emplacement dans `config.toml`
 (chemin entre apostrophes simples, que TOML laisse tel quel), et l'identité par

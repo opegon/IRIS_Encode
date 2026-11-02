@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.15 — document de référence courant
+**Version** : 0.9.1.16 — document de référence courant
 **Date** : 2026-11-02
 **Statut** : stable
 
@@ -2864,6 +2864,20 @@ est son propre parent). La barre d'état compte volumes et emplacements séparé
   `CRED_TYPE_DOMAIN_PASSWORD`, cible = nom du serveur, `CRED_PERSIST_LOCAL_MACHINE`
   (comme `cmdkey /add`, sans itinérance) ; `CredReadW` ne rend que le nom du
   compte ; `CredDeleteW` (introuvable = rien à faire).
+- **Tester la connexion** (v0.9.1.16) : bouton et `Ctrl+T` du formulaire,
+  `essayer(chemin, compte, mot_de_passe)` dans un worker. Même règle de mot de
+  passe qu'à l'enregistrement ; sans mot de passe saisi, ni compte ni mot de
+  passe ne sont passés (identité enregistrée, sinon celle de la session).
+  `WNetAddConnection2W` avec les identifiants saisis, lecture du dossier,
+  puis `WNetCancelConnection2W` de ce que l'essai a ouvert — même en cas
+  d'échec de lecture. Partage déjà connecté : ni ouverture ni coupure, le
+  constat dit qu'un autre compte ne peut s'essayer. Rien n'est enregistré.
+  Dossier local, ou hors Windows : `os.path.isdir` seul. Les causes se
+  ponctuent une fois (`_cause` : une cause qui pose une question garde son
+  « ? »).
+- **Hors Windows** (`SMB_WINDOWS` faux) : la note du formulaire dit que le
+  partage doit être monté et que compte et mot de passe ne servent pas ;
+  l'enregistrement n'écrit aucune identité.
 - `ecrire()` enregistre un partage sans barre finale (`\\nas\films`) et garde
   celle d'un lecteur (`E:\` — `E:` désignerait le dossier courant du lecteur).
 
@@ -3895,6 +3909,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.16 | 2026-11-02 | **Tester la connexion** (§ 14.1) : bouton et `Ctrl+T` du formulaire d'emplacement, essai avec le compte saisi sans rien enregistrer, connexion de l'essai refermée · hors Windows, le formulaire dit que le partage doit être monté · causes ponctuées une fois · `core.emplacements.essayer` · `tests/test_emplacements.py` |
 | 0.9.1.15 | 2026-11-02 | **Gestion des emplacements** (§ 14.1, IE-162) : `E` sur la liste des volumes — ajouter, modifier, supprimer ; compte du serveur et mot de passe enregistrés dans le Gestionnaire d'identifiants Windows (`CredWriteW`), jamais dans `config.toml` ; un lecteur entier (`E:\`) garde sa barre · `tui/screens/emplacements.py` · `tests/test_emplacements.py` |
 | 0.9.1.14 | 2026-11-02 | **Emplacements** (§ 5, § 14.1, IE-161) : partages réseau nommés listés sous les volumes, ouverts comme un lecteur ; connexion SMB par `WNetAddConnection2W` avec l'identité du Gestionnaire d'identifiants Windows, coupée à la sortie ; fil d'Ariane au libellé · `core/emplacements.py` · `tests/test_emplacements.py` |
 | 0.9.1.13 | 2026-11-02 | **FLAC et PCM sans perte** (§ 8.5) : recopiés avec `preserve_hd_audio`, MKV imposé, greffes comprises ; avant, transcodés en AC3/AAC · `tests/test_audio_flac_pcm.py` |

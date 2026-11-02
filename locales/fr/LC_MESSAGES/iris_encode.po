@@ -27,7 +27,7 @@ msgid "Username"
 msgstr "Identifiant"
 
 #: core/cles.py:56
-#: tui/screens/emplacements.py:206
+#: tui/screens/emplacements.py:212
 msgid "Password"
 msgstr "Mot de passe"
 
@@ -233,96 +233,123 @@ msgstr "Forcé manuellement (était SKIP)"
 msgid "Forced manually (was DV removal)"
 msgstr "Forcé manuellement (était retrait DV)"
 
-#: core/emplacements.py:126
+#: core/emplacements.py:127
 msgid "The label is required."
 msgstr "Le libellé est obligatoire."
 
-#: core/emplacements.py:128
+#: core/emplacements.py:129
 msgid "Another location already has this label."
 msgstr "Un autre emplacement porte déjà ce libellé."
 
-#: core/emplacements.py:130
+#: core/emplacements.py:131
+#: tui/screens/emplacements.py:301
 msgid "The path is required."
 msgstr "Le chemin est obligatoire."
 
-#: core/emplacements.py:134
+#: core/emplacements.py:135
 msgid "A network path reads \\\\server\\share."
 msgstr "Un chemin réseau s'écrit \\\\serveur\\partage."
 
-#: core/emplacements.py:137
+#: core/emplacements.py:138
 #, python-brace-format
 msgid "This path is already the location “{label}”."
 msgstr "Ce chemin est déjà l'emplacement « {label} »."
 
-#: core/emplacements.py:161
+#: core/emplacements.py:162
 msgid "access denied: this account has no right on the share"
 msgstr "accès refusé : ce compte n'a aucun droit sur le partage"
 
-#: core/emplacements.py:162
-#: core/emplacements.py:165
+#: core/emplacements.py:163
+#: core/emplacements.py:166
 msgid "server unreachable"
 msgstr "serveur injoignable"
 
-#: core/emplacements.py:163
+#: core/emplacements.py:164
 msgid "this share does not exist on the server"
 msgstr "ce partage n'existe pas sur le serveur"
 
-#: core/emplacements.py:164
+#: core/emplacements.py:165
 msgid "password refused"
 msgstr "mot de passe refusé"
 
-#: core/emplacements.py:166
+#: core/emplacements.py:167
 msgid "no network"
 msgstr "pas de réseau"
 
-#: core/emplacements.py:167
+#: core/emplacements.py:168
 msgid "Windows is already connected to this server under another account (a network drive, or another location). Windows allows one account per server"
 msgstr "Windows est déjà connecté à ce serveur sous un autre compte (un lecteur réseau, ou un autre emplacement). Windows n'admet qu'un compte par serveur"
 
-#: core/emplacements.py:170
+#: core/emplacements.py:171
 msgid "account or password refused. Is an identity saved for this server in the Windows Credential Manager?"
 msgstr "compte ou mot de passe refusé. Une identité est-elle enregistrée pour ce serveur dans le Gestionnaire d'identifiants Windows ?"
 
-#: core/emplacements.py:172
+#: core/emplacements.py:173
 msgid "account restriction"
 msgstr "restriction du compte"
 
-#: core/emplacements.py:173
+#: core/emplacements.py:174
 msgid "password expired"
 msgstr "mot de passe expiré"
 
-#: core/emplacements.py:174
+#: core/emplacements.py:175
 msgid "account disabled"
 msgstr "compte désactivé"
 
-#: core/emplacements.py:175
+#: core/emplacements.py:176
 msgid "account locked"
 msgstr "compte verrouillé"
 
-#: core/emplacements.py:176
+#: core/emplacements.py:177
 msgid "invalid user name"
 msgstr "nom d'utilisateur invalide"
 
-#: core/emplacements.py:192
+#: core/emplacements.py:198
 #, python-brace-format
 msgid "Windows error {code}"
 msgstr "erreur Windows {code}"
 
-#: core/emplacements.py:283
-#, python-brace-format
-msgid "{location}: {cause}."
-msgstr "{location} : {cause}."
+#: core/emplacements.py:285
+msgid "Folder reachable."
+msgstr "Dossier accessible."
 
-#: core/emplacements.py:379
+#: core/emplacements.py:286
+msgid "Folder unreachable: is it mounted?"
+msgstr "Dossier inaccessible : est-il monté ?"
+
+#: core/emplacements.py:296
+#, python-brace-format
+msgid "Connection refused: {cause}"
+msgstr "Connexion refusée : {cause}"
+
+#: core/emplacements.py:306
+#, python-brace-format
+msgid "Connected, but the share cannot be read: {cause}"
+msgstr "Connecté, mais le partage ne se lit pas : {cause}"
+
+#: core/emplacements.py:309
+msgid "Windows is already connected to this share: it is readable, with the account of that connection. Another account cannot be tested while it is open."
+msgstr "Windows est déjà connecté à ce partage : il se lit, avec le compte de cette connexion. Un autre compte ne peut pas s'essayer tant qu'elle est ouverte."
+
+#: core/emplacements.py:312
+msgid "Connection successful: the share is readable."
+msgstr "Connexion réussie : le partage se lit."
+
+#: core/emplacements.py:336
+#, python-brace-format
+msgid "{location}: {cause}"
+msgstr "{location} : {cause}"
+
+#: core/emplacements.py:432
 msgid "Saving an identity needs Windows."
 msgstr "Enregistrer une identité demande Windows."
 
-#: core/emplacements.py:391
+#: core/emplacements.py:444
 #, python-brace-format
 msgid "Windows refused to save the identity (error {code})."
 msgstr "Windows a refusé d'enregistrer l'identité (erreur {code})."
 
-#: core/emplacements.py:404
+#: core/emplacements.py:457
 #, python-brace-format
 msgid "Windows refused to remove the identity (error {code})."
 msgstr "Windows a refusé de retirer l'identité (erreur {code})."
@@ -1105,7 +1132,7 @@ msgstr "indisponible sur ce système"
 
 #: tui/app.py:66
 #: tui/app.py:67
-#: tui/common.py:431
+#: tui/common.py:432
 #: tui/screens/quit.py:23
 msgid "Quit"
 msgstr "Quitter"
@@ -1243,105 +1270,105 @@ msgstr "Suppr"
 msgid "Ins"
 msgstr "Inser"
 
-#: tui/common.py:214
+#: tui/common.py:215
 msgid "audio"
 msgstr "audio"
 
-#: tui/common.py:214
+#: tui/common.py:215
 msgid "subtitle"
 msgstr "sous-titre"
 
 #. a track left out of the output (feminine in French: "piste").
-#: tui/common.py:263
+#: tui/common.py:264
 msgctxt "track"
 msgid "discarded"
 msgstr "écartée"
 
 #. terabytes (1024⁴ bytes), as Windows Explorer names them.
-#: tui/common.py:272
+#: tui/common.py:273
 msgctxt "bytes"
 msgid "TB"
 msgstr "To"
 
 #. gigabytes (1024³ bytes), as Windows Explorer names them.
-#: tui/common.py:275
+#: tui/common.py:276
 msgctxt "bytes"
 msgid "GB"
 msgstr "Go"
 
 #. megabytes (1024² bytes), as Windows Explorer names them.
-#: tui/common.py:278
+#: tui/common.py:279
 msgctxt "bytes"
 msgid "MB"
 msgstr "Mo"
 
 #. kilobytes (1024 bytes), as Windows Explorer names them.
-#: tui/common.py:280
+#: tui/common.py:281
 msgctxt "bytes"
 msgid "KB"
 msgstr "Ko"
 
-#: tui/common.py:363
+#: tui/common.py:364
 msgid "AV1  (⚠ very demanding)"
 msgstr "AV1  (⚠ très gourmand)"
 
-#: tui/common.py:384
+#: tui/common.py:385
 msgid "unavailable here"
 msgstr "indisponible ici"
 
-#: tui/common.py:399
+#: tui/common.py:400
 msgid "Bitrate (AV1)"
 msgstr "Débit (AV1)"
 
-#: tui/common.py:399
+#: tui/common.py:400
 #: tui/screens/dryrun.py:120
 msgid "Target bitrate"
 msgstr "Débit cible"
 
-#: tui/common.py:412
+#: tui/common.py:413
 #: tui/mixins.py:38
 #: tui/screens/browser.py:630
 msgid "Start"
 msgstr "Début"
 
-#: tui/common.py:413
+#: tui/common.py:414
 #: tui/mixins.py:39
 #: tui/screens/browser.py:631
 msgid "End"
 msgstr "Fin"
 
-#: tui/common.py:414
+#: tui/common.py:415
 #: tui/mixins.py:40
 msgid "Page ↑"
 msgstr "Page ↑"
 
-#: tui/common.py:415
+#: tui/common.py:416
 #: tui/mixins.py:41
 msgid "Page ↓"
 msgstr "Page ↓"
 
 #. "Col" is short for column; keep these labels short.
-#: tui/common.py:420
+#: tui/common.py:421
 #: tui/mixins.py:143
 msgid "Prev col"
 msgstr "Col préc."
 
-#: tui/common.py:421
+#: tui/common.py:422
 #: tui/mixins.py:144
 msgid "Next col"
 msgstr "Col suiv."
 
-#: tui/common.py:422
+#: tui/common.py:423
 #: tui/mixins.py:145
 msgid "Narrow"
 msgstr "Rétrécir"
 
-#: tui/common.py:423
+#: tui/common.py:424
 #: tui/mixins.py:146
 msgid "Widen"
 msgstr "Élargir"
 
-#: tui/common.py:426
+#: tui/common.py:427
 #: tui/screens/aide.py:455
 #: tui/screens/aide.py:456
 #: tui/screens/aide.py:464
@@ -1370,7 +1397,7 @@ msgstr "Élargir"
 msgid "Back"
 msgstr "Retour"
 
-#: tui/common.py:430
+#: tui/common.py:431
 #: tui/screens/aide.py:313
 #: tui/screens/browser.py:370
 #: tui/screens/config.py:66
@@ -1386,7 +1413,7 @@ msgstr "Accueil"
 
 #. "Dolby V." is short for Dolby Vision; keep it short.
 #. column header — source size, then the estimated output size: "4.2 GB → 1.8 GB (-57%)".
-#: tui/common.py:564
+#: tui/common.py:565
 #: tui/screens/browser.py:387
 #: tui/screens/browser.py:532
 #: tui/screens/browser.py:667
@@ -1396,22 +1423,22 @@ msgid "Profile"
 msgstr "Profil"
 
 #. "Dolby V." is short for Dolby Vision; keep it short.
-#: tui/common.py:564
+#: tui/common.py:565
 #: tui/screens/browser.py:402
 msgid "Dolby V."
 msgstr "Dolby V."
 
-#: tui/common.py:565
+#: tui/common.py:566
 #: tui/widgets/profile_form.py:261
 msgid "Preset"
 msgstr "Preset"
 
-#: tui/common.py:565
+#: tui/common.py:566
 #: tui/screens/browser.py:764
 msgid "HD audio"
 msgstr "HD audio"
 
-#: tui/common.py:565
+#: tui/common.py:566
 #: tui/screens/sync.py:319
 #: tui/screens/tracks.py:148
 msgid "Source"
@@ -1419,13 +1446,13 @@ msgstr "Source"
 
 #. profile column Source — "del." = the source is deleted after encoding (keep it short), "keep" = it is kept.
 #. column Actions of the profile list; keep it short.
-#: tui/common.py:593
+#: tui/common.py:594
 #: tui/screens/config.py:129
 msgctxt "source file"
 msgid "del."
 msgstr "suppr."
 
-#: tui/common.py:595
+#: tui/common.py:596
 #: tui/screens/tracks.py:443
 #: tui/screens/tracks.py:449
 #: tui/screens/tracks.py:724
@@ -2035,9 +2062,9 @@ msgstr "Colonnes redimensionnables — accueil, pistes, aperçu"
 #: tui/screens/donor_picker.py:148
 #: tui/screens/donor_picker.py:243
 #: tui/screens/donor_picker.py:260
-#: tui/screens/emplacements.py:183
-#: tui/screens/emplacements.py:216
-#: tui/screens/emplacements.py:218
+#: tui/screens/emplacements.py:188
+#: tui/screens/emplacements.py:224
+#: tui/screens/emplacements.py:227
 #: tui/screens/opensubtitles.py:56
 #: tui/screens/opensubtitles.py:78
 #: tui/screens/options.py:64
@@ -2534,9 +2561,9 @@ msgstr "Aucun fichier à encoder dans ce répertoire."
 
 #: tui/screens/cles.py:69
 #: tui/screens/config.py:270
-#: tui/screens/emplacements.py:182
-#: tui/screens/emplacements.py:215
-#: tui/screens/emplacements.py:217
+#: tui/screens/emplacements.py:185
+#: tui/screens/emplacements.py:222
+#: tui/screens/emplacements.py:225
 #: tui/screens/options.py:63
 #: tui/screens/options.py:115
 #: tui/widgets/profile_form.py:211
@@ -2576,7 +2603,7 @@ msgid "Check and save"
 msgstr "Vérifier et enregistrer"
 
 #: tui/screens/cles.py:120
-#: tui/screens/emplacements.py:217
+#: tui/screens/emplacements.py:225
 #: tui/screens/options.py:114
 #: tui/screens/sync.py:158
 #: tui/screens/tracks.py:127
@@ -2869,17 +2896,17 @@ msgid "Locations — network shares of the home screen"
 msgstr "Emplacements — les partages réseau de l'accueil"
 
 #: tui/screens/emplacements.py:90
-#: tui/screens/emplacements.py:202
+#: tui/screens/emplacements.py:208
 msgid "Label"
 msgstr "Libellé"
 
 #: tui/screens/emplacements.py:91
-#: tui/screens/emplacements.py:203
+#: tui/screens/emplacements.py:209
 msgid "Path"
 msgstr "Chemin"
 
 #: tui/screens/emplacements.py:92
-#: tui/screens/emplacements.py:205
+#: tui/screens/emplacements.py:211
 msgid "Account"
 msgstr "Compte"
 
@@ -2906,44 +2933,62 @@ msgstr "L'identité enregistrée pour {server} reste dans Windows."
 msgid "Delete a location"
 msgstr "Supprimer un emplacement"
 
-#: tui/screens/emplacements.py:198
+#: tui/screens/emplacements.py:186
+#: tui/screens/emplacements.py:223
+msgid "Test the connection"
+msgstr "Tester la connexion"
+
+#: tui/screens/emplacements.py:204
 msgid "Edit a location"
 msgstr "Modifier un emplacement"
 
-#: tui/screens/emplacements.py:198
+#: tui/screens/emplacements.py:204
 msgid "Add a location"
 msgstr "Ajouter un emplacement"
 
-#: tui/screens/emplacements.py:234
+#: tui/screens/emplacements.py:226
+msgid "Test"
+msgstr "Tester"
+
+#: tui/screens/emplacements.py:243
 msgid "Local folder or drive: no account needed."
 msgstr "Dossier ou lecteur local : pas de compte."
 
-#: tui/screens/emplacements.py:242
+#: tui/screens/emplacements.py:247
+msgid "Outside Windows, IRIS does not connect to network shares: mount the share first. Account and password are not used."
+msgstr "Hors Windows, IRIS ne se connecte pas aux partages réseau : montez d'abord le partage. Le compte et le mot de passe ne servent pas."
+
+#: tui/screens/emplacements.py:255
 #, python-brace-format
 msgid "Windows allows one account per server: this account applies to all of {server}."
 msgstr "Windows n'admet qu'un compte par serveur : ce compte vaut pour tout {server}."
 
-#: tui/screens/emplacements.py:245
+#: tui/screens/emplacements.py:258
 #, python-brace-format
 msgid "Also used by: {labels}."
 msgstr "Également utilisé par : {labels}."
 
-#: tui/screens/emplacements.py:247
+#: tui/screens/emplacements.py:260
 #, python-brace-format
 msgid "Saved account: {account}."
 msgstr "Compte enregistré : {account}."
 
-#: tui/screens/emplacements.py:249
+#: tui/screens/emplacements.py:262
 msgid "No saved account: the Windows session's is used."
 msgstr "Aucun compte enregistré : celui de la session Windows sert."
 
-#: tui/screens/emplacements.py:250
+#: tui/screens/emplacements.py:263
 msgid "unchanged"
 msgstr "inchangé"
 
-#: tui/screens/emplacements.py:286
+#: tui/screens/emplacements.py:310
+#: tui/screens/emplacements.py:347
 msgid "Type the password of this account."
 msgstr "Saisir le mot de passe de ce compte."
+
+#: tui/screens/emplacements.py:314
+msgid "Testing the connection…"
+msgstr "Test de la connexion…"
 
 #: tui/screens/fin_lot.py:27
 msgid "All tasks are done."

@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.15
+**Version**: 0.9.1.16
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -133,6 +133,10 @@ locations, by their label (🌐). They open like a drive; the breadcrumb shows
 `E`, on the list of volumes, manages them: `Ins` adds, `↵` edits, `Ctrl+D`
 deletes. The form asks for the label ("Films"), the path
 (`\\10.0.0.10\Films`), the account (`nas\user`) and its password.
+**Test the connection** (`Ctrl+T`) tries the path with the account typed in,
+saves nothing, then closes what the test opened. If Windows is already
+connected to that share, the test says so: another account cannot be tried
+while that connection is open.
 
 - **The account is the server's.** Windows allows one account per server: two
   shares on the same NAS share theirs, and the form says which. Changing it
@@ -147,6 +151,9 @@ IRIS connects when the location is opened and, on exit, closes the connections
 it opened; an existing network drive is left alone. A refusal (password, server
 off, another account already connected) is shown with its cause, and the home
 screen comes back.
+
+**Outside Windows**, IRIS does not connect to shares: mount them first; the
+account and password are not used, and the form says so.
 
 By hand, it is the same thing: one block per location in `config.toml` (path
 between single quotes, which TOML leaves alone), and the identity through

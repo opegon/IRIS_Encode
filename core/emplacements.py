@@ -28,6 +28,7 @@ serveurs distincts.
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import threading
 from dataclasses import dataclass
@@ -186,10 +187,16 @@ _ERROR_NO_MORE_ITEMS = 259
 _ouvertes: set[str] = set()
 _verrou = threading.Lock()
 
+# Connexion et identités passent par Windows. Ailleurs, un partage doit déjà
+# être monté ; le compte et le mot de passe ne servent pas.
+SMB_WINDOWS = sys.platform == "win32"
+
 
 def _cause(code: int) -> str:
+    """La cause en clair, ponctuée : une qui pose une question garde la sienne."""
     texte = _CAUSES.get(code)
-    return _(texte) if texte else _("Windows error {code}").format(code=code)
+    texte = _(texte) if texte else _("Windows error {code}").format(code=code)
+    return texte if texte.endswith(("?", ".", "!")) else texte + "."
 
 
 def _mpr():
@@ -259,6 +266,52 @@ def connectes() -> set[str]:
         return set(_ouvertes) | connexions_existantes()
 
 
+def _lisible(chemin: str) -> bool:
+    return os.path.isdir(chemin)
+
+
+def essayer(chemin: Path, compte: str | None = None,
+            mot_de_passe: str | None = None) -> str:
+    """Le bouton « Tester la connexion » : ouvre le partage avec ce compte,
+    vérifie qu'il se lit, puis referme ce que l'essai a ouvert.
+
+    Sans compte ni mot de passe, Windows prend l'identité enregistrée pour le
+    serveur, sinon celle de la session. Rend le constat ; lève
+    `ConnexionRefusee`. Peut durer : hors du fil de l'interface.
+    """
+    distant = texte(chemin)
+    if not distant.startswith("\\\\") or not SMB_WINDOWS:
+        if _lisible(distant):
+            return _("Folder reachable.")
+        raise ConnexionRefusee(0, _("Folder unreachable: is it mounted?"))
+    with _verrou:
+        deja = cle(chemin) in _ouvertes | connexions_existantes()
+        if not deja:
+            ctypes, _wt, mpr, NETRESOURCEW = _mpr()
+            ressource = NETRESOURCEW(dwType=_RESOURCETYPE_DISK, lpRemoteName=distant)
+            rc = mpr.WNetAddConnection2W(ctypes.byref(ressource), mot_de_passe or None,
+                                         compte or None, _CONNECT_TEMPORARY)
+            if rc != 0:
+                _LOG.info("connection test to %s refused: %d", distant, rc)
+                raise ConnexionRefusee(rc, _("Connection refused: {cause}").format(
+                    cause=_cause(rc)))
+    try:
+        lisible = _lisible(distant)
+    finally:
+        if not deja:
+            with _verrou:
+                _c, _wt, mpr, _nr = _mpr()
+                mpr.WNetCancelConnection2W(distant, 0, False)
+    if not lisible:
+        raise ConnexionRefusee(5, _("Connected, but the share cannot be read: {cause}")
+                               .format(cause=_cause(5)))
+    if deja:
+        return _("Windows is already connected to this share: it is readable, "
+                 "with the account of that connection. Another account cannot be "
+                 "tested while it is open.")
+    return _("Connection successful: the share is readable.")
+
+
 def connecter(emplacement: Emplacement) -> None:
     """Ouvre la connexion au partage, si elle n'existe pas déjà.
 
@@ -280,7 +333,7 @@ def connecter(emplacement: Emplacement) -> None:
                                      _CONNECT_TEMPORARY)
         if rc != 0:
             _LOG.warning("connection to %s refused: %d", distant, rc)
-            raise ConnexionRefusee(rc, _("{location}: {cause}.").format(
+            raise ConnexionRefusee(rc, _("{location}: {cause}").format(
                 location=emplacement.libelle, cause=_cause(rc)))
         _ouvertes.add(cle(emplacement.chemin))
         _LOG.info("connected to %s", distant)

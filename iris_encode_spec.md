@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.16 — document de référence courant
+**Version** : 0.9.1.17 — document de référence courant
 **Date** : 2026-11-02
 **Statut** : stable
 
@@ -491,7 +491,16 @@ ffmpeg BtbN `n8.1.3-20260925`).
 [✓] dovi_tool   trouvé — 2.1.0
 [✓] mkvmerge    trouvé — 99.0
 [✗] mpv         introuvable (optionnel)
+[✓] ffmpeg_dvd   — assuré par le ffmpeg principal
+[✓] ffmpeg_dv    — assuré par le ffmpeg principal
 ```
+
+**Outil remplacé par le ffmpeg principal** (v0.9.1.17) — `print_status(statuses,
+couverts)` : l'outil DVD absent de `bin/dvd/` quand le ffmpeg principal lit les
+DVD (`_dvd_manquant` faux), l'outil Dolby Vision absent de `bin/dv/` quand il a
+`libplacebo` (`_dv_manquant` faux), s'affichent « ✓ assuré par le ffmpeg
+principal ». Ils restaient « ✗ … (optionnel) » à chaque lancement, alors
+qu'aucune installation n'était proposée — à raison.
 
 ---
 
@@ -3909,6 +3918,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.17 | 2026-11-02 | **Outils assurés par le ffmpeg principal** (§ 4.5) : `ffmpeg_dvd` et `ffmpeg_dv` affichés « ✓ assuré par le ffmpeg principal » au lieu de « ✗ (optionnel) » quand il lit les DVD / a `libplacebo` · `tests/test_outils_couverts.py` |
 | 0.9.1.16 | 2026-11-02 | **Tester la connexion** (§ 14.1) : bouton et `Ctrl+T` du formulaire d'emplacement, essai avec le compte saisi sans rien enregistrer, connexion de l'essai refermée · hors Windows, le formulaire dit que le partage doit être monté · causes ponctuées une fois · `core.emplacements.essayer` · `tests/test_emplacements.py` |
 | 0.9.1.15 | 2026-11-02 | **Gestion des emplacements** (§ 14.1, IE-162) : `E` sur la liste des volumes — ajouter, modifier, supprimer ; compte du serveur et mot de passe enregistrés dans le Gestionnaire d'identifiants Windows (`CredWriteW`), jamais dans `config.toml` ; un lecteur entier (`E:\`) garde sa barre · `tui/screens/emplacements.py` · `tests/test_emplacements.py` |
 | 0.9.1.14 | 2026-11-02 | **Emplacements** (§ 5, § 14.1, IE-161) : partages réseau nommés listés sous les volumes, ouverts comme un lecteur ; connexion SMB par `WNetAddConnection2W` avec l'identité du Gestionnaire d'identifiants Windows, coupée à la sortie ; fil d'Ariane au libellé · `core/emplacements.py` · `tests/test_emplacements.py` |

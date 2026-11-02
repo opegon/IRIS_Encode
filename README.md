@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.1.16 — Windows (macOS/Linux support planned)
+**Version**: 0.9.1.17 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -457,6 +457,9 @@ The **Dolby Vision tool** is the same BtbN build, installed into `bin/dv/`. Its
 in a Dolby-specific color space: without it, an HDR10 or SDR conversion comes
 out green and purple. Without the tool, such a file is skipped. It is not
 offered when the main ffmpeg already has `libplacebo`.
+
+In both cases the startup list says so: `[✓] ffmpeg_dvd — provided by the
+main ffmpeg` (likewise for `ffmpeg_dv`). Nothing needs installing.
 
 ### Option A — Automatic installation (recommended)
 

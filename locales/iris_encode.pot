@@ -680,8 +680,8 @@ msgstr ""
 #: core/preflight.py:353
 #: core/preflight.py:414
 #: core/preflight.py:437
-#: core/preflight.py:597
-#: core/preflight.py:646
+#: core/preflight.py:608
+#: core/preflight.py:657
 #, python-brace-format
 msgid "Downloading from {url}"
 msgstr ""
@@ -689,7 +689,7 @@ msgstr ""
 #: core/preflight.py:351
 #: core/preflight.py:412
 #: core/preflight.py:435
-#: core/preflight.py:595
+#: core/preflight.py:606
 #, python-brace-format
 msgid "{tool} URL not found in the sources."
 msgstr ""
@@ -709,125 +709,129 @@ msgstr ""
 msgid "On Linux, install {tool} with your package manager."
 msgstr ""
 
-#: core/preflight.py:448
+#: core/preflight.py:452
+msgid "provided by the main ffmpeg"
+msgstr ""
+
+#: core/preflight.py:456
 msgid "optional"
 msgstr ""
 
-#: core/preflight.py:480
+#: core/preflight.py:491
 msgid "dovi_tool missing (optional — needed for Dolby Vision)."
 msgstr ""
 
-#: core/preflight.py:484
+#: core/preflight.py:495
 msgid "mkvmerge missing (optional — needed to add external tracks)."
 msgstr ""
 
-#: core/preflight.py:488
+#: core/preflight.py:499
 msgid "mpv missing (optional — used to check a resync by eye)."
 msgstr ""
 
-#: core/preflight.py:492
+#: core/preflight.py:503
 msgid "DVD tool missing (optional — needed to read DVD titles)."
 msgstr ""
 
-#: core/preflight.py:496
+#: core/preflight.py:507
 msgid "Dolby Vision tool missing (optional — needed to convert Dolby Vision profile 5 to HDR10 or SDR)."
 msgstr ""
 
-#: core/preflight.py:507
+#: core/preflight.py:518
 msgid "No download URL configured."
 msgstr ""
 
 #. config.toml > [ffmpeg] > fetch_url is a settings key, keep it as is.
-#: core/preflight.py:510
+#: core/preflight.py:521
 msgid "Fill in config.toml > [ffmpeg] > fetch_url"
 msgstr ""
 
-#: core/preflight.py:514
+#: core/preflight.py:525
 msgid "Download and install ffmpeg into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:523
+#: core/preflight.py:534
 msgid "Install ffmpeg manually into ./bin/ or add it to the PATH."
 msgstr ""
 
-#: core/preflight.py:530
+#: core/preflight.py:541
 msgid "Download and install dovi_tool (Dolby Vision) into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:533
+#: core/preflight.py:544
 msgid "dovi_tool installation failed — Dolby Vision features unavailable."
 msgstr ""
 
-#: core/preflight.py:535
+#: core/preflight.py:546
 msgid "dovi_tool skipped — Dolby Vision files will not be handled optimally."
 msgstr ""
 
-#: core/preflight.py:541
+#: core/preflight.py:552
 msgid "Download and install mkvmerge (external tracks) into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:544
+#: core/preflight.py:555
 msgid "mkvmerge installation failed — adding external tracks unavailable."
 msgstr ""
 
-#: core/preflight.py:546
+#: core/preflight.py:557
 msgid "mkvmerge skipped — adding external audio/subtitle tracks will be unavailable."
 msgstr ""
 
-#: core/preflight.py:552
+#: core/preflight.py:563
 msgid "Download and install mpv (resync check) into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:555
+#: core/preflight.py:566
 msgid "mpv installation failed — the resync can only be set blind."
 msgstr ""
 
-#: core/preflight.py:557
+#: core/preflight.py:568
 msgid "mpv skipped — you will not be able to check a resync by eye."
 msgstr ""
 
-#: core/preflight.py:606
+#: core/preflight.py:617
 msgid "Download and install the DVD tool (ffmpeg BtbN, about 190 MB) into ./bin/dvd/?"
 msgstr ""
 
-#: core/preflight.py:609
+#: core/preflight.py:620
 msgid "DVD tool installation failed — DVD titles unavailable."
 msgstr ""
 
-#: core/preflight.py:611
+#: core/preflight.py:622
 msgid "DVD tool skipped — DVD folders will only show their VOB files."
 msgstr ""
 
-#: core/preflight.py:616
+#: core/preflight.py:627
 msgid "Download and install the Dolby Vision tool (ffmpeg BtbN, about 190 MB) into ./bin/dv/?"
 msgstr ""
 
-#: core/preflight.py:619
+#: core/preflight.py:630
 msgid "Dolby Vision tool installation failed — profile 5 files will be skipped."
 msgstr ""
 
-#: core/preflight.py:622
+#: core/preflight.py:633
 msgid "Dolby Vision tool skipped — profile 5 files will be skipped instead of converted."
 msgstr ""
 
-#: core/preflight.py:676
+#: core/preflight.py:687
 msgid "Checking for updates…"
 msgstr ""
 
-#: core/preflight.py:699
+#: core/preflight.py:710
 msgid "Update these tools?"
 msgstr ""
 
-#: core/preflight.py:700
+#: core/preflight.py:711
 msgid "Update skipped — the installed versions stay in place."
 msgstr ""
 
-#: core/preflight.py:707
+#: core/preflight.py:718
 #, python-brace-format
 msgid "{tool}: downloading {version}…"
 msgstr ""
 
-#: core/preflight.py:714
+#: core/preflight.py:725
 #, python-brace-format
 msgid "{tool} update failed — previous version kept."
 msgstr ""

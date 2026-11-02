@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.1.16 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.1.17 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -460,6 +460,9 @@ en **profil 5** — fréquent sur les releases de streaming —, dont l'image es
 stockée dans un espace de couleur propre à Dolby : sans lui, une conversion en
 HDR10 ou en SDR sort verte et violette. Sans l'outil, un tel fichier est
 ignoré. Il n'est pas proposé quand le ffmpeg principal a déjà `libplacebo`.
+
+Dans ces deux cas, la liste du lancement l'indique : `[✓] ffmpeg_dvd — assuré
+par le ffmpeg principal` (de même pour `ffmpeg_dv`). Rien n'est à installer.
 
 ### Option A — Installation automatique (recommandée)
 

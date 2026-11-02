@@ -1,5 +1,20 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.17] — 2026-11-02
+
+### La liste du lancement ne réclame plus un outil dont on n'a pas besoin
+
+Avec un ffmpeg principal qui lit déjà les DVD et convertit le Dolby Vision
+profil 5 (un build BtbN, par exemple), IRIS ne propose ni l'outil DVD ni
+l'outil Dolby Vision, puisqu'il n'en a pas besoin. La liste des outils, au
+lancement, les marquait pourtant « ✗ (optionnel) » à chaque démarrage, comme
+s'il fallait les installer. Elle affiche désormais :
+
+```
+[✓] ffmpeg_dvd   — assuré par le ffmpeg principal
+[✓] ffmpeg_dv    — assuré par le ffmpeg principal
+```
+
 ## [v0.9.1.16] — 2026-11-02
 
 ### Tester la connexion d'un emplacement

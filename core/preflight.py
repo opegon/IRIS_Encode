@@ -441,8 +441,16 @@ def install_mkvtoolnix(bin_dir: Path, releases: dict) -> bool:
     return poser("mkvmerge", data, bin_dir)
 
 
-def print_status(statuses: list[ToolStatus]) -> None:
+def print_status(statuses: list[ToolStatus],
+                 couverts: frozenset[str] = frozenset()) -> None:
+    """La liste des outils. `couverts` : les outils absents de `bin/` dont le
+    ffmpeg principal fait déjà le travail — l'outil DVD quand il lit les DVD,
+    l'outil Dolby Vision quand il a `libplacebo`. Les marquer « ✗ optionnel »
+    laissait croire qu'il manquait quelque chose."""
     for s in statuses:
+        if s.name in couverts:
+            print(f"  [✓] {s.name:<12} — " + _("provided by the main ffmpeg"))
+            continue
         icon = "✓" if s.found else "✗"
         ver  = f" — {s.version}" if s.version else ""
         opt  = (" (" + _("optional") + ")"
@@ -458,9 +466,14 @@ def run_preflight(cfg: dict) -> bool:
     from . import config as cfg_mod
     bin_dir  = cfg_mod.get_bin_dir(cfg)
     statuses = check_tools(bin_dir)
+    missing_dvd = _dvd_manquant(statuses)
+    missing_dv  = _dv_manquant(statuses)
+    couverts = frozenset(
+        nom for nom, manque in (("ffmpeg_dvd", missing_dvd), ("ffmpeg_dv", missing_dv))
+        if not manque and not any(t.name == nom and t.found for t in statuses))
 
     print()
-    print_status(statuses)
+    print_status(statuses, couverts)
     print()
 
     missing_essential = [
@@ -471,8 +484,6 @@ def run_preflight(cfg: dict) -> bool:
     missing_dovi     = next((s for s in statuses if s.name == "dovi_tool" and not s.found), None)
     missing_mkvmerge = next((s for s in statuses if s.name == "mkvmerge"  and not s.found), None)
     missing_mpv      = next((s for s in statuses if s.name == "mpv"       and not s.found), None)
-    missing_dvd      = _dvd_manquant(statuses)
-    missing_dv       = _dv_manquant(statuses)
 
     if not missing_essential:
         # ffmpeg OK — proposer les outils optionnels absents

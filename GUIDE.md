@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.14
+**Version**: 0.9.1.15
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -127,29 +127,36 @@ to the counter ("Analyzing… 12 / 40") shows how far it has got. You can move
 through the list meanwhile; a row still waiting cannot be checked yet.
 
 **Locations — network shares.** Below the drives, the home screen lists the
-shares declared in `config.toml`, by their label (🌐). They open like a drive;
-the breadcrumb shows "Films › Season 1".
+locations, by their label (🌐). They open like a drive; the breadcrumb shows
+"Films › Season 1".
+
+`E`, on the list of volumes, manages them: `Ins` adds, `↵` edits, `Ctrl+D`
+deletes. The form asks for the label ("Films"), the path
+(`\\10.0.0.10\Films`), the account (`nas\user`) and its password.
+
+- **The account is the server's.** Windows allows one account per server: two
+  shares on the same NAS share theirs, and the form says which. Changing it
+  applies to all of them.
+- **The password goes to the Windows Credential Manager**, not to
+  `config.toml`. Left empty when editing, the saved identity does not change.
+  Clearing the account removes the server's identity.
+- **Deleting a location** removes it from the home screen; the server's
+  identity stays in Windows (Explorer may use it).
+
+IRIS connects when the location is opened and, on exit, closes the connections
+it opened; an existing network drive is left alone. A refusal (password, server
+off, another account already connected) is shown with its cause, and the home
+screen comes back.
+
+By hand, it is the same thing: one block per location in `config.toml` (path
+between single quotes, which TOML leaves alone), and the identity through
+`cmdkey /add:10.0.0.10 /user:nas\user /pass`.
 
 ```toml
 [[emplacements]]
 libelle = "Films"
 chemin  = '\\10.0.0.10\Films'
 ```
-
-Write the path between single quotes: TOML then leaves the backslashes alone.
-The share's account is saved once in the Windows Credential Manager, under the
-server name — IRIS keeps none of it:
-
-```
-cmdkey /add:10.0.0.10 /user:nas\user /pass
-```
-
-`/pass` without a value: the password is asked for, without being shown. IRIS
-connects when the location is opened and, on exit, closes the connections it
-opened; an existing network drive is left alone. Windows allows **one account
-per server**: two shares on the same NAS share theirs. A refusal (password,
-server off, another account already connected) is shown with its cause, and the
-home screen comes back.
 
 | Key | Action |
 |---|---|

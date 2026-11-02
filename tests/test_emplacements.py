@@ -147,6 +147,15 @@ def test_un_partage_inexistant_est_refuse_par_windows(monkeypatch):
 
 # ─── Accueil ─────────────────────────────────────────────────────────────────
 
+async def _accueil_affiche(pilot, ecran, delai: float = 15) -> None:
+    """Attend que l'accueil montre son dernier listage. Mesurer l'espace d'un
+    lecteur réseau peut prendre des secondes : une pause fixe ne suffit pas."""
+    for _ in range(int(delai / 0.1)):
+        if ecran._rows and ecran._epoch_affichee == ecran._scan_epoch:
+            return
+        await pilot.pause(0.1)
+
+
 async def _accueil(cfg_emplacements: list, ouvrir: Path | None = None) -> dict:
     from tui.app import IrisEncodeApp
     releve: dict = {}
@@ -154,8 +163,9 @@ async def _accueil(cfg_emplacements: list, ouvrir: Path | None = None) -> dict:
     app.cfg["emplacements"] = cfg_emplacements
     notes: list[str] = []
     async with app.run_test(size=(160, 40)) as pilot:
-        await pilot.pause(0.5)
+        await pilot.pause(0.3)
         ecran = app.screen
+        await _accueil_affiche(pilot, ecran)
         ecran.notify = lambda msg, **k: notes.append(str(msg))
         table = ecran.query_one(DataTable)
         releve["lignes"] = [str(table.get_row_at(i)[0]) for i in range(table.row_count)]
@@ -204,3 +214,245 @@ def test_un_emplacement_ouvert_montre_son_libelle_dans_le_fil(tmp_path, monkeypa
                              ouvrir=tmp_path / "Saison 1"))
     assert not r["revenu"]
     assert r["ariane"] == "Rushes › Saison 1"
+
+
+
+# ═══ IE-162 — l'écran de gestion ═════════════════════════════════════════════
+
+def test_le_serveur_d_un_chemin():
+    assert emp.serveur(FILMS) == "10.0.0.10"
+    assert emp.serveur(r"\\nas") == "nas"
+    assert emp.serveur(r"D:\Films") is None
+    assert emp.serveur("") is None
+
+
+@pytest.mark.parametrize("libelle, chemin, attendu", [
+    ("", r"\\nas\x", "The label is required."),
+    ("films", r"\\nas\x", "Another location already has this label."),
+    ("X", "", "The path is required."),
+    ("X", r"\\nas", r"A network path reads \\server\share."),
+    ("X", "\\\\nas\\\\", r"A network path reads \\server\share."),
+])
+def test_la_saisie_invalide_est_refusee(libelle, chemin, attendu):
+    liste = [emp.Emplacement("Films", FILMS)]
+    assert emp.valider(liste, libelle, chemin) == _(attendu)
+
+
+def test_un_chemin_deja_pris_est_refuse_sauf_pour_lui_meme():
+    films = emp.Emplacement("Films", FILMS)
+    liste = [films]
+    assert emp.valider(liste, "Autre", "\\\\10.0.0.10\\FILMS\\") == _(
+        "This path is already the location “{label}”.").format(label="Films")
+    assert emp.valider(liste, "Films", str(FILMS), ancien=films) is None
+
+
+def test_ecrire_puis_lire_rend_la_meme_liste():
+    liste = [emp.Emplacement("Films", FILMS), emp.Emplacement("Rushes", Path(r"D:\R")),
+             emp.Emplacement("Disque", Path("E:\\"))]
+    cfg: dict = {}
+    emp.ecrire(cfg, liste)
+    assert emp.lire(cfg) == liste
+    # Sans barre finale pour un partage ; un lecteur garde la sienne : `E:`
+    # désignerait le dossier courant du lecteur.
+    assert [d["chemin"] for d in cfg["emplacements"]] == [
+        r"\\10.0.0.10\Films", r"D:\R", "E:\\"]
+    (disque,) = emp.lire(_cfg({"libelle": "D", "chemin": "E:\\"}))
+    assert disque.chemin == Path("E:\\")
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows seulement")
+def test_l_identite_s_enregistre_se_relit_et_se_retire():
+    """Vrai Gestionnaire d'identifiants, sur une cible qui ne sert à rien."""
+    cible = "iris-test-emplacements.invalid"
+    try:
+        emp.enregistrer_identite(cible, r"nas\essai", "secret")
+        assert emp.compte(cible) == r"nas\essai"
+        emp.enregistrer_identite(cible, r"nas\autre", "secret2")
+        assert emp.compte(cible) == r"nas\autre"
+    finally:
+        emp.retirer_identite(cible)
+    assert emp.compte(cible) is None
+    emp.retirer_identite(cible)                  # déjà retirée : pas d'erreur
+
+
+def test_changer_d_identite_coupe_les_connexions_de_ce_serveur(faux_windows):
+    faux, _existantes = faux_windows
+    emp.connecter(emp.Emplacement("Films", FILMS))
+    emp.connecter(emp.Emplacement("DL", Path(r"\\10.0.0.11\Download")))
+    emp.deconnecter_serveur("10.0.0.10")
+    assert [n for n, _f in faux.coupures] == [r"\\10.0.0.10\films"]
+    assert emp.connectes() == {r"\\10.0.0.11\download"}
+
+
+# ─── L'écran ─────────────────────────────────────────────────────────────────
+
+class _Coffre:
+    """Le Gestionnaire d'identifiants, simulé."""
+
+    def __init__(self, monkeypatch, comptes: dict[str, str] | None = None):
+        self.comptes = dict(comptes or {})
+        self.ecrits: list[tuple[str, str, str]] = []
+        self.retires: list[str] = []
+        self.coupes: list[str] = []
+        monkeypatch.setattr(emp, "compte", lambda s: self.comptes.get(s))
+        monkeypatch.setattr(emp, "enregistrer_identite", self._ecrire)
+        monkeypatch.setattr(emp, "retirer_identite", self._retirer)
+        monkeypatch.setattr(emp, "deconnecter_serveur", self.coupes.append)
+
+    def _ecrire(self, s, c, m):
+        self.ecrits.append((s, c, m))
+        self.comptes[s] = c
+
+    def _retirer(self, s):
+        self.retires.append(s)
+        self.comptes.pop(s, None)
+
+
+async def _gestion(cfg_emplacements: list, scenario) -> dict:
+    from tui.app import IrisEncodeApp
+    releve: dict = {}
+    app = IrisEncodeApp(start_path=Path.cwd())
+    app.cfg["emplacements"] = cfg_emplacements
+    async with app.run_test(size=(160, 40)) as pilot:
+        await pilot.pause(0.3)
+        accueil = app.screen
+        await _accueil_affiche(pilot, accueil)
+        await scenario(app, pilot, releve)
+        await pilot.pause(0.3)
+        await _accueil_affiche(pilot, accueil)
+        releve["ecran_final"] = type(app.screen).__name__
+        releve["accueil"] = [p for _t, p in accueil._rows]
+    releve["cfg"] = app.cfg.get("emplacements")
+    return releve
+
+
+def _remplir(app, **champs):
+    from textual.widgets import Input
+    for cle, valeur in champs.items():
+        app.screen.query_one(f"#champ-{cle}", Input).value = valeur
+
+
+@pytest.fixture
+def sans_ecriture(monkeypatch):
+    from core import config as cfg_mod
+    monkeypatch.setattr(cfg_mod, "save", lambda *a, **k: None)
+
+
+def test_ajouter_un_emplacement_avec_son_compte(monkeypatch, sans_ecriture):
+    coffre = _Coffre(monkeypatch)
+
+    async def scenario(app, pilot, r):
+        await pilot.press("e")
+        await pilot.pause(0.2)
+        r["liste"] = type(app.screen).__name__
+        await pilot.press("insert")
+        await pilot.pause(0.2)
+        _remplir(app, libelle="Films", chemin=r"\\10.0.0.10\Films",
+                 compte=r"nas\olivier", mdp="secret")
+        await pilot.press("ctrl+s")
+        await pilot.pause(0.2)
+        r["apres"] = type(app.screen).__name__
+        await pilot.press("escape")
+
+    r = asyncio.run(_gestion([], scenario))
+    assert r["liste"] == "EmplacementsScreen"
+    assert r["apres"] == "EmplacementsScreen"
+    assert r["cfg"] == [{"libelle": "Films", "chemin": r"\\10.0.0.10\Films"}]
+    assert coffre.ecrits == [("10.0.0.10", r"nas\olivier", "secret")]
+    assert coffre.coupes == ["10.0.0.10"]
+    assert r["ecran_final"] == "BrowserScreen"
+    assert r["accueil"][-1] == FILMS                # l'accueil s'est rechargé
+
+
+def test_un_nouveau_compte_sans_mot_de_passe_est_refuse(monkeypatch, sans_ecriture):
+    coffre = _Coffre(monkeypatch, {"10.0.0.10": r"nas\olivier"})
+
+    async def scenario(app, pilot, r):
+        from textual.widgets import Input, Static
+        await pilot.press("e")
+        await pilot.pause(0.2)
+        await pilot.press("enter")
+        await pilot.pause(0.2)
+        r["compte_affiche"] = app.screen.query_one("#champ-compte", Input).value
+        _remplir(app, compte=r"nas\autre")
+        await pilot.press("ctrl+s")
+        await pilot.pause(0.2)
+        r["ecran"] = type(app.screen).__name__
+        r["erreur"] = str(app.screen.query_one("#empl-erreur", Static).render())
+
+    r = asyncio.run(_gestion([{"libelle": "Films", "chemin": str(FILMS)}], scenario))
+    assert r["compte_affiche"] == r"nas\olivier"
+    assert r["ecran"] == "EmplacementForm"
+    assert _("Type the password of this account.") in r["erreur"]
+    assert coffre.ecrits == []
+
+
+def test_modifier_sans_toucher_au_compte_garde_l_identite(monkeypatch, sans_ecriture):
+    coffre = _Coffre(monkeypatch, {"10.0.0.10": r"nas\olivier"})
+
+    async def scenario(app, pilot, r):
+        await pilot.press("e")
+        await pilot.pause(0.2)
+        await pilot.press("enter")
+        await pilot.pause(0.2)
+        _remplir(app, libelle="Cinéma")
+        await pilot.press("ctrl+s")
+        await pilot.pause(0.2)
+
+    r = asyncio.run(_gestion([{"libelle": "Films", "chemin": str(FILMS)}], scenario))
+    assert r["cfg"] == [{"libelle": "Cinéma", "chemin": r"\\10.0.0.10\Films"}]
+    assert coffre.ecrits == [] and coffre.retires == [] and coffre.coupes == []
+
+
+def test_vider_le_compte_retire_l_identite_du_serveur(monkeypatch, sans_ecriture):
+    coffre = _Coffre(monkeypatch, {"10.0.0.10": r"nas\olivier"})
+
+    async def scenario(app, pilot, r):
+        await pilot.press("e")
+        await pilot.pause(0.2)
+        await pilot.press("enter")
+        await pilot.pause(0.2)
+        _remplir(app, compte="")
+        await pilot.press("ctrl+s")
+        await pilot.pause(0.2)
+
+    asyncio.run(_gestion([{"libelle": "Films", "chemin": str(FILMS)}], scenario))
+    assert coffre.retires == ["10.0.0.10"] and coffre.coupes == ["10.0.0.10"]
+
+
+def test_supprimer_un_emplacement_garde_l_identite(monkeypatch, sans_ecriture):
+    coffre = _Coffre(monkeypatch, {"10.0.0.10": r"nas\olivier"})
+
+    async def scenario(app, pilot, r):
+        from textual.widgets import Button
+        await pilot.press("e")
+        await pilot.pause(0.2)
+        await pilot.press("ctrl+d")
+        await pilot.pause(0.2)
+        r["confirmation"] = type(app.screen).__name__
+        app.screen.query_one("#btn-confirm", Button).press()
+        await pilot.pause(0.2)
+        await pilot.press("escape")
+
+    r = asyncio.run(_gestion([{"libelle": "Films", "chemin": str(FILMS)},
+                              {"libelle": "DL", "chemin": r"\\10.0.0.11\Download"}],
+                             scenario))
+    assert r["confirmation"] == "ConfirmModal"
+    assert r["cfg"] == [{"libelle": "DL", "chemin": r"\\10.0.0.11\Download"}]
+    assert coffre.retires == []
+    assert FILMS not in r["accueil"]
+
+
+def test_la_touche_e_n_agit_que_sur_la_liste_des_volumes(monkeypatch, sans_ecriture,
+                                                        tmp_path):
+    _Coffre(monkeypatch)
+
+    async def scenario(app, pilot, r):
+        app.screen._nav.enter(tmp_path)
+        app.screen._refresh_view()
+        await pilot.pause(0.3)
+        await pilot.press("e")
+        await pilot.pause(0.2)
+
+    r = asyncio.run(_gestion([], scenario))
+    assert r["ecran_final"] == "BrowserScreen"

@@ -69,8 +69,9 @@ def lire(cfg: dict[str, Any]) -> list[Emplacement]:
                 and isinstance(chemin, str) and chemin.strip()):
             _LOG.warning("config.toml: incomplete location ignored: %r", entree)
             continue
-        resultat.append(Emplacement(libelle.strip(),
-                                    Path(chemin.strip().rstrip("\\/") or chemin)))
+        # Path ignore une barre finale, sauf à une racine : `D:\` doit le
+        # rester (`D:` désigne le dossier courant du lecteur).
+        resultat.append(Emplacement(libelle.strip(), Path(chemin.strip())))
     return resultat
 
 
@@ -90,6 +91,52 @@ def fil_d_ariane(emplacements: list[Emplacement], chemin: Path) -> str:
         return str(chemin)
     reste = chemin.relative_to(e.chemin)
     return e.libelle if reste == Path(".") else f"{e.libelle} › {reste}"
+
+
+# ─── Gestion (IE-162) ─────────────────────────────────────────────────────────
+
+def serveur(chemin: Path | str) -> str | None:
+    r"""Le serveur d'un chemin `\\serveur\partage`, sinon None."""
+    texte = str(chemin)
+    if not texte.startswith("\\\\"):
+        return None
+    morceaux = texte[2:].split("\\")
+    return morceaux[0] or None
+
+
+def ecrire(cfg: dict[str, Any], liste: list[Emplacement]) -> None:
+    """Remplace les emplacements de la configuration (à enregistrer ensuite)."""
+    cfg["emplacements"] = [{"libelle": e.libelle, "chemin": texte(e.chemin)}
+                           for e in liste]
+
+
+def texte(chemin: Path) -> str:
+    r"""Le chemin tel qu'on l'écrit : `\\nas\films`, sans la barre que pathlib
+    ajoute à la racine d'un partage ; `D:\` garde la sienne."""
+    texte = str(chemin)
+    return texte.rstrip("\\") if texte.startswith("\\\\") else texte
+
+
+def valider(liste: list[Emplacement], libelle: str, chemin: str,
+            ancien: Emplacement | None = None) -> str | None:
+    """Ce qui empêche d'enregistrer cet emplacement, ou None."""
+    autres = [e for e in liste if e != ancien]
+    libelle, chemin = libelle.strip(), chemin.strip().rstrip("\\/")
+    if not libelle:
+        return _("The label is required.")
+    if any(e.libelle.lower() == libelle.lower() for e in autres):
+        return _("Another location already has this label.")
+    if not chemin:
+        return _("The path is required.")
+    if chemin.startswith("\\\\"):
+        morceaux = chemin[2:].split("\\")
+        if len(morceaux) < 2 or not all(morceaux[:2]):
+            return _(r"A network path reads \\server\share.")
+    meme = next((e for e in autres if cle(e.chemin) == cle(Path(chemin))), None)
+    if meme is not None:
+        return _("This path is already the location “{label}”.").format(
+            label=meme.libelle)
+    return None
 
 
 # ─── Connexion SMB ────────────────────────────────────────────────────────────
@@ -256,3 +303,105 @@ def deconnecter_tout() -> None:
             if rc != 0:
                 _LOG.warning("disconnection from %s refused: %d", distant, rc)
         _ouvertes.clear()
+
+
+def deconnecter_serveur(nom: str) -> None:
+    """Coupe les connexions d'IRIS à ce serveur : la prochaine ouverture prend
+    l'identité qu'on vient de changer."""
+    if sys.platform != "win32":
+        return
+    prefixe = "\\\\" + nom.lower() + "\\"
+    with _verrou:
+        _ctypes, _wt, mpr, _nr = _mpr()
+        for distant in sorted(d for d in _ouvertes if d.startswith(prefixe)):
+            if mpr.WNetCancelConnection2W(distant, 0, False) == 0:
+                _ouvertes.discard(distant)
+
+
+# ─── Identité : le Gestionnaire d'identifiants Windows (IE-162) ──────────────
+#
+# Une identité de type « domaine » (`CRED_TYPE_DOMAIN_PASSWORD`), comme
+# `cmdkey /add` : le client SMB s'en sert, mais aucun programme ne relit son
+# mot de passe — seul le nom du compte se lit.
+
+_CRED_TYPE_DOMAIN_PASSWORD = 2
+_CRED_PERSIST_LOCAL_MACHINE = 2
+_ERROR_NOT_FOUND = 1168
+
+
+class IdentiteRefusee(Exception):
+    """Windows a refusé d'enregistrer ou de retirer l'identité."""
+
+
+def _advapi():
+    import ctypes
+    from ctypes import wintypes
+
+    class CREDENTIALW(ctypes.Structure):
+        _fields_ = [("Flags", wintypes.DWORD), ("Type", wintypes.DWORD),
+                    ("TargetName", wintypes.LPWSTR), ("Comment", wintypes.LPWSTR),
+                    ("LastWritten", wintypes.FILETIME),
+                    ("CredentialBlobSize", wintypes.DWORD),
+                    ("CredentialBlob", ctypes.POINTER(ctypes.c_ubyte)),
+                    ("Persist", wintypes.DWORD), ("AttributeCount", wintypes.DWORD),
+                    ("Attributes", ctypes.c_void_p), ("TargetAlias", wintypes.LPWSTR),
+                    ("UserName", wintypes.LPWSTR)]
+
+    adv = ctypes.WinDLL("advapi32", use_last_error=True)
+    adv.CredWriteW.argtypes = [ctypes.POINTER(CREDENTIALW), wintypes.DWORD]
+    adv.CredWriteW.restype = wintypes.BOOL
+    adv.CredReadW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                              ctypes.POINTER(ctypes.POINTER(CREDENTIALW))]
+    adv.CredReadW.restype = wintypes.BOOL
+    adv.CredDeleteW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD]
+    adv.CredDeleteW.restype = wintypes.BOOL
+    adv.CredFree.argtypes = [ctypes.c_void_p]
+    return ctypes, adv, CREDENTIALW
+
+
+def compte(nom_serveur: str) -> str | None:
+    """Le compte enregistré pour ce serveur, ou None."""
+    if sys.platform != "win32":
+        return None
+    ctypes, adv, CREDENTIALW = _advapi()
+    lu = ctypes.POINTER(CREDENTIALW)()
+    if not adv.CredReadW(nom_serveur, _CRED_TYPE_DOMAIN_PASSWORD, 0, ctypes.byref(lu)):
+        return None
+    try:
+        return lu.contents.UserName or None
+    finally:
+        adv.CredFree(lu)
+
+
+def enregistrer_identite(nom_serveur: str, nom_compte: str, mot_de_passe: str) -> None:
+    """Enregistre (ou remplace) l'identité de ce serveur."""
+    if sys.platform != "win32":
+        raise IdentiteRefusee(_("Saving an identity needs Windows."))
+    ctypes, adv, CREDENTIALW = _advapi()
+    octets = mot_de_passe.encode("utf-16-le")
+    tampon = (ctypes.c_ubyte * len(octets)).from_buffer_copy(octets) if octets else None
+    cred = CREDENTIALW(Type=_CRED_TYPE_DOMAIN_PASSWORD, TargetName=nom_serveur,
+                       CredentialBlobSize=len(octets),
+                       CredentialBlob=ctypes.cast(tampon, ctypes.POINTER(ctypes.c_ubyte))
+                       if tampon is not None else None,
+                       Persist=_CRED_PERSIST_LOCAL_MACHINE, UserName=nom_compte)
+    if not adv.CredWriteW(ctypes.byref(cred), 0):
+        code = ctypes.get_last_error()
+        _LOG.warning("credential for %s not saved: %d", nom_serveur, code)
+        raise IdentiteRefusee(_("Windows refused to save the identity "
+                                "(error {code}).").format(code=code))
+    _LOG.info("credential saved for %s", nom_serveur)
+
+
+def retirer_identite(nom_serveur: str) -> None:
+    """Retire l'identité de ce serveur ; rien s'il n'en a pas."""
+    if sys.platform != "win32":
+        return
+    ctypes, adv, _c = _advapi()
+    if not adv.CredDeleteW(nom_serveur, _CRED_TYPE_DOMAIN_PASSWORD, 0):
+        code = ctypes.get_last_error()
+        if code != _ERROR_NOT_FOUND:
+            raise IdentiteRefusee(_("Windows refused to remove the identity "
+                                    "(error {code}).").format(code=code))
+    else:
+        _LOG.info("credential removed for %s", nom_serveur)

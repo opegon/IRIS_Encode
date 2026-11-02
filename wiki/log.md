@@ -529,3 +529,9 @@ transcodé. Page mise à jour : [[audio]].
 Demandé par l'utilisateur (IE-161). Mesuré : `WNetAddConnection2W` refuse un
 partage inexistant (67) sans délai ; `WNetOpenEnumW` liste les connexions de
 la session. Page mise à jour : [[sous-processus]].
+
+## [2026-11-02] ingest | Gestion des emplacements (v0.9.1.15)
+
+IE-162. Mesuré : `CredWriteW` en `CRED_TYPE_DOMAIN_PASSWORD` depuis un
+processus ordinaire, `CredReadW` rend le compte, `CredDeleteW` le retire
+(vérifié par `cmdkey /list`). Page mise à jour : [[sous-processus]].

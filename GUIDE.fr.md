@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.14
+**Version** : 0.9.1.15
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -124,30 +124,36 @@ est. On parcourt la liste pendant ce temps ; une ligne encore en attente ne se
 coche pas.
 
 **Emplacements — les partages réseau.** Sous les lecteurs, l'accueil liste les
-partages déclarés dans `config.toml`, par leur libellé (🌐). Ils s'ouvrent comme
-un lecteur ; le fil d'Ariane montre « Films › Saison 1 ».
+emplacements, par leur libellé (🌐). Ils s'ouvrent comme un lecteur ; le fil
+d'Ariane montre « Films › Saison 1 ».
+
+`E`, sur la liste des volumes, les gère : `Inser` ajoute, `↵` modifie,
+`Ctrl+D` supprime. Le formulaire demande le libellé (« Films »), le chemin
+(`\\10.0.0.10\Films`), le compte (`nas\utilisateur`) et son mot de passe.
+
+- **Le compte est celui du serveur.** Windows n'admet qu'un compte par
+  serveur : deux partages du même NAS partagent le leur, et le formulaire dit
+  lesquels. Le changer vaut pour tous.
+- **Le mot de passe va au Gestionnaire d'identifiants Windows**, pas dans
+  `config.toml`. Laissé vide en modification, l'identité enregistrée ne change
+  pas. Vider le compte retire l'identité du serveur.
+- **Supprimer un emplacement** le retire de l'accueil ; l'identité du serveur
+  reste dans Windows (l'Explorateur peut s'en servir).
+
+IRIS se connecte à l'ouverture et coupe à sa sortie les connexions qu'il a
+ouvertes ; un lecteur réseau existant n'est pas touché. Un refus (mot de
+passe, serveur éteint, autre compte déjà connecté) s'affiche avec sa cause, et
+l'accueil revient.
+
+À la main, c'est la même chose : un bloc par emplacement dans `config.toml`
+(chemin entre apostrophes simples, que TOML laisse tel quel), et l'identité par
+`cmdkey /add:10.0.0.10 /user:nas\utilisateur /pass`.
 
 ```toml
 [[emplacements]]
 libelle = "Films"
 chemin  = '\\10.0.0.10\Films'
 ```
-
-Le chemin s'écrit entre apostrophes simples : TOML n'y lit pas les barres
-obliques inverses. Le compte du partage s'enregistre une fois dans le
-Gestionnaire d'identifiants Windows, sous le nom du serveur — IRIS n'en garde
-rien :
-
-```
-cmdkey /add:10.0.0.10 /user:nas\utilisateur /pass
-```
-
-`/pass` sans valeur : le mot de passe est demandé, sans s'afficher. IRIS se
-connecte à l'ouverture et coupe à sa sortie les connexions qu'il a ouvertes ;
-un lecteur réseau existant n'est pas touché. Windows n'admet **qu'un compte par
-serveur** : deux partages du même NAS partagent le leur. Un refus (mot de
-passe, serveur éteint, autre compte déjà connecté) s'affiche avec sa cause, et
-l'accueil revient.
 
 | Touche | Action |
 |---|---|

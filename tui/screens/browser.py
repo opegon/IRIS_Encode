@@ -386,6 +386,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("f2",        "open_run",           N_("Encode"),   show=True),
         Binding("f4",        "open_profile_picker",N_("Profile"),  show=True),
         Binding("f5",        "open_config",        N_("Manage"),   show=True),
+        # La liste des volumes l'annonce seule (_RACCOURCIS_VOLUMES) : la touche
+        # n'a de sens que là (IE-162).
+        Binding("e",         "emplacements",       N_("Locations"), show=False),
     ]
 
     # Colonnes redimensionnables (ColumnResizeMixin) — fichier en premier pour accès au focus
@@ -577,7 +580,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     # décision d'encodage. Promettre dix colonnes qu'aucune ligne ne peut
     # remplir revient à faire lire un tableau vide.
     _COLS_VOLUMES: list[tuple[str, str, int]] = [
-        ("volume", N_("Volume"),       34),
+        ("volume", N_("Volume"),       44),
         ("libre",  N_("Free space"),   14),
         ("total",  N_("Total"),        12),
         ("occupe", N_("Used"),         10),
@@ -605,7 +608,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     # Ce qu'on peut faire d'un volume : l'ouvrir. Sélectionner, encoder,
     # interroger AlloCiné ou redimensionner des colonnes n'a pas de sens tant
     # qu'aucun fichier n'est en vue.
-    _RACCOURCIS_VOLUMES: list[tuple[str, str]] = [("enter", N_("Open the volume"))]
+    _RACCOURCIS_VOLUMES: list[tuple[str, str]] = [("enter", N_("Open the volume")),
+                                                  ("e", N_("Locations"))]
 
     _RACCOURCIS_FICHIERS: list[tuple[str, str]] = [
         ("space",     N_("Toggle")),
@@ -811,7 +815,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 if d in libelles:
                     nom = Text(f"{_SHARE_ICON} {libelles[d]}", style="bold cyan",
                                no_wrap=True)
-                    nom.append(f"  {d}", style="dim")
+                    nom.append(f"  {emp_mod.texte(d)}", style="dim")
                 else:
                     nom = Text(f"{_DISK_ICON} {d}", style="bold cyan")
                 table.add_row(
@@ -1427,6 +1431,19 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._selected.clear()
         self._precoche = None
         self._refresh_view()
+
+    def action_emplacements(self) -> None:
+        """Gérer les emplacements (IE-162) — depuis la liste des volumes."""
+        if not self._nav.is_virtual:
+            return
+        from .emplacements import EmplacementsScreen
+
+        def _retour(change: bool | None) -> None:
+            if change:
+                self._nav.emplacements = emp_mod.lire(self._app.cfg)
+                self._refresh_view()
+
+        self.app.push_screen(EmplacementsScreen(), _retour)
 
     def action_go_up(self) -> None:
         changed = self._nav.go_up()

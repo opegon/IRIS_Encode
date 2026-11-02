@@ -76,6 +76,11 @@ connexion sous un autre compte est refusée (erreur 1219). `10.0.0.10` et `nas`
 comptent pour deux serveurs. *(documenté ; non mesuré ici, faute de partage
 d'essai sous un autre compte)*
 
+L'identité se range dans le Gestionnaire d'identifiants Windows, en
+`CRED_TYPE_DOMAIN_PASSWORD` sous le nom du serveur (ce que fait `cmdkey /add`) :
+un processus ordinaire l'écrit (`CredWriteW`) et en relit le **nom du compte**,
+jamais le mot de passe. *(mesuré, v0.9.1.15)*
+
 ## Voir aussi
 
 [[ffmpeg]] · [[ffprobe]] · [[mkvmerge]] · [[dovi-tool]] · [[mpv]] · [[github]] · [[pieges-et-lecons]]

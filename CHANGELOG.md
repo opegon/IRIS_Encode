@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.15] — 2026-11-02
+
+### Gérer les emplacements depuis l'accueil
+
+Les emplacements de la v0.9.1.14 se déclaraient en éditant `config.toml`, et
+leur compte avec `cmdkey`. `E`, sur la liste des volumes, ouvre désormais leur
+gestion : `Inser` ajoute, `↵` modifie, `Ctrl+D` supprime.
+
+Le formulaire demande le libellé, le chemin, le compte et son mot de passe. Le
+mot de passe va au Gestionnaire d'identifiants Windows, jamais dans
+`config.toml`. Comme Windows n'admet qu'un compte par serveur, le compte est
+celui du serveur : le formulaire dit quels autres emplacements le partagent, et
+le changer vaut pour tous. Laisser le mot de passe vide garde l'identité
+enregistrée ; vider le compte la retire. Supprimer un emplacement laisse
+l'identité du serveur dans Windows.
+
+Au passage : un lecteur entier déclaré comme emplacement (`E:\`) gardait mal
+sa barre finale à la relecture ; `E:` aurait désigné le dossier courant du
+lecteur. La colonne Volume de l'accueil s'élargit : le chemin d'un partage y
+était coupé.
+
 ## [v0.9.1.14] — 2026-11-02
 
 ### Emplacements : les partages réseau sur l'accueil

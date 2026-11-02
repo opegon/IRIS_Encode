@@ -90,6 +90,8 @@ TOUCHES: dict[str, str] = {
     "shift+tab": "⇧Tab",
     # TRANSLATORS: the Delete key, as printed on the keyboard ("Suppr" in French).
     "delete":    N_("Del"),
+    # TRANSLATORS: the Insert key, as printed on the keyboard ("Inser" in French).
+    "insert":    N_("Ins"),
     "pageup":    "PgUp",
     "pagedown":  "PgDn",
     "home":      "Home",

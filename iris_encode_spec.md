@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.14 — document de référence courant
+**Version** : 0.9.1.15 — document de référence courant
 **Date** : 2026-11-02
 **Statut** : stable
 
@@ -2809,7 +2809,7 @@ volumes disponibles (icône 💾), pas un chemin fixe. **Un dossier passé en ar
 (`IrisEncodeApp(ouvrir_dossier=True)`) ; il était vérifié puis sans effet, contre son
 aide (v0.8.9.121, CR-73). Normalisé par `os.path.abspath`, comme la navigation (CR-68).
 
-#### Emplacements — partages réseau nommés (v0.9.1.14, IE-161)
+#### Emplacements — partages réseau nommés (v0.9.1.14, IE-161 ; gestion v0.9.1.15, IE-162)
 
 `core/emplacements.py`. Les blocs `[[emplacements]]` de `config.toml` (§ 5) —
 `libelle`, `chemin` — se listent **sous les volumes** (`FileNavigator.emplacements`,
@@ -2839,6 +2839,33 @@ est son propre parent). La barre d'état compte volumes et emplacements séparé
   `finally`) : `WNetCancelConnection2W` sans forcer, sur les seules connexions
   ouvertes par IRIS. Un partage encore utilisé ailleurs reste connecté.
 - Hors Windows : aucune connexion ; le chemin doit être monté.
+
+**Gestion** (v0.9.1.15, IE-162) — `E` sur la liste des volumes
+(`BrowserScreen.action_emplacements`, sans effet dans un dossier ; annoncée par
+`_RACCOURCIS_VOLUMES`, binding `show=False`) ouvre `tui/screens/emplacements.py` :
+
+- `EmplacementsScreen` : la liste (libellé, chemin, compte du serveur ou
+  « session Windows »). `Inser` ajoute, `↵` modifie, `Ctrl+D` supprime après
+  `ConfirmModal` — l'identité du serveur reste dans Windows. Au retour, si
+  quelque chose a changé, l'accueil relit `config.toml` et se reconstruit.
+- `EmplacementForm` : libellé, chemin, compte, mot de passe (masqué).
+  `valider()` refuse un libellé vide ou déjà pris (sans casse), un chemin vide,
+  déjà pris, ou un `\\serveur` sans partage. Une note sous les champs dit que
+  le compte vaut pour **tout le serveur**, quels emplacements le partagent, et
+  le compte enregistré.
+- **Règle de l'identité**, comparée au compte enregistré pour le serveur du
+  chemin saisi : compte saisi différent, ou mot de passe saisi → mot de passe
+  exigé, puis `enregistrer_identite` ; compte vidé alors qu'il en existe un →
+  `retirer_identite` ; sinon rien. Après un changement, `deconnecter_serveur`
+  coupe les connexions d'IRIS à ce serveur pour que la suivante prenne la
+  nouvelle identité. L'identité s'écrit **avant** `config.toml` : un refus de
+  Windows laisse tout en l'état.
+- **Gestionnaire d'identifiants** (`advapi32`) : `CredWriteW`,
+  `CRED_TYPE_DOMAIN_PASSWORD`, cible = nom du serveur, `CRED_PERSIST_LOCAL_MACHINE`
+  (comme `cmdkey /add`, sans itinérance) ; `CredReadW` ne rend que le nom du
+  compte ; `CredDeleteW` (introuvable = rien à faire).
+- `ecrire()` enregistre un partage sans barre finale (`\\nas\films`) et garde
+  celle d'un lecteur (`E:\` — `E:` désignerait le dossier courant du lecteur).
 
 #### Colonnes
 
@@ -3868,6 +3895,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.15 | 2026-11-02 | **Gestion des emplacements** (§ 14.1, IE-162) : `E` sur la liste des volumes — ajouter, modifier, supprimer ; compte du serveur et mot de passe enregistrés dans le Gestionnaire d'identifiants Windows (`CredWriteW`), jamais dans `config.toml` ; un lecteur entier (`E:\`) garde sa barre · `tui/screens/emplacements.py` · `tests/test_emplacements.py` |
 | 0.9.1.14 | 2026-11-02 | **Emplacements** (§ 5, § 14.1, IE-161) : partages réseau nommés listés sous les volumes, ouverts comme un lecteur ; connexion SMB par `WNetAddConnection2W` avec l'identité du Gestionnaire d'identifiants Windows, coupée à la sortie ; fil d'Ariane au libellé · `core/emplacements.py` · `tests/test_emplacements.py` |
 | 0.9.1.13 | 2026-11-02 | **FLAC et PCM sans perte** (§ 8.5) : recopiés avec `preserve_hd_audio`, MKV imposé, greffes comprises ; avant, transcodés en AC3/AAC · `tests/test_audio_flac_pcm.py` |
 | 0.9.1.12 | 2026-11-01 | **Dolby Vision profil 5 aux bonnes couleurs** (§ 4.1, § 4.2, § 8.4) : conversion HDR10/SDR par `libplacebo` (`apply_dolbyvision`), ffmpeg à part dans `bin/dv/` (`ffmpeg_dv`) ou principal s'il a le filtre ; sans lui, `SKIP` · `tests/test_dv_p5.py` |

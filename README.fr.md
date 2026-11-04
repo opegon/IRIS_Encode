@@ -132,6 +132,14 @@ L'AV1 n'est jamais choisi d'office : il se demande à la main, fichier par
 fichier. Une source Dolby Vision que rien ne pousse au réencodage reste en
 SKIP, Dolby Vision compris, sauf retrait possible.
 
+**Agrandissement** (super-résolution, inactif sauf demande du profil ou de
+l'aperçu) : une source sous le 1080p monte au plus haut cadre qu'elle atteint
+à ×2,7 au plus — un DVD va en 1080p — par `libplacebo` sur Vulkan et le shader
+ArtCNN, au débit du palier atteint. Deux passes (×2, ×2, puis réduction au
+cadre 1080p) sont plus nettes sur un DVD et 4 à 5 fois plus lentes ; `K` dans
+l'aperçu fabrique un extrait côte à côte pour juger avant de choisir. Les
+sources HDR ne sont pas agrandies.
+
 ### ② Audio, piste par piste
 
 ```mermaid
@@ -208,6 +216,7 @@ quelque chose y serait perdu. Une piste n'est jamais sacrifiée en silence.
 | Dolby Vision conservé (réencodé ou copié) | `.dv-iris` | `Film.2160p.DV.mkv` → `Film.2160p.DV-iris.mp4` |
 | Retrait du Dolby Vision | `.hdr10-iris` | `Film.2160p.DV.mkv` → `Film.2160p.HDR10-iris.mp4` |
 | SKIP avec pistes greffées | `.mux-iris` | `Film.mkv` → `Film.mux-iris.mkv` |
+| Agrandi | `upscaled` après la nouvelle définition | `Film.720p.BluRay.mkv` → `Film.1080p.upscaled.BluRay.hevc-iris.mp4` |
 
 Le nom dit ce que le fichier **est**, pas ce qu'était la source : les marques
 de codec, de définition (`2160p` → `1080p`), de HDR (`DV` → `HDR10`, toutes
@@ -437,7 +446,7 @@ Si ffmpeg est déjà installé sur le système (accessible via `ffmpeg` dans un 
 
 ## 4. (Optionnel) Installer les outils complémentaires
 
-Quatre outils sont optionnels. Aucun n'est nécessaire pour encoder : leur absence
+Six outils sont optionnels. Aucun n'est nécessaire pour encoder : leur absence
 désactive une fonction, elle ne bloque jamais le lancement.
 
 | Outil | Nécessaire pour | Taille |
@@ -447,6 +456,7 @@ désactive une fonction, elle ne bloque jamais le lancement.
 | `mpv` | **visualisation** d'un fichier ou d'un recalage | ~50 Mo |
 | Outil DVD | lecture des **titres d'un DVD** (`VIDEO_TS`) | ~320 Mo |
 | Outil Dolby Vision | conversion du **Dolby Vision profil 5** en HDR10 ou SDR | ~165 Mo |
+| Shader de super-résolution | **agrandissement** (ArtCNN C4F16, demande un ffmpeg à `libplacebo`) | ~210 Ko |
 
 L'**outil DVD** est un second ffmpeg — le build GPL de BtbN, qui lit les DVD
 (libdvdnav) — installé dans `bin/dvd/`, à part du ffmpeg qui encode. Il ne fait
@@ -461,7 +471,14 @@ stockée dans un espace de couleur propre à Dolby : sans lui, une conversion en
 HDR10 ou en SDR sort verte et violette. Sans l'outil, un tel fichier est
 ignoré. Il n'est pas proposé quand le ffmpeg principal a déjà `libplacebo`.
 
-Dans ces deux cas, la liste du lancement l'indique : `[✓] ffmpeg_dvd — assuré
+Le **shader de super-résolution** (ArtCNN C4F16, licence MIT) va dans
+`bin/shaders/`. Il est proposé au lancement quand un ffmpeg à `libplacebo` est
+présent (l'outil Dolby Vision, ou le ffmpeg principal). IRIS le range sans ses
+lignes `//!WHEN` : sans cela il ne s'exécuterait pas sous ×1,3, et un DVD PAL
+serait annoncé agrandi sans l'être. Un court essai de Vulkan, au premier
+fichier à agrandir, vérifie que la carte graphique sait l'exécuter.
+
+Pour l'outil DVD et l'outil Dolby Vision, la liste du lancement l'indique : `[✓] ffmpeg_dvd — assuré
 par le ffmpeg principal` (de même pour `ffmpeg_dv`). Rien n'est à installer.
 
 ### Option A — Installation automatique (recommandée)

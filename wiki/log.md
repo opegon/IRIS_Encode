@@ -541,3 +541,10 @@ processus ordinaire, `CredReadW` rend le compte, `CredDeleteW` le retire
 IE-168. Mesuré : échappement à deux niveaux d'un chemin dans `-vf`, durée de
 la sonde Vulkan, encodage de bout en bout en une et deux passes. Page mise à
 jour : [[ffmpeg]].
+
+## [2026-11-05] ingest | Super-résolution : note de conception, extrait de comparaison (v0.9.1.21)
+
+IE-170. Ingérée : la note `conception_upscaling_2026-11-03.md` (mesures des
+2026-11-03 et 2026-11-04, jugement de l'utilisateur, contrôle TV confirmé).
+Mesuré : extrait de comparaison en 154 s sur RTX A4500. Pages mises à jour :
+[[codecs-video]], [[noms-de-release]], [[questions-ouvertes]].

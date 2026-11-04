@@ -14,6 +14,13 @@
   une carte NVIDIA récente, 6 à 8 sur un iGPU Intel.
 - La ligne ne change pas : on choisit ensuite avec `U`.
 
+### Documentation de la super-résolution (IE-170)
+
+Le README présente l'agrandissement (règle, deux passes, `K`), la marque
+`upscaled` du nom de sortie et le shader parmi les outils optionnels ; le wiki
+reprend les mesures de la note de conception (gain selon le facteur, pièges de
+`libplacebo`, vitesse sur RTX et sur iGPU Intel).
+
 ## [v0.9.1.20] — 2026-11-04
 
 ### Super-résolution : réglable dans le profil et fichier par fichier (IE-169)

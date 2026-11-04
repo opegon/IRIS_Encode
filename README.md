@@ -132,6 +132,14 @@ AV1 is never chosen automatically: you ask for it by hand, file by file. A
 Dolby Vision source that nothing pushes to re-encoding stays SKIP, Dolby Vision
 included, unless removal is possible.
 
+**Upscaling** (super-resolution, off unless the profile or the dry run asks
+for it): a source below 1080p goes up to the highest frame it reaches at ×2.7
+at most — a DVD goes to 1080p — through `libplacebo` on Vulkan and the ArtCNN
+shader, at the bitrate of the tier reached. Two passes (×2, ×2, then down to
+the 1080p frame) are sharper on a DVD and 4 to 5 times slower; the dry run's
+`K` builds a side-by-side sample to judge before choosing. HDR sources are not
+upscaled.
+
 ### ② Audio, track by track
 
 ```mermaid
@@ -208,6 +216,7 @@ when something would be lost. A track is never sacrificed silently.
 | Dolby Vision kept (re-encoded or copied) | `.dv-iris` | `Movie.2160p.DV.mkv` → `Movie.2160p.DV-iris.mp4` |
 | Dolby Vision removal | `.hdr10-iris` | `Movie.2160p.DV.mkv` → `Movie.2160p.HDR10-iris.mp4` |
 | SKIP with added tracks | `.mux-iris` | `Movie.mkv` → `Movie.mux-iris.mkv` |
+| Upscaled | `upscaled` after the new resolution | `Movie.720p.BluRay.mkv` → `Movie.1080p.upscaled.BluRay.hevc-iris.mp4` |
 
 The name says what the file **is**, not what the source was: the codec,
 resolution (`2160p` → `1080p`), HDR (`DV` → `HDR10`, all removed in SDR) and
@@ -434,7 +443,7 @@ IRIS ENCODE detects it — nothing to do.
 
 ## 4. (Optional) Install the additional tools
 
-Four tools are optional. None is needed to encode: when one is missing, a
+Six tools are optional. None is needed to encode: when one is missing, a
 feature is turned off; startup is never blocked.
 
 | Tool | Needed for | Size |
@@ -444,6 +453,7 @@ feature is turned off; startup is never blocked.
 | `mpv` | **playing** a file or checking a resync | ~50 MB |
 | DVD tool | reading a **DVD's titles** (`VIDEO_TS`) | ~320 MB |
 | Dolby Vision tool | converting **Dolby Vision profile 5** to HDR10 or SDR | ~165 MB |
+| Super-resolution shader | **upscaling** (ArtCNN C4F16, needs an ffmpeg with `libplacebo`) | ~210 KB |
 
 The **DVD tool** is a second ffmpeg — the BtbN GPL build, which reads DVDs
 (libdvdnav) — installed into `bin/dvd/`, apart from the ffmpeg that encodes. It
@@ -458,7 +468,14 @@ in a Dolby-specific color space: without it, an HDR10 or SDR conversion comes
 out green and purple. Without the tool, such a file is skipped. It is not
 offered when the main ffmpeg already has `libplacebo`.
 
-In both cases the startup list says so: `[✓] ffmpeg_dvd — provided by the
+The **super-resolution shader** (ArtCNN C4F16, MIT licence) goes into
+`bin/shaders/`. It is offered at startup when an ffmpeg with `libplacebo` is
+present (the Dolby Vision tool, or the main ffmpeg). IRIS stores it without
+its `//!WHEN` lines: otherwise it would not run below ×1.3, and a PAL DVD
+would be announced as upscaled without being so. A short Vulkan test, at the
+first file to upscale, checks that the graphics card can run it.
+
+For the DVD and Dolby Vision tools, the startup list says so: `[✓] ffmpeg_dvd — provided by the
 main ffmpeg` (likewise for `ffmpeg_dv`). Nothing needs installing.
 
 ### Option A — Automatic installation (recommended)

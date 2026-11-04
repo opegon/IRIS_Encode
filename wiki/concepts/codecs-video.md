@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-11-01
+maj: 2026-11-05
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -11,6 +11,8 @@ sources:
   - "[[source-2026-10-28-nvdec-dv-plage]]"
   - "[[source-2026-10-28-qsv-passe-dv]]"
   - "[[source-2026-10-29-nvenc-preset-slow]]"
+  - "[[source-conception-upscaling]]"
+  - "[[source-2026-11-04-libplacebo-shader-chemin]]"
 ---
 
 # Codecs vidéo
@@ -184,6 +186,57 @@ Une source 1920×822 (cinémascope) est rattachée au palier 1080p : réglable p
 
 Une source est 4K dès 3200 px de large ou 1700 de haut (`VideoInfo.is_4k`) : les
 WEB-DL scope recadrés sortent en 3832×1600, sous les 3840×2160 nominaux.
+
+## Agrandissement par super-résolution
+
+Une source sous le 1080p peut être agrandie au plus haut cadre qu'elle atteint
+à ×2,7 au plus (480p, 720p, 1080p ; un DVD va en 1080p), par `libplacebo` sur
+Vulkan et le shader mpv **ArtCNN C4F16**. Règle et clés de profil : spec
+§ 6.1 et § 8.1 ; note [[source-conception-upscaling|de conception]].
+
+**Le gain grandit avec le facteur** (*mesuré*, libvmaf, ffmpeg 8.1.3, *Sintel*
+et *Tears of Steel* réduits, recompressés en x264 puis ré-agrandis) :
+
+| Facteur | Une passe sur lanczos | Deux passes sur une passe |
+|---|---|---|
+| ×1,25 à ×1,5 | +1,0 à +2,3 VMAF, PSNR inchangé | +0,0 à +0,2 VMAF |
+| ×2,67 (DVD → 1080p) | +4,1 à +5,8 VMAF, PSNR +0,1 à +0,6 dB | +0,9 à +1,2 VMAF |
+
+Un écart visible commence vers 6 points de VMAF. ArtCNN C4F32 n'apporte rien
+sur C4F16 pour 2 à 7 fois le coût ; la variante `_DN` lisse (moins de VMAF).
+Jugement de l'utilisateur (*observé*) : à ×1,5 les différences sont « trop
+subtiles » ; à ×2,67 en deux passes, « propre » sur le PC, confirmé sur le
+téléviseur le 2026-11-04.
+
+**Real-ESRGAN (`realesr-animevideov3`) est écarté pour la prise de vue
+réelle** (*observé* sur planches, 2026-11-04) : visages « peints », rides et
+inscriptions effacées. *Mesuré* : 4 à 7 dB de PSNR perdus, derrière ArtCNN à
+×2,67. VMAF récompense par endroits ce qu'il invente.
+
+Pièges (*mesuré*), qui donnent un fichier faux sans erreur :
+
+- **Colorimétrie devinée.** Sans étiquette, `libplacebo` suppose BT.601 en SD
+  et BT.709 en HD, et convertit l'une vers l'autre : jusqu'à 14 dB de PSNR
+  perdus sur certaines images. Toujours poser `setparams` (colorimétrie lue,
+  sinon choisie d'après la hauteur) avant `libplacebo`, courbe `bt709`.
+- **Shaders inactifs sous ×1,3.** Leur ligne `//!WHEN` les saute : à ×1,25,
+  les six shaders essayés rendent exactement `spline36`. IRIS livre une copie
+  d'ArtCNN sans `//!WHEN` (licence MIT).
+- **`normalize_sar` recadre** au lieu d'étirer : `reset_sar=1` est l'option voulue.
+- Chemin du shader dans `-vf` : [[ffmpeg]].
+
+**Vitesse** du seul agrandissement vers 1920×1066 (*mesuré* le 2026-11-04,
+Cactus Jack 720×400, ffmpeg BtbN n8.1.3) :
+
+| Carte | Une passe | Deux passes |
+|---|---|---|
+| RTX A4500 | 161 i/s | 30 i/s |
+| Intel Iris Xe (i5-1135G7) | 38,2 i/s (1,5× le temps réel) | 9,3 i/s (0,37×, ~5 h 30 pour 2 h) |
+
+Sur l'iGPU, le shader est le goulot, pas l'encodeur : `hevc_qsv` derrière
+deux passes ne coûte presque rien (9,3 → 9,1 i/s). Sur la RTX, c'est l'encodeur.
+L'extrait de comparaison du Dry run (2 min, une passe et deux passes
+ensemble, `hevc_nvenc` 3 000 k) a pris 154 s sur la RTX A4500.
 
 ## Voir aussi
 

@@ -1,6 +1,6 @@
 ---
 type: index
-maj: 2026-11-04
+maj: 2026-11-05
 ---
 
 # Index du wiki IRIS ENCODE
@@ -20,7 +20,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 
 | Page | Résumé |
 |---|---|
-| [[codecs-video]] | Codecs lus sans transcodage, encodeurs, 10 bits, contrôle de débit NVENC et x265 |
+| [[codecs-video]] | Codecs lus sans transcodage, encodeurs, 10 bits, contrôle de débit NVENC et x265, super-résolution |
 | [[hdr-dolby-vision]] | HDR10, HDR10+, profils DV, RPU et couche d'amélioration ; retrait, réencodage, SDR |
 | [[audio]] | Formats acceptés, plafonds AC3/E-AC3, repli 7.1, Atmos, pièges ffmpeg |
 | [[sous-titres]] | Texte contre image, incrustation, drapeaux, codes de langue `fra`/`fre` |
@@ -53,6 +53,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-changelog]] | `CHANGELOG.md` : pourquoi chaque chose a changé, défauts silencieux |
 | [[source-guide]] | `GUIDE.md` : procédures et cas rencontrés |
 | [[source-readme]] | `README.md` : chaîne de diffusion de référence, prérequis |
+| [[source-conception-upscaling]] | Note de conception de la super-résolution : pièges de `libplacebo`, gains VMAF selon le facteur, vitesse, jugement à l'œil |
 | [[source-2026-09-24-diagnostic]] | Relevés du diagnostic « son sans image » sur le retrait DV |
 | [[source-2026-09-24-utilisateur]] | Déclarations de l'utilisateur : G3, Jellyfin sans transcodage matériel |
 | [[source-2026-09-24-mise-a-jour]] | Relevés d'`updater.py` : cmd.exe et les `.bat` réécrits, essai réel contre GitHub |

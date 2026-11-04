@@ -1,10 +1,11 @@
 ---
 type: concept
-maj: 2026-10-01
+maj: 2026-11-05
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-utilisateur]]"
+  - "[[source-conception-upscaling]]"
 ---
 
 # Noms de release
@@ -58,6 +59,7 @@ propriétés. Règles d'IRIS : spec § 8.7.
 | Traitement | Marque devenue fausse |
 |---|---|
 | Rabattre en 1080p | `2160p`, `4K`, `UHD` |
+| Agrandir par super-résolution | `480p`, `576p`, `720p` (→ `1080p.upscaled`) |
 | Réencoder | le codec de la source (`x264`, `x265`, `AV1`…) |
 | Retirer le RPU | `DV`, `DoVi` (→ `HDR10`) |
 | Convertir en SDR | toute marque HDR, `HDR10+`, la profondeur 10 bits |
@@ -79,6 +81,10 @@ Exemple complet : `Film.2160p.DV.HDR10.x265.TrueHD.7.1-GROUP` ressort
   réencodage.
 - Une caractéristique que le nom annonce déjà n'est pas répétée.
 - Collision : `Film.hevc-iris(2).mkv`. Rien n'est jamais écrasé.
+- Un fichier agrandi porte **`upscaled`** après sa nouvelle définition
+  (`Film.720p` → `Film.1080p.upscaled`), pour que Radarr et Sonarr ne le
+  prennent pas pour un vrai 1080p (décision D21 de l'utilisateur). Un nom
+  sans marque de définition la reçoit à la fin.
 
 ## Voir aussi
 

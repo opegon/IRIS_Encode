@@ -1,6 +1,6 @@
 ---
 type: synthese
-maj: 2026-11-01
+maj: 2026-11-05
 sources:
   - "[[source-spec]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -9,6 +9,7 @@ sources:
   - "[[source-2026-09-30-hev1-hvc1]]"
   - "[[source-2026-10-03-dv81-mp4]]"
   - "[[source-2026-09-30-lecture]]"
+  - "[[source-conception-upscaling]]"
 ---
 
 # Questions ouvertes
@@ -37,6 +38,14 @@ release est sortie quand la revue de code a été entièrement traitée.
 | Le rendu Dolby Vision d'un réencodage DV est-il correct sur le téléviseur ? | jamais contrôlé sur le G3 |
 | Une copie DV **profil 5** en MP4 `hvc1` + `dvcC` s'affiche-t-elle juste sur le G3 ? | seul le 8.1 a été essayé ; un P5 n'a pas de couche de base lisible (question de la revue IE-114) |
 | Le MKV Dolby Vision produit par le mux (SKIP + greffes) se lit-il sur le G3 ? | CR-85 corrigé sans essai sur le téléviseur |
+
+## Super-résolution
+
+| Question | Pourquoi c'est ouvert |
+|---|---|
+| Quelle vitesse sur une carte AMD (Vulkan, `hevc_amf`) ? | aucune carte AMD sous la main : l'estimation de durée prend les chiffres de l'iGPU Intel |
+| Une passe vers 1080p de bout en bout sur l'iGPU Intel, avec `hevc_qsv` ? | seul le filtre (38,2 i/s) est mesuré ; le bout en bout ne l'est qu'en deux passes et vers 720p |
+| Real-ESRGAN vaut-il mieux qu'ArtCNN sur l'animation dessinée ? | écarté sur la prise de vue réelle ; l'animation dessinée n'a pas été essayée (IE-171) |
 
 ## Divers
 

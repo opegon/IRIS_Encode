@@ -16,12 +16,14 @@ Base de code lue : `main` à `3cc018e` (v0.9.1.16).
 - IRIS ne fait aujourd'hui que **réduire** (4K → 1080p, et < 1080p → cadre
   720p). Il n'agrandit jamais (`core/encoder.py`, chemin processeur : « une
   source qui tient dans la cible n'est pas agrandie »).
-- Projet : **agrandir d'un seul palier** (480p, 720p, 1080p) les sources qui
-  en sont assez éloignées, **uniquement par super-résolution matérielle**
-  (pas d'interpolation classique), avec le **débit du palier atteint**.
-- Règle : facteur `f` pour tenir dans le cadre du palier supérieur ;
-  **agrandir si `1,2 ≤ f ≤ 1,5`**, sinon garder la définition d'origine.
-  → § 10.3 : les shaders ne s'activent qu'au-delà de ×1,3.
+- Projet : **agrandir jusqu'au plus haut palier atteignable** (480p, 720p,
+  1080p) les sources qui en sont assez éloignées, **uniquement par
+  super-résolution matérielle** (pas d'interpolation classique), avec le
+  **débit du palier atteint**.
+- Règle (D22, 2026-11-04) : plus haut cadre tel que `f ≤ 2,7` ; **agrandir si
+  `1,2 ≤ f ≤ 2,7`**, sinon garder la définition d'origine. Un DVD va en 1080p.
+  → § 10.3 : les shaders ne s'activent qu'au-delà de ×1,3 (copies sans
+  `//!WHEN`, D13).
 - Pile retenue : **niveau 1** = `libplacebo` (Vulkan, NVIDIA/Intel/AMD) +
   shaders mpv (ArtCNN, Anime4K, FSRCNNX), en réutilisant le ffmpeg à
   libplacebo déjà présent pour le Dolby Vision profil 5 (`core/dovi.py`).
@@ -35,17 +37,32 @@ Base de code lue : `main` à `3cc018e` (v0.9.1.16).
 
 | # | Décision | Justification |
 |---|---|---|
-| D1 | Agrandir **d'un palier au plus** par encodage, jamais en cascade | Limiter la quantité de détail à inventer ; deux rééchantillonnages successifs dégradent |
+| D1 | ~~Agrandir **d'un palier au plus** par encodage, jamais en cascade~~ **Levée par D22** (2026-11-04) | Limiter la quantité de détail à inventer ; deux rééchantillonnages successifs dégradent |
 | D2 | Paliers : **480p, 720p, 1080p**. Pas d'agrandissement vers la 4K | Périmètre voulu |
 | D3 | Le palier se juge sur le **cadre** (854×480, 1280×720, 1920×1080), pas sur la hauteur seule | Un 1920×800 (scope) est un 1080p, pas un « moins de 1080p » |
 | D4 | Dimensions mesurées en **pixels carrés** (`VideoInfo.largeur_affichee`) | Les DVD et la TNT SD sont anamorphiques |
 | D5 | **Zone morte** : pas d'agrandissement si `f < 1,2` | Un ×1,03 (700p → 720p) coûte un rééchantillonnage pour aucun gain visible |
-| D6 | **Plafond** : pas d'agrandissement si `f > 1,5` | Les modèles sont fiables jusqu'à ×2 ; au-delà, ils hallucinent sur des sources dégradées. 1,5 couvre exactement 480 → 720 et 720 → 1080 |
+| D6 | **Plafond** : pas d'agrandissement si `f > 1,5` (**relevé à 1,8 par D19, puis à 2,7 par D22**) | Les modèles sont fiables jusqu'à ×2 ; au-delà, ils hallucinent sur des sources dégradées. 1,5 couvre exactement 480 → 720 et 720 → 1080 |
 | D7 | 480p → 720p et 720p → 1080p sont **voulus** | Choix explicite de l'utilisateur |
 | D8 | Règle des « 10 % au-dessus du palier » **abandonnée** | Incohérente avec D7 : 480p → 720p (×1,50) et 481p → 720p (×1,497) demandent le même effort |
 | D9 | **Débit = celui du palier atteint** (ex. 720p à 1 500 k → 1080p à 2 000 ou 2 500 k selon le profil) | On cherche la qualité ; la super-résolution crée du détail fin, coûteux à encoder |
 | D10 | **Super-résolution uniquement**, sur le matériel (NVIDIA, Intel, AMD). Pas de repli sur lanczos ou bicubic | Un agrandissement classique n'apporte rien que le téléviseur ne fasse aussi bien |
 | D11 | Première voie : **libplacebo + shaders** | Multi-constructeur, déjà embarqué, déjà maîtrisé dans le code |
+| D12 | Shader retenu : **ArtCNN C4F16** (version 2 des extraits § 10.12), pour les quatre titres — DVDRip, télécinéma, documentaire et série HD (choix de l'utilisateur, 2026-11-03). La variante `_DN` (version 3) n'est pas retenue | Jugement à l'œil sur les extraits ; cohérent avec la mesure § 10.4, où C4F16 est le meilleur partout. Reste à confirmer sur la TV le 2026-11-04 |
+| D13 | Q11 → **option 2** : shaders livrés en copies **sans la ligne `//!WHEN`**, zone morte gardée à 1,2 (décidé le 2026-11-03) | Sans elle, le shader ne tourne pas sous ×1,3 (§ 10.3) : DVD PAL (×1,25), 1600×900, 1440×850 seraient annoncés « super-résolution » sans l'être (D10). Forcé à ×1,25 : +1,0 VMAF. Le shader agrandit ×2 puis libplacebo réduit au cadre, en une passe. Licences MIT et GPL-3.0 : modification permise ; l'empreinte de la copie va dans les dépendances |
+| D14 | La variante **« 2 passes ×2 puis réduction au cadre »** (fichier 6, § 10.12) sera une **option proposée à l'utilisateur**, en plus du mode à une passe (décidé le 2026-11-03, après visionnage) | Résultat jugé propre. Plus lente (18 i/s contre plus de 150 sur RTX A4500). Points ouverts : nom et emplacement de l'option (clé de profil provisoire `upscale_passes = 1 / 2`), cohérence avec D1 (la sortie reste à un palier, les étapes intermédiaires montent plus haut) et avec le plafond D6 / Q12, mesure § 10.4, vitesse sur l'iGPU Intel (Q8) |
+| D15 | L'option 2 passes vise la **qualité, pas une taille** : elle peut dépasser le palier suivant et le plafond ×1,5. **D1 et D6 ne s'appliquent pas** à cette option (décidé le 2026-11-03) | Choix de l'utilisateur. Le fichier 6 (720×400 → 1920×1066) en est l'exemple. Taille de sortie : **cadre 1080p** (1920×1080, proportions gardées) ; débit : **celui du 1080p** (D9). Fixé le 2026-11-03 |
+| D16 | Option **à activer en connaissance de cause** : l'interface prévient du coût en calcul et en temps (fichier 6 : 18 i/s, 0,73× le temps réel sur RTX A4500, contre plus de 150 i/s en une passe) (décidé le 2026-11-03) | Le coût est trop élevé pour un réglage par défaut ou un lot entier sans avertissement |
+| D17 | Avant d'encoder un fichier entier en 2 passes : **extrait de 2 à 3 min en écran partagé moitié/moitié**, pour décider sur pièce (décidé le 2026-11-03) | Juger le gain sur le titre lui-même avant de payer le coût. Côté gauche : **mode à une passe** ; côté droit : 2 passes. Fixé le 2026-11-03 |
+| D18 | Q13 → **oui** : mesurer le niveau 2 (Real-ESRGAN ncnn-Vulkan, ArtCNN R8F64 via vs-mlrt) sur les mêmes extraits **avant P1** (décidé le 2026-11-03) | Le gain du niveau 1 est faible (§ 10.4) ; savoir si la fonction vaut le débit du palier supérieur |
+| D19 | Q12 → **oui** : plafond relevé à **×1,8** (`upscale_max_factor = 1.8`), ce qui fait entrer Cactus Jack (×1,78) en 720p en mode une passe. **Remplace le 1,5 de D6** (décidé le 2026-11-03). **Remplacée par D22** (×2,7) | À ×1,78, ArtCNN C4F16 n'a montré aucun artefact. Les vecteurs de test du § 2.2, calculés avec 1,5, sont à recalculer |
+| D20 | Q3 → **oui, nouvelle tranche 480p**, `bitrate_480p_kbps = 1500` en valeur initiale (plafond) (décidé le 2026-11-03) | Choix de l'utilisateur |
+| D21 | Q5 → les fichiers agrandis portent le marqueur **`.upscaled`** après la définition : `Film.720p.upscaled` (décidé le 2026-11-03) | Nom fidèle ; Radarr et Sonarr ne prennent pas un agrandissement pour un vrai 720p |
+| D22 | **Plafond relevé à ×2,7** (`upscale_max_factor = 2.7`) et **D1 levée** : la source va au **plus haut palier** qu'elle atteint sans dépasser ×2,7, en une passe. Un DVD (×1,875 à ×2,67) va directement en 1080p, au débit du 1080p (D9) (décidé le 2026-11-04) | Mesure § 10.14 : à ×2,67, ArtCNN gagne +4,1 à +5,8 VMAF sur lanczos en une passe, sans perte de PSNR, contre +1 à +2,3 à ×1,5 ; le plafond ×1,8 écartait justement ce cas. Coût : fichiers plus gros (débit 1080p), encodage HEVC (§ 2.3). La zone morte ne joue plus qu'au palier 1080p (§ 2.1) |
+| D23 | **Activation** : clé de profil `upscale` (oui / non) **et** choix par fichier dans le Dry run (F1), dans les deux sens : activer sur un fichier d'un profil sans agrandissement, couper sur un fichier d'un profil qui agrandit (décidé le 2026-11-04) | Réponse de l'utilisateur : « le mode 1 et le mode 3 » — un profil peut agrandir tout un lot, et un profil qui n'agrandit pas laisse quand même le demander fichier par fichier |
+| D24 | **2 passes** : clé de profil `upscale_passes = 1 / 2` **et** choix par fichier dans le Dry run (décidé le 2026-11-04). Avertissement de coût (D16) au choix par fichier comme au lancement d'un lot en 2 passes ; extrait en écran partagé (D17) proposé depuis le Dry run | Choix de l'utilisateur (« les deux ») |
+| D25 | **Affichage** : la colonne Décision dit l'agrandissement (`HEVC ↑1080p`, `HEVC ↑1080p ×2` en 2 passes), la colonne Rés. montre `source→sortie` (`720×400→1920×1066`) ; raison complète (facteur, refus) dans la fiche Info (i) ; taille et durée estimées au débit du palier atteint et à la vitesse de la super-résolution (décidé le 2026-11-04) | Pas de colonne dédiée : elle prendrait de la largeur à toutes les lignes |
+| D26 | **Mode guidé** (assistant, `w`) : pas de question sur l'agrandissement en v1 ; il applique le profil, et son résumé montre la décision (décidé le 2026-11-04) | Parcours déjà long ; à reprendre plus tard si besoin |
 
 ---
 
@@ -53,54 +70,70 @@ Base de code lue : `main` à `3cc018e` (v0.9.1.16).
 
 ### 2.1 Pseudo-code
 
+Règle D22 (2026-11-04) : la source va au **plus haut palier** qu'elle
+atteint sans dépasser le plafond. Elle remplace la règle « palier
+immédiatement supérieur » de D1.
+
 ```python
 PALIERS = [(854, 480, 480), (1280, 720, 720), (1920, 1080, 1080)]
 ZONE_MORTE = 1.2   # config [decision] upscale_min_factor
-PLAFOND    = 1.5   # config [decision] upscale_max_factor
+PLAFOND    = 2.7   # config [decision] upscale_max_factor (D22)
 
-def palier_superieur(w, h):
-    """Premier cadre que la source ne remplit pas, avec son facteur."""
-    for W, H, bucket in PALIERS:
+def palier_cible(w, h):
+    """Plus haut cadre atteint avec f <= PLAFOND, avec son facteur."""
+    if min(1920 / w, 1080 / h) <= 1.0:
+        return None                    # source ≥ cadre 1080p : logique actuelle
+    for W, H, bucket in reversed(PALIERS):
         f = min(W / w, H / h)          # « tient dans le cadre »
-        if f > 1.0:                    # la source ne touche aucun bord
+        if f <= PLAFOND:
             return W, H, bucket, f
-    return None                        # source ≥ cadre 1080p : logique actuelle
+    return "trop petite"               # f > 2,7 même vers 480p (ex. 160×120)
 
 w, h = info.largeur_affichee, info.height
-p = palier_superieur(w, h)
+p = palier_cible(w, h)
 if p is None:
     → logique actuelle (_resolve_limits : 4K → 1080p, etc.)
-W, H, bucket, f = p
-if f < ZONE_MORTE:
-    → définition d'origine, débit du palier `bucket` (la source est « presque » ce palier)
-elif f <= PLAFOND:
-    → super-résolution vers (W, H), débit du palier `bucket`
+elif p == "trop petite":
+    → définition d'origine ; débit : tranche 480p (D20)
 else:
-    → définition d'origine (trop basse, ex. 240p) ; débit : voir question Q3
+    W, H, bucket, f = p
+    if f < ZONE_MORTE:
+        → définition d'origine, débit du palier `bucket` (la source est « presque » ce palier)
+    else:
+        → super-résolution vers (W, H), débit du palier `bucket`
 ```
 
-Bornes : `f = 1,2` et `f = 1,5` sont **inclus** dans l'agrandissement
-(1600×900 → 1080p ; 480p → 720p).
+Bornes : `f = 1,2` et `f = 2,7` sont **inclus** dans l'agrandissement.
+Conséquence du parcours de haut en bas : la zone morte ne peut jouer qu'au
+palier 1080p (un facteur < 1,2 vers 720p donnerait < 1,8 vers 1080p, donc
+le 1080p aurait été choisi avant). Toute source SD (DVD NTSC et PAL, 480p)
+va en 1080p ; le palier 720p ne reçoit plus que les sources d'environ 360p,
+le palier 480p celles d'environ 240p.
 
 ### 2.2 Vecteurs de test
 
 Ces cas, calculés à la main, sont à transformer en tests (`tests/test_upscale_paliers.py`).
 
+Recalculés le 2026-11-04 avec D22 (plafond 2,7, plus haut palier) ;
+sorties obtenues par `dimensions_reduites()` du code, pas à la main.
+
 | Source (stockée) | SAR | Pixels carrés | Cadre visé | f | Résultat | Sortie attendue |
 |---|---|---|---|---|---|---|
-| 320×240 | 1:1 | 320×240 | 854×480 | 2,00 | garde | 320×240 |
-| 426×240 | 1:1 | 426×240 | 854×480 | 2,00 | garde | 426×240 |
-| 480×360 | 1:1 | 480×360 | 854×480 | 1,33 | **SR** | 640×480 |
-| 640×360 | 1:1 | 640×360 | 854×480 | 1,33 | **SR** | 854×480 |
-| 720×400 | 1:1 | 720×400 | 854×480 | 1,19 | garde (zone morte) | 720×400 |
-| 640×480 | 1:1 | 640×480 | 1280×720 | 1,50 | **SR** | 960×720 |
-| 854×480 | 1:1 | 854×480 | 1280×720 | 1,50 | **SR** | 1280×720 |
-| 720×480 (DVD NTSC 4:3) | 8:9 | 640×480 | 1280×720 | 1,50 | **SR** | 960×720 |
-| 720×480 (DVD NTSC 16:9) | 32:27 | 853×480 | 1280×720 | 1,50 | **SR** | 1280×720 (853 de large affichés, arrondi pair) |
-| 720×576 (DVD PAL 4:3) | 16:15 | 768×576 | 1280×720 | 1,25 | **SR** | 960×720 |
-| 720×576 (DVD PAL 16:9) | 64:45 | 1024×576 | 1280×720 | 1,25 | **SR** | 1280×720 |
-| 960×540 | 1:1 | 960×540 | 1280×720 | 1,33 | **SR** | 1280×720 |
-| 1100×620 | 1:1 | 1100×620 | 1280×720 | 1,16 | garde (zone morte) | 1100×620 |
+| 160×120 | 1:1 | 160×120 | 854×480 | 4,00 | garde (trop petite) | 160×120 |
+| 240×180 | 1:1 | 240×180 | 854×480 | 2,67 | **SR** | 640×480 |
+| 320×240 | 1:1 | 320×240 | 854×480 | 2,00 | **SR** | 640×480 |
+| 426×240 | 1:1 | 426×240 | 854×480 | 2,00 | **SR** | 852×480 |
+| 480×360 | 1:1 | 480×360 | 1280×720 | 2,00 | **SR** | 960×720 |
+| 640×360 | 1:1 | 640×360 | 1280×720 | 2,00 | **SR** (1080p : f = 3,0) | 1280×720 |
+| 720×400 (Cactus Jack) | 1:1 | 720×400 | 1920×1080 | 2,67 | **SR** | 1920×1066 |
+| 640×480 | 1:1 | 640×480 | 1920×1080 | 2,25 | **SR** | 1440×1080 |
+| 854×480 | 1:1 | 854×480 | 1920×1080 | 2,25 | **SR** | 1920×1080 |
+| 720×480 (DVD NTSC 4:3) | 8:9 | 640×480 | 1920×1080 | 2,25 | **SR** | 1440×1080 |
+| 720×480 (DVD NTSC 16:9) | 32:27 | 853×480 | 1920×1080 | 2,25 | **SR** | 1920×1080 |
+| 720×576 (DVD PAL 4:3) | 16:15 | 768×576 | 1920×1080 | 1,875 | **SR** | 1440×1080 |
+| 720×576 (DVD PAL 16:9) | 64:45 | 1024×576 | 1920×1080 | 1,875 | **SR** | 1920×1080 |
+| 960×540 | 1:1 | 960×540 | 1920×1080 | 2,00 | **SR** | 1920×1080 |
+| 1100×620 | 1:1 | 1100×620 | 1920×1080 | 1,74 | **SR** | 1916×1080 |
 | 1280×720 | 1:1 | 1280×720 | 1920×1080 | 1,50 | **SR** | 1920×1080 |
 | 1280×536 (720p scope) | 1:1 | 1280×536 | 1920×1080 | 1,50 | **SR** | 1920×804 |
 | 1440×850 | 1:1 | 1440×850 | 1920×1080 | 1,27 | **SR** | 1830×1080 |
@@ -124,9 +157,10 @@ l'agrandissement. Elle pourrait être renommée, par exemple `dimensions_cadre()
 - **Les sources entre 1080p et 4K** (ex. 2560×1440) : non concernées. Hors
   sujet, mais à noter : aujourd'hui, `is_4k` (≥ 3200 de large ou ≥ 1700 de
   haut) est faux pour du 1440p, qui est gardé natif en tranche 1080.
-- **Le codec** : `sub_1080 = bucket_h < 1080` (`core/decision.py:877`). Un
-  480p agrandi en 720p reste en H264 ; un 720p agrandi en 1080p passe en HEVC.
-  C'est cohérent, rien à changer.
+- **Le codec** : `sub_1080 = bucket_h < 1080` (`core/decision.py:877`). Avec D22, un
+  DVD ou un 480p agrandi va en 1080p et passe donc en **HEVC** ; seules les
+  sources d'environ 360p (→ 720p) et 240p (→ 480p) restent en H264. C'est
+  cohérent, rien à changer dans le code.
 
 ---
 
@@ -138,7 +172,7 @@ l'agrandissement. Elle pourrait être renommée, par exemple `dimensions_cadre()
    `(limit_w, limit_h, bucket_h)`. Il renverrait en plus un indicateur
    `agrandir: bool`, ou une petite dataclass `Cible(w, h, bucket, agrandir, facteur)`.
    - Agrandissement inactif dans le profil → code actuel, à l'identique.
-   - Agrandissement actif → règle § 2.1, puis l'existant si `palier_superieur`
+   - Agrandissement actif → règle § 2.1, puis l'existant si `palier_cible`
      renvoie None.
 2. **`decide_video`** (l. 849). Il faut un nouveau cas **avant** le SKIP :
    aujourd'hui, un 720p au bon débit et dans un codec lisible tombe en
@@ -203,6 +237,11 @@ l'agrandissement. Elle pourrait être renommée, par exemple `dimensions_cadre()
      `downscaler`) ramène au cadre. Il faut vérifier que la réduction
      d'après-shader passe bien par le `downscaler` (défaut à confirmer ;
      `ewa_lanczos` ou `mitchell` sont des candidats).
+   - **Facteur entre ×2 et ×2,7** (D22 : un DVD en 1080p) : le shader double,
+     puis libplacebo agrandit le reste avec son `upscaler`. Poser
+     `upscaler=ewa_lanczos` et `downscaler=ewa_lanczos` dans tous les cas :
+     à ×2,67, `ewa_lanczos` gagne +0,1 à +0,2 VMAF sur le `spline36` par
+     défaut (§ 10.14).
    - **Échappement des chemins sous Windows** : `C:\…` contient un `:`, qui
      est un séparateur de filtre. Il faut écrire `C\:/…` entre apostrophes, ou
      passer le shader par `custom_shader_bin`. C'est un piège classique, à
@@ -226,6 +265,7 @@ Nouvelles clés de profil (noms provisoires) :
 | `upscale` | `false` / `true` | `false` | Active la règle § 2 |
 | `upscale_engine` | `"libplacebo"` (v1), puis `"vsmlrt"`, `"nvidia_vfx"`, `"amf"` | `"libplacebo"` | Moteur |
 | `upscale_model` | `"film"` / `"anime"` / nom de shader | `"film"` ; `"anime"` pour `series_anime` | Choix du shader |
+| `upscale_passes` | `1` / `2` | `1` | 2 = deux passes ×2 puis réduction au cadre (D14, nom provisoire) |
 | `bitrate_480p_kbps` | entier | à définir (Q3) | Nouvelle tranche, utilisée si l'agrandissement vise 480p |
 
 Il faut aussi :
@@ -236,7 +276,7 @@ Il faut aussi :
   formulaire de profil (`tests/test_profile_form.py`).
 
 Nouvelles clés de configuration, section `[decision]` de `config.toml` :
-`upscale_min_factor = 1.2`, `upscale_max_factor = 1.5`.
+`upscale_min_factor = 1.2`, `upscale_max_factor = 2.7` (D22).
 
 ### 3.4 Dépendances (`dependances.py`, `data/ffmpeg_releases.toml`, `core/preflight.py`)
 
@@ -252,8 +292,15 @@ Nouvelles clés de configuration, section `[decision]` de `config.toml` :
 
 - Les raisons de décision sont à marquer `_()`/`N_()` (traduction) :
   `locales/` (voir `tests/test_console_anglais.py` et l'audit de localisation).
-- Il faut une colonne ou un indicateur « SR » dans la liste des fichiers.
-- `core/preview.py` : un aperçu avant/après serait très utile pour juger.
+- Activation et 2 passes : clé de profil et choix par fichier dans le Dry
+  run, dans les deux sens (D23, D24). Le Dry run a déjà ce mécanisme pour le
+  codec et le débit (`open_codec`, `open_bitrate`, raison « Chosen in the
+  dry run ») : l'agrandissement s'y ajoute sur le même modèle.
+- Liste des fichiers : pas de colonne « SR » ; marque `↑1080p` (et `×2`)
+  dans la colonne Décision, `source→sortie` dans Rés. (D25).
+- Mode guidé : rien de neuf en v1, sauf la décision dans son résumé (D26).
+- `core/preview.py` : extrait de 2 à 3 min en écran partagé moitié/moitié
+  avant un encodage en 2 passes (D17), lancé depuis le Dry run (D24).
 - Documentation à mettre à jour : `iris_encode_spec.md` (§ 6.1 champs de
   profil, et une nouvelle section), `wiki/concepts/codecs-video.md`,
   `wiki/syntheses/questions-ouvertes.md`, `GUIDE*.md`, `CHANGELOG.md`.
@@ -301,12 +348,12 @@ une chaîne libre, `spline36` par défaut ; `upscaler=help` liste les prérégla
 |---|---|---|
 | Q1 | La réduction après le shader (×2 → ×1,5) est-elle de bonne qualité dans `vf_libplacebo` ? Quel `downscaler` ? | Essai et VMAF (§ 6) |
 | Q2 | Un shader « film » est-il assez bon en prise de vue réelle, ou faut-il le niveau 2 pour le film ? | ArtCNN est pensé pour l'animation ; FSRCNNX pour le général. Mesurer |
-| Q3 | Le débit d'une source **non agrandie** sous 480p (f > 1,5), ou en zone morte sous 480p : tranche 480p, ou débit 720p comme aujourd'hui ? Valeur de `bitrate_480p_kbps` ? | Proposition : la tranche 480p ne sert qu'aux sorties en 480p ; le reste ne change pas tant que l'option est inactive |
+| Q3 | ~~Tranchée → D20~~ Le débit d'une source **non agrandie** sous 480p (f > 1,5), ou en zone morte sous 480p : tranche 480p, ou débit 720p comme aujourd'hui ? Valeur de `bitrate_480p_kbps` ? | Proposition : la tranche 480p ne sert qu'aux sorties en 480p ; le reste ne change pas tant que l'option est inactive |
 | Q4 | Faut-il débruiter les DVD par défaut ? Avec quoi (shader `_DN` ou `hqdn3d`) ? | Mesurer sur des DVD réels |
-| Q5 | **Nommage et outils de médiathèque** : un `Film.576p` agrandi devient `Film.720p`. Radarr et Sonarr le classeraient en 720p et pourraient **cesser de chercher** un vrai 720p ou 1080p. Faut-il un marqueur (`.SR`, `.upscaled`, ou le suffixe IRIS) ? | À trancher : honnêteté du nom contre compatibilité avec ces outils |
+| Q5 | ~~Tranchée → D21~~ **Nommage et outils de médiathèque** : un `Film.576p` agrandi devient `Film.720p`. Radarr et Sonarr le classeraient en 720p et pourraient **cesser de chercher** un vrai 720p ou 1080p. Faut-il un marqueur (`.SR`, `.upscaled`, ou le suffixe IRIS) ? | À trancher : honnêteté du nom contre compatibilité avec ces outils |
 | Q6 | Sortie 10 bits pour le HEVC agrandi (720p → 1080p) ? | Moins de banding ; vérifier la lecture sur la chaîne cible (Jellyfin) |
 | Q7 | Les sources HDR en dessous de 1080p : exclues en v1. Les traiter plus tard ? | libplacebo sait faire du tone mapping ; cas rarissime |
-| Q8 | Le temps de calcul sur un iGPU Intel (i5-1135G7, la machine de référence des mesures IE-147) : acceptable ? | Mesures (§ 6.3) |
+| Q8 | ~~Le temps de calcul sur un iGPU Intel (i5-1135G7, la machine de référence des mesures IE-147) : acceptable ?~~ **Mesuré le 2026-11-04 (§ 10.15)** : une passe 1,5 à 2,2× le temps réel, 2 passes 0,37× | Mesures (§ 6.3) |
 | Q9 | Scintillement temporel (les shaders et réseaux image par image) : visible ? | Juger sur des plans fixes et de lents panoramiques |
 | Q10 | Faut-il une **zone morte et un plafond par profil**, plutôt qu'en configuration globale ? | Proposition : globale en v1 |
 
@@ -430,8 +477,19 @@ Session Claude Code locale, PC Shadow (RTX A4500), base de code `main` à
   Le Monde du silence), les contours sont un peu plus nets, sans artefact,
   sans transformation.
 - **Le critère d'abandon du § 6.2 (« battre *nettement* `ewa_lanczos` ») n'est
-  pas atteint** par le niveau 1. Le niveau 2 (Real-ESRGAN, ArtCNN série R)
-  n'est pas encore mesuré : c'est lui qui peut faire basculer la décision.
+  pas atteint** par le niveau 1, **ni par le niveau 2** (§ 10.13, mesuré le
+  2026-11-03) : ArtCNN série R plafonne au niveau de C4F16, Real-ESRGAN gagne
+  au plus 0,6 point de VMAF sur ArtCNN en perdant 4 à 7 dB de PSNR, et la
+  variante 2 passes gagne 0 à 0,2 point sur une passe.
+- **Au facteur ×2,67 (DVD → 1080p), le tableau change** (§ 10.14, mesuré le
+  2026-11-04) : une passe gagne +4,1 à +5,8 VMAF sur lanczos, sans perte de
+  PSNR, et la variante 2 passes ajoute +0,9 à +1,2. Le gain grandit avec le
+  facteur. → **D22** (2026-11-04) : plafond ×2,7, un DVD va en 1080p.
+  Real-ESRGAN, vu à l'œil, transforme l'image (visages « peints ») : écarté
+  pour la prise de vue réelle.
+- **Correction du 2026-11-03** : les chiffres *Tears of Steel* du § 10.4
+  étaient faussés par un décalage d'horodatage (§ 10.13). Remesurés, ils
+  sont plus élevés ; l'ordre des méthodes et les écarts restent du même ordre.
 - Trois pièges trouvés, qui auraient produit des fichiers faux sans erreur
   visible : la colorimétrie devinée par libplacebo (§ 10.2), les shaders
   inactifs sous ×1,3 (§ 10.3), `normalize_sar` qui recadre au lieu d'étirer
@@ -479,9 +537,10 @@ résultat de `spline36`. Cela touche les DVD PAL (×1,25), 1440×850 (×1,27) et
 sans l'être (contraire à D10).
 
 Une copie d'ArtCNN C4F16 **sans la ligne `//!WHEN`** fonctionne à ×1,25 :
-VMAF 75,60 contre 74,59 pour `ewa_lanczos` (+1,0).
+VMAF 75,60 contre 74,59 pour `ewa_lanczos` (+1,0) ; remesuré aligné
+(§ 10.13) : 93,10 contre 91,88 (+1,2).
 
-Deux options, à trancher (nouvelle question Q11) :
+Deux options (question Q11, **tranchée le 2026-11-03 : option 2**, → D13) :
 1. relever la zone morte à `f > 1,3` (strict) : simple, mais les DVD PAL
    restent natifs ;
 2. livrer des copies des shaders sans `//!WHEN` (licences MIT et GPL-3.0 :
@@ -496,6 +555,11 @@ l'identique (sinon la mesure est faussée, voir § 10.2). Shaders :
 `downscaler=ewa_lanczos`. Sources : *Tears of Steel* 720p (prise de vue
 réelle, 20 s) et *Sintel* 1080p (animation, 1920×818, 20 s), films libres de
 la fondation Blender.
+
+> **Les trois colonnes *Tears of Steel* de ce tableau sont faussées** (décalage
+> d'horodatage, une image sur trois comparée à sa voisine) : valeurs corrigées
+> au § 10.13. Les colonnes *Sintel* sont justes (écart < 0,05 à la remesure).
+> Le tableau est gardé tel quel pour FSRCNNX, C4F32 et `_DN`, non remesurés.
 
 | Méthode | ToS ×1,5 @1000k | ToS ×1,5 @4000k | ToS ×1,25 @1200k | Sintel ×1,5 @1500k | Sintel ×1,5 @5000k |
 |---|---|---|---|---|---|
@@ -533,8 +597,8 @@ Filtre seul (décodage + libplacebo, sans encodage), DVDRip 720×400, 750 images
 | FSRCNNX x2 16 | 115 i/s | 120 i/s |
 | ArtCNN C4F32 | ~90 i/s (1er passage 25 i/s : compilation du shader) | 90 i/s |
 
-L'encodeur reste le goulot. **Q8 (iGPU Intel i5-1135G7) reste à mesurer**, sur
-le portable de l'utilisateur.
+L'encodeur reste le goulot. **Q8 (iGPU Intel i5-1135G7)** : mesuré le
+2026-11-04, § 10.15.
 
 ### 10.6 Le ffmpeg (§ 8, point 2)
 
@@ -594,10 +658,10 @@ les blocs du MPEG-4 : `_DN` les atténue.
 
 | # | Question | Pistes |
 |---|---|---|
-| Q11 | Les shaders ne s'activent qu'au-delà de ×1,3 (§ 10.3) : relever la zone morte à 1,3, ou livrer des shaders sans `//!WHEN` ? | Mesure : forcé à ×1,25, +1,0 VMAF |
-| Q12 | Cactus Jack (720×400) reste natif avec la règle. Faut-il relever le plafond (≈ ×1,8), au prix des hallucinations que D6 voulait éviter ? Ou réserver ce cas au niveau 2 ? | À ×1,78, ArtCNN C4F16 n'a montré aucun artefact, mais le gain y reste faible |
-| Q13 | Vu le gain faible du niveau 1 (§ 10.4), faut-il **mesurer le niveau 2 avant P1** (Real-ESRGAN ncnn-Vulkan, ArtCNN R8F64 via vs-mlrt), pour décider si la fonction vaut son coût (débit du palier supérieur, D9) ? | Recommandation : oui, sur les mêmes extraits, avant d'écrire du code |
-| Q14 | Source sans SAR (AVI) et source télécinée (The Kid) : faut-il les traiter, indépendamment de l'agrandissement ? | Deux entrées séparées dans `TODO.md` si oui |
+| Q11 | ~~Les shaders ne s'activent qu'au-delà de ×1,3 (§ 10.3) : relever la zone morte à 1,3, ou livrer des shaders sans `//!WHEN` ?~~ | **Tranchée le 2026-11-03 : option 2** → D13 |
+| Q12 | ~~Tranchée → D19~~ Cactus Jack (720×400) reste natif avec la règle. Faut-il relever le plafond (≈ ×1,8), au prix des hallucinations que D6 voulait éviter ? Ou réserver ce cas au niveau 2 ? | À ×1,78, ArtCNN C4F16 n'a montré aucun artefact, mais le gain y reste faible |
+| Q13 | ~~Tranchée → D18~~ Vu le gain faible du niveau 1 (§ 10.4), faut-il **mesurer le niveau 2 avant P1** (Real-ESRGAN ncnn-Vulkan, ArtCNN R8F64 via vs-mlrt), pour décider si la fonction vaut son coût (débit du palier supérieur, D9) ? | Recommandation : oui, sur les mêmes extraits, avant d'écrire du code |
+| Q14 | ~~Tranchée le 2026-11-03 → `TODO.md` IE-173 (SAR manquant) et IE-174 (télécinéma)~~ Source sans SAR (AVI) et source télécinée (The Kid) : faut-il les traiter, indépendamment de l'agrandissement ? | Deux entrées séparées dans `TODO.md` si oui |
 
 ### 10.11 Sources ajoutées
 
@@ -647,8 +711,185 @@ plus de 150 i/s pour une passe.
 Avis de l'utilisateur :
 - versions 1 à 3 : « les différences sont trop subtiles » à première vue ;
   test à l'aveugle en cours ;
+- choix final : **version 2 (`_2_SR_ArtCNN_C4F16`) sur chaque fichier** → D12 ;
 - fichier 6 (2 passes puis réduction) : **« propre » sur le PC** ; à vérifier
   sur la TV le 2026-11-04. Si ce résultat se confirme, il ouvre une variante
   de la règle : agrandir ×4 par deux passes puis réduire au cadre, plutôt que
   ×2 réduit à ×1,5. Elle est à mesurer selon le protocole § 10.4 avant d'être
   retenue.
+- fichier 6 vu par l'utilisateur le 2026-11-03 : la variante doit être **une
+  option disponible** → D14.
+
+### 10.13 Niveau 2 et variante 2 passes (mesures du 2026-11-03, D18)
+
+Mêmes extraits et même protocole qu'au § 10.4, PC Shadow (RTX A4500).
+ArtCNN ONNX : modèles v1.6.2 exécutés par onnxruntime + DirectML sur la
+luminance seule (×2), chrominance agrandie en lanczos, réduction au cadre en
+lanczos. Real-ESRGAN : `realesrgan-ncnn-vulkan` (Vulkan), en RGB, réduction
+au cadre en lanczos. Le passage par vs-mlrt n'a pas été monté : il ne changerait
+que la vitesse (TensorRT), pas l'image.
+
+**Défaut de mesure trouvé et corrigé.** Les extraits réduits (MKV) ont des
+horodatages arrondis à la milliseconde (0,083 s au lieu de 0,0833) :
+libvmaf appariait alors une image sur trois avec sa voisine. Les mesures
+ci-dessous passent `fps=24` des deux côtés. *Sintel* n'était pas touché
+(témoins identiques à 0,05 près) ; *Tears of Steel* l'était (lanczos ×1,5 :
+73,25 → 90,02). Le chemin Real-ESRGAN (images PNG à 24 i/s) ne l'était pas.
+
+| Méthode | ToS ×1,5 @1000k | ToS ×1,5 @4000k | ToS ×1,25 @1200k | Sintel ×1,5 @1500k | Sintel ×1,5 @5000k |
+|---|---|---|---|---|---|
+| lanczos (swscale) | 90,02 | 97,72 | 92,06 | 93,88 | 96,26 |
+| libplacebo `ewa_lanczos` | 89,84 | 97,50 | 91,88 | 93,77 | 96,09 |
+| GLSL ArtCNN C4F16 (une passe) | 91,58 | 98,90 | 93,10 (forcé) | 96,13 | 98,24 |
+| GLSL C4F16 **2 passes** (D14) | 91,66 | 98,93 | 93,10 | 96,34 | 98,38 |
+| ONNX ArtCNN C4F16 | 92,14 | 99,13 | 93,67 | 96,21 | 98,22 |
+| ONNX ArtCNN R8F64 | 92,10 | 99,14 | 93,65 | 96,08 | 98,15 |
+| ONNX ArtCNN R16F96 | 92,13 | 99,16 | 93,68 | 96,08 | 98,16 |
+| Real-ESRGAN `realesr-animevideov3` ×2 | **92,42** | 97,81 | **94,28** | **96,73** | 97,65 |
+| Real-ESRGAN ×4 (`x4plus` / `x4plus-anime` pour Sintel) | 87,64 | 93,55 | 89,26 | 95,16 | 95,90 |
+
+PSNR-Y (dB), même ordre de colonnes :
+
+| Méthode | ToS ×1,5 @1000k | ToS ×1,5 @4000k | ToS ×1,25 | Sintel @1500k | Sintel @5000k |
+|---|---|---|---|---|---|
+| lanczos | 40,36 | 44,16 | 41,11 | 47,95 | 49,30 |
+| GLSL C4F16 | 40,14 | 43,76 | 40,84 | 47,75 | 49,04 |
+| GLSL 2 passes | 40,01 | 43,46 | 40,71 | 47,37 | 48,53 |
+| ONNX R16F96 | 39,91 | 43,60 | 40,57 | 46,35 | 47,49 |
+| Real-ESRGAN animevideov3 | 36,01 | 37,00 | 36,69 | 40,71 | 40,95 |
+
+Vitesse (agrandissement seul, RTX A4500, images/s ; ToS 854×356, Sintel
+1280×546 en entrée) : ONNX C4F16 53 / 35 ; R8F64 18 / 8 ; R16F96 5,4 / 2,3 ;
+`realesr-animevideov3` 16 / 10 ; `x4plus` 1,2 ; `x4plus-anime` 1,6. Pour
+mémoire, GLSL C4F16 une passe : plus de 150 i/s (§ 10.5). DirectML n'est pas
+le moteur le plus rapide sur NVIDIA : ces vitesses sont un plancher.
+
+Lecture :
+- **La série R d'ArtCNN n'apporte rien** : R8F64 et R16F96 restent à ±0,05
+  de C4F16, pour 3 à 15 fois moins de vitesse.
+- **ONNX C4F16 fait +0,5 sur GLSL C4F16** en prise de vue réelle, rien en
+  animation. Même modèle : l'écart tient sans doute à la chaîne (réduction
+  lanczos contre `ewa_lanczos`, chrominance) et non au moteur. Non isolé.
+- **Real-ESRGAN `animevideov3`** a le meilleur VMAF sur les sources
+  compressées (+0,3 à +0,6 sur ArtCNN), mais **perd 4 à 7 dB de PSNR** et du
+  SSIM, et passe **sous** ArtCNN sur les sources propres (97,81 contre 98,90 ;
+  97,65 contre 98,24). Hypothèse : il efface les blocs de compression et
+  invente de la texture, ce que VMAF récompense et que le PSNR sanctionne.
+  Pas de contrôle visuel fait.
+- **Les modèles ×4 de Real-ESRGAN sont moins bons que lanczos** partout, et
+  très lents : écartés.
+- **La variante 2 passes** gagne **+0,0 à +0,2** VMAF sur une passe, en perdant
+  0,1 à 0,5 dB de PSNR. La mesure ne montre pas de gain de qualité au cadre
+  ×1,5 ; le jugement « propre » de l'utilisateur (fichier 6, ×2,67) n'est
+  pas mesuré dans cette configuration.
+- Gain du meilleur niveau 1 (GLSL C4F16) sur lanczos, valeurs corrigées :
+  **+1,6 / +1,2 / +1,0 / +2,3 / +2,0** VMAF. Loin des ~6 points d'un écart
+  visible.
+
+**Réponse à D18 / Q13** : le niveau 2 **ne fait pas basculer la décision**.
+Aucune méthode mesurée ne bat *nettement* le niveau 1, ni lanczos. Le critère
+d'abandon du § 6.2 n'est atteint par aucune voie. Poursuivre vers P1
+(avec un gain faible, au prix du débit du palier supérieur, D9) ou s'arrêter
+est une décision de l'utilisateur.
+
+Non fait : vitesse sur l'iGPU Intel (Q8), faite le 2026-11-04 (§ 10.15). Contrôle visuel de Real-ESRGAN et
+mesure de la variante 2 passes à ×2,67 : faits le 2026-11-04, § 10.14.
+Scripts et sorties dans le scratchpad de la session (non conservés) :
+`mesure_n2.sh`, `sr_onnx.py`, `out/res_*.txt`.
+
+### 10.14 Facteur ×2,67 et contrôle visuel de Real-ESRGAN (2026-11-04)
+
+Même protocole qu'au § 10.13 (`fps=24` des deux côtés), PC Shadow
+(RTX A4500). Facteur ×2,67 : celui d'un DVD agrandi en 1080p (fichier 6).
+*Sintel* 1920×818 réduit à 720×306, *Tears of Steel* 1280×534 réduit à
+480×200, recompressés en x264 puis ré-agrandis. « +ewa » : une passe avec
+`upscaler=ewa_lanczos` pour le chemin restant entre ×2 (shader) et ×2,67.
+Real-ESRGAN `realesr-animevideov3`, ×2 ou ×4 puis lanczos au cadre.
+
+| Méthode | Sintel @1000k | Sintel @3000k | ToS @600k | ToS @2000k |
+|---|---|---|---|---|
+| lanczos (swscale) | 87,32 | 89,76 | 80,52 | 90,00 |
+| libplacebo `ewa_lanczos` | 86,93 | 89,24 | 80,08 | 89,22 |
+| GLSL C4F16 une passe | 92,84 | 95,59 | 84,60 | 95,05 |
+| GLSL C4F16 une passe +ewa | 92,97 | 95,71 | 84,82 | 95,28 |
+| **GLSL C4F16 2 passes (D14)** | **94,08** | **96,76** | **85,45** | **95,95** |
+| Real-ESRGAN animevideov3 ×2 | 93,68 | 94,90 | 83,29 | 89,51 |
+| Real-ESRGAN animevideov3 ×4 | 93,26 | 94,50 | 83,01 | 89,22 |
+
+PSNR-Y (dB) : lanczos 45,61 / 46,20 / 37,79 / 39,75 ; une passe 45,98 /
+46,75 / 37,89 / 40,12 ; 2 passes 45,90 / 46,67 / 37,72 / 39,84 ;
+Real-ESRGAN ×2 40,08 / 40,23 / 33,69 / 34,42.
+
+Lecture :
+- **Le gain grandit avec le facteur.** À ×2,67, une passe gagne **+4,1 à
+  +5,8** VMAF sur lanczos (contre +1,0 à +2,3 à ×1,5 et ×1,25), et le PSNR
+  ne baisse plus : il monte de 0,1 à 0,6 dB. On approche des ~6 points d'un
+  écart visible.
+- **La variante 2 passes gagne +0,9 à +1,2** sur une passe à ce facteur
+  (contre 0 à 0,2 à ×1,5), soit **+4,9 à +7,0** sur lanczos, à PSNR égal ou
+  légèrement supérieur à celui de lanczos. Cela rejoint le jugement « propre » du fichier 6.
+  Durée : 1,4 à 1,7 fois celle d'une passe sur ces petites
+  définitions (mesure de bout en bout, VMAF compris).
+- `upscaler=ewa_lanczos` pour le chemin restant gagne +0,1 à +0,2 sur le
+  défaut (`spline36`) : un réglage à retenir pour la passe unique au-delà de ×2.
+- **Real-ESRGAN reste derrière ArtCNN** (sauf *Sintel* @1000k, où il est
+  entre une passe et 2 passes), perd encore 4 à 6 dB de PSNR, et tombe au
+  niveau de lanczos sur *Tears of Steel* propre. Son ×4 ne fait pas mieux
+  que son ×2.
+
+Conséquence pour la règle : le plafond (D6, relevé à ×1,8 par D19) exclut
+justement les facteurs où la super-résolution apporte le plus. **Tranché
+le 2026-11-04 → D22** : plafond relevé à ×2,7 et D1 levée, la source va au plus
+haut palier atteignable (vecteurs § 2.2 recalculés).
+
+**Contrôle visuel de Real-ESRGAN** (planches `planche_esrgan_{cactus,kid,br}.png`
+dans `resources_files/essais_sr/`, même image et même coupe : lanczos |
+ArtCNN C4F16 | Real-ESRGAN `animevideov3` ×2) :
+- *Cactus Jack* (×1,78) : Real-ESRGAN **transforme l'image** — visages lissés
+  en aplats « peints », rides effacées, inscription de la casquette disparue,
+  figurants du fond fondus en taches. ArtCNN reste fidèle à la source.
+- *The Kid* (×1,5) : contours plus francs chez Real-ESRGAN, mais le grain et
+  la texture du bois disparaissent ; l'image paraît « restaurée ».
+- *Blade Runner Black Lotus* (×1,5, image de synthèse) : peu d'écart entre
+  les trois ; Real-ESRGAN lisse un peu la peau.
+
+L'hypothèse du § 10.13 se confirme : Real-ESRGAN invente et efface, ce que
+VMAF récompense par endroits. Il est **contraire à l'objectif de fidélité**
+sur la prise de vue réelle. Il pourrait garder un intérêt pour l'animation
+dessinée, non essayée ici.
+
+Scripts (scratchpad, non conservés) : `mesure_x267.sh`, `planche_esr.sh`.
+
+### 10.15 Vitesse sur l'iGPU Intel (Q8, mesuré le 2026-11-04)
+
+Portable de l'utilisateur (i5-1135G7, Intel Iris Xe, Vulkan) et, pour
+comparer, PC Shadow (RTX A4500). Même script (`resources_files/mesure_igpu/`) :
+ffmpeg BtbN n8.1.3, shader ArtCNN C4F16, Cactus Jack 720×400 à 25 i/s, sans
+le son. Vitesse = 500 images / (durée pour 600 − durée pour 100) :
+l'initialisation (Vulkan, compilation du shader) s'annule.
+
+| Chaîne | Iris Xe (i/s) | × temps réel | RTX A4500 (i/s) |
+|---|---|---|---|
+| Décodage seul (témoin) | 2 077 | 83 | 3 285 |
+| libplacebo `spline36` → 1280×712 | 198 | 7,9 | 232 |
+| ArtCNN une passe → 1280×712 (×1,78) | 54,5 | 2,2 | 200 |
+| ArtCNN une passe → 1920×1066 (×2,67) | 38,2 | 1,5 | 161 |
+| ArtCNN 2 passes → 1920×1066 (×2,67) | 9,3 | 0,37 | 30 |
+| Bout en bout : une passe 720p + `h264_qsv` 1 500 k | 41,3 | 1,65 | — (pas de QSV) |
+| Bout en bout : 2 passes 1080p + `hevc_qsv` 3 000 k | 9,1 | 0,37 | — |
+
+Lecture :
+- **Réponse à Q8 : oui, acceptable en une passe.** La chaîne entière tourne
+  sur l'iGPU (Vulkan voit l'Iris Xe, QSV encode derrière). Une passe reste
+  plus rapide que le temps réel, même à ×2,67 : un film de 2 h passe en
+  1 h 15 environ vers 720p (mesuré de bout en bout), en 1 h 20 environ vers
+  1080p (filtre seul à 38 i/s ; la ligne de bout en bout avec `hevc_qsv` n'a
+  pas été mesurée pour une passe).
+- **Sur l'iGPU, le shader est le goulot**, et non l'encodeur comme sur la
+  RTX (§ 10.5) : 198 i/s sans shader, 54 avec. L'encodage QSV ne coûte
+  presque rien de plus (54,5 → 41,3 ; 9,3 → 9,1).
+- **2 passes : 0,37× le temps réel**, soit environ 5 h 30 pour un film de
+  2 h. C'est exactement le cas que l'avertissement de D16 doit annoncer. L'extrait
+  de 2 à 3 min de D17 prend de 5 à 8 min.
+- L'iGPU est 3,5 à 4 fois plus lent que la RTX A4500 sur les shaders.
+

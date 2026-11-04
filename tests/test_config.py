@@ -136,8 +136,8 @@ def test_la_couleur_hd_audio_lit_le_profil_pas_le_libelle():
         p.summary_fields = lambda: champs
         return p
 
-    assert "dim" not in str(cellules_profil("a", profil(True, "yes"), False)[5].style)
-    assert "dim" in str(cellules_profil("b", profil(False, "no"), False)[5].style)
+    assert "dim" not in str(cellules_profil("a", profil(True, "yes"), False)[6].style)
+    assert "dim" in str(cellules_profil("b", profil(False, "no"), False)[6].style)
 
 
 def test_aucune_couleur_ne_se_decide_sur_oui_ou_non():

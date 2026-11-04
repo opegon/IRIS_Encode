@@ -265,6 +265,31 @@ def stem_resolution_ramenee(stem: str, cible: str) -> str:
     return stem_marques_remplacees(stem, JETONS_RESOLUTION_4K, cible)
 
 
+# Les marques d'une définition inférieure au 1080p, que la super-résolution
+# remplace (IE-169).
+JETONS_DEFINITION_SD = ("720p", "576p", "576i", "540p", "480p", "480i",
+                        "360p", "240p")
+MARQUE_AGRANDI = "upscaled"
+
+
+def stem_agrandi(stem: str, palier: int) -> str:
+    """Le stem d'un fichier agrandi par super-résolution (D21 de la note).
+
+    La marque de définition de la source devient celle du palier atteint,
+    suivie de `upscaled` : `Film.720p.BluRay` donne `Film.1080p.upscaled.BluRay`.
+    Radarr et Sonarr ne prennent pas ainsi un agrandissement pour un vrai
+    1080p. Un nom sans marque de définition la reçoit à la fin :
+    `Cactus.Jack` donne `Cactus.Jack.1080p.upscaled`. Un nom écrit avec des
+    espaces et sans point garde son style : `Cactus Jack 1080p upscaled`. Une
+    source déjà marquée `upscaled` ne la reçoit pas deux fois.
+    """
+    stem = stem_marques_retirees(stem, (MARQUE_AGRANDI,))
+    sep = " " if " " in stem and "." not in stem else "."
+    cible = f"{palier}p{sep}{MARQUE_AGRANDI}"
+    ecrit = stem_marques_remplacees(stem, JETONS_DEFINITION_SD, cible)
+    return ecrit if ecrit != stem else f"{stem}{sep}{cible}"
+
+
 def stem_sans_marque_codec(stem: str) -> str:
     """Le stem débarrassé des marques de codec vidéo qu'il porte.
 

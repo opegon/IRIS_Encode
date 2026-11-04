@@ -245,6 +245,33 @@ async def scenario_parallel_scan() -> None:
             # de colonne) : clips d'1 s -> "0:01"
             duree = dr_table.get_row_at(0)[cols.index("duree")].plain
             assert duree.startswith("0:0"), f"duree={duree!r}"
+
+            # U : agrandir la ligne 0 en deux passes (IE-169), puis revenir.
+            # Outils supposes presents : le smoke test ne sonde pas Vulkan.
+            from core import dovi as _dovi, super_resolution as _sr
+            _dovi_avant = _dovi.ffmpeg_dv()
+            _dovi.set_ffmpeg_dv(_dovi_avant or "ffmpeg")
+            _sr.set_shader(_sr.shader() or Path("ArtCNN_C4F16.glsl"))
+            _sr._essais[(_dovi.ffmpeg_dv(), str(_sr.shader()))] = None
+            dr_table.move_cursor(row=0)
+            await pilot.press("u")
+            await pilot.pause(0.4)
+            assert type(app.screen).__name__ == "ValuePickerScreen", type(app.screen).__name__
+            await pilot.press("down", "down", "enter")
+            await pilot.pause(0.6)
+            dr_table = app.screen.query_one(DataTable)
+            res = dr_table.get_row_at(0)[cols.index("res")].plain
+            act = dr_table.get_row_at(0)[cols.index("action")].plain
+            assert res == "320x240→1440x1080", f"res={res!r}"  # D15 : cadre 1080p
+            assert "↑1080p ×2" in act, f"action={act!r}"
+            await pilot.press("u")
+            await pilot.pause(0.4)
+            await pilot.press("up", "up", "enter")
+            await pilot.pause(0.6)
+            res = app.screen.query_one(DataTable).get_row_at(0)[cols.index("res")].plain
+            assert "→" not in res, f"res={res!r}"
+            _dovi.set_ffmpeg_dv(_dovi_avant)
+            print("[9a] Dry run U : deux passes (320x240→1440x1080), puis annule")
             await pilot.press("backspace")
             await pilot.pause(0.3)
             assert type(app.screen).__name__ == "BrowserScreen"

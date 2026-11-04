@@ -154,3 +154,30 @@ def refus(ffmpeg: str) -> Optional[str]:
                 _log.warning("libplacebo test failed: %s", _essais[cle])
         echec = _essais[cle]
     return None if echec is None else _("Vulkan test failed")
+
+
+# ─── Durée ───────────────────────────────────────────────────────────────────
+
+# Images par seconde du seul agrandissement vers 1920×1066, ArtCNN C4F16
+# (note § 10.15, mesuré le 2026-11-04) : (une passe, deux passes). Le shader
+# est le goulot sur un iGPU, pas l'encodeur. Les cartes non mesurées (AMD)
+# prennent les chiffres de l'iGPU Intel : mieux vaut une estimation longue.
+_IMAGES_PAR_SECONDE = {"nvidia": (161.0, 30.0), "intel": (38.2, 9.3)}
+
+
+def duree_agrandissement(info, passes: int, gpu: str) -> float:
+    """Le temps, en secondes, que prend le seul agrandissement d'un fichier.
+
+    Une borne basse de la durée d'encodage : l'écran du Dry run retient la
+    plus longue de celle-ci et de l'estimation habituelle (D25).
+    """
+    une, deux = _IMAGES_PAR_SECONDE.get(gpu, _IMAGES_PAR_SECONDE["intel"])
+    images = info.frame_count
+    if images <= 0:
+        num, _sep, den = info.frame_rate.partition("/")
+        try:
+            cadence = float(num) / float(den or 1)
+        except (ValueError, ZeroDivisionError):
+            cadence = 25.0
+        images = info.duration * cadence
+    return images / (deux if passes == 2 else une)

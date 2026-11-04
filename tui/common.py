@@ -562,8 +562,10 @@ def retour_accueil(app) -> None:
 
 # En-têtes marqués ici, traduits à l'usage (`profil_colonnes`).
 # TRANSLATORS: "Dolby V." is short for Dolby Vision; keep it short.
+# TRANSLATORS: profile column header, super-resolution upscaling; keep it short.
 PROFIL_COLONNES: list[str] = [N_("Profile"), "1080p", "4K", N_("Dolby V."),
-                              N_("Preset"), N_("HD audio"), N_("Source")]
+                              N_("Preset"), N_("Upscale"), N_("HD audio"),
+                              N_("Source")]
 
 
 def profil_colonnes() -> list[str]:
@@ -586,6 +588,10 @@ def cellules_profil(nom: str, prof, actif: bool) -> list[Text]:
          if garde else Text("→ 1080p", style="dim", no_wrap=True)),
         Text(f["dv"], style=DV_VALUE_STYLES.get(f["dv"], ""), no_wrap=True),
         Text(f["preset"], no_wrap=True),
+        # `↑` une passe, `↑ ×2` deux passes, comme la colonne Décision (D25).
+        (Text("↑ ×2" if prof.data.get("upscale_passes", 1) == 2 else "↑",
+              no_wrap=True) if prof.data.get("upscale", False)
+         else Text("—", style="dim", no_wrap=True)),
         # Ces deux colonnes se lisent sur les booléens du profil, pas sur un
         # libellé (UX-29, L-43).
         Text(f["hd_audio"], style="" if hd else "dim", no_wrap=True),

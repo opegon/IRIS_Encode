@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.19 — document de référence courant
+**Version** : 0.9.1.20 — document de référence courant
 **Date** : 2026-11-04
 **Statut** : stable
 
@@ -691,6 +691,7 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 
 | Champ | Type | Rôle |
 |---|---|---|
+| `bitrate_480p_kbps` | int | débit cible en tranche 480p, celle des sources agrandies vers 480p (défaut 1 500) |
 | `bitrate_720p_kbps` | int | débit cible en bucket 720p |
 | `bitrate_1080p_kbps` | int | débit cible en bucket 1080p |
 | `bitrate_4k_kbps` | int | débit cible en bucket 4K |
@@ -707,6 +708,13 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 | `audio_copy_compatible` | bool | copier AAC / AC3 / EAC3 sans transcoder |
 | `audio_hd_codec` | str | `none` / `ac3` / `eac3` — transcoder TrueHD et DTS au débit de la source (§ 8.5) |
 | `container` | str | `auto` / `mp4` / `mkv` — conteneur de sortie (§ 8.6) |
+| `upscale` | bool | agrandir par super-résolution les sources plus petites que le 1080p (§ 8.1) ; défaut `false` |
+| `upscale_passes` | int | `1` / `2` — deux passes ×2 puis réduction au cadre 1080p (§ 8.1) ; sans effet si `upscale` est faux |
+
+Le formulaire expose `upscale` et `upscale_passes` en un seul choix
+(`non` / `oui, une passe` / `oui, deux passes (lent)`), comme l'audio sans
+perte, avec le débit 480p à côté ; deux passes y affichent l'avertissement de
+coût (D16). La liste des profils a une colonne **Agrandir** : `—`, `↑`, `↑ ×2`.
 
 ### 6.2 Comportement quand le fichier ne fournit rien
 
@@ -1050,9 +1058,9 @@ indécises, il reporte son verdict précédent).
 est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans gonflement.
 
 **Agrandissement par super-résolution** (règle v0.9.1.18, IE-167 ; chaîne
-v0.9.1.19, IE-168). Règle de la note `conception_upscaling_2026-11-03.md`
-§ 2. Aucun profil livré ne l'active encore (clés, formulaire et Dry run :
-IE-169).
+v0.9.1.19, IE-168 ; profil, Aperçu et nommage v0.9.1.20, IE-169). Règle de
+la note `conception_upscaling_2026-11-03.md` § 2. Aucun profil livré ne
+l'active : clé de profil (§ 6.1) ou `U` dans l'Aperçu (§ 14.6).
 
 - **Activation** : clé de profil `upscale` (défaut `false`), ou choix par
   fichier, dans les deux sens : `decide_video(info, profil, agrandir=…,
@@ -1103,8 +1111,7 @@ IE-169).
   pour les options et `\ ' [ ] , ;` pour le graphe (`C\\:/…`).
 - Tranche **480p** : `Profile.bitrate_for_height` rend `bitrate_480p_kbps`
   (défaut 1 500) sous 720 ; seule la règle d'agrandissement la demande.
-- Le nom du fichier produit n'annonce pas encore la nouvelle définition
-  (marqueur `.upscaled`, D21) : IE-169.
+- Le nom du fichier produit annonce le palier atteint et `upscaled` (§ 8.7).
 - `tests/test_upscale_paliers.py` : les vecteurs du § 2.2 de la note, les
   trois fichiers d'essai, les refus, le choix par fichier.
 
@@ -1434,6 +1441,14 @@ release, dont elle prend la place (voir plus bas).
 | Greffe de pistes (mkvmerge) | `nom.mux-iris.mkv` |
 | Jonction de parties (§ 9bis) | `nom.join-iris.mkv` |
 | Extrait de contrôle (dossier temporaire) | `nom_[extrait].mkv` |
+
+**Agrandissement** (`scanner.stem_agrandi`, D21) : la marque de définition
+de la source (`720p`, `576p`, `576i`, `540p`, `480p`, `480i`, `360p`,
+`240p`) devient celle du palier atteint suivie de `upscaled` —
+`Film.720p.BluRay` → `Film.1080p.upscaled.BluRay.hevc-iris.mp4`. Sans marque
+de définition, elle s'ajoute à la fin du nom ; un nom à espaces et sans point
+garde ses espaces (`Cactus Jack 1080p upscaled`) ; une marque `upscaled` de la
+source ne se répète pas.
 
 `SUFFIX_BY_ACTION` porte les suffixes d'encodage, `MUX_SUFFIX` et
 `JOIN_SUFFIX` les deux autres ; tous dérivent de `scanner.MARQUE_IRIS`. Depuis
@@ -3262,6 +3277,14 @@ Débit cible · Résolution · Audio
 ```
 
 `Espace` désélectionne un fichier, `F6`/`F7` éditent codec et débit avant lancement,
+`U` agrandit ou non la ligne (une lettre : F8 est réservée à la suppression de la source, UX-07) (non / une passe / deux passes), dans les deux
+sens, en recalculant sa décision vidéo (`decide_video(…, agrandir, passes)`,
+D23, D24) : un refus ou une source hors de la règle s'annonce en notification
+(« Pas agrandi — <raison> »), deux passes par l'avertissement de coût (D16).
+Ligne agrandie : Résolution `720x400→1920x1066`, ETA au plus long de
+l'estimation habituelle et de `super_resolution.duree_agrandissement`
+(images de la source à 161 / 30 i/s sur NVIDIA, 38,2 / 9,3 ailleurs, note
+§ 10.15).
 `F2` passe à l'écran Encodage (SKIP exclus). `↵` n'y est pas liée (v0.8.9.6) :
 partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirmation.
 
@@ -3983,6 +4006,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.20 | 2026-11-04 | **Super-résolution, profil, Aperçu et nommage** (§ 6.1, § 8.7, § 14.6, IE-169) : clés `upscale`, `upscale_passes`, `bitrate_480p_kbps` dans le formulaire (un choix pour deux clés), colonne Agrandir des profils, `U` de l'Aperçu dans les deux sens, colonne Résolution `source→sortie`, ETA de la super-résolution, `stem_agrandi` (`Film.1080p.upscaled`) · `tests/test_upscale_interface.py`, étape [9a] du smoke test |
 | 0.9.1.19 | 2026-11-04 | **Super-résolution, la chaîne** (§ 8.1, § 4, IE-168) : `filtre_super_resolution` (une et deux passes), `setparams` avec la colorimétrie lue (`VideoInfo.color_space`, `color_primaries`, `color_range`), ffmpeg à `libplacebo` sur Vulkan sans `-hwaccel`, shader ArtCNN C4F16 sans `//!WHEN` dans `bin/shaders/` (`install_shader`, empreintes de l'asset et de la copie), essai Vulkan au premier fichier à agrandir, refus « shader non installé » / « échec de l'essai Vulkan » · `tests/test_super_resolution.py` |
 | 0.9.1.18 | 2026-11-04 | **Super-résolution, décision seule** (§ 8.1, IE-167) : `palier_cible` (plus haut palier à ×2,7 au plus, zone morte 1,2), `decide_video(…, agrandir, passes)`, débit du palier atteint, tranche 480p, refus HDR / sans libplacebo, libellé `↑1080p` ; l'encodeur n'agrandit pas encore · `tests/test_upscale_paliers.py` |
 | 0.9.1.17 | 2026-11-02 | **Outils assurés par le ffmpeg principal** (§ 4.5) : `ffmpeg_dvd` et `ffmpeg_dv` affichés « ✓ assuré par le ffmpeg principal » au lieu de « ✗ (optionnel) » quand il lit les DVD / a `libplacebo` · `tests/test_outils_couverts.py` |

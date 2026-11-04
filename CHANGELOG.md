@@ -1,5 +1,27 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.20] — 2026-11-04
+
+### Super-résolution : réglable dans le profil et fichier par fichier (IE-169)
+
+- **Dans le profil** : une section « Agrandissement » du formulaire —
+  non, une passe, ou deux passes (lent, avec l'avertissement de coût) — et le
+  débit 480p. La liste des profils a une colonne Agrandir (`↑`, `↑ ×2`).
+- **Dans l'aperçu, `U`** : agrandir une ligne ou non, en une ou deux
+  passes, quel que soit le profil. Si le fichier ne peut pas l'être (source
+  HDR, outil ou Vulkan absent, source déjà au cadre 1080p), une notification
+  dit pourquoi.
+- **Ce qui se voit** : la colonne Résolution montre `720x400→1920x1066`, et la
+  durée estimée tient compte de la super-résolution, plus lente que
+  l'encodeur sur un iGPU (environ 5 h pour un film de 2 h en deux passes sur
+  un Intel intégré).
+- **Le nom le dit** : `Film.720p.BluRay` agrandi sort en
+  `Film.1080p.upscaled.BluRay.hevc-iris.mp4`, pour que Radarr et Sonarr ne le
+  prennent pas pour un vrai 1080p. Un nom sans marque de définition la reçoit
+  à la fin.
+
+Aucun profil livré n'active l'agrandissement.
+
 ## [v0.9.1.19] — 2026-11-04
 
 ### Super-résolution : l'encodeur agrandit (IE-168, deuxième étape)

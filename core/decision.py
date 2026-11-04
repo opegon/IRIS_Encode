@@ -19,7 +19,7 @@ from .profiles import Profile
 from .scanner import (MARQUE_IRIS, AudioTrack, VideoInfo, channel_layout_label,
                       deja_produit, normalize_language, porte_marque,
                       stem_marques_remplacees,
-                      stem_marques_retirees, stem_resolution_ramenee,
+                      stem_agrandi, stem_marques_retirees, stem_resolution_ramenee,
                       stem_sans_groupe, stem_sans_marque_codec,
                       stem_sans_suffixe_produit)
 
@@ -653,7 +653,10 @@ class FileDecision:
             stem = stem_marques_retirees(
                 stem, JETONS_DV + JETONS_HDR + JETONS_HDR_PLUS + JETONS_10_BITS)
         stem = self._stem_audio_a_jour(stem)
-        if self._definition_abaissee:
+        if self.video.upscale is not None:
+            # Agrandi : le palier atteint, et la mention `upscaled` (D21).
+            stem = stem_agrandi(stem, self.video.upscale.palier)
+        elif self._definition_abaissee:
             # Le nom dit ce que le fichier est : un `Film.2160p` sorti en
             # 1080p ne garde pas la marque de sa source.
             stem = stem_resolution_ramenee(stem, f"{self.video.target_height}p")

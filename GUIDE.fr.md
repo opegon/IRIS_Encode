@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.19
+**Version** : 0.9.1.20
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -416,7 +416,19 @@ pas. `C` sert pour ces cas-là.
 |---|---|
 | `Espace` | Inclure / exclure la ligne |
 | `F6` / `F7` | Changer codec / débit **de cette ligne seulement** |
+| `U` | Agrandir cette ligne ou non, en une ou deux passes, quoi que dise le profil |
 | `F2` | Lancer l'encodage — `↵` ne lance rien, par sécurité |
+
+**Agrandissement** (super-résolution) : une source plus petite que le 1080p
+monte au plus haut cadre — 480p, 720p ou 1080p — qu'elle atteint à ×2,7 au
+plus ; un DVD va en 1080p. En deux passes, la cible est toujours le 1080p :
+plus net sur un DVD, 4 à 5 fois plus lent. La colonne Action affiche
+`→ HEVC ↑1080p` (`×2` en deux passes), la colonne Résolution
+`720x400→1920x1066`, et le nom de sortie l'annonce : `Film.720p` devient
+`Film.1080p.upscaled`. Il faut un ffmpeg avec `libplacebo`, le shader
+qu'IRIS propose d'installer au lancement, et une carte graphique que Vulkan
+sait utiliser ; sinon, ou pour une source HDR, une notification en donne la
+raison et la ligne garde sa définition.
 
 Les colonnes **Estim. (Δ%)** et **ETA** — la durée d'encodage prévue —
 reposent sur une moyenne
@@ -507,6 +519,11 @@ l'application ne rajoute ni ne réordonne rien. Tous les profils s'effacent,
 sauf le dernier de la liste. Renommer un profil se fait dans le fichier : le
 champ **Nom** du formulaire ne se saisit qu'à la création. Un profil marqué `⚠ suppr.` efface le fichier
 source après un encodage réussi — à vérifier avant de lancer un lot.
+
+La section **Agrandissement** du formulaire règle le choix par défaut pour les
+fichiers du profil (non / une passe / deux passes) et le débit 480p, celui des
+sources montées en 480p. La colonne **Agrandir** de la liste affiche `↑` (une
+passe) ou `↑ ×2`.
 
 ---
 

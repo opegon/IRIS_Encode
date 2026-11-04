@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.19
+**Version**: 0.9.1.20
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -412,7 +412,18 @@ is there for those cases.
 |---|---|
 | `Space` | Include / exclude the row |
 | `F6` / `F7` | Change the codec / bitrate **of this row only** |
+| `U` | Upscale this row or not, in one or two passes, whatever the profile says |
 | `F2` | Start encoding — `↵` starts nothing, on purpose |
+
+**Upscaling** (super-resolution): a source smaller than 1080p goes up to the
+highest frame — 480p, 720p or 1080p — it reaches at ×2.7 at most; a DVD goes
+to 1080p. Two passes always aim at 1080p: sharper on a DVD, 4 to 5 times
+slower. The Action column shows `→ HEVC ↑1080p` (`×2` in two passes), the
+Resolution column `720x400→1920x1066`, and the output name says it:
+`Movie.720p` becomes `Movie.1080p.upscaled`. It needs an ffmpeg with
+`libplacebo`, the shader IRIS offers to install at startup, and a graphics card
+that Vulkan can use; otherwise, or for an HDR source, a notice gives the reason
+and the row keeps its resolution.
 
 The **Est. (Δ%)** and **ETA** columns — the expected encoding time — rest on a
 moving average of the speed measured at each encode: they improve with use and
@@ -504,6 +515,10 @@ deleted except the last one in the list. Renaming a profile is done in the
 file: the form's **Identifier** field can only be typed at creation. A profile
 marked `⚠ del.` deletes the source file after a successful encode — check it
 before starting a batch.
+
+The form's **Upscaling** section sets the default for the profile's files
+(no / one pass / two passes) and the 480p bitrate, used by sources brought up
+to 480p. The **Upscale** column of the list shows `↑` (one pass) or `↑ ×2`.
 
 ---
 

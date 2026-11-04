@@ -215,6 +215,8 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "run":           N_("Adds the checked rows to the encoding queue."),
         "open_codec":    N_("Changes the codec of the row under the cursor."),
         "open_bitrate":  N_("Changes its target bitrate."),
+        "open_upscale":  N_("Upscales it by super-resolution, in one or two "
+                            "passes, or not — whatever the profile says."),
         "go_back":       N_("Returns to the previous screen."),
     },
     "RunScreen": {

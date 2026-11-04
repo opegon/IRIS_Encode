@@ -64,6 +64,25 @@ _HD_AUDIO = [
     (N_("→ fixed 5.1 / 7.1 bitrate below"),     "forfait"),
 ]
 
+# Super-résolution (IE-169) : un seul choix pour deux clés, `upscale` et
+# `upscale_passes`, comme l'audio sans perte — deux passes sans agrandissement
+# ne voudrait rien dire.
+_AGRANDIR = [
+    (N_("no"),                     "off"),
+    (N_("yes, one pass"),          "1"),
+    (N_("yes, two passes (slow)"), "2"),
+]
+_BITRATE_480P = [("1000k", 1000), ("1200k", 1200), ("1500k", 1500)]
+
+
+def _agrandir_depuis_cles(actif: bool, passes: int) -> str:
+    return "off" if not actif else ("2" if passes == 2 else "1")
+
+
+def _agrandir_cles(choix: str) -> dict[str, Any]:
+    return {"upscale": choix != "off", "upscale_passes": 2 if choix == "2" else 1}
+
+
 _HD_AUDIO_VERS_CLES: dict[str, tuple[bool, str]] = {
     "copy":    (True,  "none"),
     "eac3":    (False, "eac3"),
@@ -265,6 +284,20 @@ class ProfileForm(Widget):
 
         yield Static("", id="cons-preset", classes="consequence")
 
+        # ── Agrandissement ────────────────────────────────────────────────────
+        yield Static(_section(_("Upscaling"), _("(super-resolution)")),
+                     classes="section-hdr")
+
+        with Widget(classes="form-row"):
+            with Widget(classes="form-cell"):
+                yield Label(_("Upscale"), classes="form-lbl")
+                yield Select(_opts(_AGRANDIR), id="field-upscale", classes="form-ctrl")
+            with Widget(classes="form-cell"):
+                yield Label(_("Bitrate 480p (kbps)"), classes="form-lbl")
+                yield Select(_opts(_BITRATE_480P), id="field-480p", classes="form-ctrl")
+
+        yield Static("", id="cons-upscale", classes="consequence")
+
         # ── Dolby Vision ──────────────────────────────────────────────────────
         yield Static(_section("Dolby Vision"), classes="section-hdr")
 
@@ -434,6 +467,21 @@ class ProfileForm(Widget):
                    _("Only applies to files that are actually re-encoded — "
                      "{effect}").format(effect=_(self._PRESET_TXT.get(preset, ""))))
 
+        agrandir = self._txt("#field-upscale", "off")
+        if agrandir == "off":
+            self._pose("#cons-upscale",
+                       _("Sources smaller than 1080p keep their resolution."))
+        else:
+            txt = _("A source smaller than 1080p goes up to the highest frame "
+                    "(480p, 720p or 1080p) it reaches at ×2.7 at most — a DVD "
+                    "goes to 1080p — by super-resolution on the graphics card, "
+                    "at that frame's bitrate. The file name says “upscaled”.")
+            if agrandir == "2":
+                txt += "\n" + _("Two passes: sharper on a DVD, but 4 to 5 times "
+                                 "slower than one pass — about 5 h 30 for a "
+                                 "2-hour movie on an Intel integrated GPU.")
+            self._pose("#cons-upscale", txt, alerte=agrandir == "2")
+
         dv  = self._txt("#field-dv", "hdr10")
         hq  = self._txt("#field-hdr10q", "compat")
         if dv == "hdr10":
@@ -520,6 +568,9 @@ class ProfileForm(Widget):
         _set_sel("#field-4k",     data.get("bitrate_4k_kbps",         5000))
         _set_sel("#field-dv",     data.get("dolby_vision",          "sdr"))
         _set_sel("#field-preset", data.get("preset_encoder",    "medium"))
+        _set_sel("#field-upscale", _agrandir_depuis_cles(
+            bool(data.get("upscale", False)), int(data.get("upscale_passes", 1))))
+        _set_sel("#field-480p",   data.get("bitrate_480p_kbps",       1500))
         _set_sel("#field-hdr10q", data.get("hdr10_quality",     "compat"))
         _set_chk("#field-keep4k", data.get("keep_4k",                False))
         _set_chk("#field-delsrc", data.get("delete_source",          False))
@@ -579,6 +630,8 @@ class ProfileForm(Widget):
             "bitrate_4k_kbps":         _g_sel("#field-4k",     5000),
             "dolby_vision":            _g_sel("#field-dv",    "sdr"),
             "preset_encoder":          _g_sel("#field-preset","medium"),
+            **_agrandir_cles(_g_sel("#field-upscale", "off")),
+            "bitrate_480p_kbps":       _g_sel("#field-480p",   1500),
             "hdr10_quality":           _g_sel("#field-hdr10q","compat"),
             "keep_4k":                 _g_chk("#field-keep4k"),
             "delete_source":           _g_chk("#field-delsrc"),
@@ -620,6 +673,8 @@ class ProfileForm(Widget):
         "#field-4k":     _BITRATE_4K,
         "#field-dv":     _DV_OPTIONS,
         "#field-preset": _PRESET,
+        "#field-upscale": _AGRANDIR,
+        "#field-480p":   _BITRATE_480P,
         "#field-hdr10q": _HDR10_QUALITY,
         "#field-stereo": _BR_STEREO,
         "#field-51":     _BR_SURROUND,

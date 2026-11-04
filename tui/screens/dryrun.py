@@ -24,6 +24,7 @@ from core.decision import (
     cycle_index,
     AV1_BITRATE_OPTS_KBPS,
     choisir_codec,
+    decide_video,
     AudioAction, DVAction, DV_SORTIE, FileDecision, VideoAction,
     video_recopiee,
 )
@@ -93,6 +94,9 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("f2",        "run",         N_("Encode"), show=True),
         Binding("f6",        "open_codec",  N_("Codec"), show=True),
         Binding("f7",        "open_bitrate",N_("Bitrate"),   show=True),
+        # Une lettre, pas F8 : F8 veut dire « supprimer la source » partout
+        # ailleurs (UX-07, tests/test_touches.py).
+        Binding("u",         "open_upscale",N_("Upscale"),   show=True),
         Binding("backspace", "go_back",     N_("Back"),  show=True),
         Binding("escape",    "go_back",     N_("Back"),  show=False, priority=True),
         # `priority` : un DataTable etouffe la touche avant les bindings —
@@ -191,6 +195,9 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             else:
                 bitrate_str = f"{vid.target_bitrate // 1000}k"
                 res_str     = f"{vid.target_width}x{vid.target_height}"
+                if vid.upscale is not None:
+                    # D25 : la source et la sortie, l'agrandissement se lit.
+                    res_str = f"{info.width}x{info.height}→{res_str}"
                 if dec.desentrelace:
                     res_str += " · " + _("deinterlaced")
 
@@ -247,6 +254,12 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 info.duration, info.kbps * 1000, vid.target_bitrate,
                 vid.action, preset, measured_speed
             )
+            if vid.upscale is not None:
+                # Sur un iGPU, le shader est plus lent que l'encodeur (note
+                # § 10.15) : la plus longue des deux durées l'emporte.
+                from core.super_resolution import duree_agrandissement
+                est_enc_duration = max(est_enc_duration, duree_agrandissement(
+                    info, vid.upscale.passes, self._app.platform.gpu.name.lower()))
             temps_txt = Text(fmt_duration(est_enc_duration), no_wrap=True,
                              overflow="ellipsis",
                              style="dim" if vid.action == VideoAction.SKIP else "")
@@ -397,6 +410,40 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             ValuePickerScreen(_("Codec"), codec_picker_opts(self._app.platform),
                               current),
             _on_pick)
+
+    # Les trois choix de U, dans l'ordre du sélecteur : (agrandir, passes).
+    _CHOIX_AGRANDIR = [(False, 1), (True, 1), (True, 2)]
+
+    def action_open_upscale(self) -> None:
+        """Agrandir ce fichier ou non, en une ou deux passes (D23, D24), dans
+        les deux sens : le profil n'est qu'un point de départ."""
+        dec = self._current_decision()
+        if dec is None:
+            return
+        up = dec.video.upscale
+        current = 0 if up is None else (2 if up.passes == 2 else 1)
+        opts = [_("No upscaling"), _("One pass"), _("Two passes (slow)")]
+
+        def _on_pick(idx: int | None, d=dec) -> None:
+            if idx is None or idx == current:
+                return
+            agrandir, passes = self._CHOIX_AGRANDIR[idx]
+            d.video = decide_video(d.info, d.profile, agrandir=agrandir,
+                                   passes=passes)
+            if agrandir and d.video.upscale is None:
+                # Refus (HDR, outil, Vulkan) ou source hors de la règle (déjà
+                # au cadre 1080p, sous ×1,2) : la décision sans agrandissement
+                # s'applique, et sa raison s'affiche.
+                self.notify(_("Not upscaled — {reason}").format(
+                    reason=d.video.reason), severity="warning", timeout=6)
+            elif passes == 2:
+                # D16 : le coût se dit au moment du choix.
+                self.notify(_("Two passes: 4 to 5 times slower than one pass "
+                              "— about 5 h 30 for a 2-hour movie on an Intel "
+                              "integrated GPU."), severity="warning", timeout=6)
+            self._resize_rebuild()
+
+        self.app.push_screen(ValuePickerScreen(_("Upscale"), opts, current), _on_pick)
 
     def action_open_bitrate(self) -> None:
         dec = self._current_decision()

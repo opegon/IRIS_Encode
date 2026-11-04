@@ -116,143 +116,143 @@ msgstr "source HDR"
 msgid "needs ffmpeg with libplacebo"
 msgstr "demande ffmpeg avec libplacebo"
 
-#: core/decision.py:969
+#: core/decision.py:970
 #, python-brace-format
 msgid "{reason} · no upscaling: {why}"
 msgstr "{reason} · pas d'agrandissement : {why}"
 
-#: core/decision.py:979
+#: core/decision.py:980
 #, python-brace-format
 msgid "Upscale {width}x{height} → {target_width}x{target_height} (super-resolution ×{factor:.2f}, two passes)"
 msgstr "Agrandi {width}x{height} → {target_width}x{target_height} (super-résolution ×{factor:.2f}, deux passes)"
 
-#: core/decision.py:982
+#: core/decision.py:983
 #, python-brace-format
 msgid "Upscale {width}x{height} → {target_width}x{target_height} (super-resolution ×{factor:.2f})"
 msgstr "Agrandi {width}x{height} → {target_width}x{target_height} (super-résolution ×{factor:.2f})"
 
-#: core/decision.py:1015
+#: core/decision.py:1016
 #, python-brace-format
 msgid "{dv} → {target}: needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/)"
 msgstr "{dv} → {target} : demande l'outil Dolby Vision (ffmpeg avec libplacebo, dans ./bin/dv/)"
 
-#: core/decision.py:1054
+#: core/decision.py:1055
 #, python-brace-format
 msgid "{reason} · DV preserved, RPU reinjected"
 msgstr "{reason} · DV préservé, RPU réinjecté"
 
-#: core/decision.py:1056
+#: core/decision.py:1057
 #, python-brace-format
 msgid "{reason} · DV kept → video copied"
 msgstr "{reason} · DV conservé → vidéo copiée"
 
-#: core/decision.py:1065
+#: core/decision.py:1066
 #, python-brace-format
 msgid "Unknown bitrate → {target}k target"
 msgstr "Débit inconnu → cible {target}k"
 
-#: core/decision.py:1078
+#: core/decision.py:1079
 #, python-brace-format
 msgid "Bitrate {bitrate}k > {target}k target +{tolerance}%"
 msgstr "Débit {bitrate}k > {target}k cible +{tolerance}%"
 
-#: core/decision.py:1092
+#: core/decision.py:1093
 #, python-brace-format
 msgid "Resolution {width}x{height} > {max_width}x{max_height}"
 msgstr "Résolution {width}x{height} > {max_width}x{max_height}"
 
-#: core/decision.py:1106
+#: core/decision.py:1107
 #, python-brace-format
 msgid "Codec {codec} not supported by the playback chain"
 msgstr "Codec {codec} non lu par la chaîne"
 
-#: core/decision.py:1122
+#: core/decision.py:1123
 #, python-brace-format
 msgid "{dv} → HDR10 without re-encoding"
 msgstr "{dv} → HDR10 sans réencodage"
 
-#: core/decision.py:1133
+#: core/decision.py:1134
 #, python-brace-format
 msgid "Bitrate within target ±{tolerance}%, resolution OK, codec {codec}"
 msgstr "Débit dans la cible ±{tolerance}%, résolution OK, codec {codec}"
 
-#: core/decision.py:1136
+#: core/decision.py:1137
 #, python-brace-format
 msgid "Bitrate OK, resolution OK, codec {codec}"
 msgstr "Débit OK, résolution OK, codec {codec}"
 
-#: core/decision.py:1303
+#: core/decision.py:1304
 msgid "manual selection"
 msgstr "sélection manuelle"
 
-#: core/decision.py:1306
+#: core/decision.py:1307
 #, python-brace-format
 msgid "replaced by its {codec} core (track {index})"
 msgstr "remplacée par son cœur {codec} (piste {index})"
 
-#: core/decision.py:1310
+#: core/decision.py:1311
 #, python-brace-format
 msgid "core of track {index}, which already carries it"
 msgstr "cœur de la piste {index}, qui le porte déjà"
 
-#: core/decision.py:1314
+#: core/decision.py:1315
 #, python-brace-format
 msgid "original track (index {index})"
 msgstr "piste originale (index {index})"
 
-#: core/decision.py:1319
+#: core/decision.py:1320
 msgid "language unknown → kept"
 msgstr "langue inconnue → gardée"
 
-#: core/decision.py:1322
+#: core/decision.py:1323
 #, python-brace-format
 msgid "language {language}"
 msgstr "langue {language}"
 
-#: core/decision.py:1325
+#: core/decision.py:1326
 #, python-brace-format
 msgid "language {language} not kept"
 msgstr "langue {language} non retenue"
 
 #. "lossless", "copy" and the profile key preserve_hd_audio stay in English (glossary).
-#: core/decision.py:1360
+#: core/decision.py:1361
 #, python-brace-format
 msgid "{reason} · lossless + preserve_hd_audio → copy"
 msgstr "{reason} · lossless + preserve_hd_audio → copy"
 
-#: core/decision.py:1367
+#: core/decision.py:1368
 #, python-brace-format
 msgid "{reason} · lossless → {codec}"
 msgstr "{reason} · lossless → {codec}"
 
-#: core/decision.py:1376
+#: core/decision.py:1377
 #, python-brace-format
 msgid "{reason} · {codec} compatible → copy"
 msgstr "{reason} · {codec} compatible → copy"
 
-#: core/decision.py:1384
+#: core/decision.py:1385
 #, python-brace-format
 msgid "{reason} · → {codec}"
 msgstr "{reason} · → {codec}"
 
-#: core/decision.py:1406
+#: core/decision.py:1407
 #, python-brace-format
 msgid "Cannot read the audio track of “{file}” added to this file: the profile's audio rule cannot be applied to it."
 msgstr "Impossible de lire la piste audio de « {file} » greffée sur ce fichier : la règle audio du profil ne peut pas s'y appliquer."
 
-#: core/decision.py:1411
+#: core/decision.py:1412
 msgid "added track"
 msgstr "piste greffée"
 
-#: core/decision.py:1669
+#: core/decision.py:1670
 msgid "H264 does not carry HDR: this file will be converted to SDR (tone mapping, slower). Choose HEVC to keep HDR."
 msgstr "H264 ne porte pas le HDR : ce fichier sera converti en SDR (tone mapping, plus lent). Choisissez HEVC pour garder le HDR."
 
-#: core/decision.py:1703
+#: core/decision.py:1704
 msgid "Forced manually (was SKIP)"
 msgstr "Forcé manuellement (était SKIP)"
 
-#: core/decision.py:1705
+#: core/decision.py:1706
 msgid "Forced manually (was DV removal)"
 msgstr "Forcé manuellement (était retrait DV)"
 
@@ -377,50 +377,50 @@ msgstr "Windows a refusé d'enregistrer l'identité (erreur {code})."
 msgid "Windows refused to remove the identity (error {code})."
 msgstr "Windows a refusé de retirer l'identité (erreur {code})."
 
-#: core/encoder.py:255
+#: core/encoder.py:296
 msgid "This graphics card cannot encode this format. AV1 with NVENC needs an RTX 40 or newer; HEVC and H264 remain available."
 msgstr "Cette carte graphique ne sait pas encoder ce format. L'AV1 par NVENC demande une RTX 40 ou plus récente ; le HEVC et le H264 restent disponibles."
 
-#: core/encoder.py:258
+#: core/encoder.py:299
 msgid "NVENC refused: this ffmpeg needs a newer NVIDIA driver than the one installed. Update the driver, or use an ffmpeg built for an older NVENC API."
 msgstr "NVENC refusé : ce ffmpeg exige un pilote NVIDIA plus récent que celui installé. Mettre à jour le pilote, ou prendre un ffmpeg compilé pour une API NVENC plus ancienne."
 
-#: core/encoder.py:262
+#: core/encoder.py:303
 msgid "The encoder could not be opened on this computer. If it is AV1: NVENC only encodes it from the RTX 40 series."
 msgstr "L'encodeur n'a pas pu s'ouvrir sur cette machine. Si c'est de l'AV1 : NVENC ne l'encode qu'à partir des RTX 40."
 
-#: core/encoder.py:265
+#: core/encoder.py:306
 msgid "The NVIDIA driver cannot be found. Without it, no accelerated encoding is possible."
 msgstr "Le pilote NVIDIA est introuvable. Sans lui, aucun encodage accéléré n'est possible."
 
-#: core/encoder.py:268
+#: core/encoder.py:309
 msgid "The requested bitrate is outside what the encoder accepts. Choose a value within the range it announces."
 msgstr "Le débit demandé sort de ce que l'encodeur accepte. Choisissez une valeur dans la plage qu'il annonce."
 
-#: core/encoder.py:271
+#: core/encoder.py:312
 msgid "The chosen encoder does not support this channel layout or this pixel format."
 msgstr "L'encodeur choisi ne prend pas cette disposition de canaux ou ce format de pixels."
 
-#: core/encoder.py:274
+#: core/encoder.py:315
 msgid "The destination disk is full."
 msgstr "Le disque de destination est plein."
 
-#: core/encoder.py:276
+#: core/encoder.py:317
 msgid "Writing to this location is not allowed."
 msgstr "Écriture refusée à cet emplacement."
 
-#: core/encoder.py:871
+#: core/encoder.py:915
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Empty suffix and same container — encoding refused to avoid corrupting the source file."
 msgstr "Chemin de sortie identique à la source ({path}). Suffixe vide et conteneur identique — encodage refusé pour éviter la corruption du fichier source."
 
-#: core/encoder.py:883
+#: core/encoder.py:933
 #, python-brace-format
 msgid "{dv} → HDR10/SDR needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/): without it, the colors come out wrong."
 msgstr "{dv} → HDR10/SDR demande l'outil Dolby Vision (ffmpeg avec libplacebo, dans ./bin/dv/) : sans lui, les couleurs sortent fausses."
 
 #. -itsoffset is an ffmpeg option, keep it as is.
-#: core/encoder.py:952
+#: core/encoder.py:1004
 #, python-brace-format
 msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
 msgstr "La piste « {track} » demande un facteur d'étirement, que ffmpeg ne sait pas appliquer en une passe (-itsoffset ne fait qu'un décalage constant). mkvmerge sait le faire : installez-le pour que la greffe passe par lui."
@@ -665,6 +665,7 @@ msgid "Download failed: {error}"
 msgstr "Téléchargement échoué : {error}"
 
 #: core/preflight.py:216
+#: core/preflight.py:663
 msgid "Wrong SHA256 checksum — download rejected."
 msgstr "Empreinte SHA256 incorrecte — téléchargement rejeté."
 
@@ -703,8 +704,9 @@ msgstr "L'archive ne contient pas {names}."
 #: core/preflight.py:353
 #: core/preflight.py:414
 #: core/preflight.py:437
-#: core/preflight.py:608
+#: core/preflight.py:617
 #: core/preflight.py:657
+#: core/preflight.py:699
 #, python-brace-format
 msgid "Downloading from {url}"
 msgstr "Téléchargement depuis {url}"
@@ -712,7 +714,8 @@ msgstr "Téléchargement depuis {url}"
 #: core/preflight.py:351
 #: core/preflight.py:412
 #: core/preflight.py:435
-#: core/preflight.py:606
+#: core/preflight.py:615
+#: core/preflight.py:655
 #, python-brace-format
 msgid "{tool} URL not found in the sources."
 msgstr "URL {tool} introuvable dans les sources."
@@ -760,101 +763,117 @@ msgstr "Outil DVD absent (optionnel — nécessaire pour lire les titres d'un DV
 msgid "Dolby Vision tool missing (optional — needed to convert Dolby Vision profile 5 to HDR10 or SDR)."
 msgstr "Outil Dolby Vision absent (optionnel — nécessaire pour convertir le Dolby Vision profil 5 en HDR10 ou en SDR)."
 
-#: core/preflight.py:518
+#: core/preflight.py:516
+msgid "Super-resolution shader missing (optional — needed to upscale small sources)."
+msgstr "Shader de super-résolution absent (optionnel — sert à agrandir les petites sources)."
+
+#: core/preflight.py:527
 msgid "No download URL configured."
 msgstr "Aucune URL de téléchargement configurée."
 
 #. config.toml > [ffmpeg] > fetch_url is a settings key, keep it as is.
-#: core/preflight.py:521
+#: core/preflight.py:530
 msgid "Fill in config.toml > [ffmpeg] > fetch_url"
 msgstr "Renseignez config.toml > [ffmpeg] > fetch_url"
 
-#: core/preflight.py:525
+#: core/preflight.py:534
 msgid "Download and install ffmpeg into ./bin/?"
 msgstr "Télécharger et installer ffmpeg dans ./bin/ ?"
 
-#: core/preflight.py:534
+#: core/preflight.py:543
 msgid "Install ffmpeg manually into ./bin/ or add it to the PATH."
 msgstr "Installez ffmpeg manuellement dans ./bin/ ou ajoutez-le au PATH."
 
-#: core/preflight.py:541
+#: core/preflight.py:550
 msgid "Download and install dovi_tool (Dolby Vision) into ./bin/?"
 msgstr "Télécharger et installer dovi_tool (Dolby Vision) dans ./bin/ ?"
 
-#: core/preflight.py:544
+#: core/preflight.py:553
 msgid "dovi_tool installation failed — Dolby Vision features unavailable."
 msgstr "Installation dovi_tool échouée — fonctionnalité Dolby Vision indisponible."
 
-#: core/preflight.py:546
+#: core/preflight.py:555
 msgid "dovi_tool skipped — Dolby Vision files will not be handled optimally."
 msgstr "dovi_tool ignoré — les fichiers Dolby Vision ne seront pas traités de façon optimale."
 
-#: core/preflight.py:552
+#: core/preflight.py:561
 msgid "Download and install mkvmerge (external tracks) into ./bin/?"
 msgstr "Télécharger et installer mkvmerge (pistes externes) dans ./bin/ ?"
 
-#: core/preflight.py:555
+#: core/preflight.py:564
 msgid "mkvmerge installation failed — adding external tracks unavailable."
 msgstr "Installation mkvmerge échouée — ajout de pistes externes indisponible."
 
-#: core/preflight.py:557
+#: core/preflight.py:566
 msgid "mkvmerge skipped — adding external audio/subtitle tracks will be unavailable."
 msgstr "mkvmerge ignoré — l'ajout de pistes audio/sous-titres externes sera indisponible."
 
-#: core/preflight.py:563
+#: core/preflight.py:572
 msgid "Download and install mpv (resync check) into ./bin/?"
 msgstr "Télécharger et installer mpv (contrôle du recalage) dans ./bin/ ?"
 
-#: core/preflight.py:566
+#: core/preflight.py:575
 msgid "mpv installation failed — the resync can only be set blind."
 msgstr "Installation mpv échouée — le recalage restera réglable à l'aveugle."
 
-#: core/preflight.py:568
+#: core/preflight.py:577
 msgid "mpv skipped — you will not be able to check a resync by eye."
 msgstr "mpv ignoré — vous ne pourrez pas contrôler un recalage à l'œil."
 
-#: core/preflight.py:617
+#: core/preflight.py:626
 msgid "Download and install the DVD tool (ffmpeg BtbN, about 190 MB) into ./bin/dvd/?"
 msgstr "Télécharger et installer l'outil DVD (ffmpeg BtbN, environ 190 Mo) dans ./bin/dvd/ ?"
 
-#: core/preflight.py:620
+#: core/preflight.py:629
 msgid "DVD tool installation failed — DVD titles unavailable."
 msgstr "Échec de l'installation de l'outil DVD — titres de DVD indisponibles."
 
-#: core/preflight.py:622
+#: core/preflight.py:631
 msgid "DVD tool skipped — DVD folders will only show their VOB files."
 msgstr "Outil DVD ignoré — un dossier DVD ne montrera que ses fichiers VOB."
 
-#: core/preflight.py:627
+#: core/preflight.py:636
 msgid "Download and install the Dolby Vision tool (ffmpeg BtbN, about 190 MB) into ./bin/dv/?"
 msgstr "Télécharger et installer l'outil Dolby Vision (ffmpeg BtbN, environ 190 Mo) dans ./bin/dv/ ?"
 
-#: core/preflight.py:630
+#: core/preflight.py:639
 msgid "Dolby Vision tool installation failed — profile 5 files will be skipped."
 msgstr "Échec de l'installation de l'outil Dolby Vision — les fichiers en profil 5 seront ignorés."
 
-#: core/preflight.py:633
+#: core/preflight.py:642
 msgid "Dolby Vision tool skipped — profile 5 files will be skipped instead of converted."
 msgstr "Outil Dolby Vision ignoré — les fichiers en profil 5 seront ignorés au lieu d'être convertis."
 
-#: core/preflight.py:687
+#: core/preflight.py:670
+msgid "Download and install the super-resolution shader (ArtCNN, about 210 KB) into ./bin/shaders/?"
+msgstr "Télécharger et installer le shader de super-résolution (ArtCNN, environ 210 Ko) dans ./bin/shaders/ ?"
+
+#: core/preflight.py:673
+msgid "Shader installation failed — small sources will keep their resolution."
+msgstr "Échec de l'installation du shader — les petites sources garderont leur définition."
+
+#: core/preflight.py:676
+msgid "Shader skipped — small sources will keep their resolution."
+msgstr "Shader ignoré — les petites sources garderont leur définition."
+
+#: core/preflight.py:729
 msgid "Checking for updates…"
 msgstr "Vérification des mises à jour…"
 
-#: core/preflight.py:710
+#: core/preflight.py:752
 msgid "Update these tools?"
 msgstr "Mettre à jour ces outils ?"
 
-#: core/preflight.py:711
+#: core/preflight.py:753
 msgid "Update skipped — the installed versions stay in place."
 msgstr "Mise à jour ignorée — les versions installées restent en place."
 
-#: core/preflight.py:718
+#: core/preflight.py:760
 #, python-brace-format
 msgid "{tool}: downloading {version}…"
 msgstr "{tool} : téléchargement de {version}…"
 
-#: core/preflight.py:725
+#: core/preflight.py:767
 #, python-brace-format
 msgid "{tool} update failed — previous version kept."
 msgstr "Mise à jour de {tool} échouée — version précédente conservée."
@@ -906,6 +925,14 @@ msgstr "la piste ne contient aucune réplique lisible"
 #, python-brace-format
 msgid "The subtitle “{track}” needs a stretch factor, which cannot be applied while preparing the subtitles: it would drift."
 msgstr "Le sous-titre « {track} » demande un facteur d'étirement, impossible à appliquer pendant la préparation des sous-titres : il dériverait."
+
+#: core/super_resolution.py:148
+msgid "super-resolution shader not installed"
+msgstr "shader de super-résolution non installé"
+
+#: core/super_resolution.py:156
+msgid "Vulkan test failed"
+msgstr "échec de l'essai Vulkan"
 
 #. confidence levels of a measurement, shown alone in a column or after the word "confidence".
 #: core/sync.py:91
@@ -1173,109 +1200,109 @@ msgstr "Aide"
 msgid "Encodes"
 msgstr "Encodages"
 
-#: tui/app.py:212
-#: tui/app.py:218
+#: tui/app.py:216
+#: tui/app.py:222
 msgid "Graphics card"
 msgstr "Carte graphique"
 
-#: tui/app.py:215
+#: tui/app.py:219
 msgid "AMD graphics card (AMF): experimental support, not yet verified on AMD hardware. Check the first encodes, HDR ones especially."
 msgstr "Carte graphique AMD (AMF) : prise en charge expérimentale, pas encore vérifiée sur du matériel AMD. Contrôlez les premiers encodages, surtout en HDR."
 
-#: tui/app.py:232
+#: tui/app.py:236
 #, python-brace-format
 msgid "{file} unreadable ({error}): this session runs on the defaults and will not rewrite it. Fix it by hand, then restart."
 msgstr "{file} illisible ({error}) : cette session tourne sur les valeurs par défaut et ne le réécrira pas. Corrigez-le à la main, puis relancez."
 
-#: tui/app.py:282
+#: tui/app.py:286
 #, python-brace-format
 msgid "The folder of {count} source is read-only (mounted disc image?): its output cannot be written next to it."
 msgid_plural "The folders of {count} sources are read-only (mounted disc image?): their outputs cannot be written next to them."
 msgstr[0] "Le dossier de {count} source est en lecture seule (image disque montée ?) : sa sortie ne peut pas s'écrire à côté d'elle."
 msgstr[1] "Les dossiers de {count} sources sont en lecture seule (image disque montée ?) : leurs sorties ne peuvent pas s'écrire à côté d'elles."
 
-#: tui/app.py:309
+#: tui/app.py:313
 #, python-brace-format
 msgid "Already in the queue: {files}"
 msgstr "Déjà dans la file : {files}"
 
-#: tui/app.py:315
+#: tui/app.py:319
 #, python-brace-format
 msgid "{count} file added to the queue — {key} to follow it."
 msgid_plural "{count} files added to the queue — {key} to follow it."
 msgstr[0] "{count} fichier ajouté à la file — {key} pour la suivre."
 msgstr[1] "{count} fichiers ajoutés à la file — {key} pour la suivre."
 
-#: tui/app.py:358
+#: tui/app.py:362
 #: tui/screens/run.py:109
 #: tui/screens/run.py:110
 #: tui/screens/run.py:237
 msgid "Files"
 msgstr "Fichiers"
 
-#: tui/app.py:360
+#: tui/app.py:364
 msgid "Batch done"
 msgstr "Lot terminé"
 
-#: tui/app.py:363
+#: tui/app.py:367
 #, python-brace-format
 msgid "Encoding paused · {done}/{total} · {percent}%"
 msgstr "Encodages en pause · {done}/{total} · {percent}%"
 
-#: tui/app.py:365
+#: tui/app.py:369
 #, python-brace-format
 msgid "Encoding in progress · {done}/{total} · {percent}%"
 msgstr "Encodages en cours · {done}/{total} · {percent}%"
 
-#: tui/app.py:413
+#: tui/app.py:417
 msgid "sleep blocked"
 msgstr "veille bloquée"
 
-#: tui/app.py:415
+#: tui/app.py:419
 #, python-brace-format
 msgid "then {action}"
 msgstr "puis {action}"
 
-#: tui/app.py:448
+#: tui/app.py:452
 msgid "After-batch action canceled."
 msgstr "Action d'après lot annulée."
 
-#: tui/app.py:452
+#: tui/app.py:456
 msgid "A task has resumed: after-batch action canceled."
 msgstr "Un traitement a repris : action d'après lot annulée."
 
-#: tui/app.py:458
+#: tui/app.py:462
 #, python-brace-format
 msgid "Cannot {action}: {error}"
 msgstr "{action} impossible : {error}"
 
-#: tui/app.py:471
+#: tui/app.py:475
 msgid "No encoding in progress."
 msgstr "Aucun encodage en cours."
 
-#: tui/app.py:499
+#: tui/app.py:503
 msgid "The running encode will be stopped, its partial output deleted."
 msgstr "L'encodage en cours sera arrêté, sa sortie partielle effacée."
 
-#: tui/app.py:500
+#: tui/app.py:504
 msgid "The running mux will be stopped, its partial output deleted."
 msgstr "Le mux en cours sera arrêté, sa sortie partielle effacée."
 
-#: tui/app.py:501
+#: tui/app.py:505
 msgid "The running join will be stopped, its partial output deleted."
 msgstr "La jonction en cours sera arrêtée, sa sortie partielle effacée."
 
-#: tui/app.py:502
-#: tui/app.py:503
-#: tui/app.py:504
+#: tui/app.py:506
+#: tui/app.py:507
+#: tui/app.py:508
 msgid "The running measurement will be lost."
 msgstr "La mesure en cours sera perdue."
 
-#: tui/app.py:505
+#: tui/app.py:509
 msgid "The running resync will be lost."
 msgstr "Le recalage en cours sera perdu."
 
-#: tui/app.py:524
+#: tui/app.py:528
 #, python-brace-format
 msgid "{count} waiting file will not be encoded."
 msgid_plural "{count} waiting files will not be encoded."

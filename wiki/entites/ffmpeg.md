@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-11-01
+maj: 2026-11-04
 sources:
+  - "[[source-2026-11-04-libplacebo-shader-chemin]]"
   - "[[source-2026-11-01-dv-p5-libplacebo]]"
   - "[[source-2026-10-29-raccord-qsv-passe-dv]]"
   - "[[source-2026-10-29-fichier-colle]]"
@@ -78,6 +79,17 @@ sans libx265 : `ffmpeg -encoders | findstr x265`.
 
 ## Comportements à connaître
 
+- **Un chemin de fichier dans `-vf` est relu deux fois** : par le graphe
+  (`, ; [ ]` séparent les filtres), puis par les options du filtre (`:` les
+  sépare). Chaque niveau retire une barre d'échappement : `C:\…` s'écrit
+  `'C\:/…'` entre apostrophes, ou `C\\:/…` sans ; `C\:/…` sans
+  apostrophes et `'C:/…'` échouent (« No option name near »). IRIS échappe
+  deux fois (`super_resolution.chemin_filtre`), ce qui passe aussi avec
+  `' , [ ] ;` dans le chemin. *(mesuré, BtbN n8.1.3, 2026-11-04,
+  [[source-2026-11-04-libplacebo-shader-chemin]])*
+- **`libplacebo` sans Vulkan utilisable** ne se voit pas dans `-filters` :
+  seul un essai (`-init_hw_device vulkan`, une image, le shader) le dit, en
+  2 à 3,5 s. *(mesuré, même source)*
 - **Muxer un flux brut en MP4 perd les horodatages** : PTS = DTS sur chaque
   image (« pts has no value »), même avec `-r`. Partir d'un fichier
   conteneurisé. *(mesuré, [[conteneurs#Horodatages]])*

@@ -161,6 +161,47 @@ def filtre_p5(decision: FileDecision) -> str:
     return "libplacebo=" + ":".join(opts) + ",setsar=1"
 
 
+# Sortie d'un agrandissement : BT.709, plage limitée (le HDR est exclu en v1).
+_SORTIE_BT709 = "colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv"
+
+
+def filtre_super_resolution(decision: FileDecision) -> str:
+    """Le filtre d'un agrandissement par super-résolution (IE-168).
+
+    `setparams` déclare la colorimétrie de la source (`super_resolution.
+    colorimetrie_source`). Une passe : le shader double la luminance, puis
+    libplacebo ramène au cadre — `downscaler` sous ×2, `upscaler` au-delà ;
+    `ewa_lanczos` dans les deux cas (note § 10.2, § 10.14). Deux passes
+    (D14) : deux ×2 en 4:4:4 16 bits, puis réduction au cadre (§ 10.12).
+
+    Les dimensions visées sont celles de la décision, en pixels carrés :
+    `reset_sar=1` étire l'image au lieu d'en garder le SAR, et un seul
+    rééchantillonnage absorbe les pixels non carrés (pas de `scale` en
+    amont, contrairement au chemin processeur). Le désentrelacement reste
+    `bwdif`, comme sans agrandissement : il ne touche que les images que le
+    flux marque entrelacées.
+    """
+    from . import super_resolution as sr
+    info, vid = decision.info, decision.video
+    shader = "custom_shader_path=" + sr.chemin_filtre(sr.shader())
+    filtres = [FILTRE_DESENTRELACEMENT] if decision.desentrelace else []
+    filtres.append(sr.colorimetrie_source(info))
+    if vid.upscale.passes == 2:
+        l2, h2 = info.largeur_affichee * 2, info.height * 2
+        for l, h in ((l2, h2), (l2 * 2, h2 * 2)):
+            filtres.append(f"libplacebo=w={l}:h={h}:reset_sar=1:{shader}"
+                           f":{_SORTIE_BT709}:format=yuv444p16le")
+        filtres.append(f"libplacebo=w={vid.target_width}:h={vid.target_height}"
+                       f":downscaler=ewa_lanczos:{_SORTIE_BT709}:format=yuv420p")
+    else:
+        filtres.append(f"libplacebo=w={vid.target_width}:h={vid.target_height}"
+                       f":reset_sar=1:{shader}"
+                       ":upscaler=ewa_lanczos:downscaler=ewa_lanczos"
+                       f":{_SORTIE_BT709}:format=yuv420p")
+    filtres.append("setsar=1")
+    return ",".join(filtres)
+
+
 # Regex pour parser la ligne de progression ffmpeg. `frame=` et `fps=` sont
 # facultatifs : une sortie sans vidéo (passes audio) écrit `size= … time= …
 # bitrate= … speed=`, et sa barre restait indéterminée (CR-21) ; `time=` suffit
@@ -684,6 +725,9 @@ def filtre_tout_puce(decision: FileDecision,
     `build_command`, seul à décider de ce mode.
     """
     info, vid = decision.info, decision.video
+    # La super-résolution passe par libplacebo, sur Vulkan.
+    if vid.upscale is not None:
+        return None
     if platform.gpu == GPU.INTEL:
         filtre, decodables = "vpp_qsv", _DECODABLE_QSV
     elif (platform.gpu == GPU.NVIDIA
@@ -877,20 +921,27 @@ def build_command(
     # qui applique le RPU sur Vulkan. Sans lui, la décision a déjà refusé ;
     # ce garde-fou vaut pour une action forcée à la main.
     p5 = conversion_p5(info, vid.dv_action)
-    if p5:
+    # La super-résolution aussi : la décision n'agrandit que si ce ffmpeg
+    # existe et que l'essai de Vulkan a réussi (`super_resolution.refus`).
+    agrandit = vid.upscale is not None
+    if agrandit:
+        from . import dovi
+        cmd: list[str] = [dovi.ffmpeg_dv(), "-init_hw_device", "vulkan"]
+    elif p5:
         from . import dovi
         if dovi.ffmpeg_dv() is None:
             raise ErreurAffichable(N_(
                 "{dv} → HDR10/SDR needs the Dolby Vision tool (ffmpeg with "
                 "libplacebo, in ./bin/dv/): without it, the colors come out "
                 "wrong."), dv=info.dv_label)
-        cmd: list[str] = [dovi.ffmpeg_dv(), "-init_hw_device", "vulkan"]
+        cmd = [dovi.ffmpeg_dv(), "-init_hw_device", "vulkan"]
     else:
         cmd = [_ffmpeg_path]
 
     # hwaccel — absent pour :
     #   - SDR tone map (CPU obligatoire pour zscale)
-    #   - profil 5 converti (libplacebo prend les images en mémoire)
+    #   - profil 5 converti, super-résolution (libplacebo prend les images
+    #     en mémoire)
     #   - DV preserve (copy)
     #   - HDR10 quality (libx265 CPU pour metadata propres)
     preserve_video = (vid.dv_action == DVAction.DV)
@@ -908,6 +959,7 @@ def build_command(
         platform.hwaccel
         and vid.dv_action != DVAction.SDR
         and not p5
+        and not agrandit
         and not preserve_video
         and not hdr10_quality
     )
@@ -1025,6 +1077,8 @@ def build_command(
     # ── Filtre vidéo ──────────────────────────────────────────────────────────
     if tout_puce is not None:
         cmd += ["-vf", tout_puce]
+    elif agrandit:
+        cmd += ["-vf", filtre_super_resolution(decision)]
     elif p5:
         cmd += ["-vf", filtre_p5(decision)]
     elif not preserve_video:

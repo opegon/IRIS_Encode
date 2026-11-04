@@ -505,6 +505,12 @@ class VideoInfo:
     # retirer le RPU laisse une image juste.
     dv_bl_compat:    Optional[int]       = None
     color_transfer:  str                 = ""
+    # Matrice, primaires et plage déclarées (`color_space`, `color_primaries`,
+    # `color_range`), « » si le flux ne dit rien. La super-résolution les
+    # déclare à libplacebo, qui sinon les devine d'après la définition (IE-168).
+    color_space:     str                 = ""
+    color_primaries: str                 = ""
+    color_range:     str                 = ""
     frame_rate:      str                 = ""    # "24/1", "24000/1001"…
     # Ordre des trames déclaré par le flux : « progressive », « tt », « bb »,
     # « tb », « bt », ou « » s'il ne dit rien (IE-122).
@@ -1062,6 +1068,9 @@ def scan(path: Path) -> VideoInfo:
         hdr10_max_cll=hdr10_max_cll,
         dv_bl_compat=dv_bl_compat,
         color_transfer=vid.get("color_transfer", ""),
+        color_space=vid.get("color_space", "") or "",
+        color_primaries=vid.get("color_primaries", "") or "",
+        color_range=vid.get("color_range", "") or "",
         frame_rate=vid.get("r_frame_rate", ""),
         field_order=vid.get("field_order", "") or "",
         sar=vid.get("sample_aspect_ratio", "") or "",

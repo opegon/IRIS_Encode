@@ -508,6 +508,15 @@ def run_preflight(cfg: dict) -> bool:
                     "Dolby Vision profile 5 to HDR10 or SDR)."))
             _offer_dv_install(bin_dir)
             print()
+        # Le shader ne sert qu'avec un ffmpeg à libplacebo : sans lui, inutile
+        # de le proposer.
+        if not _dv_manquant(check_tools(bin_dir) if missing_dv else statuses):
+            from .super_resolution import chercher_shader
+            if chercher_shader(bin_dir) is None:
+                _dire(_("Super-resolution shader missing (optional — needed "
+                        "to upscale small sources)."))
+                _offer_shader_install(bin_dir)
+                print()
         check_for_updates(cfg, statuses, bin_dir)
         return True
 
@@ -632,6 +641,39 @@ def _offer_dv_install(bin_dir: Path) -> None:
     else:
         _dire(_("Dolby Vision tool skipped — profile 5 files will be "
                 "skipped instead of converted."))
+
+
+def install_shader(bin_dir: Path, releases: dict) -> bool:
+    """Le shader de super-résolution, dans `bin/shaders/`, sans ses lignes
+    `//!WHEN` (`super_resolution.sans_when`). L'asset téléchargé est vérifié
+    par son empreinte publiée, la copie par la sienne : une copie différente
+    n'agrandirait plus de la même façon, ou plus du tout sous ×1,3."""
+    from . import super_resolution as sr
+    info = releases.get(sr.CLE_SHADER, {})
+    url  = info.get("url", "")
+    if not url:
+        _dire(_("{tool} URL not found in the sources.").format(tool=sr.SHADER), "✗")
+        return False
+    _dire(_("Downloading from {url}").format(url=url))
+    data = _download(url, info.get("sha256", ""))
+    if data is None:
+        return False
+    copie = sr.sans_when(data)
+    if _sha256(copie) != info.get("sha256_copie", "").lower():
+        _dire(_("Wrong SHA256 checksum — download rejected."), "✗")
+        return False
+    return _poser_tous({sr.chemin_shader(bin_dir): copie})
+
+
+def _offer_shader_install(bin_dir: Path) -> None:
+    """Propose le shader de super-résolution (optionnel)."""
+    if _oui_non(_("Download and install the super-resolution shader "
+                  "(ArtCNN, about 210 KB) into ./bin/shaders/?")):
+        if not install_shader(bin_dir, _load_releases()):
+            _dire(_("Shader installation failed — small sources will keep "
+                    "their resolution."), "✗")
+    else:
+        _dire(_("Shader skipped — small sources will keep their resolution."))
 
 
 OUTILS_INSTALLABLES = frozenset({"ffmpeg", "mkvmerge", "dovi_tool", "mpv",

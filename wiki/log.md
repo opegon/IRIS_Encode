@@ -535,3 +535,9 @@ la session. Page mise à jour : [[sous-processus]].
 IE-162. Mesuré : `CredWriteW` en `CRED_TYPE_DOMAIN_PASSWORD` depuis un
 processus ordinaire, `CredReadW` rend le compte, `CredDeleteW` le retire
 (vérifié par `cmdkey /list`). Page mise à jour : [[sous-processus]].
+
+## [2026-11-04] ingest | Super-résolution, chaîne libplacebo (v0.9.1.19)
+
+IE-168. Mesuré : échappement à deux niveaux d'un chemin dans `-vf`, durée de
+la sonde Vulkan, encodage de bout en bout en une et deux passes. Page mise à
+jour : [[ffmpeg]].

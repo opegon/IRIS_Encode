@@ -1,6 +1,6 @@
 ---
 type: index
-maj: 2026-11-01
+maj: 2026-11-04
 ---
 
 # Index du wiki IRIS ENCODE
@@ -75,6 +75,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-10-28-qsv-decodage]] | Décodage matériel QSV : `d3d11va` plus lent, tout-puce 3,3 × plus rapide, SAR et arrondi de `scale` |
 | [[source-2026-10-28-qsv-portable]] | Intel Quick Sync sur un i5-1135G7 : codecs encodés, réserves HDR |
 | [[source-2026-11-01-dv-p5-libplacebo]] | DV profil 5 vert et violet en HDR10 ; `libplacebo` applique le RPU, absent du gyan |
+| [[source-2026-11-04-libplacebo-shader-chemin]] | Chemin du shader dans `-vf` échappé à deux niveaux ; sonde Vulkan ; chaîne SR de bout en bout |
 | [[source-2026-10-04-localisation]] | Audit de localisation et décisions de l'utilisateur : politique de traduction, glossaire |
 
 ## Brut (`raw/`, immuable)
@@ -115,3 +116,4 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-28-qsv-source-hdr10]] | MediaInfo de la source 4K HDR10 de l'essai QSV : sans MaxCLL |
 | [[2026-10-28-qsv-portable-encodages]] | Deux encodages QSV d'IRIS v0.9.0.9 : SDR et HDR10, débit à 92-93 % |
 | [[2026-11-01-dv-p5-libplacebo]] | Smile 2 en P5 : sortie verte, filtres des deux builds, essais `libplacebo` |
+| [[2026-11-04-libplacebo-shader-chemin]] | Valeurs de `custom_shader_path` essayées, noms de `setparams`, durées |

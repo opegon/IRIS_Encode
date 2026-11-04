@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from core import decision, dovi
+from core import decision, dovi, super_resolution
 from core.decision import (DVAction, VideoAction, _decide_video_classique,
                            decide_video, palier_cible)
 from core.encoder import dimensions_reduites
@@ -20,6 +20,7 @@ from core.profiles import Profile
 from core.scanner import VideoInfo
 
 FF_DV = "C:/iris/bin/dv/ffmpeg.exe"
+SHADER = Path("C:/iris/bin/shaders/ArtCNN_C4F16.glsl")
 
 
 @pytest.fixture(autouse=True)
@@ -27,6 +28,9 @@ def facteurs_par_defaut():
     """La règle ne dépend pas du config.toml du poste."""
     decision._FACTEURS_CACHE = (1.2, 2.7)
     dovi.set_ffmpeg_dv(FF_DV)
+    # Shader installé, essai de Vulkan réussi (IE-168).
+    super_resolution.set_shader(SHADER)
+    super_resolution._essais[(FF_DV, str(SHADER))] = None
 
 
 def _profil(**over) -> Profile:

@@ -920,7 +920,8 @@ def _refus_agrandissement(info: VideoInfo) -> str | None:
     from . import dovi
     if dovi.ffmpeg_dv() is None:
         return _("needs ffmpeg with libplacebo")
-    return None
+    from . import super_resolution
+    return super_resolution.refus(dovi.ffmpeg_dv())
 
 
 def _decide_dv(info: VideoInfo, profile: Profile) -> DVAction:

@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.18 — document de référence courant
-**Date** : 2026-11-02
+**Version** : 0.9.1.19 — document de référence courant
+**Date** : 2026-11-04
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -410,7 +410,8 @@ dans `launch.bat`.
 | `mkvmerge` | optionnel | remux de pistes externes, identification `-J` |
 | `mpv` | optionnel | visualisation d'un fichier ou d'un recalage |
 | `ffmpeg_dvd` | optionnel | outil DVD : ffmpeg BtbN GPL dans `bin/dvd/`, analyse et extraction des titres de DVD (§ 15.6) |
-| `ffmpeg_dv` | optionnel | outil Dolby Vision : ffmpeg BtbN GPL dans `bin/dv/` (ffmpeg seul), filtre `libplacebo` pour convertir un profil 5 (§ 8.4) |
+| `ffmpeg_dv` | optionnel | outil Dolby Vision : ffmpeg BtbN GPL dans `bin/dv/` (ffmpeg seul), filtre `libplacebo` pour convertir un profil 5 (§ 8.4) et pour la super-résolution (§ 8.1) |
+| shader ArtCNN | optionnel | `bin/shaders/ArtCNN_C4F16.glsl`, super-résolution (§ 8.1) ; proposé seulement si un ffmpeg à `libplacebo` est présent |
 
 Ordre de recherche : **PATH système**, puis dossier local `./bin/`. L'outil DVD
 n'est cherché que dans `./bin/dvd/` (`chemin_local`) ; il n'est pas proposé
@@ -445,6 +446,11 @@ fonction correspondante avec un message explicite.
   se compare : une mise à jour est proposée au changement de branche.
 - Outil Dolby Vision : même source (`latest_ffmpeg_dvd`), seul `ffmpeg` extrait
   dans `bin/dv/` (`poser("ffmpeg_dv")`), même règle de mise à jour.
+- Shader de super-résolution (`install_shader`) : l'asset GitHub d'ArtCNN
+  v1.6.2 (`[artcnn]`, empreinte publiée), posé **sans ses lignes `//!WHEN`**
+  (`super_resolution.sans_when`, D13) ; l'empreinte de la copie
+  (`sha256_copie`) est vérifiée avant de l'écrire. Pas de mise à jour
+  automatique : la version est épinglée.
 - Sources : gyan.dev / BtbN (ffmpeg), GitHub quietvoid (dovi_tool),
   mkvtoolnix.download (mkvmerge), sourceforge (mpv)
 
@@ -1043,11 +1049,10 @@ indécises, il reporte son verdict précédent).
 **Force SKIP → encode (browser)** : un fichier SKIP sélectionné manuellement pour le run
 est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans gonflement.
 
-**Agrandissement par super-résolution — décision seule** (v0.9.1.18, IE-167).
-Règle de la note `conception_upscaling_2026-11-03.md` § 2. **L'encodeur
-n'agrandit pas encore** (IE-168) : aucun profil livré n'active la règle, et
-un profil qui l'active à la main obtient une décision que l'encodage
-n'applique pas.
+**Agrandissement par super-résolution** (règle v0.9.1.18, IE-167 ; chaîne
+v0.9.1.19, IE-168). Règle de la note `conception_upscaling_2026-11-03.md`
+§ 2. Aucun profil livré ne l'active encore (clés, formulaire et Dry run :
+IE-169).
 
 - **Activation** : clé de profil `upscale` (défaut `false`), ou choix par
   fichier, dans les deux sens : `decide_video(info, profil, agrandir=…,
@@ -1072,9 +1077,30 @@ n'applique pas.
   Libellé : `→ HEVC ↑1080p`, `→ HEVC ↑1080p ×2` en deux passes. Raison :
   « Agrandi 720x576 → 1920x1080 (super-résolution ×1.88) ».
 - **Refus, sans repli sur une interpolation classique** (D10) : source HDR ou
-  Dolby Vision, ou pas de ffmpeg à `libplacebo` (`dovi.ffmpeg_dv()`). La
-  décision classique s'applique et sa raison se termine par « · pas
-  d'agrandissement : <cause> ». La sonde Vulkan viendra avec IE-168.
+  Dolby Vision, pas de ffmpeg à `libplacebo` (`dovi.ffmpeg_dv()`), shader
+  absent, ou essai Vulkan en échec (`super_resolution.refus`). La décision
+  classique s'applique et sa raison se termine par « · pas
+  d'agrandissement : <cause> ». L'essai (0,1 s d'image par libplacebo et le
+  shader, ~3 s) n'a lieu qu'au premier fichier à agrandir, une fois par
+  session et par ffmpeg.
+- **Encodage** (`build_command`) : le ffmpeg à `libplacebo` avec
+  `-init_hw_device vulkan`, ni `-hwaccel` ni chaîne tout-puce
+  (`filtre_tout_puce` → None). Filtre (`filtre_super_resolution`) :
+  `[bwdif,]setparams=<colorimétrie>,libplacebo=w:h:reset_sar=1:
+  custom_shader_path=…:upscaler=ewa_lanczos:downscaler=ewa_lanczos:<BT.709>:
+  format=yuv420p,setsar=1`. En deux passes : deux `libplacebo` ×2 avec le
+  shader en `yuv444p16le` (depuis la largeur affichée), puis un troisième
+  qui réduit au cadre (`downscaler=ewa_lanczos`). Les pixels non carrés sont
+  absorbés par libplacebo : pas de `scale` en amont.
+- **Colorimétrie déclarée** (`colorimetrie_source`) : matrice et primaires
+  de ffprobe (`VideoInfo.color_space`, `color_primaries`) si `setparams` les
+  connaît, sinon d'après la hauteur (≤ 480 : `smpte170m`, ≤ 576 :
+  `bt470bg`, au-delà `bt709`) ; courbe toujours `bt709` (`bt470bg` serait
+  lue comme un gamma 2,8) ; plage `pc` si déclarée ou `yuvj*`. Sortie
+  BT.709, plage limitée. Sans elle, libplacebo devine l'entrée d'après la
+  définition et la convertit (note § 10.2).
+- **Chemin du shader** (`chemin_filtre`) : `\` → `/`, puis `\ ' :` échappés
+  pour les options et `\ ' [ ] , ;` pour le graphe (`C\\:/…`).
 - Tranche **480p** : `Profile.bitrate_for_height` rend `bitrate_480p_kbps`
   (défaut 1 500) sous 720 ; seule la règle d'agrandissement la demande.
 - Le nom du fichier produit n'annonce pas encore la nouvelle définition
@@ -3957,6 +3983,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.19 | 2026-11-04 | **Super-résolution, la chaîne** (§ 8.1, § 4, IE-168) : `filtre_super_resolution` (une et deux passes), `setparams` avec la colorimétrie lue (`VideoInfo.color_space`, `color_primaries`, `color_range`), ffmpeg à `libplacebo` sur Vulkan sans `-hwaccel`, shader ArtCNN C4F16 sans `//!WHEN` dans `bin/shaders/` (`install_shader`, empreintes de l'asset et de la copie), essai Vulkan au premier fichier à agrandir, refus « shader non installé » / « échec de l'essai Vulkan » · `tests/test_super_resolution.py` |
 | 0.9.1.18 | 2026-11-04 | **Super-résolution, décision seule** (§ 8.1, IE-167) : `palier_cible` (plus haut palier à ×2,7 au plus, zone morte 1,2), `decide_video(…, agrandir, passes)`, débit du palier atteint, tranche 480p, refus HDR / sans libplacebo, libellé `↑1080p` ; l'encodeur n'agrandit pas encore · `tests/test_upscale_paliers.py` |
 | 0.9.1.17 | 2026-11-02 | **Outils assurés par le ffmpeg principal** (§ 4.5) : `ffmpeg_dvd` et `ffmpeg_dv` affichés « ✓ assuré par le ffmpeg principal » au lieu de « ✗ (optionnel) » quand il lit les DVD / a `libplacebo` · `tests/test_outils_couverts.py` |
 | 0.9.1.16 | 2026-11-02 | **Tester la connexion** (§ 14.1) : bouton et `Ctrl+T` du formulaire d'emplacement, essai avec le compte saisi sans rien enregistrer, connexion de l'essai refermée · hors Windows, le formulaire dit que le partage doit être monté · causes ponctuées une fois · `core.emplacements.essayer` · `tests/test_emplacements.py` |

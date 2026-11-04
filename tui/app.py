@@ -159,6 +159,10 @@ class IrisEncodeApp(App):
         # `bin\dv\` ou le principal s'il l'a.
         from core import dovi as dovi_mod
         dovi_mod.set_ffmpeg_dv(dovi_mod.chercher_ffmpeg_dv(bin_dir, ffmpeg_p))
+        # La super-résolution : le shader de `bin\shaders\`. Vulkan n'est
+        # essayé qu'au premier fichier à agrandir (`super_resolution.refus`).
+        from core import super_resolution
+        super_resolution.set_shader(super_resolution.chercher_shader(bin_dir))
         # Câble mkvmerge pour la greffe de pistes externes (optionnel)
         from core import muxer
         mkvmerge_p = get_tool_path("mkvmerge", bin_dir)

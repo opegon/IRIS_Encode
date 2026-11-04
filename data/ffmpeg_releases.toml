@@ -38,3 +38,13 @@ version = "0.41.0"
 url     = "https://mkvtoolnix.download/windows/releases/101.0/mkvtoolnix-64-bit-101.0.zip"
 sha256  = "59a807b45b34ac524dfdef61edcf0642ee9bd6b08c130cfc078532c362569abc"
 version = "101.0"
+
+# Shader de super-résolution (IE-168) : ArtCNN C4F16, licence MIT, toutes
+# plateformes. `sha256` : l'asset publié (champ `digest` de GitHub). La copie
+# posée dans bin/shaders/ perd ses lignes `//!WHEN` (note D13) : `sha256_copie`
+# est l'empreinte de cette copie.
+[artcnn]
+url          = "https://github.com/Artoriuz/ArtCNN/releases/download/v1.6.2/ArtCNN_C4F16.glsl"
+sha256       = "03d0b3d31cb82c898a94a46663021a3e8f02c5a21d69c5cfdf0208de4bfd453e"
+sha256_copie = "643f9870ab0289158eec4a2d2ed1d0b757643e686973d2368c63d81eaab0c080"
+version      = "1.6.2"

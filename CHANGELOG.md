@@ -1,5 +1,36 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.19] — 2026-11-04
+
+### Super-résolution : l'encodeur agrandit (IE-168, deuxième étape)
+
+Une décision « agrandir » est désormais appliquée à l'encodage. Aucun profil
+livré ne l'active encore : la clé `upscale` se pose à la main dans
+`profiles.toml` (le formulaire et le choix par fichier viendront avec
+l'interface).
+
+- **La chaîne.** Le ffmpeg à `libplacebo` agrandit sur la carte graphique
+  (Vulkan) avec le shader ArtCNN C4F16, puis l'encodeur habituel prend le
+  relais (NVENC, Quick Sync, AMF ou processeur). En **deux passes**
+  (`upscale_passes = 2`), l'image est doublée deux fois puis réduite au
+  cadre 1080p ; plus lent (environ 0,37× le temps réel sur un iGPU Intel),
+  plus net sur un DVD.
+- **Couleurs justes.** La colorimétrie de la source est déclarée à
+  libplacebo ; sans elle, une source sans étiquette changeait légèrement de
+  teinte et de luminosité. La sortie est en BT.709.
+- **Pixels non carrés** (DVD anamorphique) : un seul rééchantillonnage, fait
+  par libplacebo.
+- **Le shader** (210 Ko, licence MIT) est proposé au lancement, seulement si
+  un ffmpeg à `libplacebo` est présent. Il est posé dans `bin/shaders/`
+  sans ses conditions `//!WHEN` : sinon il ne s'exécutait pas sous ×1,3, et
+  un DVD PAL (×1,25) aurait été annoncé agrandi sans l'être.
+- **Essai de Vulkan** au premier fichier à agrandir (environ 3 s, une fois
+  par session). S'il échoue, ou si le shader manque, le fichier garde sa
+  définition et la raison le dit.
+
+Mesuré sur Cactus Jack (720×400 → 1920×1066, RTX A4500) : 10 s de film en
+5,8 s en une passe, 13,6 s en deux passes.
+
 ## [v0.9.1.18] — 2026-11-04
 
 ### Super-résolution : la règle de décision (IE-167, première étape)

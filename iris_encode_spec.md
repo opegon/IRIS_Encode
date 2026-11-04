@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.20 — document de référence courant
+**Version** : 0.9.1.21 — document de référence courant
 **Date** : 2026-11-04
 **Statut** : stable
 
@@ -3285,6 +3285,20 @@ Ligne agrandie : Résolution `720x400→1920x1066`, ETA au plus long de
 l'estimation habituelle et de `super_resolution.duree_agrandissement`
 (images de la source à 161 / 30 i/s sur NVIDIA, 38,2 / 9,3 ailleurs, note
 § 10.15).
+`K` fabrique l'**extrait de comparaison** (D17, IE-172, v0.9.1.21) : la règle
+appliquée en deux passes pour l'extrait seul (`decide_video(…, agrandir=True,
+passes=2)`, la ligne ne change pas ; refus en notification), puis
+`encoder.build_comparaison_command` — 120 s prises au quart du film
+(`fenetre_comparaison` ; tout le fichier s'il est plus court), un
+`-filter_complex` qui sépare l'image après `setparams` (`split`), une passe
+et deux passes (`_etapes_agrandissement`, celles du fichier final), la même
+bande centrale de la moitié du cadre dans chacune (`crop`), côte à côte
+(`hstack`), encodé à l'encodeur et au débit de la décision, première piste
+audio recopiée, dans le dossier temporaire (`<nom>_[comparaison].mkv`).
+Avancement dans la ligne de résumé, `K` à nouveau ou la sortie de l'écran
+(et `F2`) l'arrêtent ; prêt, il s'ouvre dans mpv étiqueté par `--osd-msg1`
+(`preview.open_file(…, osd=…)`). Mesuré le 2026-11-04 sur RTX A4500 : 154 s
+pour l'extrait de Cactus Jack (720×400 → 1920×1066, `hevc_nvenc` 3 000 k).
 `F2` passe à l'écran Encodage (SKIP exclus). `↵` n'y est pas liée (v0.8.9.6) :
 partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirmation.
 
@@ -4006,6 +4020,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.21 | 2026-11-04 | **Super-résolution, extrait de comparaison** (§ 14.6, IE-172, D17) : `K` dans l'Aperçu, une passe à gauche et deux passes à droite sur la même bande centrale, encodé comme le fichier final (`build_comparaison_command`, `fenetre_comparaison`), ouvert dans mpv avec une étiquette (`open_file(…, osd)`) · `tests/test_comparaison_sr.py`, étape [9a] du smoke test |
 | 0.9.1.20 | 2026-11-04 | **Super-résolution, profil, Aperçu et nommage** (§ 6.1, § 8.7, § 14.6, IE-169) : clés `upscale`, `upscale_passes`, `bitrate_480p_kbps` dans le formulaire (un choix pour deux clés), colonne Agrandir des profils, `U` de l'Aperçu dans les deux sens, colonne Résolution `source→sortie`, ETA de la super-résolution, `stem_agrandi` (`Film.1080p.upscaled`) · `tests/test_upscale_interface.py`, étape [9a] du smoke test |
 | 0.9.1.19 | 2026-11-04 | **Super-résolution, la chaîne** (§ 8.1, § 4, IE-168) : `filtre_super_resolution` (une et deux passes), `setparams` avec la colorimétrie lue (`VideoInfo.color_space`, `color_primaries`, `color_range`), ffmpeg à `libplacebo` sur Vulkan sans `-hwaccel`, shader ArtCNN C4F16 sans `//!WHEN` dans `bin/shaders/` (`install_shader`, empreintes de l'asset et de la copie), essai Vulkan au premier fichier à agrandir, refus « shader non installé » / « échec de l'essai Vulkan » · `tests/test_super_resolution.py` |
 | 0.9.1.18 | 2026-11-04 | **Super-résolution, décision seule** (§ 8.1, IE-167) : `palier_cible` (plus haut palier à ×2,7 au plus, zone morte 1,2), `decide_video(…, agrandir, passes)`, débit du palier atteint, tranche 480p, refus HDR / sans libplacebo, libellé `↑1080p` ; l'encodeur n'agrandit pas encore · `tests/test_upscale_paliers.py` |

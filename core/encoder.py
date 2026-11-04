@@ -181,25 +181,100 @@ def filtre_super_resolution(decision: FileDecision) -> str:
     `bwdif`, comme sans agrandissement : il ne touche que les images que le
     flux marque entrelacées.
     """
+    filtres = _avant_agrandissement(decision)
+    filtres += _etapes_agrandissement(decision, decision.video.upscale.passes)
+    filtres.append("setsar=1")
+    return ",".join(filtres)
+
+
+def _avant_agrandissement(decision: FileDecision) -> list[str]:
+    """Désentrelacement éventuel, puis la colorimétrie déclarée."""
+    from . import super_resolution as sr
+    filtres = [FILTRE_DESENTRELACEMENT] if decision.desentrelace else []
+    filtres.append(sr.colorimetrie_source(decision.info))
+    return filtres
+
+
+def _etapes_agrandissement(decision: FileDecision, passes: int) -> list[str]:
+    """Les `libplacebo` d'un agrandissement en une ou deux passes."""
     from . import super_resolution as sr
     info, vid = decision.info, decision.video
     shader = "custom_shader_path=" + sr.chemin_filtre(sr.shader())
-    filtres = [FILTRE_DESENTRELACEMENT] if decision.desentrelace else []
-    filtres.append(sr.colorimetrie_source(info))
-    if vid.upscale.passes == 2:
+    if passes == 2:
         l2, h2 = info.largeur_affichee * 2, info.height * 2
-        for l, h in ((l2, h2), (l2 * 2, h2 * 2)):
-            filtres.append(f"libplacebo=w={l}:h={h}:reset_sar=1:{shader}"
-                           f":{_SORTIE_BT709}:format=yuv444p16le")
-        filtres.append(f"libplacebo=w={vid.target_width}:h={vid.target_height}"
-                       f":downscaler=ewa_lanczos:{_SORTIE_BT709}:format=yuv420p")
-    else:
-        filtres.append(f"libplacebo=w={vid.target_width}:h={vid.target_height}"
-                       f":reset_sar=1:{shader}"
-                       ":upscaler=ewa_lanczos:downscaler=ewa_lanczos"
-                       f":{_SORTIE_BT709}:format=yuv420p")
-    filtres.append("setsar=1")
-    return ",".join(filtres)
+        etapes = [f"libplacebo=w={l}:h={h}:reset_sar=1:{shader}"
+                  f":{_SORTIE_BT709}:format=yuv444p16le"
+                  for l, h in ((l2, h2), (l2 * 2, h2 * 2))]
+        etapes.append(f"libplacebo=w={vid.target_width}:h={vid.target_height}"
+                      f":downscaler=ewa_lanczos:{_SORTIE_BT709}:format=yuv420p")
+        return etapes
+    return [f"libplacebo=w={vid.target_width}:h={vid.target_height}"
+            f":reset_sar=1:{shader}"
+            ":upscaler=ewa_lanczos:downscaler=ewa_lanczos"
+            f":{_SORTIE_BT709}:format=yuv420p"]
+
+
+# Extrait de comparaison une passe / deux passes (D17) : deux minutes, prises
+# au quart du film — le début est souvent un générique.
+COMPARAISON_SECONDES = 120
+COMPARAISON_DEBUT    = 0.25
+
+
+def fenetre_comparaison(duree: float) -> tuple[float, float]:
+    """(début, longueur) de l'extrait de comparaison, en secondes."""
+    if duree <= COMPARAISON_SECONDES:
+        return 0.0, max(duree, 0.0)
+    debut = min(duree * COMPARAISON_DEBUT, duree - COMPARAISON_SECONDES)
+    return debut, float(COMPARAISON_SECONDES)
+
+
+def build_comparaison_command(decision: FileDecision, platform: PlatformProfile,
+                              sortie: Path) -> list[str]:
+    """L'extrait qui compare une passe et deux passes sur le titre lui-même
+    (D17), avant de payer quatre à cinq fois le temps d'une passe.
+
+    La même bande centrale de l'image — la moitié de la largeur du cadre —
+    est prise dans chaque version et posée côte à côte : une passe à gauche,
+    deux passes à droite, les mêmes pixels des deux côtés. L'image garde le
+    cadre de sortie. L'encodeur et le débit sont ceux du fichier final : si la
+    compression efface l'écart, les deux passes ne valent pas leur coût.
+
+    `decision.video.upscale` doit être posé (le nombre de passes y est
+    ignoré). La première piste audio est recopiée, pour regarder avec le son.
+    """
+    from . import dovi
+    info, vid = decision.info, decision.video
+    debut, longueur = fenetre_comparaison(info.duration)
+    # La moitié du cadre, paire (4:2:0), centrée sur une abscisse paire.
+    demi = vid.target_width // 4 * 2
+    x = (vid.target_width - demi) // 4 * 2
+    coupe = f"crop={demi}:{vid.target_height}:{x}:0"
+    une  = ",".join(_etapes_agrandissement(decision, 1))
+    deux = ",".join(_etapes_agrandissement(decision, 2))
+    graphe = (f"[0:v]{','.join(_avant_agrandissement(decision))},split=2[a][b];"
+              f"[a]{une},{coupe}[g];[b]{deux},{coupe}[d];"
+              "[g][d]hstack=inputs=2,setsar=1[v]")
+
+    entree = info.lecture
+    decodeur = ["-c:v", info.decodeur] if info.decodeur else []
+    encoder, pix_fmt, prof_str = _encodeur_et_format(info, vid, platform)
+    preset = decision.profile.get("preset_encoder", "medium")
+    cmd = [dovi.ffmpeg_dv(), "-hide_banner", "-y", "-init_hw_device", "vulkan",
+           "-ss", f"{debut:.3f}", *lecture_tolerante(entree), *decodeur,
+           "-i", str(entree), "-t", f"{longueur:.3f}",
+           "-filter_complex", graphe, "-map", "[v]", "-map", "0:a:0?",
+           "-c:v", encoder, "-pix_fmt", pix_fmt,
+           *regle_debit(encoder, vid.target_bitrate),
+           *option_preset(encoder, preset)]
+    if vid.action != VideoAction.ENCODE_AV1:
+        cmd += ["-profile:v", prof_str]
+    return cmd + ["-c:a", "copy", "-sn", "-dn", str(sortie)]
+
+
+def comparaison_output_path(source: Path) -> Path:
+    """Extrait de comparaison, écrit hors du dossier du film."""
+    import tempfile
+    return Path(tempfile.gettempdir()) / f"{source.stem}_[comparaison].mkv"
 
 
 # Regex pour parser la ligne de progression ffmpeg. `frame=` et `fps=` sont

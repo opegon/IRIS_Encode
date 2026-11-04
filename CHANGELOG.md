@@ -1,5 +1,19 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.21] — 2026-11-04
+
+### Super-résolution : comparer une passe et deux passes avant de choisir (IE-172)
+
+- **Dans l'aperçu, `K`** : un extrait de deux minutes du fichier, pris au
+  quart du film. La même bande centrale de l'image y est montrée deux fois,
+  une passe à gauche, deux passes à droite, encodée comme le fichier final
+  (même encodeur, même débit) : si la compression efface l'écart, les deux
+  passes ne valent pas leur coût.
+- L'avancement s'affiche en bas de l'écran ; `K` à nouveau annule. Prêt,
+  l'extrait s'ouvre dans mpv, chaque côté étiqueté. Compter 2 à 3 minutes sur
+  une carte NVIDIA récente, 6 à 8 sur un iGPU Intel.
+- La ligne ne change pas : on choisit ensuite avec `U`.
+
 ## [v0.9.1.20] — 2026-11-04
 
 ### Super-résolution : réglable dans le profil et fichier par fichier (IE-169)

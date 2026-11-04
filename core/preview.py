@@ -107,11 +107,17 @@ def launch(cmd: list[str]) -> subprocess.Popen:
     )
 
 
-def open_file(path: Path) -> subprocess.Popen:
-    """Ouvre un fichier déjà prêt (extrait de contrôle) dans mpv."""
+def open_file(path: Path, osd: Optional[str] = None) -> subprocess.Popen:
+    """Ouvre un fichier déjà prêt (extrait de contrôle) dans mpv.
+
+    `osd` : un texte affiché en permanence en haut de l'image (`--osd-msg1`),
+    pour étiqueter les deux côtés d'un extrait de comparaison."""
     if _mpv_path is None:
         raise ErreurAffichable(N_("mpv is not installed."))
-    return launch([_mpv_path, "--osd-level=1", str(path)])
+    cmd = [_mpv_path, "--osd-level=1"]
+    if osd:
+        cmd.append(f"--osd-msg1={osd}")
+    return launch(cmd + [str(path)])
 
 
 def keys_hint(track: ExternalTrack) -> str:

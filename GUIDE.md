@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.20
+**Version**: 0.9.1.21
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -413,6 +413,7 @@ is there for those cases.
 | `Space` | Include / exclude the row |
 | `F6` / `F7` | Change the codec / bitrate **of this row only** |
 | `U` | Upscale this row or not, in one or two passes, whatever the profile says |
+| `K` | Comparison sample: one pass against two passes, on this file |
 | `F2` | Start encoding — `↵` starts nothing, on purpose |
 
 **Upscaling** (super-resolution): a source smaller than 1080p goes up to the
@@ -424,6 +425,13 @@ Resolution column `720x400→1920x1066`, and the output name says it:
 `libplacebo`, the shader IRIS offers to install at startup, and a graphics card
 that Vulkan can use; otherwise, or for an HDR source, a notice gives the reason
 and the row keeps its resolution.
+
+**Before paying for two passes**, `K` builds a two-minute sample of the file,
+taken a quarter of the way in: the same central strip of the picture, one
+pass on the left, two passes on the right, encoded like the final file
+(same encoder, same bitrate). It opens in mpv once ready — 2 to 3 minutes on
+a recent NVIDIA card, 6 to 8 on an Intel integrated GPU; `K` again cancels.
+The row does not change: choose afterwards with `U`.
 
 The **Est. (Δ%)** and **ETA** columns — the expected encoding time — rest on a
 moving average of the speed measured at each encode: they improve with use and

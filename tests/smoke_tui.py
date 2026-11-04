@@ -270,8 +270,47 @@ async def scenario_parallel_scan() -> None:
             await pilot.pause(0.6)
             res = app.screen.query_one(DataTable).get_row_at(0)[cols.index("res")].plain
             assert "→" not in res, f"res={res!r}"
-            _dovi.set_ffmpeg_dv(_dovi_avant)
             print("[9a] Dry run U : deux passes (320x240→1440x1080), puis annule")
+
+            # K : extrait de comparaison (IE-172). Un ffmpeg factice qui attend
+            # son arret : ni GPU ni mpv dans le smoke test.
+            import threading
+            from core import encoder as _encoder
+
+            class _FfmpegLent:
+                def __init__(self, cmd, duration=0.0):
+                    self.cmd, self.journal = cmd, []
+                    self._fin = threading.Event()
+                def start(self): pass
+                def iter_progress(self):
+                    self._fin.wait(30)
+                    return iter(())
+                def wait(self): return -1
+                def terminate(self): self._fin.set()
+
+            _ep_avant = _encoder.EncoderProcess
+            _encoder.EncoderProcess = _FfmpegLent
+            try:
+                scr_dr = app.screen
+                await pilot.press("k")
+                await pilot.pause(0.4)
+                proc = scr_dr._comparaison
+                assert proc is not None, "K n'a rien lance"
+                assert "hstack" in " ".join(proc.cmd)
+                resume = str(scr_dr.query_one("#dryrun-summary").render())
+                assert "⏳" in resume, f"resume={resume!r}"
+                await pilot.press("k")
+                await pilot.pause(0.4)
+                assert scr_dr._comparaison is None and proc._fin.is_set()
+                resume = str(scr_dr.query_one("#dryrun-summary").render())
+                assert "⏳" not in resume, f"resume={resume!r}"
+                # La ligne n'a pas change : la comparaison n'agrandit pas.
+                res = dr_table.get_row_at(0)[cols.index("res")].plain
+                assert "→" not in res, f"res={res!r}"
+            finally:
+                _encoder.EncoderProcess = _ep_avant
+            _dovi.set_ffmpeg_dv(_dovi_avant)
+            print("[9a] Dry run K : extrait de comparaison lance, puis annule")
             await pilot.press("backspace")
             await pilot.pause(0.3)
             assert type(app.screen).__name__ == "BrowserScreen"

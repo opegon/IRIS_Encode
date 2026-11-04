@@ -12,10 +12,11 @@ from typing import TYPE_CHECKING
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
+from textual import work
 from textual.screen import Screen
 from textual.widgets import DataTable, Static
 
-from core.i18n import _, N_, ngettext
+from core.i18n import _, N_, ngettext, texte_erreur
 from core import config as cfg_mod
 from core.decision import (
     Emphase,
@@ -97,6 +98,8 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # Une lettre, pas F8 : F8 veut dire « supprimer la source » partout
         # ailleurs (UX-07, tests/test_touches.py).
         Binding("u",         "open_upscale",N_("Upscale"),   show=True),
+        # Même lettre que l'extrait de contrôle du recalage.
+        Binding("k",         "comparer",    N_("Sample"),    show=True),
         Binding("backspace", "go_back",     N_("Back"),  show=True),
         Binding("escape",    "go_back",     N_("Back"),  show=False, priority=True),
         # `priority` : un DataTable etouffe la touche avant les bindings —
@@ -147,6 +150,9 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._decisions = [deepcopy(d) for d in decisions]
         self._selected  = set(range(len(decisions)))  # indices des décisions sélectionnées
         self._totals    = (0, 0)   # (source, estimé) en octets — posés par _build_table
+        # L'extrait de comparaison en cours (K) : son ffmpeg et son avancement.
+        self._comparaison = None
+        self._comparaison_pct = 0.0
 
     @property
     def _app(self) -> "IrisEncodeApp":
@@ -313,6 +319,11 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                                    total).format(count=total),
             _("Col: {column}").format(column=self.resize_col_label) + "  </>",
         ))
+        if self._comparaison is not None:
+            self.query_one("#dryrun-summary", Static).update(
+                " ⏳ " + _("Comparison sample: {percent}% — {key} cancels").format(
+                    percent=int(self._comparaison_pct * 100), key=touche("k")))
+            return
         self.query_one("#dryrun-summary", Static).update(
             " " + _("To encode: {counts}").format(
                 counts=f"HEVC {hevc}  ·  H264 {h264}{av1_str}{dv_str}{strip_str}"
@@ -461,6 +472,117 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     # ── Navigation ────────────────────────────────────────────────────────────
 
+    # ── Extrait de comparaison une passe / deux passes (D17) ──────────────────
+
+    def action_comparer(self) -> None:
+        """Deux minutes du fichier, une passe à gauche, deux passes à droite,
+        ouvertes dans mpv : juger sur le titre avant de choisir avec U.
+
+        La ligne n'a pas besoin d'être déjà agrandie : la règle est appliquée
+        pour l'extrait seul, la décision de la ligne ne change pas. K pendant
+        la fabrication l'annule."""
+        if self._comparaison is not None:
+            self._arreter_comparaison()
+            self.notify(_("Comparison sample cancelled."), timeout=3)
+            return
+        dec = self._current_decision()
+        if dec is None:
+            return
+        from dataclasses import replace as dc_replace
+        from core import encoder, preview
+        video = decide_video(dec.info, dec.profile, agrandir=True, passes=2)
+        if video.upscale is None:
+            self.notify(_("Not upscaled — {reason}").format(reason=video.reason),
+                        severity="warning", timeout=6)
+            return
+        essai = dc_replace(dec, video=video)
+        sortie = encoder.comparaison_output_path(dec.info.path)
+        try:
+            cmd = encoder.build_comparaison_command(essai, self._app.platform, sortie)
+        except (ValueError, OSError) as e:
+            self.notify(texte_erreur(e), severity="error", timeout=6)
+            return
+        from core.super_resolution import duree_agrandissement
+        debut, longueur = encoder.fenetre_comparaison(dec.info.duration)
+        gpu = self._app.platform.gpu.name.lower()
+        part = longueur / dec.info.duration if dec.info.duration > 0 else 0.0
+        attente = part * (duree_agrandissement(dec.info, 1, gpu)
+                          + duree_agrandissement(dec.info, 2, gpu))
+        self._comparaison = encoder.EncoderProcess(cmd, duration=longueur)
+        self._comparaison_pct = 0.0
+        self._build_summary()
+        self.notify(_("Building a {length} comparison sample from {start} "
+                      "(about {wait}) — one pass on the left, two passes on "
+                      "the right.").format(
+                          length=fmt_duration(longueur), start=fmt_duration(debut),
+                          wait=fmt_duration(attente)), timeout=6)
+        if not preview.available():
+            self.notify(_("mpv is not installed."), severity="warning", timeout=4)
+        self._fabriquer_comparaison(self._comparaison, sortie)
+
+    @work(thread=True, name="dryrun-comparaison")
+    def _fabriquer_comparaison(self, proc, sortie) -> None:
+        try:
+            sortie.unlink(missing_ok=True)       # une relance remplace l'ancien
+            proc.start()
+            for _ligne, info in proc.iter_progress():
+                if info is not None and info.percent >= 0:
+                    self.app.call_from_thread(self._avancer_comparaison, proc,
+                                              info.percent)
+            rc = proc.wait()
+            if proc is not self._comparaison:    # annulé : rien à garder
+                sortie.unlink(missing_ok=True)
+                return
+        except OSError as e:
+            self.app.call_from_thread(self._fin_comparaison, proc, sortie, str(e))
+            return
+        erreur = None
+        if rc != 0 or not sortie.is_file():
+            from core.encoder import diagnostiquer
+            erreur = (diagnostiquer(proc.journal)
+                      or (proc.journal[-1] if proc.journal else f"code {rc}"))
+        self.app.call_from_thread(self._fin_comparaison, proc, sortie, erreur)
+
+    def _avancer_comparaison(self, proc, pct: float) -> None:
+        if proc is self._comparaison:
+            self._comparaison_pct = pct
+            self._build_summary()
+
+    def _fin_comparaison(self, proc, sortie, erreur: str | None) -> None:
+        if proc is not self._comparaison:
+            return                               # annulé entre-temps
+        self._comparaison = None
+        if self.is_mounted:
+            self._build_summary()
+        if erreur:
+            self.app.bell()
+            self.notify(_("Cannot build the sample: {error}").format(error=erreur),
+                        severity="error", timeout=8)
+            return
+        from core import preview
+        if not preview.available():
+            self.notify(_("Sample ready (mpv missing): {path}").format(path=sortie),
+                        timeout=8)
+            return
+        try:
+            preview.open_file(sortie, osd=_("◀ one pass  ·  two passes ▶"))
+        except Exception as e:
+            self.notify(_("mpv could not open it: {error}").format(
+                error=texte_erreur(e)), severity="error", timeout=8)
+            return
+        self.notify(_("Sample opened in mpv — choose with {key}.").format(
+            key=touche("u")), timeout=6)
+
+    def _arreter_comparaison(self) -> None:
+        proc, self._comparaison = self._comparaison, None
+        if proc is not None:
+            proc.terminate()
+            if self.is_mounted:
+                self._build_summary()
+
+    def on_unmount(self) -> None:
+        self._arreter_comparaison()
+
     def action_go_back(self) -> None:
         self.app.pop_screen()
 
@@ -476,6 +598,8 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                   "line.").format(space=touche("space"), codec_key=touche("f6")),
                 severity="warning", timeout=4)
             return
+        # L'extrait occuperait la carte pendant le lot.
+        self._arreter_comparaison()
         confier_a_la_file(self.app, to_encode)
 
     def action_accueil(self) -> None:

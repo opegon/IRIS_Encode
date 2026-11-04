@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.20
+**Version** : 0.9.1.21
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -417,6 +417,7 @@ pas. `C` sert pour ces cas-là.
 | `Espace` | Inclure / exclure la ligne |
 | `F6` / `F7` | Changer codec / débit **de cette ligne seulement** |
 | `U` | Agrandir cette ligne ou non, en une ou deux passes, quoi que dise le profil |
+| `K` | Extrait de comparaison : une passe contre deux passes, sur ce fichier |
 | `F2` | Lancer l'encodage — `↵` ne lance rien, par sécurité |
 
 **Agrandissement** (super-résolution) : une source plus petite que le 1080p
@@ -429,6 +430,13 @@ plus net sur un DVD, 4 à 5 fois plus lent. La colonne Action affiche
 qu'IRIS propose d'installer au lancement, et une carte graphique que Vulkan
 sait utiliser ; sinon, ou pour une source HDR, une notification en donne la
 raison et la ligne garde sa définition.
+
+**Avant de payer deux passes**, `K` fabrique un extrait de deux minutes du
+fichier, pris au quart du film : la même bande centrale de l'image, une passe
+à gauche, deux passes à droite, encodée comme le fichier final (même
+encodeur, même débit). Il s'ouvre dans mpv une fois prêt — 2 à 3 minutes sur
+une carte NVIDIA récente, 6 à 8 sur un iGPU Intel ; `K` à nouveau annule. La
+ligne ne change pas : on choisit ensuite avec `U`.
 
 Les colonnes **Estim. (Δ%)** et **ETA** — la durée d'encodage prévue —
 reposent sur une moyenne

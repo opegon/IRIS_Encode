@@ -217,6 +217,9 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "open_bitrate":  N_("Changes its target bitrate."),
         "open_upscale":  N_("Upscales it by super-resolution, in one or two "
                             "passes, or not — whatever the profile says."),
+        "comparer":      N_("Builds a two-minute sample: one pass on the left, "
+                            "two passes on the right, encoded like the final "
+                            "file. K again cancels."),
         "go_back":       N_("Returns to the previous screen."),
     },
     "RunScreen": {

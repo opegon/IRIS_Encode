@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.17 — document de référence courant
+**Version** : 0.9.1.18 — document de référence courant
 **Date** : 2026-11-02
 **Statut** : stable
 
@@ -1042,6 +1042,45 @@ indécises, il reporte son verdict précédent).
 
 **Force SKIP → encode (browser)** : un fichier SKIP sélectionné manuellement pour le run
 est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans gonflement.
+
+**Agrandissement par super-résolution — décision seule** (v0.9.1.18, IE-167).
+Règle de la note `conception_upscaling_2026-11-03.md` § 2. **L'encodeur
+n'agrandit pas encore** (IE-168) : aucun profil livré n'active la règle, et
+un profil qui l'active à la main obtient une décision que l'encodage
+n'applique pas.
+
+- **Activation** : clé de profil `upscale` (défaut `false`), ou choix par
+  fichier, dans les deux sens : `decide_video(info, profil, agrandir=…,
+  passes=…)`, `None` suivant le profil (D23, D24 ; les touches du Dry run
+  viendront avec IE-169). Profil sans la clé et aucun choix : la décision
+  classique, à l'identique (`_decide_video_classique`).
+- **Règle** (`palier_cible`) : dimensions en pixels carrés
+  (`largeur_affichee`) ; une source qui touche un bord du cadre 1920×1080
+  n'est pas concernée, ni une 4K. Sinon, le **plus haut** cadre parmi
+  854×480, 1280×720, 1920×1080 atteint avec un facteur `f ≤ upscale_max_factor`
+  (2,7) : un DVD va en 1080p. `f < upscale_min_factor` (1,2, zone morte, qui
+  ne peut jouer qu'au cadre 1080p) : définition d'origine en tranche 1080p.
+  Source trop petite même pour 480p (`f > 2,7`) : définition d'origine en
+  tranche 480p. Les deux facteurs se lisent dans `[decision]` de
+  `config.toml`.
+- **En deux passes** (`upscale_passes = 2`) : cadre 1080p quel que soit le
+  facteur, plafond ignoré, zone morte gardée (D15).
+- **Décision** : `ENCODE_HEVC` (H264 sous le palier 1080p), dimensions de
+  sortie par `dimensions_reduites` (proportions gardées, paires), **débit du
+  palier atteint** quel que soit celui de la source, `dv_action = NONE`,
+  `VideoDecision.upscale = Agrandissement(palier, facteur, passes)`.
+  Libellé : `→ HEVC ↑1080p`, `→ HEVC ↑1080p ×2` en deux passes. Raison :
+  « Agrandi 720x576 → 1920x1080 (super-résolution ×1.88) ».
+- **Refus, sans repli sur une interpolation classique** (D10) : source HDR ou
+  Dolby Vision, ou pas de ffmpeg à `libplacebo` (`dovi.ffmpeg_dv()`). La
+  décision classique s'applique et sa raison se termine par « · pas
+  d'agrandissement : <cause> ». La sonde Vulkan viendra avec IE-168.
+- Tranche **480p** : `Profile.bitrate_for_height` rend `bitrate_480p_kbps`
+  (défaut 1 500) sous 720 ; seule la règle d'agrandissement la demande.
+- Le nom du fichier produit n'annonce pas encore la nouvelle définition
+  (marqueur `.upscaled`, D21) : IE-169.
+- `tests/test_upscale_paliers.py` : les vecteurs du § 2.2 de la note, les
+  trois fichiers d'essai, les refus, le choix par fichier.
 
 ### 8.2 Bitrates vidéo cibles par résolution
 
@@ -3918,6 +3957,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.18 | 2026-11-04 | **Super-résolution, décision seule** (§ 8.1, IE-167) : `palier_cible` (plus haut palier à ×2,7 au plus, zone morte 1,2), `decide_video(…, agrandir, passes)`, débit du palier atteint, tranche 480p, refus HDR / sans libplacebo, libellé `↑1080p` ; l'encodeur n'agrandit pas encore · `tests/test_upscale_paliers.py` |
 | 0.9.1.17 | 2026-11-02 | **Outils assurés par le ffmpeg principal** (§ 4.5) : `ffmpeg_dvd` et `ffmpeg_dv` affichés « ✓ assuré par le ffmpeg principal » au lieu de « ✗ (optionnel) » quand il lit les DVD / a `libplacebo` · `tests/test_outils_couverts.py` |
 | 0.9.1.16 | 2026-11-02 | **Tester la connexion** (§ 14.1) : bouton et `Ctrl+T` du formulaire d'emplacement, essai avec le compte saisi sans rien enregistrer, connexion de l'essai refermée · hors Windows, le formulaire dit que le partage doit être monté · causes ponctuées une fois · `core.emplacements.essayer` · `tests/test_emplacements.py` |
 | 0.9.1.15 | 2026-11-02 | **Gestion des emplacements** (§ 14.1, IE-162) : `E` sur la liste des volumes — ajouter, modifier, supprimer ; compte du serveur et mot de passe enregistrés dans le Gestionnaire d'identifiants Windows (`CredWriteW`), jamais dans `config.toml` ; un lecteur entier (`E:\`) garde sa barre · `tui/screens/emplacements.py` · `tests/test_emplacements.py` |

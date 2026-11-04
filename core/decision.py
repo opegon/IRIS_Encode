@@ -139,6 +139,7 @@ class VideoDecision:
     target_height:   int
     dv_action:       DVAction
     output_suffix:   str    # ".hevc-iris" | ".h264-iris" | … | "" (SKIP)
+    upscale:         Optional["Agrandissement"] = None  # super-résolution décidée
 
     def label(self) -> str:
         if self.action == VideoAction.SKIP:
@@ -151,7 +152,11 @@ class VideoDecision:
         codec = CODEC_PAR_ACTION[self.action]
         dv = (f" → {DV_SORTIE[self.dv_action]}"
               if self.dv_action in DV_SORTIE else "")
-        return f"→ {codec}{dv}"
+        sr = ""
+        if self.upscale is not None:
+            # D25 : `↑1080p`, et `×2` en deux passes.
+            sr = f" ↑{self.upscale.palier}p" + (" ×2" if self.upscale.passes == 2 else "")
+        return f"→ {codec}{dv}{sr}"
 
     def emphase(self) -> "Emphase":
         return emphase_video(self.action, self.dv_action)
@@ -831,6 +836,93 @@ def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, int]:
     return 1280, 720, 720
 
 
+# ─── Agrandissement par super-résolution (IE-167) ─────────────────────────────
+# Règle de la note `conception_upscaling_2026-11-03.md`, § 2 (décisions D3, D4,
+# D5, D15, D22). Seule la décision est prise ici : l'encodeur n'agrandit pas
+# encore (IE-168).
+
+# (largeur, hauteur, palier) des cadres, du plus petit au plus grand.
+PALIERS_AGRANDISSEMENT: tuple[tuple[int, int, int], ...] = (
+    (854, 480, 480), (1280, 720, 720), (1920, 1080, 1080))
+
+_FACTEURS_CACHE: tuple[float, float] | None = None
+
+
+def _facteurs_agrandissement() -> tuple[float, float]:
+    """(zone morte, plafond), lus dans [decision] de config.toml
+    (`upscale_min_factor`, `upscale_max_factor`), mis en cache au premier appel."""
+    global _FACTEURS_CACHE
+    if _FACTEURS_CACHE is None:
+        try:
+            from . import config as _cfg
+            d = _cfg.load().get("decision", {})
+            _FACTEURS_CACHE = (float(d.get("upscale_min_factor", 1.2)),
+                               float(d.get("upscale_max_factor", 2.7)))
+        except Exception:
+            _FACTEURS_CACHE = (1.2, 2.7)
+    return _FACTEURS_CACHE
+
+
+@dataclass(frozen=True)
+class PalierCible:
+    """Ce que la règle retient pour une source plus petite que le cadre 1080p."""
+    largeur:  int     # cadre visé
+    hauteur:  int
+    palier:   int     # 480, 720 ou 1080 : tranche de débit
+    facteur:  float   # pour tenir dans le cadre
+    agrandir: bool    # False : zone morte, ou source trop petite
+
+
+@dataclass(frozen=True)
+class Agrandissement:
+    """La super-résolution décidée pour un fichier."""
+    palier:  int
+    facteur: float
+    passes:  int      # 1, ou 2 (deux passes ×2 puis réduction au cadre, D14)
+
+
+def palier_cible(largeur: int, hauteur: int, zone_morte: float, plafond: float,
+                 passes: int = 1) -> PalierCible | None:
+    """Le cadre visé par une source de `largeur`×`hauteur` (pixels carrés).
+
+    None : la source touche déjà un bord du cadre 1080p, la règle ne la
+    concerne pas. Sinon, le **plus haut** cadre atteint sans dépasser le
+    plafond (D22) : un DVD va en 1080p. Parcourus de haut en bas, la zone
+    morte ne peut jouer qu'au cadre 1080p. Une source qui dépasse le plafond
+    même vers 480p reste native, en tranche 480p (D20).
+
+    En deux passes, la sortie vise toujours le cadre 1080p et le plafond ne
+    s'applique pas (D15) ; la zone morte, si.
+    """
+    def facteur(cadre: tuple[int, int, int]) -> float:
+        return min(cadre[0] / largeur, cadre[1] / hauteur)
+
+    plus_grand = PALIERS_AGRANDISSEMENT[-1]
+    if facteur(plus_grand) <= 1.0:
+        return None
+    candidats = (plus_grand,) if passes == 2 else reversed(PALIERS_AGRANDISSEMENT)
+    for cadre in candidats:
+        f = facteur(cadre)
+        if passes == 2 or f <= plafond:
+            return PalierCible(*cadre, facteur=f, agrandir=f >= zone_morte)
+    w, h, palier = PALIERS_AGRANDISSEMENT[0]
+    return PalierCible(w, h, palier, facteur(PALIERS_AGRANDISSEMENT[0]), agrandir=False)
+
+
+def _refus_agrandissement(info: VideoInfo) -> str | None:
+    """Pourquoi une source que la règle agrandirait ne le sera pas, ou None.
+
+    Pas de repli sur une interpolation classique (D10) : la source garde sa
+    définition, et la raison le dit.
+    """
+    if source_hdr(info):
+        return _("HDR source")
+    from . import dovi
+    if dovi.ffmpeg_dv() is None:
+        return _("needs ffmpeg with libplacebo")
+    return None
+
+
 def _decide_dv(info: VideoInfo, profile: Profile) -> DVAction:
     if info.dv_profile is None:
         return DVAction.NONE
@@ -846,9 +938,72 @@ def _decide_dv(info: VideoInfo, profile: Profile) -> DVAction:
     return DVAction.HDR10  # "hdr10" ou valeur inconnue
 
 
-def decide_video(info: VideoInfo, profile: Profile) -> VideoDecision:
-    """Applique les 4 cas de la spec et retourne la décision vidéo."""
-    limit_w, limit_h, bucket_h    = _resolve_limits(info, profile)
+def decide_video(info: VideoInfo, profile: Profile,
+                 agrandir: Optional[bool] = None,
+                 passes: Optional[int] = None) -> VideoDecision:
+    """La décision vidéo : super-résolution si elle s'applique, sinon les
+    quatre cas de la spec.
+
+    `agrandir` et `passes` : choix faits pour ce fichier dans le Dry run
+    (D23, D24), dans les deux sens ; None suit le profil (`upscale`,
+    `upscale_passes`). Profil sans `upscale` et aucun choix : comportement
+    d'avant, à l'identique.
+    """
+    demande = profile.get("upscale", False) if agrandir is None else agrandir
+    if not demande or info.is_4k:
+        return _decide_video_classique(info, profile)
+    nb_passes = passes if passes is not None else int(profile.get("upscale_passes", 1))
+    zone_morte, plafond = _facteurs_agrandissement()
+    cible = palier_cible(info.largeur_affichee, info.height, zone_morte, plafond,
+                         nb_passes)
+    if cible is None:
+        return _decide_video_classique(info, profile)
+    if not cible.agrandir:
+        # Zone morte ou source trop petite : définition d'origine, tranche du
+        # cadre retenu (§ 2.3 : remplace les seuils `near_1080p_*`).
+        return _decide_video_classique(
+            info, profile, (info.width, info.height, cible.palier))
+    refus = _refus_agrandissement(info)
+    if refus is not None:
+        dec = _decide_video_classique(info, profile)
+        return replace(dec, reason=_("{reason} · no upscaling: {why}").format(
+            reason=dec.reason, why=refus))
+
+    from .encoder import dimensions_reduites
+    largeur, hauteur = dimensions_reduites(info.largeur_affichee, info.height,
+                                           cible.largeur, cible.hauteur)
+    # Débit du palier atteint (D9) ; H264 sous la tranche 1080p, comme les
+    # quatre cas.
+    action = (VideoAction.ENCODE_H264 if cible.palier < 1080
+              else VideoAction.ENCODE_HEVC)
+    raison = (_("Upscale {width}x{height} → {target_width}x{target_height} "
+                "(super-resolution ×{factor:.2f}, two passes)")
+              if nb_passes == 2 else
+              _("Upscale {width}x{height} → {target_width}x{target_height} "
+                "(super-resolution ×{factor:.2f})"))
+    return VideoDecision(
+        action=action,
+        reason=raison.format(width=info.width, height=info.height,
+                             target_width=largeur, target_height=hauteur,
+                             factor=cible.facteur),
+        target_bitrate=profile.bitrate_for_height(cible.palier),
+        target_width=largeur,
+        target_height=hauteur,
+        dv_action=DVAction.NONE,
+        output_suffix=SUFFIX_BY_ACTION[action],
+        upscale=Agrandissement(cible.palier, round(cible.facteur, 3), nb_passes),
+    )
+
+
+def _decide_video_classique(info: VideoInfo, profile: Profile,
+                            limites: Optional[tuple[int, int, int]] = None
+                            ) -> VideoDecision:
+    """Applique les 4 cas de la spec et retourne la décision vidéo.
+
+    `limites` : (largeur, hauteur, tranche) imposées par la règle
+    d'agrandissement à une source qu'elle garde native ; None = `_resolve_limits`.
+    """
+    limit_w, limit_h, bucket_h    = limites or _resolve_limits(info, profile)
     dv_action                     = _decide_dv(info, profile)
 
     # Un profil 5 à convertir sans ffmpeg à `libplacebo` : rien plutôt qu'un

@@ -39,6 +39,7 @@ _GLOBALES = [
     ("core.sync",     "_ffmpeg_path"),
     ("core.preview",  "_mpv_path"),
     ("core.decision", "_STRIP_DV_AVAILABLE"),
+    ("core.decision", "_FACTEURS_CACHE"),
     ("core.dovi",     "_ffmpeg_dv"),
 ]
 

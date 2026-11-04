@@ -103,133 +103,156 @@ msgstr "exclu manuellement"
 
 #. a track copied unchanged into the output ("→ copy").
 #: core/decision.py:90
-#: core/decision.py:149
+#: core/decision.py:150
 msgctxt "track action"
 msgid "copy"
 msgstr "copie"
 
-#: core/decision.py:860
+#: core/decision.py:919
+msgid "HDR source"
+msgstr "source HDR"
+
+#: core/decision.py:922
+msgid "needs ffmpeg with libplacebo"
+msgstr "demande ffmpeg avec libplacebo"
+
+#: core/decision.py:969
+#, python-brace-format
+msgid "{reason} · no upscaling: {why}"
+msgstr "{reason} · pas d'agrandissement : {why}"
+
+#: core/decision.py:979
+#, python-brace-format
+msgid "Upscale {width}x{height} → {target_width}x{target_height} (super-resolution ×{factor:.2f}, two passes)"
+msgstr "Agrandi {width}x{height} → {target_width}x{target_height} (super-résolution ×{factor:.2f}, deux passes)"
+
+#: core/decision.py:982
+#, python-brace-format
+msgid "Upscale {width}x{height} → {target_width}x{target_height} (super-resolution ×{factor:.2f})"
+msgstr "Agrandi {width}x{height} → {target_width}x{target_height} (super-résolution ×{factor:.2f})"
+
+#: core/decision.py:1015
 #, python-brace-format
 msgid "{dv} → {target}: needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/)"
 msgstr "{dv} → {target} : demande l'outil Dolby Vision (ffmpeg avec libplacebo, dans ./bin/dv/)"
 
-#: core/decision.py:899
+#: core/decision.py:1054
 #, python-brace-format
 msgid "{reason} · DV preserved, RPU reinjected"
 msgstr "{reason} · DV préservé, RPU réinjecté"
 
-#: core/decision.py:901
+#: core/decision.py:1056
 #, python-brace-format
 msgid "{reason} · DV kept → video copied"
 msgstr "{reason} · DV conservé → vidéo copiée"
 
-#: core/decision.py:910
+#: core/decision.py:1065
 #, python-brace-format
 msgid "Unknown bitrate → {target}k target"
 msgstr "Débit inconnu → cible {target}k"
 
-#: core/decision.py:923
+#: core/decision.py:1078
 #, python-brace-format
 msgid "Bitrate {bitrate}k > {target}k target +{tolerance}%"
 msgstr "Débit {bitrate}k > {target}k cible +{tolerance}%"
 
-#: core/decision.py:937
+#: core/decision.py:1092
 #, python-brace-format
 msgid "Resolution {width}x{height} > {max_width}x{max_height}"
 msgstr "Résolution {width}x{height} > {max_width}x{max_height}"
 
-#: core/decision.py:951
+#: core/decision.py:1106
 #, python-brace-format
 msgid "Codec {codec} not supported by the playback chain"
 msgstr "Codec {codec} non lu par la chaîne"
 
-#: core/decision.py:967
+#: core/decision.py:1122
 #, python-brace-format
 msgid "{dv} → HDR10 without re-encoding"
 msgstr "{dv} → HDR10 sans réencodage"
 
-#: core/decision.py:978
+#: core/decision.py:1133
 #, python-brace-format
 msgid "Bitrate within target ±{tolerance}%, resolution OK, codec {codec}"
 msgstr "Débit dans la cible ±{tolerance}%, résolution OK, codec {codec}"
 
-#: core/decision.py:981
+#: core/decision.py:1136
 #, python-brace-format
 msgid "Bitrate OK, resolution OK, codec {codec}"
 msgstr "Débit OK, résolution OK, codec {codec}"
 
-#: core/decision.py:1148
+#: core/decision.py:1303
 msgid "manual selection"
 msgstr "sélection manuelle"
 
-#: core/decision.py:1151
+#: core/decision.py:1306
 #, python-brace-format
 msgid "replaced by its {codec} core (track {index})"
 msgstr "remplacée par son cœur {codec} (piste {index})"
 
-#: core/decision.py:1155
+#: core/decision.py:1310
 #, python-brace-format
 msgid "core of track {index}, which already carries it"
 msgstr "cœur de la piste {index}, qui le porte déjà"
 
-#: core/decision.py:1159
+#: core/decision.py:1314
 #, python-brace-format
 msgid "original track (index {index})"
 msgstr "piste originale (index {index})"
 
-#: core/decision.py:1164
+#: core/decision.py:1319
 msgid "language unknown → kept"
 msgstr "langue inconnue → gardée"
 
-#: core/decision.py:1167
+#: core/decision.py:1322
 #, python-brace-format
 msgid "language {language}"
 msgstr "langue {language}"
 
-#: core/decision.py:1170
+#: core/decision.py:1325
 #, python-brace-format
 msgid "language {language} not kept"
 msgstr "langue {language} non retenue"
 
 #. "lossless", "copy" and the profile key preserve_hd_audio stay in English (glossary).
-#: core/decision.py:1205
+#: core/decision.py:1360
 #, python-brace-format
 msgid "{reason} · lossless + preserve_hd_audio → copy"
 msgstr "{reason} · lossless + preserve_hd_audio → copy"
 
-#: core/decision.py:1212
+#: core/decision.py:1367
 #, python-brace-format
 msgid "{reason} · lossless → {codec}"
 msgstr "{reason} · lossless → {codec}"
 
-#: core/decision.py:1221
+#: core/decision.py:1376
 #, python-brace-format
 msgid "{reason} · {codec} compatible → copy"
 msgstr "{reason} · {codec} compatible → copy"
 
-#: core/decision.py:1229
+#: core/decision.py:1384
 #, python-brace-format
 msgid "{reason} · → {codec}"
 msgstr "{reason} · → {codec}"
 
-#: core/decision.py:1251
+#: core/decision.py:1406
 #, python-brace-format
 msgid "Cannot read the audio track of “{file}” added to this file: the profile's audio rule cannot be applied to it."
 msgstr "Impossible de lire la piste audio de « {file} » greffée sur ce fichier : la règle audio du profil ne peut pas s'y appliquer."
 
-#: core/decision.py:1256
+#: core/decision.py:1411
 msgid "added track"
 msgstr "piste greffée"
 
-#: core/decision.py:1514
+#: core/decision.py:1669
 msgid "H264 does not carry HDR: this file will be converted to SDR (tone mapping, slower). Choose HEVC to keep HDR."
 msgstr "H264 ne porte pas le HDR : ce fichier sera converti en SDR (tone mapping, plus lent). Choisissez HEVC pour garder le HDR."
 
-#: core/decision.py:1548
+#: core/decision.py:1703
 msgid "Forced manually (was SKIP)"
 msgstr "Forcé manuellement (était SKIP)"
 
-#: core/decision.py:1550
+#: core/decision.py:1705
 msgid "Forced manually (was DV removal)"
 msgstr "Forcé manuellement (était retrait DV)"
 
@@ -851,26 +874,26 @@ msgstr "dans mpv : z / Z décalent les sous-titres par pas de 100 ms"
 msgid "in mpv: Ctrl++ / Ctrl+- shift the audio by 100 ms steps"
 msgstr "dans mpv : Ctrl++ / Ctrl+- décalent l'audio par pas de 100 ms"
 
-#: core/profiles.py:125
-#: core/profiles.py:128
+#: core/profiles.py:129
+#: core/profiles.py:132
 msgctxt "profile value"
 msgid "yes"
 msgstr "oui"
 
-#: core/profiles.py:127
-#: core/profiles.py:129
+#: core/profiles.py:131
+#: core/profiles.py:133
 msgctxt "profile value"
 msgid "no"
 msgstr "non"
 
-#: core/profiles.py:214
+#: core/profiles.py:218
 #, python-brace-format
 msgid "profiles.toml unreadable ({error}). Session running on the {count} built-in profile — your file was not touched."
 msgid_plural "profiles.toml unreadable ({error}). Session running on the {count} built-in profiles — your file was not touched."
 msgstr[0] "profiles.toml illisible ({error}). Session tenue sur le {count} profil livré — votre fichier n'a pas été touché."
 msgstr[1] "profiles.toml illisible ({error}). Session tenue sur les {count} profils livrés — votre fichier n'a pas été touché."
 
-#: core/profiles.py:221
+#: core/profiles.py:225
 #, python-brace-format
 msgid "profiles.toml unreadable ({error}). Loading the built-in profile [{profile}]."
 msgstr "profiles.toml illisible ({error}). Chargement du profil [{profile}] intégré."

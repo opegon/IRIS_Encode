@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.18] — 2026-11-04
+
+### Super-résolution : la règle de décision (IE-167, première étape)
+
+Première étape de l'agrandissement par super-résolution (note
+`conception_upscaling_2026-11-03.md`). **Seule la décision existe** :
+l'encodeur n'agrandit pas encore, et aucun profil livré ne l'active.
+
+- **La règle.** Une source plus petite que le cadre 1080p va au plus haut
+  palier (480p, 720p ou 1080p) qu'elle atteint sans dépasser ×2,7. Un DVD va
+  donc directement en 1080p (×1,875 à ×2,67). Sous ×1,2, elle garde sa
+  définition. Les mesures de la note (§ 10.14) ont décidé du plafond : à
+  ×2,67, le gain sur un agrandissement classique est de 4 à 6 points de
+  VMAF, contre 1 à 2 à ×1,5.
+- **Le débit est celui du palier atteint**, quel que soit celui de la
+  source ; HEVC en 1080p, H264 en dessous. Une nouvelle tranche 480p
+  (`bitrate_480p_kbps`, 1 500 par défaut) sert aux sources de 240p.
+- **Activation** par la clé de profil `upscale`, ou fichier par fichier
+  (la touche du Dry run viendra avec l'interface). Deux passes possibles
+  (`upscale_passes = 2`), toujours vers le cadre 1080p.
+- **Pas de repli** : une source HDR, ou un poste sans ffmpeg à `libplacebo`,
+  garde la décision habituelle, et la raison dit pourquoi elle n'est pas
+  agrandie.
+- La colonne Décision affiche `→ HEVC ↑1080p` (`×2` en deux passes).
+
+Un profil sans la clé `upscale` décide exactement comme avant.
+
 ## [v0.9.1.17] — 2026-11-02
 
 ### La liste du lancement ne réclame plus un outil dont on n'a pas besoin

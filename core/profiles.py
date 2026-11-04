@@ -111,7 +111,11 @@ class Profile:
             return self.data.get("bitrate_4k_kbps", 5000) * 1000
         if height >= 1080:
             return self.data.get("bitrate_1080p_kbps", 2500) * 1000
-        return self.data.get("bitrate_720p_kbps", 1500) * 1000
+        if height >= 720:
+            return self.data.get("bitrate_720p_kbps", 1500) * 1000
+        # Tranche 480p (D20 de la note super-résolution) : seul l'agrandissement
+        # la demande, la décision classique ne passe que 720, 1080 et 2160.
+        return self.data.get("bitrate_480p_kbps", 1500) * 1000
 
     def summary_fields(self) -> dict[str, str]:
         """Valeurs individuelles pour affichage en colonnes séparées."""

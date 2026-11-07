@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.24
+**Version**: 0.9.1.25
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -909,7 +909,8 @@ playback chain transcode because of a track:
 
 - a **kept** audio track that the profile converts — DTS, DTS-HD, TrueHD,
   FLAC, PCM, Opus… (anything that is not AAC, AC3 or E-AC3);
-- a **PGS subtitle doubled** by an SRT of the same language and kind.
+- a **PGS subtitle doubled** by an SRT of the same language and kind;
+- a French or English **PGS subtitle** that OCR converts to SRT (see below).
 
 The picture is copied as it is, bit for bit; the audio tracks follow the
 profile's rule (bitrates, `audio_hd_codec`), the subtitles its language rules.
@@ -919,7 +920,19 @@ audio conversion.
 
 What does **not** trigger a remux: a track left out by language (the player
 does not pick it — it still goes if the remux happens), and a PGS **alone** in
-its language, which cannot be removed without losing the subtitle.
+its language that OCR does not convert (another language, or no OCR tool): it
+cannot be removed without losing the subtitle.
+
+**PGS converted to text (OCR).** When the OCR tool is installed (offered at
+startup, about 45 MB in `bin\seconv\`), every French or English PGS subtitle
+the output keeps, forced or full, becomes an SRT, whether the file is
+re-encoded or remuxed. The SRT **replaces** the PGS and keeps its language,
+name and flags. The tracks screen and the wizard show "→ SRT (OCR)", the dry
+run "OCR N" in the container column. Expect 5 to 40 seconds per film. The text
+is about 99.6% right: a few mistakes remain, mostly on signs written in
+capitals. If OCR fails on a track, it keeps its PGS, the file is still produced
+(in MKV), and the batch summary flags it with "⚠". PGS in other languages, DVD
+subtitles and disc titles stay as they are.
 
 `L` → "Remux: audio / subtitles to convert" shows only these files. Checked, a
 remux runs as a remux; to re-encode the video too, `F6` in the dry run forces

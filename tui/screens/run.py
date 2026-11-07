@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import subprocess
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum, auto
 
@@ -84,6 +84,9 @@ class FileRunStatus:
     # (lecture, filtres, encodage) de la vidéo : "gpu", "cpu" ou None
     # (`chaine_de`).
     chaine:         tuple | None = None
+    # Ce qui n'a pas empêché la sortie mais s'est fait autrement que prévu
+    # (un PGS que l'OCR n'a pas lu et qui reste) : repris dans le bilan.
+    avertissements: list = field(default_factory=list)
 
 
 # ─── Écran ────────────────────────────────────────────────────────────────────
@@ -601,11 +604,13 @@ class RunScreen(TableNavMixin, Screen):
             self._liberer(dec, audio_tmp)
             self._encode_next()
             return
-        # Sortie MKV : une piste WebVTT que ffmpeg ne lit pas passe par un
-        # `.srt` refait.
-        ok, refaits = self._refaire_webvtt(next_idx, dec)
+        ok, refaits = self._sous_titres_refaits(next_idx, dec)
         if not ok:
             self._liberer(dec, audio_tmp, porteur)
+            self._encode_next()
+            return
+        if s.state == FileState.SKIPPED:          # `S` ou `X` pendant l'OCR
+            self._liberer(dec, audio_tmp, porteur, *refaits.values())
             self._encode_next()
             return
 
@@ -1059,6 +1064,76 @@ class RunScreen(TableNavMixin, Screen):
                 return False, {}
             refaits[st.index] = chemin
         return True, refaits
+
+    def _sous_titres_refaits(self, index: int, dec: FileDecision,
+                             ) -> tuple[bool, dict[int, Path]]:
+        """Les pistes de la source qu'un `.srt` refait remplace, en sortie
+        MKV : WebVTT que ffmpeg ne lit pas, PGS passés à l'OCR (IE-176).
+        Rend (réussite, chemins) ; seul un WebVTT irréparable fait échouer."""
+        ok, refaits = self._refaire_webvtt(index, dec)
+        if not ok:
+            return False, {}
+        refaits.update(self._ocr_sous_titres(index, dec))
+        return True, refaits
+
+    def _ocr_sous_titres(self, index: int, dec: FileDecision) -> dict[int, Path]:
+        """Les `.srt` des PGS que l'OCR remplace (IE-176), par index de piste
+        de la source. Une piste qui échoue garde son PGS : la sortie est en
+        Matroska tant qu'elle en porte un, rien n'est perdu, et l'échec est
+        dit dans les avertissements du fichier. `S` ou `X` arrête l'étape.
+        """
+        from core import ocr
+
+        pistes = dec.sous_titres_ocr
+        seconv = ocr.seconv()
+        if not pistes or seconv is None:
+            return {}
+        s = self._statuses[index]
+        source = dec.encode_source or dec.info.lecture
+        ffmpeg = getattr(self.app, "ffmpeg_path", "ffmpeg")
+
+        def avertir(texte: str) -> None:
+            s.avertissements.append(texte)
+            _LOG.warning("%s — %s", dec.info.path, texte)
+
+        self.app.call_from_thread(
+            self._update_ffmpeg_line,
+            "▶ " + _("Converting the image subtitles (PGS) into text…"))
+        s.percent = -1
+        self.app.call_from_thread(self._update_row, index)
+        cmd, sups = ocr.build_extraction_pgs(source, pistes, dec.dossier_sortie,
+                                             ffmpeg)
+        faits: dict[int, Path] = {}
+        try:
+            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+            code = self._executer(index, EncoderProcess(cmd, dec.info.duration))
+            if s.state == FileState.SKIPPED:
+                return {}
+            if code != 0:
+                avertir(_("OCR: the image subtitles could not be read (code "
+                          "{code}) — kept as they are.").format(code=code))
+                return {}
+            for st, sup in zip(pistes, sups):
+                srt = ocr.sortie_ocr(sup)
+                cmd = ocr.build_commande_ocr(seconv, sup)
+                self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+                code = self._executer(index, EncoderProcess(cmd, dec.info.duration))
+                if s.state == FileState.SKIPPED:
+                    srt.unlink(missing_ok=True)
+                    for fait in faits.values():
+                        fait.unlink(missing_ok=True)
+                    return {}
+                if code == 0 and ocr.repliques_lues(srt):
+                    faits[st.index] = srt
+                    continue
+                srt.unlink(missing_ok=True)
+                avertir(_("OCR failed on subtitle track {track} ({lang}) — the "
+                          "PGS is kept.").format(track=f"0:s:{st.index}",
+                                                 lang=st.language or "?"))
+            return faits
+        finally:
+            for sup in sups:
+                sup.unlink(missing_ok=True)
 
     @staticmethod
     def _cause(proc, resume: str, detail: str) -> tuple[str, str]:
@@ -2014,6 +2089,9 @@ class RunScreen(TableNavMixin, Screen):
         if reste > 0:
             lignes.append("   " + ngettext("… and {count} other", "… and {count} others",
                                            reste).format(count=reste))
+        lignes += [f"⚠ {s.decision.info.path.name} : {texte}"
+                   for s in self._statuses if s.state == FileState.SUCCESS
+                   for texte in s.avertissements]
         echecs = [s for s in self._statuses if s.state == FileState.ERROR]
         lignes += [f"✗ {s.decision.info.path.name} : {self._cause_complete(s)}"
                    for s in echecs[:self._ECHECS_LISTES]]

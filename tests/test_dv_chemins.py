@@ -406,7 +406,9 @@ def test_aucun_delai_fixe_sur_une_etape_qui_lit_le_film():
     for ancien in ("def remove_dv", "def inject_rpu", "def extract_rpu_depuis_source"):
         assert ancien not in DOVI
     assert "dovi.TuyauRpu(" in RUN
-    assert RUN.count("self._executer(index, ") == 3
+    # Trois étapes Dolby Vision, et les deux de l'OCR des PGS (IE-176) :
+    # extraction des `.sup`, puis seconv.
+    assert RUN.count("self._executer(index, ") == 5
 
 
 class _Bloque:

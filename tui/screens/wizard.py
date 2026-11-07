@@ -43,7 +43,7 @@ from core.decision import (ACTION_CYCLE, AudioAction,
                            FileDecision, VideoAction, cycle_index,
                            ajuster_remux, choisir_codec, decide_audio,
                            force_skip_to_encode,
-                           sortie_prevue, libelle_copie)
+                           sortie_prevue, libelle_copie, libelle_ocr)
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import SyncResult, measure_external_track
 
@@ -312,10 +312,13 @@ class WizardScreen(TableNavMixin, Screen):
                         ad.track.language, ad.track.title,
                         ad.display() or libelle_ecartee())
         gardes = {st.index for st in d.subtitles_finales}
+        ocr = {st.index for st in d.sous_titres_ocr}
         for st in d.info.subtitle_tracks:
             self._ligne(_L_SUB, st.index, st.index in gardes,
                         f"0:s:{st.index}", st.codec, st.language, st.title,
-                        libelle_copie() if st.index in gardes else libelle_ecartee())
+                        libelle_ocr() if st.index in ocr
+                        else libelle_copie() if st.index in gardes
+                        else libelle_ecartee())
         for n, ext in enumerate(d.external_tracks):
             kind = libelle_type_piste(ext.kind)
             # TRANSLATORS: {kind} is "audio" or "subtitle".

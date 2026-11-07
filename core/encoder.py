@@ -1316,6 +1316,19 @@ def build_command(
     for n, st in enumerate(subs_sortie):
         if st.langue_completee:
             cmd += [f"-metadata:s:s:{n}", f"language={st.language}"]
+    # Une piste remplacée par un `.srt` refait (WebVTT brut, PGS passé à
+    # l'OCR) vient d'une entrée nue : sans ces lignes, elle perdait la langue,
+    # le nom et les drapeaux de la piste de la source.
+    for n, st in enumerate(subs_sortie):
+        if st.index not in refaits_input or porteur_input is not None:
+            continue
+        if st.language and not st.langue_completee:
+            cmd += [f"-metadata:s:s:{n}", f"language={st.language}"]
+        if st.title:
+            cmd += [f"-metadata:s:s:{n}", f"title={st.title}"]
+        drapeaux = [d for d, oui in (("default", st.default),
+                                     ("forced", st.forced)) if oui]
+        cmd += [f"-disposition:s:{n}", "+".join(drapeaux) or "0"]
     if chapitres_input is not None:
         cmd += ["-map_chapters", str(chapitres_input)]
 

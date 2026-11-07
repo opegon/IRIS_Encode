@@ -517,6 +517,12 @@ def run_preflight(cfg: dict) -> bool:
                         "to upscale small sources)."))
                 _offer_shader_install(bin_dir)
                 print()
+        from . import ocr
+        if _is_windows() and ocr.chercher_seconv(bin_dir) is None:
+            _dire(_("OCR tool missing (optional — converts image subtitles "
+                    "(PGS) into text the TV reads without transcoding)."))
+            _offer_seconv_install(bin_dir)
+            print()
         check_for_updates(cfg, statuses, bin_dir)
         return True
 
@@ -674,6 +680,52 @@ def _offer_shader_install(bin_dir: Path) -> None:
                     "their resolution."), "✗")
     else:
         _dire(_("Shader skipped — small sources will keep their resolution."))
+
+
+def install_seconv(bin_dir: Path, releases: dict) -> bool:
+    """seconv et ses données dans `bin/seconv/` (IE-176), tout ou rien.
+
+    L'archive donne l'exécutable et ses deux DLL ; chaque donnée — base nOCR,
+    listes de correction et dictionnaire français — vient de son URL épinglée
+    à un commit, vérifiée par son empreinte. Windows seulement : l'archive
+    Linux n'a pas été essayée.
+    """
+    from . import ocr
+    if not _is_windows():
+        _dire(_("The OCR tool is only installed automatically on Windows."))
+        return False
+    info = releases.get("seconv", {})
+    url  = info.get("windows", {}).get("url", "")
+    donnees = info.get("donnees", [])
+    if not url or not donnees:
+        _dire(_("{tool} URL not found in the sources.").format(tool="seconv"), "✗")
+        return False
+    _dire(_("Downloading from {url}").format(url=url))
+    archive = _download(url, info["windows"].get("sha256", ""))
+    if archive is None:
+        return False
+    fichiers: dict[Path, bytes] = {}
+    for d in donnees:
+        _dire(_("Downloading from {url}").format(url=d["url"]))
+        contenu = _download(d["url"], d.get("sha256", ""))
+        if contenu is None:
+            return False
+        fichiers[ocr.dossier(bin_dir) / d["nom"]] = contenu
+    return (_install_from_archive(archive, ocr.dossier(bin_dir),
+                                  {_exe("seconv"), *ocr.DLL})
+            and _poser_tous(fichiers))
+
+
+def _offer_seconv_install(bin_dir: Path) -> None:
+    """Propose l'outil d'OCR des sous-titres image (optionnel)."""
+    if _oui_non(_("Download and install the OCR tool for image subtitles "
+                  "(Subtitle Edit seconv, about 45 MB) into ./bin/seconv/?")):
+        if not install_seconv(bin_dir, _load_releases()):
+            _dire(_("OCR tool installation failed — image subtitles (PGS) "
+                    "will be kept as they are."), "✗")
+    else:
+        _dire(_("OCR tool skipped — image subtitles (PGS) will be kept as "
+                "they are."))
 
 
 OUTILS_INSTALLABLES = frozenset({"ffmpeg", "mkvmerge", "dovi_tool", "mpv",

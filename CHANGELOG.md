@@ -1,5 +1,29 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.25] — 2026-11-07
+
+### Sous-titres image (PGS) convertis en texte
+
+Jellyfin incruste un sous-titre image à la lecture, donc transcode la vidéo.
+Un PGS français ou anglais, forcé ou complet, devient désormais un SRT par
+reconnaissance de caractères (OCR) : la télévision le lit sans transcodage.
+
+- **L'outil** : `seconv`, la ligne de commande de Subtitle Edit (licence MIT),
+  proposé au lancement sous Windows et posé dans `bin\seconv\` (environ
+  45 Mo à télécharger, chaque fichier vérifié par son empreinte). Sans lui,
+  rien ne change : le PGS reste.
+- **La qualité**, mesurée sur quatre films : de 0,3 à 0,4 % de caractères
+  faux, neuf sous-titres sur dix exacts, de 5 à 40 secondes par film. Les
+  fautes restantes portent surtout sur les panneaux en capitales.
+- Le SRT **remplace** le PGS et en garde la langue, le nom et les drapeaux.
+  Un fichier dont la vidéo convient et qui porte un tel PGS est remuxé.
+- Si l'OCR échoue sur une piste, elle garde son PGS, le fichier sort quand
+  même et le bilan du lot le signale (« ⚠ »).
+- L'écran Pistes et l'assistant affichent « → SRT (OCR) », l'aperçu « OCR N ».
+
+Un sous-titre WebVTT refait en sortie MKV garde aussi désormais son nom et
+ses drapeaux.
+
 ## [v0.9.1.24] — 2026-11-07
 
 ### Nouveau jeu de profils livrés

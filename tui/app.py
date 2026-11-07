@@ -163,6 +163,9 @@ class IrisEncodeApp(App):
         # essayé qu'au premier fichier à agrandir (`super_resolution.refus`).
         from core import super_resolution
         super_resolution.set_shader(super_resolution.chercher_shader(bin_dir))
+        # L'OCR des sous-titres image (IE-176) : seconv complet dans bin\seconv\.
+        from core import ocr
+        ocr.set_seconv(ocr.chercher_seconv(bin_dir))
         # Câble mkvmerge pour la greffe de pistes externes (optionnel)
         from core import muxer
         mkvmerge_p = get_tool_path("mkvmerge", bin_dir)

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.24
+**Version** : 0.9.1.25
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -922,7 +922,9 @@ transcoder la chaîne de lecture à cause d'une piste :
 
 - une piste audio **retenue** que le profil convertit — DTS, DTS-HD, TrueHD,
   FLAC, PCM, Opus… (tout ce qui n'est ni AAC, ni AC3, ni E-AC3) ;
-- un sous-titre **PGS doublé** par un SRT de même langue et de même nature.
+- un sous-titre **PGS doublé** par un SRT de même langue et de même nature ;
+- un sous-titre **PGS** français ou anglais que l'OCR convertit en SRT (voir
+  ci-dessous).
 
 L'image est recopiée telle quelle, au bit près ; les pistes audio suivent la
 règle du profil (débits, `audio_hd_codec`), les sous-titres ses règles de
@@ -932,7 +934,20 @@ fichier, plus la conversion audio.
 
 Ce qui **ne déclenche pas** de remux : une piste écartée par la langue (le
 lecteur ne la choisit pas — elle part quand même si le remux a lieu), et un
-PGS **seul** de sa langue, qu'on ne retire pas sans perdre le sous-titre.
+PGS **seul** de sa langue que l'OCR ne convertit pas (autre langue, ou outil
+d'OCR absent) : on ne le retire pas sans perdre le sous-titre.
+
+**PGS convertis en texte (OCR).** Quand l'outil d'OCR est installé (proposé
+au lancement, environ 45 Mo dans `bin\seconv\`), chaque sous-titre PGS
+français ou anglais que la sortie garde, forcé ou complet, devient un SRT,
+réencodé ou remuxé. Le SRT **remplace** le PGS et garde sa langue, son nom et
+ses drapeaux. L'écran des pistes et l'assistant l'annoncent par « → SRT
+(OCR) », l'aperçu par « OCR N » dans la colonne du conteneur. Comptez de 5 à
+40 secondes par film. Le texte est juste à 99,6 % environ : quelques fautes
+subsistent, surtout sur les panneaux écrits en capitales. Si l'OCR échoue sur
+une piste, elle garde son PGS, le fichier sort quand même (en MKV), et le
+bilan du lot le signale par « ⚠ ». Les PGS d'autres langues, les sous-titres
+de DVD et les titres de disque restent tels quels.
 
 `L` → « Remux : audio / sous-titres à convertir » ne montre que ces fichiers.
 Coché, un remux part en remux ; pour réencoder la vidéo aussi, `F6` dans

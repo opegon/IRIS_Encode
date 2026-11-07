@@ -93,6 +93,14 @@ def libelle_copie() -> str:
     return f"→ {pgettext('track action', 'copy')}"
 
 
+def libelle_ocr() -> str:
+    """« → SRT (OCR) » : un sous-titre image que l'OCR remplace par du texte
+    (IE-176). Mêmes mots sur l'écran des pistes et l'assistant."""
+    # TRANSLATORS: an image subtitle converted to SRT text by character
+    # recognition. "SRT" and "OCR" stay as they are.
+    return "→ " + _("SRT (OCR)")
+
+
 def video_recopiee(action: "VideoAction", dv_action: "DVAction") -> bool:
     """Le flux vidéo sort-il tel quel, malgré une action d'encodage ?
 
@@ -356,6 +364,9 @@ SUFFIX_BY_ACTION: dict["VideoAction", str] = {
 # Les actions qui ne recalculent aucune image : rien, retrait du RPU, remux.
 SANS_REENCODAGE = (VideoAction.SKIP, VideoAction.STRIP_DV, VideoAction.REMUX)
 
+# Les langues dont un PGS passe à l'OCR (IE-176), sous leur forme normalisée.
+OCR_LANGUES = frozenset({"fre", "eng"})
+
 # Les actions dont le suffixe nomme le codec du fichier produit — les seules
 # qui autorisent le nom à perdre les marques de codec de la source (§ 8.7).
 # `DV` et `HDR10` disent le traitement du Dolby Vision, pas le codec, et
@@ -516,6 +527,19 @@ class FileDecision:
         """Ce qui atterrira vraiment dans le fichier de sortie."""
         ecartes = self.sous_titres_ecartes
         return [st for st in self.kept_subtitles if st not in ecartes]
+
+    @property
+    def sous_titres_ocr(self) -> list:
+        """Les PGS de la sortie que l'OCR remplace par un SRT (IE-176).
+
+        Français et anglais seulement : seconv n'a de liste de correction que
+        pour eux ici, et sans elle le texte sort cinq fois plus fautif. Les
+        forcés aussi. Pas sur un titre de disque, dont la lecture passe par
+        un intermédiaire, ni sur les deux chemins Dolby Vision qui écrivent
+        la sortie sans `encoder.build_command`. Sans seconv, rien : le PGS
+        reste.
+        """
+        return [st for st in self.subtitles_finales if ocr_prevu(self, st)]
 
     def _mkv_impose_par_l_audio(self) -> bool:
         """Une piste sans perte recopiée telle quelle ne tient pas en MP4.
@@ -1759,6 +1783,18 @@ def decide_subtitles(
     return [st.index for st in retenues if st not in doublons]
 
 
+def ocr_prevu(dec: FileDecision, st) -> bool:
+    """Cette piste, si la sortie la garde, passerait-elle à l'OCR ?
+    La règle de `FileDecision.sous_titres_ocr`, piste par piste : l'écran
+    Pistes la demande pour une sélection pas encore appliquée."""
+    from . import ocr
+    return (ocr.seconv() is not None and dec.info.titre is None
+            and dec.video.action not in (VideoAction.STRIP_DV,
+                                         VideoAction.ENCODE_DV)
+            and st.codec.lower() == "hdmv_pgs_subtitle"
+            and normalize_language(st.language) in OCR_LANGUES)
+
+
 def _pgs_doubles(pistes: list) -> list:
     """Sous-titres image qu'un sous-titre texte de même langue et de même nature double.
 
@@ -1794,8 +1830,9 @@ def decide(
 
 def motifs_remux(dec: FileDecision) -> list[str]:
     """Ce qui ferait transcoder la chaîne de lecture dans un fichier dont la
-    vidéo convient : les pistes audio retenues que le profil convertit, et les
-    sous-titres image qu'un sous-titre texte de même langue double.
+    vidéo convient : les pistes audio retenues que le profil convertit, les
+    sous-titres image qu'un sous-titre texte de même langue double, et ceux
+    que l'OCR convertit (`sous_titres_ocr`).
 
     Une piste écartée (langue non voulue) ne compte pas : le lecteur ne la
     choisit pas, elle part avec le remux s'il a lieu, sans le déclencher.
@@ -1803,7 +1840,8 @@ def motifs_remux(dec: FileDecision) -> list[str]:
     motifs = [ad.track.codec.upper() for ad in dec.audio
               if ad.action == AudioAction.TRANSCODE]
     retenues = [st for st in dec.info.subtitle_tracks if st.portable]
-    if any(st not in dec.subtitles_finales for st in _pgs_doubles(retenues)):
+    if (any(st not in dec.subtitles_finales for st in _pgs_doubles(retenues))
+            or dec.sous_titres_ocr):
         motifs.append("PGS")
     return list(dict.fromkeys(motifs))
 

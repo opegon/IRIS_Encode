@@ -48,3 +48,54 @@ url          = "https://github.com/Artoriuz/ArtCNN/releases/download/v1.6.2/ArtC
 sha256       = "03d0b3d31cb82c898a94a46663021a3e8f02c5a21d69c5cfdf0208de4bfd453e"
 sha256_copie = "643f9870ab0289158eec4a2d2ed1d0b757643e686973d2368c63d81eaab0c080"
 version      = "1.6.2"
+
+# OCR des sous-titres image (IE-176) : seconv, la ligne de commande de
+# Subtitle Edit (licence MIT), exécutable autonome avec ses deux DLL, posé dans
+# bin/seconv/. Moteur nOCR : sa base Latin.nocr ; correction des erreurs d'OCR
+# en français : listes de Subtitle Edit et dictionnaire Hunspell de
+# LibreOffice (MPL 2.0). L'anglais est intégré à seconv. Chaque donnée est
+# épinglée à un commit, son empreinte ne bouge donc pas.
+[seconv.windows]
+url     = "https://github.com/SubtitleEdit/subtitleedit/releases/download/v5.4.0/SeConv-Windows-x64.zip"
+sha256  = "aea19664f460fcfb84e8ba8eca72419091818c6005d4e063d9950c41ea81062d"
+version = "5.4.0"
+
+[[seconv.donnees]]
+nom    = "Latin.nocr"
+url    = "https://raw.githubusercontent.com/SubtitleEdit/subtitleedit/6a673148226d6f56b5dda9b4c6fce077b22420b7/Ocr/Latin.nocr"
+sha256 = "cdc1f081bafde8cf8a7b378472e513fa6f3100ddbb102811c22ab19b3270aa3d"
+
+[[seconv.donnees]]
+nom    = "dictionnaires/fra_OCRFixReplaceList.xml"
+url    = "https://raw.githubusercontent.com/SubtitleEdit/subtitleedit/6a673148226d6f56b5dda9b4c6fce077b22420b7/Dictionaries/fra_OCRFixReplaceList.xml"
+sha256 = "f192e7fe9597ae9525b83ef306f0330c141030f0ad15f6f46029c945201bf9d7"
+
+[[seconv.donnees]]
+nom    = "dictionnaires/fr_names.xml"
+url    = "https://raw.githubusercontent.com/SubtitleEdit/subtitleedit/6a673148226d6f56b5dda9b4c6fce077b22420b7/Dictionaries/fr_names.xml"
+sha256 = "4023889d866d9a375ed996eaf1344271584e95c9d51bfa98bf00f8990740ebfc"
+
+[[seconv.donnees]]
+nom    = "dictionnaires/fra_WordSplitList.txt"
+url    = "https://raw.githubusercontent.com/SubtitleEdit/subtitleedit/6a673148226d6f56b5dda9b4c6fce077b22420b7/Dictionaries/fra_WordSplitList.txt"
+sha256 = "d9a5814a50f258117267cd9d91831c0ba3b6b24990c651438761e19106e4b00c"
+
+[[seconv.donnees]]
+nom    = "dictionnaires/fr_NoBreakAfterList.xml"
+url    = "https://raw.githubusercontent.com/SubtitleEdit/subtitleedit/6a673148226d6f56b5dda9b4c6fce077b22420b7/Dictionaries/fr_NoBreakAfterList.xml"
+sha256 = "4299d9515c9f04ae11e2001d4cb2db4a089c14b61759d4af6a68e701e9280546"
+
+[[seconv.donnees]]
+nom    = "dictionnaires/fr_abbreviations.xml"
+url    = "https://raw.githubusercontent.com/SubtitleEdit/subtitleedit/6a673148226d6f56b5dda9b4c6fce077b22420b7/Dictionaries/fr_abbreviations.xml"
+sha256 = "5a99a714435920e2573aab7946d8d7e70d44d75746c0fc88fce0c96bd8785332"
+
+[[seconv.donnees]]
+nom    = "dictionnaires/fr_FR.dic"
+url    = "https://raw.githubusercontent.com/LibreOffice/dictionaries/c0865a85eb67dc377f2cf8e8fe2c4fa9e53f0dcb/fr_FR/dictionaries/fr.dic"
+sha256 = "b78a868e31dd6e373b6c3217969afb898a9acde828a5e7ef97308da42218c88c"
+
+[[seconv.donnees]]
+nom    = "dictionnaires/fr_FR.aff"
+url    = "https://raw.githubusercontent.com/LibreOffice/dictionaries/c0865a85eb67dc377f2cf8e8fe2c4fa9e53f0dcb/fr_FR/dictionaries/fr.aff"
+sha256 = "c176610cd5dc4846806a65ddd029f422d87978bf58f224aa44222662a16a2de5"

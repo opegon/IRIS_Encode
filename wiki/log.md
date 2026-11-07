@@ -565,3 +565,7 @@ sort à 767 615 b/s. Page mise à jour : [[audio]].
 Le plafond est descendu à 1 024k en v0.8.1.26 ; le guide, le formulaire de
 profil, la spec § 8.5 et [[audio]] disaient encore « un TrueHD à 3 501k sort à
 3 501k ». Alignés sur `CODEC_MAX_BPS`.
+
+## [2026-11-07] ingest | OCR des PGS (v0.9.1.25)
+
+Mesures nOCR / Tesseract sur quatre films, politique retenue : [[sous-titres]].

@@ -17,9 +17,10 @@ _DETAIL = ("L'extraction des sous-titres a échoué (code 4294967274). "
            "[sist#0:2/none] Decoding requested, but no decoder found for: none")
 
 
-def _statut(etat, nom, error_msg="", last_line=""):
+def _statut(etat, nom, error_msg="", last_line="", avertissements=()):
     return SimpleNamespace(
         state=etat, error_msg=error_msg, last_line=last_line,
+        avertissements=list(avertissements),
         decision=SimpleNamespace(info=SimpleNamespace(path=Path("D:/v") / nom),
                                  output_path=Path("D:/v") / f"{nom}.out"))
 
@@ -69,3 +70,16 @@ def test_le_journal_garde_la_cause(caplog):
     lignes = [r.getMessage() for r in caplog.records]
     assert len(lignes) == 1
     assert "ceremonie.mkv" in lignes[0] and "no decoder found" in lignes[0]
+
+
+def test_le_bilan_reprend_les_avertissements():
+    """Un PGS que l'OCR n'a pas lu (IE-176) : le fichier a réussi, le bilan
+    le dit quand même ; un fichier en échec ne le répète pas."""
+    ecran = _ecran([
+        _statut(FileState.SUCCESS, "film.mkv",
+                avertissements=["OCR : piste 0:s:1 gardée en PGS"]),
+        _statut(FileState.ERROR, "autre.mkv", "e", "d",
+                avertissements=["ne doit pas paraître"])])
+    bilan = RunScreen._resume(ecran)
+    assert "⚠ film.mkv : OCR : piste 0:s:1 gardée en PGS" in bilan
+    assert "ne doit pas paraître" not in bilan

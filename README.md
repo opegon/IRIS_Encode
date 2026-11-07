@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.1.24 — Windows (macOS/Linux support planned)
+**Version**: 0.9.1.25 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -454,6 +454,7 @@ feature is turned off; startup is never blocked.
 | DVD tool | reading a **DVD's titles** (`VIDEO_TS`) | ~320 MB |
 | Dolby Vision tool | converting **Dolby Vision profile 5** to HDR10 or SDR | ~165 MB |
 | Super-resolution shader | **upscaling** (ArtCNN C4F16, needs an ffmpeg with `libplacebo`) | ~210 KB |
+| OCR tool | **PGS subtitles converted to SRT** (Subtitle Edit `seconv`, Windows) | ~45 MB |
 
 The **DVD tool** is a second ffmpeg — the BtbN GPL build, which reads DVDs
 (libdvdnav) — installed into `bin/dvd/`, apart from the ffmpeg that encodes. It
@@ -474,6 +475,12 @@ present (the Dolby Vision tool, or the main ffmpeg). IRIS stores it without
 its `//!WHEN` lines: otherwise it would not run below ×1.3, and a PAL DVD
 would be announced as upscaled without being so. A short Vulkan test, at the
 first file to upscale, checks that the graphics card can run it.
+
+The **OCR tool** is `seconv`, the command line of Subtitle Edit (MIT licence),
+with its nOCR database and the French correction lists and dictionary (MPL 2.0
+for the dictionary). Everything goes into `bin/seconv/`, each file checked
+against its pinned SHA256. It is offered at startup on Windows; without it,
+PGS subtitles are kept as they are.
 
 For the DVD and Dolby Vision tools, the startup list says so: `[✓] ffmpeg_dvd — provided by the
 main ffmpeg` (likewise for `ffmpeg_dv`). Nothing needs installing.

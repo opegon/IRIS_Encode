@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-11-01
+maj: 2026-11-07
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -28,6 +28,31 @@ un film 4K illisible (voir [[chaine-de-diffusion|Chaîne de diffusion]]).
 Un sous-titre image n'a **pas de texte** : il ne se mesure pas pour un
 recalage (voir [[synchronisation|Synchronisation]]) et ne se convertit pas
 en SRT sans OCR.
+
+## OCR : un PGS devenu SRT (v0.9.1.25)
+
+Mesuré le 2026-11-07 sur les PGS français de quatre films (*300*, *Starship
+Troopers*, *Watchmen*, *L'Ombre d'un doute*), référence = le SRT français du
+même fichier, alignement par temps *(mesuré)* :
+
+| Moteur | Caractères faux | Sous-titres exacts | Temps par film | Italiques |
+|---|---|---|---|---|
+| seconv **nOCR + `FixCommonOcrErrors`** (listes françaises) | 0,33 à 0,43 % | 90 à 92 % | 5 à 40 s | gardés |
+| seconv nOCR seul | 1 à 2 % | 65 à 77 % | idem | gardés |
+| Tesseract 5.5.3, `fra` best | 1 à 1,6 % | 71 à 84 % | 3 à 8 min 30 | **tous perdus** |
+
+- Fautes résiduelles : texte en capitales des panneaux (`I` lu `l`), `Ô`
+  pour `ô`, espaces manquantes ou en trop.
+- Une référence n'est pas toujours la transcription du PGS : celle de *L'Ombre
+  d'un doute* a 56 répliques sans pendant et des espaces typographiques
+  différentes — son « 7 % » est surtout un écart de texte, pas d'OCR.
+- Un PGS SDH en italique (*Mars Express*) faute davantage (« ChansOn dOuce »).
+  *(observé, sans référence)*
+- Non mesuré : un PGS anglais.
+
+Politique retenue (IE-176) : PGS français et anglais, forcés compris,
+**remplacés** par le SRT ; sur échec, le PGS reste et le bilan le dit.
+Voir [[source-spec]] § 8.6.
 
 ## Ce que portent les releases
 

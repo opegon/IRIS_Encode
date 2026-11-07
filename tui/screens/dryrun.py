@@ -221,6 +221,11 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             if ecartes:
                 # TRANSLATORS: "st" = subtitle track(s) left out; keep it short.
                 container += f"  −{ecartes} " + _("st")
+            if dec.sous_titres_ocr:
+                # TRANSLATORS: number of image subtitles converted to text by
+                # character recognition; keep it short.
+                container += "  " + _("OCR {count}").format(
+                    count=len(dec.sous_titres_ocr))
 
             # Estimation taille de sortie — un seul stat() par fichier,
             # réutilisé pour la ligne ET les totaux du summary

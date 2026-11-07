@@ -45,7 +45,7 @@ from core.decision import (
     BITRATE_OPTS_KBPS as _BITRATE_OPTS,
     AudioAction, DVAction, FileDecision, TracksSelection,
     VideoAction, VideoOverride, decide_audio, decide_video,
-    DV_SORTIE, EXCLU_MANUELLEMENT, libelle_copie,
+    DV_SORTIE, EXCLU_MANUELLEMENT, libelle_copie, libelle_ocr, ocr_prevu,
 )
 from ..common import sauver_config
 from ..common import avertir_h264_sdr
@@ -331,6 +331,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 # aussi pour un MKV (CR-83).
                 cont_str = (f"{libelle_copie()} "
                             f"{self._decision.output_container.lstrip('.').upper()}")
+                if ocr_prevu(self._decision, st):
+                    cont_str = libelle_ocr()
 
                 # Raison simplifiée pour l'affichage
                 if not st.portable:

@@ -41,6 +41,9 @@ _GLOBALES = [
     ("core.decision", "_STRIP_DV_AVAILABLE"),
     ("core.decision", "_FACTEURS_CACHE"),
     ("core.dovi",     "_ffmpeg_dv"),
+    # L'app pose le vrai seconv de `bin/` : sans restauration, un PGS d'un
+    # test suivant passait à l'OCR (test_remux après test_profil_actif).
+    ("core.ocr",      "_seconv"),
 ]
 
 

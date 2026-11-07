@@ -113,14 +113,16 @@ def test_sans_l_option_le_forfait_du_profil_s_applique(tmp_path):
 def test_debit_source_inconnu_retombe_sur_le_forfait(tmp_path):
     """Sans débit lisible, mieux vaut le forfait qu'une valeur inventée."""
     d = _only(tmp_path, _track(bitrate=0), audio_hd_codec="eac3")
-    assert (d.output_codec, d.output_bitrate) == ("ac3", 448_000)
+    # Le forfait du profil, dans le codec qu'il demande (v0.9.1.23).
+    assert (d.output_codec, d.output_bitrate) == ("eac3", 448_000)
 
 
 def test_une_piste_non_hd_n_est_pas_concernee(tmp_path):
     """L'option ne vise que TrueHD et DTS : une piste AAC garde son forfait."""
     d = _only(tmp_path, _track("aac", channels=6, bitrate=2_000_000),
               audio_hd_codec="eac3", audio_copy_compatible=False)
-    assert (d.output_codec, d.output_bitrate) == ("ac3", 448_000)
+    # Pas au débit de la source : au forfait, en E-AC3 (v0.9.1.23).
+    assert (d.output_codec, d.output_bitrate) == ("eac3", 448_000)
 
 
 def test_preserve_hd_audio_garde_la_priorite(tmp_path):
@@ -208,3 +210,34 @@ def test_la_commande_pose_le_titre_corrige(tmp_path):
                                                bitrate_4k_kbps=8000)), plat)
     i = cmd.index("-metadata:s:a:0")
     assert cmd[i + 1] == "title=ENG VO : E-AC3 5.1"
+
+
+# ─── Forfait multicanal en E-AC3 quand le profil le demande ───────────────────
+# Un profil en `audio_hd_codec = "eac3"` sortait en AC3 ce que la règle au débit
+# de la source ne prend pas (FLAC, PCM, Opus, HD au débit inconnu) : un forfait
+# 7.1 de 768k était ramené à 640k par l'encodeur, sous un libellé « 768k ».
+
+@pytest.mark.parametrize("codec,canaux,debit,attendu", [
+    ("flac", 8, 0, 768_000),
+    ("opus", 6, 0, 640_000),
+    ("truehd", 8, 0, 768_000),       # débit inconnu : retombe sur le forfait
+])
+def test_le_forfait_multicanal_suit_eac3(tmp_path, codec, canaux, debit, attendu):
+    ad = _only(tmp_path, _track(codec, channels=canaux, bitrate=debit),
+               audio_hd_codec="eac3", audio_surround_kbps=640,
+               audio_surround_7_1_kbps=768)
+    assert ad.action == AudioAction.TRANSCODE
+    assert (ad.output_codec, ad.output_bitrate) == ("eac3", attendu)
+
+
+def test_le_forfait_multicanal_reste_ac3_sans_eac3(tmp_path):
+    for hd in ("none", "ac3"):
+        ad = _only(tmp_path, _track("flac", channels=6, bitrate=0),
+                   audio_hd_codec=hd)
+        assert ad.output_codec == "ac3", hd
+
+
+def test_la_stereo_reste_aac_meme_en_eac3(tmp_path):
+    ad = _only(tmp_path, _track("opus", channels=2, bitrate=0),
+               audio_hd_codec="eac3")
+    assert ad.output_codec == "aac"

@@ -33,6 +33,7 @@ import core.config as cfg_mod
 from core import dovi
 from core.i18n import N_, _, pgettext
 from core.decision import (
+    ajuster_remux,
     Emphase,
     h264_force_sdr,
     STYLE_PAR_EMPHASE,
@@ -101,6 +102,7 @@ _ACTION_SHORT: dict[VideoAction, str] = {
     VideoAction.ENCODE_AV1:  "AV1 ⚠",
     VideoAction.ENCODE_DV:   "HEVC DV",  # réencodage, RPU réinjecté après
     VideoAction.STRIP_DV:    "HDR10",   # retrait du RPU, sans réencodage
+    VideoAction.REMUX:       "remux",   # vidéo recopiée, pistes rendues lisibles
     VideoAction.SKIP:        "SKIP",
 }
 _DV_SHORT: dict[DVAction, str] = {DVAction.NONE: "—", **DV_SORTIE}
@@ -750,6 +752,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             self._decision.profile = new_profile
             self._decision.video = decide_video(self._decision.info, new_profile)
             self._decision.audio = decide_audio(self._decision.info, new_profile)
+            ajuster_remux(self._decision)
             self._build_table()
             self._update_status()
 

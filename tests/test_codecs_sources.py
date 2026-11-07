@@ -51,7 +51,8 @@ def _profile(**over) -> Profile:
 def test_un_codec_lisible_n_est_pas_reencode_pour_son_codec(tmp_path, codec):
     """Débit et résolution dans les clous : rien ne justifie d'y toucher."""
     dec = decide(_info(tmp_path, codec), _profile())
-    assert dec.video.action == VideoAction.SKIP
+    # L'Opus du fichier d'essai fait remuxer (IE-175), sans réencoder l'image.
+    assert dec.video.action in (VideoAction.SKIP, VideoAction.REMUX)
 
 
 @pytest.mark.parametrize("codec", ["vp9", "av1", "vc1", "mpeg2video", "mpeg4"])

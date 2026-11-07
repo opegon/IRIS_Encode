@@ -115,4 +115,5 @@ def test_un_film_sous_le_seuil_n_est_plus_reencode(tmp_path):
     prof = Profile(id="t", data={"bitrate_4k_kbps": 8000, "keep_4k": True,
                                  "bitrate_1080p_kbps": 5000,
                                  "bitrate_720p_kbps": 2000})
-    assert decide(info, prof).video.action == VideoAction.SKIP
+    # La TrueHD fait remuxer (IE-175) : la vidéo, elle, n'est pas réencodée.
+    assert decide(info, prof).video.action in (VideoAction.SKIP, VideoAction.REMUX)

@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.21
+**Version**: 0.9.1.24
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -180,7 +180,7 @@ chemin  = '\\10.0.0.10\Films'
 | `F4` / `F5` | Choose a profile / manage profiles |
 | `J` | **Join** the checked files end to end into one (§ 2.1bis) |
 | `I` | Movie Info card: AlloCiné, then IMDB with `Tab` |
-| `L` | **Filter** by picture type (Dolby Vision, all profiles or one; HDR without DV; SDR) or by video codec |
+| `L` | **Filter** by picture type (Dolby Vision, all profiles or one; HDR without DV; SDR), by video codec, or remuxes only |
 | `O` | **Sort** by name, size, resolution, duration, bitrate, codec or estimate |
 | `Z` | Hide / show the `SKIP` files |
 | `Tab` / `Shift+Tab` | Next / previous column |
@@ -199,7 +199,7 @@ damaged) stays in the list, greyed, with the cause: `unreadable: …`; it cannot
 be checked.
 
 **Filtering the list.** `L` shows only one picture type, or only one video
-codec (`hevc`, `h264`…); the choice only offers the types and codecs present in
+codec (`hevc`, `h264`…), or only the remuxes (§ 4.9bis); the choice only offers the types and codecs present in
 the folder, with their count, and holds one of them at a time. `Z` hides the `SKIP` files.
 Both add up, hold from one folder to the next during the session, and the
 status bar says how many files are hidden. Folders stay visible. **A checked
@@ -901,6 +901,31 @@ from the source bitrate.
 Nothing is shown if `dovi_tool` or mkvmerge is missing — the file stays at
 `← SKIP` rather than promising an impossible operation.
 
+### 4.9bis "→ remux": the video is fine, a track is not
+
+The **`→ remux`** decision, in green, targets a file whose video has nothing to
+re-encode (bitrate, resolution and codec within limits) but which would make the
+playback chain transcode because of a track:
+
+- a **kept** audio track that the profile converts — DTS, DTS-HD, TrueHD,
+  FLAC, PCM, Opus… (anything that is not AAC, AC3 or E-AC3);
+- a **PGS subtitle doubled** by an SRT of the same language and kind.
+
+The picture is copied as it is, bit for bit; the audio tracks follow the
+profile's rule (bitrates, `audio_hd_codec`), the subtitles its language rules.
+The output is a `<name>.remux-iris.mkv` or `.mp4`, whose name states the new
+audio format (`DTS` becomes `AC3`). Expect the time of a file copy, plus the
+audio conversion.
+
+What does **not** trigger a remux: a track left out by language (the player
+does not pick it — it still goes if the remux happens), and a PGS **alone** in
+its language, which cannot be removed without losing the subtitle.
+
+`L` → "Remux: audio / subtitles to convert" shows only these files. Checked, a
+remux runs as a remux; to re-encode the video too, `F6` in the dry run forces
+the codec. Leaving the offending track out in the tracks screen brings the file
+back to `← SKIP`.
+
 ### 4.10 The "Bitrate" column does not say the same as my file explorer
 
 The column shows the **video bitrate alone**, while a file explorer or
@@ -927,14 +952,21 @@ The **Handling** field of the **Lossless audio** section of the profile form
   behavior.
 - **`→ AC3 at the source bitrate`** — capped at **640 kbps**: that is the AC3
   maximum, the encoder silently brings everything else down.
-- **`→ E-AC3 at the source bitrate`** — capped at **6,144 kbps**. A TrueHD at
-  3,501 kbps comes out as E-AC3 at 3,501 kbps.
+- **`→ E-AC3 at the source bitrate`** — capped at **1,024 kbps**. A DTS at
+  768 kbps keeps its 768 kbps; a TrueHD at 3,501 kbps or a DTS at 1,509 kbps
+  comes out at 1,024 kbps. The encoder would go up to 6,144 kbps, but above
+  1,024 kbps a 5.1 E-AC3 gains nothing audible and weighs three times as much.
 - **`copy as they are`** — the track is kept lossless (`preserve_hd_audio`),
   which forces MKV. This also applies to FLAC and PCM tracks (a concert, for
   instance); without it, they follow the fixed rate.
 
 E-AC3 is the right choice for a recent TV: it is decoded natively and carried
 over eARC to a soundbar. AC3 remains the universal fallback.
+
+With **`→ E-AC3 at the source bitrate`**, the fixed 5.1 / 7.1 rate also comes
+out in E-AC3: it covers the multichannel tracks the source-bitrate rule does
+not take — FLAC, PCM, Opus, or TrueHD / DTS whose bitrate cannot be read. In
+AC3, a fixed 7.1 rate above 640 kbps was brought down to 640 without a word.
 
 A limit to know: the AC3 and E-AC3 encoders do not go beyond 5.1, so a 7.1
 source is folded down — the decision shows it ("→ eac3 5.1").

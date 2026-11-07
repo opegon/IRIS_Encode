@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.21
+**Version** : 0.9.1.24
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -177,7 +177,7 @@ chemin  = '\\10.0.0.10\Films'
 | `F4` / `F5` | Choisir un profil / gérer les profils |
 | `J` | **Joindre** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
 | `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |
-| `L` | **Filtrer** par type d'image (Dolby Vision, tous profils ou un seul ; HDR sans DV ; SDR) ou par codec vidéo |
+| `L` | **Filtrer** par type d'image (Dolby Vision, tous profils ou un seul ; HDR sans DV ; SDR), par codec vidéo, ou les seuls remux |
 | `O` | **Trier** par nom, taille, résolution, durée, débit, codec ou estimation |
 | `Z` | Masquer / afficher les fichiers `SKIP` |
 | `Tab` / `Maj+Tab` | Colonne suivante / précédente |
@@ -196,7 +196,7 @@ que l'analyse ne lit pas (tronqué, abîmé) reste dans la liste, grisé, avec s
 cause : `illisible : …` ; il ne se coche pas.
 
 **Filtrer la liste.** `L` ne montre qu'un type d'image, ou qu'un codec vidéo
-(`hevc`, `h264`…) ; le choix ne propose que les types et les codecs présents
+(`hevc`, `h264`…), ou que les remux (§ 4.9bis) ; le choix ne propose que les types et les codecs présents
 dans le dossier, avec leur nombre, et n'en retient qu'un à la fois. `Z` masque les
 fichiers `SKIP`. Les deux se cumulent, tiennent d'un dossier à l'autre pendant
 la session, et la barre d'état dit combien de fichiers sont masqués. Les
@@ -914,6 +914,31 @@ repart du débit source.
 Rien ne s'affiche si `dovi_tool` ou mkvmerge manque — le fichier reste en
 `← SKIP` plutôt que de promettre une opération impossible.
 
+### 4.9bis « → remux » : la vidéo est bonne, une piste ne l'est pas
+
+La décision **`→ remux`**, en vert, vise un fichier dont la vidéo n'a rien à
+réencoder (débit, définition et codec dans les clous) mais qui ferait
+transcoder la chaîne de lecture à cause d'une piste :
+
+- une piste audio **retenue** que le profil convertit — DTS, DTS-HD, TrueHD,
+  FLAC, PCM, Opus… (tout ce qui n'est ni AAC, ni AC3, ni E-AC3) ;
+- un sous-titre **PGS doublé** par un SRT de même langue et de même nature.
+
+L'image est recopiée telle quelle, au bit près ; les pistes audio suivent la
+règle du profil (débits, `audio_hd_codec`), les sous-titres ses règles de
+langue. La sortie est un `<nom>.remux-iris.mkv` ou `.mp4`, dont le nom dit le
+nouveau format audio (`DTS` devient `AC3`). Compter le temps d'une copie du
+fichier, plus la conversion audio.
+
+Ce qui **ne déclenche pas** de remux : une piste écartée par la langue (le
+lecteur ne la choisit pas — elle part quand même si le remux a lieu), et un
+PGS **seul** de sa langue, qu'on ne retire pas sans perdre le sous-titre.
+
+`L` → « Remux : audio / sous-titres à convertir » ne montre que ces fichiers.
+Coché, un remux part en remux ; pour réencoder la vidéo aussi, `F6` dans
+l'aperçu force le codec. Écarter la piste fautive dans l'écran des pistes
+ramène le fichier en `← SKIP`.
+
 ### 4.10 La colonne « Débit » ne dit pas la même chose que mon explorateur
 
 La colonne affiche le **débit vidéo seul**, tandis qu'un explorateur de
@@ -940,14 +965,21 @@ profil (`F5`, puis éditer) change la règle pour ces pistes :
   d'origine.
 - **`→ AC3 au débit de la source`** — plafonné à **640 kbps** : c'est le
   maximum de l'AC3, l'encodeur ramène tout le reste sans le dire.
-- **`→ E-AC3 au débit de la source`** — plafonné à **6 144 kbps**. Un TrueHD à
-  3 501 kbps ressort en E-AC3 à 3 501 kbps.
+- **`→ E-AC3 au débit de la source`** — plafonné à **1 024 kbps**. Un DTS à
+  768 kbps garde ses 768 kbps ; un TrueHD à 3 501 kbps ou un DTS à 1 509 kbps
+  ressort à 1 024 kbps. L'encodeur irait jusqu'à 6 144 kbps, mais au-delà de
+  1 024 kbps un E-AC3 5.1 ne gagne rien à l'écoute et pèse trois fois plus.
 - **`copier telles quelles`** — la piste reste sans perte
   (`preserve_hd_audio`), ce qui impose le MKV. Vaut aussi pour les pistes FLAC
   et PCM (un concert, par exemple) ; sans cela, elles suivent le forfait.
 
 L'E-AC3 est le bon choix pour un téléviseur récent : il est décodé nativement
 et transporté en eARC vers une barre de son. L'AC3 reste le repli universel.
+
+Avec **`→ E-AC3 au débit de la source`**, le forfait 5.1 / 7.1 sort lui aussi
+en E-AC3 : il sert aux pistes multicanal que la règle au débit de la source ne
+prend pas — FLAC, PCM, Opus, ou TrueHD / DTS dont le débit est illisible. En
+AC3, un forfait 7.1 au-dessus de 640 kbps était ramené à 640 sans le dire.
 
 Une limite à connaître : les encodeurs AC3 et E-AC3 ne dépassent pas le 5.1,
 une source 7.1 est donc repliée — la décision l'affiche (« → eac3 5.1 »).

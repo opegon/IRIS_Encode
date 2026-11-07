@@ -41,7 +41,10 @@ def fichier(tmp_path, monkeypatch):
 def test_le_fichier_livre_n_a_plus_de_serie():
     livres = tomllib.loads(prof_mod.PROFILS_LIVRES_PATH.read_text(encoding="utf-8"))
     assert not any(nom.startswith("serie_") for nom in livres)
-    assert set(prof_mod.RENOMMAGES_LIVRES.values()) <= set(livres)
+    # Le jeu livré a changé en v0.9.1.24 : la migration ne sert plus qu'aux
+    # fichiers d'installations anciennes, ses cibles n'ont pas à être livrées.
+    assert all(neuf.startswith("series_")
+               for neuf in prof_mod.RENOMMAGES_LIVRES.values())
 
 
 def test_les_profils_livres_migrent_dans_l_ordre_du_fichier(fichier):

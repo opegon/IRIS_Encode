@@ -26,6 +26,8 @@ from core.decision import (
     AV1_BITRATE_OPTS_KBPS,
     choisir_codec,
     decide_video,
+    ajuster_remux,
+    SANS_REENCODAGE,
     AudioAction, DVAction, DV_SORTIE, FileDecision, VideoAction,
     video_recopiee,
 )
@@ -63,7 +65,7 @@ def _estimate_output_bytes(dec: FileDecision) -> int:
     # Vision dont le RPU ne peut pas être réinjecté est dans le même cas : sa
     # vidéo est recopiée, et l'estimer au débit cible annonçait une réduction
     # qui n'aura pas lieu.
-    if (dec.video.action == VideoAction.STRIP_DV
+    if (dec.video.action in (VideoAction.STRIP_DV, VideoAction.REMUX)
             or video_recopiee(dec.video.action, dec.video.dv_action)):
         try:
             return dec.info.taille
@@ -195,7 +197,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             dv_str = (f"→ {DV_SORTIE[vid.dv_action]}"
                       if vid.dv_action in DV_SORTIE else "—")
 
-            if vid.action in (VideoAction.SKIP, VideoAction.STRIP_DV):
+            if vid.action in SANS_REENCODAGE:
                 bitrate_str = "—"
                 res_str     = f"{info.width}x{info.height}"
             else:
@@ -298,6 +300,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         av1    = counts[VideoAction.ENCODE_AV1]
         skip   = counts[VideoAction.SKIP]
         strip  = counts[VideoAction.STRIP_DV]
+        remux  = counts[VideoAction.REMUX]
         dv     = counts[VideoAction.ENCODE_DV]
 
         total_src, total_est = self._totals
@@ -314,6 +317,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         av1_str   = f"  ·  AV1 {av1}" if av1 else ""
         dv_str    = f"  ·  HEVC+DV {dv}" if dv else ""
         strip_str = f"  ·  DV→HDR10 {strip}" if strip else ""
+        strip_str += f"  ·  remux {remux}" if remux else ""
         self.query_one("#status-bar", Static).update(barre_etat(
             _("Dry run"), ngettext("{count} file selected", "{count} files selected",
                                    total).format(count=total),
@@ -391,7 +395,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     def _apply_bitrate(self, dec: FileDecision, new_bitrate_bps: int) -> None:
         from dataclasses import replace as dc_replace
-        if dec.video.action == VideoAction.SKIP:
+        if dec.video.action in (VideoAction.SKIP, VideoAction.REMUX):
             return
         dec.video = dc_replace(
             dec.video,
@@ -441,6 +445,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             agrandir, passes = self._CHOIX_AGRANDIR[idx]
             d.video = decide_video(d.info, d.profile, agrandir=agrandir,
                                    passes=passes)
+            ajuster_remux(d)
             if agrandir and d.video.upscale is None:
                 # Refus (HDR, outil, Vulkan) ou source hors de la règle (déjà
                 # au cadre 1080p, sous ×1,2) : la décision sans agrandissement
@@ -458,7 +463,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     def action_open_bitrate(self) -> None:
         dec = self._current_decision()
-        if dec is None or dec.video.action == VideoAction.SKIP:
+        if dec is None or dec.video.action in (VideoAction.SKIP, VideoAction.REMUX):
             return
         title, opts, current, blist = bitrate_picker_config(
             dec.video.action, dec.video.target_bitrate

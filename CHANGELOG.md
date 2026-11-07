@@ -1,5 +1,56 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.24] — 2026-11-07
+
+### Nouveau jeu de profils livrés
+
+Une installation neuve reçoit douze profils, tous construits sur la même
+règle : le Dolby Vision part, le HDR reste ; sous-titres et audio filtrés
+(français, anglais) ; audio converti seulement quand la chaîne de lecture ne
+le lit pas ; une vidéo déjà bonne est seulement remuxée.
+
+| Profil | Débit cible |
+|---|---|
+| `movie_4k_high` / `_std` / `_basic` | 4K à 12 000 / 8 000 / 5 000 kbps |
+| `movie_1080p_high` / `_std` / `_basic` | 1080p à 8 000 / 5 000 / 3 500 kbps |
+| `series_high` / `_std` / `_basic` | 1080p à 3 000 / 2 500 / 2 200 kbps |
+| `anime` | 1080p à 2 000 kbps |
+| `upscale_1080p` | agrandissement vers 1080p, 3 500 kbps |
+| `video_basic_delete` | tout venant, supprime la source |
+
+Une source plus petite que la cible prend le débit du niveau correspondant
+(un 1080p sous `movie_4k_high` vise 8 000 kbps). Une installation existante
+garde son `profiles.toml`.
+
+## [v0.9.1.23] — 2026-11-06
+
+### Le forfait 5.1 / 7.1 sort en E-AC3 sur un profil E-AC3
+
+- Avec « → E-AC3 au débit de la source » (`audio_hd_codec = "eac3"`), les
+  pistes multicanal converties au forfait — FLAC, PCM, Opus, ou TrueHD / DTS
+  dont le débit est illisible — sortent désormais en E-AC3, et non plus en AC3.
+- Corrige au passage un débit annoncé à tort : en AC3, un forfait 7.1 de 768k
+  était ramené à 640k par l'encodeur sans que l'interface le dise.
+- Le profil livré `cinema_4k_dv_quality_full` (en AC3) passe son forfait 7.1
+  de 768 à 640 kbps, ce qu'il produisait déjà réellement.
+- **Documentation corrigée** : l'E-AC3 « au débit de la source » est plafonné à
+  1 024 kbps, pas 6 144. Un TrueHD à 3 500 kbps sort à 1 024 kbps ; le
+  formulaire de profil et le guide disaient 3 500.
+
+## [v0.9.1.22] — 2026-11-06
+
+### Remux : la vidéo est bonne, une piste ne l'est pas (IE-175)
+
+- **Nouvelle décision `→ remux`** : un fichier dont la vidéo n'a rien à
+  réencoder, mais qui porte une piste audio retenue que le profil convertit
+  (DTS, TrueHD, FLAC, PCM, Opus…) ou un PGS doublé par un SRT, n'est plus
+  laissé en `← SKIP`. L'image est recopiée telle quelle, les pistes suivent la
+  règle du profil ; la sortie s'appelle `<nom>.remux-iris.mkv` ou `.mp4`.
+- Une piste écartée par la langue ne déclenche rien, ni un PGS seul de sa
+  langue (sa conversion en SRT viendra avec IE-176).
+- **`L`** propose « Remux : audio / sous-titres à convertir » pour ne voir
+  que ces fichiers. Coché, un remux part en remux, sans réencoder l'image.
+
 ## [v0.9.1.21] — 2026-11-04
 
 ### Super-résolution : comparer une passe et deux passes avant de choisir (IE-172)

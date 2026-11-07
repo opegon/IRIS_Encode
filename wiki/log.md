@@ -548,3 +548,20 @@ IE-170. Ingérée : la note `conception_upscaling_2026-11-03.md` (mesures des
 2026-11-03 et 2026-11-04, jugement de l'utilisateur, contrôle TV confirmé).
 Mesuré : extrait de comparaison en 154 s sur RTX A4500. Pages mises à jour :
 [[codecs-video]], [[noms-de-release]], [[questions-ouvertes]].
+
+## [2026-11-06] ingest | Remux des fichiers à la vidéo bonne (v0.9.1.22)
+
+IE-175. Une source SKIP dont une piste audio retenue est convertie, ou dont un
+PGS est doublé par un SRT, passe en `REMUX` (vidéo recopiée). Page mise à jour :
+[[audio]].
+
+## [2026-11-06] ingest | Forfait multicanal en E-AC3 (v0.9.1.23)
+
+Mesuré : AC3 demandé à 768k sort à 640 000 b/s sans erreur ; E-AC3 5.1 à 768k
+sort à 767 615 b/s. Page mise à jour : [[audio]].
+
+## [2026-11-06] lint | Plafond E-AC3 : la doc annonçait 6 144k au lieu de 1 024k
+
+Le plafond est descendu à 1 024k en v0.8.1.26 ; le guide, le formulaire de
+profil, la spec § 8.5 et [[audio]] disaient encore « un TrueHD à 3 501k sort à
+3 501k ». Alignés sur `CODEC_MAX_BPS`.

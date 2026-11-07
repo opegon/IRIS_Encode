@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-11-02
+maj: 2026-11-06
 sources:
   - "[[2026-10-20-ts-aac-corrompu]]"
   - "[[source-2026-10-20-ts-aac-corrompu]]"
@@ -27,6 +27,19 @@ sources:
 
 *Niveau : observé (README), sauf mention.*
 
+### Une vidéo bonne n'excuse plus une piste illisible
+
+Jusqu'à la v0.9.1.21, la règle audio ne jouait que si la vidéo était
+réencodée : un fichier au bon débit, en HEVC ou H264, gardait son DTS ou sa
+TrueHD (SKIP), et Jellyfin transcodait à la lecture. Depuis la v0.9.1.22
+(IE-175), la décision passe en **REMUX** quand une piste audio retenue est en
+`TRANSCODE`, ou qu'un PGS est doublé par un SRT : vidéo recopiée, pistes selon
+le profil, sortie `.remux-iris`. Une piste écartée par la langue ne déclenche
+rien. Code : `core/decision.py` (`motifs_remux`, `ajuster_remux`).
+
+Depuis la v0.9.1.23, un profil en `audio_hd_codec = "eac3"` sort aussi son
+**forfait** 5.1 / 7.1 en E-AC3 (FLAC, PCM, Opus, HD au débit illisible).
+
 ## Les familles sans perte
 
 TrueHD, MLP, DTS-HD MA, **FLAC et PCM** (ces deux depuis la v0.9.1.13 :
@@ -46,12 +59,15 @@ Le forfait par canaux (448 kbps en AC3 5.1) convient à une source déjà
 compressée. Sur un TrueHD à 3,5 Mbps, il jette bien plus que nécessaire. D'où
 `audio_hd_codec` : transcoder TrueHD et DTS **au débit présent dans la piste**.
 
-| Encodeur | Plafond réel | Au-delà |
-|---|---|---|
-| `ac3` | **640 000 bps** | ramené **en silence** par l'encodeur |
-| `eac3` | **6 144 000 bps** | commande **refusée** par ffmpeg |
+| Encodeur | Limite de l'encodeur | Au-delà | Plafond d'IRIS (`CODEC_MAX_BPS`) |
+|---|---|---|---|
+| `ac3` | **640 000 bps** | ramené **en silence** (768k demandés → 640 000, mesuré le 2026-11-06) | 640 000 |
+| `eac3` | **6 144 000 bps** | commande **refusée** par ffmpeg | **1 024 000** (choix, v0.8.1.26) |
 
-*(mesuré)* Un TrueHD à 3 501 kbps ressort en E-AC3 à 3 501 kbps.
+Un TrueHD à 3 501 kbps ressort donc en E-AC3 à **1 024 kbps**, pas à 3 501 :
+à 3 501k la piste pesait 5,66 Go sur un film de 3 h 35, contre 1,65 Go, sans
+gain audible pour un DD+ 5.1. Un DTS à 768k garde ses 768k. *(vérifié dans le
+code le 2026-11-06 ; avant, cette page et le guide annonçaient 3 501k.)*
 
 ### Trouver le débit d'une piste
 

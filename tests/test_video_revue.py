@@ -151,7 +151,8 @@ def test_chaque_codec_s_affiche_sous_son_nom(tmp_path):
 
 def test_toute_action_qui_encode_a_un_libelle():
     assert set(VideoAction) - set(CODEC_PAR_ACTION) == {VideoAction.SKIP,
-                                                        VideoAction.STRIP_DV}
+                                                        VideoAction.STRIP_DV,
+                                                        VideoAction.REMUX}
 
 
 # ─── CR-19 : débit inconnu ───────────────────────────────────────────────────

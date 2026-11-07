@@ -32,6 +32,9 @@ class VideoAction(Enum):
     ENCODE_AV1  = auto()   # Manuel uniquement (très gourmand CPU)
     ENCODE_DV   = auto()   # Réencodage vidéo, Dolby Vision préservé (RPU réinjecté)
     STRIP_DV    = auto()   # Retrait du RPU seul — remux, aucun réencodage
+    # Vidéo recopiée, audio ou sous-titres mis au goût de la chaîne de lecture
+    # (IE-175) : la vidéo aurait été SKIP, mais une piste ferait transcoder.
+    REMUX       = auto()
     SKIP        = auto()
 
 
@@ -146,6 +149,8 @@ class VideoDecision:
             return "← SKIP"
         if self.action == VideoAction.STRIP_DV:
             return f"→ {DV_SORTIE[DVAction.HDR10]}"
+        if self.action == VideoAction.REMUX:
+            return "→ remux"
         if video_recopiee(self.action, self.dv_action):
             return f"→ DV ({pgettext('track action', 'copy')})"
         # Un libellé par action : AV1 s'affichait « → H264 » (CR-17).
@@ -175,7 +180,7 @@ def emphase_video(action: "VideoAction",
     """
     if action == VideoAction.SKIP:
         return Emphase.INACTION
-    if action == VideoAction.STRIP_DV:
+    if action in (VideoAction.STRIP_DV, VideoAction.REMUX):
         return Emphase.SANS_PERTE
     # Vidéo recopiée : rien n'est recalculé, comme un remux.
     if dv_action is not None and video_recopiee(action, dv_action):
@@ -296,7 +301,8 @@ def same_intent(choisie: "VideoAction", decidee: "VideoAction") -> bool:
     """
     if choisie == decidee:
         return True
-    if choisie == VideoAction.SKIP and decidee == VideoAction.STRIP_DV:
+    if choisie == VideoAction.SKIP and decidee in (VideoAction.STRIP_DV,
+                                                    VideoAction.REMUX):
         return True
     return choisie == VideoAction.ENCODE_HEVC and decidee == VideoAction.ENCODE_DV
 
@@ -343,8 +349,12 @@ SUFFIX_BY_ACTION: dict["VideoAction", str] = {
     VideoAction.ENCODE_AV1:  f".av1{MARQUE_IRIS}",
     VideoAction.ENCODE_DV:   SUFFIX_DV_COPIE,
     VideoAction.STRIP_DV:    f".hdr10{MARQUE_IRIS}",
+    VideoAction.REMUX:       f".remux{MARQUE_IRIS}",
     VideoAction.SKIP:        "",
 }
+
+# Les actions qui ne recalculent aucune image : rien, retrait du RPU, remux.
+SANS_REENCODAGE = (VideoAction.SKIP, VideoAction.STRIP_DV, VideoAction.REMUX)
 
 # Les actions dont le suffixe nomme le codec du fichier produit — les seules
 # qui autorisent le nom à perdre les marques de codec de la source (§ 8.7).
@@ -637,6 +647,9 @@ class FileDecision:
         """
         if self.video.action == VideoAction.SKIP:
             return stem
+        if self.video.action == VideoAction.REMUX:
+            # L'image sort telle quelle : seule la marque audio peut mentir.
+            return self._stem_audio_a_jour(stem)
         if self._codec_dit_par_le_suffixe:
             # Le suffixe dit le codec de sortie : les marques que le nom
             # portait pour la source n'ont plus rien à annoncer.
@@ -1268,11 +1281,17 @@ def _transcode_spec(track: AudioTrack, profile: Profile) -> tuple[str, int, int]
         return "aac", 64_000, 0
     if ch == 2:
         return "aac", profile.get("audio_stereo_kbps", 192) * 1000, 0
+    # Un profil en `audio_hd_codec = "eac3"` sort son multicanal en E-AC3, même
+    # quand la piste n'est pas du TrueHD ou du DTS (FLAC, PCM, Opus) ou que son
+    # débit est inconnu : l'AC3 ramenait en silence un forfait 7.1 de 768k à
+    # 640k, sous un libellé qui annonçait 768k.
+    surround = ("eac3" if str(profile.get("audio_hd_codec", "none")
+                              or "none").lower() == "eac3" else "ac3")
     if ch <= 6:
-        return "ac3", profile.get("audio_surround_kbps", 448) * 1000, 0
-    # Au-delà du 5.1, l'encodeur AC3 ne connaît pas la disposition : la sortie
-    # sera du 5.1, autant que la décision le dise.
-    return ("ac3", profile.get("audio_surround_7_1_kbps", 640) * 1000,
+        return surround, profile.get("audio_surround_kbps", 448) * 1000, 0
+    # Au-delà du 5.1, les encodeurs AC3 et E-AC3 ne connaissent pas la
+    # disposition : la sortie sera du 5.1, autant que la décision le dise.
+    return (surround, profile.get("audio_surround_7_1_kbps", 640) * 1000,
             MAX_TRANSCODE_CHANNELS)
 
 
@@ -1638,11 +1657,11 @@ def choisir_codec(dec: FileDecision, action: VideoAction,
         action = VideoAction.ENCODE_HEVC     # le choix porte sur le codec
     if h264_force_sdr(dec.info, action):
         dv = DVAction.SDR
-    if action in (VideoAction.SKIP, VideoAction.STRIP_DV):
+    if action in (VideoAction.SKIP, VideoAction.STRIP_DV, VideoAction.REMUX):
         return dc_replace(v, action=action, target_bitrate=0, dv_action=dv,
                           output_suffix=SUFFIX_BY_ACTION[action])
     debit = v.target_bitrate
-    if v.action in (VideoAction.SKIP, VideoAction.STRIP_DV) or not debit:
+    if v.action in SANS_REENCODAGE or not debit:
         debit = debit_source_ou_cible(dec.info, dec.profile)
     if (dv == DVAction.DV and action == VideoAction.ENCODE_HEVC
             and peut_reencoder_en_dv(dec.info, v.target_width, v.target_height)):
@@ -1696,6 +1715,7 @@ def force_skip_to_encode(dec: FileDecision) -> FileDecision:
     `choisir_codec`.
     """
     from dataclasses import replace as dc_replace
+    # Un remux n'est pas forcé : cochée, sa ligne part en remux (IE-175).
     if dec.video.action not in (VideoAction.SKIP, VideoAction.STRIP_DV):
         return dec
     sub_1080   = _resolve_limits(dec.info, dec.profile)[2] < 1080
@@ -1764,7 +1784,50 @@ def decide(
     """Calcule la décision complète pour un fichier."""
     video = decide_video(info, profile)
     audio = decide_audio(info, profile, override_audio)
-    return FileDecision(
+    return ajuster_remux(FileDecision(
         info=info, profile=profile, video=video, audio=audio,
         subtitle_indices=decide_subtitles(info, profile, override_subtitles),
-    )
+    ))
+
+
+# ─── Remux : vidéo recopiée, pistes rendues lisibles (IE-175) ─────────────────
+
+def motifs_remux(dec: FileDecision) -> list[str]:
+    """Ce qui ferait transcoder la chaîne de lecture dans un fichier dont la
+    vidéo convient : les pistes audio retenues que le profil convertit, et les
+    sous-titres image qu'un sous-titre texte de même langue double.
+
+    Une piste écartée (langue non voulue) ne compte pas : le lecteur ne la
+    choisit pas, elle part avec le remux s'il a lieu, sans le déclencher.
+    """
+    motifs = [ad.track.codec.upper() for ad in dec.audio
+              if ad.action == AudioAction.TRANSCODE]
+    retenues = [st for st in dec.info.subtitle_tracks if st.portable]
+    if any(st not in dec.subtitles_finales for st in _pgs_doubles(retenues)):
+        motifs.append("PGS")
+    return list(dict.fromkeys(motifs))
+
+
+def ajuster_remux(dec: FileDecision) -> FileDecision:
+    """SKIP devient REMUX quand une piste ferait transcoder, et l'inverse
+    quand plus rien ne le demande. À rappeler après tout changement de pistes.
+
+    Pas de remux sur un titre de disque Dolby Vision : son extraction ne
+    garde le DV que d'un clip seul, et le SKIP n'y touchait pas.
+    """
+    from dataclasses import replace as dc_replace
+    v = dec.video
+    if v.action not in (VideoAction.SKIP, VideoAction.REMUX):
+        return dec
+    motifs = motifs_remux(dec)
+    if dec.info.titre is not None and dec.info.dv_profile is not None:
+        motifs = []
+    if motifs and v.action == VideoAction.SKIP:
+        dec.video = dc_replace(
+            v, action=VideoAction.REMUX, target_bitrate=0,
+            output_suffix=SUFFIX_BY_ACTION[VideoAction.REMUX],
+            reason=_("{reason} · {tracks} for the playback chain → remux").format(
+                reason=v.reason, tracks=", ".join(motifs)))
+    elif not motifs and v.action == VideoAction.REMUX:
+        dec.video = decide_video(dec.info, dec.profile)
+    return dec

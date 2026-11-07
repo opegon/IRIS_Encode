@@ -995,7 +995,9 @@ def build_command(
     # Un profil 5 converti passe par le ffmpeg à `libplacebo` (`core/dovi.py`),
     # qui applique le RPU sur Vulkan. Sans lui, la décision a déjà refusé ;
     # ce garde-fou vaut pour une action forcée à la main.
-    p5 = conversion_p5(info, vid.dv_action)
+    # Un remux recopie la vidéo : aucune conversion, même d'un profil 5.
+    remux = vid.action == VideoAction.REMUX
+    p5 = conversion_p5(info, vid.dv_action) and not remux
     # La super-résolution aussi : la décision n'agrandit que si ce ffmpeg
     # existe et que l'essai de Vulkan a réussi (`super_resolution.refus`).
     agrandit = vid.upscale is not None
@@ -1019,7 +1021,7 @@ def build_command(
     #     en mémoire)
     #   - DV preserve (copy)
     #   - HDR10 quality (libx265 CPU pour metadata propres)
-    preserve_video = (vid.dv_action == DVAction.DV)
+    preserve_video = (vid.dv_action == DVAction.DV) or remux
     # Le mode HDR10 « quality » décide deux choses à la fois : l'encodeur
     # (libx265, plus bas) et l'absence de hwaccel. Un seul nom pour un seul
     # prédicat — l'expression était écrite deux fois, mot pour mot, et en
@@ -1379,7 +1381,8 @@ def build_command(
         # Sans `-strict unofficial`, ffmpeg n'écrit pas la boîte `dvcC` en MP4 :
         # le RPU reste dans le flux, mais le G3 ne voit plus de Dolby Vision
         # (IE-109, mesuré sur ffmpeg 8.1.2).
-        if preserve_video and encodeur_de(cmd) == "copy":
+        if (preserve_video and info.dv_profile is not None
+                and encodeur_de(cmd) == "copy"):
             cmd += ["-strict", "unofficial"]
     cmd += ["-y", str(decision.output_path)]
 

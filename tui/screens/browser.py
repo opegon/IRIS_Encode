@@ -31,7 +31,7 @@ from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
     AudioAction, FileDecision, Reglages, VideoAction, appliquer_reglages, decide,
-    force_skip_to_encode, reglages_explicites, video_recopiee,
+    ajuster_remux, force_skip_to_encode, reglages_explicites, video_recopiee,
 )
 from core.scanner import (SCAN_WORKERS, deja_produit, scan,
                           scan_directory_recursive)
@@ -110,7 +110,7 @@ def _sortie_recopiee(dec: FileDecision) -> bool:
     L'estimation et le dégradé lisent le même prédicat : une ligne dont la
     taille ne bouge pas ne doit pas non plus prendre de couleur.
     """
-    return (dec.video.action == VideoAction.STRIP_DV
+    return (dec.video.action in (VideoAction.STRIP_DV, VideoAction.REMUX)
             or video_recopiee(dec.video.action, dec.video.dv_action))
 
 
@@ -200,6 +200,7 @@ def _estimate_output_bytes(dec: FileDecision,
 FILTRE_TOUS = "tous"
 FILTRE_DV   = "dv"      # Dolby Vision, tous profils
 FILTRE_CODEC = "codec:"  # préfixe : `codec:hevc`, codec vidéo de la source
+FILTRE_REMUX = "remux"   # vidéo bonne, pistes à rendre lisibles (IE-175)
 
 
 def type_image(info) -> str:
@@ -222,6 +223,8 @@ def ligne_visible(dec: FileDecision, filtre: str, masquer_skip: bool,
         return False
     if filtre == FILTRE_TOUS:
         return True
+    if filtre == FILTRE_REMUX:
+        return dec.video.action == VideoAction.REMUX
     if filtre.startswith(FILTRE_CODEC):
         return dec.info.codec.lower() == filtre[len(FILTRE_CODEC):]
     genre = type_image(dec.info)
@@ -245,6 +248,10 @@ def options_filtre(decisions: list[FileDecision]) -> list[tuple[str, str]]:
             count=genres.count('HDR'))))
     if "SDR" in genres:
         options.append(("SDR", f"SDR ({genres.count('SDR')})"))
+    remux = sum(d.video.action == VideoAction.REMUX for d in decisions)
+    if remux:
+        options.append((FILTRE_REMUX, _("Remux: audio / subtitles to convert "
+                                        "({count})").format(count=remux)))
     codecs = [d.info.codec.lower() for d in decisions if d.info.codec]
     options += [(FILTRE_CODEC + c,
                  _("Codec: {codec} ({count})").format(codec=c, count=codecs.count(c)))
@@ -255,7 +262,8 @@ def options_filtre(decisions: list[FileDecision]) -> list[tuple[str, str]]:
 def libelle_filtre(filtre: str) -> str:
     if filtre.startswith(FILTRE_CODEC):
         return filtre[len(FILTRE_CODEC):]
-    return {FILTRE_TOUS: "", FILTRE_DV: "Dolby Vision"}.get(filtre, filtre)
+    return {FILTRE_TOUS: "", FILTRE_DV: "Dolby Vision",
+            FILTRE_REMUX: "remux"}.get(filtre, filtre)
 
 
 # ─── Tri de l'accueil (O) ─────────────────────────────────────────────────────
@@ -1625,6 +1633,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 # Recalculer la décision audio
                 dec.audio            = decide_audio(dec.info, dec.profile, result.audio)
                 dec.subtitle_indices = result.subtitle_indices
+                # Les pistes gardées décident du remux (IE-175).
+                ajuster_remux(dec)
             # Appliquer les overrides vidéo
             if result.video_override:
                 from dataclasses import replace as dc_replace

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.1.21 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.1.24 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -163,8 +163,8 @@ flowchart TD
     T0 -->|non| T2{"Canaux ?"}
     T2 -->|mono| T3["AAC 64k"]
     T2 -->|stéréo| T4["AAC [audio_stereo_kbps]"]
-    T2 -->|"jusqu'à 5.1"| T5["AC3 [audio_surround_kbps]"]
-    T2 -->|7.1| T6["AC3 5.1 [audio_surround_7_1_kbps]"]
+    T2 -->|"jusqu'à 5.1"| T5["AC3 [audio_surround_kbps]<br/>E-AC3 si [audio_hd_codec] = eac3"]
+    T2 -->|7.1| T6["AC3 5.1 [audio_surround_7_1_kbps]<br/>E-AC3 si [audio_hd_codec] = eac3"]
 ```
 
 Un transcodage ne sort jamais au-delà du 5.1, et le titre de la piste est
@@ -261,8 +261,8 @@ sur 60 s de film :
 
 Ces temps sont mesurés avec le preset `medium`. Le gain vient de ce que les
 images ne voyagent plus ; il se réduit quand c'est l'encodeur lui-même qui
-limite, comme avec un preset lent en 4K : en `slow` (profil
-`cinema_4k_hdr_basic`), un réencodage 4K Dolby Vision → HDR10 sur la RTX
+limite, comme avec un preset lent en 4K : en `slow` (preset
+des profils `*_high`), un réencodage 4K Dolby Vision → HDR10 sur la RTX
 A4500 prend 38 s dans les deux cas.
 
 Le résultat est le même qu'au processeur : dimensions, pixels carrés,

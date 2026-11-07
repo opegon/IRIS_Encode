@@ -41,7 +41,8 @@ from textual.widgets import DataTable, Label, ProgressBar, Static
 from core.i18n import N_, _, ngettext, texte_erreur
 from core.decision import (ACTION_CYCLE, AudioAction,
                            FileDecision, VideoAction, cycle_index,
-                           choisir_codec, decide_audio, force_skip_to_encode,
+                           ajuster_remux, choisir_codec, decide_audio,
+                           force_skip_to_encode,
                            sortie_prevue, libelle_copie)
 from core.muxer import SyncOrigin, TrackKind, propager_recalage
 from core.sync import SyncResult, measure_external_track
@@ -402,6 +403,10 @@ class WizardScreen(TableNavMixin, Screen):
                               "tracks are added by mkvmerge and the picture "
                               "copied as it is — a few minutes instead of a few "
                               "hours.") + "\n")
+        elif self._dec.video.action == VideoAction.REMUX:
+            t.append("  " + _("Recommended: remux. The picture is copied as it "
+                              "is; only the tracks the playback chain cannot "
+                              "read are converted.") + "\n")
         elif self._dec.video.action == VideoAction.SKIP:
             t.append("  " + _("Nothing needs re-encoding by default. {key} forces "
                               "the encode: {video}, at the source bitrate.").format(
@@ -481,6 +486,7 @@ class WizardScreen(TableNavMixin, Screen):
                                   if idx in gardes else sorted(gardes + [idx]))
         else:
             return                       # une greffe se retire avec D, étape 3
+        ajuster_remux(d)                 # les pistes gardées décident du remux
         self._afficher()
 
     def action_codec(self) -> None:

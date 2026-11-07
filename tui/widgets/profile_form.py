@@ -416,9 +416,10 @@ class ProfileForm(Widget):
         "copy": N_("The track is copied untouched. It forces the MKV container, "
                    "and most players cannot decode it: the server will "
                    "transcode it at every playback."),
-        "eac3": N_("A TrueHD at 3,500 kbps comes out as E-AC3 at 3,500 kbps — "
-                   "the track's bitrate, capped at 6,144 kbps. Decoded natively "
-                   "by recent TVs, and MP4 accepts it."),
+        "eac3": N_("A DTS at 768 kbps keeps its 768 kbps; a TrueHD at 3,500 "
+                   "kbps comes out at 1,024 kbps — the track's bitrate, capped "
+                   "at 1,024 kbps. Decoded natively by recent TVs, and MP4 "
+                   "accepts it."),
         "ac3":  N_("Universal fallback, but AC3 is capped at 640 kbps: the "
                    "encoder silently brings down any higher request."),
         "forfait": N_("The 5.1 and 7.1 bitrates below apply. Fine for an "

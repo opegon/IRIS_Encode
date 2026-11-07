@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.21 — document de référence courant
+**Version** : 0.9.1.24 — document de référence courant
 **Date** : 2026-11-04
 **Statut** : stable
 
@@ -636,24 +636,49 @@ ne voit plus de Dolby Vision (IE-109). Les sources sans DV sont encodées normal
 | 2 | `data/profiles.default.toml` | les **profils livrés** : sèment le fichier au premier lancement, tiennent la session si le TOML de l'utilisateur devient illisible |
 | 3 | `_default_` | plancher codé en dur, dernier recours si le fichier livré manque |
 
-**Les profils livrés** (v0.8.8.4 ; quinze depuis la v0.9.0.1) sont versionnés avec le code et donc
+**Les profils livrés** (v0.8.8.4 ; douze depuis la v0.9.1.24) sont versionnés avec le code et donc
 présents dans l'archive d'une release — `profiles.toml`, lui, est ignoré par
 git : c'est le fichier de travail de chaque poste. Jusque-là le plancher semait
 seul, et le sélecteur d'une installation neuve s'ouvrait sur une liste d'un
 élément : rien qui montre ce qu'un profil règle, ni ce que change le fait d'en
 changer.
 
-Le premier du fichier livré est `series_anime`, et il porte
+Le premier du fichier livré est `movie_4k_high`, et il porte
 `delete_source = false` : c'est lui que `get_active_profile` retient au premier
 lancement, tant que rien n'a été choisi (`tests/test_profils_livres.py` y
-veille). Quatre profils livrés portent `delete_source = true` —
-`series_anime_delete`, `series_basic_delete`, `movie_basic_delete` et
-`video_basic_delete` —, chacun
-signalé « ⚠ suppr. » dans `F4` et `F5` ; aucun n'est en tête.
+veille). Un seul profil livré porte `delete_source = true`,
+`video_basic_delete`, en dernier, signalé « ⚠ suppr. » dans `F4` et `F5`.
+
+**Le jeu de la v0.9.1.24** (demandé le 2026-11-06) « factorise » : tous les
+profils retirent le Dolby Vision et gardent le HDR (`dolby_vision = "hdr10"`),
+filtrent les sous-titres et les langues audio (`fre`, `eng`), recopient l'AAC,
+l'AC3 et l'E-AC3 et convertissent le reste ; une vidéo déjà bonne n'est que
+remuxée (§ 8.1). Les débits suivent une cascade par niveau : une source plus
+petite que la cible du profil prend le débit du niveau correspondant.
+
+| Profil | 4K | 1080p | 720p | `keep_4k` | preset | audio TrueHD / DTS |
+|---|---|---|---|---|---|---|
+| `movie_4k_high` | 12000 | 8000 | 4000 | oui | `slow`, `hdr10_quality = "quality"` | E-AC3 ≤ 1 024k |
+| `movie_4k_std` | 8000 | 5000 | 3000 | oui | `medium` | E-AC3 ≤ 1 024k |
+| `movie_4k_basic` | 5000 | 3500 | 2000 | oui | `fast` | E-AC3 ≤ 1 024k |
+| `movie_1080p_high` | → 1080p | 8000 | 4000 | non | `slow` | E-AC3 ≤ 1 024k |
+| `movie_1080p_std` | → 1080p | 5000 | 3000 | non | `medium` | E-AC3 ≤ 1 024k |
+| `movie_1080p_basic` | → 1080p | 3500 | 2000 | non | `fast` | E-AC3 ≤ 1 024k |
+| `series_high` | → 1080p | 3000 | 2000 | non | `slow` | AC3 ≤ 640k |
+| `series_std` | → 1080p | 2500 | 1500 | non | `medium` | AC3 ≤ 640k |
+| `series_basic` | → 1080p | 2200 | 1500 | non | `fast` | AC3 ≤ 640k |
+| `anime` | → 1080p | 2000 | 1500 | non | `fast` | AC3 ≤ 640k |
+| `upscale_1080p` | → 1080p | 3500 | 2000 | non | `medium`, `upscale` en une passe | AC3 ≤ 640k |
+| `video_basic_delete` | → 1080p | 2000 | 1500 | non | `fast`, SDR, supprime la source | forfait |
+
+Forfaits : films 192 / 640 / 768k (stéréo / 5.1 / 7.1, multicanal en E-AC3),
+séries 192 / 448 / 640k (AC3). Un profil à `keep_4k = false` porte un
+`bitrate_4k_kbps` égal à son débit 1080p : la 4K y est ramenée en 1080p.
 
 Depuis la v0.8.9.54, le fichier livré est la bibliothèque de profils de
-l'auteur, recopiée telle quelle (reprise le 2026-10-09 pour la v0.9.0.1 :
-`movie_basic_delete` ajouté, `series_basic` en preset `fast`) : une installation neuve la reçoit au premier
+l'auteur, recopiée telle quelle (reprise le 2026-10-09 pour la v0.9.0.1, puis
+remplacée par le jeu ci-dessus en v0.9.1.24, sans le profil personnel
+`music_hdr_lossless_delete`) : une installation neuve la reçoit au premier
 lancement, une mise à jour ne touche jamais le `profiles.toml` existant — à
 une exception près, le renommage des profils livrés.
 
@@ -730,7 +755,7 @@ coût (D16). La liste des profils a une colonne **Agrandir** : `—`, `↑`, `�
 
 ```
 ⚠ profiles.toml illisible (erreur syntaxe ligne 12).
-  Session tenue sur les 15 profils livrés — votre fichier n'a pas été touché.
+  Session tenue sur les 12 profils livrés — votre fichier n'a pas été touché.
 ```
 
 L'écriture du fichier semé passe par `save_all`, donc par l'écriture atomique de
@@ -992,7 +1017,24 @@ params = [
 | **CAS 3** | bitrate OK, résolution OK, **codec hors `CODECS_LISIBLES`** | Réencodage, bitrate conservé — H264 sous 1080p, HEVC au-dessus |
 | **ENCODE_DV** | un des trois cas ci-dessus, profil en `dv`, et RPU réinjectable (§ 7.4) | Réencodage au débit cible, RPU sorti puis remis |
 | **STRIP_DV** | aucun des cas ci-dessus, mais RPU retirable (DV 8.1 ou 7) et profil en `hdr10` | Retrait du RPU par remux, sans réencodage (§ 7.3) |
-| **SKIP** | bitrate OK, résolution OK, codec H264 ou HEVC | Aucun traitement |
+| **REMUX** | aucun des cas ci-dessus, mais une piste audio retenue que le profil convertit, ou un PGS doublé par un SRT (`motifs_remux`) | Vidéo recopiée (`-c:v copy`), audio et sous-titres selon le profil, suffixe `.remux-iris` (IE-175) |
+| **SKIP** | bitrate OK, résolution OK, codec H264 ou HEVC, pistes lisibles | Aucun traitement |
+
+**Le REMUX se décide après l'audio** (v0.9.1.22, IE-175). Le SKIP laissait
+telle quelle une source dont la vidéo convenait, même avec un DTS ou un TrueHD
+que Jellyfin transcode à la lecture ; forcer l'encodage recalculait l'image pour
+une piste. `ajuster_remux` fait passer SKIP en REMUX quand `motifs_remux` trouve
+une piste retenue en `TRANSCODE` ou un PGS de `_pgs_doubles` laissé de côté, et
+l'inverse quand plus rien ne le demande. `decide()` l'appelle, et tout écran qui
+change les pistes après coup (Pistes, Assistant, Aperçu `U`) le rappelle. Une
+piste écartée par la langue ne déclenche rien ; un PGS seul de sa langue non
+plus (sa conversion en SRT est IE-176). Pas de remux d'un titre de disque
+Dolby Vision. Sur l'accueil, une ligne REMUX cochée part en remux :
+`force_skip_to_encode` ne la force pas. `build_command` la traite comme une
+vidéo recopiée (pas de `-hwaccel`, pas de `-vf`, pas de conversion de profil 5),
+avec `-strict unofficial` en MP4 si la source porte du Dolby Vision. Le nom
+garde ses marques vidéo, seule la marque audio est réécrite (§ 8.7). Le filtre
+`L` a une entrée « Remux » (`FILTRE_REMUX`).
 
 **Le CAS 1 tolère ±10 % autour de la cible** (v0.8.9.55). La cible est une
 moyenne visée : en VBR avec 50 % de marge (§ 12.1), une sortie réussie la
@@ -1132,6 +1174,7 @@ l'active : clé de profil (§ 6.1) ou `U` dans l'Aperçu (§ 14.6).
 | `ENCODE_AV1` | AV1 — **manuel uniquement** (très gourmand CPU/GPU RTX30+) |
 | `ENCODE_DV` | Réencodage HEVC préservant le Dolby Vision — RPU extrait puis réinjecté (§ 7.4) |
 | `STRIP_DV` | Retrait du RPU Dolby Vision par remux — aucune image recalculée |
+| `REMUX` | Vidéo recopiée, pistes audio et sous-titres rendus lisibles par la chaîne (§ 8.1, IE-175) |
 | `SKIP` | Aucun traitement |
 
 ### 8.4 Gestion Dolby Vision
@@ -1247,8 +1290,8 @@ l'écran Pistes).
 |---|---|---|
 | Mono (1.0) | AAC | 64k (fixe) |
 | Stéréo (2.0) | AAC | `audio_stereo_kbps` |
-| Surround 5.1 | AC3 | `audio_surround_kbps` |
-| Surround 7.1 | AC3 | `audio_surround_7_1_kbps`, replié en 5.1 |
+| Surround 5.1 | AC3 (E-AC3 si `audio_hd_codec = "eac3"`) | `audio_surround_kbps` |
+| Surround 7.1 | AC3 (E-AC3 si `audio_hd_codec = "eac3"`) | `audio_surround_7_1_kbps`, replié en 5.1 |
 | TrueHD / DTS-HD MA / FLAC / PCM | copy ou règle canal | selon `preserve_hd_audio` |
 
 **Transcodage HD au débit de la source — `audio_hd_codec`**
@@ -1256,12 +1299,17 @@ l'écran Pistes).
 Le forfait par canaux convient à une piste déjà compressée ; il fait perdre
 inutilement sur une source HD. `audio_hd_codec = "ac3"` ou `"eac3"` transcode
 les pistes **TrueHD et DTS, toutes variantes**, au **débit présent dans la
-piste**, plafonné à ce que l'encodeur sait réellement produire :
+piste**, plafonné par `CODEC_MAX_BPS` :
 
-| Codec | Plafond mesuré | Comportement au-delà |
+| Codec | Plafond appliqué | Limite de l'encodeur (mesurée) |
 |---|---|---|
-| `ac3` | **640 000 bps** | ramené en silence par l'encodeur |
-| `eac3` | **6 144 000 bps** | commande refusée par ffmpeg |
+| `ac3` | **640 000 bps** | la même : au-delà, ramené en silence (768k demandés → 640 000) |
+| `eac3` | **1 024 000 bps** | 6 144 000 bps, commande refusée au-delà |
+
+Le plafond E-AC3 est un choix, pas une limite technique (v0.8.1.26) : un TrueHD
+à 3 501k donnait un E-AC3 à 3 501k, 5,66 Go de piste sur un film de 3 h 35,
+contre 1,65 Go à 1 024k, sans rien d'audible en plus. Un DTS à 768k garde donc
+ses 768k, un TrueHD à 3 501k ou un DTS à 1 509k sort à 1 024k.
 
 Le débit de la source est lu dans cet ordre : `bit_rate` du flux, puis le tag
 Matroska `BPS`, puis `NUMBER_OF_BYTES ÷ DURATION`. Un flux TrueHD ou DTS-HD MA
@@ -1271,6 +1319,14 @@ inventée.
 
 `preserve_hd_audio` garde la priorité : copier sans perte prime sur
 transcoder au débit source.
+
+**Le forfait multicanal suit l'E-AC3** (v0.9.1.23). Sur un profil en
+`audio_hd_codec = "eac3"`, le forfait 5.1 / 7.1 de `_transcode_spec` sort en
+E-AC3 au lieu de l'AC3 : il sert aux pistes que la règle au débit de la source
+ne prend pas (FLAC, PCM, Opus, TrueHD / DTS au débit illisible). En AC3, un
+`audio_surround_7_1_kbps` de 768 était ramené à 640 kbps par l'encodeur (mesuré)
+sous un libellé « 768k ». En `ac3` ou `none`, rien ne change ; la stéréo reste
+en AAC. Mesuré : FLAC 7.1 → `eac3` 5.1 demandé à 768k, sorti à 767 615 b/s.
 
 **Repli des canaux.** Les encodeurs `ac3` et `eac3` s'arrêtent au 5.1. ffmpeg
 replie une source 7.1 de lui-même — vérifié, sortie identique à l'octet près
@@ -4020,6 +4076,9 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.24 | 2026-11-07 | **Nouveau jeu de profils livrés** (§ 6) : douze profils — `movie_4k_*`, `movie_1080p_*`, `series_*` en high / std / basic, `anime`, `upscale_1080p`, `video_basic_delete` —, tous en `dolby_vision = "hdr10"`, cascade de débits par niveau · la migration `serie_*` → `series_*` reste pour les anciens fichiers, ses cibles ne sont plus livrées · `tests/test_profils_livres.py` connaît les clés d'agrandissement |
+| 0.9.1.23 | 2026-11-06 | **Forfait multicanal en E-AC3** (§ 8.5) : `audio_hd_codec = "eac3"` fait sortir aussi le forfait 5.1 / 7.1 en E-AC3 (FLAC, PCM, Opus, HD au débit illisible) · `tests/test_audio_hd.py` |
+| 0.9.1.22 | 2026-11-06 | **Remux** (§ 8.1, § 8.3, IE-175) : `VideoAction.REMUX`, `motifs_remux`, `ajuster_remux` — une vidéo bonne dont une piste audio retenue est convertie ou un PGS doublé est retiré n'est plus laissée en SKIP · vidéo recopiée par `build_command` · entrée « Remux » du filtre `L` · `tests/test_remux.py` |
 | 0.9.1.21 | 2026-11-04 | **Super-résolution, extrait de comparaison** (§ 14.6, IE-172, D17) : `K` dans l'Aperçu, une passe à gauche et deux passes à droite sur la même bande centrale, encodé comme le fichier final (`build_comparaison_command`, `fenetre_comparaison`), ouvert dans mpv avec une étiquette (`open_file(…, osd)`) · `tests/test_comparaison_sr.py`, étape [9a] du smoke test |
 | 0.9.1.20 | 2026-11-04 | **Super-résolution, profil, Aperçu et nommage** (§ 6.1, § 8.7, § 14.6, IE-169) : clés `upscale`, `upscale_passes`, `bitrate_480p_kbps` dans le formulaire (un choix pour deux clés), colonne Agrandir des profils, `U` de l'Aperçu dans les deux sens, colonne Résolution `source→sortie`, ETA de la super-résolution, `stem_agrandi` (`Film.1080p.upscaled`) · `tests/test_upscale_interface.py`, étape [9a] du smoke test |
 | 0.9.1.19 | 2026-11-04 | **Super-résolution, la chaîne** (§ 8.1, § 4, IE-168) : `filtre_super_resolution` (une et deux passes), `setparams` avec la colorimétrie lue (`VideoInfo.color_space`, `color_primaries`, `color_range`), ffmpeg à `libplacebo` sur Vulkan sans `-hwaccel`, shader ArtCNN C4F16 sans `//!WHEN` dans `bin/shaders/` (`install_shader`, empreintes de l'asset et de la copie), essai Vulkan au premier fichier à agrandir, refus « shader non installé » / « échec de l'essai Vulkan » · `tests/test_super_resolution.py` |

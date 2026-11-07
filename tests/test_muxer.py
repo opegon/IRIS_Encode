@@ -362,6 +362,7 @@ def _encode_decision(ext: list[ExternalTrack], *, subs=None):
     info.height          = 1080
     info.largeur_affichee  = 1920
     info.pixels_non_carres = False
+    info.sar_impose        = ""
     info.subtitle_tracks = subs if subs is not None else []
     info.duration        = 100.0
     info.hdr10_master_display = ""

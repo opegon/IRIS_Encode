@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.26 — document de référence courant
-**Date** : 2026-11-07
+**Version** : 0.9.1.27 — document de référence courant
+**Date** : 2026-11-08
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -1078,6 +1078,16 @@ en 3832×1600 n'a ni 3840 de large ni 2160 de haut, et passait pour un 1080p gar
 **Pixels carrés** : le filtre `scale=W:H:force_original_aspect_ratio=decrease:force_divisible_by=2` est suivi de `setsar=1`. Sans lui, `scale` rattrape l'arrondi par un SAR (3832×1600 → 1920×802 en 192079:192000 ; 1918×802, étiré à 1920, en 959:960) et Jellyfin transcode une vidéo qu'il croit anamorphique. Le filtre n'est posé que si la source dépasse la cible en largeur ou en hauteur : une source qui y tient garde sa définition (1918×802 était étiré en 1920×802). Seule exception, une dimension impaire, que le 4:2:0 refuse : `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1` lui retire un pixel.
 
 **Source anamorphique** (v0.8.9.113, CR-14) — un DVD (720×480 en 8:9 ou 32:27, 720×576 en 16:15 ou 64:45), la TNT SD, le HDV 1440×1080 tiennent dans la cible et gardaient leur SAR : Jellyfin les transcodait. L'analyse lit `sample_aspect_ratio` (`VideoInfo.sar`, `pixels_non_carres`, `largeur_affichee`) ; une source non carrée passe d'abord par `scale=trunc(iw*sar/2)*2:trunc(ih/2)*2,setsar=1` (en largeur, rien n'est perdu en hauteur), puis par la boîte de la cible si sa largeur affichée la dépasse. Mesuré : 720×480 en 32:27 → 852×480 en 1:1, rapport 1,775 pour 1,778.
+
+**Source SD sans SAR** (v0.9.1.27, IE-173) — un DVD converti en AVI sans redimensionnement garde son 720×480 ou 720×576 mais perd son SAR : l'image s'affiche déformée (*The Kid* : 4:3 vu en 3:2). `core/sar.py` : `sar_douteux` retient les géométries 720/704 × 480/576 dont le SAR est absent, `N/A`, `0:1` ou `1:1` (valeur par défaut de Xvid), hors titre de disque. L'analyse (`scanner._estimer_sar`) estime alors l'hypothèse 4:3 (8:9, 16:15 ; 10:11, 12:11 en 704) ou 16:9 (32:27, 64:45 ; 40:33, 16:11) :
+
+1. **les métadonnées** — ffprobe lit déjà le SAR du conteneur et du flux (en-tête VOL MPEG-4, bloc `vprp` AVI) ; s'il y en a un, pas de doute. *The Kid* (DivX 3) n'en a nulle part ;
+2. **le format d'origine** (`format_connu`) — Wikidata, propriété P2061 : recherche `<titre> haswbstatement:P2061`, puis le titre sans ses parenthèses ; retenu le premier film dont la date (P577) est à ±1 an de celle du nom de fichier ; sans année, rien (sept films s'appellent « The Kid ») ; trois requêtes, 10 s chacune au plus, résultat gardé pour la session ; réseau absent → aucun format ;
+3. **la zone d'image utile** (`mesurer_cadre`) — `cropdetect` sur les images clés de 20 s en 8 points (10 % à 90 % de la durée), ~2 s pour un film ; le cadre est le maximum de chaque dimension (une scène sombre rétrécit la zone détectée, les bandes jamais).
+
+`estimer` calcule le format de l'image utile dans chaque hypothèse. Une hypothèse est retenue (« probable ») si elle seule tombe à 5 % au plus d'un format connu du film (raison `FORMAT_CONNU`), sinon d'un format standard de cinéma ou de télévision (1,33 à 2,76 ; raison `BANDES`), l'autre à 10 % au moins. Sinon : « indéterminée », 4:3 par défaut. Une image pleine est toujours indéterminée sans format connu : elle donne 1,33 dans une hypothèse et 1,78 dans l'autre. *The Kid* : cadre 690×468, 1,31 contre 1,75, format connu 4:3 → 4:3 probable.
+
+Le SAR retenu va dans `VideoInfo.sar_impose` (`sar_estimation` garde l'estimation) ; `sar_effectif` le fait primer sur `sar` dans `pixels_non_carres` et `largeur_affichee`, donc dans le palier de sortie et le cadre de la super-résolution. Le chemin processeur pose `setsar=<SAR>` avant la mise en pixels carrés (sans lui, `iw*sar` vaut 0) ; une vidéo recopiée reçoit `-aspect` (mesuré : MKV et MP4, 720×480 → SAR 8:9, DAR 4:3), et un fichier sinon laissé tel quel est remuxé (`motifs_remux` : « SAR »). Mesuré sur *The Kid* : 720×480 → 640×480 en 1:1, DAR 4:3. L'analyse d'un tel fichier passe de quelques dixièmes de seconde à ~4,5 s. Le choix par l'utilisateur, avec aperçu des deux hypothèses, viendra en interface.
 
 **Désentrelacement** (v0.8.9.96, IE-122) : `VideoInfo.field_order` (lu au
 scan) en `tt`, `bb`, `tb` ou `bt` fait `entrelace` ; `FileDecision.desentrelace`
@@ -4122,6 +4132,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.27 | 2026-11-08 | **Source SD sans SAR** (§ 8.1, IE-173 1/3) : `core/sar.py` (`sar_douteux`, `estimer`, `mesurer_cadre` par `cropdetect`, `format_connu` par Wikidata P2061) · `VideoInfo.sar_impose`, `sar_estimation`, `sar_effectif` · `setsar` avant les pixels carrés, `-aspect` sur une vidéo recopiée, motif de remux « SAR » · `tests/test_sar.py` |
 | 0.9.1.26 | 2026-11-07 | **VobSub convertis en SRT par OCR** (§ 8.1, § 8.6, IE-179) : `ocr.CODECS`, `build_extraction` (`.sup` pour un PGS, `.mks` + `-f matroska` pour un VobSub) · `motifs_remux` nomme `VobSub` · messages de l'étape sans « PGS » · `tests/test_ocr_decision.py`, `test_ocr_execution.py` |
 | 0.9.1.25 | 2026-11-07 | **PGS convertis en SRT par OCR** (§ 4.1, § 8.6, § 17.3, IE-176) : `core/ocr.py` (seconv, nOCR + `FixCommonOcrErrors`), installé dans `bin/seconv/` par `preflight.install_seconv` (empreintes épinglées dans `data/ffmpeg_releases.toml`) · `FileDecision.sous_titres_ocr` / `ocr_prevu` (français, anglais, forcés compris, PGS remplacé) · un PGS converti fait remuxer · `RunScreen._ocr_sous_titres`, repli sur le PGS avec avertissement · `build_command` rend langue, nom et drapeaux à un sous-titre refait · `tests/test_ocr_outil.py`, `test_ocr_decision.py`, `test_ocr_execution.py` |
 | 0.9.1.24 | 2026-11-07 | **Nouveau jeu de profils livrés** (§ 6) : douze profils — `movie_4k_*`, `movie_1080p_*`, `series_*` en high / std / basic, `anime`, `upscale_1080p`, `video_basic_delete` —, tous en `dolby_vision = "hdr10"`, cascade de débits par niveau · la migration `serie_*` → `series_*` reste pour les anciens fichiers, ses cibles ne sont plus livrées · `tests/test_profils_livres.py` connaît les clés d'agrandissement |

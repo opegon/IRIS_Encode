@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.1.25 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.1.27 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 

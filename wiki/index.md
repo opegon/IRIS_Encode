@@ -77,6 +77,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-10-28-qsv-portable]] | Intel Quick Sync sur un i5-1135G7 : codecs encodés, réserves HDR |
 | [[source-2026-11-01-dv-p5-libplacebo]] | DV profil 5 vert et violet en HDR10 ; `libplacebo` applique le RPU, absent du gyan |
 | [[source-2026-11-04-libplacebo-shader-chemin]] | Chemin du shader dans `-vf` échappé à deux niveaux ; sonde Vulkan ; chaîne SR de bout en bout |
+| [[source-2026-11-07-sar-manquant-the-kid]] | AVI issu de DVD sans SAR : pas de métadonnée, bandes indécidables, format Wikidata décisif ; `-aspect` en copie |
 | [[source-2026-10-04-localisation]] | Audit de localisation et décisions de l'utilisateur : politique de traduction, glossaire |
 
 ## Brut (`raw/`, immuable)
@@ -118,3 +119,4 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-10-28-qsv-portable-encodages]] | Deux encodages QSV d'IRIS v0.9.0.9 : SDR et HDR10, débit à 92-93 % |
 | [[2026-11-01-dv-p5-libplacebo]] | Smile 2 en P5 : sortie verte, filtres des deux builds, essais `libplacebo` |
 | [[2026-11-04-libplacebo-shader-chemin]] | Valeurs de `custom_shader_path` essayées, noms de `setparams`, durées |
+| [[2026-11-07-sar-manquant-the-kid]] | En-tête AVI de The Kid, mesures `cropdetect`, requêtes Wikidata, `-aspect` en copie, encodage 640×480 |

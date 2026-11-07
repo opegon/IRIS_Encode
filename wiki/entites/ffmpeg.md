@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-11-04
+maj: 2026-11-08
 sources:
+  - "[[source-2026-11-07-sar-manquant-the-kid]]"
   - "[[source-2026-11-04-libplacebo-shader-chemin]]"
   - "[[source-2026-11-01-dv-p5-libplacebo]]"
   - "[[source-2026-10-29-raccord-qsv-passe-dv]]"
@@ -175,6 +176,14 @@ Un sous-titre inconnu de ffmpeg (`codec_name=unknown`) : voir
   Jellyfin traite comme anamorphique. `-aspect 1920:802` en sortie rend 1:1.
   *(mesuré, 2026-10-28)* `setsar` n'est pas disponible quand les images
   restent en mémoire graphique.
+- Une source **sans SAR** (`N/A`) : `scale=trunc(iw*sar/2)*2` y lit 0 ; il
+  faut un `setsar=8/9` (ou autre) avant. En copie de flux, `-c copy -aspect
+  4:3` écrit la proportion dans le conteneur, MKV comme MP4 (720×480 → SAR
+  8:9, DAR 4:3). *(mesuré, ffmpeg 8.1.3, 2026-11-07)*
+- `cropdetect` sur les seules images clés (`-skip_frame nokey`) mesure un
+  film AVI entier en 8 points en ~2 s ; une scène sombre rend une zone plus
+  petite, les bandes jamais : prendre le maximum par dimension. *(mesuré,
+  2026-11-07)* Voir [[source-2026-11-07-sar-manquant-the-kid]].
 - `-hwaccel qsv` laisse les images dans la mémoire de la puce : un filtre
   processeur (`scale`) derrière échoue, « Impossible to convert between the
   formats … src: qsv ». Soit tout sur la puce (`vpp_qsv`), soit le décodage

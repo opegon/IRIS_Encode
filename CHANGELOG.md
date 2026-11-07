@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.27] — 2026-11-08
+
+### Sources SD sans proportion déclarée
+
+Un DVD converti en AVI sans redimensionnement garde son 720×480 ou 720×576
+mais perd l'information qui disait comment étirer l'image : elle s'affichait
+déformée (*The Kid* : 4:3 vu en 3:2) et sortait déformée de l'encodage.
+
+- L'analyse repère ces fichiers et estime la proportion la plus probable,
+  4:3 ou 16:9 : d'après le format d'origine du film (Wikidata, par le titre
+  et l'année du nom de fichier) confronté à la zone d'image utile mesurée,
+  ou d'après les bandes noires seules quand elles tranchent. Sans indice
+  décisif, 4:3.
+- L'encodage applique cette proportion : *The Kid* sort en 640×480, image
+  juste. Une vidéo recopiée la reçoit dans le conteneur ; un fichier qui
+  aurait été laissé tel quel est remuxé pour la recevoir.
+- L'analyse d'un tel fichier prend environ 4 secondes de plus (mesure de
+  l'image, trois requêtes Wikidata). Les autres fichiers ne changent pas.
+- À venir : le signalement sur l'accueil et le choix de la proportion,
+  avec un aperçu des deux hypothèses.
+
 ## [v0.9.1.26] — 2026-11-07
 
 ### Sous-titres de DVD (VobSub) convertis en texte

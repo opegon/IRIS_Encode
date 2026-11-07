@@ -1845,6 +1845,9 @@ def motifs_remux(dec: FileDecision) -> list[str]:
               if st not in dec.subtitles_finales] + dec.sous_titres_ocr
     motifs += ["VobSub" if st.codec.lower() == "dvd_subtitle" else "PGS"
                for st in images]
+    # Une source sans SAR (IE-173) s'affiche déformée : le remux le déclare.
+    if dec.info.sar_impose:
+        motifs.append("SAR")
     return list(dict.fromkeys(motifs))
 
 

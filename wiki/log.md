@@ -573,3 +573,7 @@ Mesures nOCR / Tesseract sur quatre films, politique retenue : [[sous-titres]].
 ## [2026-11-07] ingest | OCR des VobSub (v0.9.1.26)
 
 Essai seconv sur les VobSub de *L'Égyptien*, extraction en `.mks` : [[sous-titres]].
+
+## [2026-11-08] ingest | SAR manquant, The Kid (v0.9.1.27)
+
+Indices de proportion d'un AVI issu de DVD, `cropdetect`, Wikidata P2061, `-aspect` en copie : [[ffmpeg]].

@@ -1173,6 +1173,10 @@ def build_command(
         # passe d'abord en pixels carrés, en largeur — rien n'est perdu en
         # hauteur (CR-14).
         largeur = info.largeur_affichee
+        # Un SAR que le flux ne déclare pas (IE-173) : posé d'abord, sans quoi
+        # `iw*sar` vaut 0.
+        if info.sar_impose:
+            filtres.append("setsar=" + info.sar_impose.replace(":", "/"))
         if info.pixels_non_carres:
             filtres.append("scale=trunc(iw*sar/2)*2:trunc(ih/2)*2,setsar=1")
         if largeur > vid.target_width or info.height > vid.target_height:
@@ -1196,6 +1200,11 @@ def build_command(
     # SDR : re-encode + tone-mapping vers SDR (CPU intensif)
     if preserve_video:
         cmd += ["-c:v", "copy"]
+        # Un flux recopié garde ses pixels : le SAR imposé (IE-173) va dans
+        # le conteneur (MKV et MP4, mesuré : 720×480 → SAR 8:9, DAR 4:3).
+        if info.sar_impose:
+            num, den = (int(x) for x in info.sar_impose.split(":"))
+            cmd += ["-aspect", f"{info.width * num}:{info.height * den}"]
     elif hdr10_quality:
         # Mode CPU/libx265 avec métadonnées HDR10 statiques injectées
         bufsize_k = max(vid.target_bitrate * 2 // 1000, 1)

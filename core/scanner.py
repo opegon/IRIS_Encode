@@ -543,6 +543,12 @@ class VideoInfo:
     # Forme des pixels (`sample_aspect_ratio`) : « 32:27 » pour un DVD 16:9
     # NTSC, « 1:1 » ou « » pour des pixels carrés (CR-14).
     sar:             str                 = ""
+    # SAR retenu pour une source SD qui n'en déclare pas (IE-173) : celui de
+    # l'hypothèse estimée à l'analyse, puis celui que l'utilisateur choisit.
+    # « » sinon. Il prime sur `sar` partout où l'image est recalculée.
+    sar_impose:      str                 = ""
+    # L'estimation qui l'a proposé (`sar.Estimation`), None hors doute.
+    sar_estimation:  Optional[Any]       = None
     # Format de pixels du flux (`pix_fmt`) : « yuv420p10le »… « » si inconnu.
     # Il dit si le décodeur Quick Sync sait lire la source (IE-147).
     pix_fmt:         str                 = ""
@@ -564,7 +570,7 @@ class VideoInfo:
     def pixels_non_carres(self) -> bool:
         """Source anamorphique (DVD, TNT SD, HDV) : Jellyfin transcode toute
         vidéo dont les pixels ne sont pas carrés."""
-        num, _sep, den = self.sar.partition(":")
+        num, _sep, den = self.sar_effectif.partition(":")
         return (num.isdigit() and den.isdigit() and int(num) > 0 and int(den) > 0
                 and num != den)
 
@@ -573,8 +579,13 @@ class VideoInfo:
         """La largeur à l'écran, en pixels carrés."""
         if not self.pixels_non_carres:
             return self.width
-        num, _sep, den = self.sar.partition(":")
+        num, _sep, den = self.sar_effectif.partition(":")
         return self.width * int(num) // int(den)
+
+    @property
+    def sar_effectif(self) -> str:
+        """Le SAR imposé (IE-173) s'il y en a un, sinon celui du flux."""
+        return self.sar_impose or self.sar
 
     @property
     def lecture(self) -> Path:
@@ -1077,7 +1088,7 @@ def scan(path: Path) -> VideoInfo:
     if vid.get("color_transfer", "") in ("smpte2084", "arib-std-b67"):
         hdr10_master_display, hdr10_max_cll = _hdr10_metadata(path)
 
-    return VideoInfo(
+    info = VideoInfo(
         path=path,
         width=width,
         height=height,
@@ -1103,6 +1114,23 @@ def scan(path: Path) -> VideoInfo:
         decodeur=decodeur,
         titre=titre_dvd,
     )
+    _estimer_sar(info)
+    return info
+
+
+def _estimer_sar(info: VideoInfo) -> None:
+    """Une géométrie de DVD sans SAR (IE-173) : mesure, cherche, et impose
+    l'hypothèse la plus probable — 4:3 quand rien ne tranche. Coût : ~2 s
+    de ffmpeg et trois requêtes Wikidata, pour ces seuls fichiers."""
+    from . import encoder, sar
+    if not sar.sar_douteux(info):
+        return
+    try:
+        info.sar_estimation = sar.estimer_source(info, encoder._ffmpeg_path)
+    except Exception as e:
+        _log.warning("SAR estimation failed for %s: %s", info.path, e)
+        info.sar_estimation = sar.estimer(info.width, info.height, None)
+    info.sar_impose = info.sar_estimation.sar
 
 
 def _scan_titre(mpls: Path) -> VideoInfo:

@@ -261,7 +261,7 @@ msgstr ""
 msgid "Forced manually (was DV removal)"
 msgstr ""
 
-#: core/decision.py:1869
+#: core/decision.py:1872
 #, python-brace-format
 msgid "{reason} · {tracks} for the playback chain → remux"
 msgstr ""

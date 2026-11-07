@@ -85,8 +85,28 @@ def test_piste_ecartee_par_la_langue_pas_d_ocr(tmp_path, seconv):
     assert dec.sous_titres_ocr == []
 
 
-def test_vobsub_pas_d_ocr(tmp_path, seconv):
-    st = [SubtitleTrack(index=0, codec="dvd_subtitle", language="fre")]
+def _vobsub(index, langue="fre", **kw) -> SubtitleTrack:
+    return SubtitleTrack(index=index, codec="dvd_subtitle", language=langue, **kw)
+
+
+def test_un_vobsub_seul_fait_remuxer(tmp_path, seconv):
+    """Le VobSub d'un DVD fait transcoder Jellyfin comme un PGS : il passe
+    à l'OCR, et la raison le nomme (IE-179)."""
+    dec = decide(_info(tmp_path, [_vobsub(0), _vobsub(1)]), _profil())
+    assert [st.index for st in dec.sous_titres_ocr] == [0, 1]
+    assert dec.video.action == VideoAction.REMUX
+    assert "VobSub" in dec.video.reason and "PGS" not in dec.video.reason
+
+
+def test_vobsub_francais_et_anglais_seulement(tmp_path, seconv):
+    st = [_vobsub(0, "eng"), _vobsub(1, "spa")]
+    dec = decide(_info(tmp_path, st), _profil())
+    assert [s.index for s in dec.sous_titres_ocr] == [0]
+
+
+def test_autres_images_pas_d_ocr(tmp_path, seconv):
+    """Le DVB de la TNT n'a pas de lecteur dans seconv ici : il reste."""
+    st = [SubtitleTrack(index=0, codec="dvb_subtitle", language="fre")]
     assert decide(_info(tmp_path, st), _profil()).sous_titres_ocr == []
 
 

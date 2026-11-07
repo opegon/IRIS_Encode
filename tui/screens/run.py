@@ -1068,7 +1068,7 @@ class RunScreen(TableNavMixin, Screen):
     def _sous_titres_refaits(self, index: int, dec: FileDecision,
                              ) -> tuple[bool, dict[int, Path]]:
         """Les pistes de la source qu'un `.srt` refait remplace, en sortie
-        MKV : WebVTT que ffmpeg ne lit pas, PGS passés à l'OCR (IE-176).
+        MKV : WebVTT que ffmpeg ne lit pas, PGS et VobSub passés à l'OCR (IE-176).
         Rend (réussite, chemins) ; seul un WebVTT irréparable fait échouer."""
         ok, refaits = self._refaire_webvtt(index, dec)
         if not ok:
@@ -1077,8 +1077,8 @@ class RunScreen(TableNavMixin, Screen):
         return True, refaits
 
     def _ocr_sous_titres(self, index: int, dec: FileDecision) -> dict[int, Path]:
-        """Les `.srt` des PGS que l'OCR remplace (IE-176), par index de piste
-        de la source. Une piste qui échoue garde son PGS : la sortie est en
+        """Les `.srt` des PGS et VobSub que l'OCR remplace (IE-176), par index
+        de piste de la source. Une piste qui échoue garde son image : la sortie est en
         Matroska tant qu'elle en porte un, rien n'est perdu, et l'échec est
         dit dans les avertissements du fichier. `S` ou `X` arrête l'étape.
         """
@@ -1098,11 +1098,11 @@ class RunScreen(TableNavMixin, Screen):
 
         self.app.call_from_thread(
             self._update_ffmpeg_line,
-            "▶ " + _("Converting the image subtitles (PGS) into text…"))
+            "▶ " + _("Converting the image subtitles into text…"))
         s.percent = -1
         self.app.call_from_thread(self._update_row, index)
-        cmd, sups = ocr.build_extraction_pgs(source, pistes, dec.dossier_sortie,
-                                             ffmpeg)
+        cmd, sups = ocr.build_extraction(source, pistes, dec.dossier_sortie,
+                                         ffmpeg)
         faits: dict[int, Path] = {}
         try:
             self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
@@ -1128,7 +1128,7 @@ class RunScreen(TableNavMixin, Screen):
                     continue
                 srt.unlink(missing_ok=True)
                 avertir(_("OCR failed on subtitle track {track} ({lang}) — the "
-                          "PGS is kept.").format(track=f"0:s:{st.index}",
+                          "image subtitle is kept.").format(track=f"0:s:{st.index}",
                                                  lang=st.language or "?"))
             return faits
         finally:

@@ -569,3 +569,7 @@ profil, la spec § 8.5 et [[audio]] disaient encore « un TrueHD à 3 501k sort 
 ## [2026-11-07] ingest | OCR des PGS (v0.9.1.25)
 
 Mesures nOCR / Tesseract sur quatre films, politique retenue : [[sous-titres]].
+
+## [2026-11-07] ingest | OCR des VobSub (v0.9.1.26)
+
+Essai seconv sur les VobSub de *L'Égyptien*, extraction en `.mks` : [[sous-titres]].

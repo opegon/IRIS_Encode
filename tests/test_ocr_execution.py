@@ -58,11 +58,41 @@ def seconv(tmp_path):
 # ─── Commandes ────────────────────────────────────────────────────────────────
 
 def test_extraction_un_sup_par_piste(tmp_path):
-    cmd, sups = ocr.build_extraction_pgs(Path("F.mkv"), [_pgs(2), _pgs(5)], tmp_path)
+    cmd, sups = ocr.build_extraction(Path("F.mkv"), [_pgs(2), _pgs(5)], tmp_path)
     assert cmd[cmd.index("-i") + 1] == "F.mkv"
     assert cmd.count("-map") == 2 and "0:s:2" in cmd and "0:s:5" in cmd
     assert [p.suffix for p in sups] == [".sup", ".sup"] and sups[0] != sups[1]
     assert cmd[cmd.index("0:s:2") + 2:cmd.index("0:s:2") + 4] == ["copy", str(sups[0])]
+
+
+def test_extraction_vobsub_en_matroska(tmp_path):
+    """Un VobSub sort dans un `.mks` d'une piste, format nommé (ffmpeg ne le
+    déduit pas de l'extension) ; un PGS du même fichier reste en `.sup`."""
+    vob = SubtitleTrack(index=1, codec="dvd_subtitle", language="fre")
+    cmd, chemins = ocr.build_extraction(Path("F.mkv"), [_pgs(0), vob], tmp_path)
+    assert [p.suffix for p in chemins] == [".sup", ".mks"]
+    i = cmd.index("0:s:1")
+    assert cmd[i + 1:i + 6] == ["-c:s", "copy", "-f", "matroska", str(chemins[1])]
+    j = cmd.index("0:s:0")
+    assert cmd[j + 1:j + 4] == ["-c:s", "copy", str(chemins[0])]
+
+
+@outils
+def test_reel_extraction_vobsub_garde_la_palette(tmp_path):
+    """Sur le VobSub de L'Égyptien : le `.mks` porte la piste et sa palette
+    (CodecPrivate), que seconv lit — c'est l'essai du 2026-11-07."""
+    source = RACINE / "resources_files" / "L'Égyptien.1954.1080p.upscaled.hevc-iris.mkv"
+    if not source.exists():
+        pytest.skip("L'Égyptien absent du dossier de travail")
+    vob = SubtitleTrack(index=0, codec="dvd_subtitle", language="fre")
+    cmd, (mks,) = ocr.build_extraction(source, [vob], tmp_path, str(_FFMPEG))
+    assert subprocess.run(cmd, capture_output=True).returncode == 0
+    flux = json.loads(subprocess.run(
+        [str(_FFPROBE), "-v", "error", "-show_entries",
+         "stream=codec_name,extradata_size", "-of", "json", str(mks)],
+        capture_output=True, encoding="utf-8").stdout)["streams"]
+    assert [f["codec_name"] for f in flux] == ["dvd_subtitle"]
+    assert flux[0]["extradata_size"] > 0
 
 
 def test_commande_seconv(tmp_path):
@@ -107,7 +137,7 @@ def _simuler(textes: dict[int, str], code_seconv: int = 0, code_ffmpeg: int = 0)
         cmd = proc.cmd
         if cmd[0] == "ffmpeg":
             for a in cmd:
-                if a.endswith(".sup"):
+                if a.endswith((".sup", ".mks")):
                     Path(a).write_bytes(b"PG")
             return code_ffmpeg
         sup = Path(cmd[1])
@@ -128,6 +158,25 @@ def test_ocr_reussi(tmp_path, seconv):
     assert all(p.read_text(encoding="utf-8") == SRT for p in faits.values())
     assert ecran._statuses[0].avertissements == []
     assert not list(tmp_path.glob("*.sup")), "les .sup restent"
+
+
+def test_ocr_d_un_vobsub(tmp_path, seconv):
+    """Un VobSub suit le même chemin : son `.mks` passe à seconv, le `.srt`
+    revient, l'intermédiaire part."""
+    from tui.screens.run import RunScreen
+    vob = SubtitleTrack(index=0, codec="dvd_subtitle", language="fre")
+    dec = _decision(tmp_path, [vob])
+    vus = []
+    simule = _simuler({0: SRT})
+    def executer(index, proc):
+        vus.append(proc.cmd)
+        return simule(index, proc)
+    ecran, FileState, FileRunStatus = _ecran(executer)
+    ecran._statuses = [FileRunStatus(decision=dec, state=FileState.RUNNING)]
+    faits = RunScreen._ocr_sous_titres(ecran, 0, dec)
+    assert sorted(faits) == [0]
+    assert vus[1][1].endswith(".mks")
+    assert not list(tmp_path.glob("*.mks")), "les .mks restent"
 
 
 def test_une_piste_illisible_garde_son_pgs(tmp_path, seconv):

@@ -1,5 +1,21 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.26] — 2026-11-07
+
+### Sous-titres de DVD (VobSub) convertis en texte
+
+Un sous-titre VobSub, celui des DVD, est une image comme un PGS : Jellyfin
+l'incruste et transcode la vidéo. Il passe désormais à l'OCR comme le PGS,
+avec les mêmes règles : français et anglais, forcés compris, remplacé par
+le SRT, gardé avec « ⚠ » si l'OCR échoue.
+
+- Un fichier dont la vidéo convient et qui porte un tel VobSub est remuxé ;
+  la raison le nomme (« VobSub for the playback chain → remux »).
+- Essayé sur *L'Égyptien* (deux pistes françaises) : 1 479 répliques lues en
+  6 secondes, une seule faute relevée (un titre en capitales).
+- Les messages de l'étape ne disent plus « PGS » : « Conversion des
+  sous-titres image en texte… », « le sous-titre image est gardé ».
+
 ## [v0.9.1.25] — 2026-11-07
 
 ### Sous-titres image (PGS) convertis en texte

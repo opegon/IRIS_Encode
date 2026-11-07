@@ -457,7 +457,7 @@ désactive une fonction, elle ne bloque jamais le lancement.
 | Outil DVD | lecture des **titres d'un DVD** (`VIDEO_TS`) | ~320 Mo |
 | Outil Dolby Vision | conversion du **Dolby Vision profil 5** en HDR10 ou SDR | ~165 Mo |
 | Shader de super-résolution | **agrandissement** (ArtCNN C4F16, demande un ffmpeg à `libplacebo`) | ~210 Ko |
-| Outil d'OCR | **sous-titres PGS convertis en SRT** (`seconv` de Subtitle Edit, Windows) | ~45 Mo |
+| Outil d'OCR | **sous-titres PGS et de DVD convertis en SRT** (`seconv` de Subtitle Edit, Windows) | ~45 Mo |
 
 L'**outil DVD** est un second ffmpeg — le build GPL de BtbN, qui lit les DVD
 (libdvdnav) — installé dans `bin/dvd/`, à part du ffmpeg qui encode. Il ne fait

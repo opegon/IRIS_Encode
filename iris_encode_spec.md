@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.25 — document de référence courant
+**Version** : 0.9.1.26 — document de référence courant
 **Date** : 2026-11-07
 **Statut** : stable
 
@@ -412,7 +412,7 @@ dans `launch.bat`.
 | `ffmpeg_dvd` | optionnel | outil DVD : ffmpeg BtbN GPL dans `bin/dvd/`, analyse et extraction des titres de DVD (§ 15.6) |
 | `ffmpeg_dv` | optionnel | outil Dolby Vision : ffmpeg BtbN GPL dans `bin/dv/` (ffmpeg seul), filtre `libplacebo` pour convertir un profil 5 (§ 8.4) et pour la super-résolution (§ 8.1) |
 | shader ArtCNN | optionnel | `bin/shaders/ArtCNN_C4F16.glsl`, super-résolution (§ 8.1) ; proposé seulement si un ffmpeg à `libplacebo` est présent |
-| seconv | optionnel | `bin/seconv/` : la ligne de commande de Subtitle Edit, ses deux DLL, la base nOCR `Latin.nocr` et, dans `dictionnaires/`, les listes de correction et le dictionnaire français ; OCR des PGS (§ 8.6). Windows seulement ; `ocr.chercher_seconv` exige chaque fichier |
+| seconv | optionnel | `bin/seconv/` : la ligne de commande de Subtitle Edit, ses deux DLL, la base nOCR `Latin.nocr` et, dans `dictionnaires/`, les listes de correction et le dictionnaire français ; OCR des PGS et VobSub (§ 8.6). Windows seulement ; `ocr.chercher_seconv` exige chaque fichier |
 
 Ordre de recherche : **PATH système**, puis dossier local `./bin/`. L'outil DVD
 n'est cherché que dans `./bin/dvd/` (`chemin_local`) ; il n'est pas proposé
@@ -1018,7 +1018,7 @@ params = [
 | **CAS 3** | bitrate OK, résolution OK, **codec hors `CODECS_LISIBLES`** | Réencodage, bitrate conservé — H264 sous 1080p, HEVC au-dessus |
 | **ENCODE_DV** | un des trois cas ci-dessus, profil en `dv`, et RPU réinjectable (§ 7.4) | Réencodage au débit cible, RPU sorti puis remis |
 | **STRIP_DV** | aucun des cas ci-dessus, mais RPU retirable (DV 8.1 ou 7) et profil en `hdr10` | Retrait du RPU par remux, sans réencodage (§ 7.3) |
-| **REMUX** | aucun des cas ci-dessus, mais une piste audio retenue que le profil convertit, un PGS doublé par un SRT, ou un PGS que l'OCR convertit (`motifs_remux`) | Vidéo recopiée (`-c:v copy`), audio et sous-titres selon le profil, suffixe `.remux-iris` (IE-175) |
+| **REMUX** | aucun des cas ci-dessus, mais une piste audio retenue que le profil convertit, un PGS doublé par un SRT, ou un PGS ou VobSub que l'OCR convertit (`motifs_remux`, qui nomme `PGS` ou `VobSub`) | Vidéo recopiée (`-c:v copy`), audio et sous-titres selon le profil, suffixe `.remux-iris` (IE-175) |
 | **SKIP** | bitrate OK, résolution OK, codec H264 ou HEVC, pistes lisibles | Aucun traitement |
 
 **Le REMUX se décide après l'audio** (v0.9.1.22, IE-175). Le SKIP laissait
@@ -1381,9 +1381,11 @@ canaux, et la passe audio préalable (§ encodeur) s'applique à leur transcodag
   nature, le PGS reste. Sans langue déclarée, un PGS n'est jamais dit doublé.
   Forcé = `disposition.forced` ou « forced » / « forcé » dans le titre
   (`SubtitleTrack.is_forced`).
-- **PGS converti en SRT par OCR** (v0.9.1.25, IE-176) : voir ci-dessous.
+- **PGS converti en SRT par OCR** (v0.9.1.25, IE-176), **VobSub aussi**
+  (v0.9.1.26, IE-179) : voir ci-dessous.
 
-**L'OCR des PGS** (`core/ocr.py`). Un PGS que la sortie garde
+**L'OCR des sous-titres image** (`core/ocr.py`). Un PGS ou un VobSub
+(`ocr.CODECS` : `hdmv_pgs_subtitle`, `dvd_subtitle` ; pas le DVB) que la sortie garde
 (`subtitles_finales`), en français ou en anglais (`OCR_LANGUES`), forcé ou non,
 est remplacé par un SRT quand seconv est installé (`FileDecision.sous_titres_ocr`,
 `ocr_prevu` piste par piste). Pas sur un titre de disque, ni sur `STRIP_DV` et
@@ -1394,7 +1396,9 @@ Matroska tant qu'elle porte un PGS, ce qui permet le repli.
 
 - Au traitement (`RunScreen._ocr_sous_titres`, appelé par `_sous_titres_refaits`
   avec la reconstruction des WebVTT) : une lecture ffmpeg extrait chaque PGS en
-  `.sup` (`build_extraction_pgs`), puis seconv lit chacun :
+  `.sup` et chaque VobSub dans un Matroska d'une piste, `.mks` avec `-f matroska`
+  (`build_extraction`) — il garde la palette (CodecPrivate), et ffmpeg n'écrit
+  pas de `.sub`/`.idx` —, puis seconv lit chacun, même commande :
   `--ocr-engine:nocr --ocr-db:Latin.nocr
   --fix-common-errors-rules:FixCommonOcrErrors --dictionary-folder:…`
   (`build_commande_ocr`) — la correction des erreurs d'OCR seule, pas les
@@ -1416,7 +1420,10 @@ français du même fichier, alignement par temps : nOCR + correction, 0,33 à
 Fautes résiduelles : texte en capitales des panneaux (`I` → `l`), `Ô`, espaces.
 Tesseract 5.5.3 (`fra` best) : 1 à 1,6 %, tous les italiques perdus, trente à
 cinquante fois plus lent — écarté. Non mesuré : un PGS anglais (la liste de
-correction anglaise est intégrée à seconv).
+correction anglaise est intégrée à seconv). VobSub, essayé le 2026-11-07 sur
+les deux pistes françaises de *L'Égyptien* (sans référence) : 51 et 1 479
+répliques, 2 et 6 s, une faute relevée (`L'ÉGYPTlEN`) ; avec ou sans
+`--track-number:1`, même sortie.
 
 **La clé `container`** exprime une politique de profil, parce que le choix ne
 se déduit pas du seul contenu : certains lecteurs digèrent mal le Matroska.
@@ -4115,6 +4122,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.26 | 2026-11-07 | **VobSub convertis en SRT par OCR** (§ 8.1, § 8.6, IE-179) : `ocr.CODECS`, `build_extraction` (`.sup` pour un PGS, `.mks` + `-f matroska` pour un VobSub) · `motifs_remux` nomme `VobSub` · messages de l'étape sans « PGS » · `tests/test_ocr_decision.py`, `test_ocr_execution.py` |
 | 0.9.1.25 | 2026-11-07 | **PGS convertis en SRT par OCR** (§ 4.1, § 8.6, § 17.3, IE-176) : `core/ocr.py` (seconv, nOCR + `FixCommonOcrErrors`), installé dans `bin/seconv/` par `preflight.install_seconv` (empreintes épinglées dans `data/ffmpeg_releases.toml`) · `FileDecision.sous_titres_ocr` / `ocr_prevu` (français, anglais, forcés compris, PGS remplacé) · un PGS converti fait remuxer · `RunScreen._ocr_sous_titres`, repli sur le PGS avec avertissement · `build_command` rend langue, nom et drapeaux à un sous-titre refait · `tests/test_ocr_outil.py`, `test_ocr_decision.py`, `test_ocr_execution.py` |
 | 0.9.1.24 | 2026-11-07 | **Nouveau jeu de profils livrés** (§ 6) : douze profils — `movie_4k_*`, `movie_1080p_*`, `series_*` en high / std / basic, `anime`, `upscale_1080p`, `video_basic_delete` —, tous en `dolby_vision = "hdr10"`, cascade de débits par niveau · la migration `serie_*` → `series_*` reste pour les anciens fichiers, ses cibles ne sont plus livrées · `tests/test_profils_livres.py` connaît les clés d'agrandissement |
 | 0.9.1.23 | 2026-11-06 | **Forfait multicanal en E-AC3** (§ 8.5) : `audio_hd_codec = "eac3"` fait sortir aussi le forfait 5.1 / 7.1 en E-AC3 (FLAC, PCM, Opus, HD au débit illisible) · `tests/test_audio_hd.py` |

@@ -454,7 +454,7 @@ feature is turned off; startup is never blocked.
 | DVD tool | reading a **DVD's titles** (`VIDEO_TS`) | ~320 MB |
 | Dolby Vision tool | converting **Dolby Vision profile 5** to HDR10 or SDR | ~165 MB |
 | Super-resolution shader | **upscaling** (ArtCNN C4F16, needs an ffmpeg with `libplacebo`) | ~210 KB |
-| OCR tool | **PGS subtitles converted to SRT** (Subtitle Edit `seconv`, Windows) | ~45 MB |
+| OCR tool | **PGS and DVD subtitles converted to SRT** (Subtitle Edit `seconv`, Windows) | ~45 MB |
 
 The **DVD tool** is a second ffmpeg — the BtbN GPL build, which reads DVDs
 (libdvdnav) — installed into `bin/dvd/`, apart from the ffmpeg that encodes. It

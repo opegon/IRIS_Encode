@@ -364,7 +364,7 @@ SUFFIX_BY_ACTION: dict["VideoAction", str] = {
 # Les actions qui ne recalculent aucune image : rien, retrait du RPU, remux.
 SANS_REENCODAGE = (VideoAction.SKIP, VideoAction.STRIP_DV, VideoAction.REMUX)
 
-# Les langues dont un PGS passe à l'OCR (IE-176), sous leur forme normalisée.
+# Les langues dont un sous-titre image passe à l'OCR (IE-176), sous leur forme normalisée.
 OCR_LANGUES = frozenset({"fre", "eng"})
 
 # Les actions dont le suffixe nomme le codec du fichier produit — les seules
@@ -530,7 +530,8 @@ class FileDecision:
 
     @property
     def sous_titres_ocr(self) -> list:
-        """Les PGS de la sortie que l'OCR remplace par un SRT (IE-176).
+        """Les PGS et VobSub de la sortie que l'OCR remplace par un SRT
+        (IE-176, IE-179).
 
         Français et anglais seulement : seconv n'a de liste de correction que
         pour eux ici, et sans elle le texte sort cinq fois plus fautif. Les
@@ -1791,7 +1792,7 @@ def ocr_prevu(dec: FileDecision, st) -> bool:
     return (ocr.seconv() is not None and dec.info.titre is None
             and dec.video.action not in (VideoAction.STRIP_DV,
                                          VideoAction.ENCODE_DV)
-            and st.codec.lower() == "hdmv_pgs_subtitle"
+            and st.codec.lower() in ocr.CODECS
             and normalize_language(st.language) in OCR_LANGUES)
 
 
@@ -1840,9 +1841,10 @@ def motifs_remux(dec: FileDecision) -> list[str]:
     motifs = [ad.track.codec.upper() for ad in dec.audio
               if ad.action == AudioAction.TRANSCODE]
     retenues = [st for st in dec.info.subtitle_tracks if st.portable]
-    if (any(st not in dec.subtitles_finales for st in _pgs_doubles(retenues))
-            or dec.sous_titres_ocr):
-        motifs.append("PGS")
+    images = [st for st in _pgs_doubles(retenues)
+              if st not in dec.subtitles_finales] + dec.sous_titres_ocr
+    motifs += ["VobSub" if st.codec.lower() == "dvd_subtitle" else "PGS"
+               for st in images]
     return list(dict.fromkeys(motifs))
 
 

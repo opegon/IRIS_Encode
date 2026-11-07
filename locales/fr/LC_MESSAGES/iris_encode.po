@@ -113,155 +113,155 @@ msgstr "copie"
 msgid "SRT (OCR)"
 msgstr "SRT (OCR)"
 
-#: core/decision.py:959
+#: core/decision.py:960
 msgid "HDR source"
 msgstr "source HDR"
 
-#: core/decision.py:962
+#: core/decision.py:963
 msgid "needs ffmpeg with libplacebo"
 msgstr "demande ffmpeg avec libplacebo"
 
-#: core/decision.py:1010
+#: core/decision.py:1011
 #, python-brace-format
 msgid "{reason} · no upscaling: {why}"
 msgstr "{reason} · pas d'agrandissement : {why}"
 
-#: core/decision.py:1020
+#: core/decision.py:1021
 #, python-brace-format
 msgid "Upscale {width}x{height} → {target_width}x{target_height} (super-resolution ×{factor:.2f}, two passes)"
 msgstr "Agrandi {width}x{height} → {target_width}x{target_height} (super-résolution ×{factor:.2f}, deux passes)"
 
-#: core/decision.py:1023
+#: core/decision.py:1024
 #, python-brace-format
 msgid "Upscale {width}x{height} → {target_width}x{target_height} (super-resolution ×{factor:.2f})"
 msgstr "Agrandi {width}x{height} → {target_width}x{target_height} (super-résolution ×{factor:.2f})"
 
-#: core/decision.py:1056
+#: core/decision.py:1057
 #, python-brace-format
 msgid "{dv} → {target}: needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/)"
 msgstr "{dv} → {target} : demande l'outil Dolby Vision (ffmpeg avec libplacebo, dans ./bin/dv/)"
 
-#: core/decision.py:1095
+#: core/decision.py:1096
 #, python-brace-format
 msgid "{reason} · DV preserved, RPU reinjected"
 msgstr "{reason} · DV préservé, RPU réinjecté"
 
-#: core/decision.py:1097
+#: core/decision.py:1098
 #, python-brace-format
 msgid "{reason} · DV kept → video copied"
 msgstr "{reason} · DV conservé → vidéo copiée"
 
-#: core/decision.py:1106
+#: core/decision.py:1107
 #, python-brace-format
 msgid "Unknown bitrate → {target}k target"
 msgstr "Débit inconnu → cible {target}k"
 
-#: core/decision.py:1119
+#: core/decision.py:1120
 #, python-brace-format
 msgid "Bitrate {bitrate}k > {target}k target +{tolerance}%"
 msgstr "Débit {bitrate}k > {target}k cible +{tolerance}%"
 
-#: core/decision.py:1133
+#: core/decision.py:1134
 #, python-brace-format
 msgid "Resolution {width}x{height} > {max_width}x{max_height}"
 msgstr "Résolution {width}x{height} > {max_width}x{max_height}"
 
-#: core/decision.py:1147
+#: core/decision.py:1148
 #, python-brace-format
 msgid "Codec {codec} not supported by the playback chain"
 msgstr "Codec {codec} non lu par la chaîne"
 
-#: core/decision.py:1163
+#: core/decision.py:1164
 #, python-brace-format
 msgid "{dv} → HDR10 without re-encoding"
 msgstr "{dv} → HDR10 sans réencodage"
 
-#: core/decision.py:1174
+#: core/decision.py:1175
 #, python-brace-format
 msgid "Bitrate within target ±{tolerance}%, resolution OK, codec {codec}"
 msgstr "Débit dans la cible ±{tolerance}%, résolution OK, codec {codec}"
 
-#: core/decision.py:1177
+#: core/decision.py:1178
 #, python-brace-format
 msgid "Bitrate OK, resolution OK, codec {codec}"
 msgstr "Débit OK, résolution OK, codec {codec}"
 
-#: core/decision.py:1350
+#: core/decision.py:1351
 msgid "manual selection"
 msgstr "sélection manuelle"
 
-#: core/decision.py:1353
+#: core/decision.py:1354
 #, python-brace-format
 msgid "replaced by its {codec} core (track {index})"
 msgstr "remplacée par son cœur {codec} (piste {index})"
 
-#: core/decision.py:1357
+#: core/decision.py:1358
 #, python-brace-format
 msgid "core of track {index}, which already carries it"
 msgstr "cœur de la piste {index}, qui le porte déjà"
 
-#: core/decision.py:1361
+#: core/decision.py:1362
 #, python-brace-format
 msgid "original track (index {index})"
 msgstr "piste originale (index {index})"
 
-#: core/decision.py:1366
+#: core/decision.py:1367
 msgid "language unknown → kept"
 msgstr "langue inconnue → gardée"
 
-#: core/decision.py:1369
+#: core/decision.py:1370
 #, python-brace-format
 msgid "language {language}"
 msgstr "langue {language}"
 
-#: core/decision.py:1372
+#: core/decision.py:1373
 #, python-brace-format
 msgid "language {language} not kept"
 msgstr "langue {language} non retenue"
 
 #. "lossless", "copy" and the profile key preserve_hd_audio stay in English (glossary).
-#: core/decision.py:1407
+#: core/decision.py:1408
 #, python-brace-format
 msgid "{reason} · lossless + preserve_hd_audio → copy"
 msgstr "{reason} · lossless + preserve_hd_audio → copy"
 
-#: core/decision.py:1414
+#: core/decision.py:1415
 #, python-brace-format
 msgid "{reason} · lossless → {codec}"
 msgstr "{reason} · lossless → {codec}"
 
-#: core/decision.py:1423
+#: core/decision.py:1424
 #, python-brace-format
 msgid "{reason} · {codec} compatible → copy"
 msgstr "{reason} · {codec} compatible → copy"
 
-#: core/decision.py:1431
+#: core/decision.py:1432
 #, python-brace-format
 msgid "{reason} · → {codec}"
 msgstr "{reason} · → {codec}"
 
-#: core/decision.py:1453
+#: core/decision.py:1454
 #, python-brace-format
 msgid "Cannot read the audio track of “{file}” added to this file: the profile's audio rule cannot be applied to it."
 msgstr "Impossible de lire la piste audio de « {file} » greffée sur ce fichier : la règle audio du profil ne peut pas s'y appliquer."
 
-#: core/decision.py:1458
+#: core/decision.py:1459
 msgid "added track"
 msgstr "piste greffée"
 
-#: core/decision.py:1716
+#: core/decision.py:1717
 msgid "H264 does not carry HDR: this file will be converted to SDR (tone mapping, slower). Choose HEVC to keep HDR."
 msgstr "H264 ne porte pas le HDR : ce fichier sera converti en SDR (tone mapping, plus lent). Choisissez HEVC pour garder le HDR."
 
-#: core/decision.py:1751
+#: core/decision.py:1752
 msgid "Forced manually (was SKIP)"
 msgstr "Forcé manuellement (était SKIP)"
 
-#: core/decision.py:1753
+#: core/decision.py:1754
 msgid "Forced manually (was DV removal)"
 msgstr "Forcé manuellement (était retrait DV)"
 
-#: core/decision.py:1867
+#: core/decision.py:1869
 #, python-brace-format
 msgid "{reason} · {tracks} for the playback chain → remux"
 msgstr "{reason} · {tracks} pour la chaîne de lecture → remux"
@@ -3820,8 +3820,8 @@ msgid "Grouping the subtitles failed: {detail}"
 msgstr "Le regroupement des sous-titres a échoué : {detail}"
 
 #: tui/screens/run.py:1101
-msgid "Converting the image subtitles (PGS) into text…"
-msgstr "Conversion des sous-titres image (PGS) en texte…"
+msgid "Converting the image subtitles into text…"
+msgstr "Conversion des sous-titres image en texte…"
 
 #: tui/screens/run.py:1113
 #, python-brace-format
@@ -3830,8 +3830,8 @@ msgstr "OCR : les sous-titres image n'ont pas pu être lus (code {code}) — gar
 
 #: tui/screens/run.py:1130
 #, python-brace-format
-msgid "OCR failed on subtitle track {track} ({lang}) — the PGS is kept."
-msgstr "Échec de l'OCR sur la piste de sous-titres {track} ({lang}) — le PGS est gardé."
+msgid "OCR failed on subtitle track {track} ({lang}) — the image subtitle is kept."
+msgstr "Échec de l'OCR sur la piste de sous-titres {track} ({lang}) — le sous-titre image est gardé."
 
 #: tui/screens/run.py:1210
 #, python-brace-format

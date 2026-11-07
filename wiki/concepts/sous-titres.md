@@ -52,6 +52,12 @@ même fichier, alignement par temps *(mesuré)* :
 
 Politique retenue (IE-176) : PGS français et anglais, forcés compris,
 **remplacés** par le SRT ; sur échec, le PGS reste et le bilan le dit.
+
+**VobSub** (v0.9.1.26, IE-179) : même politique. ffmpeg recopie la piste dans
+un `.mks` d'une piste (`-f matroska` : il ne devine pas le format de
+l'extension), qui garde la palette ; seconv le lit comme un Matroska VobSub.
+Sur les deux pistes françaises de *L'Égyptien* : 51 et 1 479 répliques, 2 et
+6 s, une seule faute relevée, `L'ÉGYPTlEN` *(observé, sans référence)*.
 Voir [[source-spec]] § 8.6.
 
 ## Ce que portent les releases

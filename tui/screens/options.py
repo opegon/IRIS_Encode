@@ -1,8 +1,8 @@
 """
 tui/screens/options.py — Les réglages qui ne sont pas ceux d'un profil.
 
-Ouvert depuis la gestion des profils (`F5`, `U`). L'énergie : bloquer la mise
-en veille pendant les traitements, et ce que fait la machine après un lot dont
+Ouvert depuis l'accueil (`Ctrl+O`) ou la gestion des profils (`F5`, `U`).
+L'énergie : bloquer la mise en veille pendant les traitements, et ce que fait la machine après un lot dont
 on a coché « Après le lot » (`core/veille.py`) — par défaut, rien. La langue de
 l'interface (IE-92) : une par catalogue livré, nommée dans sa propre langue ;
 elle prend effet au lancement suivant (IE-71 point 3). Le dossier de sortie

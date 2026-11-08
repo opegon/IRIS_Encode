@@ -188,6 +188,41 @@ def test_profils_et_options_depuis_les_volumes(monkeypatch):
     assert ouvert == "OptionsScreen", ouvert
 
 
+def test_ctrl_o_relit_le_dossier_si_la_duree_des_titres_change(tmp_path, monkeypatch):
+    """CR-98 par Ctrl+O : une durée minimale des titres changée relit le
+    dossier ; une sauvegarde qui n'y touche pas ne le rescanne pas."""
+    from textual.widgets import Input
+    from core import config as cfg_mod
+    from tui.app import IrisEncodeApp
+    from tui.screens.browser import BrowserScreen
+
+    monkeypatch.setattr(cfg_mod, "save", lambda *args, **kwargs: None)
+    i18n.init("fr")
+
+    async def releve():
+        app = IrisEncodeApp(start_path=tmp_path)
+        async with app.run_test(size=(160, 40)) as pilot:
+            await pilot.pause(0.5)
+            app.wizard_mode = False
+            app.push_screen(BrowserScreen(tmp_path, start_virtual=False))
+            await pilot.pause(1.0)
+            ecran = app.screen
+            epoques = [ecran._scan_epoch]
+            for duree in (None, cfg_mod.get_min_title_minutes(app.cfg) + 3):
+                await pilot.press("ctrl+o")
+                await pilot.pause(0.5)
+                if duree is not None:
+                    app.screen.query_one("#options-titres", Input).value = str(duree)
+                await pilot.press("ctrl+s")
+                await pilot.pause(0.5)
+                epoques.append(ecran._scan_epoch)
+            return epoques
+
+    sans, inchange, change = asyncio.run(releve())
+    assert inchange == sans, "rien de la liste n'a changé : pas de rescan"
+    assert change > inchange, "la durée des titres a changé : le dossier est relu"
+
+
 # ─── 5b : liste des volumes ──────────────────────────────────────────────────
 
 def test_les_volumes_nomment_le_partage(monkeypatch):

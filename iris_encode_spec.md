@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.36 — document de référence courant
+**Version** : 0.9.2.0 — document de référence courant
 **Date** : 2026-11-08
 **Statut** : stable
 
@@ -182,7 +182,7 @@ Le texte de remise du quota OpenSubtitles est celui de l'API.
 `tests/test_formats.py` garde ces règles.
 
 **Choix de la langue (v0.8.9.84)** : section « Langue de l'interface » de
-l'écran Options (`F5`, `U`). Les langues proposées sont l'anglais et chaque
+l'écran Options (`Ctrl+O` depuis l'accueil, ou `F5` puis `U`). Les langues proposées sont l'anglais et chaque
 catalogue compilé livré (`i18n.langues_disponibles`), chacune nommée dans sa
 propre langue par sa traduction (`pgettext("language name", "English")`,
 `i18n.nom_langue`). Le changement s'écrit dans `config.toml` et prend effet au
@@ -2849,8 +2849,12 @@ Conventions transverses :
   porte `BrowserScreen._FONCTIONS_REGLAGES` (`F4` Profil, `F5` Gérer, `Ctrl+O`
   Options), comme celui d'un dossier en mode manuel ; sa barre d'état nomme le
   profil actif. `Ctrl+O` (`action_open_options`) ouvre `OptionsScreen` sans passer
-  par `ConfigScreen` ; au retour d'un enregistrement, un dossier est relu (durée
-  minimale des titres, CR-98).
+  par `ConfigScreen` ; au retour d'un enregistrement, un dossier n'est relu que
+  si la durée minimale des titres a changé (CR-98, v0.9.2.0) — le reste des
+  options ne change pas la liste, et un rescan coûte sur un partage réseau. En
+  mode assistant, le pied d'un dossier n'annonce que le parcours
+  (`_RACCOURCIS_ASSISTANT`) ; `F4`, `F5` et `Ctrl+O` y répondent toujours, sans
+  être annoncés (choix assumé, revue du 2026-11-08).
 - **Filtre de l'accueil** (v0.8.9.46). `L` choisit un type d'image
   (`browser.type_image` : profil DV `DV:P8.1`…, sinon `HDR` si la courbe est
   PQ ou HLG, sinon `SDR`) parmi ceux du dossier (`options_filtre`), ou
@@ -3696,7 +3700,8 @@ porte la sortie **et** les intermédiaires de `RunScreen` (`.iris_audio.mka`,
 
 ### 14.8 Écran Config — gestion des profils
 
-**Options** (v0.8.9.43) — `U` ouvre `OptionsScreen` : la case « Bloquer la
+**Options** (v0.8.9.43) — `U` ouvre `OptionsScreen` (aussi `Ctrl+O` depuis
+l'accueil, v0.9.1.36) : la case « Bloquer la
 mise en veille pendant les traitements » et le choix de l'action d'après lot,
 écrits dans `[energie]` par `Ctrl+S` (`config.set_energie`), `Esc` annule.
 Enregistrer relève aussitôt l'état (`surveiller_veille`) : décocher relâche
@@ -4280,6 +4285,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.2.0 | 2026-11-08 | **Options sans rescan inutile** (§ 14) : au retour de `Ctrl+O`, un dossier n'est relu que si la durée minimale des titres a changé (CR-98) ; en mode assistant, `F4`, `F5` et `Ctrl+O` répondent sans être annoncés (précisé) ; guides et spec donnent `Ctrl+O` pour les options · `tests/test_revue_interface.py` |
 | 0.9.1.36 | 2026-11-08 | **Réglages dès le lancement** (§ 14) : la liste des volumes annonce `F4` Profil, `F5` Gérer et `Ctrl+O` Options (nouvelle, `BrowserScreen.action_open_options`, aussi dans un dossier) ; sa barre d'état nomme le profil actif · `tests/test_revue_interface.py` |
 | 0.9.1.35 | 2026-11-08 | **Filtrer par pistes** (§ 14) : `L` propose « Audio DTS » et « Sous-titres image : PGS, VobSub » quand le dossier en contient · `tests/test_filtre_accueil.py` |
 | 0.9.1.34 | 2026-11-08 | **Colonne Audio compacte** (§ 14) : `audio_summary` regroupe les pistes d'un même format (`ac3 5.1 fre+eng`), la colonne Fichier retrouve sa place · `tests/test_revue_interface.py` |

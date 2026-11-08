@@ -2707,7 +2707,7 @@ msgid "unreadable: {cause}"
 msgstr ""
 
 #: tui/screens/browser.py:1018
-#: tui/screens/browser.py:2011
+#: tui/screens/browser.py:2015
 #, python-brace-format
 msgid "Analyzing… {done} / {total}"
 msgstr ""
@@ -2807,17 +2807,17 @@ msgstr ""
 msgid "Join: check at least {count} parts ({key})."
 msgstr ""
 
-#: tui/screens/browser.py:1991
+#: tui/screens/browser.py:1995
 #, python-brace-format
 msgid "{key}: place the cursor on a folder — its whole tree is analyzed."
 msgstr ""
 
-#: tui/screens/browser.py:2006
+#: tui/screens/browser.py:2010
 #, python-brace-format
 msgid "Recursive scan of {folder}…"
 msgstr ""
 
-#: tui/screens/browser.py:2023
+#: tui/screens/browser.py:2027
 msgid "No file to encode in this folder."
 msgstr ""
 

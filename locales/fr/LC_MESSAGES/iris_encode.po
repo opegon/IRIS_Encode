@@ -2707,7 +2707,7 @@ msgid "unreadable: {cause}"
 msgstr "illisible : {cause}"
 
 #: tui/screens/browser.py:1018
-#: tui/screens/browser.py:2011
+#: tui/screens/browser.py:2015
 #, python-brace-format
 msgid "Analyzing… {done} / {total}"
 msgstr "Analyse en cours… {done} / {total}"
@@ -2807,17 +2807,17 @@ msgstr "{action} : aucun fichier coché — {key} coche la ligne, {all_key} coch
 msgid "Join: check at least {count} parts ({key})."
 msgstr "Joindre : cocher au moins {count} parties ({key})."
 
-#: tui/screens/browser.py:1991
+#: tui/screens/browser.py:1995
 #, python-brace-format
 msgid "{key}: place the cursor on a folder — its whole tree is analyzed."
 msgstr "{key} : placer le curseur sur un dossier — toute son arborescence est analysée."
 
-#: tui/screens/browser.py:2006
+#: tui/screens/browser.py:2010
 #, python-brace-format
 msgid "Recursive scan of {folder}…"
 msgstr "Scan récursif de {folder}…"
 
-#: tui/screens/browser.py:2023
+#: tui/screens/browser.py:2027
 msgid "No file to encode in this folder."
 msgstr "Aucun fichier à encoder dans ce répertoire."
 

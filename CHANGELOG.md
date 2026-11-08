@@ -1,5 +1,19 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.0] — 2026-11-08
+
+### Options : pas de rescan inutile
+
+Enregistrer les options par **`Ctrl+O`** depuis un dossier le relisait en
+entier, quel que soit le réglage changé — coûteux sur un partage réseau. Il
+n'est plus relu que si la **durée minimale des titres** a changé, seul réglage
+qui modifie la liste (CR-98). Un test garde les deux cas.
+
+Les guides et la spec indiquent désormais `Ctrl+O` pour ouvrir les options
+(langue, veille, titres de disque, dossier YouTube), au lieu de `F5` puis `U`,
+qui reste possible. Ils précisent aussi qu'en mode assistant, `F4`, `F5` et
+`Ctrl+O` répondent dans un dossier sans y être annoncés.
+
 ## [v0.9.1.36] — 2026-11-08
 
 ### Profils et options dès le lancement

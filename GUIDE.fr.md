@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.36
+**Version** : 0.9.2.0
 **Date** : 2026-11-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -185,7 +185,7 @@ chemin  = '\\10.0.0.10\Films'
 | `F1` / `F2` | Aperçu / Encoder la sélection |
 | `R` | Encoder récursivement le dossier sous le curseur |
 | `F4` / `F5` | Choisir un profil / gérer les profils |
-| `Ctrl+O` | Options (langue, dossiers, après le lot…) — aussi depuis la liste des volumes, dès le lancement, où la barre d'état nomme le profil actif |
+| `Ctrl+O` | Options (langue, dossiers, après le lot…) — aussi depuis la liste des volumes, dès le lancement, où la barre d'état nomme le profil actif. En mode assistant, le pied d'un dossier n'annonce que le parcours, mais `F4`, `F5` et `Ctrl+O` répondent toujours |
 | `J` | **Joindre** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
 | `U` | **Télécharger une vidéo YouTube** (§ 3.8) |
 | `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |
@@ -510,7 +510,7 @@ vue. Un nouvel ajout démarre un nouveau lot.
 jonction, mesure ou recalage. L'en-tête affiche alors « ☾ veille bloquée ».
 L'écran peut toujours s'éteindre, et une veille demandée à la main (menu
 Démarrer, capot fermé) passe quand même. Se désactive dans les options
-(`F5`, `U`).
+(`Ctrl+O`).
 
 **Après le lot** (`E`) : une fois **tous** les traitements finis, la machine
 se met en veille, en veille prolongée ou s'éteint — au choix, dans les
@@ -524,7 +524,7 @@ ne déclenche rien. Windows seulement.
 
 `N` crée, `E` édite, `C` copie, `D` supprime, `↵` active. La copie ouvre le
 formulaire avec les réglages du profil sous le curseur et un nom libre
-(`<nom>_copie`) : on modifie ce qui change, `Ctrl+S` enregistre le nouveau profil. `U` ouvre les **options** :
+(`<nom>_copie`) : on modifie ce qui change, `Ctrl+S` enregistre le nouveau profil. `U` ouvre les **options** (aussi `Ctrl+O` depuis l'accueil) :
 bloquer la mise en veille pendant les traitements (activé par défaut), et ce
 que fait la machine après un lot dont on a coché « Après le lot » (« Ne rien
 faire » par défaut, mise en veille, veille prolongée ou arrêt), et la
@@ -711,7 +711,7 @@ recalage audio.
    - **Blu-ray** : le lecteur lui-même liste les **titres** du disque, une
      ligne par playlist (`01001.mpls`…), avec leur durée. Le plus long est le
      film ; les titres de moins de 2 minutes (menus, boucles) sont masqués —
-     la limite est dans les Options (`F5` puis `U`, « Titres de Blu-ray » ;
+     la limite est dans les Options (`Ctrl+O`, « Titres de Blu-ray » ;
      `0` les liste tous). Un titre fait de plusieurs clips est assemblé par
      mkvmerge avant l'encodage, dans le dossier de sortie : prévoir sa taille
      en espace libre. La sortie prend le nom du disque (le dossier qui
@@ -730,7 +730,7 @@ recalage audio.
      pas sur le titre — de même pour un titre de Blu-ray de plusieurs clips. `VIDEO_TS` montre toujours les `.VOB` bruts.
 3. Cocher le fichier, `F2`. Le lecteur est en lecture seule : IRIS demande un
    **dossier de sortie**. `↵` sur la première ligne retient celui proposé
-   (réglé dans les Options, `F5` puis `U` ; le dossier Vidéos par défaut) ;
+   (réglé dans les Options, `Ctrl+O` ; le dossier Vidéos par défaut) ;
    les autres lignes naviguent vers un autre.
 4. Le lot fini, démonter le lecteur (clic droit → **Éjecter**).
 
@@ -766,7 +766,7 @@ source ; seul un pulldown 3:2 régulier sur tout le fichier est ramené à
 Demande les outils YouTube, proposés au lancement (voir README, chapitre 4).
 
 1. Sur l'accueil, `U`. La première fois, choisissez le dossier des
-   téléchargements (`↵` sur la première ligne) ; les Options (`F5` puis `U`)
+   téléchargements (`↵` sur la première ligne) ; les Options (`Ctrl+O`)
    le changent ensuite.
 2. Collez l'adresse de la vidéo (`Ctrl+V`), puis `↵`. IRIS lit la page.
 3. Choisissez la **résolution** parmi celles que propose la vidéo (2160p,

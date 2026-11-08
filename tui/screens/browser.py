@@ -1965,9 +1965,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def action_open_options(self) -> None:
         from .options import OptionsScreen
 
+        avant = cfg_mod.get_min_title_minutes(self._app.cfg)
+
         def _enregistre(ok) -> None:
-            # Une durée minimale de titre changée relit le dossier (CR-98).
-            if ok and not self._nav.is_virtual:
+            # Seule la durée minimale des titres change la liste (CR-98) : le
+            # reste ne vaut pas de rescanner un partage réseau.
+            if (ok and not self._nav.is_virtual
+                    and cfg_mod.get_min_title_minutes(self._app.cfg) != avant):
                 self._refresh_view()
         self.app.push_screen(OptionsScreen(), _enregistre)
 

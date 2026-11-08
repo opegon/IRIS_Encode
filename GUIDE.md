@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.36
+**Version**: 0.9.2.0
 **Date**: 2026-11-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -42,7 +42,7 @@ profiles and the tools in `bin/` are never touched. Offline, nothing is shown.
 To install without asking, or to check nothing anymore: `app = "auto"` or
 `app = "off"` under `[updates]` in `config.toml`. Details in **README § 5.2**.
 
-**The interface language** is set in the options (`F5`, then `U`, § 2.7) and
+**The interface language** is set in the options (`Ctrl+O`, § 2.7) and
 takes effect at the next start.
 
 ---
@@ -187,7 +187,7 @@ chemin  = '\\10.0.0.10\Films'
 | `F1` / `F2` | Dry run / Encode the checked files |
 | `R` | Encode the folder under the cursor, recursively |
 | `F4` / `F5` | Choose a profile / manage profiles |
-| `Ctrl+O` | Options (language, folders, after the batch…) — also from the list of volumes, right at startup, where the status bar names the active profile |
+| `Ctrl+O` | Options (language, folders, after the batch…) — also from the list of volumes, right at startup, where the status bar names the active profile. In guided mode, the footer of a folder only shows the guided path, but `F4`, `F5` and `Ctrl+O` still respond |
 | `J` | **Join** the checked files end to end into one (§ 2.1bis) |
 | `U` | **Download a YouTube video** (§ 3.8) |
 | `I` | Movie Info card: AlloCiné, then IMDB with `Tab` |
@@ -500,7 +500,7 @@ addition starts a new batch.
 **The machine no longer sleeps during processing** — encoding, mux, join,
 measurement or resync. The header then shows "☾ sleep blocked". The screen
 can still turn off, and a sleep requested by hand (Start menu, lid closed) still
-goes through. It can be turned off in the options (`F5`, `U`).
+goes through. It can be turned off in the options (`Ctrl+O`).
 
 **After the batch** (`E`): once **all** processing is done, the machine
 sleeps, hibernates or shuts down — your choice, in the options. By default the
@@ -517,7 +517,7 @@ the form with the settings of the profile under the cursor and a free name
 (`<name>_copie` — a profile name is an identifier, the same in every language):
 change what differs, `Ctrl+S` saves the new profile.
 
-`U` opens the **options**: block sleep while tasks run (on by default), what
+`U` opens the **options** (also `Ctrl+O` from the home screen): block sleep while tasks run (on by default), what
 the machine does after a batch whose "After the batch" is checked ("do
 nothing" by default, sleep, hibernate or shut down), and the **interface
 language**: each available language is listed under its own name ("English",
@@ -703,7 +703,7 @@ to resample. That is what makes this case much safer than an audio resync.
    - **Blu-ray**: the drive itself lists the disc's **titles**, one row per
      playlist (`01001.mpls`…), with their length. The longest is the movie;
      titles shorter than 2 minutes (menus, loops) are hidden — the limit is in
-     Options (`F5` then `U`, "Blu-ray titles"; `0` lists them all). A title
+     Options (`Ctrl+O`, "Blu-ray titles"; `0` lists them all). A title
      made of several clips is joined by mkvmerge before encoding, in the
      output folder: allow its size in free space. The output is named after
      the disc (the folder holding `BDMV`, or the drive label), with the
@@ -722,7 +722,7 @@ to resample. That is what makes this case much safer than an audio resync.
      `VIDEO_TS` still shows the raw `.VOB` files.
 3. Check the file, `F2`. The drive is read-only: IRIS asks for an **output
    folder**. `↵` on the first row accepts the one offered (set in Options,
-   `F5` then `U`; your Videos folder by default); the other rows browse to
+   `Ctrl+O`; your Videos folder by default); the other rows browse to
    another one.
 4. Once the batch is done, unmount the drive (right-click → **Eject**).
 
@@ -756,7 +756,7 @@ per second) keeps 29.97 fps, repeated frames included.
 Needs the YouTube tools, offered at startup (see README, chapter 4).
 
 1. On the Home screen, `U`. The first time, choose the folder where downloads
-   go (`↵` on the first row); Options (`F5` then `U`) changes it later.
+   go (`↵` on the first row); Options (`Ctrl+O`) changes it later.
 2. Paste the video's address (`Ctrl+V`), then `↵`. IRIS reads the page.
 3. Choose the **resolution** among those the video offers (2160p, 1440p,
    1080p; an older video offers only its best one), and the **subtitles**:

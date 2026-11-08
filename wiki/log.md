@@ -577,3 +577,7 @@ Essai seconv sur les VobSub de *L'Égyptien*, extraction en `.mks` : [[sous-titr
 ## [2026-11-08] ingest | SAR manquant, The Kid (v0.9.1.27)
 
 Indices de proportion d'un AVI issu de DVD, `cropdetect`, Wikidata P2061, `-aspect` en copie : [[ffmpeg]].
+
+## [2026-11-08] ingest | Image de comparaison des proportions (v0.9.1.29)
+
+`thumbnail`, `hstack`, `drawtext` avec `fontfile` échappé sous Windows : [[ffmpeg]].

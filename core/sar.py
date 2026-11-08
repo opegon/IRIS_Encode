@@ -273,6 +273,86 @@ def format_connu(titre: str, annee: Optional[int]) -> tuple[float, ...]:
     return ()
 
 
+# ─── Aperçu : les deux hypothèses côte à côte (IE-173 3/3) ────────────────────
+
+# Une image prise vers le quart du film (le début est souvent un générique) :
+# `thumbnail` retient la plus représentative de `_APERCU_IMAGES` images
+# consécutives, ce qui écarte un noir ou un fondu. ~0,4 s sur The Kid.
+APERCU_DEBUT   = 0.25
+_APERCU_IMAGES = 150
+_POLICE        = Path(r"C:\Windows\Fonts\arial.ttf")
+
+
+def largeur_affichee(largeur: int, sar: str) -> int:
+    """La largeur en pixels carrés, paire, comme la rendra l'encodage."""
+    if not sar:
+        return largeur
+    num, den = (int(x) for x in sar.split(":"))
+    return largeur * num // den // 2 * 2
+
+
+def chemin_apercu(info: "VideoInfo") -> Path:
+    """Où l'image de comparaison s'écrit : le dossier temporaire du système,
+    jamais à côté de la source (lecture seule, partage réseau)."""
+    import tempfile
+    return Path(tempfile.gettempdir()) / f"iris_proportion_{Path(info.path).stem}.png"
+
+
+def _etiquette(texte: str, police: Path) -> str:
+    """`drawtext` en haut à gauche ; les deux-points s'échappent."""
+    chemin = police.as_posix().replace(":", r"\:")
+    return (f",drawtext=fontfile='{chemin}':text='{texte.replace(':', chr(92) + ':')}'"
+            ":x=12:y=12:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=6")
+
+
+def build_apercu(info: "VideoInfo", sortie: Path, ffmpeg_path: str = "ffmpeg",
+                 police: Optional[Path] = None) -> list[str]:
+    """La commande qui pose la même image en 4:3 (à gauche) et en 16:9 (à
+    droite), chacune à sa largeur affichée, étiquetée si `police` est donnée."""
+    sars = SAR[(info.width, info.height)]
+    debut = max(0.0, min(info.duration * APERCU_DEBUT, info.duration - 10))
+    moities = []
+    for nom, h in (("g", "4:3"), ("d", "16:9")):
+        l = largeur_affichee(info.width, sars[h])
+        f = (f"[{nom}0]setsar={sars[h].replace(':', '/')},scale={l}:{info.height},setsar=1"
+             + (_etiquette(f"{h}  {l}x{info.height}", police) if police else ""))
+        if nom == "g":      # un liseré sombre entre les deux
+            f += ",pad=iw+16:ih:0:0:color=0x202020"
+        moities.append(f + f"[{nom}]")
+    graphe = (f"[0:v]thumbnail={_APERCU_IMAGES},split=2[g0][d0];"
+              + ";".join(moities) + ";[g][d]hstack=inputs=2[v]")
+    decodeur = ["-c:v", info.decodeur] if info.decodeur else []
+    return [ffmpeg_path, "-hide_banner", "-nostdin", "-y", "-ss", f"{debut:.1f}",
+            *decodeur, "-i", str(info.lecture), "-an", "-sn",
+            "-filter_complex", graphe, "-map", "[v]", "-frames:v", "1", str(sortie)]
+
+
+def apercu(info: "VideoInfo", ffmpeg_path: str = "ffmpeg") -> Path:
+    """Fabrique l'image de comparaison et rend son chemin. Sans police, ou si
+    `drawtext` manque au ffmpeg, l'image sort sans étiquettes (4:3 à gauche).
+    RuntimeError si ffmpeg échoue."""
+    sortie = chemin_apercu(info)
+    polices = ([_POLICE] if _POLICE.exists() else []) + [None]
+    erreur = ""
+    for police in polices:
+        # Une image d'un essai précédent ne doit pas passer pour celle-ci.
+        try:
+            sortie.unlink(missing_ok=True)
+        except OSError:
+            pass
+        try:
+            r = subprocess.run(build_apercu(info, sortie, ffmpeg_path, police),
+                               stdin=subprocess.DEVNULL, capture_output=True,
+                               timeout=120, encoding="utf-8", errors="replace")
+        except (OSError, subprocess.TimeoutExpired) as e:
+            raise RuntimeError(str(e)) from e
+        if r.returncode == 0 and sortie.exists():
+            return sortie
+        erreur = (r.stderr or "").strip().splitlines()[-1:] or [f"code {r.returncode}"]
+        erreur = erreur[0]
+    raise RuntimeError(erreur)
+
+
 # ─── Ensemble ────────────────────────────────────────────────────────────────
 
 def estimer_source(info: "VideoInfo", ffmpeg_path: str = "ffmpeg") -> Estimation:

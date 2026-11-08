@@ -5,19 +5,27 @@ pas (IE-173).
 Un DVD converti en AVI sans redimensionnement a perdu la forme de ses pixels :
 4:3 ou 16:9, l'image ne le dit pas avec certitude. La fenêtre montre
 l'estimation de l'analyse et ce qui la fonde, puis le rendu de chaque
-hypothèse (définition affichée, format de l'image utile). Elle rend le SAR
+hypothèse (définition affichée, format de l'image utile). `V` pose la même
+image en 4:3 et en 16:9 côte à côte et l'ouvre dans la visionneuse du
+système : la réponse ne se donne pas sans voir l'image. Elle rend le SAR
 choisi — « » pour laisser les pixels carrés —, ou None.
 """
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 from rich.text import Text
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
 from core import sar as sar_mod
-from core.i18n import N_, _
+from core.i18n import N_, _, texte_erreur
 from core.scanner import VideoInfo
 from ..common import raccourcis
 
@@ -36,14 +44,6 @@ def libelle_estimation(info: VideoInfo) -> str:
     return _("{hyp} by default — nothing decides").format(hyp=e.hypothese)
 
 
-def _largeur(info: VideoInfo, sar: str) -> int:
-    """La largeur affichée, paire, comme la rendra l'encodage."""
-    if not sar:
-        return info.width
-    num, den = (int(x) for x in sar.split(":"))
-    return info.width * num // den // 2 * 2
-
-
 def _option(info: VideoInfo, hyp: str, sar: str) -> str:
     vue = info.sar_estimation.cadre if info.sar_estimation else None
     vue = vue or (info.width, info.height)
@@ -51,7 +51,23 @@ def _option(info: VideoInfo, hyp: str, sar: str) -> str:
     nom = hyp if sar else _("Leave as is (square pixels)")
     # TRANSLATORS: {ratio} is the shape of the visible picture, e.g. 1.33.
     return _("{name}  →  {w}x{h}  ·  picture {ratio}").format(
-        name=nom, w=_largeur(info, sar), h=info.height, ratio=f"{ratio:.2f}")
+        name=nom, w=sar_mod.largeur_affichee(info.width, sar), h=info.height,
+        ratio=f"{ratio:.2f}")
+
+
+def ouvrir_image(chemin: Path) -> None:
+    """Ouvre `chemin` dans la visionneuse du système."""
+    if sys.platform == "win32":
+        os.startfile(chemin)            # type: ignore[attr-defined]
+    else:
+        subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", str(chemin)],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+
+
+def _aide() -> str:
+    return raccourcis([("enter", N_("Choose")), ("v", N_("Compare")),
+                       ("escape", N_("Cancel"))])
 
 
 class SarScreen(ModalScreen["str | None"]):
@@ -74,6 +90,7 @@ class SarScreen(ModalScreen["str | None"]):
 
     BINDINGS = [
         Binding("enter",     "select", N_("Choose"), show=True,  priority=True),
+        Binding("v",         "comparer", N_("Compare"), show=True, priority=True),
         Binding("escape",    "cancel", N_("Cancel"), show=True,  priority=True),
         Binding("backspace", "cancel", N_("Back"),   show=False, priority=True),
     ]
@@ -114,8 +131,7 @@ class SarScreen(ModalScreen["str | None"]):
             yield Static(self._texte(), id="sar-texte")
             yield DataTable(id="sar-table", cursor_type="row",
                             show_header=False, zebra_stripes=True)
-            yield Static(raccourcis([("enter", N_("Choose")), ("escape", N_("Cancel"))]),
-                         id="sar-hint")
+            yield Static(_aide(), id="sar-hint")
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
@@ -131,6 +147,27 @@ class SarScreen(ModalScreen["str | None"]):
             table.add_row(t, key=str(i))
         table.move_cursor(row=actuel)
         table.focus()
+
+    def action_comparer(self) -> None:
+        """La même image en 4:3 et en 16:9, côte à côte, dans la visionneuse."""
+        self.query_one("#sar-hint", Static).update(_("Preparing the picture…"))
+        self._comparer()
+
+    @work(thread=True, exclusive=True, name="sar-comparer")
+    def _comparer(self) -> None:
+        from core import encoder
+        try:
+            chemin = sar_mod.apercu(self._info, encoder._ffmpeg_path)
+            ouvrir_image(chemin)
+            texte = _("4:3 on the left, 16:9 on the right — {path}").format(path=chemin)
+        except Exception as e:
+            lignes = texte_erreur(e).strip().splitlines()
+            texte = "⚠ " + _("Picture not produced: {cause}").format(
+                cause=lignes[-1] if lignes else type(e).__name__)
+        self.app.call_from_thread(self._aide_apres, texte)
+
+    def _aide_apres(self, texte: str) -> None:
+        self.query_one("#sar-hint", Static).update(texte + "\n" + _aide())
 
     def action_select(self) -> None:
         self.dismiss(self._choix[self.query_one(DataTable).cursor_row][1])

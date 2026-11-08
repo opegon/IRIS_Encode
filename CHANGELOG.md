@@ -1,5 +1,22 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.29] — 2026-11-08
+
+### Voir les deux proportions avant de choisir
+
+Dans la fenêtre **`P` Proportion**, **`V` Comparer** pose la même image du
+film en 4:3 (à gauche) et en 16:9 (à droite), chacune étiquetée de sa
+définition, et l'ouvre dans la visionneuse de Windows. Un rond, un visage,
+une roue disent tout de suite laquelle est juste.
+
+- L'image vient du quart du film ; parmi 150 images consécutives, la plus
+  représentative est retenue (pas un noir ni un fondu). Moins d'une seconde.
+- Elle s'écrit dans le dossier temporaire, jamais à côté de la source.
+- La fenêtre reste ouverte : on regarde, puis on choisit.
+
+Fin d'IE-173 : les sources SD sans proportion déclarée sont repérées,
+estimées, montrées et choisies.
+
 ## [v0.9.1.28] — 2026-11-08
 
 ### Choisir la proportion d'une source SD qui ne la déclare pas

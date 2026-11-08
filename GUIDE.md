@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.28
+**Version**: 0.9.1.29
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -968,7 +968,9 @@ in the **Res.** column. To set it: `T` (tracks screen) or `↵` in guided mode
 (**Decision** step), then **`P` Aspect ratio**. The window gives the estimate
 and what it rests on, then the result of each choice — **4:3**, **16:9**, or
 **leave as is** (square pixels) — with its output size and the shape of the
-visible picture. The choice is kept from one scan of the folder to the next,
+visible picture. **`V` Compare** opens the same frame of the film in
+4:3 (left) and 16:9 (right) in the Windows image viewer: a circle, a face or a
+wheel tells which one is right; the window stays open to choose. The choice is kept from one scan of the folder to the next,
 and the "⚠" goes away. Changing the aspect ratio redoes the video decision
 (the output frame depends on it): a codec chosen before has to be chosen
 again.

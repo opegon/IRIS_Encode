@@ -234,3 +234,48 @@ def test_accueil_signale_la_proportion_estimee(tmp_path, monkeypatch):
     cellules = asyncio.run(_scenario())
     assert cellules[noms[0]] == "720x480 ⚠"
     assert cellules[noms[1]] == "720x480"
+
+
+# ─── V : comparer (IE-173 3/3) ────────────────────────────────────────────────
+
+def _comparer(tmp_path, monkeypatch, apercu):
+    from core import sar
+    from tui.screens import sar as ecran_sar
+    ouvertes = []
+    monkeypatch.setattr(sar, "apercu", apercu)
+    monkeypatch.setattr(ecran_sar, "ouvrir_image", ouvertes.append)
+    info = _info(tmp_path)
+
+    async def _scenario():
+        app = IrisEncodeApp(start_path=tmp_path)
+        async with app.run_test(size=(160, 45)) as pilot:
+            await pilot.pause(0.3)
+            app.push_screen(SarScreen(info))
+            await pilot.pause(0.3)
+            await pilot.press("v")
+            for _i in range(30):
+                await pilot.pause(0.1)
+                aide = str(app.screen.query_one("#sar-hint", Static).render())
+                if ouvertes or "⚠" in aide:
+                    break
+            await pilot.pause(0.2)
+            return str(app.screen.query_one("#sar-hint", Static).render()), type(app.screen)
+
+    aide, ecran = asyncio.run(_scenario())
+    return ouvertes, aide, ecran
+
+
+def test_v_ouvre_l_image_de_comparaison(tmp_path, monkeypatch):
+    image = tmp_path / "comparaison.png"
+    ouvertes, aide, ecran = _comparer(tmp_path, monkeypatch, lambda i, f: image)
+    assert ouvertes == [image]
+    assert _("4:3 on the left, 16:9 on the right — {path}").format(path=image) in aide
+    assert ecran is SarScreen           # la fenêtre reste ouverte pour choisir
+
+
+def test_v_dit_pourquoi_l_image_manque(tmp_path, monkeypatch):
+    def _echec(i, f):
+        raise RuntimeError("Invalid data found when processing input")
+    ouvertes, aide, ecran = _comparer(tmp_path, monkeypatch, _echec)
+    assert ouvertes == []
+    assert "⚠" in aide and "Invalid data found" in aide

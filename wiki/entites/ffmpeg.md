@@ -184,6 +184,11 @@ Un sous-titre inconnu de ffmpeg (`codec_name=unknown`) : voir
   film AVI entier en 8 points en ~2 s ; une scène sombre rend une zone plus
   petite, les bandes jamais : prendre le maximum par dimension. *(mesuré,
   2026-11-07)* Voir [[source-2026-11-07-sar-manquant-the-kid]].
+- Image de comparaison : `-ss` puis `thumbnail=150` (la plus représentative
+  de 150 images), `split`, `setsar` + `scale` par moitié, `hstack` : ~0,4 s
+  sur un AVI SD. `drawtext` demande `fontfile` sous Windows, deux-points
+  échappés dans le chemin et le texte (`'C\:/Windows/Fonts/arial.ttf'`,
+  `'4\:3'`). *(mesuré, ffmpeg 8.1.3, 2026-11-08)*
 - `-hwaccel qsv` laisse les images dans la mémoire de la puce : un filtre
   processeur (`scale`) derrière échoue, « Impossible to convert between the
   formats … src: qsv ». Soit tout sur la puce (`vpp_qsv`), soit le décodage

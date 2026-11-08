@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.28
+**Version** : 0.9.1.29
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -982,7 +982,10 @@ dans la colonne **Résol.** Pour la fixer : `T` (écran des pistes) ou `↵` en
 mode assistant (étape **Décision**), puis **`P` Proportion**. La fenêtre dit
 l'estimation et ce qui la fonde, puis le rendu de chaque choix — **4:3**,
 **16:9**, ou **laisser tel quel** (pixels carrés) — avec sa définition de
-sortie et la forme de l'image utile. Le choix est gardé d'une analyse du
+sortie et la forme de l'image utile. **`V` Comparer** ouvre dans la visionneuse
+de Windows la même image du film en 4:3 (à gauche) et en 16:9 (à droite) : un
+rond, un visage ou une roue disent laquelle est juste ; la fenêtre reste
+ouverte pour choisir. Le choix est gardé d'une analyse du
 dossier à l'autre, et le « ⚠ » disparaît. Changer la proportion refait la
 décision vidéo (le cadre de sortie en dépend) : un codec choisi avant est à
 rechoisir.

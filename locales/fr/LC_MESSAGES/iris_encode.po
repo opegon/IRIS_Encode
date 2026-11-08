@@ -1475,7 +1475,7 @@ msgstr "Élargir"
 #: tui/screens/mux_run.py:46
 #: tui/screens/opensubtitles.py:57
 #: tui/screens/profile_picker.py:61
-#: tui/screens/sar.py:78
+#: tui/screens/sar.py:95
 #: tui/screens/sync.py:198
 #: tui/screens/sync.py:199
 #: tui/screens/tracks.py:144
@@ -2186,8 +2186,8 @@ msgstr "Colonnes redimensionnables — accueil, pistes, aperçu"
 #: tui/screens/output_dir.py:75
 #: tui/screens/profile_picker.py:60
 #: tui/screens/profile_picker.py:83
-#: tui/screens/sar.py:77
-#: tui/screens/sar.py:117
+#: tui/screens/sar.py:70
+#: tui/screens/sar.py:94
 #: tui/screens/value_picker.py:52
 #: tui/screens/value_picker.py:76
 #: tui/widgets/profile_form.py:231
@@ -2859,8 +2859,8 @@ msgstr "Confirmer"
 #: tui/screens/confirm.py:109
 #: tui/screens/profile_picker.py:59
 #: tui/screens/profile_picker.py:83
-#: tui/screens/sar.py:76
-#: tui/screens/sar.py:117
+#: tui/screens/sar.py:69
+#: tui/screens/sar.py:92
 #: tui/screens/value_picker.py:51
 #: tui/screens/value_picker.py:76
 msgid "Choose"
@@ -4208,23 +4208,23 @@ msgid "Stop"
 msgstr "Arrêter"
 
 #. {hyp} is an aspect ratio such as 4:3.
-#: tui/screens/sar.py:33
+#: tui/screens/sar.py:41
 #, python-brace-format
 msgid "{hyp}, probable — the film's original format"
 msgstr "{hyp}, probable — format d'origine du film"
 
-#: tui/screens/sar.py:35
+#: tui/screens/sar.py:43
 #, python-brace-format
 msgid "{hyp}, probable — black bars"
 msgstr "{hyp}, probable — bandes noires"
 
-#: tui/screens/sar.py:36
+#: tui/screens/sar.py:44
 #, python-brace-format
 msgid "{hyp} by default — nothing decides"
 msgstr "{hyp} par défaut — rien ne tranche"
 
 #: tui/screens/sar.py:51
-#: tui/screens/sar.py:108
+#: tui/screens/sar.py:125
 msgid "Leave as is (square pixels)"
 msgstr "Laisser tel quel (pixels carrés)"
 
@@ -4234,36 +4234,55 @@ msgstr "Laisser tel quel (pixels carrés)"
 msgid "{name}  →  {w}x{h}  ·  picture {ratio}"
 msgstr "{name}  →  {w}x{h}  ·  image {ratio}"
 
-#: tui/screens/sar.py:89
+#: tui/screens/sar.py:69
+#: tui/screens/sar.py:93
+msgid "Compare"
+msgstr "Comparer"
+
+#: tui/screens/sar.py:106
 #, python-brace-format
 msgid "{w}x{h} without a declared aspect ratio: the picture is distorted until it is set."
 msgstr "{w}x{h} sans proportion déclarée : l'image reste déformée tant qu'elle n'est pas fixée."
 
-#: tui/screens/sar.py:92
+#: tui/screens/sar.py:109
 msgid "Estimate"
 msgstr "Estimation"
 
-#: tui/screens/sar.py:95
+#: tui/screens/sar.py:112
 msgid "Original format"
 msgstr "Format d'origine"
 
-#: tui/screens/sar.py:98
+#: tui/screens/sar.py:115
 msgid "Visible picture"
 msgstr "Image utile"
 
-#: tui/screens/sar.py:101
+#: tui/screens/sar.py:118
 msgid "Chosen"
 msgstr "Choisie"
 
-#: tui/screens/sar.py:113
+#: tui/screens/sar.py:130
 #: tui/screens/tracks.py:143
 #: tui/screens/wizard.py:152
 msgid "Aspect ratio"
 msgstr "Proportion"
 
-#: tui/screens/sar.py:130
+#: tui/screens/sar.py:146
 msgid "(estimate)"
 msgstr "(estimation)"
+
+#: tui/screens/sar.py:153
+msgid "Preparing the picture…"
+msgstr "Préparation de l'image…"
+
+#: tui/screens/sar.py:162
+#, python-brace-format
+msgid "4:3 on the left, 16:9 on the right — {path}"
+msgstr "4:3 à gauche, 16:9 à droite — {path}"
+
+#: tui/screens/sar.py:165
+#, python-brace-format
+msgid "Picture not produced: {cause}"
+msgstr "Image non produite : {cause}"
 
 #: tui/screens/segments.py:24
 msgid "Segment"

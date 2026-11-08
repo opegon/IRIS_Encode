@@ -403,3 +403,79 @@ def test_choisir_sar_refait_le_cadre_de_l_agrandissement(tmp_path, monkeypatch):
     assert (dec.video.target_width, dec.video.target_height) == (1440, 1080)
     choisir_sar(dec, "32:27")
     assert (dec.video.target_width, dec.video.target_height) == (1920, 1080)
+
+
+# ─── L'aperçu côte à côte (IE-173 3/3) ────────────────────────────────────────
+
+def test_largeur_affichee():
+    assert [sar.largeur_affichee(720, s) for s in ("8:9", "32:27", "16:15", "64:45", "")] == [
+        640, 852, 768, 1024, 720]
+
+
+def test_build_apercu_pose_les_deux_hypotheses(tmp_path):
+    info = _info(tmp_path)
+    info.decodeur = "hevc"
+    cmd = sar.build_apercu(info, tmp_path / "a.png", "ff", Path("C:/Windows/Fonts/arial.ttf"))
+    graphe = cmd[cmd.index("-filter_complex") + 1]
+    assert cmd[0] == "ff" and cmd[cmd.index("-ss") + 1] == "1500.0"
+    assert cmd.index("-c:v") < cmd.index("-i") and cmd[-1] == str(tmp_path / "a.png")
+    assert "thumbnail=" in graphe and "hstack=inputs=2" in graphe
+    gauche, droite = graphe.split(";")[1:3]
+    assert "setsar=8/9,scale=640:480" in gauche and "text='4\:3  640x480'" in gauche
+    assert "setsar=32/27,scale=852:480" in droite and "text='16\:9  852x480'" in droite
+    assert "fontfile='C\:/Windows/Fonts/arial.ttf'" in gauche
+
+
+def test_build_apercu_sans_police_ni_etiquette(tmp_path):
+    info = _info(tmp_path, 720, 576)
+    graphe = sar.build_apercu(info, tmp_path / "a.png")[-6]
+    assert "drawtext" not in graphe
+    assert "scale=768:576" in graphe and "scale=1024:576" in graphe
+
+
+class _Run:
+    """Faux `subprocess.run` : rend les codes donnés, écrit l'image sur 0."""
+    def __init__(self, codes):
+        self.codes, self.cmds = list(codes), []
+
+    def __call__(self, cmd, **k):
+        from types import SimpleNamespace
+        self.cmds.append(cmd)
+        code = self.codes.pop(0)
+        if code == 0:
+            Path(cmd[-1]).write_bytes(b"png")
+        return SimpleNamespace(returncode=code, stderr="No such filter: 'drawtext'\n")
+
+
+def test_apercu_refait_sans_etiquettes_si_drawtext_manque(tmp_path, monkeypatch):
+    monkeypatch.setattr(sar, "chemin_apercu", lambda i: tmp_path / "a.png")
+    monkeypatch.setattr(sar, "_POLICE", Path(__file__))     # une police « présente »
+    faux = _Run([1, 0])
+    monkeypatch.setattr(sar.subprocess, "run", faux)
+    assert sar.apercu(_info(tmp_path)) == tmp_path / "a.png"
+    graphes = [c[c.index("-filter_complex") + 1] for c in faux.cmds]
+    assert "drawtext" in graphes[0] and "drawtext" not in graphes[1]
+
+
+def test_apercu_qui_echoue_ne_rend_pas_une_ancienne_image(tmp_path, monkeypatch):
+    sortie = tmp_path / "a.png"
+    sortie.write_bytes(b"ancienne")
+    monkeypatch.setattr(sar, "chemin_apercu", lambda i: sortie)
+    monkeypatch.setattr(sar, "_POLICE", tmp_path / "absente.ttf")
+    monkeypatch.setattr(sar.subprocess, "run", _Run([1]))
+    with pytest.raises(RuntimeError, match="drawtext"):
+        sar.apercu(_info(tmp_path))
+    assert not sortie.exists()
+
+
+@pytest.mark.skipif(not LE_KID.exists() or not shutil.which("ffmpeg"),
+                    reason="The Kid ou ffmpeg absent")
+def test_apercu_reel_sur_the_kid(tmp_path, monkeypatch):
+    import subprocess
+    monkeypatch.setattr(sar, "chemin_apercu", lambda i: tmp_path / "kid.png")
+    info = VideoInfo(path=LE_KID, width=720, height=480, bitrate=0, codec="msmpeg4v3",
+                     duration=6237.0, frame_count=0, dv_profile=None)
+    p = sar.apercu(info, shutil.which("ffmpeg"))
+    dims = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=width,height",
+                           "-of", "csv=p=0", str(p)], capture_output=True, text=True).stdout
+    assert dims.strip() == "1508,480"      # 640 + 16 + 852

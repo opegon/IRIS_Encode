@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.29
+**Version**: 0.9.1.30
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -723,9 +723,19 @@ kept). A TrueHD track and its AC-3 core give a single track in the output.
 
 A DVD, like a 1080i TV recording, is often **interlaced**: when the source says
 so, the encode deinterlaces it (bwdif), at the same frame rate. The decision
-(guided mode, `F1` preview) shows it: "deinterlaced". A source that calls
+(guided mode, `F1` preview) shows it: "deinterlaced". An HD source that calls
 itself progressive is left alone — some TV recordings are wrong about it on
 part of their frames (ads, trailers), and those parts keep their comb lines.
+
+An SD source (DVD, AVI, up to 576 lines) is checked on the picture itself
+during the scan, whatever it declares: about a second when it has no comb
+lines, about ten when it does. A **telecined film** — a film put on NTSC
+video by repeating fields — gets its whole frames back (**inverse
+telecine**): sharper than deinterlacing, which guesses every other line. The
+decision says "inverse telecine". The frame rate stays the source's; only a
+regular 3:2 pulldown over the whole file is brought back to 23.976 fps. A
+silent film transferred at its projection speed (The Kid: 20 to 22.5 frames
+per second) keeps 29.97 fps, repeated frames included.
 
 ---
 

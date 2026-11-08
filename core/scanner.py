@@ -551,6 +551,9 @@ class VideoInfo:
     sar_estimation:  Optional[Any]       = None
     # Le SAR imposé a été choisi par l'utilisateur, pas seulement estimé.
     sar_confirme:    bool                = False
+    # Nature de l'entrelacement mesurée sur l'image (`entrelacement.Analyse`,
+    # IE-174) : sources SD seulement, None sinon ou si la mesure a échoué.
+    entrelacement:   Optional[Any]       = None
     # Format de pixels du flux (`pix_fmt`) : « yuv420p10le »… « » si inconnu.
     # Il dit si le décodeur Quick Sync sait lire la source (IE-147).
     pix_fmt:         str                 = ""
@@ -1117,6 +1120,7 @@ def scan(path: Path) -> VideoInfo:
         titre=titre_dvd,
     )
     _estimer_sar(info)
+    _analyser_entrelacement(info)
     return info
 
 
@@ -1149,6 +1153,32 @@ def _estimer_sar(info: VideoInfo) -> None:
 
 # Estimations du SAR par (chemin, taille, date) : voir `_estimer_sar`.
 _ESTIMATIONS_SAR: dict[tuple, Any] = {}
+
+
+def _analyser_entrelacement(info: VideoInfo) -> None:
+    """Une source SD (IE-174) : télécinéma, vraie vidéo entrelacée ou image
+    progressive, d'après l'image. Coût : ~6 s de ffmpeg pour ces seuls
+    fichiers, une fois par (chemin, taille, date)."""
+    from . import encoder, entrelacement
+    if not entrelacement.a_analyser(info):
+        return
+    try:
+        st = info.lecture.stat()
+    except OSError:
+        return
+    cle = (str(info.lecture), st.st_size, st.st_mtime_ns)
+    if cle not in _ANALYSES_ENTRELACEMENT:
+        try:
+            analyse = entrelacement.analyser(info, encoder._ffmpeg_path)
+        except Exception as e:
+            _log.warning("Interlacing analysis failed for %s: %s", info.path, e)
+            analyse = None
+        _ANALYSES_ENTRELACEMENT[cle] = analyse
+    info.entrelacement = _ANALYSES_ENTRELACEMENT[cle]
+
+
+# Analyses de l'entrelacement par (chemin, taille, date).
+_ANALYSES_ENTRELACEMENT: dict[tuple, Any] = {}
 
 
 def _scan_titre(mpls: Path) -> VideoInfo:

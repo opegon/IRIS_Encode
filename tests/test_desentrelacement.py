@@ -6,6 +6,9 @@ Arbitrages de l'utilisateur : la décision suit les **marqueurs** du flux
 source (bwdif `send_frame`). `deint=interlaced` laisse intactes les images
 qu'une source mixte marque progressives.
 
+Depuis IE-174, l'image décide pour les sources SD (`tests/test_entrelacement.py`) ;
+ces tests-ci gardent la règle des marqueurs, qui vaut sans analyse.
+
 Mesuré sur le DVD d'essai (`field_order=tt`) : 30 s encodées en H.264 NVENC à
 3 Mb/s, l'image sort sans peignes ; `idet` image par image n'en trouve plus
 qu'une sur 899 (686 sans le filtre).

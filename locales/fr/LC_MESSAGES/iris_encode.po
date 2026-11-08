@@ -113,155 +113,155 @@ msgstr "copie"
 msgid "SRT (OCR)"
 msgstr "SRT (OCR)"
 
-#: core/decision.py:960
+#: core/decision.py:973
 msgid "HDR source"
 msgstr "source HDR"
 
-#: core/decision.py:963
+#: core/decision.py:976
 msgid "needs ffmpeg with libplacebo"
 msgstr "demande ffmpeg avec libplacebo"
 
-#: core/decision.py:1011
+#: core/decision.py:1024
 #, python-brace-format
 msgid "{reason} · no upscaling: {why}"
 msgstr "{reason} · pas d'agrandissement : {why}"
 
-#: core/decision.py:1021
+#: core/decision.py:1034
 #, python-brace-format
 msgid "Upscale {width}x{height} → {target_width}x{target_height} (super-resolution ×{factor:.2f}, two passes)"
 msgstr "Agrandi {width}x{height} → {target_width}x{target_height} (super-résolution ×{factor:.2f}, deux passes)"
 
-#: core/decision.py:1024
+#: core/decision.py:1037
 #, python-brace-format
 msgid "Upscale {width}x{height} → {target_width}x{target_height} (super-resolution ×{factor:.2f})"
 msgstr "Agrandi {width}x{height} → {target_width}x{target_height} (super-résolution ×{factor:.2f})"
 
-#: core/decision.py:1057
+#: core/decision.py:1070
 #, python-brace-format
 msgid "{dv} → {target}: needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/)"
 msgstr "{dv} → {target} : demande l'outil Dolby Vision (ffmpeg avec libplacebo, dans ./bin/dv/)"
 
-#: core/decision.py:1096
+#: core/decision.py:1109
 #, python-brace-format
 msgid "{reason} · DV preserved, RPU reinjected"
 msgstr "{reason} · DV préservé, RPU réinjecté"
 
-#: core/decision.py:1098
+#: core/decision.py:1111
 #, python-brace-format
 msgid "{reason} · DV kept → video copied"
 msgstr "{reason} · DV conservé → vidéo copiée"
 
-#: core/decision.py:1107
+#: core/decision.py:1120
 #, python-brace-format
 msgid "Unknown bitrate → {target}k target"
 msgstr "Débit inconnu → cible {target}k"
 
-#: core/decision.py:1120
+#: core/decision.py:1133
 #, python-brace-format
 msgid "Bitrate {bitrate}k > {target}k target +{tolerance}%"
 msgstr "Débit {bitrate}k > {target}k cible +{tolerance}%"
 
-#: core/decision.py:1134
+#: core/decision.py:1147
 #, python-brace-format
 msgid "Resolution {width}x{height} > {max_width}x{max_height}"
 msgstr "Résolution {width}x{height} > {max_width}x{max_height}"
 
-#: core/decision.py:1148
+#: core/decision.py:1161
 #, python-brace-format
 msgid "Codec {codec} not supported by the playback chain"
 msgstr "Codec {codec} non lu par la chaîne"
 
-#: core/decision.py:1164
+#: core/decision.py:1177
 #, python-brace-format
 msgid "{dv} → HDR10 without re-encoding"
 msgstr "{dv} → HDR10 sans réencodage"
 
-#: core/decision.py:1175
+#: core/decision.py:1188
 #, python-brace-format
 msgid "Bitrate within target ±{tolerance}%, resolution OK, codec {codec}"
 msgstr "Débit dans la cible ±{tolerance}%, résolution OK, codec {codec}"
 
-#: core/decision.py:1178
+#: core/decision.py:1191
 #, python-brace-format
 msgid "Bitrate OK, resolution OK, codec {codec}"
 msgstr "Débit OK, résolution OK, codec {codec}"
 
-#: core/decision.py:1351
+#: core/decision.py:1364
 msgid "manual selection"
 msgstr "sélection manuelle"
 
-#: core/decision.py:1354
+#: core/decision.py:1367
 #, python-brace-format
 msgid "replaced by its {codec} core (track {index})"
 msgstr "remplacée par son cœur {codec} (piste {index})"
 
-#: core/decision.py:1358
+#: core/decision.py:1371
 #, python-brace-format
 msgid "core of track {index}, which already carries it"
 msgstr "cœur de la piste {index}, qui le porte déjà"
 
-#: core/decision.py:1362
+#: core/decision.py:1375
 #, python-brace-format
 msgid "original track (index {index})"
 msgstr "piste originale (index {index})"
 
-#: core/decision.py:1367
+#: core/decision.py:1380
 msgid "language unknown → kept"
 msgstr "langue inconnue → gardée"
 
-#: core/decision.py:1370
+#: core/decision.py:1383
 #, python-brace-format
 msgid "language {language}"
 msgstr "langue {language}"
 
-#: core/decision.py:1373
+#: core/decision.py:1386
 #, python-brace-format
 msgid "language {language} not kept"
 msgstr "langue {language} non retenue"
 
 #. "lossless", "copy" and the profile key preserve_hd_audio stay in English (glossary).
-#: core/decision.py:1408
+#: core/decision.py:1421
 #, python-brace-format
 msgid "{reason} · lossless + preserve_hd_audio → copy"
 msgstr "{reason} · lossless + preserve_hd_audio → copy"
 
-#: core/decision.py:1415
+#: core/decision.py:1428
 #, python-brace-format
 msgid "{reason} · lossless → {codec}"
 msgstr "{reason} · lossless → {codec}"
 
-#: core/decision.py:1424
+#: core/decision.py:1437
 #, python-brace-format
 msgid "{reason} · {codec} compatible → copy"
 msgstr "{reason} · {codec} compatible → copy"
 
-#: core/decision.py:1432
+#: core/decision.py:1445
 #, python-brace-format
 msgid "{reason} · → {codec}"
 msgstr "{reason} · → {codec}"
 
-#: core/decision.py:1454
+#: core/decision.py:1467
 #, python-brace-format
 msgid "Cannot read the audio track of “{file}” added to this file: the profile's audio rule cannot be applied to it."
 msgstr "Impossible de lire la piste audio de « {file} » greffée sur ce fichier : la règle audio du profil ne peut pas s'y appliquer."
 
-#: core/decision.py:1459
+#: core/decision.py:1472
 msgid "added track"
 msgstr "piste greffée"
 
-#: core/decision.py:1725
+#: core/decision.py:1738
 msgid "H264 does not carry HDR: this file will be converted to SDR (tone mapping, slower). Choose HEVC to keep HDR."
 msgstr "H264 ne porte pas le HDR : ce fichier sera converti en SDR (tone mapping, plus lent). Choisissez HEVC pour garder le HDR."
 
-#: core/decision.py:1760
+#: core/decision.py:1773
 msgid "Forced manually (was SKIP)"
 msgstr "Forcé manuellement (était SKIP)"
 
-#: core/decision.py:1762
+#: core/decision.py:1775
 msgid "Forced manually (was DV removal)"
 msgstr "Forcé manuellement (était retrait DV)"
 
-#: core/decision.py:1891
+#: core/decision.py:1904
 #, python-brace-format
 msgid "{reason} · {tracks} for the playback chain → remux"
 msgstr "{reason} · {tracks} pour la chaîne de lecture → remux"
@@ -387,50 +387,50 @@ msgstr "Windows a refusé d'enregistrer l'identité (erreur {code})."
 msgid "Windows refused to remove the identity (error {code})."
 msgstr "Windows a refusé de retirer l'identité (erreur {code})."
 
-#: core/encoder.py:371
+#: core/encoder.py:370
 msgid "This graphics card cannot encode this format. AV1 with NVENC needs an RTX 40 or newer; HEVC and H264 remain available."
 msgstr "Cette carte graphique ne sait pas encoder ce format. L'AV1 par NVENC demande une RTX 40 ou plus récente ; le HEVC et le H264 restent disponibles."
 
-#: core/encoder.py:374
+#: core/encoder.py:373
 msgid "NVENC refused: this ffmpeg needs a newer NVIDIA driver than the one installed. Update the driver, or use an ffmpeg built for an older NVENC API."
 msgstr "NVENC refusé : ce ffmpeg exige un pilote NVIDIA plus récent que celui installé. Mettre à jour le pilote, ou prendre un ffmpeg compilé pour une API NVENC plus ancienne."
 
-#: core/encoder.py:378
+#: core/encoder.py:377
 msgid "The encoder could not be opened on this computer. If it is AV1: NVENC only encodes it from the RTX 40 series."
 msgstr "L'encodeur n'a pas pu s'ouvrir sur cette machine. Si c'est de l'AV1 : NVENC ne l'encode qu'à partir des RTX 40."
 
-#: core/encoder.py:381
+#: core/encoder.py:380
 msgid "The NVIDIA driver cannot be found. Without it, no accelerated encoding is possible."
 msgstr "Le pilote NVIDIA est introuvable. Sans lui, aucun encodage accéléré n'est possible."
 
-#: core/encoder.py:384
+#: core/encoder.py:383
 msgid "The requested bitrate is outside what the encoder accepts. Choose a value within the range it announces."
 msgstr "Le débit demandé sort de ce que l'encodeur accepte. Choisissez une valeur dans la plage qu'il annonce."
 
-#: core/encoder.py:387
+#: core/encoder.py:386
 msgid "The chosen encoder does not support this channel layout or this pixel format."
 msgstr "L'encodeur choisi ne prend pas cette disposition de canaux ou ce format de pixels."
 
-#: core/encoder.py:390
+#: core/encoder.py:389
 msgid "The destination disk is full."
 msgstr "Le disque de destination est plein."
 
-#: core/encoder.py:392
+#: core/encoder.py:391
 msgid "Writing to this location is not allowed."
 msgstr "Écriture refusée à cet emplacement."
 
-#: core/encoder.py:990
+#: core/encoder.py:989
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Empty suffix and same container — encoding refused to avoid corrupting the source file."
 msgstr "Chemin de sortie identique à la source ({path}). Suffixe vide et conteneur identique — encodage refusé pour éviter la corruption du fichier source."
 
-#: core/encoder.py:1010
+#: core/encoder.py:1009
 #, python-brace-format
 msgid "{dv} → HDR10/SDR needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/): without it, the colors come out wrong."
 msgstr "{dv} → HDR10/SDR demande l'outil Dolby Vision (ffmpeg avec libplacebo, dans ./bin/dv/) : sans lui, les couleurs sortent fausses."
 
 #. -itsoffset is an ffmpeg option, keep it as is.
-#: core/encoder.py:1081
+#: core/encoder.py:1080
 #, python-brace-format
 msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
 msgstr "La piste « {track} » demande un facteur d'étirement, que ffmpeg ne sait pas appliquer en une passe (-itsoffset ne fait qu'un décalage constant). mkvmerge sait le faire : installez-le pour que la greffe passe par lui."
@@ -913,7 +913,7 @@ msgstr "Mise à jour de {tool} échouée — version précédente conservée."
 
 #: core/preview.py:68
 #: core/preview.py:116
-#: tui/screens/dryrun.py:530
+#: tui/screens/dryrun.py:532
 msgid "mpv is not installed."
 msgstr "mpv n'est pas installé."
 
@@ -1525,7 +1525,7 @@ msgstr "Preset"
 
 #: tui/common.py:567
 #: tui/screens/dryrun.py:102
-#: tui/screens/dryrun.py:467
+#: tui/screens/dryrun.py:469
 #: tui/widgets/profile_form.py:293
 msgid "Upscale"
 msgstr "Agrandir"
@@ -2059,7 +2059,7 @@ msgstr "Greffer une piste venue d'ailleurs, et la remettre à l'heure."
 #: tui/screens/browser.py:538
 #: tui/screens/browser.py:674
 #: tui/screens/browser.py:1695
-#: tui/screens/dryrun.py:327
+#: tui/screens/dryrun.py:329
 #: tui/screens/mux_run.py:43
 #: tui/screens/sync.py:194
 #: tui/screens/tracks.py:135
@@ -2111,7 +2111,7 @@ msgstr "Créer et régler les profils d'encodage."
 #: tui/screens/aide.py:409
 #: tui/screens/browser.py:410
 #: tui/screens/wizard.py:81
-#: tui/screens/wizard.py:325
+#: tui/screens/wizard.py:332
 msgid "Decision"
 msgstr "Décision"
 
@@ -2433,13 +2433,13 @@ msgstr "Débit"
 #: tui/screens/browser.py:408
 #: tui/screens/donor_picker.py:270
 #: tui/screens/dryrun.py:98
-#: tui/screens/dryrun.py:430
+#: tui/screens/dryrun.py:432
 #: tui/screens/tracks.py:138
 #: tui/screens/tracks.py:154
 #: tui/screens/tracks.py:715
 #: tui/screens/wizard.py:150
-#: tui/screens/wizard.py:322
-#: tui/screens/wizard.py:534
+#: tui/screens/wizard.py:329
+#: tui/screens/wizard.py:541
 msgid "Codec"
 msgstr "Codec"
 
@@ -2544,7 +2544,7 @@ msgid "Filter: {filter} ({hidden})"
 msgstr "Filtre : {filter} ({hidden})"
 
 #: tui/screens/browser.py:728
-#: tui/screens/dryrun.py:329
+#: tui/screens/dryrun.py:331
 #: tui/screens/tracks.py:514
 #, python-brace-format
 msgid "Col: {column}"
@@ -2915,7 +2915,7 @@ msgstr "Sélectionner"
 #: tui/screens/donor_picker.py:268
 #: tui/screens/sync.py:320
 #: tui/screens/tracks.py:272
-#: tui/screens/wizard.py:321
+#: tui/screens/wizard.py:328
 msgid "Track"
 msgstr "Piste"
 
@@ -2928,13 +2928,13 @@ msgstr "Type"
 #: tui/screens/opensubtitles.py:84
 #: tui/screens/sync.py:59
 #: tui/screens/tracks.py:275
-#: tui/screens/wizard.py:323
+#: tui/screens/wizard.py:330
 msgid "Language"
 msgstr "Langue"
 
 #: tui/screens/donor_picker.py:272
 #: tui/screens/sync.py:60
-#: tui/screens/wizard.py:324
+#: tui/screens/wizard.py:331
 msgid "Name"
 msgstr "Nom"
 
@@ -2967,114 +2967,118 @@ msgid "Resolution"
 msgstr "Résolution"
 
 #: tui/screens/dryrun.py:210
+msgid "inverse telecine"
+msgstr "télécinéma inverse"
+
+#: tui/screens/dryrun.py:212
 msgid "deinterlaced"
 msgstr "désentrelacé"
 
 #. "st" = subtitle track(s) left out; keep it short.
-#: tui/screens/dryrun.py:223
+#: tui/screens/dryrun.py:225
 msgid "st"
 msgstr "st"
 
 #. number of image subtitles converted to text by character recognition; keep it short.
-#: tui/screens/dryrun.py:227
+#: tui/screens/dryrun.py:229
 #, python-brace-format
 msgid "OCR {count}"
 msgstr "OCR {count}"
 
-#: tui/screens/dryrun.py:317
+#: tui/screens/dryrun.py:319
 #, python-brace-format
 msgid "Source: {size}"
 msgstr "Source : {size}"
 
-#: tui/screens/dryrun.py:318
+#: tui/screens/dryrun.py:320
 #, python-brace-format
 msgid "Estimated: {size}"
 msgstr "Estimé : {size}"
 
-#: tui/screens/dryrun.py:327
+#: tui/screens/dryrun.py:329
 #, python-brace-format
 msgid "{count} file selected"
 msgid_plural "{count} files selected"
 msgstr[0] "{count} fichier sélectionné"
 msgstr[1] "{count} fichiers sélectionnés"
 
-#: tui/screens/dryrun.py:333
+#: tui/screens/dryrun.py:335
 #, python-brace-format
 msgid "Comparison sample: {percent}% — {key} cancels"
 msgstr "Extrait de comparaison : {percent}% — {key} annule"
 
-#: tui/screens/dryrun.py:337
+#: tui/screens/dryrun.py:339
 #, python-brace-format
 msgid "To encode: {counts}"
 msgstr "À encoder : {counts}"
 
-#: tui/screens/dryrun.py:398
+#: tui/screens/dryrun.py:400
 msgid "Chosen in the dry run"
 msgstr "Choisi dans l'aperçu"
 
-#: tui/screens/dryrun.py:408
+#: tui/screens/dryrun.py:410
 msgid "Bitrate chosen in the dry run"
 msgstr "Débit choisi dans l'aperçu"
 
-#: tui/screens/dryrun.py:445
+#: tui/screens/dryrun.py:447
 msgid "No upscaling"
 msgstr "Pas d'agrandissement"
 
-#: tui/screens/dryrun.py:445
+#: tui/screens/dryrun.py:447
 msgid "One pass"
 msgstr "Une passe"
 
-#: tui/screens/dryrun.py:445
+#: tui/screens/dryrun.py:447
 msgid "Two passes (slow)"
 msgstr "Deux passes (lent)"
 
-#: tui/screens/dryrun.py:458
-#: tui/screens/dryrun.py:505
+#: tui/screens/dryrun.py:460
+#: tui/screens/dryrun.py:507
 #, python-brace-format
 msgid "Not upscaled — {reason}"
 msgstr "Pas agrandi — {reason}"
 
-#: tui/screens/dryrun.py:462
+#: tui/screens/dryrun.py:464
 msgid "Two passes: 4 to 5 times slower than one pass — about 5 h 30 for a 2-hour movie on an Intel integrated GPU."
 msgstr "Deux passes : 4 à 5 fois plus lent qu'une passe — environ 5 h 30 pour un film de 2 h sur un GPU Intel intégré."
 
-#: tui/screens/dryrun.py:496
+#: tui/screens/dryrun.py:498
 msgid "Comparison sample cancelled."
 msgstr "Extrait de comparaison annulé."
 
-#: tui/screens/dryrun.py:524
+#: tui/screens/dryrun.py:526
 #, python-brace-format
 msgid "Building a {length} comparison sample from {start} (about {wait}) — one pass on the left, two passes on the right."
 msgstr "Fabrication d'un extrait de comparaison de {length} à partir de {start} (environ {wait}) — une passe à gauche, deux passes à droite."
 
-#: tui/screens/dryrun.py:569
+#: tui/screens/dryrun.py:571
 #: tui/screens/sync.py:1141
 #, python-brace-format
 msgid "Cannot build the sample: {error}"
 msgstr "Extrait impossible : {error}"
 
-#: tui/screens/dryrun.py:574
+#: tui/screens/dryrun.py:576
 #: tui/screens/sync.py:1158
 #, python-brace-format
 msgid "Sample ready (mpv missing): {path}"
 msgstr "Extrait prêt (mpv absent) : {path}"
 
-#: tui/screens/dryrun.py:578
+#: tui/screens/dryrun.py:580
 msgid "◀ one pass  ·  two passes ▶"
 msgstr "◀ une passe  ·  deux passes ▶"
 
-#: tui/screens/dryrun.py:580
+#: tui/screens/dryrun.py:582
 #: tui/screens/sync.py:1150
 #, python-brace-format
 msgid "mpv could not open it: {error}"
 msgstr "mpv n'a pas pu l'ouvrir : {error}"
 
-#: tui/screens/dryrun.py:583
+#: tui/screens/dryrun.py:585
 #, python-brace-format
 msgid "Sample opened in mpv — choose with {key}."
 msgstr "Extrait ouvert dans mpv — choisissez avec {key}."
 
-#: tui/screens/dryrun.py:606
+#: tui/screens/dryrun.py:608
 #, python-brace-format
 msgid "Nothing to encode: no kept line needs re-encoding — {space} keeps a line, {codec_key} changes the codec of a SKIP line."
 msgstr "Rien à encoder : aucune ligne retenue n'est à réencoder — {space} retient une ligne, {codec_key} change le codec d'une ligne SKIP."
@@ -4414,7 +4418,7 @@ msgid "Measurement in progress"
 msgstr "Mesure en cours"
 
 #: tui/screens/sync.py:362
-#: tui/screens/wizard.py:389
+#: tui/screens/wizard.py:396
 msgid "measured"
 msgstr "mesuré"
 
@@ -4782,7 +4786,7 @@ msgstr "télétexte — non transportable"
 
 #. {kind} is "audio" or "subtitle".
 #: tui/screens/tracks.py:382
-#: tui/screens/wizard.py:345
+#: tui/screens/wizard.py:352
 #, python-brace-format
 msgid "added {kind}"
 msgstr "greffe {kind}"
@@ -4917,7 +4921,7 @@ msgid "What will be produced"
 msgstr "Ce qui sera produit"
 
 #: tui/screens/wizard.py:288
-#: tui/screens/wizard.py:423
+#: tui/screens/wizard.py:430
 msgid "Output"
 msgstr "Sortie"
 
@@ -4936,123 +4940,136 @@ msgstr "Proportion : {name}, choisie"
 msgid "Aspect ratio not declared: {estimate} — {key} to choose"
 msgstr "Proportion non déclarée : {estimate} — {key} pour choisir"
 
+#: tui/screens/wizard.py:312
+msgid "frame rate brought back to 23.976 fps"
+msgstr "cadence ramenée à 23,976 i/s"
+
 #: tui/screens/wizard.py:313
+msgid "frame rate kept"
+msgstr "cadence conservée"
+
+#: tui/screens/wizard.py:315
+#, python-brace-format
+msgid "Telecined film: fields matched back into whole frames (inverse telecine), {rate}."
+msgstr "Film télécinéma : demi-images réappariées en images entières (télécinéma inverse), {rate}."
+
+#: tui/screens/wizard.py:320
 msgid "Interlaced source: deinterlaced (bwdif), frame rate kept."
 msgstr "Source entrelacée : désentrelacée (bwdif), cadence conservée."
 
-#: tui/screens/wizard.py:367
+#: tui/screens/wizard.py:374
 msgid "Tracks from another file"
 msgstr "Pistes venues d'un autre fichier"
 
-#: tui/screens/wizard.py:369
+#: tui/screens/wizard.py:376
 msgid "Measuring the offset…"
 msgstr "Mesure du décalage en cours…"
 
-#: tui/screens/wizard.py:371
+#: tui/screens/wizard.py:378
 msgid "None so far."
 msgstr "Aucune pour l'instant."
 
-#: tui/screens/wizard.py:372
+#: tui/screens/wizard.py:379
 msgid "A dubbed track, subtitles: present the file that carries them. Guided mode never looks for one on its own — a wrong match is only heard afterwards."
 msgstr "Une VF, des sous-titres : présentez le fichier qui les porte. L'assistant n'en cherche aucun tout seul — un mauvais appariement ne s'entend qu'après coup."
 
-#: tui/screens/wizard.py:388
+#: tui/screens/wizard.py:395
 msgid "not measured"
 msgstr "non mesuré"
 
-#: tui/screens/wizard.py:390
+#: tui/screens/wizard.py:397
 msgid "set by hand"
 msgstr "réglé à la main"
 
-#: tui/screens/wizard.py:391
+#: tui/screens/wizard.py:398
 msgid "taken from the audio track"
 msgstr "repris de la piste audio"
 
-#: tui/screens/wizard.py:422
+#: tui/screens/wizard.py:429
 msgid "Ready"
 msgstr "Prêt"
 
-#: tui/screens/wizard.py:425
+#: tui/screens/wizard.py:432
 msgid "Recommended: mux. Nothing needs re-encoding, the tracks are added by mkvmerge and the picture copied as it is — a few minutes instead of a few hours."
 msgstr "Recommandé : muxer. Rien n'est à réencoder, les pistes sont greffées par mkvmerge et l'image recopiée telle quelle — quelques minutes au lieu de quelques heures."
 
-#: tui/screens/wizard.py:430
+#: tui/screens/wizard.py:437
 msgid "Recommended: remux. The picture is copied as it is; only the tracks the playback chain cannot read are converted."
 msgstr "Recommandé : remux. L'image est recopiée telle quelle ; seules les pistes que la chaîne de lecture ne lit pas sont converties."
 
-#: tui/screens/wizard.py:434
+#: tui/screens/wizard.py:441
 #, python-brace-format
 msgid "Nothing needs re-encoding by default. {key} forces the encode: {video}, at the source bitrate."
 msgstr "Rien n'est à réencoder d'office. {key} force l'encodage : {video}, au débit de la source."
 
-#: tui/screens/wizard.py:438
+#: tui/screens/wizard.py:445
 #, python-brace-format
 msgid "Recommended: encode. {video}."
 msgstr "Recommandé : encoder. {video}."
 
-#: tui/screens/wizard.py:441
+#: tui/screens/wizard.py:448
 msgid "With no track to add, the mux would have nothing to do."
 msgstr "Sans piste à greffer, le mux n'aurait rien à faire."
 
-#: tui/screens/wizard.py:444
+#: tui/screens/wizard.py:451
 #, python-brace-format
 msgid "Both remain available: {mux_key} mux, {encode_key} encode."
 msgstr "Les deux restent offerts : {mux_key} muxer, {encode_key} encoder."
 
-#: tui/screens/wizard.py:455
+#: tui/screens/wizard.py:462
 msgid "Operation complete."
 msgstr "Opération terminée."
 
-#: tui/screens/wizard.py:525
+#: tui/screens/wizard.py:532
 msgid "Chosen in guided mode"
 msgstr "Choisi dans l'assistant"
 
-#: tui/screens/wizard.py:551
+#: tui/screens/wizard.py:558
 msgid "Bitrate chosen in guided mode"
 msgstr "Débit choisi dans l'assistant"
 
-#: tui/screens/wizard.py:595
+#: tui/screens/wizard.py:602
 #, python-brace-format
 msgid "No track added yet — {key} to present a file."
 msgstr "Aucune piste ajoutée — {key} pour présenter un fichier."
 
-#: tui/screens/wizard.py:653
+#: tui/screens/wizard.py:660
 #, python-brace-format
 msgid "Measurement {current}/{total} — {language}"
 msgstr "Mesure {current}/{total} — {language}"
 
-#: tui/screens/wizard.py:668
+#: tui/screens/wizard.py:675
 #, python-brace-format
 msgid "{file}: cannot measure ({error})"
 msgstr "{file} : mesure impossible ({error})"
 
-#: tui/screens/wizard.py:674
+#: tui/screens/wizard.py:681
 #, python-brace-format
 msgid "{key} to check"
 msgstr "{key} pour vérifier"
 
-#: tui/screens/wizard.py:682
+#: tui/screens/wizard.py:689
 #, python-brace-format
 msgid "copied to {count} subtitle"
 msgid_plural "copied to {count} subtitles"
 msgstr[0] "reporté sur {count} sous-titre"
 msgstr[1] "reporté sur {count} sous-titres"
 
-#: tui/screens/wizard.py:692
+#: tui/screens/wizard.py:699
 #, python-brace-format
 msgid "{language}: {reason} — offset left at 0, check it before starting"
 msgstr "{language} : {reason} — décalage laissé à 0, à vérifier avant de lancer"
 
-#: tui/screens/wizard.py:722
+#: tui/screens/wizard.py:729
 #, python-brace-format
 msgid "Nothing to mux: no external track to add. {key} to encode."
 msgstr "Rien à muxer : aucune piste externe à greffer. {key} pour encoder."
 
-#: tui/screens/wizard.py:737
+#: tui/screens/wizard.py:744
 msgid "Done — the tracks have been added."
 msgstr "Terminé — les pistes ont été greffées."
 
-#: tui/screens/wizard.py:739
+#: tui/screens/wizard.py:746
 msgid "The operation produced no file. Go back to the previous step."
 msgstr "L'opération n'a produit aucun fichier. Revenez à l'étape précédente."
 

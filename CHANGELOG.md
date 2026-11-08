@@ -1,5 +1,28 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.30] — 2026-11-08
+
+### Films télécinéma : les images du film, sans peignes
+
+Un film passé en vidéo NTSC (télécinéma) répète des demi-images : vu tel quel,
+presque chaque image montre des peignes. IRIS les réapparie en images
+entières (**télécinéma inverse**) au lieu de les désentrelacer, ce qui devinait
+une ligne sur deux et perdait la moitié de la définition verticale.
+
+- **L'image décide, plus seulement les marqueurs** : toute source SD
+  (jusqu'à 576 lignes, 25 ou 29,97 i/s) est sondée à l'analyse, en six
+  passages. Une source sans peignes : ~1 s, rien à faire. Une source en
+  peignes : ~8 s de plus, pour trancher entre télécinéma et vraie vidéo
+  entrelacée. Une seule fois par fichier et par session.
+- **The Kid** (AVI, ne déclarait rien) n'était pas désentrelacé du tout : ses
+  peignes passaient dans l'encodage. Il sort maintenant en images entières.
+- **Un DVD qui se dit progressif à tort** (Cure in Orange, une vraie vidéo
+  entrelacée) est désentrelacé (bwdif, toutes les images).
+- **La cadence est gardée**, doublons compris : un film muet transféré à
+  sa vitesse de projection (20 à 22,5 i/s) n'a pas de diviseur juste. Seul
+  un pulldown 3:2 régulier sur tout le fichier est ramené à 23,976 i/s.
+- L'assistant et le Dry run l'affichent : « télécinéma inverse ».
+
 ## [v0.9.1.29] — 2026-11-08
 
 ### Voir les deux proportions avant de choisir

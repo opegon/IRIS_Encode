@@ -499,15 +499,28 @@ class FileDecision:
     output_dir:        Path | None = None
 
     @property
+    def filtre_entrelacement(self) -> str | None:
+        """Le filtre qui rend l'image progressive, quand l'image est recalculée
+        : `bwdif` pour une vraie vidéo entrelacée (IE-122), télécinéma inverse
+        pour un film (IE-174). Ni une copie, ni le retrait du RPU, ni le
+        réencodage Dolby Vision — un flux DV n'est jamais entrelacé."""
+        from .entrelacement import filtre
+        if (self.video.action not in (VideoAction.ENCODE_HEVC,
+                                      VideoAction.ENCODE_H264,
+                                      VideoAction.ENCODE_AV1)
+                or video_recopiee(self.video.action, self.video.dv_action)):
+            return None
+        return filtre(self.info)
+
+    @property
     def desentrelace(self) -> bool:
-        """L'encodage désentrelace-t-il ? Une source déclarée entrelacée dont
-        l'image est recalculée (IE-122). Ni une copie, ni le retrait du RPU, ni
-        le réencodage Dolby Vision — un flux DV n'est jamais entrelacé."""
-        return (self.info.entrelace
-                and self.video.action in (VideoAction.ENCODE_HEVC,
-                                          VideoAction.ENCODE_H264,
-                                          VideoAction.ENCODE_AV1)
-                and not video_recopiee(self.video.action, self.video.dv_action))
+        """L'encodage désentrelace-t-il (ou réapparie-t-il les demi-images) ?"""
+        return self.filtre_entrelacement is not None
+
+    @property
+    def telecine_inverse(self) -> bool:
+        """Le désentrelacement est-il un télécinéma inverse ?"""
+        return (self.filtre_entrelacement or "").startswith("fieldmatch")
 
     @property
     def kept_subtitles(self) -> list:

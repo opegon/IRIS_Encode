@@ -581,3 +581,9 @@ Indices de proportion d'un AVI issu de DVD, `cropdetect`, Wikidata P2061, `-aspe
 ## [2026-11-08] ingest | Image de comparaison des proportions (v0.9.1.29)
 
 `thumbnail`, `hstack`, `drawtext` avec `fontfile` échappé sous Windows : [[ffmpeg]].
+
+## [2026-11-08] ingest | Télécinéma inverse (v0.9.1.30, IE-174)
+
+*The Kid* et *Cure in Orange* sondés par `idet`, `fieldmatch`, `mpdecimate` :
+télécinéma irrégulier contre vraie vidéo, marqueurs absents ou faux.
+Pages touchées : [[disques-optiques]].

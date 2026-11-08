@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.29 — document de référence courant
+**Version** : 0.9.1.30 — document de référence courant
 **Date** : 2026-11-08
 **Statut** : stable
 
@@ -1111,6 +1111,56 @@ entrelacées sur 899 sans le filtre, 1 avec ; sur une scène sombre, la détecti
 « multi » d'`idet` en compte encore 322, artefact de l'outil (les images sont
 indécises, il reporte son verdict précédent).
 
+**Télécinéma inverse et entrelacement mesuré** (v0.9.1.30, IE-174) :
+`core/entrelacement.py`. Les marqueurs ne suffisent pas : un AVI ne déclare
+rien (The Kid, `field_order=unknown` — jusqu'ici jamais désentrelacé), un DVD
+peut se dire progressif et porter des images entrelacées (Cure in Orange).
+`a_analyser` : toute source de 576 lignes au plus à 25 ou 29,97 i/s
+(± 0,05), quels que soient ses marqueurs, plus toute source qui se déclare
+entrelacée (arbitrage de l'utilisateur, 2026-11-08). `scanner.
+_analyser_entrelacement` → `VideoInfo.entrelacement` (`Analyse` : `nature`,
+`ordre`, `decime`, `peigne`, `peigne_apparie`), en cache par (chemin, taille,
+date) ; fichier absent → pas d'analyse. `analyser` : 6 passages de 10 s entre
+10 % et 90 % de la durée.
+
+1. `idet@brut` sur l'image brute (détection « multi ») — ~0,2 s par passage.
+   Part d'images en peigne < `PEIGNE_MIN` (0,10) → `PROGRESSIF`, on s'arrête.
+   Ordre des trames : TFF sauf majorité BFF.
+2. Sinon, `fieldmatch=order=<ordre>:combmatch=full`, puis `idet@apparie`
+   (détection « single ») et `mpdecimate,idet@uniques` — ~1 s par passage.
+   Part en peigne après appariement ≤ `PEIGNE_APPARIE_MAX` (0,15) →
+   `TELECINE`, sinon `ENTRELACE`. `decime` : télécinéma à 29,97 i/s dont
+   chaque passage garde entre 76 % et 84 % d'images uniques (3:2 : 4 sur 5).
+
+ffmpeg écrit deux bilans par `idet`, l'un à zéro : le plus fourni compte.
+Mesuré le 2026-11-08 : The Kid 99 % → 5 %, 20 à 22,5 images uniques par
+seconde selon le passage (film muet transféré à sa vitesse de projection) →
+`TELECINE`, non décimé ; Cure in Orange 100 % → 51 % → `ENTRELACE` ; Cactus
+Jack, Le Monde du silence 0 % → `PROGRESSIF`. Coût au scan : ~1 s sans
+peignes, ~9 s avec.
+
+`entrelacement.filtre(info)`, par `FileDecision.filtre_entrelacement` (mêmes
+conditions que l'ancien `desentrelace`, qui en dérive ; `telecine_inverse`
+quand il commence par `fieldmatch`) :
+
+| Analyse | Filtre |
+|---|---|
+| `TELECINE` | `fieldmatch=order=<ordre>:combmatch=full,` + `FILTRE_BWDIF` [+ `,decimate`] |
+| `ENTRELACE`, flux non déclaré entrelacé | `bwdif=mode=send_frame:parity=<ordre>:deint=all` |
+| autre, ou pas d'analyse | `FILTRE_BWDIF` si le flux se déclare entrelacé, rien sinon (IE-122) |
+
+`fieldmatch` marque entrelacées les images qu'il n'a pas su apparier ; `bwdif`
+ne reprend qu'elles (34 images sur 600 modifiées sur The Kid, `framemd5`).
+Après ce `bwdif`, `idet` « multi » signale des images BFF sans peignes à
+l'œil (flou de mouvement) : même artefact que ci-dessus. Arbitrage de
+l'utilisateur : la cadence de la source est gardée, `decimate` (→ 23,976)
+seulement pour un 3:2 régulier. Le filtre précède `setsar`/`scale` et
+l'agrandissement (`_avant_agrandissement`). Affiché : « télécinéma inverse »
+dans l'aperçu, et dans l'assistant avec la cadence (« conservée » ou
+« ramenée à 23,976 i/s »). The Kid encodé par la commande de l'application :
+640×480 en 4:3, 29,97 i/s, sans peignes (contrôlé à l'œil).
+`tests/test_entrelacement.py`.
+
 **Force SKIP → encode (browser)** : un fichier SKIP sélectionné manuellement pour le run
 est forcé en `ENCODE_HEVC` (ou `ENCODE_H264` si < 1080p) au débit source, sans gonflement.
 
@@ -1151,7 +1201,7 @@ l'active : clé de profil (§ 6.1) ou `U` dans l'Aperçu (§ 14.6).
 - **Encodage** (`build_command`) : le ffmpeg à `libplacebo` avec
   `-init_hw_device vulkan`, ni `-hwaccel` ni chaîne tout-puce
   (`filtre_tout_puce` → None). Filtre (`filtre_super_resolution`) :
-  `[bwdif,]setparams=<colorimétrie>,libplacebo=w:h:reset_sar=1:
+  `[<entrelacement>,]setparams=<colorimétrie>,libplacebo=w:h:reset_sar=1:
   custom_shader_path=…:upscaler=ewa_lanczos:downscaler=ewa_lanczos:<BT.709>:
   format=yuv420p,setsar=1`. En deux passes : deux `libplacebo` ×2 avec le
   shader en `yuv444p16le` (depuis la largeur affichée), puis un troisième
@@ -4136,6 +4186,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.30 | 2026-11-08 | **Télécinéma inverse** (§ 8.1, IE-174) : `core/entrelacement.py` — sources SD sondées (`idet`, `fieldmatch`, `mpdecimate`), `VideoInfo.entrelacement` ; télécinéma → `fieldmatch` + `bwdif` (+ `decimate` pour un 3:2 régulier), vraie vidéo non déclarée → `bwdif deint=all` ; `FileDecision.filtre_entrelacement`, `telecine_inverse` ; affiché dans l'assistant et l'aperçu · `tests/test_entrelacement.py` |
 | 0.9.1.29 | 2026-11-08 | **Comparer les proportions** (§ 8.1, IE-173 3/3) : `V` dans la fenêtre `P`, `sar.apercu` / `build_apercu` (`thumbnail`, deux largeurs affichées côte à côte, `drawtext`, repli sans étiquettes), image ouverte dans la visionneuse du système · `tests/test_sar.py`, `tests/test_sar_ecran.py` |
 | 0.9.1.28 | 2026-11-08 | **Choix de la proportion** (§ 8.1, IE-173 2/3) : `P` dans les pistes et l'assistant, `tui/screens/sar.py` · « ⚠ » à l'accueil (Résol.) · `decision.choisir_sar`, `Reglages.sar`, `VideoInfo.sar_confirme`, `sar.choix` · estimation gardée par (chemin, taille, date) · aide `P`, GUIDE § 4.9ter · `tests/test_sar.py`, `tests/test_sar_ecran.py` |
 | 0.9.1.27 | 2026-11-08 | **Source SD sans SAR** (§ 8.1, IE-173 1/3) : `core/sar.py` (`sar_douteux`, `estimer`, `mesurer_cadre` par `cropdetect`, `format_connu` par Wikidata P2061) · `VideoInfo.sar_impose`, `sar_estimation`, `sar_effectif` · `setsar` avant les pixels carrés, `-aspect` sur une vidéo recopiée, motif de remux « SAR » · `tests/test_sar.py` |

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.29
+**Version** : 0.9.1.30
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -731,10 +731,20 @@ est gardée). Une TrueHD et son cœur AC-3 donnent une seule piste en sortie.
 
 Un DVD, comme un enregistrement TNT en 1080i, est souvent **entrelacé** : quand
 la source le déclare, l'encodage le désentrelace (bwdif), à la même cadence. La
-décision le dit (assistant, aperçu `F1`) : « désentrelacé ». Une source qui se
+décision le dit (assistant, aperçu `F1`) : « désentrelacé ». Une source HD qui se
 dit progressive n'est pas touchée — certains enregistrements TNT se trompent
 sur une partie de leurs images (pubs, bandes-annonces), qui gardent alors leurs
 peignes.
+
+Une source SD (DVD, AVI, jusqu'à 576 lignes) est examinée sur l'image même
+pendant l'analyse, quoi qu'elle déclare : une seconde environ sans peignes,
+une dizaine avec. Un **film télécinéma** — un film passé en vidéo NTSC en
+répétant des demi-images — retrouve ses images entières (**télécinéma
+inverse**) : plus net qu'un désentrelacement, qui devine une ligne sur deux.
+La décision le dit : « télécinéma inverse ». La cadence reste celle de la
+source ; seul un pulldown 3:2 régulier sur tout le fichier est ramené à
+23,976 i/s. Un film muet transféré à sa vitesse de projection (The Kid : 20 à
+22,5 images par seconde) garde ses 29,97 i/s, doublons compris.
 
 ---
 

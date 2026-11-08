@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-10-09
+maj: 2026-11-08
 sources:
   - "[[source-2026-10-08-disques]]"
 ---
@@ -114,6 +114,29 @@ il laisse donc ces passages. Encodé NVENC H.264 3 Mb/s, le DVD sort sans peigne
 avec bwdif (`idet` image par image : 1 sur 899 contre 686 sans, *mesuré*,
 contrôlé à l'œil) ; la détection « multi » d'`idet` en voit encore 322 sur une
 scène sombre, artefact de l'outil (images indécises). Voir spec § 8.1.
+
+### Télécinéma et marqueurs absents (IE-174, 2026-11-08)
+
+Les marqueurs mentent aussi sur SD (*mesuré*) : *The Kid* (AVI DivX 3) dit
+`field_order=unknown` — aucun désentrelacement jusqu'à v0.9.1.29 —, l'ISO
+*Cure in Orange* dit `progressive` alors que chaque image porte
+`interlaced_frame=1`. `idet` : 99 % et 100 % d'images en peigne.
+
+`fieldmatch` (`combmatch=full`) sépare les deux cas (*mesuré*, 6 passages de
+10 s) : sur *The Kid* il ne reste que 5 % d'images en peigne — un film dont
+les demi-images se réapparient (télécinéma) ; sur *Cure in Orange*, 51 % —
+deux instants par image, une vraie vidéo. Après appariement, `mpdecimate`
+garde 2 images sur 3 ou 3 sur 4 selon le passage de *The Kid* (motif de 12
+images) : film muet transféré à sa vitesse de projection, 20 à 22,5 i/s, pas
+un 3:2 (4 sur 5). Un `decimate` fixe y serait faux.
+
+`fieldmatch` marque entrelacées les images qu'il n'a pas su apparier ; `bwdif
+deint=interlaced` derrière ne touche qu'elles (34 sur 600, `framemd5`). À
+l'œil : peignes nets en brut, image molle avec `bwdif` seul, image entière et
+nette après appariement. `idet` « multi » sur la sortie signale encore des
+images BFF : flou de mouvement sans peignes, l'artefact déjà vu. Coût d'un
+sondage : `idet` seul ~0,2 s par passage, avec `fieldmatch` ~1 s ; ffmpeg
+écrit deux bilans par `idet`, le premier à zéro. Voir spec § 8.1.
 
 ## Flux de transport `.ts`
 

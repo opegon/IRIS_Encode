@@ -308,7 +308,14 @@ class WizardScreen(TableNavMixin, Screen):
                          "— {key} to choose").format(estimate=libelle_estimation(d.info),
                                                     key=touche("p")) + "\n",
                          style="bold dark_orange")
-        if d.desentrelace:
+        if d.telecine_inverse:
+            cadence = (_("frame rate brought back to 23.976 fps")
+                       if d.info.entrelacement.decime else _("frame rate kept"))
+            t.append(f"  {' ' * large}"
+                     + _("Telecined film: fields matched back into whole "
+                         "frames (inverse telecine), {rate}.").format(rate=cadence)
+                     + "\n")
+        elif d.desentrelace:
             t.append(f"  {' ' * large}"
                      + _("Interlaced source: deinterlaced (bwdif), frame rate "
                          "kept.") + "\n")

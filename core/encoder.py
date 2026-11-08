@@ -16,6 +16,7 @@ from typing import Callable, Iterator, Optional
 
 from .decision import (AudioAction, DVAction, FileDecision, VideoAction,
                        conversion_p5)
+from .entrelacement import FILTRE_BWDIF
 from .i18n import N_, ErreurAffichable, _
 from .platform import GPU, PlatformProfile
 
@@ -122,11 +123,9 @@ FENETRE_DEBIT        = 10.0         # secondes sur lesquelles le débit se lisse
 
 # Pipeline tone mapping HDR → SDR (CPU, algorithme Hable). Pas pour un Dolby
 # Vision profil 5, dont seul `libplacebo` lit la couche de base (`filtre_p5`).
-# Le désentrelacement (IE-122) : bwdif, une image par image — la cadence de la
-# source, donc le même débit cible. `deint=interlaced` ne touche que les images
-# que le flux marque entrelacées : un passage progressif d'une source mixte
-# reste intact. `parity=auto` suit l'ordre des trames que le flux déclare.
-FILTRE_DESENTRELACEMENT = "bwdif=mode=send_frame:parity=auto:deint=interlaced"
+# Le désentrelacement (IE-122) et le télécinéma inverse (IE-174) : voir
+# `entrelacement.filtre`, que donne `FileDecision.filtre_entrelacement`.
+FILTRE_DESENTRELACEMENT = FILTRE_BWDIF
 
 _SDR_TONEMAP_FILTER = (
     "zscale=t=linear:npl=100,"
@@ -177,9 +176,8 @@ def filtre_super_resolution(decision: FileDecision) -> str:
     Les dimensions visées sont celles de la décision, en pixels carrés :
     `reset_sar=1` étire l'image au lieu d'en garder le SAR, et un seul
     rééchantillonnage absorbe les pixels non carrés (pas de `scale` en
-    amont, contrairement au chemin processeur). Le désentrelacement reste
-    `bwdif`, comme sans agrandissement : il ne touche que les images que le
-    flux marque entrelacées.
+    amont, contrairement au chemin processeur). Le désentrelacement, ou le
+    télécinéma inverse, est celui du chemin sans agrandissement, avant lui.
     """
     filtres = _avant_agrandissement(decision)
     filtres += _etapes_agrandissement(decision, decision.video.upscale.passes)
@@ -190,7 +188,8 @@ def filtre_super_resolution(decision: FileDecision) -> str:
 def _avant_agrandissement(decision: FileDecision) -> list[str]:
     """Désentrelacement éventuel, puis la colorimétrie déclarée."""
     from . import super_resolution as sr
-    filtres = [FILTRE_DESENTRELACEMENT] if decision.desentrelace else []
+    entrelacement = decision.filtre_entrelacement
+    filtres = [entrelacement] if entrelacement else []
     filtres.append(sr.colorimetrie_source(decision.info))
     return filtres
 
@@ -1167,7 +1166,7 @@ def build_command(
         filtres = []
         # Avant la mise à l'échelle : réduire des trames mêlées les mélange.
         if decision.desentrelace:
-            filtres.append(FILTRE_DESENTRELACEMENT)
+            filtres.append(decision.filtre_entrelacement)
         # Une source anamorphique (DVD 720×480 en 32:27, TNT SD, HDV) tenait
         # dans la cible et gardait son SAR : Jellyfin la transcodait. Elle
         # passe d'abord en pixels carrés, en largeur — rien n'est perdu en

@@ -206,7 +206,9 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 if vid.upscale is not None:
                     # D25 : la source et la sortie, l'agrandissement se lit.
                     res_str = f"{info.width}x{info.height}→{res_str}"
-                if dec.desentrelace:
+                if dec.telecine_inverse:
+                    res_str += " · " + _("inverse telecine")
+                elif dec.desentrelace:
                     res_str += " · " + _("deinterlaced")
 
             audio_parts = [

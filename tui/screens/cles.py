@@ -1,8 +1,8 @@
 """
 tui/screens/cles.py — Saisir les clés d'API sans éditer config.toml (IE-101).
 
-S'ouvre au lancement pour chaque service dont la clé manque, et depuis la
-gestion des profils (`F5`, `K`) pour tous. Chaque service a son bouton vers la
+S'ouvre au lancement pour chaque service dont la clé manque, et depuis les
+options (`Ctrl+O`, section « Clés d'API ») pour tous. Chaque service a son bouton vers la
 page qui délivre la clé ; une clé est vérifiée auprès du service avant d'être
 enregistrée (`core.cles`).
 

@@ -124,11 +124,11 @@ class Client:
     def __init__(self, api_key: str, utilisateur: str, mot_de_passe: str,
                  user_agent: str) -> None:
         if not api_key:
-            # TRANSLATORS: F5 then K are keys; "API keys" is the name of the
-            # API keys window.
+            # TRANSLATORS: Ctrl+O is a key; "API keys" is the name of the
+            # section of the options.
             raise ErreurOpenSubtitles(N_(
-                "API key missing — enter it from the profile management (F5, "
-                "then K “API keys”)."))
+                "API key missing — enter it from the options (Ctrl+O, "
+                "“API keys”)."))
         self._api_key     = api_key
         self._utilisateur = utilisateur
         self._mot_de_passe = mot_de_passe
@@ -158,10 +158,11 @@ class Client:
                 "Refused by OpenSubtitles (401) — wrong API key, username or "
                 "password."))
         if r.status_code == 403:
-            # TRANSLATORS: F5 then K are keys.
+            # TRANSLATORS: Ctrl+O is a key; "API keys" is the name of the
+            # section of the options.
             raise ErreurOpenSubtitles(N_(
                 "API key refused by OpenSubtitles (403) — check it from the "
-                "profile management (F5, then K)."))
+                "options (Ctrl+O, “API keys”)."))
         if r.status_code == 406:
             raise _erreur_quota(r)
         if r.status_code == 429:
@@ -189,10 +190,11 @@ class Client:
         if self._jeton:
             return
         if not (self._utilisateur and self._mot_de_passe):
-            # TRANSLATORS: F5 then K are keys.
+            # TRANSLATORS: Ctrl+O is a key; "API keys" is the name of the
+            # section of the options.
             raise ErreurOpenSubtitles(N_(
                 "Downloading needs an account — enter a username and password "
-                "from the profile management (F5, then K)."))
+                "from the options (Ctrl+O, “API keys”)."))
         rep = self._appel("POST", "login", json={
             "username": self._utilisateur, "password": self._mot_de_passe})
         self._jeton = rep.get("token")

@@ -53,8 +53,6 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
         Binding("c",         "copy_focused",   N_("Copy"),    show=True),
         Binding("d",         "delete_focused", N_("Delete"), show=True),
         Binding("delete",    "delete_focused", N_("Delete"), show=False),
-        # Les clés des services en ligne, sans éditer config.toml (IE-101).
-        Binding("k",         "cles",           N_("API keys"), show=True),
         # Ce qui n'appartient à aucun profil : la veille, l'après-lot.
         # `O` est déjà OpenSubtitles chez le donneur, et une lettre n'a qu'un
         # sens dans toute l'application (UX-12).
@@ -133,11 +131,6 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             table.add_column(entete, width=largeur)
         for nom, cellules in zip(profiles, lignes):
             table.add_row(*cellules, key=nom)
-
-    def action_cles(self) -> None:
-        if self._form_mode:
-            return
-        self.app.demander_cles(tous=True)  # type: ignore[attr-defined]
 
     def action_options(self) -> None:
         if self._form_mode:

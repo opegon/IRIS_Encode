@@ -279,9 +279,6 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                         "interrupted and its partial file deleted."),
     },
     "ConfigScreen": {
-        "cles":           N_("Enters or changes the API keys (OpenSubtitles, "
-                             "OMDb), checked with the service before being "
-                             "saved."),
         # TRANSLATORS: {key_after_batch} is the key of the encoding screen.
         "options":        N_("Opens the options: block sleep during "
                              "processing (on by default), and the after-batch "

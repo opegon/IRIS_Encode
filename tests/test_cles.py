@@ -178,6 +178,35 @@ def test_le_bouton_plus_tard_ferme_sans_enregistrer(sans_reseau):
     assert resultat is False and not ecrits and cfg == {}
 
 
+# ─── Où on les trouve ─────────────────────────────────────────────────────────
+
+def test_les_cles_s_ouvrent_depuis_les_options(sans_reseau):
+    """Ctrl+O, puis le bouton de la section : tous les services, pour les
+    changer ; la gestion des profils n'a plus de touche pour ça."""
+    from tui.app import IrisEncodeApp
+    from tui.screens.config import ConfigScreen
+    from textual.widgets import Button
+
+    async def _run():
+        app = IrisEncodeApp()
+        async with app.run_test(size=(160, 50)) as pilot:
+            await pilot.pause(1.0)
+            await pilot.press("ctrl+o")
+            await pilot.pause(0.5)
+            options = type(app.screen).__name__
+            app.screen.query_one("#options-cles-btn", Button).press()
+            await pilot.pause(0.5)
+            ecran = app.screen
+            return (options, type(ecran).__name__,
+                    [s.id for s in getattr(ecran, "_services", [])],
+                    getattr(ecran, "_au_lancement", None))
+    options, ouvert, services, au_lancement = asyncio.run(_run())
+    assert options == "OptionsScreen"
+    assert ouvert == "ClesScreen", ouvert
+    assert services == [s.id for s in cles.SERVICES] and au_lancement is False
+    assert "cles" not in {b.action for b in ConfigScreen.BINDINGS}
+
+
 @pytest.mark.parametrize("lignes", [24, 30, 40])
 def test_les_boutons_restent_dans_le_cadre(lignes):
     """La zone des services défile ; les boutons, eux, restent visibles."""

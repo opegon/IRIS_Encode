@@ -1,7 +1,7 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.2.0
-**Date** : 2026-11-08
+**Version** : 0.9.2.1
+**Date** : 2026-11-09
 
 *[English version: GUIDE.md](GUIDE.md)*
 
@@ -367,7 +367,7 @@ Il faut une clé d'application et un compte (gratuits, 20 téléchargements par
 jour). Au lancement, si la clé manque, une fenêtre la demande : **Obtenir une
 clé** ouvre opensubtitles.com/consumers, on colle la clé, l'identifiant et le
 mot de passe, **Vérifier et enregistrer** (ou `Ctrl+S`) les vérifie auprès d'OpenSubtitles et les enregistre.
-Pour les saisir ou les changer plus tard : `F5`, puis `K` (§ 2.7).
+Pour les saisir ou les changer plus tard : `Ctrl+O`, section « Clés d'API » (§ 2.7).
 
 Sans eux, l'écran dit ce qui manque. Le `.srt` est écrit dans le dossier
 temporaire, pas à côté du film : il n'existe que pour la greffe.
@@ -531,8 +531,8 @@ faire » par défaut, mise en veille, veille prolongée ou arrêt), et la
 **langue de l'interface** : chaque langue disponible y figure sous son propre
 nom (« English », « Français »). Le changement prend effet au prochain
 lancement. Au tout premier lancement, IRIS ENCODE prend la langue de Windows
-si elle est traduite, sinon l'anglais. `K` ouvre les **clés d'API**
-des services en ligne — OpenSubtitles et OMDb (fiche IMDB complète) : chaque
+si elle est traduite, sinon l'anglais. La section **Clés d'API** des options
+(**Changer…**) ouvre les clés des services en ligne — OpenSubtitles et OMDb (fiche IMDB complète) : chaque
 service a son bouton vers la page qui délivre la clé, et une clé est vérifiée
 auprès du service avant d'être enregistrée. La même fenêtre s'ouvre au
 lancement tant qu'une clé manque ; « Ne plus demander » l'écarte pour ce

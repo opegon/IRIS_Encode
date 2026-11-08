@@ -8,7 +8,8 @@ l'interface (IE-92) : une par catalogue livré, nommée dans sa propre langue ;
 elle prend effet au lancement suivant (IE-71 point 3). Le dossier de sortie
 proposé quand celui d'une source est en lecture seule (IE-118). La durée
 minimale d'un titre de Blu-ray listé (IE-120). Le dossier des vidéos
-téléchargées depuis YouTube (IE-180).
+téléchargées depuis YouTube (IE-180). Les clés d'API des services en ligne
+(IE-101), par un bouton qui ouvre `ClesScreen`.
 
 Rend True si quelque chose a été enregistré.
 """
@@ -120,6 +121,13 @@ class OptionsScreen(ModalScreen[bool]):
             yield Static(_("Minimum length in minutes of a listed title: shorter "
                            "ones (menus, loops) are hidden. 0 lists them all."),
                          classes="options-note")
+            # IE-101 : la fenêtre des clés, avec sa propre vérification ; elle
+            # enregistre elle-même, sans attendre le Ctrl+S des options.
+            yield Static(_("API keys"), classes="options-section")
+            yield Button(_("Change…"), id="options-cles-btn", compact=True)
+            yield Static(_("OpenSubtitles and OMDb (full IMDB Info card). Each "
+                           "key is checked with the service, then saved at "
+                           "once."), classes="options-note")
             yield Static(raccourcis([("tab", N_("Next field")),
                                      ("ctrl+s", N_("Save")),
                                      ("escape", N_("Cancel"))]), id="options-hint")
@@ -129,6 +137,9 @@ class OptionsScreen(ModalScreen[bool]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         from .output_dir import OutputDirScreen
+        if event.button.id == "options-cles-btn":
+            self.app.demander_cles(tous=True)  # type: ignore[attr-defined]
+            return
         if event.button.id == "options-youtube-btn":
             def _youtube(dossier) -> None:
                 if dossier is not None:

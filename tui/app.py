@@ -481,7 +481,7 @@ class IrisEncodeApp(App):
         """La fenêtre des clés d'API (IE-101).
 
         Au lancement : seulement les services dont la clé manque et qu'on n'a
-        pas écartés. Depuis `F5` (`tous`) : tous, pour les changer.
+        pas écartés. Depuis les options (`tous`) : tous, pour les changer.
         """
         from core import cles
         from tui.screens.cles import ClesScreen

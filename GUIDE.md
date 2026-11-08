@@ -1,7 +1,7 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.2.0
-**Date**: 2026-11-08
+**Version**: 0.9.2.1
+**Date**: 2026-11-09
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
 
@@ -363,7 +363,7 @@ You need an application key and an account (free, 20 downloads a day). At
 startup, if the key is missing, a window asks for it: **Get a key** opens
 opensubtitles.com/consumers, you paste the key, the username and the password,
 and **Check and save** (or `Ctrl+S`) checks them with OpenSubtitles and saves
-them. To enter or change them later: `F5`, then `K` (§ 2.7).
+them. To enter or change them later: `Ctrl+O`, "API keys" section (§ 2.7).
 
 Without them, the screen says what is missing. The `.srt` is written to the
 temporary folder, not next to the movie: it only exists for the added track.
@@ -525,8 +525,8 @@ language**: each available language is listed under its own name ("English",
 start, IRIS ENCODE takes the Windows language if it is translated, English
 otherwise.
 
-`K` opens the **API keys** of the online services — OpenSubtitles and OMDb
-(full IMDB Info card): each service has its button to the page that issues the
+The options' **API keys** section (**Change…**) opens the keys of the online
+services — OpenSubtitles and OMDb (full IMDB Info card): each service has its button to the page that issues the
 key, and a key is checked with the service before being saved. The same window
 opens at startup as long as a key is missing; "Do not ask again" dismisses it
 for that service.

@@ -578,66 +578,66 @@ msgstr ""
 msgid "Output path identical to the source ({path}). Remux refused to avoid corrupting the source file."
 msgstr ""
 
-#. F5 then K are keys; "API keys" is the name of the API keys window.
+#. Ctrl+O is a key; "API keys" is the name of the section of the options.
 #: core/opensubtitles.py:129
-msgid "API key missing — enter it from the profile management (F5, then K “API keys”)."
+msgid "API key missing — enter it from the options (Ctrl+O, “API keys”)."
 msgstr ""
 
 #: core/opensubtitles.py:157
 msgid "Refused by OpenSubtitles (401) — wrong API key, username or password."
 msgstr ""
 
-#. F5 then K are keys.
-#: core/opensubtitles.py:162
-msgid "API key refused by OpenSubtitles (403) — check it from the profile management (F5, then K)."
+#. Ctrl+O is a key; "API keys" is the name of the section of the options.
+#: core/opensubtitles.py:163
+msgid "API key refused by OpenSubtitles (403) — check it from the options (Ctrl+O, “API keys”)."
 msgstr ""
 
-#: core/opensubtitles.py:170
+#: core/opensubtitles.py:171
 #, python-brace-format
 msgid "Too many requests — try again in {count} second."
 msgid_plural "Too many requests — try again in {count} seconds."
 msgstr[0] ""
 msgstr[1] ""
 
-#: core/opensubtitles.py:174
+#: core/opensubtitles.py:175
 msgid "Too many requests — try again in a few seconds."
 msgstr ""
 
-#: core/opensubtitles.py:177
+#: core/opensubtitles.py:178
 #, python-brace-format
 msgid "OpenSubtitles answered {status}: {detail}"
 msgstr ""
 
-#: core/opensubtitles.py:184
+#: core/opensubtitles.py:185
 #, python-brace-format
 msgid "Unexpected answer from OpenSubtitles (not JSON): {detail}"
 msgstr ""
 
-#. F5 then K are keys.
-#: core/opensubtitles.py:193
-msgid "Downloading needs an account — enter a username and password from the profile management (F5, then K)."
+#. Ctrl+O is a key; "API keys" is the name of the section of the options.
+#: core/opensubtitles.py:195
+msgid "Downloading needs an account — enter a username and password from the options (Ctrl+O, “API keys”)."
 msgstr ""
 
-#: core/opensubtitles.py:200
+#: core/opensubtitles.py:202
 msgid "Login refused: no token received."
 msgstr ""
 
-#: core/opensubtitles.py:265
+#: core/opensubtitles.py:267
 msgid "No download link received."
 msgstr ""
 
-#: core/opensubtitles.py:270
+#: core/opensubtitles.py:272
 #, python-brace-format
 msgid "Download interrupted: {error}"
 msgstr ""
 
 #. {reset} is OpenSubtitles' own text, in English.
-#: core/opensubtitles.py:323
+#: core/opensubtitles.py:325
 #, python-brace-format
 msgid "Daily download quota used up — {reset}."
 msgstr ""
 
-#: core/opensubtitles.py:325
+#: core/opensubtitles.py:327
 msgid "Daily download quota used up."
 msgstr ""
 
@@ -1471,12 +1471,12 @@ msgid "Target bitrate"
 msgstr ""
 
 #: tui/common.py:432
-#: tui/screens/aide.py:472
-#: tui/screens/aide.py:473
-#: tui/screens/aide.py:481
-#: tui/screens/config.py:62
-#: tui/screens/config.py:63
-#: tui/screens/config.py:102
+#: tui/screens/aide.py:469
+#: tui/screens/aide.py:470
+#: tui/screens/aide.py:478
+#: tui/screens/config.py:60
+#: tui/screens/config.py:61
+#: tui/screens/config.py:100
 #: tui/screens/donor_picker.py:244
 #: tui/screens/dryrun.py:105
 #: tui/screens/dryrun.py:106
@@ -1550,7 +1550,7 @@ msgstr ""
 #. profile column Source — "del." = the source is deleted after encoding (keep it short), "keep" = it is kept.
 #. column Actions of the profile list; keep it short.
 #: tui/common.py:599
-#: tui/screens/config.py:129
+#: tui/screens/config.py:127
 msgctxt "source file"
 msgid "del."
 msgstr ""
@@ -1984,89 +1984,85 @@ msgstr ""
 msgid "Returns to the Home screen. A join in progress is interrupted and its partial file deleted."
 msgstr ""
 
-#: tui/screens/aide.py:282
-msgid "Enters or changes the API keys (OpenSubtitles, OMDb), checked with the service before being saved."
-msgstr ""
-
 #. {key_after_batch} is the key of the encoding screen.
-#: tui/screens/aide.py:286
+#: tui/screens/aide.py:283
 #, python-brace-format
 msgid "Opens the options: block sleep during processing (on by default), and the after-batch action that {key_after_batch} checks during encoding."
 msgstr ""
 
-#: tui/screens/aide.py:290
+#: tui/screens/aide.py:287
 msgid "Makes the profile under the cursor active."
 msgstr ""
 
-#: tui/screens/aide.py:291
+#: tui/screens/aide.py:288
 msgid "Creates a profile."
 msgstr ""
 
-#: tui/screens/aide.py:292
+#: tui/screens/aide.py:289
 msgid "Edits the profile under the cursor."
 msgstr ""
 
-#: tui/screens/aide.py:293
+#: tui/screens/aide.py:290
 msgid "Creates a profile from the one under the cursor: same settings, name to choose."
 msgstr ""
 
-#: tui/screens/aide.py:295
+#: tui/screens/aide.py:292
 msgid "Deletes the profile, after confirmation — including a profile shipped with the application. Only the last profile cannot be deleted."
 msgstr ""
 
-#: tui/screens/aide.py:299
+#: tui/screens/aide.py:296
 msgid "Returns to the Home screen."
 msgstr ""
 
 #. {launch} is the name of the last step but one.
-#: tui/screens/aide.py:303
+#: tui/screens/aide.py:300
 #, python-brace-format
 msgid "Moves to the next step. At the “{launch}” step, triggers the recommended choice; at the end, returns to the Home screen."
 msgstr ""
 
-#: tui/screens/aide.py:306
+#: tui/screens/aide.py:303
 msgid "Keeps or discards the track under the cursor (step 2)."
 msgstr ""
 
-#: tui/screens/aide.py:308
+#: tui/screens/aide.py:305
 msgid "Changes the output codec (step 2)."
 msgstr ""
 
-#: tui/screens/aide.py:309
+#: tui/screens/aide.py:306
 msgid "Changes the target bitrate (step 2)."
 msgstr ""
 
-#: tui/screens/aide.py:310
+#: tui/screens/aide.py:307
 msgid "Sets the aspect ratio of a DVD-size source that does not declare it (step 2)."
 msgstr ""
 
-#: tui/screens/aide.py:312
+#: tui/screens/aide.py:309
 msgid "Presents a donor file (step 3). The offset measurement is started and applied at once."
 msgstr ""
 
-#: tui/screens/aide.py:314
+#: tui/screens/aide.py:311
 msgid "Opens the Sync screen on the added tracks (step 3), with the last measurement: force its candidate, see its segments, give an anchor point, listen, adjust by hand. Backspace returns to guided mode."
 msgstr ""
 
-#: tui/screens/aide.py:318
+#: tui/screens/aide.py:315
 msgid "Removes the last added track (step 3)."
 msgstr ""
 
-#: tui/screens/aide.py:319
+#: tui/screens/aide.py:316
 msgid "Muxes without re-encoding (step 4)."
 msgstr ""
 
-#: tui/screens/aide.py:320
+#: tui/screens/aide.py:317
 msgid "Re-encodes (step 4)."
 msgstr ""
 
-#: tui/screens/aide.py:321
+#: tui/screens/aide.py:318
 msgid "Returns to the previous step; at the first, leaves guided mode."
 msgstr ""
 
-#: tui/screens/aide.py:330
+#: tui/screens/aide.py:327
 #: tui/screens/browser.py:407
-#: tui/screens/config.py:66
+#: tui/screens/config.py:64
 #: tui/screens/dryrun.py:109
 #: tui/screens/join.py:62
 #: tui/screens/mux_run.py:49
@@ -2077,44 +2073,44 @@ msgstr ""
 msgid "Home"
 msgstr ""
 
-#: tui/screens/aide.py:331
+#: tui/screens/aide.py:328
 msgid "Browse, choose the files, launch."
 msgstr ""
 
 #. {key_mode} is the home screen key that turns guided mode on.
-#: tui/screens/aide.py:333
+#: tui/screens/aide.py:330
 #: tui/screens/browser.py:701
 #: tui/screens/browser.py:829
 msgid "Guided"
 msgstr ""
 
-#: tui/screens/aide.py:334
+#: tui/screens/aide.py:331
 #, python-brace-format
 msgid "One file, five steps. Turned on by {key_mode} from the Home screen."
 msgstr ""
 
-#: tui/screens/aide.py:336
+#: tui/screens/aide.py:333
 #: tui/screens/browser.py:410
 #: tui/screens/browser.py:667
 #: tui/screens/join.py:39
 msgid "Tracks"
 msgstr ""
 
-#: tui/screens/aide.py:337
+#: tui/screens/aide.py:334
 msgid "What each track of the file will become."
 msgstr ""
 
-#: tui/screens/aide.py:338
+#: tui/screens/aide.py:335
 #: tui/screens/sync.py:324
 #: tui/screens/wizard.py:156
 msgid "Sync"
 msgstr ""
 
-#: tui/screens/aide.py:339
+#: tui/screens/aide.py:336
 msgid "Add a track from another file, and put it back in time."
 msgstr ""
 
-#: tui/screens/aide.py:340
+#: tui/screens/aide.py:337
 #: tui/screens/browser.py:422
 #: tui/screens/browser.py:573
 #: tui/screens/browser.py:728
@@ -2126,28 +2122,28 @@ msgstr ""
 msgid "Dry run"
 msgstr ""
 
-#: tui/screens/aide.py:341
+#: tui/screens/aide.py:338
 msgid "What would be done, without doing anything."
 msgstr ""
 
-#: tui/screens/aide.py:342
+#: tui/screens/aide.py:339
 #: tui/screens/run.py:446
 msgid "Encoding"
 msgstr ""
 
-#: tui/screens/aide.py:343
+#: tui/screens/aide.py:340
 msgid "The encode in progress."
 msgstr ""
 
-#: tui/screens/aide.py:344
+#: tui/screens/aide.py:341
 msgid "Muxing"
 msgstr ""
 
-#: tui/screens/aide.py:345
+#: tui/screens/aide.py:342
 msgid "The mux in progress, and what can be done with it next."
 msgstr ""
 
-#: tui/screens/aide.py:346
+#: tui/screens/aide.py:343
 #: tui/screens/join.py:40
 #: tui/screens/join.py:59
 #: tui/screens/join.py:108
@@ -2155,27 +2151,27 @@ msgstr ""
 msgid "Join"
 msgstr ""
 
-#: tui/screens/aide.py:347
+#: tui/screens/aide.py:344
 msgid "Put the parts of one movie back together into a single file."
 msgstr ""
 
-#: tui/screens/aide.py:348
+#: tui/screens/aide.py:345
 msgid "Profiles"
 msgstr ""
 
-#: tui/screens/aide.py:349
+#: tui/screens/aide.py:346
 msgid "Create and set up the encoding profiles."
 msgstr ""
 
 #. "Dolby V." is short for Dolby Vision; keep it short.
-#: tui/screens/aide.py:416
+#: tui/screens/aide.py:413
 #: tui/screens/browser.py:443
 #: tui/screens/wizard.py:81
 #: tui/screens/wizard.py:348
 msgid "Decision"
 msgstr ""
 
-#: tui/screens/aide.py:417
+#: tui/screens/aide.py:414
 #: tui/screens/tracks.py:460
 #: tui/screens/tracks.py:464
 #: tui/screens/tracks.py:741
@@ -2183,13 +2179,13 @@ msgctxt "source file"
 msgid "delete"
 msgstr ""
 
-#: tui/screens/aide.py:419
+#: tui/screens/aide.py:416
 #: tui/screens/wizard.py:83
 msgid "Launch"
 msgstr ""
 
-#: tui/screens/aide.py:474
-#: tui/screens/aide.py:481
+#: tui/screens/aide.py:471
+#: tui/screens/aide.py:478
 #: tui/screens/meta_popup.py:48
 #: tui/screens/meta_popup.py:49
 #: tui/screens/meta_popup.py:141
@@ -2200,33 +2196,33 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#: tui/screens/aide.py:491
+#: tui/screens/aide.py:488
 msgid "Key guide"
 msgstr ""
 
-#: tui/screens/aide.py:493
+#: tui/screens/aide.py:490
 msgid "Every key of every screen, with what it does. This page is built from the shortcuts actually declared: it cannot lag behind the application."
 msgstr ""
 
-#: tui/screens/aide.py:502
+#: tui/screens/aide.py:499
 msgid "Everywhere"
 msgstr ""
 
-#: tui/screens/aide.py:503
+#: tui/screens/aide.py:500
 msgid "These keys work on every screen."
 msgstr ""
 
-#: tui/screens/aide.py:508
+#: tui/screens/aide.py:505
 msgid "In a table"
 msgstr ""
 
-#: tui/screens/aide.py:514
+#: tui/screens/aide.py:511
 msgid "Resizable columns — Home, Tracks, Dry run"
 msgstr ""
 
 #: tui/screens/ancrage.py:64
 #: tui/screens/ancrage.py:89
-#: tui/screens/config.py:273
+#: tui/screens/config.py:266
 #: tui/screens/confirm.py:86
 #: tui/screens/confirm.py:87
 #: tui/screens/confirm.py:106
@@ -2240,8 +2236,8 @@ msgstr ""
 #: tui/screens/emplacements.py:227
 #: tui/screens/opensubtitles.py:56
 #: tui/screens/opensubtitles.py:78
-#: tui/screens/options.py:65
-#: tui/screens/options.py:125
+#: tui/screens/options.py:66
+#: tui/screens/options.py:133
 #: tui/screens/output_dir.py:55
 #: tui/screens/output_dir.py:77
 #: tui/screens/profile_picker.py:60
@@ -2428,7 +2424,7 @@ msgstr ""
 #: tui/screens/browser.py:672
 #: tui/screens/config.py:54
 #: tui/screens/config.py:55
-#: tui/screens/config.py:226
+#: tui/screens/config.py:219
 #: tui/screens/delete_confirm.py:42
 #: tui/screens/emplacements.py:62
 #: tui/screens/emplacements.py:84
@@ -2475,8 +2471,8 @@ msgstr ""
 #: tui/screens/browser.py:427
 #: tui/screens/browser.py:577
 #: tui/screens/browser.py:733
-#: tui/screens/config.py:61
-#: tui/screens/options.py:77
+#: tui/screens/config.py:59
+#: tui/screens/options.py:78
 msgid "Options"
 msgstr ""
 
@@ -2763,8 +2759,8 @@ msgid "Where should downloaded videos go? Options can change it later."
 msgstr ""
 
 #: tui/screens/browser.py:1620
-#: tui/screens/options.py:110
-#: tui/screens/options.py:140
+#: tui/screens/options.py:111
+#: tui/screens/options.py:151
 msgid "YouTube downloads"
 msgstr ""
 
@@ -2822,12 +2818,12 @@ msgid "No file to encode in this folder."
 msgstr ""
 
 #: tui/screens/cles.py:69
-#: tui/screens/config.py:272
+#: tui/screens/config.py:265
 #: tui/screens/emplacements.py:185
 #: tui/screens/emplacements.py:222
 #: tui/screens/emplacements.py:225
-#: tui/screens/options.py:64
-#: tui/screens/options.py:124
+#: tui/screens/options.py:65
+#: tui/screens/options.py:132
 #: tui/widgets/profile_form.py:230
 msgid "Save"
 msgstr ""
@@ -2866,7 +2862,7 @@ msgstr ""
 
 #: tui/screens/cles.py:120
 #: tui/screens/emplacements.py:225
-#: tui/screens/options.py:123
+#: tui/screens/options.py:131
 #: tui/screens/sync.py:158
 #: tui/screens/tracks.py:131
 #: tui/screens/youtube.py:91
@@ -2915,77 +2911,73 @@ msgstr ""
 msgid "Copy"
 msgstr ""
 
-#: tui/screens/config.py:57
-msgid "API keys"
-msgstr ""
-
-#: tui/screens/config.py:101
-#: tui/screens/config.py:269
+#: tui/screens/config.py:99
+#: tui/screens/config.py:262
 msgid "New profile"
 msgstr ""
 
-#: tui/screens/config.py:113
+#: tui/screens/config.py:111
 #, python-brace-format
 msgid "profiles.toml unreadable ({error}): changes made here last for this session only."
 msgstr ""
 
-#: tui/screens/config.py:126
+#: tui/screens/config.py:124
 msgid "Actions"
 msgstr ""
 
 #. column Actions of the profile list; keep it short.
-#: tui/screens/config.py:129
+#: tui/screens/config.py:127
 msgid "edit"
 msgstr ""
 
-#: tui/screens/config.py:158
+#: tui/screens/config.py:151
 msgid "Manage profiles"
 msgstr ""
 
-#: tui/screens/config.py:159
+#: tui/screens/config.py:152
 #, python-brace-format
 msgid "Active: {profile}"
 msgstr ""
 
-#: tui/screens/config.py:214
+#: tui/screens/config.py:207
 #, python-brace-format
 msgid "[{profile}] is the last profile — cannot be deleted"
 msgstr ""
 
-#: tui/screens/config.py:221
+#: tui/screens/config.py:214
 #, python-brace-format
 msgid "Profile [{profile}] deleted"
 msgstr ""
 
-#: tui/screens/config.py:224
+#: tui/screens/config.py:217
 #, python-brace-format
 msgid "Delete the profile [{profile}]?"
 msgstr ""
 
-#: tui/screens/config.py:225
+#: tui/screens/config.py:218
 msgid "The profile will be removed from profiles.toml for good."
 msgstr ""
 
-#: tui/screens/config.py:268
+#: tui/screens/config.py:261
 #, python-brace-format
 msgid "Copy of {profile}"
 msgstr ""
 
-#: tui/screens/config.py:270
+#: tui/screens/config.py:263
 #, python-brace-format
 msgid "Editing — {profile}"
 msgstr ""
 
-#: tui/screens/config.py:330
+#: tui/screens/config.py:323
 msgid "Configuration — Encoding profiles"
 msgstr ""
 
-#: tui/screens/config.py:331
+#: tui/screens/config.py:324
 #, python-brace-format
 msgid "Profile [{profile}] saved and active"
 msgstr ""
 
-#: tui/screens/config.py:352
+#: tui/screens/config.py:345
 #, python-brace-format
 msgid "Profiles not saved, kept for this session only: {error}"
 msgstr ""
@@ -3646,68 +3638,77 @@ msgid_plural "Subtitle downloaded — {count} left today."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/options.py:78
+#: tui/screens/options.py:79
 msgid "Power"
 msgstr ""
 
-#: tui/screens/options.py:79
+#: tui/screens/options.py:80
 msgid "Block sleep while tasks run"
 msgstr ""
 
-#: tui/screens/options.py:82
+#: tui/screens/options.py:83
 msgid "Encoding, mux, join, measurement or resync. The screen can still turn off."
 msgstr ""
 
-#: tui/screens/options.py:84
+#: tui/screens/options.py:85
 #, python-brace-format
 msgid "After the batch ({key} during encoding)"
 msgstr ""
 
-#: tui/screens/options.py:91
+#: tui/screens/options.py:92
 #, python-brace-format
 msgid "Preceded by a {seconds} s countdown, can be canceled."
 msgstr ""
 
-#: tui/screens/options.py:95
+#: tui/screens/options.py:96
 msgid "No effect on this system: Windows only."
 msgstr ""
 
-#: tui/screens/options.py:97
+#: tui/screens/options.py:98
 msgid "Interface language"
 msgstr ""
 
-#: tui/screens/options.py:103
+#: tui/screens/options.py:104
 msgid "Takes effect the next time IRIS ENCODE starts."
 msgstr ""
 
-#: tui/screens/options.py:105
+#: tui/screens/options.py:106
 #: tui/screens/output_dir.py:69
 msgid "Output folder"
 msgstr ""
 
-#: tui/screens/options.py:107
-#: tui/screens/options.py:113
+#: tui/screens/options.py:108
+#: tui/screens/options.py:114
+#: tui/screens/options.py:127
 msgid "Change…"
 msgstr ""
 
-#: tui/screens/options.py:108
+#: tui/screens/options.py:109
 msgid "Offered when a source's folder is read-only, such as a mounted disc image."
 msgstr ""
 
-#: tui/screens/options.py:114
+#: tui/screens/options.py:115
 #, python-brace-format
 msgid "Where videos downloaded from YouTube ({key} on the home screen) are saved."
 msgstr ""
 
-#: tui/screens/options.py:117
+#: tui/screens/options.py:118
 msgid "Disc titles (Blu-ray, DVD)"
 msgstr ""
 
-#: tui/screens/options.py:120
+#: tui/screens/options.py:121
 msgid "Minimum length in minutes of a listed title: shorter ones (menus, loops) are hidden. 0 lists them all."
 msgstr ""
 
-#: tui/screens/options.py:176
+#: tui/screens/options.py:126
+msgid "API keys"
+msgstr ""
+
+#: tui/screens/options.py:128
+msgid "OpenSubtitles and OMDb (full IMDB Info card). Each key is checked with the service, then saved at once."
+msgstr ""
+
+#: tui/screens/options.py:187
 msgid "Language saved. It takes effect the next time IRIS ENCODE starts."
 msgstr ""
 

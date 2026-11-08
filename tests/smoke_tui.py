@@ -1265,8 +1265,8 @@ async def scenario_opensubtitles() -> None:
                 await pilot.pause(0.6)
                 assert type(app.screen).__name__ == "OpenSubtitlesScreen", type(app.screen).__name__
                 etat = str(app.screen.query_one("#os-state", Static).render())
-                absente = _("API key missing — enter it from the profile "
-                            "management (F5, then K “API keys”).").split(" — ")[0]
+                absente = _("API key missing — enter it from the options "
+                            "(Ctrl+O, “API keys”).").split(" — ")[0]
                 assert absente in etat, etat
                 await pilot.press("escape")
                 await pilot.pause(0.4)

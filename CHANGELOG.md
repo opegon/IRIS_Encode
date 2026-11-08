@@ -1,5 +1,21 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.1] — 2026-11-09
+
+### Les clés d'API passent dans les options
+
+Les clés d'OpenSubtitles et d'OMDb se gèrent désormais depuis les **options**
+(`Ctrl+O`, ou `F5` puis `U`) : une section **Clés d'API** dont le bouton
+**Changer…** ouvre la fenêtre habituelle — lien vers la page du service,
+vérification avant enregistrement. Elle enregistre elle-même, sans attendre le
+`Ctrl+S` des options. La touche `K` de la gestion des profils disparaît : les
+clés n'appartiennent à aucun profil. La fenêtre au lancement, quand une clé
+manque, ne change pas.
+
+Les messages d'OpenSubtitles (clé absente, clé refusée, compte manquant)
+renvoient à `Ctrl+O`, « Clés d'API », au lieu de `F5` puis `K`. Guides, README
+et spec suivent. Un test garde le chemin (`tests/test_cles.py`).
+
 ## [v0.9.2.0] — 2026-11-08
 
 ### Options : pas de rescan inutile

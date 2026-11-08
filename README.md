@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.2.0 — Windows (macOS/Linux support planned)
+**Version**: 0.9.2.1 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -736,7 +736,7 @@ IMDB blocks direct scraping. IRIS ENCODE works in two modes:
 To get a free key (1,000 requests/day): at startup, if it is missing, a window
 asks for it — **Get a key** opens
 [omdbapi.com](https://www.omdbapi.com/apikey.aspx), you paste the key received
-by email, and it is checked before being saved. Later: `F5`, then `K`.
+by email, and it is checked before being saved. Later: `Ctrl+O`, "API keys" section.
 `config.toml` does not need editing by hand.
 
 ---

@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.0 — document de référence courant
-**Date** : 2026-11-08
+**Version** : 0.9.2.1 — document de référence courant
+**Date** : 2026-11-09
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -3714,9 +3714,12 @@ Section « Titres de disque » (v0.8.9.94, étendue au DVD en v0.8.9.95) : la du
 en minutes (§ 15.5), écrite dans `[app] min_title_minutes` ; une saisie non
 numérique est ignorée.
 
-**Clés d'API** (v0.8.9.37, IE-101) — `K` ouvre `ClesScreen` pour tous les
-services de `core/cles.py` (OpenSubtitles : clé, identifiant, mot de passe
-masqué ; OMDb : clé), champs pré-remplis. Au lancement, hors mode sans
+**Clés d'API** (v0.8.9.37, IE-101 ; dans les options depuis v0.9.2.1, `K`
+de la gestion des profils retiré) — la section « Clés d'API » d'`OptionsScreen`
+(bouton **Changer…**, `IrisEncodeApp.demander_cles(tous=True)`) ouvre
+`ClesScreen` pour tous les services de `core/cles.py` (OpenSubtitles : clé, identifiant, mot de passe
+masqué ; OMDb : clé), champs pré-remplis. Elle enregistre elle-même, sans
+attendre le `Ctrl+S` des options ; `Esc` y revient. Au lancement, hors mode sans
 terminal, `IrisEncodeApp.demander_cles()` l'ouvre pour les services dont un
 champ **requis** manque (la clé ; le compte OpenSubtitles ne l'est pas) et qui
 ne sont pas dans `[cles] ne_plus_demander`. Chaque service : un bouton qui
@@ -4286,6 +4289,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
 | 0.9.2.0 | 2026-11-08 | **Options sans rescan inutile** (§ 14) : au retour de `Ctrl+O`, un dossier n'est relu que si la durée minimale des titres a changé (CR-98) ; en mode assistant, `F4`, `F5` et `Ctrl+O` répondent sans être annoncés (précisé) ; guides et spec donnent `Ctrl+O` pour les options · `tests/test_revue_interface.py` |
+| 0.9.2.1 | 2026-11-09 | **Clés d'API dans les options** (§ 14.8) : section « Clés d'API » d'`OptionsScreen` (bouton qui ouvre `ClesScreen`), `K` retiré de la gestion des profils ; les messages d'OpenSubtitles renvoient à `Ctrl+O` · `tests/test_cles.py` |
 | 0.9.1.36 | 2026-11-08 | **Réglages dès le lancement** (§ 14) : la liste des volumes annonce `F4` Profil, `F5` Gérer et `Ctrl+O` Options (nouvelle, `BrowserScreen.action_open_options`, aussi dans un dossier) ; sa barre d'état nomme le profil actif · `tests/test_revue_interface.py` |
 | 0.9.1.35 | 2026-11-08 | **Filtrer par pistes** (§ 14) : `L` propose « Audio DTS » et « Sous-titres image : PGS, VobSub » quand le dossier en contient · `tests/test_filtre_accueil.py` |
 | 0.9.1.34 | 2026-11-08 | **Colonne Audio compacte** (§ 14) : `audio_summary` regroupe les pistes d'un même format (`ac3 5.1 fre+eng`), la colonne Fichier retrouve sa place · `tests/test_revue_interface.py` |

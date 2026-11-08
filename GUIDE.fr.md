@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.27
+**Version** : 0.9.1.28
 **Date** : 2026-11-01
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -953,6 +953,39 @@ ceux de la TNT (DVB) et les titres de disque restent tels quels.
 Coché, un remux part en remux ; pour réencoder la vidéo aussi, `F6` dans
 l'aperçu force le codec. Écarter la piste fautive dans l'écran des pistes
 ramène le fichier en `← SKIP`.
+
+### 4.9ter « 720x480 ⚠ » : la proportion de l'image n'est pas déclarée
+
+Un DVD converti en AVI (ou autre) **sans redimensionnement** garde sa
+définition de DVD — 720×480 ou 720×576, parfois 704 de large — mais perd
+l'information qui disait comment étirer l'image. Elle s'affiche alors
+déformée : un film 4:3 apparaît trop large, un film 16:9 trop étroit.
+
+À l'analyse, IRIS repère ces fichiers et estime la proportion la plus
+probable :
+
+- **format d'origine du film** : cherché sur Wikidata d'après le titre et
+  l'année du nom de fichier, puis confronté à l'image utile (sans année dans
+  le nom, pas de recherche) ;
+- **bandes noires** : quand elles ne laissent qu'une proportion plausible
+  (bandes sur les côtés d'un film 4:3 cadré en 16:9, ou film large en boîte
+  aux lettres dans un cadre 4:3) ;
+- sinon, **4:3 par défaut** : une image pleine, sans bandes, ne départage pas
+  4:3 et 16:9.
+
+L'analyse d'un tel fichier prend quelques secondes de plus ; sans réseau,
+seules les bandes noires comptent. L'encodage applique la proportion estimée,
+et un fichier qui serait resté tel quel est remuxé pour la recevoir.
+
+Tant que la proportion n'est qu'estimée, l'accueil l'annonce par **« ⚠ »**
+dans la colonne **Résol.** Pour la fixer : `T` (écran des pistes) ou `↵` en
+mode assistant (étape **Décision**), puis **`P` Proportion**. La fenêtre dit
+l'estimation et ce qui la fonde, puis le rendu de chaque choix — **4:3**,
+**16:9**, ou **laisser tel quel** (pixels carrés) — avec sa définition de
+sortie et la forme de l'image utile. Le choix est gardé d'une analyse du
+dossier à l'autre, et le « ⚠ » disparaît. Changer la proportion refait la
+décision vidéo (le cadre de sortie en dépend) : un codec choisi avant est à
+rechoisir.
 
 ### 4.10 La colonne « Débit » ne dit pas la même chose que mon explorateur
 

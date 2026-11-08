@@ -1,5 +1,24 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.28] — 2026-11-08
+
+### Choisir la proportion d'une source SD qui ne la déclare pas
+
+La proportion estimée depuis la v0.9.1.27 se voit et se choisit.
+
+- **Accueil** : « 720x480 ⚠ » dans la colonne Résol. tant qu'elle n'est
+  qu'estimée.
+- **`P` Proportion**, dans l'écran des pistes et à l'étape Décision de
+  l'assistant (seulement pour ces fichiers) : la fenêtre dit l'estimation et
+  ce qui la fonde (format d'origine du film, bandes noires, ou défaut), puis
+  le rendu de chaque choix — 4:3, 16:9 ou laisser tel quel — avec sa
+  définition de sortie et la forme de l'image utile.
+- Le choix est gardé d'une analyse du dossier à l'autre, comme un codec
+  choisi à la main ; il refait la décision vidéo (le cadre d'une
+  super-résolution en dépend).
+- L'estimation n'est plus refaite à chaque retour sur l'accueil.
+- Guide : § 4.9ter. À venir : l'aperçu des deux hypothèses en image.
+
 ## [v0.9.1.27] — 2026-11-08
 
 ### Sources SD sans proportion déclarée

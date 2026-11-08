@@ -39,7 +39,8 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
 from core.i18n import N_, _, ngettext, texte_erreur
-from core.decision import (ACTION_CYCLE, AudioAction,
+from core import sar as sar_mod
+from core.decision import (ACTION_CYCLE, AudioAction, choisir_sar,
                            FileDecision, VideoAction, cycle_index,
                            ajuster_remux, choisir_codec, decide_audio,
                            force_skip_to_encode,
@@ -85,7 +86,7 @@ _TITRES = {
 
 _TOUCHES_ETAPE.update({
     Etape.FICHIER:  ("enter",),
-    Etape.DECISION: ("space", "f6", "f7", "enter"),
+    Etape.DECISION: ("space", "f6", "f7", "p", "enter"),
     Etape.PISTES:   ("f9", "r", "d", "enter"),
     Etape.LANCER:   ("enter", "f3", "f2"),
     Etape.TERMINE:  ("enter",),
@@ -104,8 +105,12 @@ _LIBELLES_ETAPE: dict[Etape, dict[str, str]] = {
 
 def _actions_etape(ecran, etape: Etape) -> list[tuple[str, str]]:
     propres = _LIBELLES_ETAPE.get(etape, {})
+    # `P` seulement sur une source sans SAR déclaré (IE-173).
+    dec = getattr(ecran, "_dec", None)
+    sans_sar = dec is None or dec.info.sar_estimation is None
     return [(k, propres.get(k, lib))
-            for k, lib in actions_ecran(ecran, _TOUCHES_ETAPE[etape])]
+            for k, lib in actions_ecran(ecran, _TOUCHES_ETAPE[etape])
+            if not (k == "p" and sans_sar)]
 
 
 # Genres de lignes de la table de l'étape 2
@@ -144,6 +149,7 @@ class WizardScreen(TableNavMixin, Screen):
         Binding("space",     "basculer", N_("Keep"),  show=True,  priority=True),
         Binding("f6",        "codec",    N_("Codec"),   show=True,  priority=True),
         Binding("f7",        "debit",    N_("Bitrate"),   show=True,  priority=True),
+        Binding("p",         "proportion", N_("Aspect ratio"), show=True, priority=True),
         Binding("f9",        "donneur",  N_("Add"), show=True,  priority=True),
         # `R` : l'écran de recalage, seul endroit où une mesure se vérifie et
         # se corrige (IE-142).
@@ -288,6 +294,20 @@ class WizardScreen(TableNavMixin, Screen):
             t.append(" · " + _("{bitrate}k targeted").format(
                 bitrate=v.target_bitrate // 1000))
         t.append(f"\n  {' ' * large}{v.reason}\n")
+        if d.info.sar_estimation is not None:
+            from .sar import libelle_estimation
+            nom = next((h for h, s in sar_mod.choix(d.info) if s == d.info.sar_impose),
+                       d.info.sar_impose)
+            if nom == "1:1":
+                nom = _("square pixels")
+            if d.info.sar_confirme:
+                t.append(f"  {' ' * large}" + _("Aspect ratio: {name}, chosen")
+                         .format(name=nom) + "\n", style="green")
+            else:
+                t.append(f"  {' ' * large}" + "⚠ " + _("Aspect ratio not declared: {estimate} "
+                         "— {key} to choose").format(estimate=libelle_estimation(d.info),
+                                                    key=touche("p")) + "\n",
+                         style="bold dark_orange")
         if d.desentrelace:
             t.append(f"  {' ' * large}"
                      + _("Interlaced source: deinterlaced (bwdif), frame rate "
@@ -532,6 +552,19 @@ class WizardScreen(TableNavMixin, Screen):
             self._afficher()
 
         self.app.push_screen(ValuePickerScreen(titre, opts, courant), _appliquer)
+
+    def action_proportion(self) -> None:
+        """La proportion d'une source sans SAR déclaré (IE-173)."""
+        if self._etape != Etape.DECISION or self._dec.info.sar_estimation is None:
+            return
+        from .sar import SarScreen
+
+        def _choisi(sar: Optional[str]) -> None:
+            if sar is None:
+                return
+            choisir_sar(self._dec, sar)
+            self._afficher()
+        self.app.push_screen(SarScreen(self._dec.info), _choisi)
 
     # ── Étape 3 : greffer, puis mesurer aussitôt ──────────────────────────────
 

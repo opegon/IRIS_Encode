@@ -293,3 +293,113 @@ def test_cadre_mesure_sur_the_kid():
     l, h = sar.mesurer_cadre(info, shutil.which("ffmpeg"))
     assert 670 <= l <= 700 and 460 <= h <= 480
     assert estimer(720, 480, (l, h)).confiance == Confiance.INDETERMINE
+
+
+# ─── Le choix de l'utilisateur (IE-173 2/3) ───────────────────────────────────
+
+def _info_douteuse(tmp_path, cadre=(690, 468), formats=()):
+    info = _info(tmp_path)
+    info.sar_estimation = estimer(720, 480, cadre, formats)
+    info.sar_impose = info.sar_estimation.sar
+    return info
+
+
+def test_choix_proposes(tmp_path):
+    assert sar.choix(_info(tmp_path)) == [("4:3", "8:9"), ("16:9", "32:27"), ("1:1", "")]
+    assert sar.choix(_info(tmp_path, 720, 576)) == [
+        ("4:3", "16:15"), ("16:9", "64:45"), ("1:1", "")]
+
+
+def test_choisir_sar_refait_le_cadre(tmp_path):
+    from core.decision import choisir_sar
+    dec = decide(_info_douteuse(tmp_path), _profil())
+    dec.output_override = tmp_path / "ancien.mkv"
+    choisir_sar(dec, "32:27")
+    assert dec.info.sar_impose == "32:27" and dec.info.sar_confirme
+    assert dec.info.largeur_affichee == 853
+    assert dec.output_override is None
+    vf = build_command(dec, _plat())
+    assert vf[vf.index("-vf") + 1].startswith("setsar=32/27,")
+
+
+def test_pixels_carres_choisis_ne_remuxent_pas(tmp_path):
+    from core.decision import choisir_sar
+    info = _info_douteuse(tmp_path)
+    info.codec, info.bitrate = "h264", 800_000
+    dec = decide(info, _profil())
+    assert dec.video.action == VideoAction.REMUX
+    choisir_sar(dec, "")
+    assert dec.video.action == VideoAction.SKIP
+    assert not dec.info.pixels_non_carres
+
+
+def test_le_choix_survit_a_la_reanalyse(tmp_path):
+    """L'accueil refait ses décisions à chaque analyse : le choix est noté
+    dans les réglages explicites, puis réappliqué à une info neuve."""
+    from core.decision import appliquer_reglages, choisir_sar, reglages_explicites
+    profil = _profil()
+    dec = decide(_info_douteuse(tmp_path), profil)
+    assert reglages_explicites(dec, profil).vide
+    choisir_sar(dec, "32:27")
+    reglages = reglages_explicites(dec, profil)
+    assert reglages.sar == "32:27" and not reglages.vide
+    neuve = _info_douteuse(tmp_path)
+    assert neuve.sar_impose == "8:9"
+    dec2 = appliquer_reglages(neuve, profil, reglages, {})
+    assert dec2.info.sar_impose == "32:27" and dec2.info.sar_confirme
+    assert dec2.info.largeur_affichee == 853
+
+
+def test_le_choix_pixels_carres_survit_aussi(tmp_path):
+    from core.decision import appliquer_reglages, choisir_sar, reglages_explicites
+    profil = _profil()
+    dec = decide(_info_douteuse(tmp_path), profil)
+    choisir_sar(dec, "")
+    reglages = reglages_explicites(dec, profil)
+    assert reglages.sar == ""
+    dec2 = appliquer_reglages(_info_douteuse(tmp_path), profil, reglages, {})
+    assert dec2.info.sar_impose == "" and dec2.info.sar_confirme
+
+
+def test_l_estimation_n_est_pas_refaite_a_chaque_analyse(tmp_path, monkeypatch):
+    from core import scanner
+    appels = []
+
+    def _estimer(i, f):
+        appels.append(i.path)
+        return estimer(720, 480, (690, 468))
+    monkeypatch.setattr(sar, "estimer_source", _estimer)
+    info = _info(tmp_path)
+    scanner._estimer_sar(info)
+    scanner._estimer_sar(VideoInfo(path=info.path, width=720, height=480, bitrate=0,
+                                   codec="msmpeg4v3", duration=60.0, frame_count=0,
+                                   dv_profile=None))
+    assert len(appels) == 1
+    # Le fichier change : nouvelle mesure.
+    p = tmp_path / "The Kid 1921.avi"
+    p.write_bytes(b"autre contenu")
+    info = VideoInfo(path=p, width=720, height=480, bitrate=0, codec="msmpeg4v3",
+                     duration=60.0, frame_count=0, dv_profile=None)
+    scanner._estimer_sar(info)
+    assert len(appels) == 2
+
+
+def test_choisir_sar_refait_le_cadre_de_l_agrandissement(tmp_path, monkeypatch):
+    """Le cadre d'une super-résolution suit la largeur affichée : 1440x1080
+    en 4:3, 1920x1080 en 16:9."""
+    from core import decision, dovi, super_resolution as sr
+    from core.decision import choisir_sar
+    ff, shader = "C:/iris/bin/dv/ffmpeg.exe", Path("C:/iris/bin/shaders/ArtCNN_C4F16.glsl")
+    monkeypatch.setattr(decision, "_FACTEURS_CACHE", (1.2, 2.7))
+    monkeypatch.setattr(dovi, "_ffmpeg_dv", ff)
+    monkeypatch.setattr(sr, "_shader", shader)
+    monkeypatch.setitem(sr._essais, (ff, str(shader)), None)
+    profil = Profile(id="t", data={
+        "bitrate_4k_kbps": 12000, "bitrate_1080p_kbps": 3000,
+        "bitrate_720p_kbps": 1500, "bitrate_480p_kbps": 900, "keep_4k": False,
+        "dolby_vision": "sdr", "preset_encoder": "medium",
+        "audio_languages": ["fre"], "upscale": True, "upscale_passes": 1})
+    dec = decide(_info_douteuse(tmp_path), profil)
+    assert (dec.video.target_width, dec.video.target_height) == (1440, 1080)
+    choisir_sar(dec, "32:27")
+    assert (dec.video.target_width, dec.video.target_height) == (1920, 1080)

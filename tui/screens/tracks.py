@@ -31,6 +31,7 @@ from textual.widgets import DataTable, Static
 
 import core.config as cfg_mod
 from core import dovi
+from core import sar as sar_mod
 from core.i18n import N_, _, pgettext
 from core.decision import (
     ajuster_remux,
@@ -44,7 +45,7 @@ from core.decision import (
     same_intent,
     BITRATE_OPTS_KBPS as _BITRATE_OPTS,
     AudioAction, DVAction, FileDecision, TracksSelection,
-    VideoAction, VideoOverride, decide_audio, decide_video,
+    VideoAction, VideoOverride, decide_audio, decide_video, choisir_sar,
     DV_SORTIE, EXCLU_MANUELLEMENT, libelle_copie, libelle_ocr, ocr_prevu,
 )
 from ..common import sauver_config
@@ -56,6 +57,7 @@ from ..common import (langue_affichee, nom_codec, barre_etat,
     libelle_type_piste,
     retour_accueil,
     raccourcis,
+    touche,
     cellule,
     codec_picker_opts,
     bitrate_picker_config,
@@ -137,6 +139,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         Binding("f7",        "open_bitrate",  N_("Bitrate"),              show=True),
         Binding("f8",        "toggle_delete", N_("Del./keep source"),     show=True),
         Binding("f9",        "add_external",  N_("External track"),       show=True),
+        # Seulement sur une source sans SAR déclaré (IE-173).
+        Binding("p",         "open_sar",      N_("Aspect ratio"),         show=True),
         Binding("backspace", "dismiss_cancel",N_("Back"),                 show=True),
         Binding("escape",    "dismiss_cancel",N_("Back"),                 show=False, priority=True),
         # `priority` : un DataTable etouffe la touche avant les bindings —
@@ -225,7 +229,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                         zebra_stripes=False, show_header=True)
         yield Static(_hint_track(), id="hint-bar")
         yield KeyFooter(
-            actions=actions_ecran(self),
+            actions=[a for a in actions_ecran(self)
+                     if a[0] != "p" or self._decision.info.sar_estimation is not None],
             nav=footer_line2(back=True, nav=True, resize=True, accueil=True),
         )
 
@@ -409,6 +414,10 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         else:
             dv_src = ""
         src_txt = Text(f"{info.width}x{info.height}  {info.kbps}k{dv_src}", no_wrap=True, style="dim")
+        # Proportion estimée, pas encore choisie (IE-173).
+        sar_a_choisir = info.sar_estimation is not None and not info.sar_confirme
+        if sar_a_choisir:
+            src_txt.append(" ⚠", style="bold dark_orange")
 
         # Colonne "dec" : décision éditable avec champ actif surligné
         def _f(field: str, label: str, style: str) -> Text:
@@ -423,6 +432,11 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
         dec_txt = Text(no_wrap=True)
         dec_txt.append_text(_f("action", f"→ {act_short}", act_col))
+        # La proportion tôt dans la ligne : la fin déborde à 160 colonnes.
+        if info.sar_estimation is not None:
+            dec_txt.append("  ·  ")
+            dec_txt.append(f"{touche('p')} {self._libelle_sar()}",
+                           style="bold dark_orange" if sar_a_choisir else "green")
         dec_txt.append("  ·  ")
         dec_txt.append_text(_f("bitrate", f"{bitrate//1000} kbps", ""))
         if action != VideoAction.SKIP:
@@ -772,6 +786,29 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         sel = self._make_selection()
         sel.launch_mode = "run"
         self.dismiss(sel)
+
+    def _libelle_sar(self) -> str:
+        """« 4:3 ? » tant que la proportion n'est qu'estimée, « 4:3 » choisie."""
+        info = self._decision.info
+        nom = next((h for h, s in sar_mod.choix(info) if s == info.sar_impose),
+                   info.sar_impose)
+        if nom == "1:1":
+            nom = _("square pixels")
+        return nom if info.sar_confirme else f"{nom} ?"
+
+    def action_open_sar(self) -> None:
+        """La proportion d'une source sans SAR déclaré (IE-173)."""
+        if self._decision.info.sar_estimation is None:
+            return
+        from .sar import SarScreen
+
+        def _choisi(sar: str | None) -> None:
+            if sar is None:
+                return
+            choisir_sar(self._decision, sar)
+            self._build_table(keep_cursor=True)
+            self._update_status()
+        self.app.push_screen(SarScreen(self._decision.info), _choisi)
 
     def action_dismiss_cancel(self) -> None:
         self.dismiss(None)

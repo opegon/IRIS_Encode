@@ -149,6 +149,9 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                              "decision."),
         "open_codec":     N_("Chooses the output codec."),
         "open_bitrate":   N_("Chooses the target video bitrate."),
+        "open_sar":       N_("Sets the aspect ratio (4:3, 16:9 or square pixels) "
+                             "of a DVD-size source that does not declare it. "
+                             "Shown only for such a file."),
         # TRANSLATORS: {delete_flag} is the warning shown on the tracks screen.
         "toggle_delete":  N_("Deletes or keeps the source file after a "
                              "successful encode. “{delete_flag}” is shown in "
@@ -297,6 +300,8 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                        "2)."),
         "codec":    N_("Changes the output codec (step 2)."),
         "debit":    N_("Changes the target bitrate (step 2)."),
+        "proportion": N_("Sets the aspect ratio of a DVD-size source that "
+                         "does not declare it (step 2)."),
         "donneur":  N_("Presents a donor file (step 3). The offset "
                        "measurement is started and applied at once."),
         "recaler":  N_("Opens the Sync screen on the added tracks (step 3), "

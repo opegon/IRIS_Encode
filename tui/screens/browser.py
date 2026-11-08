@@ -1017,6 +1017,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         size_txt  = cellule("—" if taille is None else fmt_bytes(taille),
                             style="dim")
         res_txt   = cellule(f"{info.width}x{info.height}")
+        # Proportion estimée, pas encore choisie (IE-173) : `P` dans les
+        # pistes ou l'assistant.
+        if info.sar_estimation is not None and not info.sar_confirme:
+            res_txt.append(" ⚠", style="bold dark_orange")
         dur_txt   = cellule(fmt_duration(info.duration), style="dim")
         kbps_txt  = cellule(f"{info.kbps}k")
         codec_txt = cellule(info.codec)

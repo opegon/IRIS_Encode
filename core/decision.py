@@ -1569,11 +1569,15 @@ class Reglages:
     video:           Optional["VideoDecision"] = None
     delete_source:   Optional[bool]            = None
     external_tracks: list = field(default_factory=list)
+    # SAR choisi pour une source qui n'en déclare pas (IE-173) ; « » = pixels
+    # carrés, None = pas de choix (l'estimation s'applique).
+    sar:             Optional[str]             = None
 
     @property
     def vide(self) -> bool:
         return (self.profil is None and self.video is None
-                and self.delete_source is None and not self.external_tracks)
+                and self.delete_source is None and not self.external_tracks
+                and self.sar is None)
 
 
 def reglages_explicites(dec: FileDecision, profil_actif: Profile,
@@ -1591,6 +1595,7 @@ def reglages_explicites(dec: FileDecision, profil_actif: Profile,
         video=dec.video if dec.video != auto.video else None,
         delete_source=dec.delete_source_override,
         external_tracks=deepcopy(dec.external_tracks),
+        sar=dec.info.sar_impose if dec.info.sar_confirme else None,
     )
 
 
@@ -1605,6 +1610,9 @@ def appliquer_reglages(info: VideoInfo, profil_actif: Profile, reglages: Reglage
     """
     from copy import deepcopy
     profil = profils.get(reglages.profil, profil_actif) if reglages.profil else profil_actif
+    # Le SAR d'abord : il fait le cadre de sortie.
+    if reglages.sar is not None and info.sar_estimation is not None:
+        info.sar_impose, info.sar_confirme = reglages.sar, True
     dec = decide(info, profil, override_audio, override_subtitles)
     if reglages.video is not None:
         dec.video = reglages.video
@@ -1825,6 +1833,17 @@ def decide(
         info=info, profile=profile, video=video, audio=audio,
         subtitle_indices=decide_subtitles(info, profile, override_subtitles),
     ))
+
+
+def choisir_sar(dec: FileDecision, sar: str) -> FileDecision:
+    """Retient le SAR choisi par l'utilisateur pour une source qui n'en
+    déclare pas (IE-173) — « » pour des pixels carrés. Le cadre de sortie en
+    dépend : la décision vidéo est refaite (un codec choisi avant est à
+    rechoisir), le nom de sortie recalculé."""
+    dec.info.sar_impose, dec.info.sar_confirme = sar, True
+    dec.video = decide_video(dec.info, dec.profile)
+    dec.output_override = None
+    return ajuster_remux(dec)
 
 
 # ─── Remux : vidéo recopiée, pistes rendues lisibles (IE-175) ─────────────────

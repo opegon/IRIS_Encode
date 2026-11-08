@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.27
+**Version**: 0.9.1.28
 **Date**: 2026-11-01
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -940,6 +940,38 @@ languages, DVB subtitles and disc titles stay as they are.
 remux runs as a remux; to re-encode the video too, `F6` in the dry run forces
 the codec. Leaving the offending track out in the tracks screen brings the file
 back to `← SKIP`.
+
+### 4.9ter "720x480 ⚠": the picture's aspect ratio is not declared
+
+A DVD converted to AVI (or another format) **without resizing** keeps its
+DVD size — 720×480 or 720×576, sometimes 704 wide — but loses the
+information that said how to stretch the picture. It then shows distorted: a
+4:3 film looks too wide, a 16:9 film too narrow.
+
+During the scan, IRIS spots these files and estimates the most likely aspect
+ratio:
+
+- **the film's original format**: looked up on Wikidata from the title and
+  year in the file name, then checked against the visible picture (no year in
+  the name, no lookup);
+- **black bars**: when only one aspect ratio is plausible (bars at the sides
+  of a 4:3 film framed in 16:9, or a wide film letterboxed in a 4:3 frame);
+- otherwise, **4:3 by default**: a full picture, without bars, does not tell
+  4:3 from 16:9.
+
+Scanning such a file takes a few more seconds; without a network, only the
+black bars count. The encode applies the estimated aspect ratio, and a file
+that would have been left as is gets remuxed to receive it.
+
+As long as the aspect ratio is only estimated, the home screen shows **"⚠"**
+in the **Res.** column. To set it: `T` (tracks screen) or `↵` in guided mode
+(**Decision** step), then **`P` Aspect ratio**. The window gives the estimate
+and what it rests on, then the result of each choice — **4:3**, **16:9**, or
+**leave as is** (square pixels) — with its output size and the shape of the
+visible picture. The choice is kept from one scan of the folder to the next,
+and the "⚠" goes away. Changing the aspect ratio redoes the video decision
+(the output frame depends on it): a codec chosen before has to be chosen
+again.
 
 ### 4.10 The "Bitrate" column does not say the same as my file explorer
 

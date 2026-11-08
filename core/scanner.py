@@ -549,6 +549,8 @@ class VideoInfo:
     sar_impose:      str                 = ""
     # L'estimation qui l'a proposé (`sar.Estimation`), None hors doute.
     sar_estimation:  Optional[Any]       = None
+    # Le SAR imposé a été choisi par l'utilisateur, pas seulement estimé.
+    sar_confirme:    bool                = False
     # Format de pixels du flux (`pix_fmt`) : « yuv420p10le »… « » si inconnu.
     # Il dit si le décodeur Quick Sync sait lire la source (IE-147).
     pix_fmt:         str                 = ""
@@ -1125,12 +1127,28 @@ def _estimer_sar(info: VideoInfo) -> None:
     from . import encoder, sar
     if not sar.sar_douteux(info):
         return
+    # L'accueil réanalyse le dossier à chaque retour d'écran : la mesure ne
+    # se refait que si le fichier a changé.
     try:
-        info.sar_estimation = sar.estimer_source(info, encoder._ffmpeg_path)
-    except Exception as e:
-        _log.warning("SAR estimation failed for %s: %s", info.path, e)
-        info.sar_estimation = sar.estimer(info.width, info.height, None)
-    info.sar_impose = info.sar_estimation.sar
+        st = info.path.stat()
+        cle = (str(info.path), st.st_size, st.st_mtime_ns)
+    except OSError:
+        cle = None
+    estimation = _ESTIMATIONS_SAR.get(cle) if cle else None
+    if estimation is None:
+        try:
+            estimation = sar.estimer_source(info, encoder._ffmpeg_path)
+        except Exception as e:
+            _log.warning("SAR estimation failed for %s: %s", info.path, e)
+            estimation = sar.estimer(info.width, info.height, None)
+        if cle:
+            _ESTIMATIONS_SAR[cle] = estimation
+    info.sar_estimation = estimation
+    info.sar_impose = estimation.sar
+
+
+# Estimations du SAR par (chemin, taille, date) : voir `_estimer_sar`.
+_ESTIMATIONS_SAR: dict[tuple, Any] = {}
 
 
 def _scan_titre(mpls: Path) -> VideoInfo:

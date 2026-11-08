@@ -130,6 +130,13 @@ def estimer(largeur: int, hauteur: int, cadre: Optional[tuple[int, int]],
                       cadre, formats)
 
 
+def choix(info: "VideoInfo") -> list[tuple[str, str]]:
+    """Ce que l'utilisateur peut retenir : (hypothèse, SAR). « 1:1 » laisse
+    l'image telle quelle, en pixels carrés (SAR imposé vide)."""
+    sars = SAR[(info.width, info.height)]
+    return [(h, sars[h]) for h in HYPOTHESES] + [("1:1", "")]
+
+
 # ─── Indice 2 : la zone d'image utile ─────────────────────────────────────────
 
 # Points de mesure, répartis entre 10 % et 90 % de la durée ; à chacun, les

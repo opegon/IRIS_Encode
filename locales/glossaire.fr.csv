@@ -98,3 +98,5 @@ OpenSubtitles,OpenSubtitles,Do not translate.
 Read,Read,"Encoding queue column header: where the video is decoded (GPU / CPU). Kept in English in French, at the user's request (2026-10-29)."
 location,emplacement,"Home screen: a named network share (IE-161), listed under the volumes."
 Credential Manager,Gestionnaire d'identifiants,"Windows component that holds the account of a network share."
+Aspect ratio,Proportion,"Shape of the picture (4:3, 16:9) of a source that does not declare it (IE-173); P key in Tracks and Guided mode."
+square pixels,pixels carrés,"SAR 1:1: the picture is shown as stored, no stretching."

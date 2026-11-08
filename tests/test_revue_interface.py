@@ -156,6 +156,38 @@ def test_accueil_assistant_et_sorties_grisees(tmp_path, monkeypatch):
     assert "t" in r["pied"], "le mode manuel garde sa liste entière"
 
 
+# ─── Profils et options dès le lancement ─────────────────────────────────────
+
+def test_profils_et_options_depuis_les_volumes(monkeypatch):
+    """L'écran des volumes, le premier qu'on voit, annonce le choix du profil,
+    sa gestion et les options ; il nomme le profil actif ; Ctrl+O ouvre les
+    options."""
+    from textual.widgets import Static
+    from core import config as cfg_mod
+    from tui.app import IrisEncodeApp
+    from tui.widgets.footer import KeyFooter
+
+    monkeypatch.setattr(cfg_mod, "save", lambda *args, **kwargs: None)
+    i18n.init("fr")
+
+    async def releve():
+        app = IrisEncodeApp()
+        async with app.run_test(size=(160, 40)) as pilot:
+            await pilot.pause(1.5)
+            ecran = app.screen
+            pied = [cle for cle, _lib in ecran.query_one(KeyFooter)._nav]
+            etat = str(ecran.query_one("#status-bar", Static).render())
+            actif = app.active_profile_id
+            await pilot.press("ctrl+o")
+            await pilot.pause(0.6)
+            return pied, etat, actif, type(app.screen).__name__
+
+    pied, etat, actif, ouvert = asyncio.run(releve())
+    assert {"f4", "f5", "ctrl+o"} <= set(pied), pied
+    assert f"Profil : {actif}" in etat, etat
+    assert ouvert == "OptionsScreen", ouvert
+
+
 # ─── 5b : liste des volumes ──────────────────────────────────────────────────
 
 def test_les_volumes_nomment_le_partage(monkeypatch):

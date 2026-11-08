@@ -9,3 +9,7 @@
 
 # Catalogues compilés (IE-86) : binaires, jamais de conversion de fins de ligne.
 *.mo binary
+
+# Conventions pour Claude Code : versionnées, mais pas dans le ZIP de release
+# (git archive), qui n'emporte que le produit.
+/.claude export-ignore

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.35
+**Version** : 0.9.1.36
 **Date** : 2026-11-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -185,6 +185,7 @@ chemin  = '\\10.0.0.10\Films'
 | `F1` / `F2` | Aperçu / Encoder la sélection |
 | `R` | Encoder récursivement le dossier sous le curseur |
 | `F4` / `F5` | Choisir un profil / gérer les profils |
+| `Ctrl+O` | Options (langue, dossiers, après le lot…) — aussi depuis la liste des volumes, dès le lancement, où la barre d'état nomme le profil actif |
 | `J` | **Joindre** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
 | `U` | **Télécharger une vidéo YouTube** (§ 3.8) |
 | `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |

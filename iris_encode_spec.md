@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.35 — document de référence courant
+**Version** : 0.9.1.36 — document de référence courant
 **Date** : 2026-11-08
 **Statut** : stable
 
@@ -2845,6 +2845,12 @@ Conventions transverses :
   - `ConfirmModal` : seul le bouton actif a un fond (accent, ou `$warning` sur
     une confirmation dangereuse) et porte `▶ … ◀` ; l'inactif garde la même
     largeur.
+- **Réglages dès le lancement** (v0.9.1.36). Le pied de la liste des volumes
+  porte `BrowserScreen._FONCTIONS_REGLAGES` (`F4` Profil, `F5` Gérer, `Ctrl+O`
+  Options), comme celui d'un dossier en mode manuel ; sa barre d'état nomme le
+  profil actif. `Ctrl+O` (`action_open_options`) ouvre `OptionsScreen` sans passer
+  par `ConfigScreen` ; au retour d'un enregistrement, un dossier est relu (durée
+  minimale des titres, CR-98).
 - **Filtre de l'accueil** (v0.8.9.46). `L` choisit un type d'image
   (`browser.type_image` : profil DV `DV:P8.1`…, sinon `HDR` si la courbe est
   PQ ou HLG, sinon `SDR`) parmi ceux du dossier (`options_filtre`), ou
@@ -4274,6 +4280,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.36 | 2026-11-08 | **Réglages dès le lancement** (§ 14) : la liste des volumes annonce `F4` Profil, `F5` Gérer et `Ctrl+O` Options (nouvelle, `BrowserScreen.action_open_options`, aussi dans un dossier) ; sa barre d'état nomme le profil actif · `tests/test_revue_interface.py` |
 | 0.9.1.35 | 2026-11-08 | **Filtrer par pistes** (§ 14) : `L` propose « Audio DTS » et « Sous-titres image : PGS, VobSub » quand le dossier en contient · `tests/test_filtre_accueil.py` |
 | 0.9.1.34 | 2026-11-08 | **Colonne Audio compacte** (§ 14) : `audio_summary` regroupe les pistes d'un même format (`ac3 5.1 fre+eng`), la colonne Fichier retrouve sa place · `tests/test_revue_interface.py` |
 | 0.9.1.33 | 2026-11-08 | **Revue d'interface, suite** (§ 14) : pied réduit au parcours en mode assistant · fil d'avancement de l'assistant · colonnes Décodage / Filtres / Encodage · volumes sans bande vide, partage des lecteurs réseau (`emplacements.lecteurs_reseau`) · sorties d'IRIS comptées dans la barre d'état · bouton actif marqué dans `ConfirmModal` · `tests/test_revue_interface.py` |

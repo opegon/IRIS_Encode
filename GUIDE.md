@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.35
+**Version**: 0.9.1.36
 **Date**: 2026-11-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -187,6 +187,7 @@ chemin  = '\\10.0.0.10\Films'
 | `F1` / `F2` | Dry run / Encode the checked files |
 | `R` | Encode the folder under the cursor, recursively |
 | `F4` / `F5` | Choose a profile / manage profiles |
+| `Ctrl+O` | Options (language, folders, after the batch…) — also from the list of volumes, right at startup, where the status bar names the active profile |
 | `J` | **Join** the checked files end to end into one (§ 2.1bis) |
 | `U` | **Download a YouTube video** (§ 3.8) |
 | `I` | Movie Info card: AlloCiné, then IMDB with `Tab` |

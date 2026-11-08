@@ -423,6 +423,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         Binding("f2",        "open_run",           N_("Encode"),   show=True),
         Binding("f4",        "open_profile_picker",N_("Profile"),  show=True),
         Binding("f5",        "open_config",        N_("Manage"),   show=True),
+        # Les options sans passer par la gestion des profils (2026-11-08).
+        Binding("ctrl+o",    "open_options",       N_("Options"),  show=True),
         # La liste des volumes l'annonce seule (_RACCOURCIS_VOLUMES) : la touche
         # n'a de sens que là (IE-162).
         Binding("e",         "emplacements",       N_("Locations"), show=False),
@@ -572,6 +574,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                     ("f2", N_("Encode")),
                     ("f4", N_("Profile")),
                     ("f5", N_("Manage")),
+                    ("ctrl+o", N_("Options")),
                 ),
             ),
         )
@@ -711,8 +714,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         pied.set_class(bool(getattr(self._app, "wizard_mode", True)),
                        "assistant")
         if self._nav.is_virtual:
+            # Le premier écran qu'on voit : profil, profils et options y sont
+            # accessibles d'emblée (2026-11-08).
             pied.update_line(1, self._RACCOURCIS_VOLUMES)
-            pied.update_line(2, footer_line2())
+            pied.update_line(2, footer_line2(extra=self._FONCTIONS_REGLAGES))
         elif getattr(self._app, "wizard_mode", True):
             pied.update_line(1, self._RACCOURCIS_ASSISTANT)
             pied.update_line(2, footer_line2())
@@ -721,7 +726,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             pied.update_line(2, footer_line2(
                 accueil=True,
                 extra=(("f1", N_("Dry run")), ("f2", N_("Encode")),
-                       ("f4", N_("Profile")), ("f5", N_("Manage")))))
+                       *self._FONCTIONS_REGLAGES)))
+
+    # Choisir le profil, gérer les profils, régler les options.
+    _FONCTIONS_REGLAGES: tuple[tuple[str, str], ...] = (
+        ("f4", N_("Profile")), ("f5", N_("Manage")), ("ctrl+o", N_("Options")))
 
     def _bandeaux_suivent_la_vue(self) -> None:
         """Sur la liste des volumes, ni profil ni ligne d'analyse : la bande
@@ -761,7 +770,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 barre_etat(_("Choose a volume"),
                            ngettext("{count} volume", "{count} volumes", n).format(count=n),
                            ngettext("{count} location", "{count} locations",
-                                    m).format(count=m) if m else "")
+                                    m).format(count=m) if m else "",
+                           # F4 le change d'ici : on le nomme.
+                           _("Profile: {profile}").format(
+                               profile=self._app.active_profile_id))
             )
             return
         sel_count   = len(self._selected)
@@ -1949,6 +1961,15 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 self._refresh_view()
 
         self.app.push_screen(JoinScreen(infos), _apres_collage)
+
+    def action_open_options(self) -> None:
+        from .options import OptionsScreen
+
+        def _enregistre(ok) -> None:
+            # Une durée minimale de titre changée relit le dossier (CR-98).
+            if ok and not self._nav.is_virtual:
+                self._refresh_view()
+        self.app.push_screen(OptionsScreen(), _enregistre)
 
     def action_open_config(self) -> None:
         from .config import ConfigScreen

@@ -56,8 +56,9 @@ launcher/iris.ico
 .DS_Store
 Thumbs.db
 
-# Configuration locale de l'outillage
-.claude/
+# Configuration locale de l'outillage. `.claude/*` et non `.claude/` : un
+# dossier exclu ne peut plus rien réinclure, et `.claude/CLAUDE.md` est versionné.
+.claude/*
 
 # Revue d'interface : la sortie des captures, pas le generateur.
 # Le generateur (tests/shots_tui.py) est versionne depuis la v0.8.3.5 : c'est
@@ -73,6 +74,9 @@ _*.py
 # Instructions de projet pour Claude Code : aide-memoire local, pas un
 # document du produit. Retire du depot et de son historique le 2026-08-29.
 CLAUDE.md
+# Sauf les conventions partagées (sessions cloud, contributeurs) : versionnées
+# depuis le 2026-11-08, hors du ZIP de release (.gitattributes).
+!/.claude/CLAUDE.md
 
 # Mise à jour de l'application (updater.py) : cache de la release, archive
 # téléchargée, sauvegarde de la version remplacée, manifeste des fichiers livrés.

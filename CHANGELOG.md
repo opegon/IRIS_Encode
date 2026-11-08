@@ -1,5 +1,19 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.36] — 2026-11-08
+
+### Profils et options dès le lancement
+
+La liste des volumes, premier écran qu'on voit, annonce désormais **`F4`
+Profil**, **`F5` Gérer** (les profils) et **`Ctrl+O` Options**, et sa barre
+d'état nomme le profil actif. F4 et F5 y répondaient déjà, sans le dire.
+
+**`Ctrl+O` ouvre les options directement** — langue, dossiers, après le lot,
+titres de disque —, sans passer par la gestion des profils (`F5` puis `U`,
+qui reste possible). Elle répond aussi dans un dossier, en mode manuel.
+Pas F6 : F6 veut dire « Codec » partout ailleurs, et une touche de fonction
+garde son sens d'un écran à l'autre.
+
 ## [v0.9.1.35] — 2026-11-08
 
 ### Filtrer les fichiers à convertir : DTS, sous-titres image

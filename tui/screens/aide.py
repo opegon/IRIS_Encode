@@ -106,6 +106,9 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "open_profile_picker": N_("Changes the active profile."),
         "open_config":         N_("Manages the profiles: create, edit, "
                                   "delete."),
+        "open_options":        N_("Opens the options (language, folders, "
+                                  "after the batch…), from the list of volumes "
+                                  "as from a folder."),
         "emplacements":        N_("From the list of volumes: manages the "
                                   "locations — named network shares — and the "
                                   "account of each server, saved in the Windows "

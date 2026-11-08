@@ -108,6 +108,7 @@ TOUCHES: dict[str, str] = {
     "ctrl+s":    "Ctrl+S",
     "ctrl+c":    "Ctrl+C",
     "ctrl+d":    "Ctrl+D",
+    "ctrl+o":    "Ctrl+O",
     "ctrl+t":    "Ctrl+T",
 }
 

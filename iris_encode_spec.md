@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.31 — document de référence courant
+**Version** : 0.9.1.35 — document de référence courant
 **Date** : 2026-11-08
 **Statut** : stable
 
@@ -2815,6 +2815,36 @@ Conventions transverses :
   se recalcule à l'entrée dans un dossier et **suit la fenêtre** (v0.8.9.45) :
   `BrowserScreen.on_resize` reconstruit la table 0,15 s après le dernier
   changement de taille, si la largeur voulue pour Fichier a changé.
+- **Audio entière, nom coupé au milieu** (v0.9.1.32). Sur l'accueil, Audio
+  prend la largeur du plus long `audio_summary` du dossier
+  (`BrowserScreen._largeur_audio`) — à 20 fixes, la deuxième piste était déjà
+  coupée — sans jamais descendre Fichier sous son plancher ; Fichier prend
+  ensuite le reste. `_ajuster_colonnes` reconstruit la table quand l'une des
+  deux largeurs voulues change : fenêtre redimensionnée, autre dossier, ou
+  analyse qui rend une piste plus longue. Une largeur réglée au clavier dans la
+  session l'emporte, comme pour Fichier. Le nom se coupe **au milieu**
+  (`tronquer_milieu`, `_nom_coupe`) : deux releases qui ne diffèrent que par
+  la fin (`…-A.mkv`, `S01E02`) restent distinctes · `tests/test_pied_allege.py`.
+  **Résumé compact** (v0.9.1.34) : `FileDecision.audio_summary` regroupe les
+  pistes gardées d'un même format (codec, canaux) — `ac3 5.1 fre+eng  dts 5.1
+  eng` —, dans l'ordre de la première piste de chaque format. Sans lui, Audio
+  entière ramenait Fichier à son plancher de 20 à 160 colonnes.
+- **Revue d'interface, suite** (v0.9.1.33) · `tests/test_revue_interface.py` :
+  - En mode assistant, le pied de l'accueil se réduit à
+    `BrowserScreen._RACCOURCIS_ASSISTANT` (↵ Préparer le fichier, ␣, ⌫, L, U,
+    W Passer en manuel, H Toutes les touches) ; les autres touches répondent.
+  - L'assistant remplace « étape 2 sur 5 » par un fil
+    (`WizardScreen._fil` : ✓ fait, ● en cours, ○ à venir).
+  - Écran d'encodage : colonnes `Décodage`, `Filtres`, `Encodage`
+    (contexte `processing stage`).
+  - Liste des volumes : sans barre de profil ni ligne d'analyse
+    (`_bandeaux_suivent_la_vue`) ; un lecteur réseau affiche son partage,
+    lu par `emplacements.lecteurs_reseau()` (table des connexions de la session,
+    `WNetOpenEnumW`, sans interroger le serveur) dans le worker des volumes.
+  - Barre d'état : « N sorties d'IRIS (grisées) » quand le dossier en montre.
+  - `ConfirmModal` : seul le bouton actif a un fond (accent, ou `$warning` sur
+    une confirmation dangereuse) et porte `▶ … ◀` ; l'inactif garde la même
+    largeur.
 - **Filtre de l'accueil** (v0.8.9.46). `L` choisit un type d'image
   (`browser.type_image` : profil DV `DV:P8.1`…, sinon `HDR` si la courbe est
   PQ ou HLG, sinon `SDR`) parmi ceux du dossier (`options_filtre`), ou
@@ -2826,6 +2856,11 @@ Conventions transverses :
   Depuis v0.9.0.8, le même choix propose aussi les **codecs vidéo** du dossier
   (`codec:<nom ffprobe en minuscules>`, `FILTRE_CODEC`), triés, avec leur
   nombre ; un seul critère à la fois, type d'image ou codec.
+  Depuis v0.9.1.35, deux critères **par pistes de la source** :
+  `FILTRE_DTS` (au moins une piste audio dont le codec commence par `dts`,
+  `a_du_dts`) et `FILTRE_SOUS_TITRES_IMAGE` (au moins une piste
+  `is_image_based` : PGS, VobSub, DVB — `a_des_sous_titres_image`). Proposés
+  seulement s'ils concernent un fichier du dossier, avec leur nombre.
 - **Tri de l'accueil** (v0.9.0.7). `O` choisit un critère parmi les colonnes
   Fichier, Taille, Résol., Durée, Débit, Codec et Estim. (`browser.TRIS`, qui
   porte le sens par défaut : décroissant pour les grandeurs, croissant pour le
@@ -3762,8 +3797,21 @@ volume depuis cette liste n'empile pas le dossier précédent — `⌫` à la ra
 du volume retombe sur les volumes.
 
 **Pourquoi pas `Home`** — elle appartient à la navigation dans les tables
-(`TableNavMixin`, `FOOTER_NAV`), et le mixin l'intercepte en `on_key` avant que
+(`TableNavMixin`), et le mixin l'intercepte en `on_key` avant que
 les bindings soient consultés. Lui donner un second sens aurait cassé le premier.
+
+**Libellés** (v0.9.1.32) — le pied de page annonce `Ctrl+Début  Volumes` en
+français (`Ctrl+Home  Volumes` en anglais). Le nom de touche `Home` se traduit
+avec le contexte `key name` (`common._TOUCHES_CONTEXTE`) : sans lui, il
+partageait le `msgid` de l'écran d'accueil et se lisait « Accueil », à côté de
+l'action « Accueil » de `Ctrl+Home`.
+
+**Le pied de page n'annonce plus la navigation** (v0.9.1.32) — Début, Fin,
+PgUp, PgDn (`TableNavMixin`) et Tab, ⇧Tab, <, > (`ColumnResizeMixin`, désormais
+`show=False`) répondent toujours, mais ne s'affichent plus : huit entrées
+répétées sur chaque écran, qui portaient le pied de l'accueil à trois lignes.
+Le guide (`H`) les décrit ; la barre d'état nomme la colonne active.
+`footer_line2()` ne prend plus que `back`, `accueil` et `extra`.
 
 **Tous les bindings sont `priority=True`** : un `DataTable` étouffe la touche
 avant le système de bindings. Sans cela, la touche ne fait rien sur les écrans
@@ -4226,6 +4274,10 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.35 | 2026-11-08 | **Filtrer par pistes** (§ 14) : `L` propose « Audio DTS » et « Sous-titres image : PGS, VobSub » quand le dossier en contient · `tests/test_filtre_accueil.py` |
+| 0.9.1.34 | 2026-11-08 | **Colonne Audio compacte** (§ 14) : `audio_summary` regroupe les pistes d'un même format (`ac3 5.1 fre+eng`), la colonne Fichier retrouve sa place · `tests/test_revue_interface.py` |
+| 0.9.1.33 | 2026-11-08 | **Revue d'interface, suite** (§ 14) : pied réduit au parcours en mode assistant · fil d'avancement de l'assistant · colonnes Décodage / Filtres / Encodage · volumes sans bande vide, partage des lecteurs réseau (`emplacements.lecteurs_reseau`) · sorties d'IRIS comptées dans la barre d'état · bouton actif marqué dans `ConfirmModal` · `tests/test_revue_interface.py` |
+| 0.9.1.32 | 2026-11-08 | **Pied de page allégé, colonnes de l'accueil** (§ 14, § 14.11, revue d'interface) : navigation de table et redimensionnement des colonnes retirés du pied de page (`footer_line2` sans `nav` ni `resize`, `ColumnResizeMixin` en `show=False`) · `Ctrl+Début  Volumes`, touche `Home` traduite avec le contexte `key name` · Audio à la largeur de son contenu, nom de fichier coupé au milieu · le pied de la gestion des profils garde Retour et Volumes après le formulaire · `tests/test_pied_allege.py` |
 | 0.9.1.31 | 2026-11-08 | **Télécharger une vidéo YouTube** (§ 9.9, IE-180) : `core/youtube.py` (`analyser`, `commande`, `Telechargement`), `YouTubeScreen` (`U` à l'accueil) · yt-dlp et Deno au preflight dans `bin/yt-dlp/`, suivis par la veille · `[app] youtube_dir`, réglable dans Options · `tests/test_youtube.py` |
 | 0.9.1.30 | 2026-11-08 | **Télécinéma inverse** (§ 8.1, IE-174) : `core/entrelacement.py` — sources SD sondées (`idet`, `fieldmatch`, `mpdecimate`), `VideoInfo.entrelacement` ; télécinéma → `fieldmatch` + `bwdif` (+ `decimate` pour un 3:2 régulier), vraie vidéo non déclarée → `bwdif deint=all` ; `FileDecision.filtre_entrelacement`, `telecine_inverse` ; affiché dans l'assistant et l'aperçu · `tests/test_entrelacement.py` |
 | 0.9.1.29 | 2026-11-08 | **Comparer les proportions** (§ 8.1, IE-173 3/3) : `V` dans la fenêtre `P`, `sar.apercu` / `build_apercu` (`thumbnail`, deux largeurs affichées côte à côte, `drawtext`, repli sans étiquettes), image ouverte dans la visionneuse du système · `tests/test_sar.py`, `tests/test_sar_ecran.py` |

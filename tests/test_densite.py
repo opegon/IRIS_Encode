@@ -84,25 +84,25 @@ async def _lignes_rendues(actions, nav, largeur):
 
 
 def test_une_bande_d_une_entree_n_occupe_plus_sa_ligne():
-    lignes = asyncio.run(_lignes_rendues(_ACTIONS_RUN, footer_line2(nav=False), 150))
+    lignes = asyncio.run(_lignes_rendues(_ACTIONS_RUN, footer_line2(), 150))
     assert len(lignes) == 1, lignes
     assert "F10" in lignes[0] and "Retour" in lignes[0]
 
 
 def test_l_ordre_par_role_est_conserve():
     """Propres à l'écran, puis globaux, puis touches de fonction."""
-    lignes = asyncio.run(_lignes_rendues(_ACTIONS_RUN, footer_line2(nav=True), 150))
+    lignes = asyncio.run(_lignes_rendues(_ACTIONS_RUN, footer_line2(accueil=True), 150))
     texte = " ".join(lignes)
-    assert texte.index("Pause") < texte.index("Début") < texte.index("Quitter")
+    assert texte.index("Pause") < texte.index("Volumes") < texte.index("Quitter")
 
 
 def test_on_passe_bien_a_la_ligne_au_debordement():
-    lignes = asyncio.run(_lignes_rendues(_ACTIONS_RUN, footer_line2(nav=True), 40))
+    lignes = asyncio.run(_lignes_rendues(_ACTIONS_RUN, footer_line2(accueil=True), 40))
     assert len(lignes) > 1
 
 
 def test_aucun_raccourci_n_est_perdu():
-    actions, nav = _ACTIONS_RUN, footer_line2(nav=True)
+    actions, nav = _ACTIONS_RUN, footer_line2(accueil=True)
     attendus = len(actions) + len(nav)
     for largeur in (40, 80, 150):
         rendues = pack([p for b in split_bands(actions, nav) for p in b], largeur)

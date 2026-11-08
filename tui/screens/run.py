@@ -23,7 +23,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Label, ProgressBar, Static
 
-from core.i18n import N_, _, ngettext, texte_erreur
+from core.i18n import N_, _, ngettext, pgettext, texte_erreur
 from core.annexes import supprimer_annexes
 from core.decision import (AudioAction, FileDecision, VideoAction,
                            resoudre_sorties)
@@ -237,7 +237,7 @@ class RunScreen(TableNavMixin, Screen):
             yield Static("", id="cmd-lines", markup=False)
         yield KeyFooter(
             actions=actions_ecran(self),
-            nav=footer_line2(nav=True, accueil=True, extra=(("backspace", N_("Files")),)),
+            nav=footer_line2(accueil=True, extra=(("backspace", N_("Files")),)),
         )
 
     def on_mount(self) -> None:
@@ -306,8 +306,10 @@ class RunScreen(TableNavMixin, Screen):
         table.add_column(action,  width=_cw(action, actions),         key="action")
         # TRANSLATORS: column headers — where the video is decoded, where
         # its frames are filtered (scaling, format), then where it is
-        # encoded: "GPU" or "CPU".
-        lecture, filtres, encodage = _("Read"), _("Filt."), _("Enc.")
+        # encoded: "GPU" or "CPU". Nouns, not verbs.
+        lecture  = pgettext("processing stage", "Decode")
+        filtres  = pgettext("processing stage", "Filter")
+        encodage = pgettext("processing stage", "Encode")
         table.add_column(lecture,  width=_cw(lecture, lectures),      key="read")
         table.add_column(filtres,  width=_cw(filtres, filtrages),     key="filt")
         table.add_column(encodage, width=_cw(encodage, encodages),    key="enc")

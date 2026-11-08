@@ -14,6 +14,7 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from rich.cells import cell_len
 from rich.text import Text
 from textual import events, on, work
 from textual.app import ComposeResult
@@ -39,6 +40,7 @@ from ..common import sauver_config
 from ..common import (barre_etat, colonne_fixe,
     touche,
     cellule,
+    tronquer_milieu,
     DV_VALUE_STYLES,
     estimate_encoding_duration,
     fmt_bytes,
@@ -201,6 +203,17 @@ FILTRE_TOUS = "tous"
 FILTRE_DV   = "dv"      # Dolby Vision, tous profils
 FILTRE_CODEC = "codec:"  # préfixe : `codec:hevc`, codec vidéo de la source
 FILTRE_REMUX = "remux"   # vidéo bonne, pistes à rendre lisibles (IE-175)
+# Par pistes de la source (2026-11-08) : retrouver les fichiers à convertir.
+FILTRE_DTS   = "dts"                 # au moins une piste audio DTS, toutes variantes
+FILTRE_SOUS_TITRES_IMAGE = "sous-titres-image"   # au moins un PGS, VobSub, DVB
+
+
+def a_du_dts(info) -> bool:
+    return any(p.codec.lower().startswith("dts") for p in info.audio_tracks)
+
+
+def a_des_sous_titres_image(info) -> bool:
+    return any(p.is_image_based for p in info.subtitle_tracks)
 
 
 def type_image(info) -> str:
@@ -225,6 +238,10 @@ def ligne_visible(dec: FileDecision, filtre: str, masquer_skip: bool,
         return True
     if filtre == FILTRE_REMUX:
         return dec.video.action == VideoAction.REMUX
+    if filtre == FILTRE_DTS:
+        return a_du_dts(dec.info)
+    if filtre == FILTRE_SOUS_TITRES_IMAGE:
+        return a_des_sous_titres_image(dec.info)
     if filtre.startswith(FILTRE_CODEC):
         return dec.info.codec.lower() == filtre[len(FILTRE_CODEC):]
     genre = type_image(dec.info)
@@ -252,7 +269,17 @@ def options_filtre(decisions: list[FileDecision]) -> list[tuple[str, str]]:
     if remux:
         options.append((FILTRE_REMUX, _("Remux: audio / subtitles to convert "
                                         "({count})").format(count=remux)))
-    codecs = [d.info.codec.lower() for d in decisions if d.info.codec]
+    dts = sum(a_du_dts(d.info) for d in decisions)
+    if dts:
+        # TRANSLATORS: home screen filter — files with at least one DTS audio track.
+        options.append((FILTRE_DTS, _("DTS audio ({count})").format(count=dts)))
+    images = sum(a_des_sous_titres_image(d.info) for d in decisions)
+    if images:
+        # TRANSLATORS: home screen filter — files with at least one picture-based
+        # subtitle track (PGS, VobSub, DVB), as opposed to text (SRT, ASS).
+        options.append((FILTRE_SOUS_TITRES_IMAGE,
+                        _("Image subtitles: PGS, VobSub ({count})").format(count=images)))
+    codecs =[d.info.codec.lower() for d in decisions if d.info.codec]
     options += [(FILTRE_CODEC + c,
                  _("Codec: {codec} ({count})").format(codec=c, count=codecs.count(c)))
                 for c in sorted(set(codecs))]
@@ -263,7 +290,9 @@ def libelle_filtre(filtre: str) -> str:
     if filtre.startswith(FILTRE_CODEC):
         return filtre[len(FILTRE_CODEC):]
     return {FILTRE_TOUS: "", FILTRE_DV: "Dolby Vision",
-            FILTRE_REMUX: "remux"}.get(filtre, filtre)
+            FILTRE_REMUX: "remux", FILTRE_DTS: "DTS",
+            # TRANSLATORS: status bar, active filter: picture-based subtitles.
+            FILTRE_SOUS_TITRES_IMAGE: _("image subtitles")}.get(filtre, filtre)
 
 
 # ─── Tri de l'accueil (O) ─────────────────────────────────────────────────────
@@ -484,6 +513,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._scan_epoch: int = 0
         # Le relevé différé d'un changement de taille de la fenêtre (`on_resize`).
         self._minuterie_largeur = None
+        # Largeur de la colonne Fichier construite : le nom s'y coupe au milieu.
+        self._largeur_nom: int = 0
         # Filtre de la vue (L, Z) : tient pour la session, d'un dossier à l'autre.
         # `_dossier` garde tous les fichiers du dossier, masqués compris.
         self._filtre       = FILTRE_TOUS
@@ -497,6 +528,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # Espace des volumes, mesuré dans le worker : `disk_usage` d'un NAS en
         # veille figeait l'accueil sur le fil de l'interface (CR-78).
         self._cellules_volumes: dict[Path, tuple] = {}
+        # Lettre de lecteur → partage réseau, relevé avec l'espace des volumes.
+        self._cibles_lecteurs: dict[str, str] = {}
         # Le dossier de disque dont le titre principal a été coché d'office
         # (IE-120) : une fois par visite, pour qu'un rescan ne recoche pas ce
         # que l'utilisateur a décoché ni ce qui vient d'être encodé.
@@ -533,8 +566,6 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         yield KeyFooter(
             actions=self._RACCOURCIS_FICHIERS,
             nav=footer_line2(
-                nav=False,
-                resize=True,
                 accueil=True,
                 extra=(
                     ("f1", N_("Dry run")),
@@ -579,6 +610,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._resize_col_idx = 0  # Initialise le focus sur "fichier" (première colonne redimensionnable)
         self._build_columns()
         self._footer_suit_le_mode()
+        self._bandeaux_suivent_la_vue()
         self._update_profile_bar()
         self._refresh_view()
         self.query_one(DataTable).focus()
@@ -598,18 +630,19 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     def _build_columns(self) -> None:
         table  = self.query_one(DataTable)
-        widths = cfg_mod.get_column_widths(self._app.cfg)
 
         if self._nav.is_virtual:
             for cle, libelle, largeur in self._COLS_VOLUMES:
                 colonne_fixe(table, _(libelle), largeur, key=cle)
             return
 
+        widths = self._largeurs()
         table.add_column("",                                width=3,    key="check")
         # Fichier prend la place que les autres laissent, sauf largeur réglée
         # dans la session. À 50 fixes, l'accueil faisait 188 caractères : en
         # 160 colonnes, Audio sortait de l'écran (UX-19).
-        fichier_width = self._largeur_fichier(widths)
+        fichier_width = widths["fichier"]
+        self._largeur_nom = fichier_width
         table.add_column(self.resize_header("fichier"), width=fichier_width, key="fichier")
 
         for col in self.RESIZE_COLS[1:]:  # Skip fichier, déjà ajoutée
@@ -639,10 +672,19 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         ("z",         N_("Hide SKIP")),
         ("u",         N_("YouTube")),
         ("backspace", N_("Up")),
-        ("home",      N_("Start")),
-        ("end",       N_("End")),
-        ("pageup",    "Page ↑"),
-        ("pagedown",  "Page ↓"),
+    ]
+
+    # Le mode assistant n'annonce que son parcours : un fichier, ↵, l'assistant.
+    # Les autres touches répondent toujours ; « H » renvoie au guide complet
+    # (revue du 2026-11-08). Le manuel garde la liste entière.
+    _RACCOURCIS_ASSISTANT: list[tuple[str, str]] = [
+        ("enter",     N_("Prepare the file")),
+        ("space",     N_("Toggle")),
+        ("backspace", N_("Up")),
+        ("l",         N_("Filter")),
+        ("u",         N_("YouTube")),
+        ("w",         N_("Switch to manual")),
+        ("h",         N_("All keys")),
     ]
 
     def _raccourcis_fichiers(self) -> list[tuple[str, str]]:
@@ -670,13 +712,23 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                        "assistant")
         if self._nav.is_virtual:
             pied.update_line(1, self._RACCOURCIS_VOLUMES)
-            pied.update_line(2, footer_line2(nav=False))
+            pied.update_line(2, footer_line2())
+        elif getattr(self._app, "wizard_mode", True):
+            pied.update_line(1, self._RACCOURCIS_ASSISTANT)
+            pied.update_line(2, footer_line2())
         else:
             pied.update_line(1, self._raccourcis_fichiers())
             pied.update_line(2, footer_line2(
-                nav=False, resize=True, accueil=True,
+                accueil=True,
                 extra=(("f1", N_("Dry run")), ("f2", N_("Encode")),
                        ("f4", N_("Profile")), ("f5", N_("Manage")))))
+
+    def _bandeaux_suivent_la_vue(self) -> None:
+        """Sur la liste des volumes, ni profil ni ligne d'analyse : la bande
+        grise vide et le chemin survolé n'y disaient rien (revue du 2026-11-08)."""
+        fichiers = not self._nav.is_virtual
+        self.query_one("#profile-bar").display = fichiers
+        self.query_one("#scan-row").display = fichiers
 
     def _refresh_view(self) -> None:
         """Reconstruit la vue complète (dirs + fichiers)."""
@@ -688,6 +740,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             table.clear(columns=True)
             self._build_columns()
             self._footer_suit_le_mode()
+            self._bandeaux_suivent_la_vue()
         # Le dossier quitté disparaît tout de suite : il restait affiché, et
         # actionnable, pendant toute l'analyse du nouveau.
         self.query_one(DataTable).clear()
@@ -720,10 +773,16 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         masques_txt = ngettext("{count} hidden", "{count} hidden",
                                masques).format(count=masques)
         n_illisibles = len(self._illisibles)
+        # Les lignes grisées n'avaient pas de légende : on les prenait pour
+        # désactivées (revue du 2026-11-08).
+        n_produits = len(self._produits)
         self.query_one("#status-bar", Static).update(barre_etat(
             "", self._nav.breadcrumb(),
             ngettext("{selected}/{total} selected", "{selected}/{total} selected",
                      sel_count).format(selected=sel_count, total=total_files),
+            # TRANSLATORS: files this application produced, shown dimmed in the list.
+            ngettext("{count} IRIS output (dimmed)", "{count} IRIS outputs (dimmed)",
+                     n_produits).format(count=n_produits) if n_produits else "",
             ngettext("{count} unreadable", "{count} unreadable",
                      n_illisibles).format(count=n_illisibles) if n_illisibles else "",
             _("Filter: {filter} ({hidden})").format(filter=filtre, hidden=masques_txt)
@@ -830,6 +889,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                     nom.append(f"  {emp_mod.texte(d)}", style="dim")
                 else:
                     nom = Text(f"{_DISK_ICON} {d}", style="bold cyan")
+                    # Un lecteur réseau nomme son partage, comme un emplacement.
+                    cible = self._cibles_lecteurs.get(str(d)[:2].upper())
+                    if cible:
+                        nom.append(f"  {cible}", style="dim")
                 table.add_row(
                     nom,
                     *self._cellules_volumes.get(d, (tiret, tiret, tiret)),
@@ -912,12 +975,15 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             else:
                 self.query_one("#scan-notice", Static).update("")
                 self._afficher_progression(0, 0)
+            # Un autre dossier : Audio suit ses pistes (la reconstruction
+            # repasse ici avec epoch -1, sans y revenir).
+            self._ajuster_colonnes()
         self._update_status()
 
     def _cellules_attente(self, chemin: Path) -> tuple:
         """La ligne d'un fichier listé, avant son analyse : le nom seul."""
         return (Text("", no_wrap=True),
-                cellule(f"{_FILE_ICON} {chemin.name}", style="dim"),
+                cellule(f"{_FILE_ICON} {self._nom_coupe(chemin.name)}", style="dim"),
                 "", "", "", "", "", "", Text("…", style="dim"), "", "", "")
 
     def _cellule_illisible(self, chemin: Path, cause: str) -> Text:
@@ -995,6 +1061,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             for col, cell in zip(["check", *self.RESIZE_COLS], cells):
                 table.update_cell(cle, col, cell, update_width=False)
         self._update_status()
+        # Une piste plus longue que les précédentes élargit Audio.
+        self._ajuster_colonnes()
 
     # Une ligne cochée que F1/F2 réencoderont malgré la décision automatique.
     _FORCABLES = (VideoAction.SKIP, VideoAction.STRIP_DV)
@@ -1017,7 +1085,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # `→ HEVC → HDR10` rendu `→ HEVC →` se lisait comme une décision
         # complète — voir tests/test_troncature.py.
         taille    = self._tailles.get(info.path)
-        name_txt  = cellule(f"{_FILE_ICON} {info.path.name}")
+        name_txt  = cellule(f"{_FILE_ICON} {self._nom_coupe(info.path.name)}")
         size_txt  = cellule("—" if taille is None else fmt_bytes(taille),
                             style="dim")
         res_txt   = cellule(f"{info.width}x{info.height}")
@@ -1142,6 +1210,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         connexion, et attendrait un serveur éteint."""
         reseau = {e.chemin for e in self._nav.emplacements if e.reseau}
         connectes = emp_mod.connectes() if reseau else set()
+        # Le partage derrière chaque lettre, lu ici plutôt que sur le fil de
+        # l'interface : c'est une table locale, mais c'est un appel système.
+        self._cibles_lecteurs = emp_mod.lecteurs_reseau()
         tiret = Text("—", style="dim", no_wrap=True)
         return {d: (_cellules_volume(d)
                     if d not in reseau or emp_mod.cle(d) in connectes
@@ -1254,18 +1325,69 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     # ─── Resize colonnes (ColumnResizeMixin) ──────────────────────────────────
 
+    def _largeur_reglee(self, cle: str) -> int | None:
+        """La largeur que `<` / `>` ont donnée à la colonne dans la session."""
+        return (self._app.cfg.get("tui", {}).get("browser", {})
+                .get("columns", {}).get(cle))
+
     def _largeur_fichier(self, widths: dict[str, int]) -> int:
-        reglee = (self._app.cfg.get("tui", {}).get("browser", {})
-                  .get("columns", {}).get("fichier"))
+        reglee = self._largeur_reglee("fichier")
         if reglee:
             return self.resize_largeur("fichier", reglee)
         return self.resize_remplissage("fichier", widths, widths["fichier"])
 
-    def _resize_widths(self) -> dict[str, int]:
-        # La largeur de Fichier est celle qu'on voit, pas le défaut de config :
-        # c'est d'elle que partent `<` et `>`.
+    def _largeur_audio(self, widths: dict[str, int]) -> int:
+        """Audio à la largeur de son plus long résumé dans le dossier.
+
+        À 20 fixes, une deuxième piste était déjà coupée (« ac3 5.1 fre  ac3
+        5.… ») : on voyait qu'il en restait une, pas laquelle. Le nom de
+        fichier cède la place, coupé au milieu ; jamais sous son plancher, sans
+        quoi les colonnes sortiraient de l'écran (revue du 2026-11-08).
+        """
+        reglee = self._largeur_reglee("audio")
+        if reglee:
+            return self.resize_largeur("audio", reglee)
+        besoin = max((cell_len(self._decisions[p].audio_summary)
+                      for p in self._dossier if p in self._decisions),
+                     default=widths["audio"])
+        place = self._place_disponible()
+        if place:
+            autres = {col: self.resize_largeur(col, widths[col])
+                      for col in self.RESIZE_COLS if col not in ("fichier", "audio")}
+            autres["fichier"] = self.resize_plancher("fichier")
+            besoin = min(besoin, place - self._total_largeurs({**autres, "audio": 0}))
+        return self.resize_largeur("audio", besoin)
+
+    def _largeurs(self) -> dict[str, int]:
+        """Les largeurs à construire : Audio à son contenu, Fichier au reste."""
         widths = cfg_mod.get_column_widths(self._app.cfg)
+        widths = {**widths, "audio": self._largeur_audio(widths)}
         return {**widths, "fichier": self._largeur_fichier(widths)}
+
+    def _nom_coupe(self, nom: str) -> str:
+        """Le nom coupé au milieu pour tenir dans la colonne, icône comprise :
+        ce qui distingue deux releases est souvent à la fin (`-A`, `S01E02`)."""
+        if not self._largeur_nom:
+            return nom
+        return tronquer_milieu(nom, self._largeur_nom - cell_len(_FILE_ICON) - 1)
+
+    def _ajuster_colonnes(self) -> None:
+        """Reconstruit la table si Fichier ou Audio n'a plus la bonne largeur :
+        la fenêtre a changé, ou l'analyse a rendu une piste de plus."""
+        if self._nav.is_virtual:
+            return
+        colonnes = self.query_one(DataTable).columns
+        voulues  = self._largeurs()
+        for cle in ("fichier", "audio"):
+            colonne = colonnes.get(cle)  # type: ignore[call-overload]
+            if colonne is not None and colonne.width != voulues[cle]:
+                self._resize_rebuild()
+                return
+
+    def _resize_widths(self) -> dict[str, int]:
+        # Les largeurs qu'on voit, pas les défauts de config : c'est d'elles
+        # que partent `<` et `>`.
+        return self._largeurs()
 
     def on_resize(self, event: events.Resize) -> None:
         """La fenêtre change de taille : Fichier reprend la place laissée.
@@ -1281,12 +1403,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     def _suivre_la_fenetre(self) -> None:
         self._minuterie_largeur = None
-        if self._nav.is_virtual:
-            return
-        colonne = self.query_one(DataTable).columns.get("fichier")  # type: ignore[call-overload]
-        voulue  = self._largeur_fichier(cfg_mod.get_column_widths(self._app.cfg))
-        if colonne is not None and colonne.width != voulue:
-            self._resize_rebuild()
+        self._ajuster_colonnes()
 
     def _resize_persist(self, key: str, width: int) -> None:
         if self._nav.is_virtual:

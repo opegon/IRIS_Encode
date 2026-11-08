@@ -55,10 +55,24 @@ class ConfirmModal(ModalScreen[bool]):
         height: auto;
         align: center middle;
     }
+    /* Le bouton actif se voyait mal : les deux portaient un fond, et l'actif
+       seulement l'inversion vidéo. Désormais lui seul a un fond, plus les
+       marqueurs ▶ ◀ (revue du 2026-11-08). */
     #confirm-buttons Button {
         min-width: 16;
         margin-right: 2;
         border: none;
+        background: $surface;
+        color: $text-muted;
+        text-style: none;
+    }
+    #confirm-buttons Button:focus {
+        background: $accent;
+        color: auto 90%;
+        text-style: bold;
+    }
+    ConfirmModal.danger #confirm-buttons #btn-confirm:focus {
+        background: $warning;
     }
     #confirm-hint {
         color: $text-muted;
@@ -101,17 +115,30 @@ class ConfirmModal(ModalScreen[bool]):
             yield Static(self._body,  id="confirm-body")
             with Horizontal(id="confirm-buttons"):
                 yield Button(
-                    f"✓  {self._confirm_label}",
+                    self._texte_bouton("#btn-confirm", False),
                     id="btn-confirm",
                     variant="warning" if self._danger else "primary",
                 )
-                yield Button(f"✗  {self._cancel_label}", id="btn-cancel", variant="default")
+                yield Button(self._texte_bouton("#btn-cancel", False),
+                             id="btn-cancel", variant="default")
             yield Static(raccourcis([("←/→", N_("Choose")), ("enter", N_("OK")),
                                      ("escape", N_("Cancel"))]), id="confirm-hint")
 
     def on_mount(self) -> None:
         target = "#btn-confirm" if self._focus_confirm else "#btn-cancel"
         self.query_one(target, Button).focus()
+
+    def _texte_bouton(self, bouton: str, actif: bool) -> str:
+        """Le libellé d'un bouton, encadré de ▶ ◀ s'il a le focus. Les blancs
+        de l'inactif occupent la place des marqueurs : rien ne bouge."""
+        texte = (f"✓  {self._confirm_label}" if bouton == "#btn-confirm"
+                 else f"✗  {self._cancel_label}")
+        return f"▶ {texte} ◀" if actif else f"  {texte}  "
+
+    def on_descendant_focus(self) -> None:
+        for bouton in ("#btn-confirm", "#btn-cancel"):
+            b = self.query_one(bouton, Button)
+            b.label = self._texte_bouton(bouton, b.has_focus)
 
     # ── Boutons ───────────────────────────────────────────────────────────────
 

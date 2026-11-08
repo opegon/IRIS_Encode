@@ -65,6 +65,9 @@ async def _deux_modes():
     releve = {}
     app = IrisEncodeApp(RACINE / "tests")
     async with app.run_test(size=(120, 30)) as pilot:
+        # Le mode manuel annonce toutes ses touches ; l'assistant réduit son
+        # pied au parcours (tests/test_revue_interface.py).
+        app.wizard_mode = False
         await pilot.pause(0.8)
         ecran = app.screen
         releve["volumes"] = {

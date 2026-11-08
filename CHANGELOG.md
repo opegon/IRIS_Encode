@@ -1,5 +1,80 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.35] — 2026-11-08
+
+### Filtrer les fichiers à convertir : DTS, sous-titres image
+
+`L` sur l'accueil propose deux choix de plus, quand le dossier en contient,
+avec leur nombre :
+
+- **Audio DTS** : les fichiers qui ont au moins une piste DTS (toutes
+  variantes, DTS-HD MA compris), pour les retrouver et les convertir.
+- **Sous-titres image : PGS, VobSub** : les fichiers qui portent des
+  sous-titres en images (PGS des Blu-ray, VobSub des DVD, DVB de la TNT),
+  ceux qu'un MP4 ne porte pas.
+
+Comme les autres choix du filtre, un seul à la fois ; `A` ne coche que ce qui
+reste visible.
+
+## [v0.9.1.34] — 2026-11-08
+
+### La colonne Audio se resserre, le nom de fichier respire
+
+La colonne Audio montre toutes les pistes depuis la v0.9.1.32, mais à 160
+colonnes elle ramenait le nom de fichier à 20 caractères : `Blade.Ru…MB3R.mkv`
+deux fois de suite. Les pistes d'un même format se regroupent désormais :
+**`ac3 5.1 fre+eng  dts 5.1 eng`** au lieu de `ac3 5.1 fre  ac3 5.1 eng  dts
+5.1 eng`. Toutes les pistes restent visibles, le format n'est plus répété.
+
+## [v0.9.1.33] — 2026-11-08
+
+### Le mode assistant simplifie l'écran, les volumes se distinguent
+
+Seconde partie de la revue d'interface.
+
+- **Mode assistant : un pied de page réduit au parcours.** L'accueil
+  n'annonce plus que `↵ Préparer le fichier`, `␣ Cocher`, `⌫ Remonter`,
+  `L Filtrer`, `U YouTube`, `W Passer en manuel` et `H Toutes les touches`.
+  Les autres touches répondent toujours ; le mode manuel les annonce toutes.
+- **Un fil d'avancement dans l'assistant** à la place de « étape 2 sur 5 » :
+  `✓ Fichier ─ ● Décision ─ ○ Pistes externes ─ ○ Lancer ─ ○ Terminé`.
+- **Écran d'encodage** : les colonnes s'appellent **Décodage**, **Filtres** et
+  **Encodage**. « Read » n'était pas traduit, « Filt. » et « Enc. » se
+  devinaient.
+- **Liste des volumes** : plus de bande grise vide ni de chemin répété en
+  haut ; chaque lecteur réseau affiche le partage qu'il désigne. Quatre
+  lettres d'un même NAS montraient le même espace sans rien qui les distingue.
+- **Les lignes grisées s'expliquent** : la barre d'état compte « 2 sorties
+  d'IRIS (grisées) » quand le dossier en contient.
+- **Confirmations** : le bouton actif est le seul à avoir un fond, et porte
+  `▶ … ◀`. Les deux boutons avaient un fond, et l'on ne savait pas lequel
+  `↵` allait presser.
+
+## [v0.9.1.32] — 2026-11-08
+
+### Un pied de page qu'on lit, des noms qu'on distingue
+
+Suite d'une revue d'interface sur les captures de la v0.9.1.31.
+
+- **Le pied de page n'annonce plus la navigation.** Début, Fin, Page ↑,
+  Page ↓, et Tab, ⇧Tab, <, > pour les colonnes : huit entrées répétées sur
+  chaque écran, qui portaient le pied de l'accueil à trois lignes et noyaient
+  les actions propres à l'écran. Les touches répondent toujours ; le guide
+  (`H`) les décrit, et la barre d'état nomme la colonne active.
+- **« Accueil » ne désigne plus deux choses.** Le pied de page affichait
+  « Accueil  Début » (la touche Home, aller en haut de la table) à côté de
+  « Ctrl+Home  Accueil » (revenir aux volumes). La touche s'appelle
+  désormais **Début**, comme sur un clavier français, et le retour aux
+  volumes s'annonce **Ctrl+Début  Volumes**.
+- **La colonne Audio montre toutes les pistes gardées** : elle prend la
+  largeur de la plus longue du dossier. Fixée à 20, elle coupait déjà la
+  deuxième piste.
+- **Le nom de fichier se coupe au milieu** : `Project.Hail.Mary.20…x265-A.mkv`.
+  Trois releases du même film, ou deux épisodes, se lisaient identiques une
+  fois coupées à droite.
+- La gestion des profils perdait « ⌫ Retour » et « Ctrl+Début Volumes » de
+  son pied de page après la fermeture du formulaire d'un profil.
+
 ## [v0.9.1.31] — 2026-11-08
 
 ### Télécharger une vidéo YouTube, puis l'encoder

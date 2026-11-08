@@ -278,7 +278,7 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         yield Static("", id="sync-hint", markup=False)
         yield KeyFooter(
             actions=self._actions_pied(),
-            nav=footer_line2(back=True, nav=True, accueil=True),
+            nav=footer_line2(back=True, accueil=True),
         )
 
     def _actions_pied(self) -> list[tuple[str, str]]:

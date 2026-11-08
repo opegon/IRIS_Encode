@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.31
+**Version**: 0.9.1.35
 **Date**: 2026-11-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -84,6 +84,13 @@ the theme's accent.
 
 `W` switches between guided and manual mode. The choice holds for the session.
 
+In guided mode, the home screen footer only shows the path: `↵ Prepare the
+file`, `␣ Toggle`, `⌫ Up`, `L Filter`, `U YouTube`, `W Switch to manual`,
+`H All keys`. The other keys still work; manual mode shows them all.
+
+At the top of guided mode, a trail shows the progress:
+`✓ File ─ ● Decision ─ ○ External tracks ─ ○ Launch ─ ○ Done`.
+
 In the list, `↵` on a file opens the path:
 
 | Step | What you do there |
@@ -128,7 +135,9 @@ through the list meanwhile; a row still waiting cannot be checked yet.
 
 **Locations — network shares.** Below the drives, the home screen lists the
 locations, by their label (🌐). They open like a drive; the breadcrumb shows
-"Films › Season 1".
+"Films › Season 1". A network drive shows, next to its letter, the share it
+points to: several letters on the same NAS show the same free space, and the
+share is what tells them apart.
 
 `E`, on the list of volumes, manages them: `Ins` adds, `↵` edits, `Ctrl+D`
 deletes. The form asks for the label ("Films"), the path
@@ -200,7 +209,9 @@ damaged) stays in the list, greyed, with the cause: `unreadable: …`; it cannot
 be checked.
 
 **Filtering the list.** `L` shows only one picture type, or only one video
-codec (`hevc`, `h264`…), or only the remuxes (§ 4.9bis); the choice only offers the types and codecs present in
+codec (`hevc`, `h264`…), or only the remuxes (§ 4.9bis), or only the files
+with **a DTS audio track** (to convert them), or with **image subtitles** (PGS,
+VobSub: the ones an MP4 cannot carry, to be turned into text); the choice only offers the types, codecs and tracks present in
 the folder, with their count, and holds one of them at a time. `Z` hides the `SKIP` files.
 Both add up, hold from one folder to the next during the session, and the
 status bar says how many files are hidden. Folders stay visible. **A checked
@@ -223,7 +234,8 @@ ends with `-iris`, preceded by what the processing did: `Movie.2160p.hevc-iris.m
 `Movie.720p.h264-iris.mp4`, `Movie.av1-iris.mkv`, `Movie.dv-iris.mkv` (Dolby
 Vision kept), `Movie.hdr10-iris.mkv` (RPU removed). A characteristic the name
 already carries is not repeated — `Movie.2160p.DV` comes out as
-`Movie.2160p.DV-iris`. These files are grayed out in the list and left out of
+`Movie.2160p.DV-iris`. These files are grayed out in the list — the status bar
+counts them, "2 IRIS outputs (dimmed)" — and left out of
 the recursive scan and of `A`: offering them again would mean offering to
 re-encode over a file already processed, with the generation loss that implies.
 
@@ -451,7 +463,7 @@ progress · 1/3 · 42%", then "F12 Batch done"; from the queue, "F12 Files".
 - Each line shows the file, the **profile** it was queued with, the source
   **duration**, its size and the **estimated output size** (`4.2 GB → 2.1 GB (-50%)`, green when it
   shrinks, orange when it grows — the same estimate as the Home screen), the
-  action, then **Read**, **Filt.** and **Enc.** — where the video is
+  action, then **Decode**, **Filter** and **Encode** — where the video is
   decoded, where its frames are processed (scaling, format), then where it is
   encoded: `GPU` (graphics card) or `CPU` (processor), `—` when it is only
   copied —, and the state. Predicted when queued, they show the chain
@@ -1116,7 +1128,8 @@ alike.
 ## 5. Conventions shared by all screens
 
 - `⌫` or `Esc` go back, everywhere.
-- `Ctrl+Home` **goes back to the list of volumes** — the root — from any
+- `Ctrl+Home`, shown as "Volumes" in the footer, **goes back to the list of
+  volumes** — the root — from any
   screen: dry run, encoding, mux, guided mode, profiles, Tracks, Sync, and the
   Home screen itself. That is what lets you work through several files without
   climbing back up one screen at a time. The selection is cleared. From
@@ -1129,9 +1142,12 @@ alike.
   — encode, mux, join, measurement — and what quitting does to it, or "No task
   in progress." An encode, a mux or a join is stopped and its partial output
   deleted.
-- `Home` `End` `PgUp` `PgDn` move through tables.
+- `Home` `End` `PgUp` `PgDn` move through tables, and `Tab` `⇧Tab` `<` `>`
+  pick and resize columns where they can be resized (Home, Tracks, dry run;
+  the status bar names the active column). These conventions are no longer
+  repeated in the footer: the key guide (`H`) describes them.
 - The footer sorts the shortcuts by role, top to bottom: **the screen's own**,
-  then **global** ones (navigation, back), then the **function keys** `F1` to
+  then **global** ones (back, volumes), then the **function keys** `F1` to
   `F10`, always on the last line. Each band wraps onto as many lines as the
   width requires; no shortcut is hidden, even on a narrow screen.
 - Column widths are remembered in `config.toml`, **except on the Home screen**:

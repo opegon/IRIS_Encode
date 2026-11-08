@@ -97,6 +97,49 @@ def test_options_portent_leur_nombre():
     assert FILTRE_DV not in libelles
 
 
+# ─── Pistes DTS, sous-titres image (2026-11-08) ──────────────────────────────
+
+def _avec_pistes(nom: str, audio: list[str] = (), sous_titres: list[str] = ()):
+    from core.scanner import AudioTrack, SubtitleTrack
+    d = _dec(nom)
+    d.info.audio_tracks = [AudioTrack(index=i, codec=c, channels=6, language="fre",
+                                      title="", bitrate=0)
+                           for i, c in enumerate(audio)]
+    d.info.subtitle_tracks = [SubtitleTrack(index=i, codec=c, language="fre")
+                              for i, c in enumerate(sous_titres)]
+    return d
+
+
+DTS     = _avec_pistes("dts", audio=["ac3", "dts"])
+AC3     = _avec_pistes("ac3", audio=["ac3"], sous_titres=["subrip"])
+PGS     = _avec_pistes("pgs", audio=["eac3"], sous_titres=["subrip", "hdmv_pgs_subtitle"])
+VOBSUB  = _avec_pistes("vob", audio=["ac3"], sous_titres=["dvd_subtitle"])
+FILTRE_DTS = "dts"
+FILTRE_SOUS_TITRES_IMAGE = "sous-titres-image"
+
+
+def test_filtre_pistes_dts():
+    visibles = [d for d in (DTS, AC3, PGS)
+                if ligne_visible(d, FILTRE_DTS, False, False)]
+    assert visibles == [DTS]
+
+
+def test_filtre_sous_titres_image():
+    visibles = [d for d in (DTS, AC3, PGS, VOBSUB)
+                if ligne_visible(d, FILTRE_SOUS_TITRES_IMAGE, False, False)]
+    assert visibles == [PGS, VOBSUB]
+
+
+def test_options_pistes_presentes_avec_leur_nombre():
+    libelles = dict(options_filtre([DTS, AC3, PGS, VOBSUB]))
+    assert libelles[FILTRE_DTS].endswith("(1)")
+    assert libelles[FILTRE_SOUS_TITRES_IMAGE].endswith("(2)")
+    # Absentes du dossier : pas proposées.
+    assert FILTRE_DTS not in dict(options_filtre([AC3, PGS]))
+    assert FILTRE_SOUS_TITRES_IMAGE not in dict(options_filtre([DTS, AC3]))
+    assert libelle_filtre(FILTRE_DTS) == "DTS"
+
+
 # ─── Dans l'application ───────────────────────────────────────────────────────
 
 def test_l_et_z_sur_l_accueil(tmp_path, monkeypatch):

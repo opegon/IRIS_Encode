@@ -97,7 +97,7 @@ class MuxScreen(Screen[bool]):
             yield Static("", id="mux-cmd")
         yield KeyFooter(
             actions=actions_ecran(self),
-            nav=footer_line2(back=True, nav=False, accueil=True),
+            nav=footer_line2(back=True, accueil=True),
         )
 
     def on_mount(self) -> None:

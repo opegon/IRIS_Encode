@@ -592,3 +592,9 @@ Pages touchées : [[disques-optiques]].
 
 Page EJS de yt-dlp et releases GitHub : moteur JavaScript, scripts inclus,
 empreintes. Pages touchées : [[yt-dlp]], [[questions-ouvertes]].
+
+## [2026-11-08] ingest | Revue d'interface sur captures (v0.9.1.32)
+
+Vingt-huit captures de la v0.9.1.31 : la touche `Home` se lisait « Accueil »
+en français, faute de contexte (même `msgid` que l'écran d'accueil). Pages
+touchées : [[localisation]].

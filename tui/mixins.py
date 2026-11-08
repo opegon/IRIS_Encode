@@ -140,10 +140,13 @@ class ColumnResizeMixin:
     BARRE_DEFILEMENT:   int            = 2
 
     BINDINGS = [
-        Binding("shift+tab", "col_prev",   N_("Prev col"), show=True, priority=True),
-        Binding("tab",       "col_next",   N_("Next col"), show=True, priority=True),
-        Binding("<",         "col_shrink", N_("Narrow"),  show=True),
-        Binding(">",         "col_grow",   N_("Widen"),   show=True),
+        # Non annoncées au pied de page (revue du 2026-11-08) : le guide (H)
+        # les décrit, la barre d'état nomme la colonne active.
+        # TRANSLATORS: "Col" is short for column; keep these labels short.
+        Binding("shift+tab", "col_prev",   N_("Prev col"), show=False, priority=True),
+        Binding("tab",       "col_next",   N_("Next col"), show=False, priority=True),
+        Binding("<",         "col_shrink", N_("Narrow"),  show=False),
+        Binding(">",         "col_grow",   N_("Widen"),   show=False),
     ]
 
     _resize_col_idx: int = 0

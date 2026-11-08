@@ -110,7 +110,7 @@ class JoinScreen(TableNavMixin, Screen[bool]):
             yield Static("", id="join-state", markup=False)
         yield KeyFooter(
             actions=actions_ecran(self),
-            nav=footer_line2(back=True, nav=True, accueil=True),
+            nav=footer_line2(back=True, accueil=True),
         )
 
     def on_mount(self) -> None:

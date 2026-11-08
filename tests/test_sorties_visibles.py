@@ -134,6 +134,8 @@ class _FauxEcranCellules:
     tailles relevées par le scan."""
     from tui.screens.browser import BrowserScreen as _B
     _row_cells = _B._row_cells
+    _nom_coupe = _B._nom_coupe
+    _largeur_nom = 0              # table pas construite : nom entier
     _tailles: dict = {}
 
     def _est_forcee(self, dec):

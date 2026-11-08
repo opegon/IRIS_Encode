@@ -228,12 +228,31 @@ def _mpr():
 def connexions_existantes() -> set[str]:
     r"""Les partages auxquels la session Windows est connectée, en minuscules
     (`\\nas\films`) : lecteurs réseau, `net use`, connexions d'IRIS."""
+    return {distant.rstrip("\\").lower() for _local, distant in _connexions()}
+
+
+def lecteurs_reseau() -> dict[str, str]:
+    """Lettre de lecteur (majuscule, deux-points) → partage qu'elle désigne.
+
+    Lu dans la table des connexions de la session, sans interroger le
+    serveur : l'écran des volumes le montre à côté de la lettre, où quatre
+    lecteurs du même NAS affichaient le même espace sans rien qui les
+    distingue (revue du 2026-11-08).
+    """
+    if sys.platform != "win32":
+        return {}
+    return {local.upper(): distant.rstrip("\\")
+            for local, distant in _connexions() if local}
+
+
+def _connexions() -> list[tuple[str, str]]:
+    """(nom local, nom distant) de chaque connexion disque de la session."""
     ctypes, wintypes, mpr, NETRESOURCEW = _mpr()
     poignee = wintypes.HANDLE()
     if mpr.WNetOpenEnumW(_RESOURCE_CONNECTED, _RESOURCETYPE_DISK, 0, None,
                          ctypes.byref(poignee)) != 0:
-        return set()
-    trouves: set[str] = set()
+        return []
+    trouves: list[tuple[str, str]] = []
     try:
         taille = 16384
         tampon = ctypes.create_string_buffer(taille)
@@ -252,7 +271,7 @@ def connexions_existantes() -> set[str]:
             for i in range(nombre.value):
                 nom = ressources[i].lpRemoteName
                 if nom:
-                    trouves.add(nom.rstrip("\\").lower())
+                    trouves.append((ressources[i].lpLocalName or "", nom))
     finally:
         mpr.WNetCloseEnum(poignee)
     return trouves

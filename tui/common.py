@@ -94,7 +94,7 @@ TOUCHES: dict[str, str] = {
     "insert":    N_("Ins"),
     "pageup":    "PgUp",
     "pagedown":  "PgDn",
-    "home":      "Home",
+    "home":      "Home",        # traduite avec un contexte : _TOUCHES_CONTEXTE
     "ctrl+home": "Ctrl+Home",
     "end":       "End",
     "left":      "←",
@@ -117,9 +117,22 @@ SEP_TOUCHE: str = "  "
 SEP_ENTREE: str = "     "
 
 
+# « Home » est aussi le nom de l'écran d'accueil : sans contexte, le français
+# lisait la touche « Accueil », et le pied de page disait « Accueil  Début »
+# à côté de « Ctrl+Home  Accueil » (revue du 2026-11-08).
+_TOUCHES_CONTEXTE = {
+    # TRANSLATORS: the Home key, as printed on the keyboard ("Début" in French).
+    "home":      lambda: pgettext("key name", "Home"),
+    # TRANSLATORS: Ctrl + the Home key, as printed on the keyboard.
+    "ctrl+home": lambda: pgettext("key name", "Ctrl+Home"),
+}
+
+
 def touche(nom: str) -> str:
     """Nom de touche Textual → notation affichée. Inconnue : en majuscules.
     Les symboles passent tels quels ; un nom écrit (« Suppr ») se traduit."""
+    if nom.lower() in _TOUCHES_CONTEXTE:
+        return _TOUCHES_CONTEXTE[nom.lower()]()
     return _(TOUCHES[nom.lower()]) if nom.lower() in TOUCHES else nom.upper()
 
 
@@ -407,33 +420,24 @@ def bitrate_picker_config(
 # ─── Footer : groupes de raccourcis standard ──────────────────────────────────
 #
 # Convention : ligne 1 = actions propres à l'écran ;
-# ligne 2 = retour + navigation table + resize colonnes + F10 Quitter (dernier).
-
-FOOTER_NAV: list[tuple[str, str]] = [
-    ("home",     N_("Start")),
-    ("end",      N_("End")),
-    ("pageup",   N_("Page ↑")),
-    ("pagedown", N_("Page ↓")),
-]
-
-FOOTER_RESIZE: list[tuple[str, str]] = [
-    # TRANSLATORS: "Col" is short for column; keep these labels short.
-    ("shift+tab", N_("Prev col")),
-    ("tab",       N_("Next col")),
-    ("<",         N_("Narrow")),
-    (">",         N_("Widen")),
-]
+# ligne 2 = retour + accueil + F10 Quitter (dernier).
+#
+# La navigation de table (Début, Fin, PgUp, PgDn) et le redimensionnement des
+# colonnes (Tab, ⇧Tab, <, >) ne s'annoncent plus : huit entrées répétées sur
+# chaque écran, qui portaient le pied de l'accueil à trois lignes. Ce sont des
+# conventions, que le guide (H) documente ; la barre d'état nomme la colonne
+# active (« Col : Fichier </> ») — revue du 2026-11-08.
 
 FOOTER_BACK: tuple[str, str] = ("backspace", N_("Back"))
-# `Home` appartient à la navigation dans les tables — voir FOOTER_NAV et
-# TableNavMixin. Le retour à l'accueil prend donc Ctrl+Home, qui dit la même
-# chose d'un cran au-dessus.
-FOOTER_ACCUEIL: tuple[str, str] = ("ctrl+home", N_("Home"))
+# `Home` appartient à la navigation dans les tables — voir TableNavMixin. Le
+# retour à la liste des volumes prend donc Ctrl+Home.
+# TRANSLATORS: footer action of Ctrl+Home — back to the list of volumes.
+FOOTER_ACCUEIL: tuple[str, str] = ("ctrl+home", N_("Volumes"))
 FOOTER_QUIT: tuple[str, str] = ("f10",       N_("Quit"))
 
 
-# Touches rendues par `footer_line2` : elles ont leur place fixe en bande 2 et
-# n'ont rien à faire dans la bande propre à l'écran.
+# Touches que la bande propre à l'écran ne montre pas : celles que
+# `footer_line2` rend à place fixe, et la navigation qui ne s'annonce plus.
 _TOUCHES_BANDE_2: frozenset[str] = frozenset({
     "backspace", "escape", "ctrl+home", "f10",
     "home", "end", "pageup", "pagedown",
@@ -482,8 +486,6 @@ def actions_ecran(ecran, garder: tuple[str, ...] | None = None
 def footer_line2(
     *,
     back:    bool = False,
-    nav:     bool = True,
-    resize:  bool = False,
     accueil: bool = False,
     extra:   tuple[tuple[str, str], ...] = (),
 ) -> list[tuple[str, str]]:
@@ -491,10 +493,6 @@ def footer_line2(
     line: list[tuple[str, str]] = []
     if back:
         line.append(FOOTER_BACK)
-    if nav:
-        line.extend(FOOTER_NAV)
-    if resize:
-        line.extend(FOOTER_RESIZE)
     if accueil:
         line.append(FOOTER_ACCUEIL)
     line.extend(extra)

@@ -231,7 +231,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         yield KeyFooter(
             actions=[a for a in actions_ecran(self)
                      if a[0] != "p" or self._decision.info.sar_estimation is not None],
-            nav=footer_line2(back=True, nav=True, resize=True, accueil=True),
+            nav=footer_line2(back=True, accueil=True),
         )
 
     def on_mount(self) -> None:

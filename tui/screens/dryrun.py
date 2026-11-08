@@ -167,7 +167,7 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         yield Static("", id="dryrun-summary")
         yield KeyFooter(
             actions=actions_ecran(self),
-            nav=footer_line2(back=True, nav=True, resize=True, accueil=True),
+            nav=footer_line2(back=True, accueil=True),
         )
 
     def on_mount(self) -> None:

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.31
+**Version** : 0.9.1.35
 **Date** : 2026-11-08
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -81,6 +81,14 @@ bleu habituel, l'assistant prend l'accent du thème.
 
 `W` bascule entre assistant et parcours libre. Le choix tient pour la session.
 
+En mode assistant, le pied de page de l'accueil n'annonce que le parcours :
+`↵ Préparer le fichier`, `␣ Cocher`, `⌫ Remonter`, `L Filtrer`, `U YouTube`,
+`W Passer en manuel`, `H Toutes les touches`. Les autres touches répondent
+toujours ; le mode manuel les annonce toutes.
+
+En haut de l'assistant, un fil montre l'avancement :
+`✓ Fichier ─ ● Décision ─ ○ Pistes externes ─ ○ Lancer ─ ○ Terminé`.
+
 Dans la liste, `↵` sur un fichier ouvre le parcours :
 
 | Étape | Ce qu'on y fait |
@@ -125,7 +133,9 @@ coche pas.
 
 **Emplacements — les partages réseau.** Sous les lecteurs, l'accueil liste les
 emplacements, par leur libellé (🌐). Ils s'ouvrent comme un lecteur ; le fil
-d'Ariane montre « Films › Saison 1 ».
+d'Ariane montre « Films › Saison 1 ». Un lecteur réseau affiche, à côté de sa
+lettre, le partage qu'il désigne : plusieurs lettres d'un même NAS montrent le
+même espace libre, c'est le partage qui les distingue.
 
 `E`, sur la liste des volumes, les gère : `Inser` ajoute, `↵` modifie,
 `Ctrl+D` supprime. Le formulaire demande le libellé (« Films »), le chemin
@@ -197,7 +207,9 @@ que l'analyse ne lit pas (tronqué, abîmé) reste dans la liste, grisé, avec s
 cause : `illisible : …` ; il ne se coche pas.
 
 **Filtrer la liste.** `L` ne montre qu'un type d'image, ou qu'un codec vidéo
-(`hevc`, `h264`…), ou que les remux (§ 4.9bis) ; le choix ne propose que les types et les codecs présents
+(`hevc`, `h264`…), ou que les remux (§ 4.9bis), ou que les fichiers qui ont
+**une piste audio DTS** (pour les convertir), ou **des sous-titres image**
+(PGS, VobSub : ceux qu'un MP4 ne porte pas, et qu'il faut passer en texte) ; le choix ne propose que les types, les codecs et les pistes présents
 dans le dossier, avec leur nombre, et n'en retient qu'un à la fois. `Z` masque les
 fichiers `SKIP`. Les deux se cumulent, tiennent d'un dossier à l'autre pendant
 la session, et la barre d'état dit combien de fichiers sont masqués. Les
@@ -221,7 +233,8 @@ par `-iris`, précédée de ce que le traitement a fait : `Film.2160p.hevc-iris.
 `Film.720p.h264-iris.mp4`, `Film.av1-iris.mkv`, `Film.dv-iris.mkv` (Dolby Vision
 conservé), `Film.hdr10-iris.mkv` (RPU retiré). Une caractéristique que le nom
 porte déjà n'est pas répétée — `Film.2160p.DV` sort `Film.2160p.DV-iris`. Ces
-fichiers sont grisés dans la liste et écartés du scan récursif et de `A` : les
+fichiers sont grisés dans la liste — la barre d'état les compte, « 2 sorties
+d'IRIS (grisées) » — et écartés du scan récursif et de `A` : les
 reproposer reviendrait à offrir de réencoder par-dessus un fichier déjà traité,
 avec la perte de génération que cela implique.
 
@@ -458,7 +471,7 @@ file, « F12 Fichiers ».
 - Chaque ligne montre le fichier, le **profil** avec lequel il a été confié, la
   **durée** de la source, sa taille et la **taille de sortie estimée** (`4.2 Go → 2.1 Go (-50%)`, en vert
   si elle maigrit, en orange si elle grossit — la même estimation que
-  l'accueil), l'action, puis **Read**, **Filt.** et **Enc.** — où la vidéo
+  l'accueil), l'action, puis **Décodage**, **Filtres** et **Encodage** — où la vidéo
   est décodée, où ses images sont traitées (mise à l'échelle, format), puis où
   elle est encodée : `GPU` (carte graphique) ou `CPU` (processeur), `—` quand
   elle est seulement recopiée —, et l'état. Prévues à la mise en file, elles
@@ -1133,21 +1146,26 @@ répliques, en MP4 comme en MKV.
 ## 5. Conventions communes à tous les écrans
 
 - `⌫` ou `Esc` reviennent en arrière, partout.
-- `Ctrl+Home` **ramène à la liste des volumes** — la racine — depuis
+- `Ctrl+Début` (`Ctrl+Home`), annoncé « Volumes » dans le pied de page,
+  **ramène à la liste des volumes** — la racine — depuis
   n'importe quel écran : aperçu, encodage, mux, assistant, profils, pistes,
   recalage, et l'accueil lui-même. C'est ce qui permet d'enchaîner plusieurs
   fichiers sans remonter la pile un écran à la fois. La sélection est vidée. Depuis les **pistes** et le **recalage**, une confirmation est demandée :
   ces deux écrans portent un travail que le retour ne conserve pas — une
   sélection, une greffe, une mesure. Depuis l'**encodage** en cours aussi :
-  confirmer arrête le lot entier et efface la sortie partielle. `Home` seule garde son rôle, aller à la
+  confirmer arrête le lot entier et efface la sortie partielle. `Début` seule garde son rôle, aller à la
   première ligne de la table.
 - `F10` quitte, toujours en dernier dans le pied de page. La confirmation dit
   ce qui tourne — encodage, mux, jonction, mesure — et ce que quitter lui fait,
   ou « Aucun traitement en cours ». Un encodage, un mux ou une jonction est
   arrêté et sa sortie partielle effacée.
-- `Début` `Fin` `Page ↑` `Page ↓` naviguent dans les tables.
+- `Début` `Fin` `Page ↑` `Page ↓` naviguent dans les tables, et `Tab` `⇧Tab`
+  `<` `>` choisissent et redimensionnent les colonnes là où elles le sont
+  (accueil, pistes, aperçu ; la barre d'état nomme la colonne active). Ces
+  conventions ne sont plus répétées dans le pied de page : le guide des
+  touches (`H`) les décrit.
 - Le pied de page range les raccourcis par rôle, du haut vers le bas :
-  **propres à l'écran**, puis **globaux** (navigation, retour), puis les
+  **propres à l'écran**, puis **globaux** (retour, volumes), puis les
   **touches de fonction** `F1` à `F10`, toujours en dernière ligne. Chaque
   bande s'enroule sur autant de lignes que la largeur l'impose ; aucun
   raccourci n'est masqué, même sur un écran étroit.

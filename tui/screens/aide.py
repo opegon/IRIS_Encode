@@ -476,7 +476,7 @@ class AideScreen(Screen):
         with VerticalScroll(id="aide-corps"):
             yield Static(self._contenu(), id="aide-texte", markup=False)
         yield KeyFooter(actions=[("backspace", N_("Back")), ("h", N_("Close"))],
-                        nav=footer_line2(nav=True))
+                        nav=footer_line2())
 
     def on_mount(self) -> None:
         self.query_one("#aide-corps").focus()

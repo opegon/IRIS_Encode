@@ -193,7 +193,7 @@ class WizardScreen(TableNavMixin, Screen):
         # d'un coup d'œil dans quel parcours on se trouve.
         yield KeyFooter(actions=_actions_etape(self, self._etape),
                         classes="assistant",
-                        nav=footer_line2(back=True, nav=True, accueil=True))
+                        nav=footer_line2(back=True, accueil=True))
 
     def on_mount(self) -> None:
         self._afficher()
@@ -217,6 +217,21 @@ class WizardScreen(TableNavMixin, Screen):
         except Exception:
             pass
 
+    def _fil(self) -> Text:
+        """« ✓ Fichier ─ ● Décision ─ ○ Pistes externes ─ … » : faites,
+        en cours, à venir."""
+        fil = Text()
+        for n, etape in enumerate(_ORDRE):
+            if n:
+                fil.append(" ─ ", style="dim")
+            if n < self._i:
+                fil.append("✓ " + _(_TITRES[etape]), style="dim")
+            elif n == self._i:
+                fil.append("● " + _(_TITRES[etape]), style="bold")
+            else:
+                fil.append("○ " + _(_TITRES[etape]), style="dim")
+        return fil
+
     def _afficher(self) -> None:
         # L'assistant annonce le nom de sortie à trois étapes, numérotation
         # comprise (`sortie_prevue`), sans le figer : la décision peut encore
@@ -231,13 +246,14 @@ class WizardScreen(TableNavMixin, Screen):
         # Le fichier traité est rappelé à chaque étape : sans lui, les quatre
         # écrans suivants parlent d'un travail dont on a perdu le sujet. Le
         # chemin n'apporte rien — c'est le nom qui identifie.
-        entete = " " + "   ·   ".join([
-            _("Guided mode"),
-            _("step {step} of {total}").format(step=self._i + 1,
-                                               total=len(_ORDRE)),
-            _(_TITRES[self._etape]), ""])
-        place  = max(24, (self.size.width or 120) - cell_len(entete) - 2)
-        titre.update(entete + tronquer_milieu(self._dec.info.path.name, place))
+        # Le fil d'avancement remplace « étape 2 sur 5 » : on voit d'où l'on
+        # vient et ce qui reste (revue du 2026-11-08).
+        entete = Text(" " + _("Guided mode") + "   ·   ")
+        entete.append_text(self._fil())
+        entete.append("   ·   ")
+        place  = max(24, (self.size.width or 120) - entete.cell_len - 2)
+        entete.append(tronquer_milieu(self._dec.info.path.name, place))
+        titre.update(entete)
         table.display = False
         table.clear(columns=True)
         self._lignes = []

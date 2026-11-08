@@ -62,6 +62,15 @@ collé** au nombre (`12%`, aussi en français), durées `H:MM:SS`, symboles `ms`
 `s`, `k`, `kbps`. Le texte de remise du quota OpenSubtitles est montré tel que
 l'API l'envoie, en anglais. `tests/test_formats.py` garde ces règles.
 
+## Noms de touches
+
+Un nom de touche écrit en toutes lettres se traduit (« Del » → « Suppr »).
+**`Home` porte le contexte `key name`** (v0.9.1.32, `tui/common._TOUCHES_CONTEXTE`) :
+sans lui, la touche partageait le `msgid` « Home » du nom de l'écran d'accueil
+et s'affichait « Accueil » — à côté de l'action « Accueil » de `Ctrl+Home`, dans
+le même pied de page. En français : `Début`, `Ctrl+Début`. Leçon générale : un
+mot court qui nomme à la fois une touche et un écran prend un contexte.
+
 ## Choix de la langue
 
 Arbitré par l'utilisateur le 2026-10-07 ([[2026-10-07-decisions-choix-langue]]).

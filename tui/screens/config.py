@@ -102,7 +102,7 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             yield Button("← " + _("Back"),          id="btn-back", variant="default")
         yield KeyFooter(
             actions=self._RACCOURCIS_ECRAN,
-            nav=footer_line2(back=True, nav=True, accueil=True),
+            nav=footer_line2(back=True, accueil=True),
         )
 
     def on_mount(self) -> None:
@@ -250,10 +250,12 @@ class ConfigScreen(TableNavMixin, Screen[bool]):
             pied.update_line(1, ProfileForm.RACCOURCIS)
             # La navigation de table n'a plus cours, mais F10 reste : la
             # convention du projet le veut en dernier sur tous les écrans.
-            pied.update_line(2, footer_line2(nav=False))
+            pied.update_line(2, footer_line2())
         else:
             pied.update_line(1, self._RACCOURCIS_ECRAN)
-            pied.update_line(2, footer_line2(nav=True))
+            # Le même pied qu'à l'ouverture (`compose`) : sortir du formulaire
+            # faisait disparaître « ⌫ Retour » et le retour aux volumes.
+            pied.update_line(2, footer_line2(back=True, accueil=True))
 
     def _open_form(self, profile_id: str, is_new: bool,
                    copie: bool = False) -> None:

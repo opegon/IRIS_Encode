@@ -855,7 +855,8 @@ async def scenario_wizard() -> None:
             assert _("Guided") in barre, f"mode absent de la barre -> {barre[:80]!r}"
             from tui.widgets.footer import KeyFooter
             pied = app.screen.query_one(KeyFooter)
-            assert _("Guided") in str(pied.query_one("#footer-body", Static).render()),                 "le footer doit nommer le mode"
+            # En assistant, W s'annonce par ce qu'elle fait : en sortir.
+            assert _("Switch to manual") in str(pied.query_one("#footer-body", Static).render()),                 "le footer doit nommer le mode"
             assert pied.has_class("assistant"), "le footer doit changer de couleur"
             # Le jaune des touches se noie dans l'accent : elles passent au
             # blanc, sinon le footer devient illisible la ou il compte le plus.

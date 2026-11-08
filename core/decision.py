@@ -798,12 +798,20 @@ class FileDecision:
         c'est l'exception qui mentait, en promettant des pistes que le fichier
         n'aurait pas.
         """
-        kept = [
-            ad.track.display()
-            for ad in self.audio
-            if ad.action != AudioAction.EXCLUDE
-        ]
-        return "  ".join(kept) if kept else "—"
+        # Les pistes d'un même format se regroupent : « ac3 5.1 fre+eng » au
+        # lieu de « ac3 5.1 fre  ac3 5.1 eng ». La colonne Audio montre toutes
+        # les pistes, et répéter le format prenait la place du nom de fichier
+        # (revue du 2026-11-08). L'ordre est celui de la première piste de
+        # chaque format.
+        formats: dict[tuple[str, str], list[str]] = {}
+        for ad in self.audio:
+            if ad.action == AudioAction.EXCLUDE:
+                continue
+            t = ad.track
+            formats.setdefault((t.codec, t.channel_layout), []).append(t.language or "?")
+        return ("  ".join(f"{codec} {canaux} {'+'.join(langues)}"
+                          for (codec, canaux), langues in formats.items())
+                or "—")
 
 
 # ─── Logique vidéo ────────────────────────────────────────────────────────────

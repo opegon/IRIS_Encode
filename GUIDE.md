@@ -1,7 +1,7 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.1.30
-**Date**: 2026-11-01
+**Version**: 0.9.1.31
+**Date**: 2026-11-08
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
 
@@ -179,6 +179,7 @@ chemin  = '\\10.0.0.10\Films'
 | `R` | Encode the folder under the cursor, recursively |
 | `F4` / `F5` | Choose a profile / manage profiles |
 | `J` | **Join** the checked files end to end into one (§ 2.1bis) |
+| `U` | **Download a YouTube video** (§ 3.8) |
 | `I` | Movie Info card: AlloCiné, then IMDB with `Tab` |
 | `L` | **Filter** by picture type (Dolby Vision, all profiles or one; HDR without DV; SDR), by video codec, or remuxes only |
 | `O` | **Sort** by name, size, resolution, duration, bitrate, codec or estimate |
@@ -737,6 +738,26 @@ regular 3:2 pulldown over the whole file is brought back to 23.976 fps. A
 silent film transferred at its projection speed (The Kid: 20 to 22.5 frames
 per second) keeps 29.97 fps, repeated frames included.
 
+### 3.8 Encoding a YouTube video
+
+Needs the YouTube tools, offered at startup (see README, chapter 4).
+
+1. On the Home screen, `U`. The first time, choose the folder where downloads
+   go (`↵` on the first row); Options (`F5` then `U`) changes it later.
+2. Paste the video's address (`Ctrl+V`), then `↵`. IRIS reads the page.
+3. Choose the **resolution** among those the video offers (2160p, 1440p,
+   1080p; an older video offers only its best one), and the **subtitles**:
+   those uploaded with the video, and the one YouTube generated from the
+   speech, marked "auto-generated" — often rough, so never checked by
+   default. Then **Download**. `Esc` stops a download and removes its pieces.
+4. The video opens in its folder, **checked**: `F2` encodes it with the
+   active profile, like any file. The file is an `.mkv` named after the
+   video, with AAC audio and the chosen subtitles as SRT.
+
+YouTube serves 1440p and 2160p only in VP9 or AV1, which the TV may not
+read: the encode turns it into the profile's codec. A private video, or one
+that needs an account (age check), cannot be downloaded.
+
 ---
 
 ## 4. Cases met in practice
@@ -1073,7 +1094,7 @@ No output: it works.
 
 ### 4.14 An optional tool is missing
 
-`dovi_tool`, `mkvmerge` and `mpv` are optional: when one is missing, a feature
+`dovi_tool`, `mkvmerge`, `mpv` and the YouTube tools are optional: when one is missing, a feature
 is turned off without blocking startup. The preflight offers to install them at
 each start; answer `y`, or put the binaries in `bin/`.
 

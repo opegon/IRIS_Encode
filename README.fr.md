@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.1.30 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.1.31 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -446,7 +446,7 @@ Si ffmpeg est déjà installé sur le système (accessible via `ffmpeg` dans un 
 
 ## 4. (Optionnel) Installer les outils complémentaires
 
-Six outils sont optionnels. Aucun n'est nécessaire pour encoder : leur absence
+Huit outils sont optionnels. Aucun n'est nécessaire pour encoder : leur absence
 désactive une fonction, elle ne bloque jamais le lancement.
 
 | Outil | Nécessaire pour | Taille |
@@ -458,6 +458,7 @@ désactive une fonction, elle ne bloque jamais le lancement.
 | Outil Dolby Vision | conversion du **Dolby Vision profil 5** en HDR10 ou SDR | ~165 Mo |
 | Shader de super-résolution | **agrandissement** (ArtCNN C4F16, demande un ffmpeg à `libplacebo`) | ~210 Ko |
 | Outil d'OCR | **sous-titres PGS et de DVD convertis en SRT** (`seconv` de Subtitle Edit, Windows) | ~45 Mo |
+| Outils YouTube | **télécharger une vidéo YouTube** (`U` sur l'accueil) : `yt-dlp` et `deno`, Windows | ~65 Mo |
 
 L'**outil DVD** est un second ffmpeg — le build GPL de BtbN, qui lit les DVD
 (libdvdnav) — installé dans `bin/dvd/`, à part du ffmpeg qui encode. Il ne fait
@@ -484,6 +485,13 @@ MIT), avec sa base nOCR, les listes de correction et le dictionnaire français
 (MPL 2.0 pour le dictionnaire). Tout va dans `bin/seconv/`, chaque fichier
 vérifié par son empreinte SHA256 épinglée. Il est proposé au lancement sous
 Windows ; sans lui, les sous-titres PGS restent tels quels.
+
+Les **outils YouTube** sont `yt-dlp` (Unlicense), qui télécharge, et Deno
+(licence MIT), le moteur JavaScript dont yt-dlp a besoin pour lire les pages de
+YouTube. Les deux vont dans `bin/yt-dlp/`, vérifiés par leur empreinte SHA256
+épinglée. Ils sont proposés au lancement sous Windows, puis tenus à jour comme
+les autres outils : YouTube change souvent, et un yt-dlp ancien cesse de
+fonctionner.
 
 Pour l'outil DVD et l'outil Dolby Vision, la liste du lancement l'indique : `[✓] ffmpeg_dvd — assuré
 par le ffmpeg principal` (de même pour `ffmpeg_dv`). Rien n'est à installer.

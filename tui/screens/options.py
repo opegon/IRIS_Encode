@@ -7,7 +7,8 @@ on a coché « Après le lot » (`core/veille.py`) — par défaut, rien. La lan
 l'interface (IE-92) : une par catalogue livré, nommée dans sa propre langue ;
 elle prend effet au lancement suivant (IE-71 point 3). Le dossier de sortie
 proposé quand celui d'une source est en lecture seule (IE-118). La durée
-minimale d'un titre de Blu-ray listé (IE-120).
+minimale d'un titre de Blu-ray listé (IE-120). Le dossier des vidéos
+téléchargées depuis YouTube (IE-180).
 
 Rend True si quelque chose a été enregistré.
 """
@@ -71,6 +72,7 @@ class OptionsScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
         action = cfg_mod.get_action_fin(self._cfg)
         self._sortie = cfg_mod.get_output_dir(self._cfg)
+        self._youtube = cfg_mod.get_youtube_dir(self._cfg)
         with Vertical(id="options-panel"):
             yield Label(_("Options"), id="options-titre")
             yield Static(_("Power"), classes="options-section")
@@ -105,6 +107,13 @@ class OptionsScreen(ModalScreen[bool]):
             yield Button(_("Change…"), id="options-sortie-btn", compact=True)
             yield Static(_("Offered when a source's folder is read-only, such as "
                            "a mounted disc image."), classes="options-note")
+            yield Static(_("YouTube downloads"), classes="options-section")
+            yield Static(str(self._youtube or "—"), id="options-youtube",
+                         markup=False)
+            yield Button(_("Change…"), id="options-youtube-btn", compact=True)
+            yield Static(_("Where videos downloaded from YouTube ({key} on the "
+                           "home screen) are saved.").format(key=touche("u")),
+                         classes="options-note")
             yield Static(_("Disc titles (Blu-ray, DVD)"), classes="options-section")
             yield Input(str(cfg_mod.get_min_title_minutes(self._cfg)),
                         type="integer", id="options-titres", compact=True)
@@ -119,9 +128,19 @@ class OptionsScreen(ModalScreen[bool]):
         self.query_one("#options-veille", Checkbox).focus()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        from .output_dir import OutputDirScreen
+        if event.button.id == "options-youtube-btn":
+            def _youtube(dossier) -> None:
+                if dossier is not None:
+                    self._youtube = dossier
+                    self.query_one("#options-youtube", Static).update(str(dossier))
+
+            self.app.push_screen(OutputDirScreen(
+                self._youtube or self._sortie,
+                titre=_("YouTube downloads")), _youtube)
+            return
         if event.button.id != "options-sortie-btn":
             return
-        from .output_dir import OutputDirScreen
 
         def _choisi(dossier) -> None:
             if dossier is not None:
@@ -159,6 +178,9 @@ class OptionsScreen(ModalScreen[bool]):
         if self._sortie != cfg_mod.get_output_dir(self._cfg):
             # Écrit par `set_energie` juste après, qui enregistre tout.
             self._cfg.setdefault("app", {})["output_dir"] = str(self._sortie)
+        if self._youtube is not None:
+            # Écrit par `set_energie` juste après, qui enregistre tout.
+            self._cfg.setdefault("app", {})["youtube_dir"] = str(self._youtube)
         saisie = self.query_one("#options-titres", Input).value.strip()
         if saisie.isdigit():
             # Écrit par `set_energie` juste après, qui enregistre tout.

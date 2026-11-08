@@ -1,7 +1,7 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.1.30
-**Date** : 2026-11-01
+**Version** : 0.9.1.31
+**Date** : 2026-11-08
 
 *[English version: GUIDE.md](GUIDE.md)*
 
@@ -176,6 +176,7 @@ chemin  = '\\10.0.0.10\Films'
 | `R` | Encoder récursivement le dossier sous le curseur |
 | `F4` / `F5` | Choisir un profil / gérer les profils |
 | `J` | **Joindre** les fichiers cochés bout à bout en un seul (§ 2.1bis) |
+| `U` | **Télécharger une vidéo YouTube** (§ 3.8) |
 | `I` | Fiche du film : AlloCiné, puis IMDB avec `Tab` |
 | `L` | **Filtrer** par type d'image (Dolby Vision, tous profils ou un seul ; HDR sans DV ; SDR), par codec vidéo, ou les seuls remux |
 | `O` | **Trier** par nom, taille, résolution, durée, débit, codec ou estimation |
@@ -746,6 +747,28 @@ source ; seul un pulldown 3:2 régulier sur tout le fichier est ramené à
 23,976 i/s. Un film muet transféré à sa vitesse de projection (The Kid : 20 à
 22,5 images par seconde) garde ses 29,97 i/s, doublons compris.
 
+### 3.8 Encoder une vidéo YouTube
+
+Demande les outils YouTube, proposés au lancement (voir README, chapitre 4).
+
+1. Sur l'accueil, `U`. La première fois, choisissez le dossier des
+   téléchargements (`↵` sur la première ligne) ; les Options (`F5` puis `U`)
+   le changent ensuite.
+2. Collez l'adresse de la vidéo (`Ctrl+V`), puis `↵`. IRIS lit la page.
+3. Choisissez la **résolution** parmi celles que propose la vidéo (2160p,
+   1440p, 1080p ; une vidéo ancienne ne propose que sa meilleure), et les
+   **sous-titres** : ceux déposés avec la vidéo, et celui que YouTube a
+   généré depuis la parole, marqué « généré automatiquement » — souvent
+   approximatif, donc jamais coché d'office. Puis **Télécharger**. `Échap`
+   arrête un téléchargement et retire ses morceaux.
+4. La vidéo s'ouvre dans son dossier, **cochée** : `F2` l'encode avec le
+   profil actif, comme n'importe quel fichier. Le fichier est un `.mkv` au
+   nom de la vidéo, avec l'audio AAC et les sous-titres choisis en SRT.
+
+YouTube ne sert la 1440p et la 2160p qu'en VP9 ou AV1, que le téléviseur ne
+lit pas forcément : l'encodage la passe dans le codec du profil. Une vidéo
+privée, ou qui demande un compte (contrôle de l'âge), ne se télécharge pas.
+
 ---
 
 ## 4. Les cas rencontrés
@@ -1088,7 +1111,7 @@ Aucune sortie : il fonctionne.
 
 ### 4.14 Un outil optionnel manque
 
-`dovi_tool`, `mkvmerge` et `mpv` sont optionnels : leur absence désactive une
+`dovi_tool`, `mkvmerge`, `mpv` et les outils YouTube sont optionnels : leur absence désactive une
 fonction sans bloquer le lancement. Le preflight propose de les installer à
 chaque démarrage ; répondez `o`, ou placez les binaires dans `bin/`.
 

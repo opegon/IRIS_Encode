@@ -1,6 +1,6 @@
 ---
 type: synthese
-maj: 2026-11-05
+maj: 2026-11-08
 sources:
   - "[[source-spec]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -10,6 +10,7 @@ sources:
   - "[[source-2026-10-03-dv81-mp4]]"
   - "[[source-2026-09-30-lecture]]"
   - "[[source-conception-upscaling]]"
+  - "[[source-2026-11-08-yt-dlp-ejs]]"
 ---
 
 # Questions ouvertes
@@ -54,6 +55,7 @@ release est sortie quand la revue de code a été entièrement traitée.
 | Le preflight et la mise à jour (gyan.dev *release*) installent-ils un ffmpeg sans NVENC sous un pilote < 610 ? | gyan.dev 8.1.2 refuse NVENC sous 597 ; sans ffmpeg au `PATH`, `bin/` servirait ([[ffmpeg#NVENC et version du pilote]]). Depuis la v0.8.9.2, le cas est **annoncé** au lancement ; le choix du build téléchargé reste inchangé |
 | AMD AMF (v0.9.1.9) encode-t-il juste sur une vraie carte Radeon ? | écrit sans matériel AMD : seules les options ont été validées par ffmpeg. À mesurer : débit tenu avec `-rc vbr_peak` et 1,5 × de marge, HDR10 conservé (BT.2020, PQ, écran de mastering, MaxCLL) à travers `hevc_amf`, 10 bits sur Polaris et après, AV1 sur RX 7000. Tant que ce n'est pas fait, le support reste « expérimental » |
 | Le pilote 610 est-il sûr sur un Shadow Power (flux, encodage côté Shadow) ? | Shadow autorise la mise à jour manuelle, ne dit rien de la 610 ; demander au support |
+| Le téléchargement YouTube (v0.9.1.31) fonctionne-t-il sur de vraies pages ? | écrit et testé sur des pages fabriquées seulement. À vérifier : paliers lus dans `format_note` (film en 2,39:1), clés `-orig` des sous-titres automatiques, SRT intégrés au MKV, nettoyage après `Échap` ([[yt-dlp]]) |
 
 ## Voir aussi
 

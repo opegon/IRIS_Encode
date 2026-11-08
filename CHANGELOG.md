@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.1.31] — 2026-11-08
+
+### Télécharger une vidéo YouTube, puis l'encoder
+
+**`U` sur l'accueil** : on colle l'adresse d'une vidéo, on choisit la
+résolution et les sous-titres, et la vidéo arrive dans son dossier, **cochée** :
+`F2` l'encode avec le profil actif, comme n'importe quel fichier.
+
+- **Résolution** : 2160p, 1440p ou 1080p, parmi celles que la vidéo propose
+  (une vidéo ancienne : sa meilleure seule). Un film en 2,39:1 publié en
+  « 2160p » est bien reconnu comme tel, bien que son image fasse 1608 lignes.
+- **Audio AAC** de la piste d'origine, même quand la vidéo est doublée en
+  plusieurs langues. Sans AAC, le meilleur audio, et l'écran le dit.
+- **Sous-titres** : ceux déposés avec la vidéo, et la transcription générée
+  automatiquement dans la langue d'origine, marquée comme telle et jamais
+  cochée d'office. Convertis en SRT et intégrés au `.mkv`.
+- **Dossier** demandé au premier usage, réglable ensuite dans Options.
+- `Échap` arrête un téléchargement et retire ses fichiers partiels.
+
+**Outils** : yt-dlp et Deno (le moteur JavaScript que YouTube impose à
+yt-dlp), environ 65 Mo, proposés au lancement sous Windows et posés dans
+`bin/yt-dlp/`, chacun vérifié par son empreinte. Ils sont ensuite suivis par
+la vérification des mises à jour : YouTube casse régulièrement les anciennes
+versions de yt-dlp.
+
+IE-180.
+
 ## [v0.9.1.30] — 2026-11-08
 
 ### Films télécinéma : les images du film, sans peignes

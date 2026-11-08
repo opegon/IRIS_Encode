@@ -195,6 +195,16 @@ def _latest_mpv() -> Optional[Release]:
                          r"mpv-x86_64-\d{8}-git-[0-9a-f]+\.7z")
 
 
+def _latest_ytdlp() -> Optional[Release]:
+    # YouTube casse yt-dlp souvent : la version suivie est la dernière publiée,
+    # pas celle épinglée dans les sources statiques (IE-180).
+    return _github_asset("yt-dlp/yt-dlp", r"yt-dlp\.exe")
+
+
+def _latest_deno() -> Optional[Release]:
+    return _github_asset("denoland/deno", r"deno-x86_64-pc-windows-msvc\.zip")
+
+
 _SOURCES: dict[str, Callable[[], Optional[Release]]] = {
     "ffmpeg":     _latest_ffmpeg,
     "mkvmerge":   _latest_mkvtoolnix,
@@ -202,6 +212,8 @@ _SOURCES: dict[str, Callable[[], Optional[Release]]] = {
     "mpv":        _latest_mpv,
     "ffmpeg_dvd": latest_ffmpeg_dvd,
     "ffmpeg_dv":  latest_ffmpeg_dvd,     # même build BtbN, dans bin/dv/
+    "yt-dlp":     _latest_ytdlp,
+    "deno":       _latest_deno,
 }
 
 

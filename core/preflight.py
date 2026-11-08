@@ -34,9 +34,16 @@ ESSENTIAL_TOOLS = ("ffmpeg", "ffprobe")
 # PATH contient le ffmpeg principal, pas lui.
 # `ffmpeg_dv` : le même build BtbN, posé dans `bin/dv/` pour son filtre
 # `libplacebo` — la conversion d'un Dolby Vision profil 5 (`core/dovi.py`).
-OPTIONAL_TOOLS  = ("dovi_tool", "mkvmerge", "mpv", "ffmpeg_dvd", "ffmpeg_dv")
+# `yt-dlp` et `deno` : le téléchargement depuis YouTube (IE-180), dans
+# `bin/yt-dlp/` — Deno résout les défis JavaScript que YouTube impose à yt-dlp.
+OPTIONAL_TOOLS  = ("dovi_tool", "mkvmerge", "mpv", "ffmpeg_dvd", "ffmpeg_dv",
+                   "yt-dlp", "deno")
 # Outils rangés dans un sous-dossier de ./bin/, et cherchés là seulement.
-_SOUS_DOSSIER = {"ffmpeg_dvd": "dvd", "ffmpeg_dv": "dv"}
+_SOUS_DOSSIER = {"ffmpeg_dvd": "dvd", "ffmpeg_dv": "dv",
+                 "yt-dlp": "yt-dlp", "deno": "yt-dlp"}
+# Ceux qui ne comprennent que `--version` : `-version` s'y lit comme une suite
+# d'options courtes.
+_VERSION_LONGUE = frozenset({"yt-dlp", "deno"})
 ALL_TOOLS       = ESSENTIAL_TOOLS + OPTIONAL_TOOLS
 
 
@@ -95,7 +102,9 @@ def _get_version(path: str) -> str:
     Tente -version (ffmpeg/ffprobe) puis --version (dovi_tool, mkvmerge, GNU).
     Retourne la version extraite ou une chaîne vide.
     """
-    for flag in ("-version", "--version"):
+    drapeaux = (("--version",) if Path(path).stem.lower() in _VERSION_LONGUE
+                else ("-version", "--version"))
+    for flag in drapeaux:
         try:
             r = subprocess.run(
                 [path, flag],
@@ -124,9 +133,10 @@ def _get_version(path: str) -> str:
 
 def chemin_local(name: str, bin_dir: Path) -> Path:
     """Où l'outil est posé dans ./bin/ : `bin/dvd/ffmpeg.exe` pour l'outil DVD,
-    `bin/dv/ffmpeg.exe` pour l'outil Dolby Vision."""
+    `bin/dv/ffmpeg.exe` pour l'outil Dolby Vision, `bin/yt-dlp/deno.exe`."""
     if name in _SOUS_DOSSIER:
-        return bin_dir / _SOUS_DOSSIER[name] / _exe("ffmpeg")
+        exe = "ffmpeg" if name.startswith("ffmpeg") else name
+        return bin_dir / _SOUS_DOSSIER[name] / _exe(exe)
     return bin_dir / _exe(name)
 
 
@@ -328,6 +338,15 @@ def poser(nom: str, data: bytes, bin_dir: Path) -> bool:
                                      {_exe("ffmpeg"), _exe("ffprobe")})
     if nom == "ffmpeg_dv":
         return _install_from_archive(data, bin_dir / "dv", {_exe("ffmpeg")})
+    if nom == "yt-dlp":
+        # Publié en exécutable nu ; rien d'autre ne s'écrit tel quel.
+        if not _est_executable(data):
+            _dire(_("The download is not an executable."), "✗")
+            return False
+        return _poser_tous({chemin_local(nom, bin_dir): data})
+    if nom == "deno":
+        return _install_from_archive(data, chemin_local(nom, bin_dir).parent,
+                                     {_exe("deno")})
     return _install_from_archive(data, bin_dir, {_exe(nom)})
 
 
@@ -523,6 +542,12 @@ def run_preflight(cfg: dict) -> bool:
                     "(PGS) into text the TV reads without transcoding)."))
             _offer_seconv_install(bin_dir)
             print()
+        if _is_windows() and any(s.name in ("yt-dlp", "deno") and not s.found
+                                 for s in statuses):
+            _dire(_("YouTube tools missing (optional — needed to download a "
+                    "video from YouTube)."))
+            _offer_youtube_install(bin_dir)
+            print()
         check_for_updates(cfg, statuses, bin_dir)
         return True
 
@@ -716,6 +741,41 @@ def install_seconv(bin_dir: Path, releases: dict) -> bool:
             and _poser_tous(fichiers))
 
 
+def install_youtube(bin_dir: Path, releases: dict) -> bool:
+    """yt-dlp et Deno dans `bin/yt-dlp/` (IE-180). Les deux téléchargements
+    sont vérifiés avant que rien ne soit posé. Windows seulement, comme seconv :
+    les sources épinglées sont les exécutables Windows."""
+    if not _is_windows():
+        _dire(_("The YouTube download tools are only installed automatically "
+                "on Windows."))
+        return False
+    contenus: dict[str, bytes] = {}
+    for nom in ("deno", "yt-dlp"):
+        info = releases.get(nom, {}).get("windows", {})
+        url = info.get("url", "")
+        if not url:
+            _dire(_("{tool} URL not found in the sources.").format(tool=nom), "✗")
+            return False
+        _dire(_("Downloading from {url}").format(url=url))
+        data = _download(url, info.get("sha256", ""))
+        if data is None:
+            return False
+        contenus[nom] = data
+    return all(poser(nom, data, bin_dir) for nom, data in contenus.items())
+
+
+def _offer_youtube_install(bin_dir: Path) -> None:
+    """Propose yt-dlp et Deno (optionnels)."""
+    if _oui_non(_("Download and install yt-dlp and Deno (about 65 MB) into "
+                  "./bin/yt-dlp/?")):
+        if not install_youtube(bin_dir, _load_releases()):
+            _dire(_("YouTube tools installation failed — downloading from "
+                    "YouTube stays unavailable."), "✗")
+    else:
+        _dire(_("YouTube tools skipped — downloading from YouTube stays "
+                "unavailable."))
+
+
 def _offer_seconv_install(bin_dir: Path) -> None:
     """Propose l'outil d'OCR des sous-titres image (optionnel)."""
     if _oui_non(_("Download and install the OCR tool for image subtitles "
@@ -729,7 +789,7 @@ def _offer_seconv_install(bin_dir: Path) -> None:
 
 
 OUTILS_INSTALLABLES = frozenset({"ffmpeg", "mkvmerge", "dovi_tool", "mpv",
-                                 "ffmpeg_dvd", "ffmpeg_dv"})
+                                 "ffmpeg_dvd", "ffmpeg_dv", "yt-dlp", "deno"})
 
 
 def _installer_for(name: str):

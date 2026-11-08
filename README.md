@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.1.30 — Windows (macOS/Linux support planned)
+**Version**: 0.9.1.31 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -443,7 +443,7 @@ IRIS ENCODE detects it — nothing to do.
 
 ## 4. (Optional) Install the additional tools
 
-Six tools are optional. None is needed to encode: when one is missing, a
+Eight tools are optional. None is needed to encode: when one is missing, a
 feature is turned off; startup is never blocked.
 
 | Tool | Needed for | Size |
@@ -455,6 +455,7 @@ feature is turned off; startup is never blocked.
 | Dolby Vision tool | converting **Dolby Vision profile 5** to HDR10 or SDR | ~165 MB |
 | Super-resolution shader | **upscaling** (ArtCNN C4F16, needs an ffmpeg with `libplacebo`) | ~210 KB |
 | OCR tool | **PGS and DVD subtitles converted to SRT** (Subtitle Edit `seconv`, Windows) | ~45 MB |
+| YouTube tools | **downloading a YouTube video** (`U` on the Home screen): `yt-dlp` and `deno`, Windows | ~65 MB |
 
 The **DVD tool** is a second ffmpeg — the BtbN GPL build, which reads DVDs
 (libdvdnav) — installed into `bin/dvd/`, apart from the ffmpeg that encodes. It
@@ -481,6 +482,12 @@ with its nOCR database and the French correction lists and dictionary (MPL 2.0
 for the dictionary). Everything goes into `bin/seconv/`, each file checked
 against its pinned SHA256. It is offered at startup on Windows; without it,
 PGS subtitles are kept as they are.
+
+The **YouTube tools** are `yt-dlp` (Unlicense), which downloads, and Deno (MIT
+licence), the JavaScript engine yt-dlp needs to read YouTube's pages. Both go
+into `bin/yt-dlp/`, checked against their pinned SHA256. They are offered at
+startup on Windows, then kept up to date like the other tools: YouTube changes
+often, and an old yt-dlp stops working.
 
 For the DVD and Dolby Vision tools, the startup list says so: `[✓] ffmpeg_dvd — provided by the
 main ffmpeg` (likewise for `ffmpeg_dv`). Nothing needs installing.

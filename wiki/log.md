@@ -587,3 +587,8 @@ Indices de proportion d'un AVI issu de DVD, `cropdetect`, Wikidata P2061, `-aspe
 *The Kid* et *Cure in Orange* sondés par `idet`, `fieldmatch`, `mpdecimate` :
 télécinéma irrégulier contre vraie vidéo, marqueurs absents ou faux.
 Pages touchées : [[disques-optiques]].
+
+## [2026-11-08] ingest | yt-dlp et Deno (v0.9.1.31, IE-180)
+
+Page EJS de yt-dlp et releases GitHub : moteur JavaScript, scripts inclus,
+empreintes. Pages touchées : [[yt-dlp]], [[questions-ouvertes]].

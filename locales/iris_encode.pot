@@ -652,261 +652,287 @@ msgid "NVENC refused: this ffmpeg needs a newer NVIDIA driver (NVENC API {requir
 msgstr ""
 
 #. the key that answers "yes" to a console question, one lowercase letter ("o" in French).
-#: core/preflight.py:71
+#: core/preflight.py:78
 msgctxt "yes key"
 msgid "y"
 msgstr ""
 
 #. console question, then the keys: yes (lowercase) / No (default, uppercase).
-#: core/preflight.py:74
+#: core/preflight.py:81
 #, python-brace-format
 msgctxt "console prompt"
 msgid "{question} ({yes}/N): "
 msgstr ""
 
-#: core/preflight.py:202
+#: core/preflight.py:212
 #, python-brace-format
 msgid "No SHA256 checksum published for {url} — download refused."
 msgstr ""
 
-#: core/preflight.py:211
+#: core/preflight.py:221
 #, python-brace-format
 msgid "Download failed: {error}"
 msgstr ""
 
-#: core/preflight.py:216
-#: core/preflight.py:669
+#: core/preflight.py:226
+#: core/preflight.py:694
 msgid "Wrong SHA256 checksum — download rejected."
 msgstr ""
 
 #. "expected" and "got" lines are aligned on their colon.
-#: core/preflight.py:218
+#: core/preflight.py:228
 #, python-brace-format
 msgid "expected: {value}"
 msgstr ""
 
-#: core/preflight.py:219
+#: core/preflight.py:229
 #, python-brace-format
 msgid "got:      {value}"
 msgstr ""
 
-#: core/preflight.py:245
+#: core/preflight.py:255
 #, python-brace-format
 msgid "Cannot write the tool: {error}"
 msgstr ""
 
-#: core/preflight.py:251
+#: core/preflight.py:261
 #, python-brace-format
 msgid "Installed: {path}"
 msgstr ""
 
-#: core/preflight.py:276
+#: core/preflight.py:286
 msgid "Invalid archive (neither ZIP nor tar)."
 msgstr ""
 
-#: core/preflight.py:280
-#: core/preflight.py:392
+#: core/preflight.py:290
+#: core/preflight.py:411
 #, python-brace-format
 msgid "The archive does not contain {names}."
 msgstr ""
 
-#: core/preflight.py:338
-#: core/preflight.py:353
-#: core/preflight.py:414
-#: core/preflight.py:437
-#: core/preflight.py:623
-#: core/preflight.py:663
-#: core/preflight.py:703
-#: core/preflight.py:709
-#: core/preflight.py:751
+#: core/preflight.py:344
+msgid "The download is not an executable."
+msgstr ""
+
+#: core/preflight.py:357
+#: core/preflight.py:372
+#: core/preflight.py:433
+#: core/preflight.py:456
+#: core/preflight.py:648
+#: core/preflight.py:688
+#: core/preflight.py:728
+#: core/preflight.py:734
+#: core/preflight.py:759
+#: core/preflight.py:811
 #, python-brace-format
 msgid "Downloading from {url}"
 msgstr ""
 
-#: core/preflight.py:351
-#: core/preflight.py:412
-#: core/preflight.py:435
-#: core/preflight.py:621
-#: core/preflight.py:661
-#: core/preflight.py:701
+#: core/preflight.py:370
+#: core/preflight.py:431
+#: core/preflight.py:454
+#: core/preflight.py:646
+#: core/preflight.py:686
+#: core/preflight.py:726
+#: core/preflight.py:757
 #, python-brace-format
 msgid "{tool} URL not found in the sources."
 msgstr ""
 
-#: core/preflight.py:381
+#: core/preflight.py:400
 #, python-brace-format
 msgid "Extraction failed ({error}) — tar not found?"
 msgstr ""
 
-#: core/preflight.py:384
+#: core/preflight.py:403
 msgid "tar cannot read this 7z archive."
 msgstr ""
 
-#: core/preflight.py:407
-#: core/preflight.py:430
+#: core/preflight.py:426
+#: core/preflight.py:449
 #, python-brace-format
 msgid "On Linux, install {tool} with your package manager."
 msgstr ""
 
-#: core/preflight.py:452
+#: core/preflight.py:471
 msgid "provided by the main ffmpeg"
 msgstr ""
 
-#: core/preflight.py:456
+#: core/preflight.py:475
 msgid "optional"
 msgstr ""
 
-#: core/preflight.py:491
+#: core/preflight.py:510
 msgid "dovi_tool missing (optional — needed for Dolby Vision)."
 msgstr ""
 
-#: core/preflight.py:495
+#: core/preflight.py:514
 msgid "mkvmerge missing (optional — needed to add external tracks)."
 msgstr ""
 
-#: core/preflight.py:499
+#: core/preflight.py:518
 msgid "mpv missing (optional — used to check a resync by eye)."
 msgstr ""
 
-#: core/preflight.py:503
+#: core/preflight.py:522
 msgid "DVD tool missing (optional — needed to read DVD titles)."
 msgstr ""
 
-#: core/preflight.py:507
+#: core/preflight.py:526
 msgid "Dolby Vision tool missing (optional — needed to convert Dolby Vision profile 5 to HDR10 or SDR)."
 msgstr ""
 
-#: core/preflight.py:516
+#: core/preflight.py:535
 msgid "Super-resolution shader missing (optional — needed to upscale small sources)."
 msgstr ""
 
-#: core/preflight.py:522
+#: core/preflight.py:541
 msgid "OCR tool missing (optional — converts image subtitles (PGS) into text the TV reads without transcoding)."
 msgstr ""
 
-#: core/preflight.py:533
+#: core/preflight.py:547
+msgid "YouTube tools missing (optional — needed to download a video from YouTube)."
+msgstr ""
+
+#: core/preflight.py:558
 msgid "No download URL configured."
 msgstr ""
 
 #. config.toml > [ffmpeg] > fetch_url is a settings key, keep it as is.
-#: core/preflight.py:536
+#: core/preflight.py:561
 msgid "Fill in config.toml > [ffmpeg] > fetch_url"
 msgstr ""
 
-#: core/preflight.py:540
+#: core/preflight.py:565
 msgid "Download and install ffmpeg into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:549
+#: core/preflight.py:574
 msgid "Install ffmpeg manually into ./bin/ or add it to the PATH."
 msgstr ""
 
-#: core/preflight.py:556
+#: core/preflight.py:581
 msgid "Download and install dovi_tool (Dolby Vision) into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:559
+#: core/preflight.py:584
 msgid "dovi_tool installation failed — Dolby Vision features unavailable."
 msgstr ""
 
-#: core/preflight.py:561
+#: core/preflight.py:586
 msgid "dovi_tool skipped — Dolby Vision files will not be handled optimally."
 msgstr ""
 
-#: core/preflight.py:567
+#: core/preflight.py:592
 msgid "Download and install mkvmerge (external tracks) into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:570
+#: core/preflight.py:595
 msgid "mkvmerge installation failed — adding external tracks unavailable."
 msgstr ""
 
-#: core/preflight.py:572
+#: core/preflight.py:597
 msgid "mkvmerge skipped — adding external audio/subtitle tracks will be unavailable."
 msgstr ""
 
-#: core/preflight.py:578
+#: core/preflight.py:603
 msgid "Download and install mpv (resync check) into ./bin/?"
 msgstr ""
 
-#: core/preflight.py:581
+#: core/preflight.py:606
 msgid "mpv installation failed — the resync can only be set blind."
 msgstr ""
 
-#: core/preflight.py:583
+#: core/preflight.py:608
 msgid "mpv skipped — you will not be able to check a resync by eye."
 msgstr ""
 
-#: core/preflight.py:632
+#: core/preflight.py:657
 msgid "Download and install the DVD tool (ffmpeg BtbN, about 190 MB) into ./bin/dvd/?"
 msgstr ""
 
-#: core/preflight.py:635
+#: core/preflight.py:660
 msgid "DVD tool installation failed — DVD titles unavailable."
 msgstr ""
 
-#: core/preflight.py:637
+#: core/preflight.py:662
 msgid "DVD tool skipped — DVD folders will only show their VOB files."
 msgstr ""
 
-#: core/preflight.py:642
+#: core/preflight.py:667
 msgid "Download and install the Dolby Vision tool (ffmpeg BtbN, about 190 MB) into ./bin/dv/?"
 msgstr ""
 
-#: core/preflight.py:645
+#: core/preflight.py:670
 msgid "Dolby Vision tool installation failed — profile 5 files will be skipped."
 msgstr ""
 
-#: core/preflight.py:648
+#: core/preflight.py:673
 msgid "Dolby Vision tool skipped — profile 5 files will be skipped instead of converted."
 msgstr ""
 
-#: core/preflight.py:676
+#: core/preflight.py:701
 msgid "Download and install the super-resolution shader (ArtCNN, about 210 KB) into ./bin/shaders/?"
 msgstr ""
 
-#: core/preflight.py:679
+#: core/preflight.py:704
 msgid "Shader installation failed — small sources will keep their resolution."
 msgstr ""
 
-#: core/preflight.py:682
+#: core/preflight.py:707
 msgid "Shader skipped — small sources will keep their resolution."
 msgstr ""
 
-#: core/preflight.py:695
+#: core/preflight.py:720
 msgid "The OCR tool is only installed automatically on Windows."
 msgstr ""
 
-#: core/preflight.py:721
-msgid "Download and install the OCR tool for image subtitles (Subtitle Edit seconv, about 45 MB) into ./bin/seconv/?"
+#: core/preflight.py:749
+msgid "The YouTube download tools are only installed automatically on Windows."
 msgstr ""
 
-#: core/preflight.py:724
-msgid "OCR tool installation failed — image subtitles (PGS) will be kept as they are."
+#: core/preflight.py:769
+msgid "Download and install yt-dlp and Deno (about 65 MB) into ./bin/yt-dlp/?"
 msgstr ""
 
-#: core/preflight.py:727
-msgid "OCR tool skipped — image subtitles (PGS) will be kept as they are."
+#: core/preflight.py:772
+msgid "YouTube tools installation failed — downloading from YouTube stays unavailable."
+msgstr ""
+
+#: core/preflight.py:775
+msgid "YouTube tools skipped — downloading from YouTube stays unavailable."
 msgstr ""
 
 #: core/preflight.py:781
+msgid "Download and install the OCR tool for image subtitles (Subtitle Edit seconv, about 45 MB) into ./bin/seconv/?"
+msgstr ""
+
+#: core/preflight.py:784
+msgid "OCR tool installation failed — image subtitles (PGS) will be kept as they are."
+msgstr ""
+
+#: core/preflight.py:787
+msgid "OCR tool skipped — image subtitles (PGS) will be kept as they are."
+msgstr ""
+
+#: core/preflight.py:841
 msgid "Checking for updates…"
 msgstr ""
 
-#: core/preflight.py:804
+#: core/preflight.py:864
 msgid "Update these tools?"
 msgstr ""
 
-#: core/preflight.py:805
+#: core/preflight.py:865
 msgid "Update skipped — the installed versions stay in place."
 msgstr ""
 
-#: core/preflight.py:812
+#: core/preflight.py:872
 #, python-brace-format
 msgid "{tool}: downloading {version}…"
 msgstr ""
 
-#: core/preflight.py:819
+#: core/preflight.py:879
 #, python-brace-format
 msgid "{tool} update failed — previous version kept."
 msgstr ""
@@ -1218,6 +1244,25 @@ msgstr ""
 msgid "unavailable on this system"
 msgstr ""
 
+#: core/youtube.py:197
+#, python-brace-format
+msgid "YouTube did not answer within {seconds} s."
+msgstr ""
+
+#: core/youtube.py:200
+#: core/youtube.py:282
+#, python-brace-format
+msgid "Cannot start yt-dlp: {error}"
+msgstr ""
+
+#: core/youtube.py:206
+msgid "yt-dlp returned an unreadable answer."
+msgstr ""
+
+#: core/youtube.py:209
+msgid "This video has no downloadable format."
+msgstr ""
+
 #: tui/app.py:66
 #: tui/app.py:67
 #: tui/common.py:432
@@ -1415,13 +1460,13 @@ msgstr ""
 
 #: tui/common.py:413
 #: tui/mixins.py:38
-#: tui/screens/browser.py:638
+#: tui/screens/browser.py:642
 msgid "Start"
 msgstr ""
 
 #: tui/common.py:414
 #: tui/mixins.py:39
-#: tui/screens/browser.py:639
+#: tui/screens/browser.py:643
 msgid "End"
 msgstr ""
 
@@ -1457,9 +1502,9 @@ msgid "Widen"
 msgstr ""
 
 #: tui/common.py:427
-#: tui/screens/aide.py:465
-#: tui/screens/aide.py:466
-#: tui/screens/aide.py:474
+#: tui/screens/aide.py:469
+#: tui/screens/aide.py:470
+#: tui/screens/aide.py:478
 #: tui/screens/config.py:62
 #: tui/screens/config.py:63
 #: tui/screens/config.py:102
@@ -1487,7 +1532,7 @@ msgid "Back"
 msgstr ""
 
 #: tui/common.py:431
-#: tui/screens/aide.py:323
+#: tui/screens/aide.py:327
 #: tui/screens/browser.py:378
 #: tui/screens/config.py:66
 #: tui/screens/dryrun.py:109
@@ -1504,8 +1549,8 @@ msgstr ""
 #. column header — source size, then the estimated output size: "4.2 GB → 1.8 GB (-57%)".
 #: tui/common.py:566
 #: tui/screens/browser.py:395
-#: tui/screens/browser.py:540
-#: tui/screens/browser.py:675
+#: tui/screens/browser.py:542
+#: tui/screens/browser.py:679
 #: tui/screens/run.py:299
 #: tui/screens/tracks.py:137
 msgid "Profile"
@@ -1514,7 +1559,7 @@ msgstr ""
 #. profile column header, super-resolution upscaling; keep it short.
 #. "Dolby V." is short for Dolby Vision; keep it short.
 #: tui/common.py:566
-#: tui/screens/browser.py:410
+#: tui/screens/browser.py:412
 msgid "Dolby V."
 msgstr ""
 
@@ -1531,7 +1576,7 @@ msgid "Upscale"
 msgstr ""
 
 #: tui/common.py:567
-#: tui/screens/browser.py:772
+#: tui/screens/browser.py:776
 msgid "HD audio"
 msgstr ""
 
@@ -1671,394 +1716,398 @@ msgid "From the list of volumes: manages the locations — named network shares 
 msgstr ""
 
 #: tui/screens/aide.py:113
+msgid "Downloads a YouTube video: paste its address, choose the resolution and the subtitles. The video opens in its folder, checked, ready to encode."
+msgstr ""
+
+#: tui/screens/aide.py:117
 msgid "Joins the checked files end to end into one, without re-encoding — a movie delivered as part1 / part2. The proposed order comes from the names and can be corrected before launching. The resulting file carries “.join-iris” and is then encoded like any other."
 msgstr ""
 
 #. {key_tab} is the key that switches to IMDB.
-#: tui/screens/aide.py:121
+#: tui/screens/aide.py:125
 #, python-brace-format
 msgid "Opens the movie's Info card: AlloCiné, then IMDB with {key_tab}."
 msgstr ""
 
-#: tui/screens/aide.py:123
+#: tui/screens/aide.py:127
 msgid "Shows only one image type (Dolby Vision, one DV profile, HDR without DV, SDR) or one video codec. A checked row stays visible."
 msgstr ""
 
-#: tui/screens/aide.py:126
+#: tui/screens/aide.py:130
 msgid "Sorts the files by name, size, resolution, duration, bitrate, codec or estimated size change. Choosing the current sort again reverses it. Folders stay on top."
 msgstr ""
 
-#: tui/screens/aide.py:130
+#: tui/screens/aide.py:134
 msgid "Hides or shows again the SKIP files. A checked row stays visible."
 msgstr ""
 
 #. {discarded} and {decision} are labels of the tracks screen, quoted as displayed.
-#: tui/screens/aide.py:136
+#: tui/screens/aide.py:140
 #, python-brace-format
 msgid "Keeps or discards the track under the cursor. A discarded track shows “{discarded}” in the {decision} column."
 msgstr ""
 
-#: tui/screens/aide.py:139
+#: tui/screens/aide.py:143
 msgid "Previous field on the video row (action, bitrate, Dolby Vision, fate of the original)."
 msgstr ""
 
-#: tui/screens/aide.py:141
+#: tui/screens/aide.py:145
 msgid "Next field. The active field is framed ◄ ►."
 msgstr ""
 
-#: tui/screens/aide.py:142
+#: tui/screens/aide.py:146
 msgid "Next value of the active field."
 msgstr ""
 
-#: tui/screens/aide.py:143
+#: tui/screens/aide.py:147
 msgid "Previous value."
 msgstr ""
 
-#: tui/screens/aide.py:144
+#: tui/screens/aide.py:148
 msgid "Opens the list of possible values for the active field."
 msgstr ""
 
-#: tui/screens/aide.py:146
+#: tui/screens/aide.py:150
 msgid "Dry run of this file only."
 msgstr ""
 
-#: tui/screens/aide.py:147
+#: tui/screens/aide.py:151
 msgid "Adds this file to the encoding queue."
 msgstr ""
 
-#: tui/screens/aide.py:148
+#: tui/screens/aide.py:152
 msgid "Changes the profile, which recomputes the decision."
 msgstr ""
 
-#: tui/screens/aide.py:150
+#: tui/screens/aide.py:154
 msgid "Chooses the output codec."
 msgstr ""
 
-#: tui/screens/aide.py:151
+#: tui/screens/aide.py:155
 msgid "Chooses the target video bitrate."
 msgstr ""
 
-#: tui/screens/aide.py:152
+#: tui/screens/aide.py:156
 msgid "Sets the aspect ratio (4:3, 16:9 or square pixels) of a DVD-size source that does not declare it. Shown only for such a file."
 msgstr ""
 
 #. {delete_flag} is the warning shown on the tracks screen.
-#: tui/screens/aide.py:156
+#: tui/screens/aide.py:160
 #, python-brace-format
 msgid "Deletes or keeps the source file after a successful encode. “{delete_flag}” is shown in orange."
 msgstr ""
 
-#: tui/screens/aide.py:159
+#: tui/screens/aide.py:163
 msgid "Adds a track taken from another file: a dub, subtitles. Opens the Sync screen."
 msgstr ""
 
-#: tui/screens/aide.py:161
+#: tui/screens/aide.py:165
 msgid "Returns to the Home screen without applying the changes."
 msgstr ""
 
-#: tui/screens/aide.py:165
+#: tui/screens/aide.py:169
 msgid "Previous field: offset, stretch, language, name, default, forced."
 msgstr ""
 
-#: tui/screens/aide.py:167
+#: tui/screens/aide.py:171
 msgid "Next field. The active field is highlighted."
 msgstr ""
 
-#: tui/screens/aide.py:168
+#: tui/screens/aide.py:172
 msgid "On the offset: +100 ms. On the other fields: next value."
 msgstr ""
 
-#: tui/screens/aide.py:170
+#: tui/screens/aide.py:174
 msgid "On the offset: −100 ms. Otherwise: previous value."
 msgstr ""
 
-#: tui/screens/aide.py:172
+#: tui/screens/aide.py:176
 msgid "Offset +1 s — the coarse step, to get close."
 msgstr ""
 
-#: tui/screens/aide.py:173
+#: tui/screens/aide.py:177
 msgid "Offset −1 s."
 msgstr ""
 
-#: tui/screens/aide.py:174
+#: tui/screens/aide.py:178
 msgid "Offset +10 ms — the fine step, to close in on a measured value. The Ctrl and + combination is bound too, but not every terminal passes it on."
 msgstr ""
 
-#: tui/screens/aide.py:178
+#: tui/screens/aide.py:182
 msgid "Offset −10 ms."
 msgstr ""
 
-#: tui/screens/aide.py:179
+#: tui/screens/aide.py:183
 msgid "Opens the list of values of the active field."
 msgstr ""
 
-#: tui/screens/aide.py:180
+#: tui/screens/aide.py:184
 msgid "Measures the offset by audio correlation. Takes several minutes: both tracks are decoded in full. The result is cross-checked on the three thirds of the movie before being accepted."
 msgstr ""
 
-#: tui/screens/aide.py:184
+#: tui/screens/aide.py:188
 msgid "Opens mpv at the current offset, to judge by ear."
 msgstr ""
 
-#: tui/screens/aide.py:186
+#: tui/screens/aide.py:190
 msgid "Produces a check sample: a short excerpt with all the tracks, to play in your usual player — the safest check before muxing."
 msgstr ""
 
-#: tui/screens/aide.py:189
+#: tui/screens/aide.py:193
 msgid "Applies the value of a refused measurement anyway. Check it afterwards: it was refused for a reason."
 msgstr ""
 
-#: tui/screens/aide.py:192
+#: tui/screens/aide.py:196
 msgid "Shows the offset segments when the measurement found a different cut. Advisory: nothing is applied."
 msgstr ""
 
-#: tui/screens/aide.py:195
+#: tui/screens/aide.py:199
 msgid "Resyncs the track over these segments. An .srt is rewritten; an audio track is lengthened at the switch points, then re-encoded."
 msgstr ""
 
-#: tui/screens/aide.py:199
+#: tui/screens/aide.py:203
 msgid "Copies onto this track the offset of another — useful when a dub and its subtitles come from the same file."
 msgstr ""
 
-#: tui/screens/aide.py:202
+#: tui/screens/aide.py:206
 msgid "Gives an anchor point when the measurement is refused. The application suggests a line and its timestamp; you give the moment you hear it, and the search is done around it. Subtitles only: an audio track has no text to suggest."
 msgstr ""
 
-#: tui/screens/aide.py:207
+#: tui/screens/aide.py:211
 msgid "Removes the track from the added tracks."
 msgstr ""
 
-#: tui/screens/aide.py:208
+#: tui/screens/aide.py:212
 msgid "Dry run of the target file."
 msgstr ""
 
-#: tui/screens/aide.py:209
+#: tui/screens/aide.py:213
 msgid "Adds the file, with its added tracks, to the encoding queue."
 msgstr ""
 
-#: tui/screens/aide.py:211
+#: tui/screens/aide.py:215
 msgid "Muxes without re-encoding: much faster, when the video does not need to be touched."
 msgstr ""
 
-#: tui/screens/aide.py:213
+#: tui/screens/aide.py:217
 msgid "Adds another external track."
 msgstr ""
 
-#: tui/screens/aide.py:214
+#: tui/screens/aide.py:218
 msgid "Returns to the Tracks screen."
 msgstr ""
 
-#: tui/screens/aide.py:217
+#: tui/screens/aide.py:221
 msgid "Checks or unchecks a row."
 msgstr ""
 
-#: tui/screens/aide.py:218
+#: tui/screens/aide.py:222
 msgid "Adds the checked rows to the encoding queue."
 msgstr ""
 
-#: tui/screens/aide.py:219
+#: tui/screens/aide.py:223
 msgid "Changes the codec of the row under the cursor."
 msgstr ""
 
-#: tui/screens/aide.py:220
+#: tui/screens/aide.py:224
 msgid "Changes its target bitrate."
 msgstr ""
 
-#: tui/screens/aide.py:221
+#: tui/screens/aide.py:225
 msgid "Upscales it by super-resolution, in one or two passes, or not — whatever the profile says."
 msgstr ""
 
-#: tui/screens/aide.py:223
+#: tui/screens/aide.py:227
 msgid "Builds a two-minute sample: one pass on the left, two passes on the right, encoded like the final file. K again cancels."
 msgstr ""
 
-#: tui/screens/aide.py:226
-#: tui/screens/aide.py:260
+#: tui/screens/aide.py:230
+#: tui/screens/aide.py:264
 msgid "Returns to the previous screen."
 msgstr ""
 
-#: tui/screens/aide.py:229
+#: tui/screens/aide.py:233
 msgid "Pauses or resumes the current encode."
 msgstr ""
 
-#: tui/screens/aide.py:230
+#: tui/screens/aide.py:234
 msgid "Abandons the current file, after confirmation, and moves to the next."
 msgstr ""
 
-#: tui/screens/aide.py:231
+#: tui/screens/aide.py:235
 msgid "Moves the waiting file under the cursor up one place."
 msgstr ""
 
-#: tui/screens/aide.py:233
+#: tui/screens/aide.py:237
 msgid "Moves the waiting file under the cursor down one place."
 msgstr ""
 
-#: tui/screens/aide.py:235
+#: tui/screens/aide.py:239
 msgid "Removes the waiting file under the cursor from the queue."
 msgstr ""
 
-#: tui/screens/aide.py:237
+#: tui/screens/aide.py:241
 msgid "Stops the current file and empties the queue, after confirmation. The partial output is deleted."
 msgstr ""
 
 #. {key_options_screen} then {key_options} open the options; {do_nothing} is the option label; {key_stop_all} stops the batch.
-#: tui/screens/aide.py:243
+#: tui/screens/aide.py:247
 #, python-brace-format
 msgid "Checks or unchecks the after-batch action: sleep, hibernate or shut down, as set in the options ({key_options_screen}, {key_options}). By default the options say “{do_nothing}” and the key arms nothing. It fires when nothing is running anymore, after a 60 s countdown that can be canceled. Unchecked at each new batch; a batch stopped by {key_stop_all} triggers nothing."
 msgstr ""
 
 #. {key_queue} reopens the encoding queue.
-#: tui/screens/aide.py:252
+#: tui/screens/aide.py:256
 #, python-brace-format
 msgid "Returns to the files without stopping anything: encoding continues, {key_queue} reopens it."
 msgstr ""
 
-#: tui/screens/aide.py:256
+#: tui/screens/aide.py:260
 msgid "Dry run of the encode of the file produced by the mux."
 msgstr ""
 
-#: tui/screens/aide.py:258
+#: tui/screens/aide.py:262
 msgid "Adds the file produced by the mux to the encoding queue."
 msgstr ""
 
-#: tui/screens/aide.py:263
+#: tui/screens/aide.py:267
 msgid "Moves the part under the cursor up one place. The order of the table is the one that will be joined — check it before launching: two swapped parts give a file of the right length, and wrong."
 msgstr ""
 
-#: tui/screens/aide.py:267
+#: tui/screens/aide.py:271
 msgid "Moves the part under the cursor down one place."
 msgstr ""
 
-#: tui/screens/aide.py:268
+#: tui/screens/aide.py:272
 msgid "Starts the join. Refused if the parts do not match — different video codec, resolution or audio format — or if the output file already exists."
 msgstr ""
 
-#: tui/screens/aide.py:271
+#: tui/screens/aide.py:275
 msgid "Returns to the Home screen. A join in progress is interrupted and its partial file deleted."
 msgstr ""
 
-#: tui/screens/aide.py:275
+#: tui/screens/aide.py:279
 msgid "Enters or changes the API keys (OpenSubtitles, OMDb), checked with the service before being saved."
 msgstr ""
 
 #. {key_after_batch} is the key of the encoding screen.
-#: tui/screens/aide.py:279
+#: tui/screens/aide.py:283
 #, python-brace-format
 msgid "Opens the options: block sleep during processing (on by default), and the after-batch action that {key_after_batch} checks during encoding."
 msgstr ""
 
-#: tui/screens/aide.py:283
+#: tui/screens/aide.py:287
 msgid "Makes the profile under the cursor active."
 msgstr ""
 
-#: tui/screens/aide.py:284
+#: tui/screens/aide.py:288
 msgid "Creates a profile."
 msgstr ""
 
-#: tui/screens/aide.py:285
+#: tui/screens/aide.py:289
 msgid "Edits the profile under the cursor."
 msgstr ""
 
-#: tui/screens/aide.py:286
+#: tui/screens/aide.py:290
 msgid "Creates a profile from the one under the cursor: same settings, name to choose."
 msgstr ""
 
-#: tui/screens/aide.py:288
+#: tui/screens/aide.py:292
 msgid "Deletes the profile, after confirmation — including a profile shipped with the application. Only the last profile cannot be deleted."
 msgstr ""
 
-#: tui/screens/aide.py:292
+#: tui/screens/aide.py:296
 msgid "Returns to the Home screen."
 msgstr ""
 
 #. {launch} is the name of the last step but one.
-#: tui/screens/aide.py:296
+#: tui/screens/aide.py:300
 #, python-brace-format
 msgid "Moves to the next step. At the “{launch}” step, triggers the recommended choice; at the end, returns to the Home screen."
 msgstr ""
 
-#: tui/screens/aide.py:299
+#: tui/screens/aide.py:303
 msgid "Keeps or discards the track under the cursor (step 2)."
 msgstr ""
 
-#: tui/screens/aide.py:301
+#: tui/screens/aide.py:305
 msgid "Changes the output codec (step 2)."
 msgstr ""
 
-#: tui/screens/aide.py:302
+#: tui/screens/aide.py:306
 msgid "Changes the target bitrate (step 2)."
 msgstr ""
 
-#: tui/screens/aide.py:303
+#: tui/screens/aide.py:307
 msgid "Sets the aspect ratio of a DVD-size source that does not declare it (step 2)."
 msgstr ""
 
-#: tui/screens/aide.py:305
+#: tui/screens/aide.py:309
 msgid "Presents a donor file (step 3). The offset measurement is started and applied at once."
 msgstr ""
 
-#: tui/screens/aide.py:307
+#: tui/screens/aide.py:311
 msgid "Opens the Sync screen on the added tracks (step 3), with the last measurement: force its candidate, see its segments, give an anchor point, listen, adjust by hand. Backspace returns to guided mode."
 msgstr ""
 
-#: tui/screens/aide.py:311
+#: tui/screens/aide.py:315
 msgid "Removes the last added track (step 3)."
 msgstr ""
 
-#: tui/screens/aide.py:312
+#: tui/screens/aide.py:316
 msgid "Muxes without re-encoding (step 4)."
 msgstr ""
 
-#: tui/screens/aide.py:313
+#: tui/screens/aide.py:317
 msgid "Re-encodes (step 4)."
 msgstr ""
 
-#: tui/screens/aide.py:314
+#: tui/screens/aide.py:318
 msgid "Returns to the previous step; at the first, leaves guided mode."
 msgstr ""
 
-#: tui/screens/aide.py:324
+#: tui/screens/aide.py:328
 msgid "Browse, choose the files, launch."
 msgstr ""
 
 #. {key_mode} is the home screen key that turns guided mode on.
-#: tui/screens/aide.py:326
-#: tui/screens/browser.py:652
-#: tui/screens/browser.py:754
+#: tui/screens/aide.py:330
+#: tui/screens/browser.py:656
+#: tui/screens/browser.py:758
 msgid "Guided"
 msgstr ""
 
-#: tui/screens/aide.py:327
+#: tui/screens/aide.py:331
 #, python-brace-format
 msgid "One file, five steps. Turned on by {key_mode} from the Home screen."
 msgstr ""
 
-#: tui/screens/aide.py:329
+#: tui/screens/aide.py:333
 #: tui/screens/browser.py:381
-#: tui/screens/browser.py:628
+#: tui/screens/browser.py:631
 #: tui/screens/join.py:39
 msgid "Tracks"
 msgstr ""
 
-#: tui/screens/aide.py:330
+#: tui/screens/aide.py:334
 msgid "What each track of the file will become."
 msgstr ""
 
-#: tui/screens/aide.py:331
+#: tui/screens/aide.py:335
 #: tui/screens/sync.py:324
 #: tui/screens/wizard.py:156
 msgid "Sync"
 msgstr ""
 
-#: tui/screens/aide.py:332
+#: tui/screens/aide.py:336
 msgid "Add a track from another file, and put it back in time."
 msgstr ""
 
-#: tui/screens/aide.py:333
+#: tui/screens/aide.py:337
 #: tui/screens/browser.py:393
-#: tui/screens/browser.py:538
-#: tui/screens/browser.py:674
-#: tui/screens/browser.py:1695
+#: tui/screens/browser.py:540
+#: tui/screens/browser.py:678
+#: tui/screens/browser.py:1746
 #: tui/screens/dryrun.py:329
 #: tui/screens/mux_run.py:43
 #: tui/screens/sync.py:194
@@ -2066,28 +2115,28 @@ msgstr ""
 msgid "Dry run"
 msgstr ""
 
-#: tui/screens/aide.py:334
+#: tui/screens/aide.py:338
 msgid "What would be done, without doing anything."
 msgstr ""
 
-#: tui/screens/aide.py:335
+#: tui/screens/aide.py:339
 #: tui/screens/run.py:444
 msgid "Encoding"
 msgstr ""
 
-#: tui/screens/aide.py:336
+#: tui/screens/aide.py:340
 msgid "The encode in progress."
 msgstr ""
 
-#: tui/screens/aide.py:337
+#: tui/screens/aide.py:341
 msgid "Muxing"
 msgstr ""
 
-#: tui/screens/aide.py:338
+#: tui/screens/aide.py:342
 msgid "The mux in progress, and what can be done with it next."
 msgstr ""
 
-#: tui/screens/aide.py:339
+#: tui/screens/aide.py:343
 #: tui/screens/join.py:40
 #: tui/screens/join.py:59
 #: tui/screens/join.py:108
@@ -2095,27 +2144,27 @@ msgstr ""
 msgid "Join"
 msgstr ""
 
-#: tui/screens/aide.py:340
+#: tui/screens/aide.py:344
 msgid "Put the parts of one movie back together into a single file."
 msgstr ""
 
-#: tui/screens/aide.py:341
+#: tui/screens/aide.py:345
 msgid "Profiles"
 msgstr ""
 
-#: tui/screens/aide.py:342
+#: tui/screens/aide.py:346
 msgid "Create and set up the encoding profiles."
 msgstr ""
 
 #. "Dolby V." is short for Dolby Vision; keep it short.
-#: tui/screens/aide.py:409
-#: tui/screens/browser.py:410
+#: tui/screens/aide.py:413
+#: tui/screens/browser.py:412
 #: tui/screens/wizard.py:81
 #: tui/screens/wizard.py:332
 msgid "Decision"
 msgstr ""
 
-#: tui/screens/aide.py:410
+#: tui/screens/aide.py:414
 #: tui/screens/tracks.py:460
 #: tui/screens/tracks.py:464
 #: tui/screens/tracks.py:741
@@ -2123,13 +2172,13 @@ msgctxt "source file"
 msgid "delete"
 msgstr ""
 
-#: tui/screens/aide.py:412
+#: tui/screens/aide.py:416
 #: tui/screens/wizard.py:83
 msgid "Launch"
 msgstr ""
 
-#: tui/screens/aide.py:467
-#: tui/screens/aide.py:474
+#: tui/screens/aide.py:471
+#: tui/screens/aide.py:478
 #: tui/screens/meta_popup.py:48
 #: tui/screens/meta_popup.py:49
 #: tui/screens/meta_popup.py:141
@@ -2140,27 +2189,27 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#: tui/screens/aide.py:484
+#: tui/screens/aide.py:488
 msgid "Key guide"
 msgstr ""
 
-#: tui/screens/aide.py:486
+#: tui/screens/aide.py:490
 msgid "Every key of every screen, with what it does. This page is built from the shortcuts actually declared: it cannot lag behind the application."
 msgstr ""
 
-#: tui/screens/aide.py:495
+#: tui/screens/aide.py:499
 msgid "Everywhere"
 msgstr ""
 
-#: tui/screens/aide.py:496
+#: tui/screens/aide.py:500
 msgid "These keys work on every screen."
 msgstr ""
 
-#: tui/screens/aide.py:501
+#: tui/screens/aide.py:505
 msgid "In a table"
 msgstr ""
 
-#: tui/screens/aide.py:507
+#: tui/screens/aide.py:511
 msgid "Resizable columns — Home, Tracks, Dry run"
 msgstr ""
 
@@ -2180,16 +2229,18 @@ msgstr ""
 #: tui/screens/emplacements.py:227
 #: tui/screens/opensubtitles.py:56
 #: tui/screens/opensubtitles.py:78
-#: tui/screens/options.py:64
-#: tui/screens/options.py:116
+#: tui/screens/options.py:65
+#: tui/screens/options.py:125
 #: tui/screens/output_dir.py:55
-#: tui/screens/output_dir.py:75
+#: tui/screens/output_dir.py:77
 #: tui/screens/profile_picker.py:60
 #: tui/screens/profile_picker.py:83
 #: tui/screens/sar.py:70
 #: tui/screens/sar.py:94
 #: tui/screens/value_picker.py:52
 #: tui/screens/value_picker.py:76
+#: tui/screens/youtube.py:64
+#: tui/screens/youtube.py:93
 #: tui/widgets/profile_form.py:231
 msgid "Cancel"
 msgstr ""
@@ -2280,71 +2331,72 @@ msgid "Codec: {codec} ({count})"
 msgstr ""
 
 #: tui/screens/browser.py:373
-#: tui/screens/browser.py:623
+#: tui/screens/browser.py:626
 #: tui/screens/donor_picker.py:241
 #: tui/screens/dryrun.py:94
 #: tui/screens/tracks.py:129
+#: tui/screens/youtube.py:92
 msgid "Toggle"
 msgstr ""
 
 #: tui/screens/browser.py:374
-#: tui/screens/browser.py:624
+#: tui/screens/browser.py:627
 msgid "All"
 msgstr ""
 
 #: tui/screens/browser.py:375
-#: tui/screens/browser.py:625
+#: tui/screens/browser.py:628
 msgid "None"
 msgstr ""
 
 #: tui/screens/browser.py:376
-#: tui/screens/browser.py:626
+#: tui/screens/browser.py:629
 #: tui/screens/donor_picker.py:123
 #: tui/screens/donor_picker.py:145
 #: tui/screens/output_dir.py:53
-#: tui/screens/output_dir.py:73
+#: tui/screens/output_dir.py:75
 msgid "Open"
 msgstr ""
 
 #: tui/screens/browser.py:377
-#: tui/screens/browser.py:637
+#: tui/screens/browser.py:641
 #: tui/screens/donor_picker.py:124
 #: tui/screens/donor_picker.py:146
 #: tui/screens/output_dir.py:54
-#: tui/screens/output_dir.py:74
+#: tui/screens/output_dir.py:76
 msgid "Up"
 msgstr ""
 
 #: tui/screens/browser.py:382
-#: tui/screens/browser.py:627
+#: tui/screens/browser.py:630
 msgid "Mode"
 msgstr ""
 
 #: tui/screens/browser.py:383
-#: tui/screens/browser.py:629
+#: tui/screens/browser.py:632
 #: tui/screens/sync.py:142
 #: tui/screens/sync.py:180
 msgid "Play"
 msgstr ""
 
 #: tui/screens/browser.py:386
-#: tui/screens/browser.py:630
+#: tui/screens/browser.py:633
 #: tui/screens/recursive_confirm.py:27
 msgid "Encode the folder"
 msgstr ""
 
 #: tui/screens/browser.py:387
-#: tui/screens/browser.py:631
+#: tui/screens/browser.py:634
 msgid "Join parts"
 msgstr ""
 
 #: tui/screens/browser.py:388
-#: tui/screens/browser.py:632
+#: tui/screens/browser.py:635
 msgid "Info"
 msgstr ""
 
 #: tui/screens/browser.py:389
-#: tui/screens/browser.py:633
+#: tui/screens/browser.py:636
 #: tui/screens/config.py:54
 #: tui/screens/config.py:55
 #: tui/screens/config.py:226
@@ -2356,26 +2408,26 @@ msgid "Delete"
 msgstr ""
 
 #: tui/screens/browser.py:390
-#: tui/screens/browser.py:634
-#: tui/screens/browser.py:1530
+#: tui/screens/browser.py:637
+#: tui/screens/browser.py:1581
 msgid "Filter"
 msgstr ""
 
 #: tui/screens/browser.py:391
-#: tui/screens/browser.py:635
+#: tui/screens/browser.py:638
 msgid "Sort"
 msgstr ""
 
 #: tui/screens/browser.py:392
-#: tui/screens/browser.py:636
-#: tui/screens/browser.py:653
+#: tui/screens/browser.py:639
+#: tui/screens/browser.py:657
 msgid "Hide SKIP"
 msgstr ""
 
 #: tui/screens/browser.py:394
-#: tui/screens/browser.py:539
-#: tui/screens/browser.py:674
-#: tui/screens/browser.py:1703
+#: tui/screens/browser.py:541
+#: tui/screens/browser.py:678
+#: tui/screens/browser.py:1754
 #: tui/screens/dryrun.py:97
 #: tui/screens/mux_run.py:44
 #: tui/screens/sync.py:195
@@ -2385,17 +2437,23 @@ msgid "Encode"
 msgstr ""
 
 #: tui/screens/browser.py:396
-#: tui/screens/browser.py:541
-#: tui/screens/browser.py:675
+#: tui/screens/browser.py:543
+#: tui/screens/browser.py:679
 msgid "Manage"
 msgstr ""
 
 #: tui/screens/browser.py:399
-#: tui/screens/browser.py:620
+#: tui/screens/browser.py:622
 msgid "Locations"
 msgstr ""
 
-#: tui/screens/browser.py:405
+#: tui/screens/browser.py:401
+#: tui/screens/browser.py:623
+#: tui/screens/browser.py:640
+msgid "YouTube"
+msgstr ""
+
+#: tui/screens/browser.py:407
 #: tui/screens/donor_picker.py:152
 #: tui/screens/dryrun.py:117
 #: tui/screens/join.py:39
@@ -2404,18 +2462,18 @@ msgstr ""
 msgid "File"
 msgstr ""
 
-#: tui/screens/browser.py:405
+#: tui/screens/browser.py:407
 #: tui/screens/donor_picker.py:153
 #: tui/screens/dryrun.py:118
 msgid "Size"
 msgstr ""
 
 #. column header, short for "Resolution".
-#: tui/screens/browser.py:407
+#: tui/screens/browser.py:409
 msgid "Res."
 msgstr ""
 
-#: tui/screens/browser.py:408
+#: tui/screens/browser.py:410
 #: tui/screens/dryrun.py:119
 #: tui/screens/join.py:39
 #: tui/screens/run.py:302
@@ -2423,14 +2481,14 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
-#: tui/screens/browser.py:408
+#: tui/screens/browser.py:410
 #: tui/screens/dryrun.py:99
 #: tui/screens/tracks.py:139
 #: tui/screens/wizard.py:151
 msgid "Bitrate"
 msgstr ""
 
-#: tui/screens/browser.py:408
+#: tui/screens/browser.py:410
 #: tui/screens/donor_picker.py:270
 #: tui/screens/dryrun.py:98
 #: tui/screens/dryrun.py:432
@@ -2444,238 +2502,257 @@ msgid "Codec"
 msgstr ""
 
 #. estimated output size and its change; keep it short.
-#: tui/screens/browser.py:411
+#: tui/screens/browser.py:413
 #: tui/screens/dryrun.py:121
 msgid "Est. (Δ%)"
 msgstr ""
 
 #. column header, estimated encoding time (0:38:12); 9 characters at most (French keeps "ETA").
-#: tui/screens/browser.py:414
+#: tui/screens/browser.py:416
 #: tui/screens/dryrun.py:124
 msgid "ETA"
 msgstr ""
 
 #. column header, estimated encoding time (0:38:12); 9 characters at most (French keeps "ETA").
-#: tui/screens/browser.py:414
+#: tui/screens/browser.py:416
 #: tui/screens/tracks.py:77
 msgid "Audio"
 msgstr ""
 
-#: tui/screens/browser.py:528
-#: tui/screens/browser.py:933
+#: tui/screens/browser.py:530
+#: tui/screens/browser.py:937
 msgid "Analyzing…"
 msgstr ""
 
-#: tui/screens/browser.py:591
+#: tui/screens/browser.py:593
 msgid "Volume"
 msgstr ""
 
-#: tui/screens/browser.py:592
+#: tui/screens/browser.py:594
 msgid "Free space"
 msgstr ""
 
-#: tui/screens/browser.py:593
+#: tui/screens/browser.py:595
 msgid "Total"
 msgstr ""
 
-#: tui/screens/browser.py:594
+#: tui/screens/browser.py:596
 msgid "Used"
 msgstr ""
 
-#: tui/screens/browser.py:619
+#: tui/screens/browser.py:621
 msgid "Open the volume"
 msgstr ""
 
-#: tui/screens/browser.py:652
-#: tui/screens/browser.py:754
+#: tui/screens/browser.py:656
+#: tui/screens/browser.py:758
 msgid "Manual"
 msgstr ""
 
-#: tui/screens/browser.py:653
+#: tui/screens/browser.py:657
 msgid "Show SKIP"
 msgstr ""
 
-#: tui/screens/browser.py:704
+#: tui/screens/browser.py:708
 msgid "Choose a volume"
 msgstr ""
 
-#: tui/screens/browser.py:705
+#: tui/screens/browser.py:709
 #, python-brace-format
 msgid "{count} volume"
 msgid_plural "{count} volumes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:706
+#: tui/screens/browser.py:710
 #, python-brace-format
 msgid "{count} location"
 msgid_plural "{count} locations"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:715
+#: tui/screens/browser.py:719
 msgid "without SKIP"
 msgstr ""
 
-#: tui/screens/browser.py:716
+#: tui/screens/browser.py:720
 #, python-brace-format
 msgid "{count} hidden"
 msgid_plural "{count} hidden"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:721
+#: tui/screens/browser.py:725
 #, python-brace-format
 msgid "{selected}/{total} selected"
 msgid_plural "{selected}/{total} selected"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:723
+#: tui/screens/browser.py:727
 #, python-brace-format
 msgid "{count} unreadable"
 msgid_plural "{count} unreadable"
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:725
+#: tui/screens/browser.py:729
 #, python-brace-format
 msgid "Filter: {filter} ({hidden})"
 msgstr ""
 
-#: tui/screens/browser.py:728
+#: tui/screens/browser.py:732
 #: tui/screens/dryrun.py:331
 #: tui/screens/tracks.py:514
 #, python-brace-format
 msgid "Col: {column}"
 msgstr ""
 
-#: tui/screens/browser.py:744
+#: tui/screens/browser.py:748
 #, python-brace-format
 msgid "4K: {value}"
 msgstr ""
 
 #. the profile deletes the source files; shown in capitals.
-#: tui/screens/browser.py:776
+#: tui/screens/browser.py:780
 msgid "Deletion"
 msgstr ""
 
-#: tui/screens/browser.py:886
-msgid "All files are hidden"
-msgstr ""
-
-#: tui/screens/browser.py:887
-#, python-brace-format
-msgid "{filter_key} filter, {skip_key} SKIP"
-msgstr ""
-
 #: tui/screens/browser.py:890
-msgid "No video file in this folder"
+msgid "All files are hidden"
 msgstr ""
 
 #: tui/screens/browser.py:891
 #, python-brace-format
+msgid "{filter_key} filter, {skip_key} SKIP"
+msgstr ""
+
+#: tui/screens/browser.py:894
+msgid "No video file in this folder"
+msgstr ""
+
+#: tui/screens/browser.py:895
+#, python-brace-format
 msgid "{key} to go up"
 msgstr ""
 
-#: tui/screens/browser.py:921
+#: tui/screens/browser.py:925
 #, python-brace-format
 msgid "unreadable: {cause}"
 msgstr ""
 
-#: tui/screens/browser.py:936
-#: tui/screens/browser.py:1822
+#: tui/screens/browser.py:940
+#: tui/screens/browser.py:1873
 #, python-brace-format
 msgid "Analyzing… {done} / {total}"
 msgstr ""
 
-#: tui/screens/browser.py:1105
+#: tui/screens/browser.py:1109
 #, python-brace-format
 msgid "{file} did not need re-encoding: checked, it will be encoded ({video}, source bitrate)."
 msgstr ""
 
-#: tui/screens/browser.py:1109
+#: tui/screens/browser.py:1113
 #, python-brace-format
 msgid "Checked lines not re-encoded by default: {count}. They will be encoded at their source bitrate."
 msgstr ""
 
-#: tui/screens/browser.py:1163
+#: tui/screens/browser.py:1167
 msgid "This disc is encrypted (AACS or CSS): IRIS ENCODE cannot read it. Decrypt it first, then open the decrypted copy."
 msgstr ""
 
-#: tui/screens/browser.py:1169
+#: tui/screens/browser.py:1173
 msgid "Reading a DVD's titles needs the DVD tool (an ffmpeg with libdvdnav). Restart IRIS ENCODE and accept its installation. VIDEO_TS still shows the VOB files."
 msgstr ""
 
-#: tui/screens/browser.py:1335
+#: tui/screens/browser.py:1339
 #: tui/screens/sync.py:1020
 msgid "mpv missing — run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/browser.py:1342
+#: tui/screens/browser.py:1346
 #, python-brace-format
 msgid "Cannot play: {error}"
 msgstr ""
 
-#: tui/screens/browser.py:1360
+#: tui/screens/browser.py:1364
 msgid "A disc title cannot be deleted from here: its files belong to the disc."
 msgstr ""
 
-#: tui/screens/browser.py:1365
+#: tui/screens/browser.py:1369
 #, python-brace-format
 msgid "{file} is in the encoding queue: it cannot be deleted now."
 msgstr ""
 
-#: tui/screens/browser.py:1384
+#: tui/screens/browser.py:1388
 #, python-brace-format
 msgid "Cannot delete: {error}"
 msgstr ""
 
-#: tui/screens/browser.py:1538
+#: tui/screens/browser.py:1470
+msgid "Downloading from YouTube needs yt-dlp and Deno. Restart IRIS ENCODE and accept their installation."
+msgstr ""
+
+#: tui/screens/browser.py:1489
+msgid "Where should downloaded videos go? Options can change it later."
+msgstr ""
+
+#: tui/screens/browser.py:1491
+#: tui/screens/options.py:110
+#: tui/screens/options.py:140
+msgid "YouTube downloads"
+msgstr ""
+
+#: tui/screens/browser.py:1506
+#, python-brace-format
+msgid "Downloaded: {file}. It is checked, ready to encode."
+msgstr ""
+
+#: tui/screens/browser.py:1589
 #, python-brace-format
 msgid "Sort: {column}"
 msgstr ""
 
-#: tui/screens/browser.py:1562
+#: tui/screens/browser.py:1613
 msgid "Sort by"
 msgstr ""
 
-#: tui/screens/browser.py:1581
+#: tui/screens/browser.py:1632
 #, python-brace-format
 msgid "Guided mode — {key} opens the guided path, one file at a time."
 msgstr ""
 
-#: tui/screens/browser.py:1584
+#: tui/screens/browser.py:1635
 #, python-brace-format
 msgid "Manual mode — {key} opens the Tracks screen."
 msgstr ""
 
-#: tui/screens/browser.py:1673
+#: tui/screens/browser.py:1724
 #, python-brace-format
 msgid "{action}: first enter a volume, then check files ({key})."
 msgstr ""
 
-#: tui/screens/browser.py:1676
+#: tui/screens/browser.py:1727
 #, python-brace-format
 msgid "{action}: no file checked — {key} checks the line, {all_key} checks everything."
 msgstr ""
 
-#: tui/screens/browser.py:1770
+#: tui/screens/browser.py:1821
 #, python-brace-format
 msgid "Join: check at least {count} parts ({key})."
 msgstr ""
 
-#: tui/screens/browser.py:1802
+#: tui/screens/browser.py:1853
 #, python-brace-format
 msgid "{key}: place the cursor on a folder — its whole tree is analyzed."
 msgstr ""
 
-#: tui/screens/browser.py:1817
+#: tui/screens/browser.py:1868
 #, python-brace-format
 msgid "Recursive scan of {folder}…"
 msgstr ""
 
-#: tui/screens/browser.py:1834
+#: tui/screens/browser.py:1885
 msgid "No file to encode in this folder."
 msgstr ""
 
@@ -2684,8 +2761,8 @@ msgstr ""
 #: tui/screens/emplacements.py:185
 #: tui/screens/emplacements.py:222
 #: tui/screens/emplacements.py:225
-#: tui/screens/options.py:63
-#: tui/screens/options.py:115
+#: tui/screens/options.py:64
+#: tui/screens/options.py:124
 #: tui/widgets/profile_form.py:230
 msgid "Save"
 msgstr ""
@@ -2724,9 +2801,10 @@ msgstr ""
 
 #: tui/screens/cles.py:120
 #: tui/screens/emplacements.py:225
-#: tui/screens/options.py:114
+#: tui/screens/options.py:123
 #: tui/screens/sync.py:158
 #: tui/screens/tracks.py:131
+#: tui/screens/youtube.py:91
 #: tui/widgets/profile_form.py:226
 msgid "Next field"
 msgstr ""
@@ -2777,7 +2855,7 @@ msgid "API keys"
 msgstr ""
 
 #: tui/screens/config.py:61
-#: tui/screens/options.py:75
+#: tui/screens/options.py:77
 msgid "Options"
 msgstr ""
 
@@ -2963,6 +3041,7 @@ msgid "DV"
 msgstr ""
 
 #: tui/screens/dryrun.py:130
+#: tui/screens/youtube.py:83
 msgid "Resolution"
 msgstr ""
 
@@ -3454,6 +3533,7 @@ msgstr ""
 
 #: tui/screens/opensubtitles.py:55
 #: tui/screens/opensubtitles.py:77
+#: tui/screens/youtube.py:87
 msgid "Download"
 msgstr ""
 
@@ -3495,6 +3575,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: tui/screens/opensubtitles.py:147
+#: tui/screens/youtube.py:195
 msgid "Downloading…"
 msgstr ""
 
@@ -3505,74 +3586,80 @@ msgid_plural "Subtitle downloaded — {count} left today."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/options.py:76
+#: tui/screens/options.py:78
 msgid "Power"
 msgstr ""
 
-#: tui/screens/options.py:77
+#: tui/screens/options.py:79
 msgid "Block sleep while tasks run"
 msgstr ""
 
-#: tui/screens/options.py:80
+#: tui/screens/options.py:82
 msgid "Encoding, mux, join, measurement or resync. The screen can still turn off."
 msgstr ""
 
-#: tui/screens/options.py:82
+#: tui/screens/options.py:84
 #, python-brace-format
 msgid "After the batch ({key} during encoding)"
 msgstr ""
 
-#: tui/screens/options.py:89
+#: tui/screens/options.py:91
 #, python-brace-format
 msgid "Preceded by a {seconds} s countdown, can be canceled."
 msgstr ""
 
-#: tui/screens/options.py:93
+#: tui/screens/options.py:95
 msgid "No effect on this system: Windows only."
 msgstr ""
 
-#: tui/screens/options.py:95
+#: tui/screens/options.py:97
 msgid "Interface language"
 msgstr ""
 
-#: tui/screens/options.py:101
+#: tui/screens/options.py:103
 msgid "Takes effect the next time IRIS ENCODE starts."
 msgstr ""
 
-#: tui/screens/options.py:103
-#: tui/screens/output_dir.py:67
+#: tui/screens/options.py:105
+#: tui/screens/output_dir.py:69
 msgid "Output folder"
 msgstr ""
 
-#: tui/screens/options.py:105
+#: tui/screens/options.py:107
+#: tui/screens/options.py:113
 msgid "Change…"
 msgstr ""
 
-#: tui/screens/options.py:106
+#: tui/screens/options.py:108
 msgid "Offered when a source's folder is read-only, such as a mounted disc image."
 msgstr ""
 
-#: tui/screens/options.py:108
+#: tui/screens/options.py:114
+#, python-brace-format
+msgid "Where videos downloaded from YouTube ({key} on the home screen) are saved."
+msgstr ""
+
+#: tui/screens/options.py:117
 msgid "Disc titles (Blu-ray, DVD)"
 msgstr ""
 
-#: tui/screens/options.py:111
+#: tui/screens/options.py:120
 msgid "Minimum length in minutes of a listed title: shorter ones (menus, loops) are hidden. 0 lists them all."
 msgstr ""
 
-#: tui/screens/options.py:157
+#: tui/screens/options.py:176
 msgid "Language saved. It takes effect the next time IRIS ENCODE starts."
 msgstr ""
 
-#: tui/screens/output_dir.py:89
+#: tui/screens/output_dir.py:91
 msgid "Volumes"
 msgstr ""
 
-#: tui/screens/output_dir.py:93
+#: tui/screens/output_dir.py:95
 msgid "Write to this folder"
 msgstr ""
 
-#: tui/screens/output_dir.py:118
+#: tui/screens/output_dir.py:120
 msgid "This folder is read-only — choose another one."
 msgstr ""
 
@@ -4705,6 +4792,7 @@ msgid "Video"
 msgstr ""
 
 #: tui/screens/tracks.py:77
+#: tui/screens/youtube.py:85
 msgid "Subtitles"
 msgstr ""
 
@@ -5071,6 +5159,42 @@ msgstr ""
 
 #: tui/screens/wizard.py:746
 msgid "The operation produced no file. Go back to the previous step."
+msgstr ""
+
+#: tui/screens/youtube.py:78
+msgid "Download from YouTube"
+msgstr ""
+
+#: tui/screens/youtube.py:80
+#, python-brace-format
+msgid "Paste the video's address, then press {key}."
+msgstr ""
+
+#: tui/screens/youtube.py:89
+#, python-brace-format
+msgid "Saved to {folder}"
+msgstr ""
+
+#: tui/screens/youtube.py:116
+#: tui/screens/youtube.py:185
+msgid "yt-dlp or Deno is missing: restart IRIS ENCODE and accept their installation."
+msgstr ""
+
+#: tui/screens/youtube.py:121
+msgid "Reading the video page…"
+msgstr ""
+
+#. after one subtitle track's language and name: made by YouTube's speech recognition.
+#: tui/screens/youtube.py:151
+msgid "(auto-generated)"
+msgstr ""
+
+#: tui/screens/youtube.py:157
+msgid "No AAC audio for this video: the best available audio will be downloaded."
+msgstr ""
+
+#: tui/screens/youtube.py:160
+msgid "Choose the resolution and the subtitles, then Download."
 msgstr ""
 
 #: tui/widgets/entete.py:65

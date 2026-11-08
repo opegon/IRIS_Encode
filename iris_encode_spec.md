@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.1.30 — document de référence courant
+**Version** : 0.9.1.31 — document de référence courant
 **Date** : 2026-11-08
 **Statut** : stable
 
@@ -413,6 +413,8 @@ dans `launch.bat`.
 | `ffmpeg_dv` | optionnel | outil Dolby Vision : ffmpeg BtbN GPL dans `bin/dv/` (ffmpeg seul), filtre `libplacebo` pour convertir un profil 5 (§ 8.4) et pour la super-résolution (§ 8.1) |
 | shader ArtCNN | optionnel | `bin/shaders/ArtCNN_C4F16.glsl`, super-résolution (§ 8.1) ; proposé seulement si un ffmpeg à `libplacebo` est présent |
 | seconv | optionnel | `bin/seconv/` : la ligne de commande de Subtitle Edit, ses deux DLL, la base nOCR `Latin.nocr` et, dans `dictionnaires/`, les listes de correction et le dictionnaire français ; OCR des PGS et VobSub (§ 8.6). Windows seulement ; `ocr.chercher_seconv` exige chaque fichier |
+| `yt-dlp` | optionnel | `bin/yt-dlp/yt-dlp.exe`, téléchargement depuis YouTube (§ 9.9). Cherché là seulement. Windows seulement |
+| `deno` | optionnel | `bin/yt-dlp/deno.exe`, moteur JavaScript qui résout les défis de YouTube pour yt-dlp (§ 9.9). Cherché là seulement |
 
 Ordre de recherche : **PATH système**, puis dossier local `./bin/`. L'outil DVD
 n'est cherché que dans `./bin/dvd/` (`chemin_local`) ; il n'est pas proposé
@@ -452,6 +454,14 @@ fonction correspondante avec un message explicite.
   (`super_resolution.sans_when`, D13) ; l'empreinte de la copie
   (`sha256_copie`) est vérifiée avant de l'écrire. Pas de mise à jour
   automatique : la version est épinglée.
+- Outils YouTube (`install_youtube`, v0.9.1.31) : `yt-dlp.exe` (exécutable nu,
+  écrit seulement s'il en a l'en-tête) et le ZIP de Deno, épinglés avec leur
+  empreinte dans `[yt-dlp.windows]` et `[deno.windows]` ; les deux sont
+  téléchargés et vérifiés avant que rien ne soit posé dans `bin/yt-dlp/`.
+  Proposés au lancement sous Windows tant que l'un manque. La veille suit
+  ensuite les releases GitHub de `yt-dlp/yt-dlp` et `denoland/deno` :
+  YouTube casse yt-dlp souvent, une version figée ne tiendrait pas. Leur
+  version se lit par `--version` seul (`_VERSION_LONGUE`).
 - Sources : gyan.dev / BtbN (ffmpeg), GitHub quietvoid (dovi_tool),
   mkvtoolnix.download (mkvmerge), sourceforge (mpv)
 
@@ -535,6 +545,7 @@ configuration y vivent, l'écriture ne croise plus celle d'un autre fil (CR-44).
 [app]
 language = "fr"          # vide : celle de Windows au premier lancement (§ 2.1)
 output_dir = ""          # proposé pour une source en lecture seule (§ 14.7) ; vide : ~/Videos
+youtube_dir = ""         # téléchargements YouTube (§ 9.9) ; vide : demandé au premier usage
 min_title_minutes = 2    # durée minimale d'un titre de disque listé (§ 15.5, § 15.6) ; 0 : tous
 
 [ffmpeg]
@@ -1912,6 +1923,34 @@ manquant avant tout appel, 401 (identifiants), 406 (quota du jour, heure de
 remise), 429 (`Retry-After`), réseau injoignable. Le quota restant est notifié
 après chaque téléchargement.
 
+### 9.9 Téléchargement YouTube — `core/youtube.py`
+
+`U` sur l'accueil (v0.9.1.31, IE-180) ouvre `YouTubeScreen`. On colle
+l'adresse d'une vidéo ; `↵` la fait lire par `yt-dlp -J` (`analyser`). On
+choisit la définition et les sous-titres, puis « Télécharger ». Le fichier
+produit est rendu à l'accueil, qui ouvre son dossier et le **coche** : `F2`
+l'encode avec le profil actif, comme n'importe quel fichier.
+
+| Décision | Raison |
+|---|---|
+| **Formats choisis par identifiant** (`_choisir_formats`) | Le palier se lit dans la note du format (« 2160p60 HDR » → 2160), à défaut la hauteur : un film en 2,39:1 publié en 2160p fait 3840 × 1608, et un filtre `height=2160` ne le trouverait pas. Paliers proposés : 2160, 1440, 1080 quand la vidéo les a ; sinon sa meilleure définition seule. Le dernier format listé d'un palier est le meilleur (yt-dlp les liste du moins bon au meilleur). Vidéo seule, sans DRM. |
+| **Audio AAC de la piste d'origine** (`_choisir_audio`) | `mp4a` si la vidéo en a (le format 140, 128 kb/s, le plus souvent), sinon le meilleur audio, et l'écran le dit. Une vidéo doublée publie une piste par langue : la plus forte `language_preference` (celle d'origine) l'emporte. |
+| **Sous-titres : déposés, plus la transcription d'origine** (`_choisir_sous_titres`) | YouTube traduit ses sous-titres automatiques dans une centaine de langues : seuls ceux de la langue d'origine (`<langue>-orig`, à défaut la langue de la vidéo) sont proposés, marqués « générés automatiquement » et jamais cochés d'office. `live_chat` est écarté. |
+| **MKV, SRT intégrés** | `--merge-output-format mkv`, `--convert-subs srt --embed-subs` : l'accueil analyse les pistes comme celles de n'importe quel fichier. |
+| **Dossier réglé** (`[app] youtube_dir`) | Demandé au premier `U` (`OutputDirScreen`, titre « Téléchargements YouTube »), changé dans Options. Un dossier disparu se redemande. Nom produit : `<titre> [<id>].mkv`. |
+| **yt-dlp isolé** | `--no-config` (une configuration personnelle changerait noms et formats), `--no-playlist`, `--js-runtimes deno:<chemin>` (rien ne dépend du PATH), `--ffmpeg-location` sur le ffmpeg principal. |
+
+Progression : `--progress-template` et `--print after_move:filepath`
+écrivent des lignes marquées (`IRIS-PROGRES`, `IRIS-FICHIER`), lues sur un seul
+tube. Un code de retour nul sans fichier produit est un échec. `Échap` tue
+yt-dlp ; un arrêt ou un échec retire les fichiers de cette vidéo (`[<id>]` dans
+le nom) écrits pendant ce téléchargement — un téléchargement plus ancien de la
+même vidéo reste. Les erreurs de yt-dlp s'affichent telles quelles (sa ligne
+`ERROR:`).
+
+Ce qui n'est pas fait : parcourir une chaîne (IE-181), les vidéos privées ou
+réservées à un compte (cookies du navigateur).
+
 ---
 
 ## 9bis. Jonction de parties — `core/joiner.py`
@@ -2968,6 +3007,7 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 | `F5` | — | Gérer les profils |
 | `J` | sélection | **Joindre les parties cochées** en un fichier unique (§ 9bis) |
 | `I` | fichier | Fiche du film : AlloCiné, `Tab` bascule sur IMDB |
+| `U` | — | **Télécharger une vidéo YouTube** (§ 9.9), aussi depuis la liste des volumes |
 | `F10` | — | Quitter |
 
 **Ce que l'accueil montre, et d'où** (v0.8.9.119, IE-135 2/3) :
@@ -4186,6 +4226,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.8 | 2026-08-27 | **Le débit comparé au seuil est celui de la vidéo seule** (§ 8.1, § 15.1) : le débit du conteneur, audio compris, envoyait au réencodage des fichiers dont la vidéo tenait sous le seuil — 44 % d'écart sur un film porteur d'un TrueHD |
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
+| 0.9.1.31 | 2026-11-08 | **Télécharger une vidéo YouTube** (§ 9.9, IE-180) : `core/youtube.py` (`analyser`, `commande`, `Telechargement`), `YouTubeScreen` (`U` à l'accueil) · yt-dlp et Deno au preflight dans `bin/yt-dlp/`, suivis par la veille · `[app] youtube_dir`, réglable dans Options · `tests/test_youtube.py` |
 | 0.9.1.30 | 2026-11-08 | **Télécinéma inverse** (§ 8.1, IE-174) : `core/entrelacement.py` — sources SD sondées (`idet`, `fieldmatch`, `mpdecimate`), `VideoInfo.entrelacement` ; télécinéma → `fieldmatch` + `bwdif` (+ `decimate` pour un 3:2 régulier), vraie vidéo non déclarée → `bwdif deint=all` ; `FileDecision.filtre_entrelacement`, `telecine_inverse` ; affiché dans l'assistant et l'aperçu · `tests/test_entrelacement.py` |
 | 0.9.1.29 | 2026-11-08 | **Comparer les proportions** (§ 8.1, IE-173 3/3) : `V` dans la fenêtre `P`, `sar.apercu` / `build_apercu` (`thumbnail`, deux largeurs affichées côte à côte, `drawtext`, repli sans étiquettes), image ouverte dans la visionneuse du système · `tests/test_sar.py`, `tests/test_sar_ecran.py` |
 | 0.9.1.28 | 2026-11-08 | **Choix de la proportion** (§ 8.1, IE-173 2/3) : `P` dans les pistes et l'assistant, `tui/screens/sar.py` · « ⚠ » à l'accueil (Résol.) · `decision.choisir_sar`, `Reglages.sar`, `VideoInfo.sar_confirme`, `sar.choix` · estimation gardée par (chemin, taille, date) · aide `P`, GUIDE § 4.9ter · `tests/test_sar.py`, `tests/test_sar_ecran.py` |

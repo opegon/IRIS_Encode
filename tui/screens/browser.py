@@ -397,6 +397,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # La liste des volumes l'annonce seule (_RACCOURCIS_VOLUMES) : la touche
         # n'a de sens que là (IE-162).
         Binding("e",         "emplacements",       N_("Locations"), show=False),
+        # Volumes comme fichiers : la vidéo arrive dans son propre dossier.
+        Binding("u",         "youtube",            N_("YouTube"),  show=True),
     ]
 
     # Colonnes redimensionnables (ColumnResizeMixin) — fichier en premier pour accès au focus
@@ -617,7 +619,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     # interroger AlloCiné ou redimensionner des colonnes n'a pas de sens tant
     # qu'aucun fichier n'est en vue.
     _RACCOURCIS_VOLUMES: list[tuple[str, str]] = [("enter", N_("Open the volume")),
-                                                  ("e", N_("Locations"))]
+                                                  ("e", N_("Locations")),
+                                                  ("u", N_("YouTube"))]
 
     _RACCOURCIS_FICHIERS: list[tuple[str, str]] = [
         ("space",     N_("Toggle")),
@@ -634,6 +637,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         ("l",         N_("Filter")),
         ("o",         N_("Sort")),
         ("z",         N_("Hide SKIP")),
+        ("u",         N_("YouTube")),
         ("backspace", N_("Up")),
         ("home",      N_("Start")),
         ("end",       N_("End")),
@@ -1456,6 +1460,53 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 self._refresh_view()
 
         self.app.push_screen(EmplacementsScreen(), _retour)
+
+    def action_youtube(self) -> None:
+        """Télécharger une vidéo YouTube (IE-180). Le dossier de destination
+        se choisit au premier usage ; Options le change ensuite."""
+        from core import youtube
+        cfg = self._app.cfg
+        if youtube.outils(cfg_mod.get_bin_dir(cfg)) is None:
+            self.notify(_("Downloading from YouTube needs yt-dlp and Deno. "
+                          "Restart IRIS ENCODE and accept their installation."),
+                        severity="warning", timeout=8)
+            return
+        dossier = cfg_mod.get_youtube_dir(cfg)
+        if dossier is not None:
+            self._ouvrir_youtube(dossier)
+            return
+        from .output_dir import OutputDirScreen
+
+        def _choisi(d: Path | None) -> None:
+            if d is None:
+                return
+            cfg.setdefault("app", {})["youtube_dir"] = str(d)
+            sauver_config(self.app)
+            self._ouvrir_youtube(d)
+
+        self.app.push_screen(OutputDirScreen(
+            cfg_mod.get_output_dir(cfg),
+            note=_("Where should downloaded videos go? Options can change it "
+                   "later."),
+            titre=_("YouTube downloads")), _choisi)
+
+    def _ouvrir_youtube(self, dossier: Path) -> None:
+        from .youtube import YouTubeScreen
+
+        def _telecharge(chemin: Path | None) -> None:
+            if chemin is None:
+                return
+            # Le dossier de la vidéo, la vidéo cochée : `F2` l'encode.
+            if self._nav.is_virtual or self._nav.current != chemin.parent:
+                self._nav.enter(chemin.parent)
+                self._selected.clear()
+                self._precoche = None
+            self._selected.add(chemin)
+            self._refresh_view()
+            self.notify(_("Downloaded: {file}. It is checked, ready to "
+                          "encode.").format(file=chemin.name), timeout=8)
+
+        self.app.push_screen(YouTubeScreen(dossier), _telecharge)
 
     def action_go_up(self) -> None:
         changed = self._nav.go_up()

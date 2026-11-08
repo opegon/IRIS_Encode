@@ -34,6 +34,9 @@ _DEFAULTS: dict[str, Any] = {
         # Dossier proposé quand celui d'une source est en lecture seule — un
         # ISO monté (IE-118). Vide = le dossier Vidéos de l'utilisateur.
         "output_dir": "",
+        # Dossier des vidéos téléchargées depuis YouTube (IE-180). Vide = jamais
+        # choisi : le premier téléchargement le demande.
+        "youtube_dir": "",
         # Durée minimale, en minutes, d'un titre de Blu-ray listé (IE-120) :
         # écarte menus et boucles. Celle de MakeMKV.
         "min_title_minutes": 2,
@@ -436,6 +439,13 @@ def get_output_dir(cfg: dict[str, Any]) -> Path:
         return Path(regle)
     videos = Path.home() / "Videos"
     return videos if videos.is_dir() else Path.home()
+
+
+def get_youtube_dir(cfg: dict[str, Any]) -> Path | None:
+    """Le dossier des téléchargements YouTube, ou None s'il n'a jamais été
+    choisi ou n'existe plus (disque débranché) : il se redemande alors."""
+    regle = cfg.get("app", {}).get("youtube_dir", "")
+    return Path(regle) if regle and Path(regle).is_dir() else None
 
 
 def get_min_title_minutes(cfg: dict[str, Any]) -> int:

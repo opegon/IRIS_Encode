@@ -55,16 +55,18 @@ class OutputDirScreen(ModalScreen["Path | None"]):
         Binding("escape",    "cancel", N_("Cancel"), show=True, priority=True),
     ]
 
-    def __init__(self, depart: Path, note: str = "") -> None:
+    def __init__(self, depart: Path, note: str = "", titre: str = "") -> None:
         super().__init__()
         # None = la liste des volumes, au-dessus des racines.
         self._dir: Path | None = depart
         self._note    = note
+        # Le dossier des téléchargements YouTube (IE-180) passe par ici aussi.
+        self._titre   = titre
         self._entries: list[Path | str] = []
 
     def compose(self) -> ComposeResult:
         with Static(id="outdir-box"):
-            yield Label(_("Output folder"), id="outdir-title")
+            yield Label(self._titre or _("Output folder"), id="outdir-title")
             yield Static(self._note, id="outdir-note", markup=False)
             yield Static("", id="outdir-path", markup=False)
             yield DataTable(id="outdir-table", cursor_type="row",

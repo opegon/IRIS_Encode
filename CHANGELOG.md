@@ -1,5 +1,20 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.4] — 2026-11-09
+
+### L'accueil ne reste plus figé « en attente » (IE-182)
+
+Entrer dans un dossier pendant qu'un autre chargement tournait encore pouvait
+laisser toutes les lignes « en attente » jusqu'à la fin de l'analyse : le
+chargement périmé, plus lent, publiait son relevé après celui du chargement en
+cours, et l'écran n'en reportait plus rien. Un relevé ne remplace plus que
+celui d'un chargement plus ancien.
+
+C'était aussi la cause de l'échec intermittent de
+`tests/test_accueil_progressif.py` (une fois sur deux, depuis la v0.9.0.3 au
+moins). Spec § 14.1. Test : `tests/test_accueil_chargements_croises.py`, qui
+force l'ordre fautif.
+
 ## [v0.9.2.3] — 2026-11-09
 
 ### Une piste audio illisible n'arrête plus l'encodage

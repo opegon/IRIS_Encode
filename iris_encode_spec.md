@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.3 — document de référence courant
+**Version** : 0.9.2.4 — document de référence courant
 **Date** : 2026-11-09
 **Statut** : stable
 
@@ -3361,6 +3361,13 @@ grisée) et avance la jauge à droite de la notice (`#scan-count` « ⏳ Analyse
 sur la ligne où l'utilisateur l'a posé, puis masque la jauge. La notice reste libre pour le
 chemin du fichier survolé, pendant l'analyse comme après.
 
+Deux chargements peuvent se chevaucher (entrer dans un dossier pendant qu'un
+autre se charge) : `_load_directory` publie son `_Releve` sous
+`_verrou_releve`, et seulement s'il est plus récent que celui en place
+(v0.9.2.4, IE-182). Un chargement périmé et plus lent écrasait le relevé
+courant ; `_relever_analyse`, qui ne relève que l'époque courante, ne reportait
+plus rien jusqu'à la vue finale · `tests/test_accueil_chargements_croises.py`.
+
 Depuis la v0.9.2.2, une **seconde passe** suit la vue finale : l'analyse
 d'entrelacement des sources SD (§ 8.1, « Hors du listage, gardée sur
 disque »), jauge « Analyse de l'entrelacement… n / N ». Les lignes restent
@@ -4332,6 +4339,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
 | 0.9.2.0 | 2026-11-08 | **Options sans rescan inutile** (§ 14) : au retour de `Ctrl+O`, un dossier n'est relu que si la durée minimale des titres a changé (CR-98) ; en mode assistant, `F4`, `F5` et `Ctrl+O` répondent sans être annoncés (précisé) ; guides et spec donnent `Ctrl+O` pour les options · `tests/test_revue_interface.py` |
+| 0.9.2.4 | 2026-11-09 | **Chargements croisés de l'accueil** (§ 14.1, IE-182) : un `_Releve` ne remplace que celui d'une époque plus ancienne (`_verrou_releve`) ; la liste ne reste plus « en attente » ; `test_accueil_progressif` n'échoue plus par intermittence · `tests/test_accueil_chargements_croises.py` |
 | 0.9.2.3 | 2026-11-09 | **Piste audio sans décodeur exclue** (§ 8.5) : codec `unknown` (audio chiffré d'une release WEB) écarté avant toute règle, sélection manuelle comprise ; rôle de piste originale reporté sur la première piste lisible · `tests/test_audio_illisible.py` |
 | 0.9.2.2 | 2026-11-09 | **Entrelacement hors du listage** (§ 8.1, § 14.1, IE-174) : `scan()` ne relit qu'une analyse gardée ; seconde passe de l'accueil avec jauge ; `_apres_entrelacement` pour `F1`, `F2`, `T`, l'assistant ; `core/analyses.py` (`data/analyses.json`, clé sans le chemin, expiration 180 jours) · `tests/test_entrelacement.py`, `tests/test_accueil_entrelacement.py` |
 | 0.9.2.1 | 2026-11-09 | **Clés d'API dans les options** (§ 14.8) : section « Clés d'API » d'`OptionsScreen` (bouton qui ouvre `ClesScreen`), `K` retiré de la gestion des profils ; les messages d'OpenSubtitles renvoient à `Ctrl+O` · `tests/test_cles.py` |

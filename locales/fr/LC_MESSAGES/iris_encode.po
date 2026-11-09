@@ -1514,8 +1514,8 @@ msgstr "Volumes"
 #. column header — source size, then the estimated output size: "4.2 GB → 1.8 GB (-57%)".
 #: tui/common.py:565
 #: tui/screens/browser.py:424
-#: tui/screens/browser.py:578
-#: tui/screens/browser.py:736
+#: tui/screens/browser.py:581
+#: tui/screens/browser.py:739
 #: tui/screens/run.py:299
 #: tui/screens/tracks.py:137
 msgid "Profile"
@@ -1541,7 +1541,7 @@ msgid "Upscale"
 msgstr "Agrandir"
 
 #: tui/common.py:566
-#: tui/screens/browser.py:850
+#: tui/screens/browser.py:853
 msgid "HD audio"
 msgstr "HD audio"
 
@@ -2083,8 +2083,8 @@ msgstr "Parcourir, choisir les fichiers, lancer."
 
 #. {key_mode} is the home screen key that turns guided mode on.
 #: tui/screens/aide.py:330
-#: tui/screens/browser.py:704
-#: tui/screens/browser.py:832
+#: tui/screens/browser.py:707
+#: tui/screens/browser.py:835
 msgid "Guided"
 msgstr "Assistant"
 
@@ -2095,7 +2095,7 @@ msgstr "Un fichier, cinq étapes. Activé par {key_mode} depuis l'accueil."
 
 #: tui/screens/aide.py:333
 #: tui/screens/browser.py:410
-#: tui/screens/browser.py:670
+#: tui/screens/browser.py:673
 #: tui/screens/join.py:39
 msgid "Tracks"
 msgstr "Pistes"
@@ -2116,9 +2116,9 @@ msgstr "Greffer une piste venue d'ailleurs, et la remettre à l'heure."
 
 #: tui/screens/aide.py:337
 #: tui/screens/browser.py:422
-#: tui/screens/browser.py:576
-#: tui/screens/browser.py:731
-#: tui/screens/browser.py:1949
+#: tui/screens/browser.py:579
+#: tui/screens/browser.py:734
+#: tui/screens/browser.py:1957
 #: tui/screens/dryrun.py:329
 #: tui/screens/mux_run.py:43
 #: tui/screens/sync.py:194
@@ -2358,8 +2358,8 @@ msgid "image subtitles"
 msgstr "sous-titres image"
 
 #: tui/screens/browser.py:402
-#: tui/screens/browser.py:665
-#: tui/screens/browser.py:688
+#: tui/screens/browser.py:668
+#: tui/screens/browser.py:691
 #: tui/screens/donor_picker.py:241
 #: tui/screens/dryrun.py:94
 #: tui/screens/tracks.py:129
@@ -2368,17 +2368,17 @@ msgid "Toggle"
 msgstr "Sélect"
 
 #: tui/screens/browser.py:403
-#: tui/screens/browser.py:666
+#: tui/screens/browser.py:669
 msgid "All"
 msgstr "Tout"
 
 #: tui/screens/browser.py:404
-#: tui/screens/browser.py:667
+#: tui/screens/browser.py:670
 msgid "None"
 msgstr "Aucun"
 
 #: tui/screens/browser.py:405
-#: tui/screens/browser.py:668
+#: tui/screens/browser.py:671
 #: tui/screens/donor_picker.py:123
 #: tui/screens/donor_picker.py:145
 #: tui/screens/output_dir.py:53
@@ -2387,8 +2387,8 @@ msgid "Open"
 msgstr "Ouvrir"
 
 #: tui/screens/browser.py:406
-#: tui/screens/browser.py:680
-#: tui/screens/browser.py:689
+#: tui/screens/browser.py:683
+#: tui/screens/browser.py:692
 #: tui/screens/donor_picker.py:124
 #: tui/screens/donor_picker.py:146
 #: tui/screens/output_dir.py:54
@@ -2397,35 +2397,35 @@ msgid "Up"
 msgstr "Remonter"
 
 #: tui/screens/browser.py:411
-#: tui/screens/browser.py:669
+#: tui/screens/browser.py:672
 msgid "Mode"
 msgstr "Mode"
 
 #: tui/screens/browser.py:412
-#: tui/screens/browser.py:671
+#: tui/screens/browser.py:674
 #: tui/screens/sync.py:142
 #: tui/screens/sync.py:180
 msgid "Play"
 msgstr "Visualiser"
 
 #: tui/screens/browser.py:415
-#: tui/screens/browser.py:672
+#: tui/screens/browser.py:675
 #: tui/screens/recursive_confirm.py:27
 msgid "Encode the folder"
 msgstr "Encoder le dossier"
 
 #: tui/screens/browser.py:416
-#: tui/screens/browser.py:673
+#: tui/screens/browser.py:676
 msgid "Join parts"
 msgstr "Joindre"
 
 #: tui/screens/browser.py:417
-#: tui/screens/browser.py:674
+#: tui/screens/browser.py:677
 msgid "Info"
 msgstr "Fiche"
 
 #: tui/screens/browser.py:418
-#: tui/screens/browser.py:675
+#: tui/screens/browser.py:678
 #: tui/screens/config.py:54
 #: tui/screens/config.py:55
 #: tui/screens/config.py:219
@@ -2437,27 +2437,27 @@ msgid "Delete"
 msgstr "Supprimer"
 
 #: tui/screens/browser.py:419
-#: tui/screens/browser.py:676
-#: tui/screens/browser.py:690
-#: tui/screens/browser.py:1748
+#: tui/screens/browser.py:679
+#: tui/screens/browser.py:693
+#: tui/screens/browser.py:1756
 msgid "Filter"
 msgstr "Filtre"
 
 #: tui/screens/browser.py:420
-#: tui/screens/browser.py:677
+#: tui/screens/browser.py:680
 msgid "Sort"
 msgstr "Trier"
 
 #: tui/screens/browser.py:421
-#: tui/screens/browser.py:678
-#: tui/screens/browser.py:705
+#: tui/screens/browser.py:681
+#: tui/screens/browser.py:708
 msgid "Hide SKIP"
 msgstr "Masquer SKIP"
 
 #: tui/screens/browser.py:423
-#: tui/screens/browser.py:577
-#: tui/screens/browser.py:731
-#: tui/screens/browser.py:1960
+#: tui/screens/browser.py:580
+#: tui/screens/browser.py:734
+#: tui/screens/browser.py:1968
 #: tui/screens/dryrun.py:97
 #: tui/screens/mux_run.py:44
 #: tui/screens/sync.py:195
@@ -2467,28 +2467,28 @@ msgid "Encode"
 msgstr "Encoder"
 
 #: tui/screens/browser.py:425
-#: tui/screens/browser.py:579
-#: tui/screens/browser.py:736
+#: tui/screens/browser.py:582
+#: tui/screens/browser.py:739
 msgid "Manage"
 msgstr "Gérer"
 
 #: tui/screens/browser.py:427
-#: tui/screens/browser.py:580
-#: tui/screens/browser.py:736
+#: tui/screens/browser.py:583
+#: tui/screens/browser.py:739
 #: tui/screens/config.py:59
 #: tui/screens/options.py:78
 msgid "Options"
 msgstr "Options"
 
 #: tui/screens/browser.py:430
-#: tui/screens/browser.py:661
+#: tui/screens/browser.py:664
 msgid "Locations"
 msgstr "Emplacements"
 
 #: tui/screens/browser.py:432
-#: tui/screens/browser.py:662
-#: tui/screens/browser.py:679
-#: tui/screens/browser.py:691
+#: tui/screens/browser.py:665
+#: tui/screens/browser.py:682
+#: tui/screens/browser.py:694
 msgid "YouTube"
 msgstr "YouTube"
 
@@ -2558,88 +2558,88 @@ msgstr "ETA"
 msgid "Audio"
 msgstr "Audio"
 
-#: tui/screens/browser.py:568
-#: tui/screens/browser.py:1020
+#: tui/screens/browser.py:571
+#: tui/screens/browser.py:1023
 msgid "Analyzing…"
 msgstr "Analyse en cours…"
 
-#: tui/screens/browser.py:631
+#: tui/screens/browser.py:634
 msgid "Volume"
 msgstr "Volume"
 
-#: tui/screens/browser.py:632
+#: tui/screens/browser.py:635
 msgid "Free space"
 msgstr "Espace libre"
 
-#: tui/screens/browser.py:633
+#: tui/screens/browser.py:636
 msgid "Total"
 msgstr "Total"
 
-#: tui/screens/browser.py:634
+#: tui/screens/browser.py:637
 msgid "Used"
 msgstr "Occupé"
 
-#: tui/screens/browser.py:660
+#: tui/screens/browser.py:663
 msgid "Open the volume"
 msgstr "Ouvrir le volume"
 
-#: tui/screens/browser.py:687
+#: tui/screens/browser.py:690
 msgid "Prepare the file"
 msgstr "Préparer le fichier"
 
-#: tui/screens/browser.py:692
+#: tui/screens/browser.py:695
 msgid "Switch to manual"
 msgstr "Passer en manuel"
 
-#: tui/screens/browser.py:693
+#: tui/screens/browser.py:696
 msgid "All keys"
 msgstr "Toutes les touches"
 
-#: tui/screens/browser.py:704
-#: tui/screens/browser.py:832
+#: tui/screens/browser.py:707
+#: tui/screens/browser.py:835
 msgid "Manual"
 msgstr "Manuel"
 
-#: tui/screens/browser.py:705
+#: tui/screens/browser.py:708
 msgid "Show SKIP"
 msgstr "Afficher SKIP"
 
-#: tui/screens/browser.py:773
+#: tui/screens/browser.py:776
 msgid "Choose a volume"
 msgstr "Choisir un volume"
 
-#: tui/screens/browser.py:774
+#: tui/screens/browser.py:777
 #, python-brace-format
 msgid "{count} volume"
 msgid_plural "{count} volumes"
 msgstr[0] "{count} volume"
 msgstr[1] "{count} volumes"
 
-#: tui/screens/browser.py:775
+#: tui/screens/browser.py:778
 #, python-brace-format
 msgid "{count} location"
 msgid_plural "{count} locations"
 msgstr[0] "{count} emplacement"
 msgstr[1] "{count} emplacements"
 
-#: tui/screens/browser.py:778
+#: tui/screens/browser.py:781
 #: tui/screens/tracks.py:510
 #, python-brace-format
 msgid "Profile: {profile}"
 msgstr "Profil : {profile}"
 
-#: tui/screens/browser.py:787
+#: tui/screens/browser.py:790
 msgid "without SKIP"
 msgstr "sans SKIP"
 
-#: tui/screens/browser.py:788
+#: tui/screens/browser.py:791
 #, python-brace-format
 msgid "{count} hidden"
 msgid_plural "{count} hidden"
 msgstr[0] "{count} masqué"
 msgstr[1] "{count} masqués"
 
-#: tui/screens/browser.py:796
+#: tui/screens/browser.py:799
 #, python-brace-format
 msgid "{selected}/{total} selected"
 msgid_plural "{selected}/{total} selected"
@@ -2647,194 +2647,194 @@ msgstr[0] "{selected}/{total} sélectionné"
 msgstr[1] "{selected}/{total} sélectionnés"
 
 #. files this application produced, shown dimmed in the list.
-#: tui/screens/browser.py:799
+#: tui/screens/browser.py:802
 #, python-brace-format
 msgid "{count} IRIS output (dimmed)"
 msgid_plural "{count} IRIS outputs (dimmed)"
 msgstr[0] "{count} sortie d'IRIS (grisée)"
 msgstr[1] "{count} sorties d'IRIS (grisées)"
 
-#: tui/screens/browser.py:801
+#: tui/screens/browser.py:804
 #, python-brace-format
 msgid "{count} unreadable"
 msgid_plural "{count} unreadable"
 msgstr[0] "{count} illisible"
 msgstr[1] "{count} illisibles"
 
-#: tui/screens/browser.py:803
+#: tui/screens/browser.py:806
 #, python-brace-format
 msgid "Filter: {filter} ({hidden})"
 msgstr "Filtre : {filter} ({hidden})"
 
-#: tui/screens/browser.py:806
+#: tui/screens/browser.py:809
 #: tui/screens/dryrun.py:331
 #: tui/screens/tracks.py:514
 #, python-brace-format
 msgid "Col: {column}"
 msgstr "Col : {column}"
 
-#: tui/screens/browser.py:822
+#: tui/screens/browser.py:825
 #, python-brace-format
 msgid "4K: {value}"
 msgstr "4K : {value}"
 
 #. the profile deletes the source files; shown in capitals.
-#: tui/screens/browser.py:854
+#: tui/screens/browser.py:857
 msgid "Deletion"
 msgstr "Suppression"
 
-#: tui/screens/browser.py:968
+#: tui/screens/browser.py:971
 msgid "All files are hidden"
 msgstr "Tous les fichiers sont masqués"
 
-#: tui/screens/browser.py:969
+#: tui/screens/browser.py:972
 #, python-brace-format
 msgid "{filter_key} filter, {skip_key} SKIP"
 msgstr "{filter_key} filtre, {skip_key} SKIP"
 
-#: tui/screens/browser.py:972
+#: tui/screens/browser.py:975
 msgid "No video file in this folder"
 msgstr "Aucun fichier vidéo dans ce dossier"
 
-#: tui/screens/browser.py:973
+#: tui/screens/browser.py:976
 #, python-brace-format
 msgid "{key} to go up"
 msgstr "{key} pour remonter"
 
-#: tui/screens/browser.py:1006
+#: tui/screens/browser.py:1009
 #, python-brace-format
 msgid "unreadable: {cause}"
 msgstr "illisible : {cause}"
 
-#: tui/screens/browser.py:1023
-#: tui/screens/browser.py:2114
+#: tui/screens/browser.py:1026
+#: tui/screens/browser.py:2122
 #, python-brace-format
 msgid "Interlacing analysis… {done} / {total}"
 msgstr "Analyse de l'entrelacement… {done} / {total}"
 
-#: tui/screens/browser.py:1024
-#: tui/screens/browser.py:2092
+#: tui/screens/browser.py:1027
+#: tui/screens/browser.py:2100
 #, python-brace-format
 msgid "Analyzing… {done} / {total}"
 msgstr "Analyse en cours… {done} / {total}"
 
-#: tui/screens/browser.py:1201
+#: tui/screens/browser.py:1204
 #, python-brace-format
 msgid "{file} did not need re-encoding: checked, it will be encoded ({video}, source bitrate)."
 msgstr "{file} n'était pas à réencoder : cochée, elle sera encodée ({video}, débit de la source)."
 
-#: tui/screens/browser.py:1205
+#: tui/screens/browser.py:1208
 #, python-brace-format
 msgid "Checked lines not re-encoded by default: {count}. They will be encoded at their source bitrate."
 msgstr "Lignes non réencodées d'office cochées : {count}. Elles seront encodées au débit de leur source."
 
-#: tui/screens/browser.py:1262
+#: tui/screens/browser.py:1265
 msgid "This disc is encrypted (AACS or CSS): IRIS ENCODE cannot read it. Decrypt it first, then open the decrypted copy."
 msgstr "Ce disque est chiffré (AACS ou CSS) : IRIS ENCODE ne peut pas le lire. Déchiffrez-le d'abord, puis ouvrez la copie déchiffrée."
 
-#: tui/screens/browser.py:1268
+#: tui/screens/browser.py:1271
 msgid "Reading a DVD's titles needs the DVD tool (an ffmpeg with libdvdnav). Restart IRIS ENCODE and accept its installation. VIDEO_TS still shows the VOB files."
 msgstr "Lire les titres d'un DVD demande l'outil DVD (un ffmpeg avec libdvdnav). Relancez IRIS ENCODE et acceptez son installation. VIDEO_TS montre toujours les fichiers VOB."
 
-#: tui/screens/browser.py:1506
+#: tui/screens/browser.py:1514
 #: tui/screens/sync.py:1020
 msgid "mpv missing — run the preflight again to install it."
 msgstr "mpv absent — relancez le preflight pour l'installer."
 
-#: tui/screens/browser.py:1513
+#: tui/screens/browser.py:1521
 #, python-brace-format
 msgid "Cannot play: {error}"
 msgstr "Lecture impossible : {error}"
 
-#: tui/screens/browser.py:1531
+#: tui/screens/browser.py:1539
 msgid "A disc title cannot be deleted from here: its files belong to the disc."
 msgstr "Un titre de disque ne se supprime pas d'ici : ses fichiers sont ceux du disque."
 
-#: tui/screens/browser.py:1536
+#: tui/screens/browser.py:1544
 #, python-brace-format
 msgid "{file} is in the encoding queue: it cannot be deleted now."
 msgstr "{file} est dans la file d'encodage : il ne peut pas être supprimé maintenant."
 
-#: tui/screens/browser.py:1555
+#: tui/screens/browser.py:1563
 #, python-brace-format
 msgid "Cannot delete: {error}"
 msgstr "Suppression impossible : {error}"
 
-#: tui/screens/browser.py:1637
+#: tui/screens/browser.py:1645
 msgid "Downloading from YouTube needs yt-dlp and Deno. Restart IRIS ENCODE and accept their installation."
 msgstr "Le téléchargement depuis YouTube demande yt-dlp et Deno. Relancez IRIS ENCODE et acceptez leur installation."
 
-#: tui/screens/browser.py:1656
+#: tui/screens/browser.py:1664
 msgid "Where should downloaded videos go? Options can change it later."
 msgstr "Où ranger les vidéos téléchargées ? Les Options permettent de le changer ensuite."
 
-#: tui/screens/browser.py:1658
+#: tui/screens/browser.py:1666
 #: tui/screens/options.py:111
 #: tui/screens/options.py:151
 msgid "YouTube downloads"
 msgstr "Téléchargements YouTube"
 
-#: tui/screens/browser.py:1673
+#: tui/screens/browser.py:1681
 #, python-brace-format
 msgid "Downloaded: {file}. It is checked, ready to encode."
 msgstr "Téléchargé : {file}. Il est coché, prêt à encoder."
 
-#: tui/screens/browser.py:1756
+#: tui/screens/browser.py:1764
 #, python-brace-format
 msgid "Sort: {column}"
 msgstr "Tri : {column}"
 
-#: tui/screens/browser.py:1780
+#: tui/screens/browser.py:1788
 msgid "Sort by"
 msgstr "Trier par"
 
-#: tui/screens/browser.py:1799
+#: tui/screens/browser.py:1807
 #, python-brace-format
 msgid "Guided mode — {key} opens the guided path, one file at a time."
 msgstr "Mode assistant — {key} ouvre le parcours guidé, un fichier à la fois."
 
-#: tui/screens/browser.py:1802
+#: tui/screens/browser.py:1810
 #, python-brace-format
 msgid "Manual mode — {key} opens the Tracks screen."
 msgstr "Mode manuel — {key} ouvre l'écran des pistes."
 
-#: tui/screens/browser.py:1894
+#: tui/screens/browser.py:1902
 #, python-brace-format
 msgid "{action}: first enter a volume, then check files ({key})."
 msgstr "{action} : entrez d'abord dans un volume, puis cochez des fichiers ({key})."
 
-#: tui/screens/browser.py:1897
+#: tui/screens/browser.py:1905
 #, python-brace-format
 msgid "{action}: no file checked — {key} checks the line, {all_key} checks everything."
 msgstr "{action} : aucun fichier coché — {key} coche la ligne, {all_key} coche tout."
 
-#: tui/screens/browser.py:1925
+#: tui/screens/browser.py:1933
 msgid "Interlacing analysis still running — the screen will open by itself."
 msgstr "Analyse de l'entrelacement en cours — l'écran s'ouvrira de lui-même."
 
-#: tui/screens/browser.py:1929
+#: tui/screens/browser.py:1937
 #, python-brace-format
 msgid "Interlacing analysis of {count} file first: the screen opens when it is done."
 msgid_plural "Interlacing analysis of {count} files first: the screen opens when it is done."
 msgstr[0] "D'abord l'analyse de l'entrelacement de {count} fichier : l'écran s'ouvre ensuite."
 msgstr[1] "D'abord l'analyse de l'entrelacement de {count} fichiers : l'écran s'ouvre ensuite."
 
-#: tui/screens/browser.py:2027
+#: tui/screens/browser.py:2035
 #, python-brace-format
 msgid "Join: check at least {count} parts ({key})."
 msgstr "Joindre : cocher au moins {count} parties ({key})."
 
-#: tui/screens/browser.py:2072
+#: tui/screens/browser.py:2080
 #, python-brace-format
 msgid "{key}: place the cursor on a folder — its whole tree is analyzed."
 msgstr "{key} : placer le curseur sur un dossier — toute son arborescence est analysée."
 
-#: tui/screens/browser.py:2087
+#: tui/screens/browser.py:2095
 #, python-brace-format
 msgid "Recursive scan of {folder}…"
 msgstr "Scan récursif de {folder}…"
 
-#: tui/screens/browser.py:2125
+#: tui/screens/browser.py:2133
 msgid "No file to encode in this folder."
 msgstr "Aucun fichier à encoder dans ce répertoire."
 

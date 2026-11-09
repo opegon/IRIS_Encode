@@ -543,6 +543,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # curseur là où l'utilisateur l'a posé pendant l'analyse.
         self._epoch_affichee: int = -1
         self._releve: _Releve | None = None
+        # Deux chargements peuvent se chevaucher : le plus ancien ne doit pas
+        # publier son relevé après le plus récent (IE-182).
+        self._verrou_releve = threading.Lock()
         # F1, F2 ou l'assistant attendent la fin de l'analyse d'entrelacement
         # de leurs fichiers : une seconde touche ne relance pas l'attente.
         self._attente_entrelacement = False
@@ -1275,7 +1278,12 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # Le dossier s'affiche dès son listage : sous-dossiers, et fichiers en
         # attente de leur analyse, remplis au fil de l'eau (_relever_analyse).
         releve = _Releve(epoch, total)
-        self._releve = releve
+        # Un chargement périmé, plus lent que le suivant, écrasait son relevé :
+        # la minuterie ne relève que l'époque courante, et la liste restait
+        # « en attente » jusqu'à la fin de l'analyse (IE-182).
+        with self._verrou_releve:
+            if self._releve is None or self._releve.epoch < epoch:
+                self._releve = releve
         if videos:
             if self._scan_epoch != epoch:
                 return

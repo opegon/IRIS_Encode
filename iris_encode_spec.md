@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.1 — document de référence courant
+**Version** : 0.9.2.2 — document de référence courant
 **Date** : 2026-11-09
 **Statut** : stable
 
@@ -1129,10 +1129,38 @@ peut se dire progressif et porter des images entrelacées (Cure in Orange).
 `a_analyser` : toute source de 576 lignes au plus à 25 ou 29,97 i/s
 (± 0,05), quels que soient ses marqueurs, plus toute source qui se déclare
 entrelacée (arbitrage de l'utilisateur, 2026-11-08). `scanner.
-_analyser_entrelacement` → `VideoInfo.entrelacement` (`Analyse` : `nature`,
-`ordre`, `decime`, `peigne`, `peigne_apparie`), en cache par (chemin, taille,
-date) ; fichier absent → pas d'analyse. `analyser` : 6 passages de 10 s entre
+analyser_entrelacement` → `VideoInfo.entrelacement` (`Analyse` : `nature`,
+`ordre`, `decime`, `peigne`, `peigne_apparie`) et `entrelacement_lu` ;
+fichier absent → pas d'analyse. `analyser` : 6 passages de 10 s entre
 10 % et 90 % de la durée.
+
+**Hors du listage, gardée sur disque** (v0.9.2.2). Relevé du 2026-11-09 sur
+un partage réseau : 28,7 s pour un 1080p marqué entrelacé, 3,6 à 7,4 s par
+source SD, contre moins de 2 s de ffprobe ; la liste restait plus de 30 s
+incomplète, ses lignes en attente non cochables. Désormais :
+
+- `scan()` ne lance pas ffmpeg pour l'entrelacement : `analyser_entrelacement(
+  info, mesurer=False)` relit seulement une analyse gardée.
+  `entrelacement_en_attente(info)` : `a_analyser`, pas d'analyse, pas tentée.
+- L'accueil (`BrowserScreen._load_directory`) lance une seconde passe une fois
+  la liste complète, `SCAN_WORKERS` à la fois, jauge « Analyse de
+  l'entrelacement… n / N » ; abandonnée si le dossier change.
+- `_apres_entrelacement` : `F1`, `F2`, l'assistant, l'écran des pistes (et ses
+  lancements) attendent l'analyse des fichiers concernés, dans un worker, puis
+  ouvrent l'écran ; une seconde touche pendant l'attente le dit sans relancer.
+  `R` (dossier entier) analyse dans son worker avant l'aperçu.
+- `entrelacement.filtre(info)` analyse ce qui manque encore : tout chemin vers
+  l'encodage a son analyse (l'encodeur tourne hors du fil de l'interface).
+- `core/analyses.py` : `data/analyses.json` de l'installation (ignoré par git,
+  hors ZIP). Clé = taille, `st_mtime_ns`, durée, dimensions — **sans le
+  chemin** : un fichier renommé ou déplacé garde son analyse, un fichier
+  modifié se réanalyse. Chaque entrée porte `vu` (dernier jour d'usage) ;
+  au chargement, celles de plus de `EXPIRATION_JOURS` (180) sont retirées
+  (fichiers effacés). Écriture par remplacement (`.tmp` puis `os.replace`) ;
+  fichier illisible → départ à vide ; installation en lecture seule → mémoire
+  seule. Un échec de mesure (`None`) ne s'écrit pas : retenu pour la session
+  (`_ECHECS_ENTRELACEMENT`). Un verrou par clé : deux fils qui veulent la
+  même analyse la mesurent une fois.
 
 1. `idet@brut` sur l'image brute (détection « multi ») — ~0,2 s par passage.
    Part d'images en peigne < `PEIGNE_MIN` (0,10) → `PROGRESSIF`, on s'arrête.
@@ -1147,8 +1175,8 @@ ffmpeg écrit deux bilans par `idet`, l'un à zéro : le plus fourni compte.
 Mesuré le 2026-11-08 : The Kid 99 % → 5 %, 20 à 22,5 images uniques par
 seconde selon le passage (film muet transféré à sa vitesse de projection) →
 `TELECINE`, non décimé ; Cure in Orange 100 % → 51 % → `ENTRELACE` ; Cactus
-Jack, Le Monde du silence 0 % → `PROGRESSIF`. Coût au scan : ~1 s sans
-peignes, ~9 s avec.
+Jack, Le Monde du silence 0 % → `PROGRESSIF`. Coût : ~1 s sans peignes,
+~9 s avec, en local ; davantage à travers un partage (voir ci-dessus).
 
 `entrelacement.filtre(info)`, par `FileDecision.filtre_entrelacement` (mêmes
 conditions que l'ancien `desentrelace`, qui en dérive ; `telecine_inverse`
@@ -3324,6 +3352,12 @@ grisée) et avance la jauge à droite de la notice (`#scan-count` « ⏳ Analyse
 sur la ligne où l'utilisateur l'a posé, puis masque la jauge. La notice reste libre pour le
 chemin du fichier survolé, pendant l'analyse comme après.
 
+Depuis la v0.9.2.2, une **seconde passe** suit la vue finale : l'analyse
+d'entrelacement des sources SD (§ 8.1, « Hors du listage, gardée sur
+disque »), jauge « Analyse de l'entrelacement… n / N ». Les lignes restent
+utilisables ; `F1`, `F2`, `T` et l'assistant attendent leurs fichiers
+(`_apres_entrelacement`).
+
 #### Encoder le dossier (`R`)
 
 Disponible uniquement sur un **dossier**. `RecursiveConfirmModal` affiche le répertoire
@@ -4289,6 +4323,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
 | 0.9.2.0 | 2026-11-08 | **Options sans rescan inutile** (§ 14) : au retour de `Ctrl+O`, un dossier n'est relu que si la durée minimale des titres a changé (CR-98) ; en mode assistant, `F4`, `F5` et `Ctrl+O` répondent sans être annoncés (précisé) ; guides et spec donnent `Ctrl+O` pour les options · `tests/test_revue_interface.py` |
+| 0.9.2.2 | 2026-11-09 | **Entrelacement hors du listage** (§ 8.1, § 14.1, IE-174) : `scan()` ne relit qu'une analyse gardée ; seconde passe de l'accueil avec jauge ; `_apres_entrelacement` pour `F1`, `F2`, `T`, l'assistant ; `core/analyses.py` (`data/analyses.json`, clé sans le chemin, expiration 180 jours) · `tests/test_entrelacement.py`, `tests/test_accueil_entrelacement.py` |
 | 0.9.2.1 | 2026-11-09 | **Clés d'API dans les options** (§ 14.8) : section « Clés d'API » d'`OptionsScreen` (bouton qui ouvre `ClesScreen`), `K` retiré de la gestion des profils ; les messages d'OpenSubtitles renvoient à `Ctrl+O` · `tests/test_cles.py` |
 | 0.9.1.36 | 2026-11-08 | **Réglages dès le lancement** (§ 14) : la liste des volumes annonce `F4` Profil, `F5` Gérer et `Ctrl+O` Options (nouvelle, `BrowserScreen.action_open_options`, aussi dans un dossier) ; sa barre d'état nomme le profil actif · `tests/test_revue_interface.py` |
 | 0.9.1.35 | 2026-11-08 | **Filtrer par pistes** (§ 14) : `L` propose « Audio DTS » et « Sous-titres image : PGS, VobSub » quand le dossier en contient · `tests/test_filtre_accueil.py` |

@@ -85,3 +85,14 @@ def donneurs_factices(monkeypatch):
                            title="", bitrate=640_000) for i in range(8)]
 
     monkeypatch.setattr(scanner, "pistes_audio", pistes_audio)
+
+
+@pytest.fixture(autouse=True)
+def analyses_isolees(tmp_path, monkeypatch):
+    """Les analyses d'entrelacement d'un test s'écrivent dans son dossier
+    temporaire, jamais dans `data/analyses.json` de l'installation, et ne
+    passent pas au test suivant."""
+    from core import analyses, scanner
+    monkeypatch.setattr(analyses, "CHEMIN", tmp_path / "analyses.json")
+    monkeypatch.setattr(analyses, "_en_cours", {})
+    monkeypatch.setattr(scanner, "_ECHECS_ENTRELACEMENT", set())

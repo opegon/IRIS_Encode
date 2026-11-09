@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.2.1
+**Version**: 0.9.2.2
 **Date**: 2026-11-09
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -132,6 +132,12 @@ A folder opens at once, even a large one: its files appear by name, greyed,
 with `…` as the decision, and fill in as the analysis reads them; a gauge next
 to the counter ("Analyzing… 12 / 40") shows how far it has got. You can move
 through the list meanwhile; a row still waiting cannot be checked yet.
+
+SD sources then get a second, slower pass: the gauge reads "Interlacing
+analysis… 2 / 6". The rows are already usable. If `F1`, `F2`, `T` or the guided
+path need a file whose analysis is not done, a message says so and the screen
+opens by itself when it ends. The result is kept (`data\analyses.json` in the
+installation folder): the next visit does not redo it, even after a rename.
 
 **Locations — network shares.** Below the drives, the home screen lists the
 locations, by their label (🌐). They open like a drive; the breadcrumb shows

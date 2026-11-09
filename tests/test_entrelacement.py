@@ -233,35 +233,143 @@ def test_une_source_gardée_telle_quelle_n_est_pas_touchée():
 
 # ─── Le scanner ───────────────────────────────────────────────────────────────
 
+def _fichier(tmp_path, nom: str = "kid.avi", contenu: bytes = b"x") -> VideoInfo:
+    p = tmp_path / nom
+    p.write_bytes(contenu)
+    info = _info()
+    info.path = p
+    return info
+
+
 def test_le_scanner_analyse_une_fois(tmp_path, monkeypatch):
-    p = tmp_path / "kid.avi"
-    p.write_bytes(b"x")
     appels = []
     monkeypatch.setattr(ent, "analyser", lambda info, ff: appels.append(1) or TELECINE)
-    monkeypatch.setattr(scanner, "_ANALYSES_ENTRELACEMENT", {})
+    p = _fichier(tmp_path).path
     for _ in range(2):
         info = _info()
         info.path = p
-        scanner._analyser_entrelacement(info)
-        assert info.entrelacement is TELECINE
+        scanner.analyser_entrelacement(info)
+        assert info.entrelacement == TELECINE
     assert appels == [1]
 
 
 def test_le_scanner_saute_un_fichier_absent(monkeypatch):
     monkeypatch.setattr(ent, "analyser", lambda info, ff: pytest.fail("sondé"))
     info = _info()
-    scanner._analyser_entrelacement(info)
+    scanner.analyser_entrelacement(info)
     assert info.entrelacement is None
 
 
 def test_le_scanner_saute_la_hd(tmp_path, monkeypatch):
-    p = tmp_path / "film.mkv"
-    p.write_bytes(b"x")
     monkeypatch.setattr(ent, "analyser", lambda info, ff: pytest.fail("sondé"))
-    info = _info(h=1080, frame_rate="24000/1001")
-    info.path = p
-    scanner._analyser_entrelacement(info)
+    info = _fichier(tmp_path, "film.mkv")
+    info.height, info.frame_rate = 1080, "24000/1001"
+    scanner.analyser_entrelacement(info)
     assert info.entrelacement is None
+
+
+# ─── Hors du listage, gardée sur disque (v0.9.2.2) ────────────────────────────
+
+_SD_FFPROBE = {"streams": [{"codec_type": "video", "codec_name": "mpeg4",
+                            "width": 720, "height": 480, "r_frame_rate": "30000/1001",
+                            "sample_aspect_ratio": "8:9"}],
+               "format": {"duration": "6000.0", "bit_rate": "1500000"}}
+
+
+def test_le_listage_ne_sonde_pas_l_image(tmp_path, monkeypatch):
+    """scan() rend la main sans ffmpeg : 28 s pour un 1080p entrelacé, 4 à
+    7 s par source SD, à travers le partage (relevé du 2026-11-09)."""
+    p = tmp_path / "kid.avi"
+    p.write_bytes(b"x")
+    monkeypatch.setattr(scanner, "_ffprobe_json", lambda args, outil=None: _SD_FFPROBE)
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: pytest.fail("sondé au listage"))
+    info = scanner.scan(p)
+    assert info.entrelacement is None and scanner.entrelacement_en_attente(info)
+
+
+def test_le_listage_relit_une_analyse_gardée(tmp_path, monkeypatch):
+    p = tmp_path / "kid.avi"
+    p.write_bytes(b"x")
+    monkeypatch.setattr(scanner, "_ffprobe_json", lambda args, outil=None: _SD_FFPROBE)
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: TELECINE)
+    scanner.analyser_entrelacement(scanner.scan(p))
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: pytest.fail("resondé"))
+    info = scanner.scan(p)
+    assert info.entrelacement == TELECINE and not scanner.entrelacement_en_attente(info)
+
+
+def test_le_filtre_sonde_ce_qui_manque(tmp_path, monkeypatch):
+    """L'encodage d'un dossier entier passe par le filtre, pas par l'accueil."""
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: TELECINE)
+    info = _fichier(tmp_path)
+    assert filtre(info).startswith("fieldmatch")
+
+
+def test_l_analyse_survit_au_redémarrage(tmp_path, monkeypatch):
+    from core import analyses
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: TELECINE)
+    p = _fichier(tmp_path).path
+    info = _info()
+    info.path = p
+    scanner.analyser_entrelacement(info)
+    monkeypatch.setattr(analyses, "_entrees", None)      # nouvelle session
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: pytest.fail("resondé"))
+    info = _info()
+    info.path = p
+    scanner.analyser_entrelacement(info)
+    assert info.entrelacement == TELECINE
+
+
+def test_un_fichier_renommé_garde_son_analyse(tmp_path, monkeypatch):
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: TELECINE)
+    info = _fichier(tmp_path)
+    scanner.analyser_entrelacement(info)
+    nouveau = info.path.rename(tmp_path / "The Kid (1921).avi")
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: pytest.fail("resondé"))
+    info = _info()
+    info.path = nouveau
+    scanner.analyser_entrelacement(info)
+    assert info.entrelacement == TELECINE
+
+
+def test_un_fichier_modifié_se_réanalyse(tmp_path, monkeypatch):
+    appels = []
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: appels.append(1) or TELECINE)
+    scanner.analyser_entrelacement(_fichier(tmp_path, contenu=b"x"))
+    scanner.analyser_entrelacement(_fichier(tmp_path, contenu=b"xy"))
+    assert appels == [1, 1]
+
+
+def test_une_entrée_inutilisée_expire(tmp_path, monkeypatch):
+    import json
+    from datetime import date, timedelta
+    from core import analyses
+    vieux = (date.today() - timedelta(days=analyses.EXPIRATION_JOURS + 1)).isoformat()
+    recent = date.today().isoformat()
+    entree = {"nature": "TELECINE", "ordre": "tff", "decime": False,
+              "peigne": 0.99, "peigne_apparie": 0.05}
+    analyses.CHEMIN.write_text(json.dumps({
+        "1|1|1.0|720x480": {"analyse": entree, "vu": vieux},
+        "2|2|2.0|720x480": {"analyse": entree, "vu": recent}}), encoding="utf-8")
+    assert analyses.lire("1|1|1.0|720x480") is None
+    assert analyses.lire("2|2|2.0|720x480") == TELECINE
+
+
+def test_un_échec_de_mesure_ne_s_écrit_pas(tmp_path, monkeypatch):
+    """Une lecture réseau interrompue ne tient pas lieu de résultat."""
+    from core import analyses
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: None)
+    scanner.analyser_entrelacement(_fichier(tmp_path))
+    assert not analyses.CHEMIN.exists()
+
+
+def test_un_cache_illisible_repart_de_zéro(tmp_path, monkeypatch):
+    from core import analyses
+    analyses.CHEMIN.write_text("{pas du json", encoding="utf-8")
+    monkeypatch.setattr(ent, "analyser", lambda info, ff: TELECINE)
+    info = _fichier(tmp_path)
+    scanner.analyser_entrelacement(info)
+    assert info.entrelacement == TELECINE
 
 
 # ─── Sur les fichiers réels ───────────────────────────────────────────────────

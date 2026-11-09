@@ -554,6 +554,9 @@ class VideoInfo:
     # Nature de l'entrelacement mesurée sur l'image (`entrelacement.Analyse`,
     # IE-174) : sources SD seulement, None sinon ou si la mesure a échoué.
     entrelacement:   Optional[Any]       = None
+    # La mesure a été tentée (ou n'avait pas lieu d'être) : None ci-dessus
+    # vaut alors « rien de mesuré », pas « pas encore mesuré ».
+    entrelacement_lu: bool               = False
     # Format de pixels du flux (`pix_fmt`) : « yuv420p10le »… « » si inconnu.
     # Il dit si le décodeur Quick Sync sait lire la source (IE-147).
     pix_fmt:         str                 = ""
@@ -1120,7 +1123,9 @@ def scan(path: Path) -> VideoInfo:
         titre=titre_dvd,
     )
     _estimer_sar(info)
-    _analyser_entrelacement(info)
+    # L'analyse d'entrelacement (plusieurs passages de ffmpeg) ne se fait pas
+    # ici : la liste n'en a pas besoin. Seule une analyse déjà gardée se relit.
+    analyser_entrelacement(info, mesurer=False)
     return info
 
 
@@ -1155,30 +1160,54 @@ def _estimer_sar(info: VideoInfo) -> None:
 _ESTIMATIONS_SAR: dict[tuple, Any] = {}
 
 
-def _analyser_entrelacement(info: VideoInfo) -> None:
-    """Une source SD (IE-174) : télécinéma, vraie vidéo entrelacée ou image
-    progressive, d'après l'image. Coût : ~6 s de ffmpeg pour ces seuls
-    fichiers, une fois par (chemin, taille, date)."""
-    from . import encoder, entrelacement
-    if not entrelacement.a_analyser(info):
+def entrelacement_en_attente(info: VideoInfo) -> bool:
+    """L'image de cette source reste à sonder avant d'en régler le
+    désentrelacement (IE-174)."""
+    from . import entrelacement
+    return (info.entrelacement is None and not info.entrelacement_lu
+            and entrelacement.a_analyser(info))
+
+
+def analyser_entrelacement(info: VideoInfo, mesurer: bool = True) -> None:
+    """Télécinéma, vraie vidéo entrelacée ou image progressive, d'après
+    l'image (IE-174). Coût : 4 à 30 s de ffmpeg selon la source et le
+    réseau ; le résultat se garde sur disque (`core.analyses`).
+
+    `mesurer=False` : relire une analyse gardée, sans lancer ffmpeg.
+    """
+    from . import analyses, encoder, entrelacement
+    if not entrelacement_en_attente(info):
         return
     try:
         st = info.lecture.stat()
     except OSError:
+        info.entrelacement_lu = True
         return
-    cle = (str(info.lecture), st.st_size, st.st_mtime_ns)
-    if cle not in _ANALYSES_ENTRELACEMENT:
-        try:
-            analyse = entrelacement.analyser(info, encoder._ffmpeg_path)
-        except Exception as e:
-            _log.warning("Interlacing analysis failed for %s: %s", info.path, e)
-            analyse = None
-        _ANALYSES_ENTRELACEMENT[cle] = analyse
-    info.entrelacement = _ANALYSES_ENTRELACEMENT[cle]
+    cle = analyses.cle(info, st)
+    with analyses.verrou_de(cle):
+        analyse = analyses.lire(cle)
+        if analyse is None and cle in _ECHECS_ENTRELACEMENT:
+            info.entrelacement_lu = True
+            return
+        if analyse is None:
+            if not mesurer:
+                return
+            try:
+                analyse = entrelacement.analyser(info, encoder._ffmpeg_path)
+            except Exception as e:
+                _log.warning("Interlacing analysis failed for %s (%s)", info.path, e)
+                analyse = None
+            if analyse is None:
+                _ECHECS_ENTRELACEMENT.add(cle)
+            else:
+                analyses.ecrire(cle, analyse)
+    info.entrelacement = analyse
+    info.entrelacement_lu = True
 
 
-# Analyses de l'entrelacement par (chemin, taille, date).
-_ANALYSES_ENTRELACEMENT: dict[tuple, Any] = {}
+# Mesures sans résultat, pour cette session seulement (pas sur disque) : ne
+# pas relancer ffmpeg à chaque retour à la liste.
+_ECHECS_ENTRELACEMENT: set[str] = set()
 
 
 def _scan_titre(mpls: Path) -> VideoInfo:

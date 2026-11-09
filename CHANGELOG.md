@@ -1,5 +1,28 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.2] — 2026-11-09
+
+### L'analyse de l'entrelacement ne bloque plus la liste
+
+Sur un partage réseau, sonder l'entrelacement d'une source (IE-174) prenait
+4 à 7 s par fichier SD et près de 30 s pour un 1080p marqué entrelacé : la
+liste restait plus de 30 s incomplète, ses lignes en attente impossibles à
+cocher. Cette analyse sort du listage :
+
+- la liste se remplit avec ffprobe seul ; une **seconde passe** sonde ensuite
+  les sources concernées, jauge « Analyse de l'entrelacement… n / N », lignes
+  déjà utilisables ;
+- `F1`, `F2`, `T` ou l'assistant sur un fichier pas encore analysé le
+  disent, puis ouvrent l'écran d'eux-mêmes à la fin ; `R` analyse avant
+  l'aperçu ;
+- le résultat est **gardé sur disque** (`data\analyses.json` de
+  l'installation, hors ZIP, donc conservé par une mise à jour) : la visite
+  suivante ne le refait pas, même après un renommage ou un déplacement. Une
+  entrée inutilisée depuis 180 jours disparaît.
+
+Spec § 8.1 et § 14.1, guides. Tests : `tests/test_entrelacement.py`,
+`tests/test_accueil_entrelacement.py`.
+
 ## [v0.9.2.1] — 2026-11-09
 
 ### Les clés d'API passent dans les options

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.2.1
+**Version** : 0.9.2.2
 **Date** : 2026-11-09
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -130,6 +130,13 @@ leur nom, grisés, avec `…` en décision, et se remplissent au fil de l'analys
 une jauge à côté du compteur (« Analyse en cours… 12 / 40 ») montre où elle en
 est. On parcourt la liste pendant ce temps ; une ligne encore en attente ne se
 coche pas.
+
+Les sources SD passent ensuite par une seconde analyse, plus lente : la jauge
+indique « Analyse de l'entrelacement… 2 / 6 ». Les lignes sont déjà
+utilisables. Si `F1`, `F2`, `T` ou l'assistant visent un fichier dont l'analyse
+n'est pas finie, un message le dit et l'écran s'ouvre de lui-même à la fin. Le
+résultat est gardé (`data\analyses.json` dans le dossier d'installation) : la
+visite suivante ne le refait pas, même après un renommage.
 
 **Emplacements — les partages réseau.** Sous les lecteurs, l'accueil liste les
 emplacements, par leur libellé (🌐). Ils s'ouvrent comme un lecteur ; le fil

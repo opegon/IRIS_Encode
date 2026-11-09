@@ -238,7 +238,14 @@ def analyser(info: "VideoInfo", ffmpeg_path: str = "ffmpeg") -> Optional[Analyse
 def filtre(info: "VideoInfo") -> Optional[str]:
     """Le filtre qui rend l'image progressive, ou None. Sans analyse, ou
     quand l'analyse ne voit rien, les marqueurs décident, comme avant
-    IE-174 : un flux qui se dit entrelacé passe par `FILTRE_BWDIF`."""
+    IE-174 : un flux qui se dit entrelacé passe par `FILTRE_BWDIF`.
+
+    L'analyse ne se fait plus au listage : faite ici si elle manque encore,
+    elle vaut pour tout chemin qui mène à l'encodage (dossier entier, file).
+    L'accueil la lance avant d'ouvrir l'aperçu ou l'assistant, pour ne pas
+    bloquer l'interface."""
+    from .scanner import analyser_entrelacement
+    analyser_entrelacement(info)
     a = info.entrelacement
     if a is not None and a.nature == Nature.TELECINE:
         f = f"fieldmatch=order={a.ordre}:combmatch=full,{FILTRE_BWDIF}"

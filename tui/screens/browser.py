@@ -34,8 +34,8 @@ from core.decision import (
     AudioAction, FileDecision, Reglages, VideoAction, appliquer_reglages, decide,
     ajuster_remux, force_skip_to_encode, reglages_explicites, video_recopiee,
 )
-from core.scanner import (SCAN_WORKERS, deja_produit, scan,
-                          scan_directory_recursive)
+from core.scanner import (SCAN_WORKERS, analyser_entrelacement, deja_produit,
+                          entrelacement_en_attente, scan, scan_directory_recursive)
 from ..common import sauver_config
 from ..common import (barre_etat, colonne_fixe,
     touche,
@@ -543,6 +543,9 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # curseur là où l'utilisateur l'a posé pendant l'analyse.
         self._epoch_affichee: int = -1
         self._releve: _Releve | None = None
+        # F1, F2 ou l'assistant attendent la fin de l'analyse d'entrelacement
+        # de leurs fichiers : une seconde touche ne relance pas l'attente.
+        self._attente_entrelacement = False
 
     # ─── Accesseurs app ───────────────────────────────────────────────────────
 
@@ -1004,9 +1007,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                      style="dim italic")
         return ligne
 
-    def _afficher_progression(self, fait: int | None, total: int | None) -> None:
+    def _afficher_progression(self, fait: int | None, total: int | None,
+                              entrelacement: bool = False) -> None:
         """La jauge de l'analyse. `None` : le dossier est encore en cours de
-        listage (jauge indéterminée) ; `total` à 0 : analyse finie, jauge masquée."""
+        listage (jauge indéterminée) ; `total` à 0 : analyse finie, jauge masquée.
+        `entrelacement` : la seconde passe, qui sonde l'image des sources SD."""
         compte = self.query_one("#scan-count", Static)
         jauge  = self.query_one("#scan-bar", ProgressBar)
         visible = total is None or total > 0
@@ -1015,9 +1020,16 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             compte.update("⏳ " + _("Analyzing…"))
             jauge.update(total=None, progress=0)
         elif total > 0:
-            compte.update("⏳ " + _("Analyzing… {done} / {total}").format(
-                done=fait, total=total))
+            modele = (_("Interlacing analysis… {done} / {total}") if entrelacement
+                      else _("Analyzing… {done} / {total}"))
+            compte.update("⏳ " + modele.format(done=fait, total=total))
             jauge.update(total=total, progress=fait)
+
+    def _progression_entrelacement(self, epoch: int, fait: int, total: int) -> None:
+        """La jauge de la seconde passe, tant que le dossier n'a pas changé."""
+        if epoch == self._scan_epoch:
+            self._afficher_progression(fait, total if fait < total else 0,
+                                       entrelacement=True)
 
     def _relever_analyse(self) -> None:
         """Minuterie : reporte dans la table ce que l'analyse a rendu depuis
@@ -1318,6 +1330,32 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             return                          # navigation entre-temps : ne pas peupler
         self.app.call_from_thread(self._populate_table, subdirs, decisions, epoch,
                                   illisibles, volumes, [])
+
+        # Seconde passe : l'entrelacement des sources SD (IE-174), plusieurs
+        # passages de ffmpeg par fichier. Les lignes sont déjà utilisables ;
+        # F1, F2 et l'assistant attendent ceux de leurs fichiers qui restent.
+        attente = [d.info for d in decisions if entrelacement_en_attente(d.info)]
+        if not attente:
+            return
+        fait = 0
+
+        def _sonder(info) -> None:
+            nonlocal fait
+            if self._scan_epoch != epoch:
+                return                      # navigation entre-temps : abandon
+            analyser_entrelacement(info)
+            with lock:
+                fait += 1
+                n = fait
+            self.app.call_from_thread(self._progression_entrelacement,
+                                      epoch, n, len(attente))
+
+        self.app.call_from_thread(self._progression_entrelacement,
+                                  epoch, 0, len(attente))
+        with ThreadPoolExecutor(
+            max_workers=min(SCAN_WORKERS, len(attente)), thread_name_prefix="idet"
+        ) as pool:
+            list(pool.map(_sonder, attente))
 
     # ─── Sélection de profil (F4) ──────────────────────────────────────────────
 
@@ -1785,7 +1823,8 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 self._retenir(path, dec)
                 self._redessiner(path)
             self._update_status()
-        self.app.push_screen(WizardScreen(dec), _retour)
+        self._apres_entrelacement(
+            [dec], lambda: self.app.push_screen(WizardScreen(dec), _retour))
 
     def action_open_tracks(self) -> None:
         row_type, path = self._current_row_info()
@@ -1838,11 +1877,13 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 self._redessiner(path)
             # Lancement direct demandé depuis TracksScreen
             if result.launch_mode == "dryrun":
-                from .dryrun import DryrunScreen
-                self.app.push_screen(DryrunScreen([dec]))
+                self._apres_entrelacement([dec], lambda: self._ouvrir_dryrun([dec]))
             elif result.launch_mode == "run":
-                self._confier([dec])
-        self.app.push_screen(TracksScreen(dec), _on_tracks_return)
+                self._apres_entrelacement([dec], lambda: self._confier([dec]))
+        # Les pistes mènent à l'aperçu, au mux, à la synchro : l'analyse est
+        # faite avant, comme pour l'assistant.
+        self._apres_entrelacement(
+            [dec], lambda: self.app.push_screen(TracksScreen(dec), _on_tracks_return))
 
     def _refus_sans_selection(self, action: str) -> None:
         """F1/F2 sans rien de coché : le dire, plutôt que ne rien faire (UX-17).
@@ -1869,11 +1910,47 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         return [self._decisions[p] for p in sorted(self._selected)
                 if p in self._decisions]
 
+    def _apres_entrelacement(self, decisions: list[FileDecision], suite) -> None:
+        """`suite()` une fois l'entrelacement de `decisions` analysé.
+
+        L'aperçu et l'assistant le montrent, l'encodage en tire son filtre :
+        l'analyse, sortie du listage, doit être faite avant. Elle se termine
+        hors du fil de l'interface, qui ne gèle pas pendant ses 4 à 30 s.
+        """
+        attente = [d.info for d in decisions if entrelacement_en_attente(d.info)]
+        if not attente:
+            suite()
+            return
+        if self._attente_entrelacement:
+            self.notify(_("Interlacing analysis still running — the screen "
+                          "will open by itself."), timeout=4)
+            return
+        self._attente_entrelacement = True
+        self.notify(ngettext(
+            "Interlacing analysis of {count} file first: the screen opens when "
+            "it is done.",
+            "Interlacing analysis of {count} files first: the screen opens when "
+            "it is done.", len(attente)).format(count=len(attente)), timeout=6)
+        self._attendre_entrelacement(attente, suite)
+
+    @work(thread=True, name="interlacing-wait")
+    def _attendre_entrelacement(self, infos: list, suite) -> None:
+        try:
+            with ThreadPoolExecutor(max_workers=min(SCAN_WORKERS, len(infos)),
+                                    thread_name_prefix="idet") as pool:
+                list(pool.map(analyser_entrelacement, infos))
+        finally:
+            self.app.call_from_thread(setattr, self, "_attente_entrelacement", False)
+        self.app.call_from_thread(suite)
+
     def action_open_dryrun(self) -> None:
         decisions = [force_skip_to_encode(d) for d in self._cochees()]
         if not decisions:
             self._refus_sans_selection(_("Dry run"))
             return
+        self._apres_entrelacement(decisions, lambda: self._ouvrir_dryrun(decisions))
+
+    def _ouvrir_dryrun(self, decisions: list[FileDecision]) -> None:
         from .dryrun import DryrunScreen
         self.app.push_screen(DryrunScreen(decisions))
 
@@ -1882,7 +1959,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if not decisions:
             self._refus_sans_selection(_("Encode"))
             return
-        self._confier(decisions)
+        self._apres_entrelacement(decisions, lambda: self._confier(decisions))
 
     def _confier(self, decisions: list[FileDecision]) -> None:
         """À la file d'encodage ; les fichiers confiés se décochent (IE-100).
@@ -2019,6 +2096,27 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         profile   = self._active_profile()
         decisions = [decide(info, profile) for info in infos]
         decisions = [d for d in decisions if d.video.action != VideoAction.SKIP]
+        # L'aperçu montre le désentrelacement : l'analyse, que le scan ne
+        # fait plus, se fait ici, hors du fil de l'interface.
+        attente = [d.info for d in decisions if entrelacement_en_attente(d.info)]
+        if attente:
+            fait = 0
+            verrou = threading.Lock()
+
+            def _sonder(info) -> None:
+                nonlocal fait
+                analyser_entrelacement(info)
+                with verrou:
+                    fait += 1
+                    n = fait
+                self.app.call_from_thread(
+                    self.query_one("#scan-notice", Static).update,
+                    "⏳ " + _("Interlacing analysis… {done} / {total}").format(
+                        done=n, total=len(attente)))
+
+            with ThreadPoolExecutor(max_workers=min(SCAN_WORKERS, len(attente)),
+                                    thread_name_prefix="idet") as pool:
+                list(pool.map(_sonder, attente))
 
         def _push() -> None:
             self.query_one("#scan-notice", Static).update("")

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.2 — document de référence courant
+**Version** : 0.9.2.3 — document de référence courant
 **Date** : 2026-11-09
 **Statut** : stable
 
@@ -1376,6 +1376,15 @@ true` : la TrueHD est gardée, le cœur exclu. Sinon : la TrueHD est exclue et l
 cœur suit les règles ordinaires (recopié s'il est compatible). Si la TrueHD est
 la piste 0, son cœur hérite du rôle de piste originale (`locked`, ⚑ dans
 l'écran Pistes).
+
+**Piste sans décodeur** (v0.9.2.3) — une piste dont ffprobe ignore le codec
+(`codec == "unknown"`) est exclue avant toute autre règle, sélection manuelle
+comprise : ffmpeg ne peut ni la décoder ni la recopier, et la garder arrêtait
+l'encodage avant la première image (« Decoding requested, but no decoder
+found », puis « Error opening output files: Invalid argument »). Cas relevé le
+2026-11-09 : audio resté chiffré d'une release WEB (étiquette `enca`). Si
+c'était la piste 0, le rôle de piste originale (`locked`) passe à la première
+piste lisible · `tests/test_audio_illisible.py`.
 
 **Transcodage par piste conservée :**
 
@@ -4323,6 +4332,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.8.1.9 | 2026-08-27 | Introduction du README : la chaîne de diffusion, les contraintes de chaque maillon, et les choix de conception qui en découlent |
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
 | 0.9.2.0 | 2026-11-08 | **Options sans rescan inutile** (§ 14) : au retour de `Ctrl+O`, un dossier n'est relu que si la durée minimale des titres a changé (CR-98) ; en mode assistant, `F4`, `F5` et `Ctrl+O` répondent sans être annoncés (précisé) ; guides et spec donnent `Ctrl+O` pour les options · `tests/test_revue_interface.py` |
+| 0.9.2.3 | 2026-11-09 | **Piste audio sans décodeur exclue** (§ 8.5) : codec `unknown` (audio chiffré d'une release WEB) écarté avant toute règle, sélection manuelle comprise ; rôle de piste originale reporté sur la première piste lisible · `tests/test_audio_illisible.py` |
 | 0.9.2.2 | 2026-11-09 | **Entrelacement hors du listage** (§ 8.1, § 14.1, IE-174) : `scan()` ne relit qu'une analyse gardée ; seconde passe de l'accueil avec jauge ; `_apres_entrelacement` pour `F1`, `F2`, `T`, l'assistant ; `core/analyses.py` (`data/analyses.json`, clé sans le chemin, expiration 180 jours) · `tests/test_entrelacement.py`, `tests/test_accueil_entrelacement.py` |
 | 0.9.2.1 | 2026-11-09 | **Clés d'API dans les options** (§ 14.8) : section « Clés d'API » d'`OptionsScreen` (bouton qui ouvre `ClesScreen`), `K` retiré de la gestion des profils ; les messages d'OpenSubtitles renvoient à `Ctrl+O` · `tests/test_cles.py` |
 | 0.9.1.36 | 2026-11-08 | **Réglages dès le lancement** (§ 14) : la liste des volumes annonce `F4` Profil, `F5` Gérer et `Ctrl+O` Options (nouvelle, `BrowserScreen.action_open_options`, aussi dans un dossier) ; sa barre d'état nomme le profil actif · `tests/test_revue_interface.py` |

@@ -1364,10 +1364,20 @@ def decide_audio(
     originale = 0
     if 0 in paires and not preserve_hd:
         originale = paires[0]
+    # Une piste dont ffprobe ignore le codec n'a pas de décodeur : ni
+    # transcodable ni recopiable (audio resté chiffré d'une release WEB,
+    # étiquette « enca »). La garder arrêtait ffmpeg avant la première image.
+    illisibles = {i for i, t in enumerate(info.audio_tracks) if t.codec == "unknown"}
+    if originale in illisibles:
+        originale = next((i for i in range(len(info.audio_tracks))
+                          if i not in illisibles), originale)
 
     for i, track in enumerate(info.audio_tracks):
         # ── Sélection ────────────────────────────────────────────────────────
-        if override_selected is not None:
+        if i in illisibles:
+            included = False
+            reason   = _("unknown codec, no decoder (encrypted?) → excluded")
+        elif override_selected is not None:
             included = i in override_selected
             reason   = _("manual selection") if included else _(EXCLU_MANUELLEMENT)
         elif i in paires and not preserve_hd:

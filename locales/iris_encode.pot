@@ -186,82 +186,86 @@ msgstr ""
 msgid "Bitrate OK, resolution OK, codec {codec}"
 msgstr ""
 
-#: core/decision.py:1372
+#: core/decision.py:1379
+msgid "unknown codec, no decoder (encrypted?) → excluded"
+msgstr ""
+
+#: core/decision.py:1382
 msgid "manual selection"
 msgstr ""
 
-#: core/decision.py:1375
+#: core/decision.py:1385
 #, python-brace-format
 msgid "replaced by its {codec} core (track {index})"
 msgstr ""
 
-#: core/decision.py:1379
+#: core/decision.py:1389
 #, python-brace-format
 msgid "core of track {index}, which already carries it"
 msgstr ""
 
-#: core/decision.py:1383
+#: core/decision.py:1393
 #, python-brace-format
 msgid "original track (index {index})"
 msgstr ""
 
-#: core/decision.py:1388
+#: core/decision.py:1398
 msgid "language unknown → kept"
 msgstr ""
 
-#: core/decision.py:1391
+#: core/decision.py:1401
 #, python-brace-format
 msgid "language {language}"
 msgstr ""
 
-#: core/decision.py:1394
+#: core/decision.py:1404
 #, python-brace-format
 msgid "language {language} not kept"
 msgstr ""
 
 #. "lossless", "copy" and the profile key preserve_hd_audio stay in English (glossary).
-#: core/decision.py:1429
+#: core/decision.py:1439
 #, python-brace-format
 msgid "{reason} · lossless + preserve_hd_audio → copy"
 msgstr ""
 
-#: core/decision.py:1436
+#: core/decision.py:1446
 #, python-brace-format
 msgid "{reason} · lossless → {codec}"
 msgstr ""
 
-#: core/decision.py:1445
+#: core/decision.py:1455
 #, python-brace-format
 msgid "{reason} · {codec} compatible → copy"
 msgstr ""
 
-#: core/decision.py:1453
+#: core/decision.py:1463
 #, python-brace-format
 msgid "{reason} · → {codec}"
 msgstr ""
 
-#: core/decision.py:1475
+#: core/decision.py:1485
 #, python-brace-format
 msgid "Cannot read the audio track of “{file}” added to this file: the profile's audio rule cannot be applied to it."
 msgstr ""
 
-#: core/decision.py:1480
+#: core/decision.py:1490
 msgid "added track"
 msgstr ""
 
-#: core/decision.py:1746
+#: core/decision.py:1756
 msgid "H264 does not carry HDR: this file will be converted to SDR (tone mapping, slower). Choose HEVC to keep HDR."
 msgstr ""
 
-#: core/decision.py:1781
+#: core/decision.py:1791
 msgid "Forced manually (was SKIP)"
 msgstr ""
 
-#: core/decision.py:1783
+#: core/decision.py:1793
 msgid "Forced manually (was DV removal)"
 msgstr ""
 
-#: core/decision.py:1912
+#: core/decision.py:1922
 #, python-brace-format
 msgid "{reason} · {tracks} for the playback chain → remux"
 msgstr ""

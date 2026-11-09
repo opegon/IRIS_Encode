@@ -1,5 +1,21 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.3] — 2026-11-09
+
+### Une piste audio illisible n'arrête plus l'encodage
+
+*1883* S01E06 (release WEB) échouait dès le lancement : « Error opening
+output files: Invalid argument ». Sa piste anglaise est restée **chiffrée**
+(étiquette `enca`) : ffprobe n'en connaît pas le codec, ffmpeg n'a aucun
+décodeur pour elle, et le profil lui demandait un réencodage AAC.
+
+Une piste audio de codec inconnu est désormais **écartée**, avec le motif
+« codec inconnu, sans décodeur (chiffré ?) », y compris si on la coche à la
+main. Si c'était la piste originale, ce rôle passe à la première piste
+lisible. Le fichier s'encode avec ses autres pistes.
+
+Spec § 8.5. Test : `tests/test_audio_illisible.py`.
+
 ## [v0.9.2.2] — 2026-11-09
 
 ### L'analyse de l'entrelacement ne bloque plus la liste

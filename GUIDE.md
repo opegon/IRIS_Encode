@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.2.5
+**Version**: 0.9.2.6
 **Date**: 2026-11-09
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -27,6 +27,9 @@ rather than by double-click.
 **Full screen**: `F11` switches Windows Terminal to full screen and back. The
 header recalls it at the top right ("F11 Full screen"), only when IRIS runs in
 Windows Terminal — elsewhere the key does nothing.
+
+**Letter keys** work in upper case as in lower case: `w` and `W` (Shift or
+Caps Lock) do the same thing. In a text field, the letter is typed as is.
 
 **When a new version is published**, startup says so before opening the
 application:

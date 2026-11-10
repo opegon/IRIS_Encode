@@ -34,6 +34,16 @@ def _setup_logging() -> None:
     )
 
 
+def lettre_minuscule(cle: str) -> str | None:
+    """« W » ou « shift+w » → « w » ; None pour toute autre touche."""
+    if len(cle) == 1 and cle.isalpha() and cle.isupper():
+        return cle.lower()
+    reste = cle.removeprefix("shift+")
+    if reste != cle and len(reste) == 1 and reste.isalpha():
+        return reste.lower()
+    return None
+
+
 class IrisEncodeApp(App):
     """Application principale IRIS ENCODE."""
 
@@ -185,6 +195,23 @@ class IrisEncodeApp(App):
         # Câble mpv pour le contrôle du recalage à l'œil (optionnel)
         from core import preview as preview_mod
         preview_mod.set_mpv_path(get_tool_path("mpv", bin_dir))
+
+    # ── Touches : majuscule ou minuscule ──────────────────────────────────────
+
+    async def _check_bindings(self, key: str, priority: bool = False) -> bool:
+        """Une lettre tapée en majuscule (Verr. Maj., Maj) agit comme en
+        minuscule : Textual nomme la touche « W », et une liaison sur « w »
+        ne la voyait pas.
+
+        La minuscule n'est essayée que si rien ne répond à la majuscule. Une
+        saisie focalisée garde la lettre telle que tapée : Textual retire de
+        la chaîne des liaisons les touches qu'elle consomme
+        (`check_consume_key`), prioritaires comprises.
+        """
+        if await super()._check_bindings(key, priority):
+            return True
+        bas = lettre_minuscule(key)
+        return bas is not None and await super()._check_bindings(bas, priority)
 
     # ── Profil actif ──────────────────────────────────────────────────────────
     #

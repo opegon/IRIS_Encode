@@ -1267,125 +1267,125 @@ msgstr ""
 msgid "This video has no downloadable format."
 msgstr ""
 
-#: tui/app.py:66
-#: tui/app.py:67
+#: tui/app.py:76
+#: tui/app.py:77
 #: tui/common.py:438
 #: tui/screens/quit.py:23
 msgid "Quit"
 msgstr ""
 
-#: tui/app.py:75
+#: tui/app.py:85
 #: tui/widgets/entete.py:68
 msgid "Help"
 msgstr ""
 
-#: tui/app.py:78
+#: tui/app.py:88
 msgid "Encodes"
 msgstr ""
 
-#: tui/app.py:219
-#: tui/app.py:225
+#: tui/app.py:246
+#: tui/app.py:252
 msgid "Graphics card"
 msgstr ""
 
-#: tui/app.py:222
+#: tui/app.py:249
 msgid "AMD graphics card (AMF): experimental support, not yet verified on AMD hardware. Check the first encodes, HDR ones especially."
 msgstr ""
 
-#: tui/app.py:239
+#: tui/app.py:266
 #, python-brace-format
 msgid "{file} unreadable ({error}): this session runs on the defaults and will not rewrite it. Fix it by hand, then restart."
 msgstr ""
 
-#: tui/app.py:289
+#: tui/app.py:316
 #, python-brace-format
 msgid "The folder of {count} source is read-only (mounted disc image?): its output cannot be written next to it."
 msgid_plural "The folders of {count} sources are read-only (mounted disc image?): their outputs cannot be written next to them."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/app.py:316
+#: tui/app.py:343
 #, python-brace-format
 msgid "Already in the queue: {files}"
 msgstr ""
 
-#: tui/app.py:322
+#: tui/app.py:349
 #, python-brace-format
 msgid "{count} file added to the queue — {key} to follow it."
 msgid_plural "{count} files added to the queue — {key} to follow it."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/app.py:365
+#: tui/app.py:392
 #: tui/screens/run.py:112
 #: tui/screens/run.py:113
 #: tui/screens/run.py:240
 msgid "Files"
 msgstr ""
 
-#: tui/app.py:367
+#: tui/app.py:394
 msgid "Batch done"
 msgstr ""
 
-#: tui/app.py:370
+#: tui/app.py:397
 #, python-brace-format
 msgid "Encoding paused · {done}/{total} · {percent}%"
 msgstr ""
 
-#: tui/app.py:372
+#: tui/app.py:399
 #, python-brace-format
 msgid "Encoding in progress · {done}/{total} · {percent}%"
 msgstr ""
 
-#: tui/app.py:420
+#: tui/app.py:447
 msgid "sleep blocked"
 msgstr ""
 
-#: tui/app.py:422
+#: tui/app.py:449
 #, python-brace-format
 msgid "then {action}"
 msgstr ""
 
-#: tui/app.py:455
+#: tui/app.py:482
 msgid "After-batch action canceled."
 msgstr ""
 
-#: tui/app.py:459
+#: tui/app.py:486
 msgid "A task has resumed: after-batch action canceled."
 msgstr ""
 
-#: tui/app.py:465
+#: tui/app.py:492
 #, python-brace-format
 msgid "Cannot {action}: {error}"
 msgstr ""
 
-#: tui/app.py:478
+#: tui/app.py:505
 msgid "No encoding in progress."
 msgstr ""
 
-#: tui/app.py:506
+#: tui/app.py:533
 msgid "The running encode will be stopped, its partial output deleted."
 msgstr ""
 
-#: tui/app.py:507
+#: tui/app.py:534
 msgid "The running mux will be stopped, its partial output deleted."
 msgstr ""
 
-#: tui/app.py:508
+#: tui/app.py:535
 msgid "The running join will be stopped, its partial output deleted."
 msgstr ""
 
-#: tui/app.py:509
-#: tui/app.py:510
-#: tui/app.py:511
+#: tui/app.py:536
+#: tui/app.py:537
+#: tui/app.py:538
 msgid "The running measurement will be lost."
 msgstr ""
 
-#: tui/app.py:512
+#: tui/app.py:539
 msgid "The running resync will be lost."
 msgstr ""
 
-#: tui/app.py:531
+#: tui/app.py:558
 #, python-brace-format
 msgid "{count} waiting file will not be encoded."
 msgid_plural "{count} waiting files will not be encoded."

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.2.5
+**Version** : 0.9.2.6
 **Date** : 2026-11-09
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -26,6 +26,10 @@ Terminal plutôt qu'au double-clic.
 **Plein écran** : `F11` passe Windows Terminal en plein écran, et l'en fait
 sortir. L'en-tête le rappelle en haut à droite (« F11 Plein écran »), seulement
 quand IRIS tourne dans Windows Terminal — ailleurs la touche ne fait rien.
+
+**Les touches lettres** marchent en majuscule comme en minuscule : `w` et `W`
+(Maj ou Verr. Maj.) font la même chose. Dans un champ de saisie, la lettre
+s'écrit telle que tapée.
 
 **Quand une nouvelle version est publiée**, le lancement le dit avant d'ouvrir
 l'application :

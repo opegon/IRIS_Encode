@@ -1267,125 +1267,125 @@ msgstr "yt-dlp a rendu une réponse illisible."
 msgid "This video has no downloadable format."
 msgstr "Cette vidéo n'a aucun format téléchargeable."
 
-#: tui/app.py:66
-#: tui/app.py:67
+#: tui/app.py:76
+#: tui/app.py:77
 #: tui/common.py:438
 #: tui/screens/quit.py:23
 msgid "Quit"
 msgstr "Quitter"
 
-#: tui/app.py:75
+#: tui/app.py:85
 #: tui/widgets/entete.py:68
 msgid "Help"
 msgstr "Aide"
 
-#: tui/app.py:78
+#: tui/app.py:88
 msgid "Encodes"
 msgstr "Encodages"
 
-#: tui/app.py:219
-#: tui/app.py:225
+#: tui/app.py:246
+#: tui/app.py:252
 msgid "Graphics card"
 msgstr "Carte graphique"
 
-#: tui/app.py:222
+#: tui/app.py:249
 msgid "AMD graphics card (AMF): experimental support, not yet verified on AMD hardware. Check the first encodes, HDR ones especially."
 msgstr "Carte graphique AMD (AMF) : prise en charge expérimentale, pas encore vérifiée sur du matériel AMD. Contrôlez les premiers encodages, surtout en HDR."
 
-#: tui/app.py:239
+#: tui/app.py:266
 #, python-brace-format
 msgid "{file} unreadable ({error}): this session runs on the defaults and will not rewrite it. Fix it by hand, then restart."
 msgstr "{file} illisible ({error}) : cette session tourne sur les valeurs par défaut et ne le réécrira pas. Corrigez-le à la main, puis relancez."
 
-#: tui/app.py:289
+#: tui/app.py:316
 #, python-brace-format
 msgid "The folder of {count} source is read-only (mounted disc image?): its output cannot be written next to it."
 msgid_plural "The folders of {count} sources are read-only (mounted disc image?): their outputs cannot be written next to them."
 msgstr[0] "Le dossier de {count} source est en lecture seule (image disque montée ?) : sa sortie ne peut pas s'écrire à côté d'elle."
 msgstr[1] "Les dossiers de {count} sources sont en lecture seule (image disque montée ?) : leurs sorties ne peuvent pas s'écrire à côté d'elles."
 
-#: tui/app.py:316
+#: tui/app.py:343
 #, python-brace-format
 msgid "Already in the queue: {files}"
 msgstr "Déjà dans la file : {files}"
 
-#: tui/app.py:322
+#: tui/app.py:349
 #, python-brace-format
 msgid "{count} file added to the queue — {key} to follow it."
 msgid_plural "{count} files added to the queue — {key} to follow it."
 msgstr[0] "{count} fichier ajouté à la file — {key} pour la suivre."
 msgstr[1] "{count} fichiers ajoutés à la file — {key} pour la suivre."
 
-#: tui/app.py:365
+#: tui/app.py:392
 #: tui/screens/run.py:112
 #: tui/screens/run.py:113
 #: tui/screens/run.py:240
 msgid "Files"
 msgstr "Fichiers"
 
-#: tui/app.py:367
+#: tui/app.py:394
 msgid "Batch done"
 msgstr "Lot terminé"
 
-#: tui/app.py:370
+#: tui/app.py:397
 #, python-brace-format
 msgid "Encoding paused · {done}/{total} · {percent}%"
 msgstr "Encodages en pause · {done}/{total} · {percent}%"
 
-#: tui/app.py:372
+#: tui/app.py:399
 #, python-brace-format
 msgid "Encoding in progress · {done}/{total} · {percent}%"
 msgstr "Encodages en cours · {done}/{total} · {percent}%"
 
-#: tui/app.py:420
+#: tui/app.py:447
 msgid "sleep blocked"
 msgstr "veille bloquée"
 
-#: tui/app.py:422
+#: tui/app.py:449
 #, python-brace-format
 msgid "then {action}"
 msgstr "puis {action}"
 
-#: tui/app.py:455
+#: tui/app.py:482
 msgid "After-batch action canceled."
 msgstr "Action d'après lot annulée."
 
-#: tui/app.py:459
+#: tui/app.py:486
 msgid "A task has resumed: after-batch action canceled."
 msgstr "Un traitement a repris : action d'après lot annulée."
 
-#: tui/app.py:465
+#: tui/app.py:492
 #, python-brace-format
 msgid "Cannot {action}: {error}"
 msgstr "{action} impossible : {error}"
 
-#: tui/app.py:478
+#: tui/app.py:505
 msgid "No encoding in progress."
 msgstr "Aucun encodage en cours."
 
-#: tui/app.py:506
+#: tui/app.py:533
 msgid "The running encode will be stopped, its partial output deleted."
 msgstr "L'encodage en cours sera arrêté, sa sortie partielle effacée."
 
-#: tui/app.py:507
+#: tui/app.py:534
 msgid "The running mux will be stopped, its partial output deleted."
 msgstr "Le mux en cours sera arrêté, sa sortie partielle effacée."
 
-#: tui/app.py:508
+#: tui/app.py:535
 msgid "The running join will be stopped, its partial output deleted."
 msgstr "La jonction en cours sera arrêtée, sa sortie partielle effacée."
 
-#: tui/app.py:509
-#: tui/app.py:510
-#: tui/app.py:511
+#: tui/app.py:536
+#: tui/app.py:537
+#: tui/app.py:538
 msgid "The running measurement will be lost."
 msgstr "La mesure en cours sera perdue."
 
-#: tui/app.py:512
+#: tui/app.py:539
 msgid "The running resync will be lost."
 msgstr "Le recalage en cours sera perdu."
 
-#: tui/app.py:531
+#: tui/app.py:558
 #, python-brace-format
 msgid "{count} waiting file will not be encoded."
 msgid_plural "{count} waiting files will not be encoded."

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.5 — document de référence courant
+**Version** : 0.9.2.6 — document de référence courant
 **Date** : 2026-11-10
 **Statut** : stable
 
@@ -3145,6 +3145,14 @@ Les lettres `M` (Mesurer), `S` (Passer le fichier), `A` (Tout), `F`
 (Forcer), `G` (Plages) et `O` (OpenSubtitles) n'ont qu'un sens dans toute
 l'application (v0.8.9.19, UX-12).
 
+**Majuscule ou minuscule, même effet** (v0.9.2.6). Textual nomme « W » la
+touche Maj+w (ou w sous Verr. Maj.), et une liaison sur « w » ne la voyait
+pas. `IrisEncodeApp._check_bindings` rejoue la minuscule (`lettre_minuscule` :
+« W » ou « shift+w » → « w ») quand rien ne répond à la majuscule, dans les
+deux passes (prioritaire et normale). Une saisie focalisée garde la lettre
+telle que tapée : Textual retire déjà de la chaîne des liaisons les touches
+qu'elle consomme (`check_consume_key`). `tests/test_touches_majuscules.py`.
+
 `F1`/`F2` sans rien de coché : notification d'avertissement, qui dit comment
 cocher (v0.8.9.11). Même chose pour `F2` du dry-run quand aucune ligne retenue
 n'est à réencoder.
@@ -4363,6 +4371,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.2.0 | 2026-11-08 | **Options sans rescan inutile** (§ 14) : au retour de `Ctrl+O`, un dossier n'est relu que si la durée minimale des titres a changé (CR-98) ; en mode assistant, `F4`, `F5` et `Ctrl+O` répondent sans être annoncés (précisé) ; guides et spec donnent `Ctrl+O` pour les options · `tests/test_revue_interface.py` |
 | 0.9.2.4 | 2026-11-09 | **Chargements croisés de l'accueil** (§ 14.1, IE-182) : un `_Releve` ne remplace que celui d'une époque plus ancienne (`_verrou_releve`) ; la liste ne reste plus « en attente » ; `test_accueil_progressif` n'échoue plus par intermittence · `tests/test_accueil_chargements_croises.py` |
 | 0.9.2.5 | 2026-11-10 | **Vidéos d'une chaîne YouTube publique** (§ 9.9.1, IE-181) : `url_chaine`, `lister_chaine` (liste à plat par pages de 100, date approchée), `ChaineYouTubeScreen` (définition lue en arrière-plan, cochées d'abord ; réglage commun : définition maximale `Video.hauteur_sous`, sous-titres `sous_titres_communs` ; téléchargement l'un après l'autre) · `YouTubeScreen` rend une liste de fichiers · `tests/test_youtube_chaine.py`, `tests/test_youtube_chaine_ecran.py` |
+| 0.9.2.6 | 2026-11-10 | **Touches en majuscule** (§ 14) : `IrisEncodeApp._check_bindings` rejoue la minuscule (`lettre_minuscule`) quand rien ne répond à la majuscule ; une saisie garde la lettre (`check_consume_key` de Textual) · `tests/test_touches_majuscules.py` |
 | 0.9.2.3 | 2026-11-09 | **Piste audio sans décodeur exclue** (§ 8.5) : codec `unknown` (audio chiffré d'une release WEB) écarté avant toute règle, sélection manuelle comprise ; rôle de piste originale reporté sur la première piste lisible · `tests/test_audio_illisible.py` |
 | 0.9.2.2 | 2026-11-09 | **Entrelacement hors du listage** (§ 8.1, § 14.1, IE-174) : `scan()` ne relit qu'une analyse gardée ; seconde passe de l'accueil avec jauge ; `_apres_entrelacement` pour `F1`, `F2`, `T`, l'assistant ; `core/analyses.py` (`data/analyses.json`, clé sans le chemin, expiration 180 jours) · `tests/test_entrelacement.py`, `tests/test_accueil_entrelacement.py` |
 | 0.9.2.1 | 2026-11-09 | **Clés d'API dans les options** (§ 14.8) : section « Clés d'API » d'`OptionsScreen` (bouton qui ouvre `ClesScreen`), `K` retiré de la gestion des profils ; les messages d'OpenSubtitles renvoient à `Ctrl+O` · `tests/test_cles.py` |

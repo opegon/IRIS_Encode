@@ -1,5 +1,15 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.6] — 2026-11-10
+
+### Les touches marchent en majuscule comme en minuscule
+
+`W` (Maj+w, ou w sous Verr. Maj.) ne faisait rien là où `w` agissait :
+Textual nomme la touche « W », et chaque raccourci était déclaré en
+minuscule. L'application rejoue désormais la minuscule quand rien ne répond à
+la majuscule, sur tous les écrans. Dans un champ de saisie, la lettre s'écrit
+toujours telle que tapée. Spec § 14. Test : `tests/test_touches_majuscules.py`.
+
 ## [v0.9.2.5] — 2026-11-10
 
 ### Télécharger plusieurs vidéos d'une chaîne YouTube (IE-181)

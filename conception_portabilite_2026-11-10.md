@@ -253,3 +253,60 @@ Chaque ligne est un incrément livrable (BUILD +1, entrée CHANGELOG).
 
 Linux sans VAAPI (A1-A3, A5, A6) est déjà une version utilisable, au
 processeur ou avec NVENC : on peut la publier avant A4b.
+
+---
+
+## Poids estimé
+
+*Estimation de départ, à recaler sur l'inventaire des échecs d'A1.*
+
+**Verdict : travail modéré, pas une refonte.** La conception rend le portage
+simple. Ce qui coûte, ce sont les essais sur du vrai matériel plus que le code,
+et surtout l'accès à un Mac.
+
+### Ce que la conception facilite
+
+- **Le code propre à Windows est petit et regroupé** : environ 750 lignes sur
+  ~60 000 (relevé approximatif). Les plus gros blocs sont `core/emplacements.py`
+  (~280 lignes : UNC, `mpr`, identifiants), `core/veille.py` (~150) et
+  l'installation des outils dans `core/preflight.py` (~150). Le reste n'a rien
+  de propre à Windows.
+- **Le travail lourd est confié à des outils qui existent sur les trois
+  systèmes** : ffmpeg, mkvmerge, dovi_tool et mpv sont lancés en sous-processus.
+  Logique de décision, analyse et interface Textual ne changent pas.
+- **Les bonnes abstractions existent déjà** : chemins `pathlib`, profil matériel
+  qui sonde ce que ffmpeg sait ouvrir, sources d'outils décrites en TOML, appels
+  système isolés pour être remplacés dans les tests.
+- **Plusieurs branches non-Windows sont déjà écrites** (pause par signaux,
+  langue par `LANG`, `/proc`, `xdg-open`, dovi_tool Linux). Elles n'ont jamais
+  tourné.
+
+### Ce qui alourdit
+
+- **Rien n'a jamais été exécuté hors Windows** : aucune CI, et une quinzaine de
+  tests sont sautés sans rien dire. Le premier `pytest` sous Linux révélera ce
+  que la lecture du code ne montre pas.
+- **Toutes les mesures du wiki ont été faites sous Windows** (débits NVENC et
+  QSV, HDR10, décodage sur la carte). Un nouvel encodeur (VAAPI, VideoToolbox)
+  demande la même campagne de mesures, et c'est elle qui coûte cher, pas le code.
+- **Des fonctions pensées pour Windows** (UNC, gestionnaire d'identifiants) ne
+  se portent pas telles quelles et se replient sur des chemins déjà montés.
+
+### Ordre de grandeur
+
+| | Code | Livraisons | Ce qui domine |
+|---|---|---|---|
+| **Linux sans VAAPI** (processeur + NVENC) | ~1 500 à 2 500 lignes modifiées, tests et docs compris | 6 à 8 | lanceur `sh`, outils par système, essais sur VM |
+| **Linux + VAAPI** | + quelques centaines de lignes | + 2 à 4 | mesures du débit et du HDR10 sur une puce Intel ou AMD |
+| **macOS** | moins que Linux, qui en fournit la moitié | 5 à 7 | VideoToolbox jamais lancé, ffmpeg Homebrew à vérifier, accès à un Mac |
+
+### En résumé
+
+- **Linux** : faible risque. Une version utilisable (processeur et NVENC) se
+  livre en quelques sessions, sans toucher au cœur de l'application.
+- **macOS** : peu de code, mais beaucoup d'inconnues. Le délai dépend surtout
+  de l'accès à un Mac. Sans Mac, la CI fait tourner les tests mais ne garantit
+  pas l'encodage.
+- **Coût durable** : la maintenance. Chaque fonction ajoutée ensuite devra être
+  vérifiée sur trois systèmes. Une CI multi-système (§ A.8, question 3) le réduit
+  nettement.

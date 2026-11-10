@@ -1,6 +1,6 @@
 ---
 type: synthese
-maj: 2026-11-08
+maj: 2026-11-10
 sources:
   - "[[source-spec]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -57,6 +57,22 @@ release est sortie quand la revue de code a été entièrement traitée.
 | Le pilote 610 est-il sûr sur un Shadow Power (flux, encodage côté Shadow) ? | Shadow autorise la mise à jour manuelle, ne dit rien de la 610 ; demander au support |
 | Le téléchargement YouTube (v0.9.1.31) fonctionne-t-il sur de vraies pages ? | écrit et testé sur des pages fabriquées seulement. À vérifier : paliers lus dans `format_note` (film en 2,39:1), clés `-orig` des sous-titres automatiques, SRT intégrés au MKV, nettoyage après `Échap` ([[yt-dlp]]) |
 | La liste d'une chaîne (v0.9.2.5, IE-181) fonctionne-t-elle sur une vraie chaîne ? | testée sur des listes fabriquées seulement. À vérifier : `/@nom/videos` donne bien les vidéos (et non les onglets), dates approchées présentes, `--playlist-items` n'arrête pas trop tôt ni ne lit toute la chaîne, vidéos réservées aux membres bien écartées ([[yt-dlp]]) |
+
+## Linux et macOS (IE-183, IE-184)
+
+Décisions de l'utilisateur attendues avant de commencer, posées le 2026-11-10
+par la note `conception_portabilite_2026-11-10.md` (§ A.8, § B.7).
+
+| Question | Ce qui en dépend |
+|---|---|
+| Une VM Proxmox est-elle disponible pour Linux, avec une carte NVIDIA en passthrough ? | banc d'essai (A1) ; NVENC sous Linux mesurable ou non (A4a) |
+| Quelles distributions viser (Debian 13, Ubuntu 24.04, autre) ? arm64 ou x86_64 seulement ? | choix des assets téléchargés, tests |
+| Un Mac est-il accessible (Apple Silicon, Intel) ? Sinon, macOS annoncé « best effort » ? | tout le plan B ; VideoToolbox jamais lancé |
+| CI GitHub Actions (Ubuntu, puis macOS) pour `pytest` à chaque push ? | vérification hors Windows sans machine dédiée |
+| mkvmerge sous Linux : AppImage officielle téléchargée par IRIS, ou gestionnaire de paquets ? | A3 |
+| Partages réseau sous Linux et macOS : « déjà montés seulement » convient-il ? | A5 ; masquer connexion et identifiants |
+| Homebrew obligatoire sur Mac pour ffmpeg, mkvmerge et mpv : acceptable ? | B3 |
+| Numéro de version de la livraison Linux (MINOR ?) | règle 5.1 : décision de l'utilisateur |
 
 ## Voir aussi
 

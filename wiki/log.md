@@ -604,3 +604,9 @@ touchées : [[localisation]].
 Options de yt-dlp pour lister une chaîne sans compte (`--flat-playlist`,
 `--playlist-items`, `youtubetab:approximate_date`) et champs supposés des
 entrées à plat. Pages touchées : [[yt-dlp]], [[questions-ouvertes]].
+
+## [2026-11-10] query | Plans Linux et macOS (IE-183, IE-184)
+
+Note `conception_portabilite_2026-11-10.md` : état des lieux du code propre à
+Windows, sources des outils par système, ordre de livraison. Huit décisions
+attendues de l'utilisateur. Pages touchées : [[questions-ouvertes]].

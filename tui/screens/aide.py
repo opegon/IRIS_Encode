@@ -115,8 +115,10 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
                                   "Credential Manager."),
         "youtube":             N_("Downloads a YouTube video: paste its "
                                   "address, choose the resolution and the "
-                                  "subtitles. The video opens in its folder, "
-                                  "checked, ready to encode."),
+                                  "subtitles. A channel's address lists its "
+                                  "videos, to download several at once. The "
+                                  "videos open in their folder, checked, ready "
+                                  "to encode."),
         "join_parts":          N_("Joins the checked files end to end into "
                                   "one, without re-encoding — a movie delivered "
                                   "as part1 / part2. The proposed order comes "

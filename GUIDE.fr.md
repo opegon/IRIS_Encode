@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.2.4
+**Version** : 0.9.2.5
 **Date** : 2026-11-09
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -789,6 +789,18 @@ Demande les outils YouTube, proposés au lancement (voir README, chapitre 4).
 YouTube ne sert la 1440p et la 2160p qu'en VP9 ou AV1, que le téléviseur ne
 lit pas forcément : l'encodage la passe dans le codec du profil. Une vidéo
 privée, ou qui demande un compte (contrôle de l'âge), ne se télécharge pas.
+
+**Plusieurs vidéos d'une chaîne.** Collez à l'étape 2 l'adresse d'une chaîne
+(`https://www.youtube.com/@nom`) : IRIS liste ses 100 vidéos les plus
+récentes (`+` : les 100 suivantes), avec leur durée et leur date — « ≈ »
+tant qu'elle n'est qu'approchée. La colonne **Résolution** se remplit
+pendant que vous cochez (`␣`) : IRIS lit la page de chaque vidéo, celles
+cochées d'abord. Choisissez ensuite la **résolution maximale** (chaque vidéo
+prend la meilleure qui ne la dépasse pas) et les **sous-titres**, proposés
+d'après les vidéos cochées, puis **Télécharger**. Les vidéos se téléchargent
+l'une après l'autre ; celle qui échoue est signalée à la fin, sans arrêter
+les autres. Toutes arrivent cochées dans leur dossier. Seules les vidéos
+publiques sont listées.
 
 ---
 

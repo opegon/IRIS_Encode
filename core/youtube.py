@@ -16,6 +16,11 @@ Les formats sont choisis ici, par leur identifiant, et non par un filtre
 yt-dlp sur la hauteur : un film en 2,39:1 publié en « 2160p » fait 3840 × 1608,
 et `height=2160` ne le trouverait pas. Le palier se lit dans la note du
 format (« 2160p60 HDR »).
+
+Une chaîne publique (IE-181) se liste sans compte : son onglet « Vidéos », lu
+à plat (`--flat-playlist`), par pages de `PAGE_CHAINE` vidéos, les plus
+récentes d'abord. La liste à plat ne donne ni la définition ni la date exacte
+(seulement « il y a 3 semaines ») : chaque vidéo se lit ensuite par `analyser`.
 """
 from __future__ import annotations
 
@@ -60,10 +65,17 @@ class Video:
     audio:     str = ""        # identifiant du format audio retenu
     audio_aac: bool = True     # faux : pas d'AAC, repli sur le meilleur audio
     sous_titres: list[SousTitre] = field(default_factory=list)
+    date:      str = ""        # date de mise en ligne, AAAAMMJJ
 
     @property
     def hauteurs(self) -> list[int]:
         return list(self.formats)
+
+    def hauteur_sous(self, plafond: int) -> int:
+        """La meilleure définition au plus égale à `plafond` ; si la vidéo
+        n'en a aucune, sa plus basse."""
+        sous = [h for h in self.formats if h <= plafond]
+        return max(sous) if sous else min(self.formats)
 
 
 # ─── Outils ───────────────────────────────────────────────────────────────────
@@ -168,6 +180,7 @@ def lire_infos(donnees: dict, url: str) -> Video:
         formats=_choisir_formats(formats),
         audio=audio, audio_aac=aac,
         sous_titres=_choisir_sous_titres(donnees),
+        date=str(donnees.get("upload_date") or ""),
     )
 
 
@@ -186,11 +199,10 @@ def _derniere_erreur(sortie: str) -> str:
     return texte.removeprefix("ERROR:").strip()
 
 
-def analyser(url: str, ytdlp: Path, deno: Path) -> Video:
-    """Lit la page de la vidéo. Lève `ErreurAffichable` si yt-dlp échoue."""
+def _lire_json(cmd: list[str]) -> dict:
+    """Lance yt-dlp et lit le JSON qu'il écrit. Lève `ErreurAffichable`."""
     try:
-        r = subprocess.run(_base(ytdlp, deno) + ["-J", url],
-                           stdin=subprocess.DEVNULL, capture_output=True,
+        r = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
                            encoding="utf-8", errors="replace",
                            timeout=_DELAI_ANALYSE_S)
     except subprocess.TimeoutExpired:
@@ -201,13 +213,116 @@ def analyser(url: str, ytdlp: Path, deno: Path) -> Video:
     if r.returncode != 0:
         raise ErreurAffichable.brute(_derniere_erreur(r.stderr or r.stdout))
     try:
-        donnees = json.loads(r.stdout)
+        return json.loads(r.stdout)
     except ValueError:
         raise ErreurAffichable(N_("yt-dlp returned an unreadable answer."))
-    video = lire_infos(donnees, url)
+
+
+def analyser(url: str, ytdlp: Path, deno: Path) -> Video:
+    """Lit la page de la vidéo. Lève `ErreurAffichable` si yt-dlp échoue."""
+    video = lire_infos(_lire_json(_base(ytdlp, deno) + ["-J", url]), url)
     if not video.formats or not video.audio:
         raise ErreurAffichable(N_("This video has no downloadable format."))
     return video
+
+
+# ─── Chaîne (IE-181) ──────────────────────────────────────────────────────────
+
+# Vidéos lues par page de la liste d'une chaîne.
+PAGE_CHAINE = 100
+
+# youtube.com/@nom, /channel/UC…, /c/nom, /user/nom ; un onglet éventuel
+# (« /featured », « /shorts ») est remplacé par « /videos ».
+_CHAINE = re.compile(
+    r"^(?:https?://)?(?:(?:www|m)\.)?youtube\.com/"
+    r"(@[^/?#]+|(?:channel|c|user)/[^/?#]+)(?:/[^?#]*)?(?:[?#].*)?$",
+    re.IGNORECASE)
+
+# Ce qui ne se télécharge pas sans compte, ou pas encore.
+_HORS_PUBLIC = {"subscriber_only", "premium_only", "needs_auth"}
+_PAS_ENCORE = {"is_upcoming", "is_live"}
+
+
+def url_chaine(url: str) -> Optional[str]:
+    """L'onglet « Vidéos » de la chaîne, si `url` désigne une chaîne."""
+    m = _CHAINE.match(url.strip())
+    return f"https://www.youtube.com/{m.group(1)}/videos" if m else None
+
+
+@dataclass(frozen=True)
+class EntreeChaine:
+    ident: str
+    titre: str
+    duree: Optional[float]
+    date:  str            # AAAAMMJJ, approximative (« il y a 3 semaines »)
+
+    @property
+    def url(self) -> str:
+        return f"https://www.youtube.com/watch?v={self.ident}"
+
+
+@dataclass
+class Chaine:
+    nom:     str
+    entrees: list[EntreeChaine]
+    suite:   bool         # une page pleine : il peut en rester
+
+
+def _date_entree(e: dict) -> str:
+    if e.get("upload_date"):
+        return str(e["upload_date"])
+    ts = e.get("timestamp")
+    if isinstance(ts, (int, float)):
+        from datetime import datetime, timezone
+        return datetime.fromtimestamp(ts, timezone.utc).strftime("%Y%m%d")
+    return ""
+
+
+def lire_chaine(donnees: dict, taille: int = PAGE_CHAINE) -> Chaine:
+    """Une page de la liste, telle que la décrit `yt-dlp --flat-playlist -J`.
+
+    Écartées : les vidéos réservées aux membres ou qui demandent un compte,
+    les directs en cours ou à venir."""
+    brutes = donnees.get("entries") or []
+    entrees = []
+    for e in brutes:
+        if not isinstance(e, dict) or not e.get("id") or e.get("ie_key") == "YoutubeTab":
+            continue
+        if e.get("availability") in _HORS_PUBLIC or e.get("live_status") in _PAS_ENCORE:
+            continue
+        duree = e.get("duration")
+        entrees.append(EntreeChaine(
+            ident=str(e["id"]), titre=str(e.get("title") or e["id"]),
+            duree=float(duree) if isinstance(duree, (int, float)) else None,
+            date=_date_entree(e)))
+    nom = donnees.get("channel") or donnees.get("uploader") or donnees.get("title")
+    return Chaine(nom=str(nom or ""), entrees=entrees, suite=len(brutes) >= taille)
+
+
+def lister_chaine(url: str, ytdlp: Path, deno: Path, debut: int = 1) -> Chaine:
+    """La page de la liste qui commence à la `debut`-ième vidéo (1 = la plus
+    récente). Lève `ErreurAffichable` si yt-dlp échoue."""
+    fin = debut + PAGE_CHAINE - 1
+    return lire_chaine(_lire_json(_base(ytdlp, deno) + [
+        "--flat-playlist", "-J", "--playlist-items", f"{debut}:{fin}",
+        # Sans elle, la liste à plat n'a aucune date.
+        "--extractor-args", "youtubetab:approximate_date", url]))
+
+
+def sous_titres_communs(videos: list[Video]) -> list[SousTitre]:
+    """Les sous-titres d'au moins une des vidéos, une fois chacun (même clé,
+    même origine), dans l'ordre de première apparition."""
+    vus: dict[tuple[str, bool], SousTitre] = {}
+    for v in videos:
+        for s in v.sous_titres:
+            vus.setdefault((s.cle, s.auto), s)
+    return list(vus.values())
+
+
+def sous_titres_retenus(video: Video, choisis: list[SousTitre]) -> list[SousTitre]:
+    """Ceux de `choisis` que la vidéo propose."""
+    cles = {(s.cle, s.auto) for s in choisis}
+    return [s for s in video.sous_titres if (s.cle, s.auto) in cles]
 
 
 # ─── Téléchargement ───────────────────────────────────────────────────────────

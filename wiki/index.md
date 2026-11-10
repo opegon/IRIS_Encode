@@ -44,7 +44,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[lg-oled-g3]] | Téléviseur de l'utilisateur ; formats acceptés, symptômes constatés |
 | [[opensubtitles]] | Service de sous-titres ; empreinte, pagination, quotas |
 | [[github]] | Releases : API « Latest », empreinte `digest`, 60 appels par heure, archives d'IRIS |
-| [[yt-dlp]] | Téléchargement YouTube : Deno comme moteur JavaScript, paliers lus dans la note du format, sous-titres `-orig` |
+| [[yt-dlp]] | Téléchargement YouTube : Deno comme moteur JavaScript, paliers lus dans la note du format, sous-titres `-orig`, liste à plat d'une chaîne |
 
 ## Sources
 

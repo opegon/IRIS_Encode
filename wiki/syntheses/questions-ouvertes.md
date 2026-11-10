@@ -56,6 +56,7 @@ release est sortie quand la revue de code a été entièrement traitée.
 | AMD AMF (v0.9.1.9) encode-t-il juste sur une vraie carte Radeon ? | écrit sans matériel AMD : seules les options ont été validées par ffmpeg. À mesurer : débit tenu avec `-rc vbr_peak` et 1,5 × de marge, HDR10 conservé (BT.2020, PQ, écran de mastering, MaxCLL) à travers `hevc_amf`, 10 bits sur Polaris et après, AV1 sur RX 7000. Tant que ce n'est pas fait, le support reste « expérimental » |
 | Le pilote 610 est-il sûr sur un Shadow Power (flux, encodage côté Shadow) ? | Shadow autorise la mise à jour manuelle, ne dit rien de la 610 ; demander au support |
 | Le téléchargement YouTube (v0.9.1.31) fonctionne-t-il sur de vraies pages ? | écrit et testé sur des pages fabriquées seulement. À vérifier : paliers lus dans `format_note` (film en 2,39:1), clés `-orig` des sous-titres automatiques, SRT intégrés au MKV, nettoyage après `Échap` ([[yt-dlp]]) |
+| La liste d'une chaîne (v0.9.2.5, IE-181) fonctionne-t-elle sur une vraie chaîne ? | testée sur des listes fabriquées seulement. À vérifier : `/@nom/videos` donne bien les vidéos (et non les onglets), dates approchées présentes, `--playlist-items` n'arrête pas trop tôt ni ne lit toute la chaîne, vidéos réservées aux membres bien écartées ([[yt-dlp]]) |
 
 ## Voir aussi
 

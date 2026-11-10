@@ -598,3 +598,9 @@ empreintes. Pages touchées : [[yt-dlp]], [[questions-ouvertes]].
 Vingt-huit captures de la v0.9.1.31 : la touche `Home` se lisait « Accueil »
 en français, faute de contexte (même `msgid` que l'écran d'accueil). Pages
 touchées : [[localisation]].
+
+## [2026-11-10] ingest | Liste d'une chaîne YouTube (v0.9.2.5, IE-181)
+
+Options de yt-dlp pour lister une chaîne sans compte (`--flat-playlist`,
+`--playlist-items`, `youtubetab:approximate_date`) et champs supposés des
+entrées à plat. Pages touchées : [[yt-dlp]], [[questions-ouvertes]].

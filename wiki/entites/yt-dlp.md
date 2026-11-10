@@ -1,7 +1,7 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-11-08
+maj: 2026-11-10
 sources:
   - "[[source-2026-11-08-yt-dlp-ejs]]"
   - "[[source-spec]]"
@@ -43,6 +43,21 @@ YouTube pour l'encoder (v0.9.1.31, IE-180). Posé avec Deno dans `bin/yt-dlp/`
 - `--print after_move:<gabarit>` rend yt-dlp silencieux : `--progress` garde
   la progression. *(documenté)*
 - `--no-config` : ignorer une configuration personnelle.
+
+## Liste d'une chaîne (IE-181, v0.9.2.5)
+
+- `--flat-playlist -J` liste les vidéos sans lire leur page : titre,
+  identifiant, durée, mais **ni formats ni date exacte**. *(documenté)*
+- `--extractor-args youtubetab:approximate_date` ajoute à chaque entrée une
+  date approchée, déduite de « il y a 3 semaines ». *(documenté)*
+- `--playlist-items 101:200` lit une tranche de la liste ; on suppose que
+  yt-dlp s'arrête de paginer une fois la tranche lue. *(supposé)*
+- L'adresse nue d'une chaîne (`/@nom`) liste ses **onglets** (Vidéos, Shorts,
+  Directs) plutôt que ses vidéos : IRIS vise `/@nom/videos`. *(supposé, d'après
+  le comportement annoncé de yt-dlp depuis 2023 ; non revérifié)*
+- Les entrées portent `availability` (`subscriber_only`, `needs_auth`…) et
+  `live_status` (`is_upcoming`…), qui servent à écarter ce qui ne se télécharge
+  pas sans compte. *(supposé ; à confirmer sur une vraie chaîne)*
 
 ## Voir aussi
 

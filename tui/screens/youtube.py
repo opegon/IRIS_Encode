@@ -4,8 +4,11 @@ tui/screens/youtube.py — Télécharger une vidéo YouTube (IE-180).
 Ouvert par `U` depuis l'accueil. On colle l'adresse de la vidéo, `Entrée` la
 fait lire par yt-dlp ; on choisit la définition parmi celles qu'elle propose
 et les sous-titres (déposés, ou générés automatiquement — marqués comme tels,
-et jamais cochés d'office), puis « Télécharger ». Rend le fichier produit :
-l'accueil l'ouvre dans son dossier et le coche, prêt pour la file.
+et jamais cochés d'office), puis « Télécharger ». Rend les fichiers produits :
+l'accueil ouvre leur dossier et les coche, prêts pour la file.
+
+L'adresse d'une chaîne ouvre la liste de ses vidéos (`ChaineYouTubeScreen`,
+IE-181), dont on télécharge plusieurs d'un coup.
 
 Les appels à yt-dlp tournent dans un worker ; `Échap` arrête le téléchargement
 en cours et retire ses fichiers partiels.
@@ -30,7 +33,7 @@ from core.preflight import get_tool_path
 from ..common import fmt_duration, raccourcis
 
 
-class YouTubeScreen(ModalScreen["Path | None"]):
+class YouTubeScreen(ModalScreen["list[Path] | None"]):
     """Adresse, puis définition et sous-titres, puis téléchargement."""
 
     CSS = """
@@ -77,7 +80,8 @@ class YouTubeScreen(ModalScreen["Path | None"]):
         with Vertical(id="yt-box"):
             yield Label(_("Download from YouTube"), id="yt-title")
             yield Input(placeholder="https://www.youtube.com/watch?v=…", id="yt-url")
-            yield Static(_("Paste the video's address, then press {key}.").format(
+            yield Static(_("Paste the address of a video or of a channel, "
+                           "then press {key}.").format(
                 key="↵"), id="yt-state", markup=False)
             yield Static("", id="yt-video", markup=False)
             yield Static(_("Resolution"), classes="yt-section", id="yt-res-titre")
@@ -115,6 +119,17 @@ class YouTubeScreen(ModalScreen["Path | None"]):
         if outils is None:
             self._etat(_("yt-dlp or Deno is missing: restart IRIS ENCODE and "
                          "accept their installation."))
+            return
+        chaine = youtube.url_chaine(url)
+        if chaine is not None:
+            from .youtube_chaine import ChaineYouTubeScreen
+
+            def _retour(produits: list[Path] | None) -> None:
+                if produits:
+                    self.dismiss(produits)
+
+            self.app.push_screen(ChaineYouTubeScreen(chaine, self._dossier, outils),
+                                 _retour)
             return
         self._occupe = True
         self._montrer_choix(False)
@@ -211,7 +226,7 @@ class YouTubeScreen(ModalScreen["Path | None"]):
                 self.app.call_from_thread(self._echec, texte_erreur(e))
             return
         if chemin is not None:
-            self.app.call_from_thread(self.dismiss, chemin)
+            self.app.call_from_thread(self.dismiss, [chemin])
 
     def action_cancel(self) -> None:
         self._ferme = True

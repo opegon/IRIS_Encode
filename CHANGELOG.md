@@ -1,5 +1,28 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.5] — 2026-11-10
+
+### Télécharger plusieurs vidéos d'une chaîne YouTube (IE-181)
+
+`U`, puis l'adresse d'une chaîne (`https://www.youtube.com/@nom`) au lieu de
+celle d'une vidéo : IRIS liste ses 100 vidéos les plus récentes, avec leur
+durée et une date approchée ; `+` lit les 100 suivantes. Chaînes publiques
+seulement, sans compte : les vidéos réservées aux membres et les directs à
+venir sont écartés.
+
+- La colonne **Résolution** se remplit en arrière-plan : IRIS lit la page de
+  chaque vidéo, celles cochées d'abord. La date devient exacte au passage.
+- Un **réglage commun** au lot : une résolution maximale (chaque vidéo prend
+  la meilleure qui ne la dépasse pas, à défaut sa plus basse) et les
+  sous-titres, proposés d'après les vidéos cochées, jamais cochés d'office.
+- Les vidéos se téléchargent l'une après l'autre ; un échec est signalé à la
+  fin sans arrêter les autres. Toutes arrivent cochées dans l'accueil.
+  `Échap` arrête la vidéo en cours et garde celles déjà terminées.
+
+Écrit et testé sur des listes fabriquées : rien n'a encore été essayé sur une
+vraie chaîne (wiki, questions ouvertes). Spec § 9.9.1. Tests :
+`tests/test_youtube_chaine.py`, `tests/test_youtube_chaine_ecran.py`.
+
 ## [v0.9.2.4] — 2026-11-09
 
 ### L'accueil ne reste plus figé « en attente » (IE-182)

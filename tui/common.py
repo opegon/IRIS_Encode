@@ -101,6 +101,7 @@ TOUCHES: dict[str, str] = {
     "right":     "→",
     "up":        "↑",
     "down":      "↓",
+    "plus":      "+",
     "shift+up":   "⇧↑",
     "shift+down": "⇧↓",
     "ctrl+up":    "Ctrl+↑",

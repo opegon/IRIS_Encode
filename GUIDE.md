@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.2.4
+**Version**: 0.9.2.5
 **Date**: 2026-11-09
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -776,6 +776,17 @@ Needs the YouTube tools, offered at startup (see README, chapter 4).
 YouTube serves 1440p and 2160p only in VP9 or AV1, which the TV may not
 read: the encode turns it into the profile's codec. A private video, or one
 that needs an account (age check), cannot be downloaded.
+
+**Several videos from a channel.** At step 2, paste a channel's address
+(`https://www.youtube.com/@name`): IRIS lists its 100 most recent videos
+(`+`: the next 100), with their duration and date — "≈" while it is only
+approximate. The **Resolution** column fills in while you check videos
+(`␣`): IRIS reads each video's page, the checked ones first. Then choose the
+**maximum resolution** (each video takes the best one not above it) and the
+**subtitles**, offered from the checked videos, then **Download**. The
+videos download one after the other; one that fails is reported at the end
+without stopping the others. They all arrive checked in their folder. Only
+public videos are listed.
 
 ---
 

@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.4 — document de référence courant
-**Date** : 2026-11-09
+**Version** : 0.9.2.5 — document de référence courant
+**Date** : 2026-11-10
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -1985,8 +1985,30 @@ le nom) écrits pendant ce téléchargement — un téléchargement plus ancien 
 même vidéo reste. Les erreurs de yt-dlp s'affichent telles quelles (sa ligne
 `ERROR:`).
 
-Ce qui n'est pas fait : parcourir une chaîne (IE-181), les vidéos privées ou
-réservées à un compte (cookies du navigateur).
+#### 9.9.1 Vidéos d'une chaîne publique (v0.9.2.5, IE-181)
+
+L'adresse d'une chaîne collée dans `YouTubeScreen` (`url_chaine` : `@nom`,
+`/channel/…`, `/c/…`, `/user/…`, onglet éventuel compris) ouvre
+`ChaineYouTubeScreen` (`tui/screens/youtube_chaine.py`) sur l'onglet
+« Vidéos » de la chaîne. Une adresse de vidéo, de playlist ou de Short reste
+une vidéo seule.
+
+| Décision | Raison |
+|---|---|
+| **Liste à plat, par pages de 100** (`lister_chaine`, `PAGE_CHAINE`) | `--flat-playlist -J --playlist-items <début>:<fin>` : titre, durée, identifiant, en quelques secondes même sur une grosse chaîne. Les plus récentes d'abord ; `+` lit la page suivante, quand la précédente était pleine (`Chaine.suite`, comptée avant le tri ci-dessous). |
+| **Date approchée, puis exacte** | `--extractor-args youtubetab:approximate_date` : la liste à plat n'a sinon aucune date ; celle-ci se déduit de « il y a 3 semaines », affichée « ≈ AAAA-MM-JJ ». La page de la vidéo, une fois lue, donne la date exacte (`Video.date`, `upload_date`). |
+| **Public seulement** (`lire_chaine`) | Écartées : `availability` `subscriber_only`, `premium_only`, `needs_auth` ; `live_status` `is_upcoming`, `is_live` ; les entrées qui sont des onglets (`ie_key` `YoutubeTab`). Aucun cookie, aucun compte. |
+| **Définition lue en arrière-plan** | La liste à plat ne la donne pas : un worker lit la page de chaque vidéo (`analyser`, comme pour une vidéo seule), les cochées d'abord, puis dans l'ordre de la liste. La colonne passe de « … » à la meilleure définition, ou « ✗ » si la page ne se lit pas. Ces lectures resservent au téléchargement. |
+| **Réglage commun au lot** | Une définition maximale (2160p par défaut) : chaque vidéo prend sa meilleure définition qui ne la dépasse pas, à défaut sa plus basse (`Video.hauteur_sous`). Les sous-titres proposés sont ceux des vidéos cochées déjà lues, une fois chacun (même clé, même origine : `sous_titres_communs`), jamais cochés d'office ; chaque vidéo reçoit ceux qu'elle a (`sous_titres_retenus`). |
+| **Une vidéo après l'autre** | Même commande que la vidéo seule (`commande`, `Telechargement`). Un échec n'arrête pas les suivantes : il est notifié à la fin (titre et erreur). Les fichiers produits reviennent à l'accueil, cochés ; `Échap` arrête la vidéo en cours (ses morceaux retirés) et rend celles déjà terminées. |
+
+La liste se lit sans compte, mais **rien n'a été essayé sur une vraie chaîne**
+(`wiki/syntheses/questions-ouvertes.md`, `wiki/entites/yt-dlp.md`) : la forme des entrées à plat
+(`duration`, `availability`, `live_status`, date approchée) est supposée
+d'après la documentation de yt-dlp.
+
+Ce qui n'est pas fait : les vidéos privées ou réservées à un compte (cookies
+du navigateur), les onglets Shorts et Directs d'une chaîne.
 
 ---
 
@@ -4340,6 +4362,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.0.8 | 2026-10-25 | **Filtre par codec** (§ 14) : `L` propose aussi les codecs vidéo présents (`codec:hevc`…) ; un critère à la fois · `tests/test_filtre_accueil.py` |
 | 0.9.2.0 | 2026-11-08 | **Options sans rescan inutile** (§ 14) : au retour de `Ctrl+O`, un dossier n'est relu que si la durée minimale des titres a changé (CR-98) ; en mode assistant, `F4`, `F5` et `Ctrl+O` répondent sans être annoncés (précisé) ; guides et spec donnent `Ctrl+O` pour les options · `tests/test_revue_interface.py` |
 | 0.9.2.4 | 2026-11-09 | **Chargements croisés de l'accueil** (§ 14.1, IE-182) : un `_Releve` ne remplace que celui d'une époque plus ancienne (`_verrou_releve`) ; la liste ne reste plus « en attente » ; `test_accueil_progressif` n'échoue plus par intermittence · `tests/test_accueil_chargements_croises.py` |
+| 0.9.2.5 | 2026-11-10 | **Vidéos d'une chaîne YouTube publique** (§ 9.9.1, IE-181) : `url_chaine`, `lister_chaine` (liste à plat par pages de 100, date approchée), `ChaineYouTubeScreen` (définition lue en arrière-plan, cochées d'abord ; réglage commun : définition maximale `Video.hauteur_sous`, sous-titres `sous_titres_communs` ; téléchargement l'un après l'autre) · `YouTubeScreen` rend une liste de fichiers · `tests/test_youtube_chaine.py`, `tests/test_youtube_chaine_ecran.py` |
 | 0.9.2.3 | 2026-11-09 | **Piste audio sans décodeur exclue** (§ 8.5) : codec `unknown` (audio chiffré d'une release WEB) écarté avant toute règle, sélection manuelle comprise ; rôle de piste originale reporté sur la première piste lisible · `tests/test_audio_illisible.py` |
 | 0.9.2.2 | 2026-11-09 | **Entrelacement hors du listage** (§ 8.1, § 14.1, IE-174) : `scan()` ne relit qu'une analyse gardée ; seconde passe de l'accueil avec jauge ; `_apres_entrelacement` pour `F1`, `F2`, `T`, l'assistant ; `core/analyses.py` (`data/analyses.json`, clé sans le chemin, expiration 180 jours) · `tests/test_entrelacement.py`, `tests/test_accueil_entrelacement.py` |
 | 0.9.2.1 | 2026-11-09 | **Clés d'API dans les options** (§ 14.8) : section « Clés d'API » d'`OptionsScreen` (bouton qui ouvre `ClesScreen`), `K` retiré de la gestion des profils ; les messages d'OpenSubtitles renvoient à `Ctrl+O` · `tests/test_cles.py` |

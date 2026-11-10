@@ -1668,18 +1668,25 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def _ouvrir_youtube(self, dossier: Path) -> None:
         from .youtube import YouTubeScreen
 
-        def _telecharge(chemin: Path | None) -> None:
-            if chemin is None:
+        def _telecharge(chemins: list[Path] | None) -> None:
+            if not chemins:
                 return
-            # Le dossier de la vidéo, la vidéo cochée : `F2` l'encode.
-            if self._nav.is_virtual or self._nav.current != chemin.parent:
-                self._nav.enter(chemin.parent)
+            # Le dossier des vidéos, les vidéos cochées : `F2` les encode.
+            dossier = chemins[0].parent
+            if self._nav.is_virtual or self._nav.current != dossier:
+                self._nav.enter(dossier)
                 self._selected.clear()
                 self._precoche = None
-            self._selected.add(chemin)
+            self._selected.update(chemins)
             self._refresh_view()
-            self.notify(_("Downloaded: {file}. It is checked, ready to "
-                          "encode.").format(file=chemin.name), timeout=8)
+            if len(chemins) == 1:
+                self.notify(_("Downloaded: {file}. It is checked, ready to "
+                              "encode.").format(file=chemins[0].name), timeout=8)
+            else:
+                self.notify(ngettext(
+                    "{count} video downloaded. It is checked, ready to encode.",
+                    "{count} videos downloaded. They are checked, ready to encode.",
+                    len(chemins)).format(count=len(chemins)), timeout=8)
 
         self.app.push_screen(YouTubeScreen(dossier), _telecharge)
 

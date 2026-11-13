@@ -41,7 +41,7 @@ from core.muxer import (
 from core.platform import PlatformProfile
 from core.scanner import est_intermediaire
 from ..common import (barre_etat, actions_ecran, colonne_fixe, fmt_bytes,
-                      fmt_duration,
+                      ecart_pct, fmt_duration,
                       footer_line2, record_measured_speed,
                       retour_accueil, touche)
 # La même estimation et le même dégradé que la colonne Estim de l'accueil :
@@ -357,8 +357,7 @@ class RunScreen(TableNavMixin, Screen):
             t.append(fmt_bytes(est), style="dim")
             return t
         delta = (est - src) * 100 / src
-        signe = "+" if delta > 0 else ""
-        t.append(f"{fmt_bytes(est)} ({signe}{delta:.0f}%)",
+        t.append(f"{fmt_bytes(est)} ({ecart_pct(delta)})",
                  style=_teinte_estimation(delta))
         return t
 
@@ -2297,6 +2296,12 @@ class RunScreen(TableNavMixin, Screen):
         ne doit pas se dire en pause.
         """
         if self._process is None:
+            # Une étape mkvmerge (mux préalable, remux) ne se suspend pas ;
+            # sans un mot, la touche paraissait cassée (CR-141, UX-17).
+            if self._mux is not None:
+                self.app.bell()
+                self.notify(_("This step (mkvmerge) cannot be paused."),
+                            severity="warning", timeout=4)
             return
         voulu = not self._paused
         self._paused = (self._process.pause() if voulu

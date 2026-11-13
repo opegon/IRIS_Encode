@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.15 — document de référence courant
+**Version** : 0.9.2.16 — document de référence courant
 **Date** : 2026-11-13
 **Statut** : stable
 
@@ -2920,7 +2920,10 @@ Conventions transverses :
   `raccourcis()` sont la seule source ; `SEP_TOUCHE` et `SEP_ENTREE` fixent
   l'espacement. Les glyphes (`↵`, `⌫`, `␣`, `←`) sont préférés là où ils
   existent : ils tiennent en une colonne, ce qui compte sur un footer de trois
-  lignes. Une notation composée (`+/-`, `Shift+↑/↓`) traverse intacte.
+  lignes. Une notation composée (`+/-`, `Shift+↑/↓`) traverse intacte ; derrière
+  `Ctrl+` ou `Alt+`, le modificateur garde sa casse et le reste passe par
+  `touche()` — le recalage affichait « CTRL+↑/↓ » à côté de « Ctrl+Début »
+  (v0.9.2.16, CR-141).
 - **Les couleurs porteuses de sens se décident dans `core.decision`, en rôles.**
   `Emphase` nomme ce qu'une couleur veut dire — `INACTION`, `SANS_PERTE`,
   `ORDINAIRE`, `MODIFIEE`, `ALERTE` — et `STYLE_PAR_EMPHASE` seule choisit les
@@ -3049,6 +3052,17 @@ Conventions transverses :
 - **`TwoLineFooter`** — footer 2 lignes remplaçant le Footer natif. Ligne 1 : navigation.
   Ligne 2 : actions. `F10 Quitter` toujours en dernier.
 - **Touches retour normalisées** : `Backspace` / `Esc` sur tous les écrans.
+- **Pas de palette de commandes** (v0.9.2.16, CR-139) :
+  `IrisEncodeApp.ENABLE_COMMAND_PALETTE = False`. Celle de Textual (`Ctrl+P`,
+  clic sur l'icône de l'en-tête) offrait « Keys », « Theme », « Quit »… en
+  anglais dans les deux langues, hors du catalogue et du guide.
+- **Une touche sans effet le dit** (UX-17), son et notification : `␣` sur la
+  piste audio d'origine (pistes, assistant), `+/-` ou `↵` sur le champ DV d'une
+  source sans Dolby Vision ou d'un H264 qui impose le SDR (pistes), `P` pendant
+  une étape mkvmerge de la file (v0.9.2.16, CR-141).
+- **Un écart en pourcentage s'arrondit avant son signe** (`common.ecart_pct`) :
+  « 2 Mo (-0%) » devient « 2 Mo (0%) ». Une langue `und` s'affiche « ? », comme
+  une langue absente (`langue_affichee`, v0.9.2.16, CR-141).
 - **`ConfirmModal`** (`tui/screens/confirm.py`) — toute confirmation passe par elle.
   Bordure `$warning` si destructif, `←/→` déplacent le focus, `↵` active le bouton
   focalisé (jamais de validation aveugle), `Esc`/`⌫` annulent.
@@ -3189,6 +3203,10 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 │ Back Remonter  Home/End/PgUp/PgDn  F1 Aperçu  F2 Encoder  F4 Profil  F5 Gérer  Sh+Tab/Tab Col  < Rétrécir  > Élargir  F10 Quitter                  │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+La barre d'état coupe le chemin au milieu (`tronquer_milieu`) pour laisser voir
+les compteurs : un chemin long les poussait hors de l'écran, et à 80 colonnes il
+restait seul (v0.9.2.16, CR-141).
 
 #### Touches
 
@@ -3985,6 +4003,11 @@ sous Textual 8 (`Select.BLANK` n'y vaut que `False`) : `_est_vide()` teste les
 deux. Sans cela, le formulaire affichait « Select.NULLk » et `dump()` rendait
 `Select.NULL`, enregistré dans le profil en mémoire.
 
+**`+` / `-`** passent à la valeur suivante / précédente de la liste focalisée
+(`_cycle_focused_select`). `on_key` compare `event.character` : Textual nomme
+ces touches `plus` et `minus` (`kp_plus`, `kp_minus` au pavé numérique), et la
+comparaison à « + » et « - » ne trouvait rien (v0.9.2.16, CR-134).
+
 Le formulaire `ProfileForm` est organisé en **six sections**, chacune suivie
 d'une ligne qui énonce **la conséquence des valeurs choisies** — recalculée à
 chaque changement, pas un texte d'aide figé :
@@ -4525,6 +4548,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.2.13 | 2026-11-13 | **Fil d'interface et workers** (§ 12.1, § 12.4, § 14.1, § 14.5, IE-191) : relecture du fichier muxé et analyse d'entrelacement dans le worker du mux, chaîne prévue calculée hors du fil d'interface (CR-124) ; filet par fichier dans la boucle d'encodage et dans les workers OpenSubtitles (CR-125) ; un seul scan récursif, aperçu ouvert seulement sur l'accueil, gardé sinon pour `R` (CR-128) · `tests/test_fil_workers.py` |
 | 0.9.2.14 | 2026-11-13 | **Écran des pistes et assistant** (§ 14.0, § 14.1, § 14.2, IE-192) : `F4` refait la décision entière, sous-titres compris, et les cases (CR-132) ; un débit choisi sur un SKIP survit au forçage (CR-133) ; bandeau d'aide et seconde ligne de la barre de profil dessinés (CR-135) ; lignes reconstruites à chaque bascule, ligne vidéo sur deux lignes, `—` sans réencodage (CR-136) ; l'assistant garde la piste audio d'origine (CR-138) · `tests/test_ecran_pistes_suivi.py` |
 | 0.9.2.15 | 2026-11-13 | **Aperçu et estimation** (§ 12.3, § 14.6, IE-193) : vitesse mesurée rangée par encodeur effectif, rien pour une copie (`encodeur_prevu`, CR-126) ; l'aperçu compte les lignes retenues, estime et teinte comme l'accueil (`texte_estimation`), Estim. 14 et Résolution 18 avec ellipse, lots dans l'ordre des lignes, préréglage de la décision, tailles lues une fois (CR-137) · `tests/test_apercu_estimation.py` |
+| 0.9.2.16 | 2026-11-13 | **Interface : touches et libellés** (§ 14, § 14.1, § 14.8, IE-194) : `+/-` du formulaire de profil (`event.character`, CR-134) ; palette de commandes Textual désactivée (CR-139) ; touches sans effet annoncées — piste d'origine, champ DV, `P` pendant mkvmerge —, écart arrondi avant son signe (`ecart_pct`), `und` affiché « ? », `Ctrl+` gardé dans les notations composées, chemin de la barre d'état coupé au milieu (CR-141) · `tests/test_touches_et_libelles.py`, `tests/test_profile_form.py` |
 | 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |
 | 0.9.2.11 | 2026-11-13 | **HDR sous la tranche 1080p** (§ 8.1, § 14.0, IE-189) : la décision automatique garde en HEVC toute source dont la sortie reste HDR, comme le forçage ; H264 seulement pour une sortie SDR (CR-118) · `tests/test_hdr_tranche.py` |
 | 0.9.2.10 | 2026-11-13 | **Sous-titres et conteneur** (§ 8.6, IE-188) : `mov_text` converti en SubRip vers Matroska (`-c:s:N srt`, CR-117) ; en `container = "mp4"`, seuls les sous-titres doublés par un texte de même langue et de même nature sont écartés, sinon le conteneur cède ; pistes écartées nommées dans l'Aperçu (CR-119) · `tests/test_mov_text_mkv.py`, `tests/test_conteneur.py` |

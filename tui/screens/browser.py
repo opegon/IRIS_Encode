@@ -37,13 +37,14 @@ from core.decision import (
 from core.scanner import (SCAN_WORKERS, analyser_entrelacement, deja_produit,
                           entrelacement_en_attente, scan, scan_directory_recursive)
 from ..common import sauver_config
-from ..common import (barre_etat, colonne_fixe,
+from ..common import (barre_etat, colonne_fixe, SEP_ETAT,
     touche,
     cellule,
     tronquer_milieu,
     DV_VALUE_STYLES,
     estimate_encoding_duration,
     fmt_bytes,
+    ecart_pct,
     fmt_duration,
     footer_line2,
     get_measured_speed,
@@ -215,8 +216,7 @@ def texte_estimation(dec: FileDecision, src_bytes: int) -> tuple[int, str, str]:
         return est, fmt_bytes(est), "dim"
     if src_bytes > 0:
         delta = (est - src_bytes) * 100 / src_bytes
-        signe = "+" if delta > 0 else ""
-        return est, f"{fmt_bytes(est)} ({signe}{delta:.0f}%)", _teinte_estimation(delta)
+        return est, f"{fmt_bytes(est)} ({ecart_pct(delta)})", _teinte_estimation(delta)
     return est, fmt_bytes(est), ""
 
 # ─── Filtre de l'accueil (L, Z)───────────────────────────────────────────────
@@ -821,8 +821,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # Les lignes grisées n'avaient pas de légende : on les prenait pour
         # désactivées (revue du 2026-11-08).
         n_produits = len(self._produits)
-        self.query_one("#status-bar", Static).update(barre_etat(
-            "", self._nav.breadcrumb(),
+        autres = (
             ngettext("{selected}/{total} selected", "{selected}/{total} selected",
                      sel_count).format(selected=sel_count, total=total_files),
             # TRANSLATORS: files this application produced, shown dimmed in the list.
@@ -834,7 +833,18 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             if filtre else "",
             self._libelle_tri(),
             _("Col: {column}").format(column=self.resize_col_label) + "  </>",
-        ))
+        )
+        # Le chemin cède la place aux compteurs, coupé au milieu : un chemin
+        # long les poussait hors de l'écran, et à 80 colonnes il restait seul
+        # (CR-141). Hors écran monté (largeur nulle), rien n'est coupé.
+        chemin = self._nav.breadcrumb()
+        largeur = self.size.width
+        if largeur:
+            # Marges de la barre (2 + 2) et séparateur avant les compteurs.
+            place = largeur - 4 - cell_len(barre_etat("", *autres)) - cell_len(SEP_ETAT)
+            if cell_len(chemin) > place:
+                chemin = tronquer_milieu(chemin, max(place, 12))
+        self.query_one("#status-bar", Static).update(barre_etat("", chemin, *autres))
 
     def _update_profile_bar(self) -> None:
         if self._nav.is_virtual:

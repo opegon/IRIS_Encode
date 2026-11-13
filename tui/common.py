@@ -138,7 +138,14 @@ def touche(nom: str) -> str:
     Les symboles passent tels quels ; un nom écrit (« Suppr ») se traduit."""
     if nom.lower() in _TOUCHES_CONTEXTE:
         return _TOUCHES_CONTEXTE[nom.lower()]()
-    return _(TOUCHES[nom.lower()]) if nom.lower() in TOUCHES else nom.upper()
+    if nom.lower() in TOUCHES:
+        return _(TOUCHES[nom.lower()])
+    # Une notation composée garde la casse des modificateurs : « CTRL+↑/↓ »
+    # côtoyait « Ctrl+Début » (CR-141).
+    mod, plus, reste = nom.partition("+")
+    if plus and reste and mod.lower() in ("ctrl", "alt"):
+        return f"{mod.capitalize()}+{touche(reste)}"
+    return nom.upper()
 
 
 def raccourci(nom: str, libelle: str) -> str:
@@ -179,6 +186,14 @@ DV_VALUE_STYLES: dict[str, str] = {
 
 
 # ─── Formatage ────────────────────────────────────────────────────────────────
+
+def ecart_pct(delta: float) -> str:
+    """Un écart en pourcentage, signé : « +28% », « -12% », « 0% ».
+    Arrondi avant le signe : « 2 Mo (-0%) » disait une baisse qui n'est pas
+    là (CR-141)."""
+    pct = round(delta)
+    return f"{'+' if pct > 0 else ''}{pct}%"
+
 
 def tronquer_milieu(texte: str, largeur: int) -> str:
     """Tronque en gardant le début **et** la fin, jamais par la droite seule.
@@ -642,5 +657,7 @@ def nom_codec(codec: str) -> str:
 
 
 def langue_affichee(code: str) -> str:
-    """Code de langue, ou « ? » quand la piste n'en déclare pas."""
-    return code or "?"
+    """Code de langue, ou « ? » quand la piste n'en déclare pas — `und`
+    (« indéterminée ») compris : « ? » et « und » côtoyaient la même colonne
+    pour dire la même chose (CR-141)."""
+    return "?" if not code or code.lower() == "und" else code

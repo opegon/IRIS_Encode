@@ -731,6 +731,8 @@ class ProfileForm(Widget):
         elif event.key == "escape":
             event.stop()
             self.post_message(ProfileCancelled())
-        elif event.key in ("+", "-"):
-            if self._cycle_focused_select(1 if event.key == "+" else -1):
+        # Textual nomme ces touches `plus` et `minus` (`kp_plus`, `kp_minus` au
+        # pavé numérique) : comparer à « + » et « - » ne trouvait rien (CR-134).
+        elif event.character in ("+", "-"):
+            if self._cycle_focused_select(1 if event.character == "+" else -1):
                 event.stop()

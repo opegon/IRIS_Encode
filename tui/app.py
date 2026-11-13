@@ -60,6 +60,10 @@ class IrisEncodeApp(App):
 
     TITLE     = "IRIS ENCODE"
     SUB_TITLE = f"v{__version__}"
+    # La palette de Textual (`Ctrl+P`, clic sur l'icône de l'en-tête) offrait
+    # « Keys », « Theme », « Quit »… en anglais dans les deux langues, hors du
+    # catalogue et du guide ; « Theme » changeait les couleurs (CR-139).
+    ENABLE_COMMAND_PALETTE = False
 
     # CSS global — styles communs à tous les écrans (évite la duplication
     # des barres de statut dans chaque DEFAULT_CSS d'écran).

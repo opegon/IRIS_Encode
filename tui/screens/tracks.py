@@ -236,6 +236,21 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             return self._ov_delete
         return self._decision.profile.data.get("delete_source", False)
 
+    def _dv_modifiable(self) -> bool:
+        """Le champ DV se règle-t-il ? Sinon, le dire (CR-141) : `+/-` ne
+        faisaient rien, sans un mot, sur une source sans Dolby Vision ou quand
+        H264 impose le SDR."""
+        info = self._decision.info
+        if h264_force_sdr(info, self._eff_action()):
+            avertir_h264_sdr(self, info, self._eff_action())
+            return False
+        if self._eff_dv() == DVAction.NONE:
+            self.app.bell()
+            self.notify(_("This source has no Dolby Vision."),
+                        severity="warning", timeout=3)
+            return False
+        return True
+
     def _dovi_available(self) -> bool:
         """True si dovi_tool est trouvé (PATH ou ./bin/)."""
         return dovi.is_available(cfg_mod.get_bin_dir(self.app.cfg))  # type: ignore[attr-defined]
@@ -590,6 +605,10 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         row_type, idx = info
         if row_type == _ROW_AUDIO:
             if any(ad.locked and ad.track.index == idx for ad in self._decision.audio):
+                # Le dire : une touche muette se lit comme cassée (CR-141).
+                self.app.bell()
+                self.notify(_("The original audio track is always kept."),
+                            severity="warning", timeout=3)
                 return
             self._sel_audio.symmetric_difference_update({idx})
         elif row_type == _ROW_SUBTITLE:
@@ -644,9 +663,9 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             self._ov_bitrate = nxt if nxt != self._decision.video.target_bitrate else None
 
         elif field == "dv":
-            cur = self._eff_dv()
-            if cur == DVAction.NONE:
+            if not self._dv_modifiable():
                 return
+            cur = self._eff_dv()
             nxt = _DV_CYCLE[(_DV_CYCLE.index(cur) + delta) % len(_DV_CYCLE)]
             self._ov_dv = nxt if nxt != self._decision.video.dv_action else None
 
@@ -753,7 +772,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             cfg = (title_b, opts, current, apply_bitrate)
 
         elif field == "dv":
-            if self._eff_dv() == DVAction.NONE: return
+            if not self._dv_modifiable(): return
             opts    = [_DV_SHORT[d] for d in _DV_CYCLE]
             current = _DV_CYCLE.index(self._eff_dv())
             def apply_dv(idx, s=self):

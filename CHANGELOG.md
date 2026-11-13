@@ -1,5 +1,27 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.16] — 2026-11-13
+
+### Interface : touches et libellés (IE-194)
+
+- **`+` et `-` marchent dans le formulaire de profil.** Le pied de page les
+  annonçait, mais elles ne faisaient rien : Textual les nomme `plus` et `minus`
+  (CR-134).
+- **Plus de palette de commandes Textual.** `Ctrl+P` ou un clic sur l'icône de
+  l'en-tête ouvraient « Keys », « Theme », « Quit »… en anglais, hors du guide ;
+  « Theme » changeait les couleurs de la session (CR-139).
+- **Une touche sans effet le dit.** `␣` sur la piste audio d'origine, `+/-` sur
+  le champ DV d'une source sans Dolby Vision ou d'un H264 qui impose le SDR, `P`
+  pendant une étape mkvmerge de la file : un son et un message, au lieu de rien
+  (CR-141).
+- **Libellés.** « 2 Mo (-0%) » devient « 2 Mo (0%) » ; une langue `und`
+  s'affiche « ? », comme une langue absente ; « CTRL+↑/↓ » du recalage s'écrit
+  « Ctrl+↑/↓ » comme ailleurs ; la barre d'état de l'accueil coupe un chemin long
+  au milieu pour laisser voir les compteurs, y compris à 80 colonnes (CR-141).
+
+Spec § 14, § 14.1, § 14.8. Revue de code du 2026-11-13. Tests :
+`tests/test_touches_et_libelles.py`, `tests/test_profile_form.py`.
+
 ## [v0.9.2.15] — 2026-11-13
 
 ### Aperçu et estimation (IE-193)

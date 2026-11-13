@@ -42,6 +42,7 @@ from ..common import (confier_a_la_file, langue_affichee, barre_etat,
     bitrate_picker_config,
     estimate_encoding_duration,
     fmt_bytes,
+    ecart_pct,
     fmt_duration,
     footer_line2,
     get_measured_speed,
@@ -290,11 +291,10 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         gain_str = ""
         if total_src > 0 and total_est > 0:
             delta_pct = (total_est - total_src) * 100 / total_src
-            sign      = "+" if delta_pct > 0 else ""
             gain_str  = (
                 "  ·  " + _("Source: {size}").format(size=fmt_bytes(total_src)) + "  →  "
                 + _("Estimated: {size}").format(size=fmt_bytes(total_est))
-                + f" ({sign}{delta_pct:.0f}%)"
+                + f" ({ecart_pct(delta_pct)})"
             )
 
         av1_str   = f"  ·  AV1 {av1}" if av1 else ""

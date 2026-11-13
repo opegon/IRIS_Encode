@@ -109,6 +109,42 @@ def test_le_formulaire_garde_la_valeur_du_profil():
     assert "NULL" not in cons and "3500k en 4K" in cons
 
 
+def test_plus_et_moins_changent_la_liste_focalisee():
+    """CR-134 : le pied de page annonce « +/- Valeur suiv./préc. », et les
+    deux touches ne faisaient rien — Textual les nomme `plus` et `minus`."""
+    import asyncio
+
+    from textual.app import App
+
+    from tui.widgets.profile_form import ProfileForm
+
+    class _App(App):
+        def compose(self):
+            yield ProfileForm()
+
+    async def _run():
+        app = _App()
+        async with app.run_test(size=(160, 50)) as pilot:
+            form = app.query_one(ProfileForm)
+            form.load("serie_basic", {"bitrate_1080p_kbps": 1800})
+            await pilot.pause(0.2)
+            champ, opts = next(iter(form._opts_champ.items()))
+            liste = form.query_one(champ, Select)
+            liste.focus()
+            await pilot.pause(0.1)
+            valeurs = [v for _l, v in opts]
+            avant = liste.value
+            await pilot.press("+")
+            apres_plus = liste.value
+            await pilot.press("-")
+            return valeurs, avant, apres_plus, liste.value
+
+    valeurs, avant, apres_plus, apres_moins = asyncio.run(_run())
+    attendu = valeurs[(valeurs.index(avant) + 1) % len(valeurs)]
+    assert apres_plus == attendu
+    assert apres_moins == avant
+
+
 def test_les_libelles_du_formulaire_ont_une_casse():
     """
     UX-23 : « id », « preset », « traitement » en minuscules sous des titres

@@ -14,7 +14,7 @@ Numérotation à la suite de la revue du 2026-10-08 : constats `CR-113` à
 
 - **36 constats** : 3 critiques, 5 majeurs, 28 mineurs. 24 reproduits (code
   réel exécuté sur fichiers synthétiques, écrans pilotés), 11 lus, 1 supposé.
-- **Cahier de recette** : 74 cas, 41 conformes, 33 non conformes — chacun
+- **Cahier de recette** : 74 cas, 31 conformes, 43 non conformes — chacun
   rattaché à un constat.
 - **Tests** : 2 525 collectés ; avec ffmpeg 6.1.1 et mkvmerge v82 dans le
   `PATH`, 2 456 réussis, 15 échecs, 54 ignorés (§ 3). Les échecs sont d'environnement, sauf un test qui

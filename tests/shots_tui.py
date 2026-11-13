@@ -509,14 +509,18 @@ async def context_segments() -> None:
 
 
 async def main() -> None:
+    from smoke_tui import _profils_isoles
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    for scenario in (context_real, context_temp, context_segments):
-        try:
-            await scenario()
-        except Exception:
-            traceback.print_exc()
-            MANIFEST.append((scenario.__name__, "contexte entier", "-",
-                             "ECHEC", "voir la trace ci-dessus"))
+    # Profils, config.toml et analyses dans un dossier temporaire : les prises
+    # écrivaient ceux de l'utilisateur (CR-148).
+    with _profils_isoles():
+        for scenario in (context_real, context_temp, context_segments):
+            try:
+                await scenario()
+            except Exception:
+                traceback.print_exc()
+                MANIFEST.append((scenario.__name__, "contexte entier", "-",
+                                 "ECHEC", "voir la trace ci-dessus"))
 
     print()
     print(f"{'prise':22} {'ecran':24} {'etat':12} detail")

@@ -87,8 +87,13 @@ def _sub(file_id, lang="fr", hash_ok=False, count=10, release="Film.2019.1080p")
 
 
 @pytest.fixture
-def serveur(monkeypatch):
-    """Rejoue des réponses par route ; `appels` garde (méthode, url, kw)."""
+def serveur(monkeypatch, tmp_path):
+    """Rejoue des réponses par route ; `appels` garde (méthode, url, kw).
+
+    Les sous-titres téléchargés vont dans le dossier du test, pas dans le vrai
+    dossier temporaire du système (CR-148)."""
+    import tempfile
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path))
     etat = {"routes": {}, "appels": []}
 
     def request(methode, url, headers=None, timeout=None, **kw):

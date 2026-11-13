@@ -421,9 +421,11 @@ def test_build_apercu_pose_les_deux_hypotheses(tmp_path):
     assert cmd.index("-c:v") < cmd.index("-i") and cmd[-1] == str(tmp_path / "a.png")
     assert "thumbnail=" in graphe and "hstack=inputs=2" in graphe
     gauche, droite = graphe.split(";")[1:3]
-    assert "setsar=8/9,scale=640:480" in gauche and "text='4\:3  640x480'" in gauche
-    assert "setsar=32/27,scale=852:480" in droite and "text='16\:9  852x480'" in droite
-    assert "fontfile='C\:/Windows/Fonts/arial.ttf'" in gauche
+    # Chaînes brutes : « \: » hors d'elles est une séquence d'échappement
+    # invalide (SyntaxWarning, erreur dans une version future, CR-148).
+    assert "setsar=8/9,scale=640:480" in gauche and r"text='4\:3  640x480'" in gauche
+    assert "setsar=32/27,scale=852:480" in droite and r"text='16\:9  852x480'" in droite
+    assert r"fontfile='C\:/Windows/Fonts/arial.ttf'" in gauche
 
 
 def test_build_apercu_sans_police_ni_etiquette(tmp_path):

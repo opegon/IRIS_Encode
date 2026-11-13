@@ -21,9 +21,11 @@ from core.profiles import Profile
 from core.scanner import AudioTrack, SubtitleTrack, VideoInfo
 
 RACINE = Path(__file__).resolve().parent.parent
-_FFMPEG, _FFPROBE = RACINE / "bin" / "ffmpeg.exe", RACINE / "bin" / "ffprobe.exe"
+from tests.outils_reels import outil  # noqa: E402
+
+_FFMPEG, _FFPROBE = outil("ffmpeg"), outil("ffprobe")
 outils = pytest.mark.skipif(not (_FFMPEG.exists() and _FFPROBE.exists()),
-                            reason="ffmpeg du projet absent")
+                            reason="ffmpeg absent")
 
 SRT = "1\n00:00:01,000 --> 00:00:02,000\nBonjour é\n\n2\n00:00:03,000 --> 00:00:04,000\nAu revoir\n"
 

@@ -410,8 +410,12 @@ def _pcm(index, bits):
                               language="fre", title="", bitrate=0, bits=bits)
 
 
-def test_le_lpcm_devient_un_pcm_de_meme_profondeur(disque):
-    """CR-05 : recopié, le `pcm_dvd` faisait échouer l'extraction du titre."""
+def test_le_lpcm_devient_un_pcm_de_meme_profondeur(disque, monkeypatch):
+    """CR-05 : recopié, le `pcm_dvd` faisait échouer l'extraction du titre.
+
+    L'outil DVD est posé ici : le test ne passait que derrière un test qui
+    avait construit l'application sur une machine équipée (CR-146)."""
+    monkeypatch.setattr(dvd, "_ffmpeg", "ffmpeg-dvd")
     ac3 = scanner.AudioTrack(index=0, codec="ac3", channels=6, language="eng",
                              title="", bitrate=448_000)
     cmd = dvd.build_extraction_command(dvd.principal(disque), disque / "x.mkv",
@@ -423,10 +427,12 @@ def test_le_lpcm_devient_un_pcm_de_meme_profondeur(disque):
     assert cmd[cmd.index("-c:a:3") + 1] == "pcm_s24le"
 
 
-_BIN = Path(__file__).resolve().parent.parent / "bin"
+from tests.outils_reels import outil  # noqa: E402
+
+_FFMPEG = outil("ffmpeg")
 
 
-@pytest.mark.skipif(not (_BIN / "ffmpeg.exe").exists(), reason="ffmpeg du projet absent")
+@pytest.mark.skipif(not _FFMPEG.exists(), reason="ffmpeg absent")
 @pytest.mark.parametrize("fmt,bits,attendu", [("s16", 16, "pcm_s16le"),
                                               ("s32", 24, "pcm_s24le")])
 def test_l_extraction_d_un_lpcm_reussit(tmp_path, disque, monkeypatch, fmt, bits, attendu):
@@ -436,7 +442,7 @@ def test_l_extraction_d_un_lpcm_reussit(tmp_path, disque, monkeypatch, fmt, bits
     le démultiplexeur `dvdvideo` donne, lui."""
     import json
     import subprocess
-    ffmpeg = str(_BIN / "ffmpeg.exe")
+    ffmpeg = str(_FFMPEG)
     vob = tmp_path / "t.vob"
     subprocess.run([ffmpeg, "-y", "-loglevel", "error",
                     "-f", "lavfi", "-i", "testsrc=size=720x576:rate=25:duration=2",
@@ -451,7 +457,7 @@ def test_l_extraction_d_un_lpcm_reussit(tmp_path, disque, monkeypatch, fmt, bits
     r = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace")
     assert r.returncode == 0, r.stderr[-500:]
     flux = json.loads(subprocess.run(
-        [str(_BIN / "ffprobe.exe"), "-v", "error", "-print_format", "json",
+        [str(outil("ffprobe")), "-v", "error", "-print_format", "json",
          "-show_streams", "-select_streams", "a", str(sortie)],
         capture_output=True, encoding="utf-8", check=True).stdout)["streams"]
     assert [f["codec_name"] for f in flux] == [attendu]

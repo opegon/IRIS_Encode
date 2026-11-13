@@ -21,9 +21,9 @@ from core import sous_titres as ST
 from core.scanner import SubtitleTrack
 
 RACINE = Path(__file__).resolve().parent.parent
-_BIN = RACINE / "bin"
-_FFMPEG, _FFPROBE, _MKVMERGE = (_BIN / "ffmpeg.exe", _BIN / "ffprobe.exe",
-                                _BIN / "mkvmerge.exe")
+from tests.outils_reels import outil  # noqa: E402
+
+_FFMPEG, _FFPROBE, _MKVMERGE = outil("ffmpeg"), outil("ffprobe"), outil("mkvmerge")
 outils = pytest.mark.skipif(
     not all(p.exists() for p in (_FFMPEG, _FFPROBE, _MKVMERGE)),
     reason="outils du projet absents")

@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.18] — 2026-11-13
+
+### Tests : isolation, outils, bac à sable (IE-196)
+
+L'application ne change pas ; ce sont ses tests.
+
+- **Un test ne dépend plus d'un autre.** Le test de l'extraction PCM d'un DVD ne
+  passait que derrière un test qui avait construit l'application sur un poste
+  équipé : lancé seul, il échouait. Il pose son outil, et la remise à zéro
+  entre deux tests couvre huit variables de plus (outils DVD, shader, caches,
+  drapeaux d'illisibilité), dictionnaires et ensembles copiés (CR-146).
+- **Les tests à outils réels cherchent les outils comme l'application** :
+  `bin/` d'abord, puis le `PATH`. Sans `bin/`, 17 tests de ces fichiers étaient
+  sautés ; il en reste 9, ceux qui demandent mkvmerge (CR-147).
+- **Rien n'écrit plus chez l'utilisateur.** Le smoke test et les captures
+  écrivent profils, `config.toml` et analyses dans un dossier temporaire ; les
+  tests OpenSubtitles écrivaient dans le dossier temporaire du système ; trois
+  chaînes de `test_sar.py` avaient une séquence d'échappement invalide (CR-148).
+
+Revue de code du 2026-11-13.
+
 ## [v0.9.2.17] — 2026-11-13
 
 ### Documentation (IE-195)

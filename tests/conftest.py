@@ -44,18 +44,33 @@ _GLOBALES = [
     # L'app pose le vrai seconv de `bin/` : sans restauration, un PGS d'un
     # test suivant passait à l'OCR (test_remux après test_profil_actif).
     ("core.ocr",      "_seconv"),
+    # CR-146 : outils DVD, shader de super-résolution, caches et drapeaux
+    # d'illisibilité, que l'application ou un test posent aussi.
+    ("core.dvd",              "_ffmpeg"),
+    ("core.dvd",              "_ffprobe"),
+    ("core.super_resolution", "_shader"),
+    ("core.decision",         "_NEAR_1080P_CACHE"),
+    ("core.scanner",          "_ESTIMATIONS_SAR"),
+    ("core.scanner",          "_ECHECS_ENTRELACEMENT"),
+    ("core.config",           "_illisible"),
+    ("core.profiles",         "_illisible"),
 ]
 
 
 @pytest.fixture(autouse=True)
 def globales_isolees():
-    """Restaure les variables de module après chaque test."""
+    """Restaure les variables de module après chaque test. Un dictionnaire ou
+    un ensemble est copié : modifié sur place, sa référence ne garderait rien."""
+    import copy
     import importlib
 
     avant = []
     for nom_module, nom_var in _GLOBALES:
         module = importlib.import_module(nom_module)
-        avant.append((module, nom_var, getattr(module, nom_var)))
+        valeur = getattr(module, nom_var)
+        if isinstance(valeur, (dict, set, list)):
+            valeur = copy.copy(valeur)
+        avant.append((module, nom_var, valeur))
 
     yield
 

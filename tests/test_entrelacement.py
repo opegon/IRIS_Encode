@@ -29,7 +29,9 @@ from core.scanner import AudioTrack, VideoInfo
 APP    = Path(__file__).resolve().parent.parent
 LE_KID = APP / "resources_files" / "The Kid (and A Dog's Life) - 1921.avi"
 CURE   = APP / "resources_files" / "DVD5" / "DVD" / "CURE_IN_ORANGE.ISO"
-FFMPEG = APP / "bin" / "ffmpeg.exe"
+from tests.outils_reels import outil  # noqa: E402
+
+FFMPEG = outil("ffmpeg")
 NTSC   = 30000 / 1001
 
 PLAT = PlatformProfile(os=OS.WINDOWS, gpu=GPU.NONE, hwaccel=None, encoder_hevc="libx265",

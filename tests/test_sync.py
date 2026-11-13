@@ -436,7 +436,9 @@ def test_no_segments_keeps_the_previous_diagnosis():
 
 # ─── Sous-titres embarqués ────────────────────────────────────────────────────
 
-_BIN_FFMPEG = Path(__file__).resolve().parent.parent / "bin" / "ffmpeg.exe"
+from tests.outils_reels import outil  # noqa: E402
+
+_BIN_FFMPEG = outil("ffmpeg")
 
 
 @pytest.mark.skipif(not _BIN_FFMPEG.exists(), reason="ffmpeg du projet absent")

@@ -12,7 +12,6 @@ from __future__ import annotations
 import shutil
 import subprocess
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 
@@ -150,12 +149,14 @@ def test_hors_mp4_rien_a_porter(tmp_path):
 
 # ─── Le défaut lui-même, mesuré avec le ffmpeg du projet ─────────────────────
 
-_FFMPEG = Path(__file__).resolve().parent.parent / "bin" / "ffmpeg.exe"
+from tests.outils_reels import outil  # noqa: E402
+
+_FFMPEG = outil("ffmpeg")
 
 
 @pytest.mark.skipif(not _FFMPEG.exists(), reason="ffmpeg du projet absent")
 def test_le_mp4_garde_les_temps_une_fois_comble(tmp_path):
-    ffprobe = _FFMPEG.with_name("ffprobe.exe")
+    ffprobe = outil("ffprobe")
     srt = tmp_path / "f.srt"
     srt.write_text(ST.combler_srt(SRT_FORCE)[0], encoding="utf-8")
     pistes = [SubtitleTrack(index=0, codec="subrip", language="fre", forced=True)]

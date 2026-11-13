@@ -69,16 +69,25 @@ def _profils_isoles():
 
     Isoler le fichier evite au passage d'ecrire dans la bibliotheque de profils
     de l'utilisateur pour faire tourner un test.
+
+    `config.toml` et `data/analyses.json` aussi (CR-148) : le smoke et les
+    captures y ecrivaient les largeurs de colonnes, les vitesses mesurees, le
+    dossier YouTube, les analyses d'entrelacement — ceux de l'utilisateur, sur
+    son poste.
     """
-    origine = prof_mod.PROFILES_PATH
+    from core import analyses
+    from core import config as cfg_mod
+    origines = (prof_mod.PROFILES_PATH, cfg_mod.CONFIG_PATH, analyses.CHEMIN)
     with tempfile.TemporaryDirectory() as td:
         prof_mod.PROFILES_PATH = Path(td) / "profiles.toml"
+        cfg_mod.CONFIG_PATH = Path(td) / "config.toml"
+        analyses.CHEMIN = Path(td) / "analyses.json"
         profs = prof_mod.load_all()
         assert len(profs) >= 2,             f"profils livres introuvables ({prof_mod.PROFILS_LIVRES_PATH}) : {list(profs)}"
         try:
             yield
         finally:
-            prof_mod.PROFILES_PATH = origine
+            prof_mod.PROFILES_PATH, cfg_mod.CONFIG_PATH, analyses.CHEMIN = origines
 
 
 def _make_test_videos(td: Path, n: int) -> bool:

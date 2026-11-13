@@ -17,7 +17,9 @@ import pytest
 from tests.test_nvdec import _nvidia
 from tests.test_qsv import _apres
 
-_FFMPEG = Path(__file__).resolve().parent.parent / "bin" / "ffmpeg.exe"
+from tests.outils_reels import outil  # noqa: E402
+
+_FFMPEG = outil("ffmpeg")
 _SIGNATURE = "[vf#0:0 @ 000001ffee69a6c0] Error reinitializing filters!"
 
 

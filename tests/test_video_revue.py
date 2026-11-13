@@ -24,10 +24,11 @@ from core.platform import GPU, OS, PlatformProfile
 from core.profiles import Profile
 from core.scanner import VideoInfo
 
-_BIN = Path(__file__).resolve().parent.parent / "bin"
-_FFMPEG, _FFPROBE = _BIN / "ffmpeg.exe", _BIN / "ffprobe.exe"
+from tests.outils_reels import outil  # noqa: E402
+
+_FFMPEG, _FFPROBE = outil("ffmpeg"), outil("ffprobe")
 outils = pytest.mark.skipif(not (_FFMPEG.exists() and _FFPROBE.exists()),
-                            reason="ffmpeg du projet absent")
+                            reason="ffmpeg absent")
 
 
 def _profile(**over) -> Profile:

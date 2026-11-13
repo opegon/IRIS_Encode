@@ -167,9 +167,10 @@ from core.profiles import Profile
 from core.scanner import AudioTrack, SubtitleTrack
 from tui.screens.run import FileRunStatus
 
-_BIN = RACINE / "bin"
-_FFMPEG, _FFPROBE, _MKVMERGE, _DOVI = (_BIN / "ffmpeg.exe", _BIN / "ffprobe.exe",
-                                       _BIN / "mkvmerge.exe", _BIN / "dovi_tool.exe")
+from tests.outils_reels import outil  # noqa: E402
+
+_FFMPEG, _FFPROBE, _MKVMERGE, _DOVI = (outil("ffmpeg"), outil("ffprobe"),
+                                       outil("mkvmerge"), outil("dovi_tool"))
 outils = pytest.mark.skipif(
     not all(p.exists() for p in (_FFMPEG, _FFPROBE, _MKVMERGE, _DOVI)),
     reason="outils du projet absents")

@@ -25,7 +25,8 @@ les pages concernées. À enrichir dès qu'on apprend quelque chose, en suivant
 ## Environnement
 
 - Les outils externes vivent dans `bin/` (non versionné, installé par le
-  preflight). Sans eux, les tests qui fabriquent des vidéos sont sautés.
+  preflight). Les tests qui fabriquent des vidéos les cherchent là, puis dans
+  le `PATH` (`tests/outils_reels.py`) ; introuvables, ces tests sont sautés.
 - `resources_files/` (matériel réel) n'est pas versionné.
 - Du code est propre à Windows (`ctypes.WinDLL`, `mpr`, `advapi32`) : il ne
   s'exécute pas ailleurs.

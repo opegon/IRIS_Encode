@@ -81,6 +81,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-11-07-sar-manquant-the-kid]] | AVI issu de DVD sans SAR : pas de métadonnée, bandes indécidables, format Wikidata décisif ; `-aspect` en copie |
 | [[source-2026-11-08-yt-dlp-ejs]] | yt-dlp : moteur JavaScript requis pour YouTube (Deno par défaut), scripts inclus dans l'exe ; releases et empreintes de première installation |
 | [[source-2026-11-13-revue]] | Revue du 2026-11-13 : Matroska refuse un `mov_text` recopié, `.srt` UTF-16 pris pour du cp1252, `idet` sur une mire progressive (ffmpeg 6.1.1) |
+| [[source-2026-11-13-transcodekiller]] | Sortie IRIS « qui plante » dans Chrome : remux HLS (E-AC3 non lu) tué par le greffon TranscodeKiller du serveur, ffmpeg sans erreur |
 | [[source-2026-11-13-sous-titres-81]] | Les deux relevés de la revue rejoués en ffmpeg 8.1.2 : `-c:s:N srt` pour un `mov_text` vers MKV, UTF-16 à BOM lu seul ; mkvmerge non concerné |
 | [[source-2026-10-04-localisation]] | Audit de localisation et décisions de l'utilisateur : politique de traduction, glossaire |
 
@@ -126,4 +127,5 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-11-07-sar-manquant-the-kid]] | En-tête AVI de The Kid, mesures `cropdetect`, requêtes Wikidata, `-aspect` en copie, encodage 640×480 |
 | [[2026-11-08-yt-dlp-ejs]] | Page EJS de yt-dlp (Deno, scripts inclus), releases et empreintes de yt-dlp 2026.10.26 et Deno 2.9.8 |
 | [[2026-11-13-revue-code]] | Relevés de la revue : messages de ffmpeg 6.1.1 (`mov_text` vers MKV, `-sub_charenc`), mire classée entrelacée, suite de tests hors Windows |
+| [[2026-11-13-jellyfin-transcodekiller]] | Journal Jellyfin 10.11.11 : remux HLS d'une sortie IRIS tué par TranscodeKiller dans Chrome, ffmpeg à code 0 |
 | [[2026-11-13-sous-titres-ffmpeg-81]] | `.srt` UTF-16 (LE, BE) et `mov_text` vers MKV sous ffmpeg 8.1.2 et mkvmerge v103.0 : commandes et résultats |

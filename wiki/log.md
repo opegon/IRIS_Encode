@@ -628,3 +628,11 @@ Les deux relevés ffmpeg de la revue se reproduisent dans le 8.1.2 de `bin/` :
 `--sub-charset` et convertit seul un « Timed Text ». Question ouverte retirée.
 Corrigé en v0.9.2.9 (IE-187) et dans IE-188. Pages touchées : [[ffmpeg]],
 [[mkvmerge]], [[sous-titres]], [[questions-ouvertes]].
+
+## [2026-11-13] ingest | Lecture arrêtée par le greffon TranscodeKiller
+
+Une sortie IRIS « plante au bout de quelques secondes » dans le client web
+(Chrome 151, Windows). Le journal du serveur montre le greffon TranscodeKiller
+tuant le remux HLS (audio E-AC3 converti pour Chrome) 1,3 s après son
+lancement, puis sa relance ; ffmpeg sort avec le code 0. Pages touchées :
+[[jellyfin]], [[chaine-de-diffusion]].

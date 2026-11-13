@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: materiel
-maj: 2026-10-07
+maj: 2026-11-13
 sources:
+  - "[[source-2026-11-13-transcodekiller]]"
   - "[[source-2026-10-06-sar-scale]]"
   - "[[source-2026-09-30-lecture]]"
   - "[[source-2026-09-24-utilisateur]]"
@@ -38,6 +39,21 @@ Tout format que le client ne déclare pas lisible déclenche un transcodage,
 Qu'un PGS marqué forcé soit choisi d'office à côté d'un SRT forcé de même
 langue est **supposé**, pas observé : IRIS ne lui en laisse plus l'occasion
 ([[sous-titres#Drapeaux par défaut et forcé|Sous-titres]]).
+
+## Greffon TranscodeKiller
+
+Le serveur porte le greffon **TranscodeKiller** : il arrête les sessions qui
+transcodent, y compris un remux HLS dont seul l'audio est converti. Le
+2026-11-13, dans le client web sous Chrome (qui ne lit pas l'E-AC3), il a tué
+le ffmpeg 1,3 s après son lancement, puis sa relance, et la lecture s'est
+arrêtée à 0 ms ; l'utilisateur l'a vu comme un fichier qui « plante au bout
+de quelques secondes ». *(observé, [[source-2026-11-13-transcodekiller]])*
+Les règles exactes du greffon (ce qu'il tue, ce qu'il laisse) ne sont pas
+connues ici.
+
+Un arrêt de lecture dans un navigateur se lit donc d'abord dans le journal du
+serveur : une ligne `TranscodeKiller … Killing transcode process` met le
+fichier hors de cause.
 
 ## Fichiers qu'il dépose
 

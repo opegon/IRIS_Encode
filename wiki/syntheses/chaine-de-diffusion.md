@@ -1,7 +1,8 @@
 ---
 type: synthese
-maj: 2026-09-24
+maj: 2026-11-13
 sources:
+  - "[[source-2026-11-13-transcodekiller]]"
   - "[[source-readme]]"
   - "[[source-2026-09-24-utilisateur]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -72,6 +73,10 @@ méthode de lecture et raison du transcodage, dans le tableau de bord
 
 Lecture directe et plantage quand même : le fichier lui-même est en cause.
 Inspecter ses paquets avec [[ffprobe]].
+
+Remux ou transcodage arrêté dès les premières secondes, surtout dans un
+navigateur : chercher `TranscodeKiller` dans le journal du serveur. Le greffon
+tue ces sessions, quel que soit le fichier ([[jellyfin#Greffon TranscodeKiller]]).
 
 ## Voir aussi
 

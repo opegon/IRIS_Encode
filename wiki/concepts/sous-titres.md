@@ -1,7 +1,8 @@
 ---
 type: concept
-maj: 2026-11-07
+maj: 2026-11-13
 sources:
+  - "[[source-2026-11-13-sous-titres-81]]"
   - "[[source-spec]]"
   - "[[source-changelog]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -115,6 +116,14 @@ l'UTF-8 — mesuré le 2026-10-09, mkvmerge de `bin/`. Toujours dire le
 jeu : `-sub_charenc` avant l'entrée ffmpeg, `--sub-charset TID:<jeu>` pour
 mkvmerge. Un `.sub` peut être du MicroDVD (texte) ou du VobSub (binaire, début
 `00 00 01 BA`).
+
+**Exception : l'UTF-16 à BOM** (`FF FE` ou `FE FF`, « Unicode » d'un éditeur
+Windows). ffmpeg et mkvmerge le décodent d'eux-mêmes ; c'est **le dire** à
+ffmpeg qui le détruit, sans erreur ([[ffmpeg#Comportements à connaître]]).
+cp1252 acceptant presque tout octet, un essai « UTF-8 puis cp1252 » le prend
+pour du cp1252 : reconnaître le BOM d'abord. *(mesuré, ffmpeg 8.1.2,
+mkvmerge v103.0, 2026-11-13, [[source-2026-11-13-sous-titres-81]] ; corrigé
+en v0.9.2.9)*
 
 ## Formats texte qu'on croit lire
 

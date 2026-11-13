@@ -3,6 +3,7 @@ type: entite
 categorie: outil
 maj: 2026-11-13
 sources:
+  - "[[source-2026-11-13-sous-titres-81]]"
   - "[[source-2026-11-13-revue]]"
   - "[[source-2026-11-07-sar-manquant-the-kid]]"
   - "[[source-2026-11-04-libplacebo-shader-chemin]]"
@@ -135,12 +136,15 @@ sans libx265 : `ffmpeg -encoders | findstr x265`.
   `speed=1.06e+03x` *(mesuré, remux d'une mire en local)*.
 - **Matroska refuse un `mov_text` recopié** : `-c:s copy` d'un sous-titre
   `mov_text` vers `.mkv` échoue à l'écriture de l'en-tête (« Subtitle codec
-  94213 is not supported », code 218). Une conversion (`-c:s srt`) est la parade attendue, non
-  essayée. *(mesuré, ffmpeg 6.1.1, 2026-11-13, [[source-2026-11-13-revue]] ; à confirmer en 8.1)*
-- **`-sub_charenc` ne proteste pas d'un mauvais jeu** : un `.srt` en UTF-16
-  avec BOM annoncé `CP1252` est converti sans erreur (code 0) en texte
-  illisible. Le BOM se reconnaît avant de choisir le jeu. *(mesuré, ffmpeg
-  6.1.1, 2026-11-13)*
+  mov_text (94213) is not supported » ; code 218 en 6.1.1, 127 en 8.1.2).
+  `-c:s:N srt` sur cette piste seule la convertit, texte et langue intacts.
+  *(mesuré, ffmpeg 6.1.1 et 8.1.2, 2026-11-13, [[source-2026-11-13-revue]],
+  [[source-2026-11-13-sous-titres-81]])*
+- **Un `.srt` UTF-16 à BOM se lit sans `-sub_charenc`, pas avec** : ffmpeg
+  reconnaît le BOM (LE comme BE) et en tire de l'UTF-8. Lui annoncer un jeu
+  le détruit, sans erreur : `CP1252` réinterprète cet UTF-8 (« Ã‰tÃ© »,
+  code 0), `UTF-16` le rend illisible. Ne rien dire pour un fichier à BOM.
+  *(mesuré, ffmpeg 6.1.1 et 8.1.2, 2026-11-13, [[source-2026-11-13-sous-titres-81]])*
 
 ## Encodeurs
 

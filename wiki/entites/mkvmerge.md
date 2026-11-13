@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-10-09
+maj: 2026-11-13
 sources:
+  - "[[source-2026-11-13-sous-titres-81]]"
   - "[[source-spec]]"
   - "[[source-2026-10-08-disques]]"
   - "[[source-changelog]]"
@@ -14,8 +15,8 @@ sources:
 Remux Matroska (MKVToolNix). Outil **optionnel** : greffe de pistes, collage,
 retrait et réencodage Dolby Vision. N'écrit **que** du Matroska.
 
-Version en place : v102.0 (`bin/`, 2026-09-24). ZIP officiel statique, sans
-DLL, 22 Mo. Licence GPL-2.0.
+Version en place : v103.0 (`bin/`, relevé le 2026-11-13 ; v102.0 au
+2026-09-24). ZIP officiel statique, sans DLL, 22 Mo. Licence GPL-2.0.
 
 ## Comportements à connaître
 
@@ -51,3 +52,9 @@ DLL, 22 Mo. Licence GPL-2.0.
   à « 03 » sur un Matroska de 5 s, la dernière fermée à la fin du fichier
   (*mesuré*, mkvmerge v102.0, playlist de synthèse, 2026-10-09). Un `.m2ts` seul
   n'en porte aucun ([[disques-optiques]]).
+- **Un `.srt` à BOM UTF-16 est lu juste quel que soit `--sub-charset`**
+  (absent, `UTF-16` ou `CP1252`) : le BOM l'emporte, à l'inverse de ffmpeg
+  ([[ffmpeg#Comportements à connaître]]). *(mesuré, v103.0, 2026-11-13,
+  [[source-2026-11-13-sous-titres-81]])*
+- **Convertit seul le `mov_text` d'un MP4** : `-J` le nomme « Timed Text »,
+  et le Matroska produit le porte en SubRip. *(mesuré, v103.0, 2026-11-13)*

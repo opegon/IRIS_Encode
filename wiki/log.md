@@ -618,3 +618,13 @@ ffmpeg 6.1.1 relevés en reproduisant les constats : `mov_text` refusé en
 copie vers Matroska, `.srt` UTF-16 converti de travers sous `-sub_charenc
 CP1252`, mire progressive classée entrelacée. Pages touchées : [[ffmpeg]],
 [[questions-ouvertes]].
+
+## [2026-11-13] ingest | Sous-titres UTF-16 et `mov_text` rejoués en ffmpeg 8.1.2
+
+Les deux relevés ffmpeg de la revue se reproduisent dans le 8.1.2 de `bin/` :
+`mov_text` recopié vers Matroska refusé (code 127), converti juste par
+`-c:s:N srt` ; `.srt` UTF-16 à BOM lu juste sans `-sub_charenc`, détruit avec
+`CP1252` comme avec `UTF-16`. mkvmerge v103.0 suit le BOM quel que soit
+`--sub-charset` et convertit seul un « Timed Text ». Question ouverte retirée.
+Corrigé en v0.9.2.9 (IE-187) et dans IE-188. Pages touchées : [[ffmpeg]],
+[[mkvmerge]], [[sous-titres]], [[questions-ouvertes]].

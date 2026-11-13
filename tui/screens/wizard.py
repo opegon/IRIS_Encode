@@ -747,12 +747,13 @@ class WizardScreen(TableNavMixin, Screen):
             return
 
         if mux:
-            from core.muxer import mux_output_path
             from .mux_run import MuxScreen
             # Le fichier que l'écran du mux écrit. Après le mux, la décision
             # porte sur lui (adoption) : la relire chercherait la sortie de
             # son encodage à venir, et annonçait « aucun fichier » (CR-15).
-            sortie = mux_output_path(self._dec.info.path)
+            # Demandé à l'écran : il numérote un nom déjà pris (CR-113).
+            ecran  = MuxScreen(self._dec)
+            sortie = ecran._output
 
             def _apres(ok=None) -> None:
                 if ok and sortie.exists():
@@ -764,7 +765,7 @@ class WizardScreen(TableNavMixin, Screen):
                 self._i = _ORDRE.index(Etape.TERMINE)
                 self._afficher()
 
-            self.app.push_screen(MuxScreen(self._dec), _apres)
+            self.app.push_screen(ecran, _apres)
         else:
             # La file d'encodage prend le relais (IE-100) : l'assistant
             # rend la liste des fichiers, où l'on choisit le suivant.

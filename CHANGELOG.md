@@ -1,5 +1,62 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.9] — 2026-11-13
+
+### Recalage : un fichier par piste, extrait plus léger, `.srt` UTF-16 (IE-187)
+
+- **Deux pistes de même langue recalées ne partagent plus leur fichier.**
+  « Français (complet) » et « Français (forced) » écrivaient toutes deux
+  `Film_fre.iris_recale.srt` : la seconde remplaçait la première, et la
+  sortie portait deux fois le même sous-titre. Le nom est désormais numéroté
+  (`iris_recale2`…) tant qu'il est pris ; un second recalage d'une même piste
+  n'écrit plus dans le fichier qu'il lit (CR-115).
+- **L'extrait de contrôle (`K`) ne lit plus un donneur `.mkv` en entier**
+  pour y chercher la première réplique : des secondes et des centaines de Mo
+  de mémoire, jusqu'au plantage sur un gros fichier (CR-116).
+- **Un `.srt` enregistré en « Unicode » (UTF-16) garde ses accents.** Il était
+  déclaré cp1252 : greffé à l'encodage, « Été » devenait « Ã‰tÃ© », et la
+  mesure du recalage n'y lisait aucune réplique. Constaté aussi avec ffmpeg
+  8.1.2 ; mkvmerge n'était pas touché (CR-123).
+
+Spec § 9, § 12. Revue de code du 2026-11-13. Test :
+`tests/test_recalage_fichiers.py`.
+
+## [v0.9.2.8] — 2026-11-13
+
+### Vidéos verticales, fichiers sans image, définition affichée (IE-186)
+
+- **Une vidéo verticale n'est plus prise pour de la 4K.** Un 1080×1920
+  (téléphone, Short téléchargé par `U`) était réduit à 608×1080 par un profil
+  sans `keep_4k`, et jugé au débit 4K — donc souvent laissé tel quel — avec.
+  Il est désormais traité comme un 1080p, à sa définition ; une 4K verticale
+  se réduit en 1080×1920, une SD verticale tient dans 720×1280 (CR-114).
+- **Un fichier sans image est signalé illisible** (« aucun flux vidéo ») au
+  lieu de recevoir une décision d'encodage que ffmpeg refusait (CR-129).
+- **L'Aperçu et l'écran des pistes affichent la définition produite**, et non
+  le cadre maximal : un 720×480 s'annonçait « 1280x720 » sans être agrandi
+  (CR-140).
+
+Spec § 8. Revue de code du 2026-11-13. Test : `tests/test_geometrie.py`.
+
+## [v0.9.2.7] — 2026-11-13
+
+### Rien n'est écrasé, rien n'est supprimé sur un succès supposé (IE-185)
+
+- **Le mux d'un fichier (`F3`) ne remplace plus un mux précédent.** Greffer
+  une piste sur un fichier déjà muxé visait le même `Film.mux-iris.mkv` :
+  mkvmerge l'écrasait, et `⌫`, `Ctrl+Début`, `F10` ou un échec pendant le mux
+  l'effaçaient. Le nouveau mux s'écrit en `Film.mux-iris(2).mkv`, comme dans
+  la file, et n'efface que ce qu'il a écrit (CR-113).
+- **La source n'est supprimée qu'après contrôle de la sortie.** ffmpeg peut
+  rendre un code nul sans avoir rien écrit : avec `delete_source`, la source
+  partait quand même. La sortie doit maintenant exister, ne pas être vide et
+  durer autant que la source (à 2 s ou 1 % près) ; sinon le fichier est en
+  erreur et la source reste. Passe principale et chemins Dolby Vision
+  (CR-127).
+
+Spec § 9.7, § 14.7. Revue de code du 2026-11-13. Test :
+`tests/test_sorties_protegees.py`.
+
 ## [v0.9.2.6] — 2026-11-10
 
 ### Les touches marchent en majuscule comme en minuscule

@@ -39,7 +39,7 @@ from core.muxer import (mkvmerge_reussi,
 )
 from core.sync import (
     Segment, SyncResult, extract_subtitle, measure_external_track,
-    measure_with_anchor, read_cues, reperes_proposables,
+    measure_with_anchor, read_cues, reperes_proposables, _TEXT_SUB_EXT,
 )
 
 from ..common import (confier_a_la_file, langue_affichee, barre_etat, actions_ecran, footer_line2, colonne_fixe, libelle_type_piste, raccourcis, touche,
@@ -1092,8 +1092,15 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
     def _build_sample(self) -> None:
         first_cue = None
         subs = next((t for t in self._tracks if t.kind == TrackKind.SUBTITLE), None)
-        if subs is not None:
-            cues = read_cues(subs.source_path)
+        # Un fichier de sous-titres seulement : un donneur `.mkv` était lu en
+        # entier en mémoire, quatre fois décodé, hors de tout `try` — des
+        # secondes et des centaines de Mo pour rien chercher (CR-116). Sans
+        # première réplique, l'extrait prend ses fenêtres ordinaires.
+        if subs is not None and subs.source_path.suffix.lower() in _TEXT_SUB_EXT:
+            try:
+                cues = read_cues(subs.source_path)
+            except (OSError, ValueError):
+                cues = []
             first_cue = cues[0][0] if cues else None
 
         has_stretch = any(t.stretch for t in self._tracks)
@@ -1123,7 +1130,13 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         film n'a rien à faire dans le dossier temporaire du système, où rien
         ne l'effaçait et où un nettoyage pouvait la retirer avant son tour dans
         la file (CR-93). Dossier de sortie en lecture seule (choisi seulement à
-        la mise en file) : le dossier temporaire, faute de mieux."""
+        la mise en file) : le dossier temporaire, faute de mieux.
+
+        Le nom ne dépend pas que de la langue : deux pistes `fre` recalées
+        écrivaient le même fichier, la seconde remplaçait la première et les
+        deux pistes y pointaient (CR-115). Il est donc numéroté tant qu'il est
+        pris — sur le disque, par une piste de la liste, ou par la source de
+        la piste elle-même, qu'un second recalage lit pendant qu'il écrit."""
         import tempfile
         from core.decision import dossier_inscriptible
         from core.scanner import intermediaire
@@ -1131,7 +1144,14 @@ class SyncScreen(TableNavMixin, Screen["list[ExternalTrack] | None"]):
         if not dossier_inscriptible(dossier):
             dossier = Path(tempfile.gettempdir())
         nom = f"{self._decision.info.path.stem}_{piste.language or 'und'}"
-        return dossier / f"{intermediaire(nom, 'recale')}{extension}"
+        pris = {t.source_path for t in self._tracks} | {piste.source_path}
+        n = 1
+        while True:
+            etape = "recale" if n == 1 else f"recale{n}"
+            candidat = dossier / f"{intermediaire(nom, etape)}{extension}"
+            if candidat not in pris and not candidat.exists():
+                return candidat
+            n += 1
 
     def _sample_done(self, out, erreur: str | None, starts: list[float]) -> None:
         self._sampling = False

@@ -18,6 +18,7 @@ from textual.widgets import DataTable, Static
 
 from core.i18n import _, N_, ngettext, texte_erreur
 from core import config as cfg_mod
+from core.encoder import definition_sortie
 from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
@@ -202,7 +203,8 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 res_str     = f"{info.width}x{info.height}"
             else:
                 bitrate_str = f"{vid.target_bitrate // 1000}k"
-                res_str     = f"{vid.target_width}x{vid.target_height}"
+                largeur, hauteur = definition_sortie(info, vid)
+                res_str     = f"{largeur}x{hauteur}"
                 if vid.upscale is not None:
                     # D25 : la source et la sortie, l'agrandissement se lit.
                     res_str = f"{info.width}x{info.height}→{res_str}"

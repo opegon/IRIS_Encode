@@ -32,6 +32,7 @@ from textual.widgets import DataTable, Static
 import core.config as cfg_mod
 from core import dovi
 from core import sar as sar_mod
+from core.encoder import definition_sortie
 from core.i18n import N_, _, pgettext
 from core.decision import (
     ajuster_remux,
@@ -440,7 +441,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         dec_txt.append("  ·  ")
         dec_txt.append_text(_f("bitrate", f"{bitrate//1000} kbps", ""))
         if action != VideoAction.SKIP:
-            dec_txt.append(f"  ·  {vid.target_width}x{vid.target_height}")
+            largeur, hauteur = definition_sortie(self._decision.info, vid)
+            dec_txt.append(f"  ·  {largeur}x{hauteur}")
             dec_txt.append(f"  ·  {self._decision.output_container.upper().lstrip('.')}")
         # Affichage DV : toujours visible
         dec_txt.append("  ·  ")

@@ -589,6 +589,37 @@ def pistes_audio_vides(sortie: Path, duree_attendue: float) -> list[str]:
     return vides
 
 
+def defaut_sortie(sortie: Path, duree_attendue: float) -> str:
+    """Pourquoi `sortie` ne peut pas passer pour réussie, sinon "".
+
+    Le code de retour ne suffit pas : ffmpeg peut rendre 0 sans avoir rien
+    écrit, ou s'arrêter en route. La source n'est supprimée qu'une fois ce
+    contrôle passé (CR-127) — absente, vide ou écourtée, la sortie ne la
+    remplace pas. La tolérance de durée est celle du collage. Une durée
+    illisible ne fait pas échouer : ce contrôle-là est un filet.
+    """
+    from .joiner import derive_duree
+    from .scanner import _ffprobe_json
+
+    try:
+        taille = sortie.stat().st_size
+    except OSError:
+        return _("the output file was not written")
+    if taille == 0:
+        return _("the output file is empty")
+    if duree_attendue <= 0:
+        return ""
+    try:
+        data = _ffprobe_json(["-show_format", str(sortie)])
+    except Exception:
+        return ""
+    obtenue = _duree_secondes((data.get("format") or {}).get("duration"))
+    if obtenue is None or derive_duree(duree_attendue, obtenue) is None:
+        return ""
+    return _("the output lasts {got:.0f} s, {expected:.0f} s expected: it is "
+             "incomplete").format(got=obtenue, expected=duree_attendue)
+
+
 def _duree_secondes(valeur) -> Optional[float]:
     """Lit « 3600.5 » ou « 03:35:23.244000000 ». None si illisible."""
     if not valeur:
@@ -746,6 +777,25 @@ def dimensions_reduites(largeur: int, hauteur: int,
     if largeur * cible_h > hauteur * cible_l:
         return cible_l, pair(Fraction(cible_l * hauteur, largeur), cible_h)
     return pair(Fraction(cible_h * largeur, hauteur), cible_l), cible_h
+
+
+def definition_sortie(info, vid) -> tuple[int, int]:
+    """La définition que l'encodage produira, pour l'affichage.
+
+    `target_width` × `target_height` est le cadre maximal, pas la sortie : un
+    720×480 dans un cadre 1280×720 n'est pas agrandi, l'écran annonçait
+    pourtant « 1280x720 » (CR-140). Même règle que `build_command` : pixels
+    rendus carrés en largeur, réduction seulement au-delà du cadre ;
+    l'agrandissement, lui, vise sa cible exacte.
+    """
+    if vid.upscale is not None:
+        return vid.target_width, vid.target_height
+    largeur = info.largeur_affichee
+    if largeur > vid.target_width or info.height > vid.target_height:
+        return dimensions_reduites(largeur, info.height,
+                                   vid.target_width, vid.target_height)
+    # Le 4:2:0 veut des dimensions paires : un pixel impair se perd.
+    return largeur // 2 * 2, info.height // 2 * 2
 
 
 def _encodeur_et_format(info, vid, platform: PlatformProfile) -> tuple[str, str, str]:

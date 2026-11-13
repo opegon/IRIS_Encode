@@ -882,20 +882,29 @@ def _resolve_limits(info: VideoInfo, profile: Profile) -> tuple[int, int, int]:
 
     limit_w/limit_h : dimensions max de la sortie (downscale si source > limit).
     bucket_h        : hauteur de référence pour le calcul du bitrate (720/1080/2160).
+
+    Les seuils se lisent sur le grand et le petit côté, et le cadre se pose
+    dans l'orientation de la source : une vidéo verticale garde sa définition
+    là où une horizontale la garderait (CR-114).
     """
     keep_4k      = profile.get("keep_4k", False)
+    vertical     = info.height > info.width
+
+    def cadre(largeur: int, hauteur: int, tranche: int) -> tuple[int, int, int]:
+        return (hauteur, largeur, tranche) if vertical else (largeur, hauteur, tranche)
 
     if info.is_4k:
         if keep_4k:
             return info.width, info.height, 2160
-        return 1920, 1080, 1080
+        return cadre(1920, 1080, 1080)
 
     near_w, near_h = _near_1080p_thresholds()
-    if info.width >= near_w or info.height >= near_h:
+    grand, petit   = max(info.width, info.height), min(info.width, info.height)
+    if grand >= near_w or petit >= near_h:
         # Source ≈ 1080p (possiblement rognée) → conserve la résolution d'origine.
         return info.width, info.height, 1080
 
-    return 1280, 720, 720
+    return cadre(1280, 720, 720)
 
 
 # ─── Agrandissement par super-résolution (IE-167) ─────────────────────────────

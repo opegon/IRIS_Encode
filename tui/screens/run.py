@@ -32,6 +32,7 @@ from core.encoder import (
     build_audio_command, build_command, diagnostiquer, encodeur_a_controler,
     sortie_10_bits,
     pistes_audio_vides, relancer_hors_puce, chaine_de, chaine_prevue,
+    defaut_sortie,
 )
 from core.muxer import (
     ExternalTrack, MuxProcess, TrackKind, build_mux_command, build_strip_command,
@@ -702,12 +703,14 @@ class RunScreen(TableNavMixin, Screen):
 
         # ffmpeg peut rendre un code nul et un fichier amputé d'une piste
         # audio — voir `encoder.audio_prepass_needed`. Le succès se vérifie,
-        # il ne se déduit pas du code de retour.
-        if success and dec.output_path.exists():
-            vide = self._audio_vide(dec, dec.output_path)
-            if vide:
+        # il ne se déduit pas du code de retour. Une sortie absente, vide ou
+        # écourtée n'est pas un succès : la source serait supprimée (CR-127).
+        if success:
+            defaut = (defaut_sortie(dec.output_path, dec.info.duration)
+                      or self._audio_vide(dec, dec.output_path))
+            if defaut:
                 success = False
-                s.last_line = vide
+                s.last_line = defaut
 
         # Une sortie qui n'a pas abouti — échec de ffmpeg, piste vidée, `S` —
         # porterait le nom d'une sortie réussie : Jellyfin l'indexerait, le
@@ -1485,9 +1488,10 @@ class RunScreen(TableNavMixin, Screen):
                         proc, _("MP4 remux: code {code}").format(code=code),
                         _("The MP4 remux failed (code {code}).").format(code=code)))
                     return
-            vide = self._audio_vide(dec, sortie)
-            if vide:
-                echouer(vide, vide)
+            # Contrôlée avant de supprimer la source (CR-127).
+            defaut = defaut_sortie(sortie, dec.info.duration) or self._audio_vide(dec, sortie)
+            if defaut:
+                echouer(defaut, defaut)
                 return
 
             self._supprimer_source(dec, s)
@@ -1764,9 +1768,10 @@ class RunScreen(TableNavMixin, Screen):
                         proc, _("MP4 remux: code {code}").format(code=code),
                         _("The MP4 remux failed (code {code}).").format(code=code)))
                     return
-            vide = self._audio_vide(dec, sortie)
-            if vide:
-                echouer(vide, vide)
+            # Contrôlée avant de supprimer la source (CR-127).
+            defaut = defaut_sortie(sortie, dec.info.duration) or self._audio_vide(dec, sortie)
+            if defaut:
+                echouer(defaut, defaut)
                 return
 
             self._supprimer_source(dec, s)

@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.6 — document de référence courant
-**Date** : 2026-11-10
+**Version** : 0.9.2.9 — document de référence courant
+**Date** : 2026-11-13
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -1081,10 +1081,29 @@ résolution source. Les seuils de rattachement au bucket 1080p sont paramétrabl
 `[decision] near_1080p_min_width / near_1080p_min_height` : une source 1920×822 tombe
 en bucket 1080p bien qu'elle soit techniquement sous-1080p.
 
-Une source est **4K** dès qu'elle atteint 3200 px de large ou 1700 px de haut
-(`VideoInfo.is_4k`, les seuils du « presque 1080p » à l'échelle) : un scope recadré
-en 3832×1600 n'a ni 3840 de large ni 2160 de haut, et passait pour un 1080p gardé
-à sa définition. Sans `keep_4k`, il est rabattu en 1920×1080 comme toute 4K.
+Une source est **4K** dès que son grand côté atteint 3200 px ou son petit côté
+1700 px (`VideoInfo.is_4k`, les seuils du « presque 1080p » à l'échelle) : un scope
+recadré en 3832×1600 n'a ni 3840 de large ni 2160 de haut, et passait pour un 1080p
+gardé à sa définition. Sans `keep_4k`, il est rabattu en 1920×1080 comme toute 4K.
+
+**Vidéo verticale** (v0.9.2.8, CR-114) — les seuils (`is_4k`, `near_1080p_*`) se
+lisent sur le grand et le petit côté, et `_resolve_limits` pose le cadre dans
+l'orientation de la source : 1080×1920 (téléphone, Short) reste un 1080p gardé à
+sa définition, une 4K verticale se réduit en 1080×1920, une SD verticale dans
+720×1280. Jugée sur la largeur et la hauteur, une 1080×1920 passait pour une 4K :
+608×1080 sans `keep_4k`, la tranche 4K avec. Pour une image plus large que haute,
+rien ne change. L'agrandissement par super-résolution (plus bas, `palier_cible`)
+reste pensé en paysage.
+
+**Sans flux vidéo** (v0.9.2.8, CR-129) — `scan` lève « no video stream » : le
+fichier (audio seul en `.mp4`, `.ts`…) s'affiche illisible avec sa cause, au
+lieu de recevoir une décision d'encodage que ffmpeg refusait (`-map 0:v:0`).
+
+**Définition affichée** (v0.9.2.8, CR-140) — l'Aperçu et l'écran des pistes
+affichent `encoder.definition_sortie` : la définition produite (pixels rendus
+carrés en largeur, réduction seulement au-delà du cadre, dimensions paires), pas
+`target_width` × `target_height`, qui n'est que le cadre maximal (un 720×480
+s'annonçait « 1280x720 »).
 
 **Pixels carrés** : le filtre `scale=W:H:force_original_aspect_ratio=decrease:force_divisible_by=2` est suivi de `setsar=1`. Sans lui, `scale` rattrape l'arrondi par un SAR (3832×1600 → 1920×802 en 192079:192000 ; 1918×802, étiré à 1920, en 959:960) et Jellyfin transcode une vidéo qu'il croit anamorphique. Le filtre n'est posé que si la source dépasse la cible en largeur ou en hauteur : une source qui y tient garde sa définition (1918×802 était étiré en 1920×802). Seule exception, une dimension impaire, que le 4:2:0 refuse : `scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1` lui retire un pixel.
 
@@ -1874,7 +1893,7 @@ est recopiée (v0.8.9.103, § 12.0).
 | `noms_proposes(langue)` | Noms que le champ Nom du recalage propose, selon la langue **de la piste** : `fre` → VF, VFF, VFQ, VOSTFR, Forcés, Commentaires, SDH ; `eng` → English, Forced, Commentary, SDH ; autre → Forced, SDH. Écrits dans le fichier, ce sont des données : ils ne suivent jamais la langue de l'interface (v0.8.9.70) |
 | `build_mux_command(…)` | Arguments mkvmerge complets |
 | `build_sample_command(…)` | Extrait de contrôle muxé |
-| `sample_windows(duration, has_stretch, …)` | Fenêtres à découper (deux si étirement) |
+| `sample_windows(duration, has_stretch, …)` | Fenêtres à découper (deux si étirement). La première réplique d'un sous-titre greffé n'y entre que s'il est un fichier texte (`.srt`, `.ass`, `.ssa`, `.vtt`) : un donneur `.mkv` était lu en entier en mémoire pour l'y chercher (v0.9.2.9, CR-116) |
 | `parse_progress(line)` / `parse_error(line)` | Lecture du protocole `--gui-mode` |
 | `MuxProcess` | Exécution, progression, erreurs, arrêt |
 
@@ -1919,6 +1938,12 @@ les pistes externes dans la même passe**, à coût nul et sans fichier intermé
 d'étirement passe obligatoirement par mkvmerge.
 
 ### 9.7 Après un mux
+
+Le mux d'un fichier (`F3`, `MuxScreen`) écrit sous un nom libre au départ
+(`muxer.sortie_mux_libre`, v0.9.2.7, CR-113) : `nom.mux-iris.mkv`, numéroté
+`nom.mux-iris(2).mkv` s'il existe déjà, comme dans la file (§ 10). Il ne remplace
+donc jamais un mux précédent, et un arrêt ou un échec n'efface que ce qu'il a
+écrit. L'assistant reprend ce nom à l'écran du mux.
 
 Le fichier produit (`nom.mux-iris.mkv`) **devient le fichier de travail** : la décision est
 réindexée dessus côté browser, et les sélections de pistes faites sur l'ancien fichier
@@ -2367,7 +2392,12 @@ règle que le mux (§ 9.5, piège 4 bis).
 
 **Jeu de caractères.** ffmpeg lit un sous-titre texte en UTF-8 : un `.srt` en cp1252
 perdait toutes ses répliques accentuées, code de retour nul. `-sub_charenc` précède
-l'entrée quand `encodage_texte()` trouve un autre jeu (CR-50).
+l'entrée quand `encodage_texte()` trouve un autre jeu (CR-50). Un **UTF-16 à BOM**
+n'est pas déclaré (`encodage_texte` rend None, v0.9.2.9, CR-123) : ffmpeg et
+mkvmerge le décodent d'eux-mêmes, et `-sub_charenc` le cassait — mesuré sur ffmpeg
+8.1.2, `CP1252` réinterprète l'UTF-8 que ffmpeg vient d'en tirer (« Ã‰tÃ© »),
+`UTF-16` le rend illisible ; mkvmerge suit le BOM quel que soit `--sub-charset`. La
+mesure (`sync._read_text`) le lit aussi en UTF-16 : en cp1252, aucune réplique.
 
 **Polices jointes.** En sortie Matroska, `-map 0:t? -c:t copy` recopie les pièces
 jointes de la source : sans elles, les sous-titres ASS d'un animé s'affichaient dans
@@ -2629,7 +2659,13 @@ mobile de `[stats.encode_speed]`, qui nourrit la colonne « ETA ».
   (`SyncScreen._fichier_recale`) s'écrivent dans `dossier_sortie`, plus dans
   le temp du disque système (CR-28, CR-93 ; temp en dernier recours si le
   dossier refuse l'écriture). Une piste recalée est effacée après un encodage
-  réussi, qui l'a recopiée.
+  réussi, qui l'a recopiée. Son nom, `<source>_<langue>.iris_recale.<ext>`, est
+  numéroté (`iris_recale2`…) tant qu'il est pris sur le disque, par une piste de
+  la liste ou par la source de la piste elle-même (v0.9.2.9, CR-115) : deux
+  pistes `fre` recalées écrivaient le même fichier, et un second recalage
+  écrivait dans le fichier qu'il lisait. L'ancien fichier d'une piste recalée
+  deux fois reste sur le disque (une décision en file peut encore y pointer) ;
+  c'est un intermédiaire, reconnu et grisé.
 - **Code 1 de mkvmerge** (v0.8.9.99, CR-89) — des avertissements, une sortie
   complète : `muxer.mkvmerge_reussi(code, sortie)` (0 ou 1, et la sortie
   existe) est la seule règle — mux, jonction, extrait, mux préalable,
@@ -3657,6 +3693,12 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   titre de disque, jamais un fichier abandonné par `S`. Les chemins DV refaisaient
   leur propre règle : ils effaçaient le `.m2ts` d'un titre, oubliaient les annexes,
   et supprimaient avant de regarder `S` — la sortie abandonnée partait ensuite.
+  **La sortie est contrôlée d'abord** (`encoder.defaut_sortie`, v0.9.2.7,
+  CR-127), sur les trois chemins : présente, non vide, et d'une durée égale à
+  celle de la source à la tolérance du collage près (`joiner.derive_duree` :
+  2 s ou 1 %). Sinon le fichier est en **ERREUR** et la source reste ; une
+  durée illisible par ffprobe ne fait pas échouer. Un code de retour nul de
+  ffmpeg ne suffisait pas : sans sortie, la source était supprimée.
   Ses **annexes Jellyfin** partent avec elle (`core/annexes.py`, v0.8.9.86) :
   `<nom>.nfo` et `<nom>-*.jpg|jpeg|png|webp`, le format observé sur la
   bibliothèque. Restent : les fichiers du dossier (`season.nfo`, `poster.jpg`,
@@ -4371,6 +4413,9 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.2.0 | 2026-11-08 | **Options sans rescan inutile** (§ 14) : au retour de `Ctrl+O`, un dossier n'est relu que si la durée minimale des titres a changé (CR-98) ; en mode assistant, `F4`, `F5` et `Ctrl+O` répondent sans être annoncés (précisé) ; guides et spec donnent `Ctrl+O` pour les options · `tests/test_revue_interface.py` |
 | 0.9.2.4 | 2026-11-09 | **Chargements croisés de l'accueil** (§ 14.1, IE-182) : un `_Releve` ne remplace que celui d'une époque plus ancienne (`_verrou_releve`) ; la liste ne reste plus « en attente » ; `test_accueil_progressif` n'échoue plus par intermittence · `tests/test_accueil_chargements_croises.py` |
 | 0.9.2.5 | 2026-11-10 | **Vidéos d'une chaîne YouTube publique** (§ 9.9.1, IE-181) : `url_chaine`, `lister_chaine` (liste à plat par pages de 100, date approchée), `ChaineYouTubeScreen` (définition lue en arrière-plan, cochées d'abord ; réglage commun : définition maximale `Video.hauteur_sous`, sous-titres `sous_titres_communs` ; téléchargement l'un après l'autre) · `YouTubeScreen` rend une liste de fichiers · `tests/test_youtube_chaine.py`, `tests/test_youtube_chaine_ecran.py` |
+| 0.9.2.9 | 2026-11-13 | **Fichiers du recalage** (§ 9, § 12, IE-187) : nom de piste recalée numéroté tant qu'il est pris (`SyncScreen._fichier_recale`, CR-115) ; `K` ne lit plus un donneur conteneur pour sa première réplique (CR-116) ; `.srt` UTF-16 à BOM ni déclaré à ffmpeg ni lu en cp1252 (`encodage_texte`, `sync._read_text`, CR-123) · `tests/test_recalage_fichiers.py` |
+| 0.9.2.8 | 2026-11-13 | **Géométrie** (§ 8, IE-186) : vidéo verticale jugée sur le grand et le petit côté, cadre posé dans son orientation (`is_4k`, `_resolve_limits`, CR-114) ; fichier sans flux vidéo illisible, « no video stream » (`scan`, CR-129) ; définition produite affichée dans l'Aperçu et les pistes (`encoder.definition_sortie`, CR-140) · `tests/test_geometrie.py` |
+| 0.9.2.7 | 2026-11-13 | **Rien n'est écrasé ni supprimé sur un succès supposé** (§ 9.7, § 14.7, IE-185) : le mux d'un fichier numérote un nom déjà pris (`muxer.sortie_mux_libre`, CR-113) ; la sortie est contrôlée — présente, non vide, durée cohérente — avant de supprimer la source, sur la passe principale et les deux chemins Dolby Vision (`encoder.defaut_sortie`, CR-127) · `tests/test_sorties_protegees.py` |
 | 0.9.2.6 | 2026-11-10 | **Touches en majuscule** (§ 14) : `IrisEncodeApp._check_bindings` rejoue la minuscule (`lettre_minuscule`) quand rien ne répond à la majuscule ; une saisie garde la lettre (`check_consume_key` de Textual) · `tests/test_touches_majuscules.py` |
 | 0.9.2.3 | 2026-11-09 | **Piste audio sans décodeur exclue** (§ 8.5) : codec `unknown` (audio chiffré d'une release WEB) écarté avant toute règle, sélection manuelle comprise ; rôle de piste originale reporté sur la première piste lisible · `tests/test_audio_illisible.py` |
 | 0.9.2.2 | 2026-11-09 | **Entrelacement hors du listage** (§ 8.1, § 14.1, IE-174) : `scan()` ne relit qu'une analyse gardée ; seconde passe de l'accueil avec jauge ; `_apres_entrelacement` pour `F1`, `F2`, `T`, l'assistant ; `core/analyses.py` (`data/analyses.json`, clé sans le chemin, expiration 180 jours) · `tests/test_entrelacement.py`, `tests/test_accueil_entrelacement.py` |

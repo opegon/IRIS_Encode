@@ -70,6 +70,8 @@ def test_la_piste_recalée_va_à_côté_de_la_sortie(tmp_path):
     from tui.screens.sync import SyncScreen
 
     class _Faux:
+        _tracks: list = []
+
         class _decision:
             dossier_sortie = tmp_path
             class info:

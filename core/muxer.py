@@ -609,6 +609,22 @@ def mux_output_path(source: Path) -> Path:
     return source.parent / f"{stem}{MUX_SUFFIX}.mkv"
 
 
+def sortie_mux_libre(source: Path) -> Path:
+    """Le nom que le mux d'un fichier (`F3`) écrira : `mux_output_path`,
+    numéroté s'il est pris — même règle que la file (`resoudre_sorties`).
+
+    Le mux d'un fichier déjà muxé visait le `.mux-iris.mkv` d'avant :
+    mkvmerge le remplaçait, et un arrêt l'effaçait (CR-113). Un nom libre au
+    départ est le seul fichier que ce mux peut effacer.
+    """
+    vise = candidat = mux_output_path(source)
+    n = 1
+    while candidat.exists():
+        n += 1
+        candidat = vise.with_name(f"{vise.stem}({n}){vise.suffix}")
+    return candidat
+
+
 # ─── Mux préalable à un encodage ──────────────────────────────────────────────
 
 def needs_premux(tracks: list[ExternalTrack]) -> bool:

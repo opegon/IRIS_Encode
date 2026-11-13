@@ -17,7 +17,7 @@ from textual.widgets import Label, ProgressBar, Static
 
 from core.i18n import N_, _, ngettext, texte_erreur
 from core.decision import FileDecision, dossier_inscriptible, force_skip_to_encode
-from core.muxer import MuxProcess, build_mux_command, mkvmerge_reussi, mux_output_path
+from core.muxer import MuxProcess, build_mux_command, mkvmerge_reussi, sortie_mux_libre
 
 from ..common import confier_a_la_file, barre_etat, actions_ecran, footer_line2, retour_accueil, touche
 from ..widgets.entete import Entete
@@ -80,7 +80,9 @@ class MuxScreen(Screen[bool]):
         self._decision = decision
         self._source   = decision.info.path
         self._tracks   = list(decision.external_tracks)
-        self._output   = mux_output_path(self._source)
+        # Libre au départ : un mux ne remplace ni n'efface jamais un fichier
+        # qu'il n'a pas écrit (CR-113).
+        self._output   = sortie_mux_libre(self._source)
         self._process: MuxProcess | None = None
         self._done     = False
         self._ok       = False

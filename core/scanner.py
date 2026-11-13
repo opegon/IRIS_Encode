@@ -638,8 +638,13 @@ class VideoInfo:
         gardé tel quel et nommé `2160p`. Les seuils sont ceux du « presque
         1080p » (`near_1080p_min_*`) ramenés à l'échelle : 5/6 de la largeur,
         ~4/5 de la hauteur — hors de portée de toute source HD, 2K DCI compris.
+
+        Jugé sur le grand et le petit côté, pas sur la largeur et la hauteur :
+        une vidéo verticale 1080×1920 (téléphone, Short) n'est pas de la 4K
+        (CR-114). Pour une image plus large que haute, rien ne change.
         """
-        return self.width >= 3200 or self.height >= 1700
+        grand, petit = max(self.width, self.height), min(self.width, self.height)
+        return grand >= 3200 or petit >= 1700
 
     @property
     def is_hdr(self) -> bool:
@@ -1023,6 +1028,12 @@ def scan(path: Path) -> VideoInfo:
 
     # ── Flux vidéo ────────────────────────────────────────────────────────────
     vid = next((s for s in streams if s.get("codec_type") == "video"), {})
+    if not vid:
+        # Audio seul : une décision d'encodage s'y bâtissait (0×0, codec
+        # inconnu) et ffmpeg échouait sur `-map 0:v:0`. L'accueil la liste
+        # illisible, avec cette cause (CR-129).
+        from .i18n import N_, ErreurAffichable
+        raise ErreurAffichable(N_("no video stream"))
 
     width  = _safe_int(vid.get("width"))
     height = _safe_int(vid.get("height"))

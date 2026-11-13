@@ -200,6 +200,12 @@ def encodage_texte(chemin: Path) -> str | None:
     Mêmes essais que la mesure (`sync._read_text`) : un `.srt` que la mesure
     lisait en cp1252 partait ensuite chez ffmpeg, qui le lit en UTF-8, et
     perdait toutes ses répliques accentuées sans erreur (CR-50).
+
+    None aussi pour un UTF-16 à BOM : ffmpeg et mkvmerge le décodent d'eux-
+    mêmes (mesuré, ffmpeg 8.1.2, mkvmerge de `bin/`). Le déclarer le
+    cassait : cp1252 acceptant presque tout octet, `-sub_charenc CP1252`
+    réinterprétait l'UTF-8 que ffmpeg venait d'en tirer (« Ã‰tÃ© »), et
+    `-sub_charenc UTF-16` le rend illisible aussi (CR-123).
     """
     if chemin.suffix.lower() not in _EXT_TEXTE:
         return None
@@ -207,7 +213,7 @@ def encodage_texte(chemin: Path) -> str | None:
         brut = chemin.read_bytes()
     except OSError:
         return None
-    if brut.startswith(_ENTETE_VOBSUB):
+    if brut.startswith(_ENTETE_VOBSUB) or brut[:2] in (b"\xff\xfe", b"\xfe\xff"):
         return None
     for nom, codec in (("UTF-8", "utf-8-sig"), ("CP1252", "cp1252")):
         try:

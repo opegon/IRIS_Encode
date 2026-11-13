@@ -447,6 +447,10 @@ def _read_text(path: Path) -> str:
     circulent en cp1252 ou latin-1, pas en UTF-8.
     """
     raw = path.read_bytes()
+    if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        # UTF-16 à BOM (« Unicode » d'un éditeur Windows) : cp1252 l'acceptait
+        # octet par octet, et aucune réplique n'était lue (CR-123).
+        return raw.decode("utf-16", errors="replace")
     for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
         try:
             return raw.decode(enc)

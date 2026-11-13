@@ -1,5 +1,33 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.0] — 2026-11-13
+
+### Release — la revue de code du 2026-11-13, traitée
+
+Rassemble les versions 0.9.2.10 à 0.9.2.19 (IE-188 à IE-197), détaillées
+ci-dessous. L'essentiel :
+
+- **Formats et décisions.** Un MP4 à sous-titres `mov_text` s'encode en MKV ;
+  une source HDR sous 1080p reste en HEVC au lieu de partir en H264 8 bits.
+- **Réglages.** Un `config.toml` ou un `profiles.toml` mal typé ne ferme plus
+  l'application : la valeur fautive est remplacée par défaut, et dite. Un
+  préréglage hors liste survit à l'édition du profil.
+- **Une interface qui ne se fige plus.** Relecture après un mux, chaîne prévue,
+  pistes d'un donneur : en arrière-plan. Une erreur imprévue met le fichier en
+  échec au lieu de fermer l'application.
+- **Écran des pistes et assistant.** Les lignes suivent la case, `F4` refait
+  toute la décision, la piste audio d'origine reste, un débit choisi sur un
+  SKIP n'est plus perdu.
+- **Aperçu.** Comptes et totaux suivent les lignes cochées ; une seule
+  estimation, celle de l'accueil ; l'ETA ne mélange plus les encodeurs.
+- **Touches et libellés.** `+/-` du formulaire de profil, plus de palette de
+  commandes Textual, une touche sans effet le dit ; le guide `H` couvre toutes
+  les fenêtres.
+- **`R` n'entre plus dans la corbeille** d'un lecteur.
+
+Les vitesses d'encodage mesurées se rangent désormais par encodeur : l'ETA
+repart de l'estimation par défaut jusqu'au premier encodage de chacun.
+
 ## [v0.9.2.19] — 2026-11-13
 
 ### Hygiène (IE-197)

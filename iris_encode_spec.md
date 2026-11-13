@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.19 — document de référence courant
+**Version** : 0.9.3.0 — document de référence courant
 **Date** : 2026-11-13
 **Statut** : stable
 
@@ -4558,6 +4558,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.2.17 | 2026-11-13 | **Documentation** (§ 14, IE-195) : le guide `H` couvre treize fenêtres de plus, `NON_DOCUMENTES` motive les autres ; filtre, `↵` de l'écran des pistes et nom du recalage corrigés (CR-142) ; taille de fenêtre minimale dans les README et guides ; commentaires périmés et saut de page d'un docstring (CR-143) · `tests/test_aide.py` |
 | 0.9.2.18 | 2026-11-13 | **Tests** (IE-196, sans changement de l'application) : `conftest.globales_isolees` restaure huit variables de module de plus, copie les dictionnaires et ensembles (CR-146) ; outils réels cherchés dans `bin/` puis le `PATH` (`tests/outils_reels.py`, CR-147) ; smoke et captures dans un bac à sable (profils, `config.toml`, analyses), OpenSubtitles dans le dossier du test, chaînes brutes (CR-148) |
 | 0.9.2.19 | 2026-11-13 | **Hygiène** (§ 8.1, § 15.2, § 16.2, IE-197) : le scan récursif saute corbeille et dossiers système (CR-130) ; `logger/` retiré, imports inutiles, codecs que ffprobe ne rend pas, largeurs de l'accueil gardées en mémoire, ligne de `sync.py` (CR-144) ; `analyses.json` réécrit une fois par jour, verrous rendus, octets écrits lus pour un MP4 seulement, pistes du donneur lues dans un worker, liste des fichiers du donneur par `scandir` (CR-145) · `tests/test_hygiene.py` |
+| **0.9.3.0** | 2026-11-13 | **Release.** Rassemble 0.9.2.10 à 0.9.2.19 : la revue de code du 2026-11-13 traitée de IE-188 à IE-197 — formats et seuils, réglages mal typés, fil d'interface et workers, écran des pistes et assistant, aperçu et estimation, touches et libellés, guide `H` complet, tests isolés, hygiène |
 | 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |
 | 0.9.2.11 | 2026-11-13 | **HDR sous la tranche 1080p** (§ 8.1, § 14.0, IE-189) : la décision automatique garde en HEVC toute source dont la sortie reste HDR, comme le forçage ; H264 seulement pour une sortie SDR (CR-118) · `tests/test_hdr_tranche.py` |
 | 0.9.2.10 | 2026-11-13 | **Sous-titres et conteneur** (§ 8.6, IE-188) : `mov_text` converti en SubRip vers Matroska (`-c:s:N srt`, CR-117) ; en `container = "mp4"`, seuls les sous-titres doublés par un texte de même langue et de même nature sont écartés, sinon le conteneur cède ; pistes écartées nommées dans l'Aperçu (CR-119) · `tests/test_mov_text_mkv.py`, `tests/test_conteneur.py` |

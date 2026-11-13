@@ -549,6 +549,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # F1, F2 ou l'assistant attendent la fin de l'analyse d'entrelacement
         # de leurs fichiers : une seconde touche ne relance pas l'attente.
         self._attente_entrelacement = False
+        # `R` : un seul scan récursif à la fois, et son résultat gardé quand
+        # il finit pendant qu'on est ailleurs — (dossier, profil, décisions)
+        # (CR-128).
+        self._recursif_en_cours = False
+        self._recursif_pret: tuple[Path, str, list] | None = None
 
     # ─── Accesseurs app ───────────────────────────────────────────────────────
 
@@ -2088,15 +2093,64 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                           "is analyzed.").format(key=touche("r")),
                         severity="warning", timeout=4)
             return
+        if self._recursif_en_cours:
+            self.notify(_("A recursive scan is already running."), timeout=4)
+            return
+        pret = self._recursif_pret
+        if (pret is not None and pret[0] == path
+                and pret[1] == self._app.active_profile_id):
+            self._recursif_pret = None
+            self._ouvrir_dryrun(pret[2])
+            return
         from .recursive_confirm import RecursiveConfirmModal
         def _on_confirm(ok: bool) -> None:
-            if ok:
+            if ok and not self._recursif_en_cours:
+                self._recursif_en_cours = True
+                self._recursif_pret = None
                 self._launch_recursive_scan(path)
         self.app.push_screen(RecursiveConfirmModal(path, self._app.active_profile_id),
                              _on_confirm)
 
     @work(thread=True, name="recursive-scan")
     def _launch_recursive_scan(self, directory: Path) -> None:
+        try:
+            decisions, profil = self._scan_recursif(directory)
+        except Exception as e:
+            _LOG.error("Recursive scan of %s failed", directory, exc_info=e)
+            self.app.call_from_thread(self._fin_recursif, directory, "", [], e)
+            return
+        self.app.call_from_thread(self._fin_recursif, directory, profil,
+                                  decisions, None)
+
+    def _fin_recursif(self, directory: Path, profil: str,
+                      decisions: list[FileDecision], erreur: Exception | None) -> None:
+        """Le scan récursif fini. L'aperçu ne s'ouvre que si l'accueil est au
+        premier plan : il s'empilait sur l'écran courant quel qu'il soit —
+        les pistes, une modale, la vue des encodages (CR-128). Sinon il est
+        gardé, et `R` sur le dossier l'ouvre sans tout réanalyser."""
+        self._recursif_en_cours = False
+        notice = self.query_one("#scan-notice", Static)
+        notice.update("")
+        if erreur is not None:
+            notice.update("⚠ " + _("Recursive scan failed: {error}").format(
+                error=texte_erreur(erreur)))
+            return
+        if not decisions:
+            notice.update("⚠ " + _("No file to encode in this folder."))
+            return
+        if self.app.screen is self:
+            self._ouvrir_dryrun(decisions)
+            return
+        self._recursif_pret = (directory, profil, decisions)
+        self.app.notify(ngettext(
+            "Recursive scan of {folder} done: {count} file to encode. {key} on "
+            "the folder opens its dry run.",
+            "Recursive scan of {folder} done: {count} files to encode. {key} on "
+            "the folder opens their dry run.", len(decisions)).format(
+                folder=directory.name, count=len(decisions), key=touche("r")),
+            timeout=10)
+
+    def _scan_recursif(self, directory: Path) -> tuple[list[FileDecision], str]:
         self.app.call_from_thread(
             self.query_one("#scan-notice", Static).update,
             "⏳ " + _("Recursive scan of {folder}…").format(folder=directory.name),
@@ -2132,18 +2186,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
             with ThreadPoolExecutor(max_workers=min(SCAN_WORKERS, len(attente)),
                                     thread_name_prefix="idet") as pool:
                 list(pool.map(_sonder, attente))
-
-        def _push() -> None:
-            self.query_one("#scan-notice", Static).update("")
-            if not decisions:
-                self.query_one("#scan-notice", Static).update(
-                    "⚠ " + _("No file to encode in this folder.")
-                )
-                return
-            from .dryrun import DryrunScreen
-            self.app.push_screen(DryrunScreen(decisions))
-
-        self.app.call_from_thread(_push)
+        return decisions, profile.id
 
     # ─── Métadonnées IMDB / AlloCiné ─────────────────────────────────────────
 

@@ -10,6 +10,7 @@ ce temps, et `Esc` l'abandonne.
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from rich.text import Text
@@ -23,6 +24,17 @@ from ..common import colonne_fixe, raccourcis
 
 from core.i18n import N_, _, ngettext, texte_erreur
 from core.opensubtitles import Client, ErreurOpenSubtitles, Resultat
+
+
+_LOG = logging.getLogger(__name__)
+
+
+def _imprevue(e: Exception) -> str:
+    """Une exception que le service n'annonce pas (réponse JSON d'une forme
+    inattendue…) : elle sortait du worker et fermait l'application (CR-125).
+    Le détail va au journal, l'écran garde la main."""
+    _LOG.error("OpenSubtitles: unexpected error", exc_info=e)
+    return _("Unexpected error: {error}").format(error=texte_erreur(e))
 
 
 def _client(cfg: dict) -> Client:
@@ -108,6 +120,8 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
         except (ErreurOpenSubtitles, OSError) as e:
             # OSError : l'empreinte d'une source déplacée entre-temps (CR-95).
             self.app.call_from_thread(self._echec, texte_erreur(e))
+        except Exception as e:
+            self.app.call_from_thread(self._echec, _imprevue(e))
 
     def _afficher(self, resultats: list[Resultat]) -> None:
         self._occupe    = False
@@ -155,6 +169,8 @@ class OpenSubtitlesScreen(ModalScreen["Path | None"]):
         except (ErreurOpenSubtitles, OSError) as e:
             # OSError : le `.srt` qui ne s'écrit pas dans le temp (CR-95).
             self.app.call_from_thread(self._echec, texte_erreur(e))
+        except Exception as e:
+            self.app.call_from_thread(self._echec, _imprevue(e))
 
     def _fini(self, chemin: Path, restant) -> None:
         if restant is not None:

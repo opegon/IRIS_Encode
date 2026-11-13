@@ -286,12 +286,16 @@ class RunScreen(TableNavMixin, Screen):
         profils  = [s.decision.profile.id     for s in self._statuses]
         durees   = [fmt_duration(s.decision.info.duration) for s in self._statuses]
         tailles  = [self._taille(s.decision)  for s in self._statuses]
-        for s in self._statuses:
-            if s.chaine is None:
-                s.chaine = chaine_prevue(s.decision, self._platform)
-        lectures  = [self._libelle_chaine(s.chaine[0]) for s in self._statuses]
-        filtrages = [self._libelle_chaine(s.chaine[1]) for s in self._statuses]
-        encodages = [self._libelle_chaine(s.chaine[2]) for s in self._statuses]
+        # La chaîne prévue se calcule hors du fil d'interface (CR-124) : elle
+        # construit la commande — `mkvmerge -J`, ffprobe du donneur, analyse
+        # d'entrelacement d'un fichier muxé, jusqu'à 30 s. Un tiret d'ici là.
+        chaines    = [s.chaine or (None, None, None) for s in self._statuses]
+        lectures  = [self._libelle_chaine(c[0]) for c in chaines]
+        filtrages = [self._libelle_chaine(c[1]) for c in chaines]
+        encodages = [self._libelle_chaine(c[2]) for c in chaines]
+        a_prevoir = [s for s in self._statuses if s.chaine is None]
+        if a_prevoir:
+            self._prevoir_chaines(a_prevoir)
 
         table.add_column("",        width=3,                              key="icon")
         fichier, action = _("File"), _("Action")
@@ -365,10 +369,37 @@ class RunScreen(TableNavMixin, Screen):
             return "—"
         return _("GPU") if cote == "gpu" else _("CPU")
 
+    @work(thread=True, name="planned-chain")
+    def _prevoir_chaines(self, statuts: list[FileRunStatus]) -> None:
+        for statut in statuts:
+            if statut.chaine is not None:
+                continue                  # déjà posée par l'encodage
+            try:
+                chaine = chaine_prevue(statut.decision, self._platform)
+            except Exception as e:        # CR-125 : rien ne sort d'un worker
+                _LOG.warning("Planned chain unavailable for %s (%s)",
+                             statut.decision.info.path, e)
+                chaine = (None, None, None)
+            try:
+                self.app.call_from_thread(self._poser_chaine_prevue, statut, chaine)
+            except Exception:
+                return                    # application en train de fermer
+
+    def _poser_chaine_prevue(self, statut: FileRunStatus, chaine: tuple) -> None:
+        """Sauf si l'encodage a déjà posé la chaîne réellement prise."""
+        if statut.chaine is not None:
+            return
+        index = next((i for i, x in enumerate(self._statuses) if x is statut), None)
+        if index is not None:
+            self._poser_chaine(index, chaine)
+
     def _afficher_chaine(self, index: int, cmd: list[str]) -> None:
         """La chaîne réellement prise, une fois la commande construite."""
+        self._poser_chaine(index, chaine_de(cmd))
+
+    def _poser_chaine(self, index: int, chaine: tuple) -> None:
         s = self._statuses[index]
-        s.chaine = chaine_de(cmd)
+        s.chaine = chaine
         try:
             table = self.query_one(DataTable)
             for cle, cote in zip(("read", "filt", "enc"), s.chaine):
@@ -508,6 +539,43 @@ class RunScreen(TableNavMixin, Screen):
 
     @work(thread=True, name="encoder")
     def _encode_next(self) -> None:
+        """Le fichier suivant du lot, sous un filet (CR-125) : une exception
+        imprévue — `OSError` d'un dossier distant devenu injoignable,
+        `UnicodeDecodeError` d'un `.srt`, réponse inattendue d'un outil —
+        sortait du worker, qui fermait l'application au milieu du lot. Le
+        fichier passe en échec, la cause va au journal, le lot continue."""
+        courant: list[FileRunStatus] = []
+        try:
+            self._encoder_suivant(courant)
+        except Exception as e:
+            self._echec_imprevu(courant[0] if courant else None, e)
+
+    def _echec_imprevu(self, statut: FileRunStatus | None, e: Exception) -> None:
+        _LOG.error("Unexpected error while encoding %s",
+                   statut.decision.info.path if statut else "?", exc_info=e)
+        for proc in (self._process, self._mux):
+            if proc is not None:
+                try:
+                    self._arreter(proc)
+                except Exception:
+                    _LOG.exception("Could not stop the process")
+        self._process = self._mux = None
+        # Un fichier déjà conclu a pu lancer la suite : ne pas la doubler.
+        if statut is None or statut.state != FileState.RUNNING or self._abandon:
+            return
+        statut.state     = FileState.ERROR
+        statut.last_line = _("Unexpected error: {error}").format(error=texte_erreur(e))
+        statut.error_msg = statut.last_line[:60]
+        try:
+            self._liberer(statut.decision)
+            index = next(i for i, x in enumerate(self._statuses) if x is statut)
+            self.app.call_from_thread(self._update_row, index)
+            self.app.call_from_thread(self._update_header)
+        except Exception:
+            return                        # application en train de fermer
+        self._encode_next()
+
+    def _encoder_suivant(self, courant: list[FileRunStatus]) -> None:
         # Lot abandonné (⌫, Ctrl+Home) : rien ne démarre plus.
         if self._abandon:
             return
@@ -535,6 +603,7 @@ class RunScreen(TableNavMixin, Screen):
                 self._current_idx = next_idx
                 s = self._statuses[next_idx]
                 s.state = FileState.RUNNING
+                courant.append(s)
         for i in ignores:
             self.app.call_from_thread(self._update_row, i)
         if self._done:

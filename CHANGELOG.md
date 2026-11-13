@@ -1,5 +1,32 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.13] — 2026-11-13
+
+### Fil d'interface et workers (IE-191)
+
+- **L'interface ne se fige plus après un mux.** La relecture du fichier produit
+  (ffprobe, et pour une source SD sans SAR `cropdetect` et Wikidata) se faisait
+  sur le fil d'interface, et l'analyse d'entrelacement attendait `F1` ou `F2` :
+  jusqu'à 30 s d'écran gelé. Les deux se font maintenant dans le worker du mux,
+  « Relecture du fichier muxé… » affiché pendant ce temps (CR-124).
+- **L'écran d'encodage s'ouvre sans attendre.** Les colonnes Lecture / Filtres
+  / Encodage étaient prévues sur le fil d'interface, en construisant la
+  commande de chaque fichier (`mkvmerge -J`, ffprobe du donneur…). Elles se
+  calculent en arrière-plan, un tiret en attendant (CR-124).
+- **Une erreur imprévue n'arrête plus le lot.** Une `OSError` d'un dossier
+  distant, un `.srt` illisible, une réponse inattendue d'un outil fermaient
+  l'application au milieu d'un lot. Le fichier passe en échec (« Erreur
+  imprévue : … »), la cause va au journal, le fichier suivant démarre. Même
+  filet pour la recherche et le téléchargement OpenSubtitles (CR-125).
+- **`R` (encoder le dossier) : un seul scan, et l'aperçu au bon endroit.** Un
+  second `R` lançait un second scan ; l'aperçu s'empilait sur l'écran du
+  moment — pistes, modale, vue des encodages. Il ne s'ouvre plus que sur
+  l'accueil ; sinon une notification le dit, et `R` sur le même dossier l'ouvre
+  sans tout réanalyser (CR-128).
+
+Spec § 12.1, § 12.4, § 14.1, § 14.5. Revue de code du 2026-11-13. Test :
+`tests/test_fil_workers.py`.
+
 ## [v0.9.2.12] — 2026-11-13
 
 ### Fichiers de réglages : types contrôlés, premier lancement sans écriture (IE-190)

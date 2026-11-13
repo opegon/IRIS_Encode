@@ -221,6 +221,7 @@ def test_l_ecran_reprend_la_passe_dv_a_la_meme_etape(tmp_path, monkeypatch):
         _refuser_encodeur = RunScreen._refuser_encodeur
         _cause            = staticmethod(RunScreen._cause)
         _afficher_chaine  = RunScreen._afficher_chaine
+        _poser_chaine     = RunScreen._poser_chaine
         _libelle_chaine   = staticmethod(RunScreen._libelle_chaine)
 
         def _update_ffmpeg_line(self, texte):

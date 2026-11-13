@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.12 — document de référence courant
+**Version** : 0.9.2.13 — document de référence courant
 **Date** : 2026-11-13
 **Statut** : stable
 
@@ -2515,7 +2515,11 @@ conversion de format), encodage matériel si l'encodeur vidéo est
 est recopiée (`-c:v copy`) ou s'il n'y a pas de commande ffmpeg (retrait DV,
 SKIP). `chaine_prevue(decision, platform)` les prévoit à la mise en file, sur
 la commande qu'on construirait (passe vidéo pour un réencodage DV) ; la
-commande lancée les remplace au démarrage. Une reprise hors puce passe de
+commande lancée les remplace au démarrage. La prévision tourne dans un worker
+(`_prevoir_chaines`, v0.9.2.13, CR-124) — construire la commande peut lancer
+`mkvmerge -J`, ffprobe ou l'analyse d'entrelacement — et un tiret tient la
+place jusqu'à sa réponse ; elle ne remplace pas une chaîne déjà posée par
+l'encodage. Une reprise hors puce passe de
 `GPU GPU GPU` à `GPU CPU GPU` : seuls les filtres changent de côté. · `tests/test_colonnes_chaine.py`
 
 **Durée** (v0.9.1.8). Entre « Profile » et « Size → est. », la durée de la
@@ -2672,6 +2676,15 @@ mobile de `[stats.encode_speed]`, qui nourrit la colonne « ETA ».
 ### 12.4 Garde-fous
 
 - Chemin de sortie identique à la source : `ValueError` levée avant lancement
+- **Filet de la boucle d'encodage** (v0.9.2.13, CR-125) — `_encode_next`
+  enveloppe chaque fichier (`_encoder_suivant`) : une exception imprévue
+  (`OSError` d'un dossier distant, `UnicodeDecodeError` d'un `.srt`, réponse
+  inattendue d'un outil) arrête le processus en cours, met le fichier en échec
+  (« Erreur imprévue : … »), libère ses intermédiaires, va au journal, et le lot
+  continue. Avant, le worker la propageait et l'application se fermait. Un
+  fichier déjà conclu au moment de l'exception ne relance pas la suite, qu'il a
+  pu lancer lui-même. Même filet dans les workers OpenSubtitles (recherche,
+  téléchargement) : l'erreur s'affiche dans l'écran.
 - Sortie partielle supprimée en cas d'échec — **sur tous les chemins**
   (v0.8.9.99, CR-57, CR-90) : passe principale (échec de ffmpeg, piste audio
   vidée, `S`), retrait et réencodage Dolby Vision (`finally` : état autre que
@@ -3480,6 +3493,13 @@ et le profil actif, puis lance un scan récursif illimité et un aperçu sur les
 encoder (SKIP exclus). Décisions automatiques, aucune sélection de pistes. La barre
 d'état compte les fichiers analysés (« Analyzing… n / total », § 15.2).
 
+Un seul scan à la fois (v0.9.2.13, CR-128) : `R` pendant un scan le dit et ne
+propose rien. L'aperçu ne s'ouvre que si l'accueil est au premier plan ; fini
+pendant qu'on est ailleurs (pistes, modale, vue des encodages), le résultat est
+gardé — dossier, profil, décisions — et une notification le dit : `R` sur le
+même dossier, avec le même profil actif, ouvre l'aperçu sans tout réanalyser.
+Une exception du scan s'affiche dans la notice au lieu de fermer l'application.
+
 ### 14.2 Écran Tracks — pistes et décision vidéo
 
 Un `DataTable` à quatre sections : **VIDÉO**, **AUDIO**, **SOUS-TITRES**, **EXTERNES**.
@@ -3619,6 +3639,13 @@ Progression lue sur le protocole `--gui-mode` de mkvmerge. À la fin :
 
 Le fichier muxé devient le fichier de travail (§ 9.7). Une sortie partielle est supprimée
 si le mux échoue.
+
+Le fichier produit est relu **dans le worker du mux** (v0.9.2.13, CR-124) :
+`scanner.scan` — ffprobe, et pour une source SD sans SAR, `cropdetect` et
+Wikidata — puis `analyser_entrelacement`, que l'aperçu ou l'encodage auraient
+lancée sur le fil d'interface (4 à 30 s figées). « Relecture du fichier
+muxé… » s'affiche pendant ce temps ; `F1` / `F2` attendent qu'elle soit finie
+(`_done`), pour ne pas viser la source d'origine.
 
 ### 14.5bis Écran Join — collage des parties
 
@@ -4448,6 +4475,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.2.0 | 2026-11-08 | **Options sans rescan inutile** (§ 14) : au retour de `Ctrl+O`, un dossier n'est relu que si la durée minimale des titres a changé (CR-98) ; en mode assistant, `F4`, `F5` et `Ctrl+O` répondent sans être annoncés (précisé) ; guides et spec donnent `Ctrl+O` pour les options · `tests/test_revue_interface.py` |
 | 0.9.2.4 | 2026-11-09 | **Chargements croisés de l'accueil** (§ 14.1, IE-182) : un `_Releve` ne remplace que celui d'une époque plus ancienne (`_verrou_releve`) ; la liste ne reste plus « en attente » ; `test_accueil_progressif` n'échoue plus par intermittence · `tests/test_accueil_chargements_croises.py` |
 | 0.9.2.5 | 2026-11-10 | **Vidéos d'une chaîne YouTube publique** (§ 9.9.1, IE-181) : `url_chaine`, `lister_chaine` (liste à plat par pages de 100, date approchée), `ChaineYouTubeScreen` (définition lue en arrière-plan, cochées d'abord ; réglage commun : définition maximale `Video.hauteur_sous`, sous-titres `sous_titres_communs` ; téléchargement l'un après l'autre) · `YouTubeScreen` rend une liste de fichiers · `tests/test_youtube_chaine.py`, `tests/test_youtube_chaine_ecran.py` |
+| 0.9.2.13 | 2026-11-13 | **Fil d'interface et workers** (§ 12.1, § 12.4, § 14.1, § 14.5, IE-191) : relecture du fichier muxé et analyse d'entrelacement dans le worker du mux, chaîne prévue calculée hors du fil d'interface (CR-124) ; filet par fichier dans la boucle d'encodage et dans les workers OpenSubtitles (CR-125) ; un seul scan récursif, aperçu ouvert seulement sur l'accueil, gardé sinon pour `R` (CR-128) · `tests/test_fil_workers.py` |
 | 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |
 | 0.9.2.11 | 2026-11-13 | **HDR sous la tranche 1080p** (§ 8.1, § 14.0, IE-189) : la décision automatique garde en HEVC toute source dont la sortie reste HDR, comme le forçage ; H264 seulement pour une sortie SDR (CR-118) · `tests/test_hdr_tranche.py` |
 | 0.9.2.10 | 2026-11-13 | **Sous-titres et conteneur** (§ 8.6, IE-188) : `mov_text` converti en SubRip vers Matroska (`-c:s:N srt`, CR-117) ; en `container = "mp4"`, seuls les sous-titres doublés par un texte de même langue et de même nature sont écartés, sinon le conteneur cède ; pistes écartées nommées dans l'Aperçu (CR-119) · `tests/test_mov_text_mkv.py`, `tests/test_conteneur.py` |

@@ -168,12 +168,29 @@ class MuxScreen(Screen[bool]):
         rc         = proc.wait()
         # Code 1 : des avertissements, la sortie vaut (CR-89).
         self._ok   = mkvmerge_reussi(rc, self._output)
-        self._done = True
+        # Réussi, il n'est fini qu'une fois relu : `F1` / `F2` viseraient
+        # encore la source d'origine.
+        self._done = not self._ok
         self._process = None
 
         if self._ok:
             self.app.call_from_thread(self._set_progress, 100)
-            self.app.call_from_thread(self._adopt_output)
+            self.app.call_from_thread(
+                self._set, "#mux-state", "▶ " + _("Reading the muxed file back…"))
+            # Ici, pas sur le fil d'interface (CR-124) : ffprobe, l'estimation
+            # du SAR d'une source SD (cropdetect, Wikidata), puis l'analyse
+            # d'entrelacement que l'aperçu ou l'encodage lanceraient — 4 à
+            # 30 s d'interface figée.
+            try:
+                from core import scanner
+                info = scanner.scan(self._output)
+                scanner.analyser_entrelacement(info)
+            except Exception as e:
+                self._done = True
+                self.app.call_from_thread(self._relecture_impossible, e)
+                return
+            self.app.call_from_thread(self._adopt_output, info)
+            self._done = True
         else:
             # Une sortie partielle porterait le nom d'un mux réussi (CR-90).
             self._output.unlink(missing_ok=True)
@@ -181,26 +198,22 @@ class MuxScreen(Screen[bool]):
             self.app.call_from_thread(
                 self._set, "#mux-state", "✗ " + _("Mux failed: {detail}").format(detail=detail))
 
-    def _adopt_output(self) -> None:
+    def _relecture_impossible(self, e: Exception) -> None:
+        self._set("#mux-state",
+                  "✓ " + _("Mux succeeded ({file}) but cannot be read back: "
+                           "{error}. Encoding would target the original "
+                           "file.").format(file=self._output.name,
+                                           error=texte_erreur(e)))
+
+    def _adopt_output(self, new_info) -> None:
         """
-        Bascule la décision sur le fichier muxé.
+        Bascule la décision sur le fichier muxé, relu par le worker.
 
         Sans ça, tout ce qui suit (dry-run, encodage) continuerait à viser le
         fichier d'origine : on aurait greffé des pistes pour rien.
         Les pistes externes sont vidées — elles font désormais partie du fichier.
         """
         from core.decision import decide
-        from core import scanner
-
-        try:
-            new_info = scanner.scan(self._output)
-        except Exception as e:
-            self._set("#mux-state",
-                      "✓ " + _("Mux succeeded ({file}) but cannot be read back: "
-                               "{error}. Encoding would target the original "
-                               "file.").format(file=self._output.name,
-                                               error=texte_erreur(e)))
-            return
 
         fresh = decide(new_info, self._decision.profile)
         self._decision.info             = new_info

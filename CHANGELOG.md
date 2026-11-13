@@ -1,5 +1,60 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.12] — 2026-11-13
+
+### Fichiers de réglages : types contrôlés, premier lancement sans écriture (IE-190)
+
+- **Un `config.toml` mal typé ne ferme plus l'application.** `tui = 1`,
+  `app = "x"`, une vitesse mesurée en texte ou une largeur de colonne non
+  entière levaient au lancement. Chaque valeur d'un type faux revient au défaut
+  de sa clé, et l'interface nomme les clés corrigées ; `password = 1234` sans
+  guillemets reste le mot de passe (CR-121).
+- **Les valeurs invalides de `profiles.toml` sont écartées et nommées.**
+  `bitrate_1080p_kbps = "5000"` rendait chaque fichier de l'accueil
+  « illisible » ; `container = "avi"`, `keep_4k = 1`… passaient sans un mot.
+  La clé prend désormais le défaut du moteur. `audio_languages = "fre"` était
+  lu lettre à lettre et la piste française exclue : une langue écrite seule (ou
+  `"fre, eng"`) se lit comme une liste (CR-120).
+- **Premier lancement dans un dossier non inscriptible.** `profiles.toml` ou le
+  journal impossibles à créer sortaient en trace Python ; la session tourne sur
+  les profils livrés, sans journal, et le dit (CR-122).
+- **Éditer un profil garde un preset hors liste.** `preset_encoder = "slower"`
+  laissait le champ vide, et `Ctrl+S` écrivait `medium` (CR-131).
+
+Spec § 5, § 6.2, § 14.8. Revue de code du 2026-11-13. Test :
+`tests/test_reglages_types.py`.
+
+## [v0.9.2.11] — 2026-11-13
+
+### Une source HDR sous 1080p reste en HEVC (IE-189)
+
+Un 720p HDR10 ou HLG — fréquent depuis le téléchargement YouTube — était
+encodé automatiquement en H264 8 bits, courbe HDR gardée : du banding dans
+chaque dégradé, sans conversion ni avertissement. Il sort désormais en HEVC
+10 bits, comme le faisait déjà le forçage d'un fichier. Choisir H264 à la main
+convertit toujours en SDR, avec son avertissement (CR-118).
+
+Spec § 8.1, § 14.0. Revue de code du 2026-11-13. Test :
+`tests/test_hdr_tranche.py`.
+
+## [v0.9.2.10] — 2026-11-13
+
+### Sous-titres et conteneur (IE-188)
+
+- **Un MP4 à sous-titres `mov_text` s'encode en MKV.** Avec un profil
+  `container = "mkv"` (ou une piste qui impose le MKV), ffmpeg refusait
+  d'écrire la sortie : « Conversion failed! ». Ces pistes passent maintenant en
+  SubRip, une par une ; les autres sont recopiées telles quelles (CR-117).
+- **`container = "mp4"` ne perd plus un sous-titre.** Un ASS ou un PGS n'est
+  écarté que si un sous-titre texte de même langue et de même nature (forcé ou
+  complet) dit la même chose. Sinon la sortie passe en MKV et garde tout. Un
+  ASS français disparaissait derrière un SRT anglais (CR-119).
+- **L'Aperçu nomme les pistes écartées** (codec et langue) au lieu de
+  « −1 st ».
+
+Spec § 8.6. Revue de code du 2026-11-13. Tests :
+`tests/test_mov_text_mkv.py`, `tests/test_conteneur.py`.
+
 ## [v0.9.2.9] — 2026-11-13
 
 ### Recalage : un fichier par piste, extrait plus léger, `.srt` UTF-16 (IE-187)

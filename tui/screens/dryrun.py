@@ -34,8 +34,8 @@ from core.decision import (
 )
 from ..common import sauver_config
 from ..common import avertir_h264_sdr
-from ..common import (confier_a_la_file, langue_affichee, barre_etat, 
-    actions_ecran,
+from ..common import (confier_a_la_file, langue_affichee, barre_etat,
+    actions_ecran, nom_codec,
     touche,
     cellule,
     retour_accueil,
@@ -221,10 +221,12 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
             container = dec.output_container.upper().lstrip(".")
             # Une piste écartée par le conteneur doit se voir avant le
             # lancement, pas se découvrir dans le fichier produit.
-            ecartes = len(dec.sous_titres_ecartes)
+            # Nommées, pas comptées : « −1 st » ne disait pas laquelle (CR-119).
+            ecartes = dec.sous_titres_ecartes
             if ecartes:
-                # TRANSLATORS: "st" = subtitle track(s) left out; keep it short.
-                container += f"  −{ecartes} " + _("st")
+                container += "  −" + ", ".join(
+                    f"{nom_codec(st.codec)} {langue_affichee(st.language)}"
+                    for st in ecartes)
             if dec.sous_titres_ocr:
                 # TRANSLATORS: number of image subtitles converted to text by
                 # character recognition; keep it short.

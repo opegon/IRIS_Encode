@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.2.9 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.2.12 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -88,16 +88,18 @@ applique.
 
 ```mermaid
 flowchart TD
-    D0{"Source 4K ?<br/>(≥ 2160 de haut ou ≥ 3840 de large)"}
+    D0{"Source 4K ?<br/>(grand côté ≥ 3200 ou petit côté ≥ 1700,<br/>vidéos verticales comprises)"}
     D0 -->|"oui, keep_4k = true"| D1["Garde sa définition<br/>palier 4K [bitrate_4k_kbps]"]
     D0 -->|"oui, keep_4k = false"| D2["Ramenée en 1080p<br/>palier 1080p [bitrate_1080p_kbps]"]
-    D0 -->|non| D3{"≈ 1080p ?<br/>(≥ 1600 de large ou ≥ 850 de haut,<br/>sources rognées comprises)"}
+    D0 -->|non| D3{"≈ 1080p ?<br/>(grand côté ≥ 1600 ou petit côté ≥ 850,<br/>sources rognées comprises)"}
     D3 -->|oui| D4["Garde sa définition<br/>palier 1080p"]
     D3 -->|non| D5["Plafonnée en 720p<br/>palier 720p [bitrate_720p_kbps]"]
     D1 --> K["Codec cible : HEVC"]
     D2 --> K
     D4 --> K
-    D5 --> K2["Codec cible : H264<br/>(compresse mieux sous 1080p)"]
+    D5 --> D6{"Sortie HDR ?"}
+    D6 -->|oui| K
+    D6 -->|non| K2["Codec cible : H264<br/>(compresse mieux sous 1080p)"]
 ```
 
 Puis l'arbre lui-même. Les trois premières questions décident s'il faut
@@ -200,9 +202,9 @@ flowchart TD
     C2 -->|oui| MKV
     C2 -->|non| C3{"Sous-titre image (PGS, VobSub)<br/>ou stylé (ASS) gardé ?"}
     C3 -->|non| MP4["MP4<br/>HEVC étiqueté hvc1,<br/>sous-titres en mov_text"]
-    C3 -->|oui| C4{"[container] = mp4<br/>et d'autres sous-titres texte ?"}
-    C4 -->|oui| C5["Sous-titres image écartés,<br/>listés à l'écran"] --> MP4
-    C4 -->|"non (auto, ou seuls sous-titres)"| MKV
+    C3 -->|oui| C4{"[container] = mp4, et chacun<br/>doublé par un sous-titre texte<br/>de même langue ?"}
+    C4 -->|oui| C5["Doublons écartés,<br/>nommés à l'écran"] --> MP4
+    C4 -->|"non (auto, ou un seul non doublé)"| MKV
 ```
 
 En `auto`, le conteneur suit le contenu : MP4 quand tout y tient, MKV quand

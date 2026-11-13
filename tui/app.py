@@ -20,18 +20,29 @@ from core.veille import GardeVeille
 from version import __version__
 
 
-def _setup_logging() -> None:
-    """Logge dans iris_encode.log à côté du dossier de l'app (warnings et +)."""
+def _setup_logging() -> str | None:
+    """Logge dans iris_encode.log à côté du dossier de l'app (warnings et +).
+
+    Rend la cause d'un journal impossible à ouvrir (dossier protégé, disque
+    plein), ou None : l'`OSError` sortait d'`IrisEncodeApp` en trace Python
+    (CR-122). Sans journal, rien ne doit non plus aller sur la console, que
+    l'interface occupe.
+    """
     from tui.common import JOURNAL as log_path
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    # En UTF-8 : dans l'encodage local (cp1252), une ligne citant un nom de
-    # fichier japonais ou cyrillique était perdue (CR-72).
-    logging.basicConfig(
-        filename=str(log_path),
-        encoding="utf-8",
-        level=logging.WARNING,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    )
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        # En UTF-8 : dans l'encodage local (cp1252), une ligne citant un nom
+        # de fichier japonais ou cyrillique était perdue (CR-72).
+        logging.basicConfig(
+            filename=str(log_path),
+            encoding="utf-8",
+            level=logging.WARNING,
+            format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        )
+    except OSError as e:
+        logging.getLogger().addHandler(logging.NullHandler())
+        return str(e) or type(e).__name__
+    return None
 
 
 def lettre_minuscule(cle: str) -> str | None:
@@ -101,8 +112,8 @@ class IrisEncodeApp(App):
         # Vrai quand l'utilisateur a nommé un dossier (`launch.bat D:\Films`) :
         # l'accueil s'y ouvre au lieu de la liste des volumes (CR-73).
         self.ouvrir_dossier    = ouvrir_dossier
-        _setup_logging()
-        self.start_path        = Path(os.path.abspath(start_path or Path.cwd()))   # pas resolve() : CR-68
+        self._journal_refuse = _setup_logging()
+        self.start_path       = Path(os.path.abspath(start_path or Path.cwd()))   # pas resolve() : CR-68
         self.cfg               = cfg_mod.load()
         self.profiles          = prof_mod.load_all()
         # Le profil retenu au dernier lancement, ou le premier du fichier.
@@ -258,7 +269,9 @@ class IrisEncodeApp(App):
 
     def alerter_fichiers_illisibles(self) -> None:
         """config.toml ou profiles.toml illisible au lancement : la session
-        tourne sur les défauts et ne réécrit pas le fichier (CR-43, CR-45)."""
+        tourne sur les défauts et ne réécrit pas le fichier (CR-43, CR-45).
+        Aussi : des valeurs écartées (CR-120, CR-121), profiles.toml ou le
+        journal impossibles à créer (CR-122)."""
         from core import profiles as prof_mod
         for nom, erreur in (("config.toml", cfg_mod.illisible()),
                             ("profiles.toml", prof_mod.illisible())):
@@ -267,6 +280,29 @@ class IrisEncodeApp(App):
                               "the defaults and will not rewrite it. Fix it by "
                               "hand, then restart.").format(file=nom, error=erreur),
                             severity="warning", timeout=30)
+        for nom, cles in (("config.toml", cfg_mod.corrigees()),
+                          ("profiles.toml", prof_mod.corrigees())):
+            if cles:
+                liste = ", ".join(cles[:6]) + (", …" if len(cles) > 6 else "")
+                self.notify(ngettext(
+                    "{file}: invalid value ignored, the default applies — "
+                    "{keys}. Fix it by hand: the next save will write the "
+                    "default.",
+                    "{file}: invalid values ignored, the defaults apply — "
+                    "{keys}. Fix them by hand: the next save will write the "
+                    "defaults.", len(cles)).format(file=nom, keys=liste),
+                    severity="warning", timeout=30)
+        if prof_mod.non_cree():
+            self.notify(_("profiles.toml could not be created ({error}): this "
+                          "session runs on the built-in profiles, and changes "
+                          "to them will not be kept.").format(
+                              error=prof_mod.non_cree()),
+                        severity="warning", timeout=30)
+        if self._journal_refuse:
+            self.notify(_("Log file unavailable ({error}): nothing will be "
+                          "logged this session.").format(
+                              error=self._journal_refuse),
+                        severity="warning", timeout=30)
 
     def on_unmount(self) -> None:
         self.veille.relacher()

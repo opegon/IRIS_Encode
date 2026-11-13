@@ -5,9 +5,10 @@ Le conteneur était déduit du seul contenu. Un profil peut désormais exprimer
 une politique — certains lecteurs digèrent mal le Matroska — mais **jamais au
 prix d'une piste perdue en silence** :
 
-- en `mp4`, les sous-titres image sont écartés et la décision les compte ;
-- s'ils sont les **seuls** du fichier, c'est le conteneur qui cède : mieux vaut
-  un MKV qu'une sortie sans sous-titres ;
+- en `mp4`, un sous-titre que le MP4 ne porte pas (image, stylé) n'est écarté
+  que si un texte de même langue et de même nature le double ;
+- sinon, c'est le conteneur qui cède : mieux vaut un MKV qu'une piste perdue
+  (CR-119) ;
 - une piste audio sans perte conservée ramène toujours au MKV — on n'échange
   pas une piste demandée contre un format.
 """
@@ -66,20 +67,43 @@ def test_mkv_force_meme_quand_tout_tiendrait_en_mp4(tmp_path):
     assert dec.sous_titres_ecartes == [], "rien n'a à être écarté en MKV"
 
 
-def test_mp4_ecarte_les_sous_titres_image(tmp_path):
-    """Des sous-titres image d'autres langues que les SubRip.
-
-    Doublés par un SubRip de même langue, ils seraient décochés dès la
-    sélection (`_pgs_doubles`) et le conteneur n'aurait rien à écarter.
-    """
+def test_mp4_n_ecarte_pas_un_sous_titre_image_seul_de_sa_langue(tmp_path):
+    """Des sous-titres image d'autres langues que les SubRip : rien ne dit
+    la même chose qu'eux, le conteneur cède (CR-119, choix du 2026-11-13).
+    Ils étaient écartés derrière des SubRip français."""
     dec = decide(
         _info(tmp_path, [_st(0, "subrip"), _st(1, "subrip"),
                          _st(2, "hdmv_pgs_subtitle", "ger"),
                          _st(3, "dvd_subtitle", "ita")]),
         _profile(container="mp4"))
+    assert dec.output_container == ".mkv"
+    assert dec.sous_titres_ecartes == []
+    assert [st.index for st in dec.subtitles_finales] == [0, 1, 2, 3]
+
+
+def test_mp4_ecarte_ce_qu_un_texte_de_meme_langue_double(tmp_path):
+    """Un ASS français doublé par un SubRip français : l'écarter ne coûte rien."""
+    dec = decide(_info(tmp_path, [_st(0, "subrip"), _st(1, "ass")]),
+                 _profile(container="mp4"))
     assert dec.output_container == ".mp4"
-    assert [st.index for st in dec.sous_titres_ecartes] == [2, 3]
+    assert [st.index for st in dec.sous_titres_ecartes] == [1]
+
+
+def test_un_ass_francais_ne_disparait_pas_derriere_un_srt_anglais(tmp_path):
+    """CR-119 : l'ASS était écarté dès qu'il restait un texte, toute langue."""
+    dec = decide(_info(tmp_path, [_st(0, "ass", "fre"), _st(1, "subrip", "eng")]),
+                 _profile(container="mp4"))
+    assert dec.sous_titres_ecartes == []
+    assert dec.output_container == ".mkv"
     assert [st.index for st in dec.subtitles_finales] == [0, 1]
+
+
+def test_un_force_ne_double_qu_un_force(tmp_path):
+    """Un SubRip forcé ne dit pas tout ce que dit un ASS complet."""
+    force = SubtitleTrack(index=0, codec="subrip", language="fre", forced=True)
+    dec = decide(_info(tmp_path, [force, _st(1, "ass")]), _profile(container="mp4"))
+    assert dec.sous_titres_ecartes == []
+    assert dec.output_container == ".mkv"
 
 
 # ─── Ce qu'on ne sacrifie jamais ──────────────────────────────────────────────

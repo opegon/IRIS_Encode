@@ -779,6 +779,13 @@ def dimensions_reduites(largeur: int, hauteur: int,
     return pair(Fraction(cible_h * largeur, hauteur), cible_l), cible_h
 
 
+def _est_mov_text(codec: str) -> bool:
+    """Sous-titre texte du MP4 : `mov_text` pour ffprobe, « Timed Text » pour
+    mkvmerge (donneur greffé)."""
+    low = (codec or "").lower()
+    return low in ("mov_text", "tx3g") or "timed text" in low
+
+
 def definition_sortie(info, vid) -> tuple[int, int]:
     """La définition que l'encodage produira, pour l'affichage.
 
@@ -803,9 +810,10 @@ def _encodeur_et_format(info, vid, platform: PlatformProfile) -> tuple[str, str,
 
     Une sortie HDR10 en 8 bits, c'est du banding garanti dans les dégradés :
     la courbe PQ étale 10 bits de source sur 256 niveaux. HEVC et AV1 savent
-    encoder en 10 bits, H264 non (pas de main10 chez NVENC) — une source HDR
-    ramenée en H264 reste donc en 8 bits, et cela ne concerne que les cibles
-    sous 1080p.
+    encoder en 10 bits, H264 non (pas de main10 chez NVENC). Une source HDR
+    n'arrive donc jamais ici en H264 avec une sortie HDR : la décision
+    automatique la garde en HEVC (CR-118), le choix manuel de H264 la passe
+    en SDR (`decision.h264_force_sdr`).
     """
     is_av1 = (vid.action == VideoAction.ENCODE_AV1)
     if vid.action == VideoAction.ENCODE_HEVC:
@@ -1438,6 +1446,16 @@ def build_command(
         # Le conteneur découle déjà des pistes conservées : s'il sort en MP4,
         # c'est qu'aucun sous-titre image n'est gardé, donc mov_text convient.
         cmd += ["-c:s", "copy" if container == ".mkv" else "mov_text"]
+        if container == ".mkv":
+            # Le Matroska ne porte pas le `mov_text` d'un MP4 : recopié, ffmpeg
+            # refusait d'écrire la sortie (« Subtitle codec mov_text is not
+            # supported », mesuré en 6.1.1 et 8.1.2). Ces pistes-là passent en
+            # SubRip, une par une (CR-117). mkvmerge, lui, convertit seul.
+            for n in ([n for n, st in enumerate(subs_sortie)
+                       if st.index not in refaits_input and _est_mov_text(st.codec)]
+                      + [n_src_subs + j for j, ext in enumerate(ext_subs)
+                         if _est_mov_text(ext.codec)]):
+                cmd += [f"-c:s:{n}", "srt"]
 
     # Les polices jointes d'un ASS : sans elles, panneaux et karaokés
     # s'affichent dans une police de repli (CR-20). Le MP4 n'en porte pas.

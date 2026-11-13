@@ -41,7 +41,8 @@ une ligne de moins dans une liste.
    sondé : retomber sur une action possible plutôt qu'annoncer une opération
    qui échouera au lancement. Ne pas savoir n'autorise pas non plus à refuser.
 7. **Un refus vaut mieux qu'un chiffre faux** (mesure de décalage), et **une
-   perte doit se voir** (sous-titres écartés affichés `MP4 −3 st`).
+   perte doit se voir** (sous-titres écartés nommés dans l'Aperçu, codec et
+   langue — un compte, `MP4 −1 st`, ne disait pas lequel, v0.9.2.10).
 
 ## Défauts silencieux rencontrés
 

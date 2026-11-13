@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.9 — document de référence courant
+**Version** : 0.9.2.12 — document de référence courant
 **Date** : 2026-11-13
 **Statut** : stable
 
@@ -532,6 +532,21 @@ console le dit avant l'interface, l'interface le redit au montage. Avant, la
 langue écrite au démarrage (`assurer_langue`) remplaçait le fichier — clés
 d'API et mot de passe compris — à la moindre faute de frappe.
 
+**Valeur mal typée** (v0.9.2.12, CR-121) — un fichier syntaxiquement valide
+passe ensuite par `_conformer` : toute valeur dont le type diffère de celui de
+`_DEFAULTS` est ramenée au défaut de sa clé (un booléen n'est pas un nombre, un
+entier vaut pour un décimal, une liste n'a que des textes) ; un nombre là où un
+texte est attendu (`password = 1234`) est lu comme ce texte. Les branches sans
+clés fixes sont contrôlées à part (`_conformer_libres`) : une vitesse mesurée
+non numérique, une largeur de colonne qui n'est pas un entier positif, un écran
+de `[tui]` qui n'est pas une table sont retirés. Les clés corrigées sont
+rendues par `config.corrigees()` et notifiées au montage ; le prochain
+enregistrement écrit le défaut. Avant, `tui = 1` ou `app = "x"` fermait
+l'application au lancement.
+
+**Journal impossible à ouvrir** (v0.9.2.12, CR-122) — `_setup_logging` rend la
+cause au lieu de lever ; la session tourne sans journal et le dit au montage.
+
 **Écriture refusée** (v0.8.9.98, CR-64, CR-77) — `config.enregistrer(cfg)` rend
 la cause d'un échec au lieu de lever ; l'interface écrit toujours par
 `tui/common.sauver_config` / `signaler_config`, qui le notifient une fois par
@@ -758,6 +773,8 @@ coût (D16). La liste des profils a une colonne **Agrandir** : `—`, `↑`, `�
 | Cas | Ce que fait l'application |
 |---|---|
 | `profiles.toml` absent | écrit les **profils livrés** dans un fichier neuf, et les charge |
+| `profiles.toml` absent **et** dossier non inscriptible (disque plein, dossier protégé) | tient la session sur les profils livrés, en mémoire ; `profiles.non_cree()` rend la cause, notifiée au montage (v0.9.2.12, CR-122) |
+| une valeur invalide (type ou valeur hors liste : `bitrate_1080p_kbps = "5000"`, `container = "avi"`, `keep_4k = 1`…) | la clé est écartée du profil et prend le défaut du moteur ; `profiles.corrigees()` la nomme (`profil.clé`), notifiée au montage. Une clé inconnue n'est pas contrôlée, `preset_encoder` accepte tout texte non vide. Une langue écrite seule (`audio_languages = "fre"`, `"fre, eng"`) se lit comme une liste (v0.9.2.12, CR-120) |
 | `profiles.toml` absent **et** fichier livré absent | écrit `[_default_]` dans un fichier neuf, et le charge |
 | TOML invalide | **ne réécrit rien** — le fichier de l'utilisateur est sa bibliothèque, il reste réparable à la main — et tient la session sur les profils livrés, chargés en mémoire seulement. `save_all` refuse jusqu'à la fin de la session (`ProfilsIllisibles`, v0.8.9.98, CR-45) : l'écran de gestion le dit à l'ouverture et à chaque enregistrement, l'interface au montage |
 | TOML invalide **et** fichier livré absent | ne réécrit rien, tient la session sur `_default_` |
@@ -1024,9 +1041,9 @@ params = [
 | Cas | Condition | Action |
 |---|---|---|
 | **CAS 1 bis** | débit vidéo **inconnu** (0 : fichier en cours d'écriture, flux sans durée) | Réencodage au débit cible, raison « Débit inconnu » (v0.8.9.113, CR-19 — l'analyse posait 9 999 999 b/s, qui restait sous une cible 4K et devenait la cible d'un codec à convertir) |
-| **CAS 1** | bitrate source > seuil cible + 10 % (`TOLERANCE_DEBIT_PCT`) | Réencodage HEVC (ou H264 si cible < 1080p) au bitrate cible |
+| **CAS 1** | bitrate source > seuil cible + 10 % (`TOLERANCE_DEBIT_PCT`) | Réencodage HEVC (ou H264 si cible < 1080p et sortie non HDR) au bitrate cible |
 | **CAS 2** | bitrate OK mais résolution trop grande | Redimensionnement HEVC, bitrate original |
-| **CAS 3** | bitrate OK, résolution OK, **codec hors `CODECS_LISIBLES`** | Réencodage, bitrate conservé — H264 sous 1080p, HEVC au-dessus |
+| **CAS 3** | bitrate OK, résolution OK, **codec hors `CODECS_LISIBLES`** | Réencodage, bitrate conservé — H264 sous 1080p, HEVC au-dessus (et pour toute sortie HDR) |
 | **ENCODE_DV** | un des trois cas ci-dessus, profil en `dv`, et RPU réinjectable (§ 7.4) | Réencodage au débit cible, RPU sorti puis remis |
 | **STRIP_DV** | aucun des cas ci-dessus, mais RPU retirable (DV 8.1 ou 7) et profil en `hdr10` | Retrait du RPU par remux, sans réencodage (§ 7.3) |
 | **REMUX** | aucun des cas ci-dessus, mais une piste audio retenue que le profil convertit, un PGS doublé par un SRT, ou un PGS ou VobSub que l'OCR convertit (`motifs_remux`, qui nomme `PGS` ou `VobSub`) | Vidéo recopiée (`-c:v copy`), audio et sous-titres selon le profil, suffixe `.remux-iris` (IE-175) |
@@ -1563,18 +1580,30 @@ se déduit pas du seul contenu : certains lecteurs digèrent mal le Matroska.
 |---|---|
 | `auto` | Le contenu décide. MP4 quand tout y tient. |
 | `mkv` | Toujours du Matroska, rien n'est écarté. |
-| `mp4` | Les sous-titres image sont **écartés**, et `sous_titres_ecartes` les liste pour que la décision les affiche. |
+| `mp4` | Un sous-titre que le MP4 ne porte pas (image, ASS/SSA stylé) est **écarté s'il est doublé** : un texte que le MP4 porte, de même langue et de même nature (forcé ou complet), dit la même chose. `sous_titres_ecartes` les liste ; l'Aperçu les nomme (`MP4  −hdmv_pgs_subtitle fre`). |
 
 **Deux garde-fous, parce qu'une politique ne vaut pas une perte silencieuse :**
 
-1. Si les sous-titres image sont les **seuls** du fichier, c'est le conteneur
-   qui cède — mieux vaut un MKV qu'une sortie sans sous-titres.
+1. Si **un seul** de ces sous-titres n'est pas doublé, c'est le conteneur qui
+   cède et rien n'est écarté — mieux vaut un MKV qu'un sous-titre perdu
+   (v0.9.2.10, CR-119). Jusque-là, tout était écarté dès qu'il restait un
+   texte, quelle que soit sa langue : un ASS français disparaissait derrière un
+   SRT anglais, et l'Aperçu ne disait que « −1 st ».
 2. Une piste audio sans perte **conservée** ramène toujours au MKV. On écarte
    un sous-titre doublé par un SubRip ; on n'échange pas contre un format une
    piste que l'utilisateur a demandé de garder.
 
 `subtitles_finales` donne ce qui atterrit réellement : l'encodeur mappe cette
-liste au lieu de `0:s?`, et le dry-run affiche `MP4 −3 st` en style « modifié ».
+liste au lieu de `0:s?`, et le dry-run nomme les pistes écartées (codec et
+langue) en style « modifié ».
+
+**`mov_text` vers Matroska** (v0.9.2.10, CR-117) — le muxeur Matroska de ffmpeg
+refuse un `mov_text` recopié (« Subtitle codec mov_text is not supported »,
+mesuré en 6.1.1 et 8.1.2). En sortie `.mkv`, `build_command` pose
+`-c:s:N srt` sur chaque piste `mov_text` de la source et sur chaque greffe
+« Timed Text » (nom mkvmerge), les autres restant en `-c:s copy`
+(`encoder._est_mov_text`). mkvmerge convertit seul : le mux et le mux
+préalable n'ont rien à faire.
 
 **Retrait de Dolby Vision en MP4.** mkvmerge ne sait écrire que du Matroska :
 quand la décision demande du MP4, ffmpeg produit le fichier en une passe depuis
@@ -2577,8 +2606,9 @@ une seconde lecture de la source, et rien quand tout vient de l'entrée 0.
 soit la source. Sur une courbe PQ, cela étale 10 bits de dégradés sur 256 niveaux :
 banding garanti. La sortie passe en `yuv420p10le` + `-profile:v main10` dès que la
 sortie est HDR (source PQ/HLG, ou `dv_action == HDR10`) et que l'encodeur sait le
-porter — HEVC et AV1. H264 n'a pas de profil 10 bits chez NVENC : une source HDR
-ramenée en H264 reste en 8 bits, ce qui ne concerne que les cibles sous 1080p.
+porter — HEVC et AV1. H264 n'a pas de profil 10 bits chez NVENC : aucune sortie
+HDR n'est donc confiée à H264 — la décision automatique garde la source en HEVC,
+le choix manuel de H264 la passe en SDR (§ 14.0).
 
 **Contrôle de débit.** Le débit du profil est une **cible moyenne**, jamais un
 plancher : NVENC ne dépense que ce que le contenu exige. Le mode standard passe
@@ -3054,7 +3084,10 @@ sans un mot. `h264_force_sdr` : H264 sur une source HDR sort en **SDR** (tone
 mapping, `dv_action = SDR`), et chaque point de choix l'annonce
 (`tui.common.avertir_h264_sdr` : assistant, aperçu, écran des pistes, dont la
 colonne DV montre SDR). La coche forcée, qui n'est pas un choix de codec, garde
-une source HDR en HEVC quelle que soit sa tranche. Elle suit la **tranche** de
+une source HDR en HEVC quelle que soit sa tranche ; la **décision automatique**
+aussi depuis la v0.9.2.11 (`_decide_video_classique`, CR-118) — elle confiait un
+720p HDR10 à H264 8 bits, PQ gardée, sans conversion ni avertissement. Seul un
+Dolby Vision que le profil ramène en SDR peut y sortir en H264. Elle suit la **tranche** de
 définition et non la hauteur (CR-16) : un 1920×800 au format scope se force en
 HEVC, plus en H264 au même débit. Le libellé de décision nomme chaque codec
 (`CODEC_PAR_ACTION`) : un AV1 s'affichait « → H264 » (CR-17). La conversion SDR
@@ -3871,7 +3904,9 @@ fusionnait les valeurs saisies, sans rien dire.
 
 **Valeur hors liste** (v0.8.9.7) — un débit que la liste ne propose pas
 (`serie_basic` : 3500k en 4K) s'y ajoute à sa place (`_avec_valeur()`), au lieu
-de laisser le champ vide. La sentinelle « rien de choisi » est `Select.NULL`
+de laisser le champ vide. Un texte hors liste (`preset_encoder = "slower"`)
+s'ajoute en fin de liste, pour ce profil seulement (v0.9.2.12, CR-131) : avant,
+`Ctrl+S` écrivait `medium` à sa place. La sentinelle « rien de choisi » est `Select.NULL`
 sous Textual 8 (`Select.BLANK` n'y vaut que `False`) : `_est_vide()` teste les
 deux. Sans cela, le formulaire affichait « Select.NULLk » et `dump()` rendait
 `Select.NULL`, enregistré dans le profil en mémoire.
@@ -4413,6 +4448,9 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.2.0 | 2026-11-08 | **Options sans rescan inutile** (§ 14) : au retour de `Ctrl+O`, un dossier n'est relu que si la durée minimale des titres a changé (CR-98) ; en mode assistant, `F4`, `F5` et `Ctrl+O` répondent sans être annoncés (précisé) ; guides et spec donnent `Ctrl+O` pour les options · `tests/test_revue_interface.py` |
 | 0.9.2.4 | 2026-11-09 | **Chargements croisés de l'accueil** (§ 14.1, IE-182) : un `_Releve` ne remplace que celui d'une époque plus ancienne (`_verrou_releve`) ; la liste ne reste plus « en attente » ; `test_accueil_progressif` n'échoue plus par intermittence · `tests/test_accueil_chargements_croises.py` |
 | 0.9.2.5 | 2026-11-10 | **Vidéos d'une chaîne YouTube publique** (§ 9.9.1, IE-181) : `url_chaine`, `lister_chaine` (liste à plat par pages de 100, date approchée), `ChaineYouTubeScreen` (définition lue en arrière-plan, cochées d'abord ; réglage commun : définition maximale `Video.hauteur_sous`, sous-titres `sous_titres_communs` ; téléchargement l'un après l'autre) · `YouTubeScreen` rend une liste de fichiers · `tests/test_youtube_chaine.py`, `tests/test_youtube_chaine_ecran.py` |
+| 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |
+| 0.9.2.11 | 2026-11-13 | **HDR sous la tranche 1080p** (§ 8.1, § 14.0, IE-189) : la décision automatique garde en HEVC toute source dont la sortie reste HDR, comme le forçage ; H264 seulement pour une sortie SDR (CR-118) · `tests/test_hdr_tranche.py` |
+| 0.9.2.10 | 2026-11-13 | **Sous-titres et conteneur** (§ 8.6, IE-188) : `mov_text` converti en SubRip vers Matroska (`-c:s:N srt`, CR-117) ; en `container = "mp4"`, seuls les sous-titres doublés par un texte de même langue et de même nature sont écartés, sinon le conteneur cède ; pistes écartées nommées dans l'Aperçu (CR-119) · `tests/test_mov_text_mkv.py`, `tests/test_conteneur.py` |
 | 0.9.2.9 | 2026-11-13 | **Fichiers du recalage** (§ 9, § 12, IE-187) : nom de piste recalée numéroté tant qu'il est pris (`SyncScreen._fichier_recale`, CR-115) ; `K` ne lit plus un donneur conteneur pour sa première réplique (CR-116) ; `.srt` UTF-16 à BOM ni déclaré à ffmpeg ni lu en cp1252 (`encodage_texte`, `sync._read_text`, CR-123) · `tests/test_recalage_fichiers.py` |
 | 0.9.2.8 | 2026-11-13 | **Géométrie** (§ 8, IE-186) : vidéo verticale jugée sur le grand et le petit côté, cadre posé dans son orientation (`is_4k`, `_resolve_limits`, CR-114) ; fichier sans flux vidéo illisible, « no video stream » (`scan`, CR-129) ; définition produite affichée dans l'Aperçu et les pistes (`encoder.definition_sortie`, CR-140) · `tests/test_geometrie.py` |
 | 0.9.2.7 | 2026-11-13 | **Rien n'est écrasé ni supprimé sur un succès supposé** (§ 9.7, § 14.7, IE-185) : le mux d'un fichier numérote un nom déjà pris (`muxer.sortie_mux_libre`, CR-113) ; la sortie est contrôlée — présente, non vide, durée cohérente — avant de supprimer la source, sur la passe principale et les deux chemins Dolby Vision (`encoder.defaut_sortie`, CR-127) · `tests/test_sorties_protegees.py` |

@@ -184,6 +184,83 @@ def illisible() -> str | None:
     return _illisible
 
 
+# Pourquoi profiles.toml n'a pas pu être créé au premier lancement, ou None :
+# la session tient alors sur les profils livrés, en mémoire (CR-122).
+_non_cree: str | None = None
+
+
+def non_cree() -> str | None:
+    """Pourquoi profiles.toml n'a pas pu être créé, ou None."""
+    return _non_cree
+
+
+# ─── Contrôle des valeurs (CR-120) ────────────────────────────────────────────
+
+def _entier_positif(v: Any) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool) and v > 0
+
+
+def _langues(v: Any) -> bool:
+    return isinstance(v, list) and all(isinstance(e, str) for e in v)
+
+
+# Clé → ce qu'une valeur doit être. Une clé inconnue n'est pas contrôlée : un
+# profil peut porter des réglages qu'une version suivante lira.
+_CONTROLES: dict[str, Any] = {
+    **{cle: _entier_positif for cle in (
+        "bitrate_480p_kbps", "bitrate_720p_kbps", "bitrate_1080p_kbps",
+        "bitrate_4k_kbps", "audio_stereo_kbps", "audio_surround_kbps",
+        "audio_surround_7_1_kbps")},
+    **{cle: lambda v: isinstance(v, bool) for cle in (
+        "keep_4k", "delete_source", "preserve_hd_audio",
+        "audio_copy_compatible", "upscale")},
+    "upscale_passes":     lambda v: v in (1, 2) and not isinstance(v, bool),
+    # Libre : ffmpeg accepte `slower`, `p5`…, que le formulaire ne propose pas.
+    "preset_encoder":     lambda v: isinstance(v, str) and bool(v.strip()),
+    "dolby_vision":       lambda v: v in ("hdr10", "dv", "sdr"),
+    "hdr10_quality":      lambda v: v in ("compat", "quality"),
+    "audio_hd_codec":     lambda v: v in ("none", "ac3", "eac3"),
+    "container":          lambda v: v in ("auto", "mp4", "mkv"),
+    "audio_languages":    _langues,
+    "subtitle_languages": _langues,
+}
+
+# Les valeurs écartées au dernier chargement, « profil.clé ».
+_corrigees: list[str] = []
+
+
+def corrigees() -> list[str]:
+    """Les réglages de profiles.toml écartés au dernier chargement."""
+    return list(_corrigees)
+
+
+def _controler(nom: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Les réglages de `nom`, sans ceux dont la valeur est invalide.
+
+    Une clé retirée vaut comme absente : le moteur prend son défaut. Sans ce
+    contrôle, `audio_languages = "fre"` était parcouru lettre à lettre et la
+    piste française exclue sans un mot ; `bitrate_1080p_kbps = "5000"` levait
+    dans `decide`, et chaque fichier de l'accueil s'affichait illisible.
+    Une langue écrite seule (`"fre"`, `"fre, eng"`) se lit comme une liste :
+    c'est ce qui était voulu.
+    """
+    propre = {}
+    for cle, v in data.items():
+        if cle in ("audio_languages", "subtitle_languages") and isinstance(v, str):
+            v = [l.strip() for l in v.replace(";", ",").split(",") if l.strip()]
+        controle = _CONTROLES.get(cle)
+        if controle is not None and not controle(v):
+            _corrigees.append(f"{nom}.{cle}")
+            continue
+        propre[cle] = v
+    return propre
+
+
+def _profils(raw: dict[str, Any]) -> dict[str, "Profile"]:
+    return {nom: Profile(id=nom, data=_controler(nom, data))
+            for nom, data in raw.items() if isinstance(data, dict)}
+
+
 def load_all() -> dict[str, "Profile"]:
     """Charge les profils dans l'ordre où profiles.toml les écrit.
 
@@ -194,15 +271,23 @@ def load_all() -> dict[str, "Profile"]:
     lancement sans pouvoir être supprimé. Un utilisateur ayant renommé les
     profils livrés en voyait seize là où son fichier en décrivait dix.
     """
-    global _illisible
+    global _illisible, _non_cree
     _illisible = None
+    _non_cree = None
+    _corrigees.clear()
     if not PROFILES_PATH.exists():
         livres = _profils_livres()
-        if livres is not None:
-            save_all(livres)
-            return livres
-        _write_defaults()
-        return _plancher()
+        # Un dossier protégé ou un disque plein : la session tient sur les
+        # profils livrés, en mémoire. L'`OSError` sortait d'`IrisEncodeApp`
+        # en trace Python (CR-122).
+        try:
+            if livres is not None:
+                save_all(livres)
+            else:
+                _write_defaults()
+        except OSError as e:
+            _non_cree = str(e) or type(e).__name__
+        return livres if livres is not None else _plancher()
 
     try:
         with PROFILES_PATH.open("rb") as f:
@@ -230,13 +315,12 @@ def load_all() -> dict[str, "Profile"]:
     migre = _migrer_noms(raw)
     if migre is not None:
         raw = migre
-        _ecrire(raw)
+        try:
+            _ecrire(raw)
+        except OSError:
+            pass        # renommés en mémoire ; le lancement suivant réessaie
 
-    profiles = {
-        name: Profile(id=name, data=dict(data))
-        for name, data in raw.items()
-        if isinstance(data, dict)
-    }
+    profiles = _profils(raw)
 
     # Un fichier vide, ou qui ne décrit pas une seule table nommée, ne laisse
     # aucun profil sélectionnable : le plancher reprend la main.

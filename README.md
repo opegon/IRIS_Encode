@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.2.9 — Windows (macOS/Linux support planned)
+**Version**: 0.9.2.12 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -88,16 +88,18 @@ it.
 
 ```mermaid
 flowchart TD
-    D0{"4K source?<br/>(≥ 2160 high or ≥ 3840 wide)"}
+    D0{"4K source?<br/>(long side ≥ 3200 or short side ≥ 1700,<br/>portrait videos included)"}
     D0 -->|"yes, keep_4k = true"| D1["Keeps its resolution<br/>4K tier [bitrate_4k_kbps]"]
     D0 -->|"yes, keep_4k = false"| D2["Brought down to 1080p<br/>1080p tier [bitrate_1080p_kbps]"]
-    D0 -->|no| D3{"≈ 1080p?<br/>(≥ 1600 wide or ≥ 850 high,<br/>cropped sources included)"}
+    D0 -->|no| D3{"≈ 1080p?<br/>(long side ≥ 1600 or short side ≥ 850,<br/>cropped sources included)"}
     D3 -->|yes| D4["Keeps its resolution<br/>1080p tier"]
     D3 -->|no| D5["Capped at 720p<br/>720p tier [bitrate_720p_kbps]"]
     D1 --> K["Target codec: HEVC"]
     D2 --> K
     D4 --> K
-    D5 --> K2["Target codec: H264<br/>(compresses better below 1080p)"]
+    D5 --> D6{"HDR output?"}
+    D6 -->|yes| K
+    D6 -->|no| K2["Target codec: H264<br/>(compresses better below 1080p)"]
 ```
 
 Then the tree itself. The first three questions decide whether to re-encode;
@@ -200,9 +202,9 @@ flowchart TD
     C2 -->|yes| MKV
     C2 -->|no| C3{"Image (PGS, VobSub)<br/>or styled (ASS) subtitle kept?"}
     C3 -->|no| MP4["MP4<br/>HEVC tagged hvc1,<br/>subtitles as mov_text"]
-    C3 -->|yes| C4{"[container] = mp4<br/>and other text subtitles?"}
-    C4 -->|yes| C5["Image subtitles discarded,<br/>listed on screen"] --> MP4
-    C4 -->|"no (auto, or only subtitles)"| MKV
+    C3 -->|yes| C4{"[container] = mp4, and each one<br/>doubled by a text subtitle<br/>of the same language?"}
+    C4 -->|yes| C5["Duplicates discarded,<br/>named on screen"] --> MP4
+    C4 -->|"no (auto, or one not doubled)"| MKV
 ```
 
 In `auto`, the container follows the content: MP4 when everything fits, MKV

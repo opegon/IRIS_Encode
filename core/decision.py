@@ -576,10 +576,13 @@ class FileDecision:
     def sous_titres_ecartes(self) -> list:
         """Sous-titres que le conteneur MP4 oblige à laisser de côté.
 
-        Vide hors du mode `container = "mp4"`, et vide aussi lorsque ces
-        sous-titres sont les **seuls** du fichier : on préfère alors garder le
-        MKV plutôt que produire une sortie muette. Écarter une piste doublée
-        par un SubRip ne coûte rien ; écarter la dernière coûte le sous-titre.
+        Vide hors du mode `container = "mp4"`. Ne sont écartés que les
+        sous-titres que le MP4 ne porte pas (image, stylés) **doublés** par un
+        texte qu'il porte, de même langue et de même nature (forcé ou complet),
+        la règle de `_pgs_doubles` : les écarter ne coûte rien. Dès qu'un seul
+        n'est pas doublé, c'est le conteneur qui cède — rien n'est écarté, la
+        sortie est un MKV. Un ASS français disparaissait derrière un SRT
+        anglais (CR-119).
         """
         if self.profile.get("container", "auto") != "mp4":
             return []
@@ -587,11 +590,17 @@ class FileDecision:
         # écarter, et pas de circularité avec `needs_mkv`.
         if self._mkv_impose_par_l_audio():
             return []
-        images = [st for st in self.kept_subtitles
-                  if st.is_image_based or _needs_mkv_codec(st.codec)]
-        if not images or len(images) == len(self.kept_subtitles):
+        kept     = self.kept_subtitles
+        hors_mp4 = [st for st in kept
+                    if st.is_image_based or _needs_mkv_codec(st.codec)]
+        textes   = {(normalize_language(st.language), st.is_forced) for st in kept
+                    if st not in hors_mp4}
+        if not hors_mp4 or not all(
+                _langue_dite(st.language)
+                and (normalize_language(st.language), st.is_forced) in textes
+                for st in hors_mp4):
             return []
-        return images
+        return hors_mp4
 
     @property
     def needs_mkv(self) -> bool:
@@ -1100,9 +1109,15 @@ def _decide_video_classique(info: VideoInfo, profile: Profile,
     # → limit_h=1040 mais bucket_h=1080).
     target_bps = profile.bitrate_for_height(bucket_h)
 
-    # Pour les cibles < 1080p, H264 compresse mieux que HEVC
-    sub_1080  = bucket_h < 1080
-    action    = VideoAction.ENCODE_H264 if sub_1080 else VideoAction.ENCODE_HEVC
+    # Pour les cibles < 1080p, H264 compresse mieux que HEVC — sauf pour une
+    # sortie HDR : H264 ne la porte pas (8 bits, courbe PQ gardée, banding).
+    # Une seule règle avec le forçage (`force_skip_to_encode`) : HEVC pour
+    # toute source HDR qui le reste, quelle que soit la tranche. Le chemin
+    # automatique encodait un 720p HDR10 en H264 8 bits, sans un mot (CR-118).
+    sub_1080   = bucket_h < 1080
+    sortie_hdr = source_hdr(info) and dv_action != DVAction.SDR
+    action     = (VideoAction.ENCODE_H264 if sub_1080 and not sortie_hdr
+                  else VideoAction.ENCODE_HEVC)
     suffix    = SUFFIX_BY_ACTION[action]
 
     # Conserver le Dolby Vision impose de recopier le flux — sauf si le RPU

@@ -144,6 +144,83 @@ def illisible() -> str | None:
     return _illisible
 
 
+# Les clés de config.toml lues avec un type faux et ramenées au défaut
+# (`[app] language = 1`, `tui = 1`…), sous la forme « app.language ».
+_corrigees: list[str] = []
+
+
+def corrigees() -> list[str]:
+    """Les clés de config.toml ramenées au défaut au dernier chargement."""
+    return list(_corrigees)
+
+
+def _nombre(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _conforme(v: Any, defaut: Any) -> bool:
+    """`v` a-t-il le type de `defaut` ? Un booléen n'est pas un nombre, un
+    entier vaut pour un décimal et inversement, une liste n'a que des textes."""
+    if isinstance(defaut, bool):
+        return isinstance(v, bool)
+    if _nombre(defaut):
+        return _nombre(v)
+    if isinstance(defaut, list):
+        return isinstance(v, list) and all(isinstance(e, str) for e in v)
+    return isinstance(v, type(defaut))
+
+
+def _conformer(cfg: dict, defauts: dict, chemin: str, fautes: list[str]) -> None:
+    """Ramène au défaut, dans `cfg`, toute valeur dont le type diffère de celui
+    de `defauts` (CR-121). Un fichier syntaxiquement valide mais mal typé
+    passait le contrôle de CR-43 et fermait l'application au lancement :
+    `tui = 1` dans `get_column_widths`, `app = "x"` dans `assurer_langue`.
+    """
+    for cle, defaut in defauts.items():
+        if cle not in cfg:
+            continue
+        v, nom = cfg[cle], f"{chemin}.{cle}" if chemin else cle
+        if isinstance(defaut, dict):
+            if isinstance(v, dict):
+                _conformer(v, defaut, nom, fautes)
+            else:
+                cfg[cle] = _deep_merge({}, defaut)
+                fautes.append(nom)
+        elif isinstance(defaut, str) and _nombre(v):
+            # `password = 1234` sans guillemets : c'est le texte voulu.
+            cfg[cle] = str(v)
+        elif not _conforme(v, defaut):
+            cfg[cle] = list(defaut) if isinstance(defaut, list) else defaut
+            fautes.append(nom)
+
+
+def _conformer_libres(cfg: dict, fautes: list[str]) -> None:
+    """Les branches dont `_DEFAULTS` ne fixe pas les clés : les vitesses
+    mesurées (des nombres) et les largeurs de colonnes de chaque écran (des
+    entiers positifs). Une entrée d'un autre type est retirée."""
+    vitesses = cfg["stats"]["encode_speed"]
+    for codec in [c for c, v in vitesses.items() if not _nombre(v)]:
+        del vitesses[codec]
+        fautes.append(f"stats.encode_speed.{codec}")
+    for ecran in list(cfg["tui"]):
+        branche = cfg["tui"][ecran]
+        if not isinstance(branche, dict):
+            del cfg["tui"][ecran]
+            fautes.append(f"tui.{ecran}")
+            continue
+        colonnes = branche.get("columns")
+        if colonnes is None:
+            continue
+        if not isinstance(colonnes, dict):
+            del branche["columns"]
+            fautes.append(f"tui.{ecran}.columns")
+            continue
+        for col in [c for c, v in colonnes.items()
+                    if not (isinstance(v, int) and not isinstance(v, bool) and v > 0)]:
+            del colonnes[col]
+            fautes.append(f"tui.{ecran}.columns.{col}")
+
+
 def load() -> dict[str, Any]:
     """Charge config.toml en appliquant les valeurs par défaut.
 
@@ -151,18 +228,25 @@ def load() -> dict[str, Any]:
     session sur les valeurs par défaut **sans le réécrire** : la moindre
     écriture (la langue au démarrage, une largeur de colonne) l'aurait
     remplacé, identifiants compris (CR-43). Voir `illisible()`.
+
+    Une valeur d'un type faux est ramenée au défaut de sa clé, et nommée par
+    `corrigees()` (CR-121).
     """
     global _illisible
     _illisible = None
+    _corrigees.clear()
     if not CONFIG_PATH.exists():
         return _deep_merge({}, _DEFAULTS)
     try:
         with CONFIG_PATH.open("rb") as f:
             user = tomllib.load(f)
-        return _deep_merge(_DEFAULTS, user)
     except Exception as e:
         _illisible = str(e) or type(e).__name__
         return _deep_merge({}, _DEFAULTS)
+    cfg = _deep_merge(_DEFAULTS, user)
+    _conformer(cfg, _DEFAULTS, "", _corrigees)
+    _conformer_libres(cfg, _corrigees)
+    return cfg
 
 
 # Deux threads écrivent la configuration : le thread d'interface quand une

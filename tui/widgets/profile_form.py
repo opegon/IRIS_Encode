@@ -132,10 +132,17 @@ def _avec_valeur(pairs: list, val: Any) -> list:
     `serie_basic` règle sa 4K à 3500k, que la liste ne propose pas : le champ
     restait vide. La valeur du profil s'ajoute à sa place dans l'ordre, sans
     rien retirer de la liste.
+
+    Un texte aussi, en fin de liste : `preset_encoder = "slower"` laissait le
+    champ vide, et `Ctrl+S` écrivait `medium` à sa place (CR-131).
     """
-    if any(v == val for _l, v in pairs) or not isinstance(val, int):
+    if any(v == val for _l, v in pairs):
         return list(pairs)
-    return sorted([*pairs, (f"{val}k", val)], key=lambda p: p[1])
+    if isinstance(val, int) and not isinstance(val, bool):
+        return sorted([*pairs, (f"{val}k", val)], key=lambda p: p[1])
+    if isinstance(val, str) and val:
+        return [*pairs, (val, val)]
+    return list(pairs)
 
 
 def _section(titre: str, suite: str = "") -> str:
@@ -404,10 +411,11 @@ class ProfileForm(Widget):
         "auto": N_("The content decides: MP4 when everything fits, MKV as soon "
                    "as there is an image subtitle, a styled subtitle or a "
                    "lossless track."),
-        "mp4":  N_("Image subtitles (PGS, VobSub) are discarded — MP4 cannot "
-                   "carry them — and the decision shows it. If they are the "
-                   "file's only ones, the container gives way: better an MKV "
-                   "than an output without subtitles."),
+        "mp4":  N_("A subtitle MP4 cannot carry (image, or styled ASS) is "
+                   "discarded when a text subtitle of the same language says "
+                   "the same thing, and the dry run names it. If one is not "
+                   "doubled, the container gives way: better an MKV than a "
+                   "lost subtitle."),
         "mkv":  N_("Everything is kept, including image subtitles and lossless "
                    "tracks. Some players handle MKV poorly."),
     }

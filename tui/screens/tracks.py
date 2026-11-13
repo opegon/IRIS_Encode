@@ -47,8 +47,10 @@ from core.decision import (
     BITRATE_OPTS_KBPS as _BITRATE_OPTS,
     AudioAction, DVAction, FileDecision, TracksSelection,
     VideoAction, VideoOverride, decide_audio, decide_video, choisir_sar,
+    decide_subtitles, choisir_codec, SANS_REENCODAGE,
     DV_SORTIE, EXCLU_MANUELLEMENT, libelle_copie, libelle_ocr, ocr_prevu,
 )
+from dataclasses import replace as dc_replace
 from ..common import sauver_config
 from ..common import avertir_h264_sdr
 from ..common import (langue_affichee, nom_codec, barre_etat, 
@@ -162,7 +164,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
     TracksScreen { layout: vertical; }
     #tracks-table { height: 1fr; }
     #hint-bar {
-        height: 1;
+        height: 2;   /* la bordure prend une ligne (CR-135) */
         background: $primary-darken-1;
         color: $text;
         padding: 0 2;
@@ -176,6 +178,9 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         self._sel_audio: set[int] = set()
         self._sel_subs:  set[int] = set()
         self._rows: list[tuple[str, int]] = []
+        # La décision telle que la sélection en cours la rendra : ce que
+        # l'accueil appliquera au retour (`_apercu`, CR-136).
+        self._vue = decision
         # Édition vidéo
         self._edit_idx     = 0
         self._ov_action:   VideoAction | None = None
@@ -200,10 +205,27 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
     # ── Décision effective ────────────────────────────────────────────────────
 
+    def _apercu(self) -> FileDecision:
+        """La décision avec la sélection en cours, calculée comme l'accueil le
+        fera au retour : les lignes en suivent le libellé, le conteneur, le
+        remux. La décision de l'écran, elle, n'est pas touchée."""
+        d = self._decision
+        return ajuster_remux(dc_replace(
+            d, audio=decide_audio(d.info, d.profile, sorted(self._sel_audio)),
+            subtitle_indices=sorted(self._sel_subs)))
+
     def _eff_action(self)  -> VideoAction:
-        return self._ov_action  if self._ov_action  is not None else self._decision.video.action
+        return self._ov_action  if self._ov_action  is not None else self._vue.video.action
     def _eff_bitrate(self) -> int:
-        return self._ov_bitrate if self._ov_bitrate is not None else self._decision.video.target_bitrate
+        """0 quand la vidéo n'est pas réencodée : il n'y a pas de débit. Un
+        codec choisi sur un SKIP prend le débit que l'accueil lui donnera
+        (`choisir_codec`), pas le 0 du SKIP (CR-136)."""
+        if self._ov_bitrate is not None:
+            return self._ov_bitrate
+        action = self._eff_action()
+        if action in SANS_REENCODAGE:
+            return 0
+        return choisir_codec(self._vue, action, self._ov_dv).target_bitrate
     def _eff_dv(self)      -> DVAction:
         # H264 sur une source HDR sort en SDR : l'écran le montre tel quel.
         if h264_force_sdr(self._decision.info, self._eff_action()):
@@ -282,6 +304,10 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
         table.add_column(self.resize_header("titre"), width=self.resize_largeur("titre", widths["titre"]), key="titre")
         table.add_column(_("Decision / Target"),      width=None,                       key="dec")
         self._rows = []
+        self._vue  = self._apercu()
+        # Le verrou vient de la règle automatique : une sélection manuelle
+        # le pose toujours sur la piste 0, même quand le cœur AC-3 la remplace.
+        verrouillees = {ad.track.index for ad in self._decision.audio if ad.locked}
 
         # ── Section VIDÉO ─────────────────────────────────────────────────────
         self._ligne_section(table, _(SECTIONS[0]).upper(), "__sec_video__")
@@ -289,17 +315,18 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
         # ── Section AUDIO ─────────────────────────────────────────────────────
         self._ligne_section(table, _(SECTIONS[1]).upper(), "__sec_audio__")
-        for ad in self._decision.audio:
+        for ad in self._vue.audio:
             t   = ad.track
             idx = t.index
             excl = ad.action == AudioAction.EXCLUDE
             dim  = "dim" if excl else ""
-            lock = " ⚑" if ad.locked else ""
+            verrou = idx in verrouillees
+            lock = " ⚑" if verrou else ""
 
             # Raison simplifiée pour l'affichage
             if excl:
                 reason = _(EXCLU_MANUELLEMENT)
-            elif ad.locked:
+            elif verrou:
                 reason = pgettext("track", "default")
             else:
                 reason = _("selected")
@@ -336,8 +363,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                 # Le conteneur réel de la sortie : « copie MP4 » s'affichait
                 # aussi pour un MKV (CR-83).
                 cont_str = (f"{libelle_copie()} "
-                            f"{self._decision.output_container.lstrip('.').upper()}")
-                if ocr_prevu(self._decision, st):
+                            f"{self._vue.output_container.lstrip('.').upper()}")
+                if ocr_prevu(self._vue, st):
                     cont_str = libelle_ocr()
 
                 # Raison simplifiée pour l'affichage
@@ -391,7 +418,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
     def _add_video_row(self, table: DataTable) -> None:
         """Construit et ajoute la ligne vidéo avec les champs éditables."""
         info    = self._decision.info
-        vid     = self._decision.video
+        vid     = self._vue.video
         action  = self._eff_action()
         bitrate = self._eff_bitrate()
         dv      = self._eff_dv()
@@ -439,13 +466,15 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             dec_txt.append(f"{touche('p')} {self._libelle_sar()}",
                            style="bold dark_orange" if sar_a_choisir else "green")
         dec_txt.append("  ·  ")
-        dec_txt.append_text(_f("bitrate", f"{bitrate//1000} kbps", ""))
+        # Sans réencodage, pas de débit : « 0 kbps » se lisait comme une cible.
+        dec_txt.append_text(_f("bitrate", f"{bitrate//1000} kbps" if bitrate else "—", ""))
         if action != VideoAction.SKIP:
             largeur, hauteur = definition_sortie(self._decision.info, vid)
             dec_txt.append(f"  ·  {largeur}x{hauteur}")
-            dec_txt.append(f"  ·  {self._decision.output_container.upper().lstrip('.')}")
-        # Affichage DV : toujours visible
-        dec_txt.append("  ·  ")
+            dec_txt.append(f"  ·  {self._vue.output_container.upper().lstrip('.')}")
+        # DV et original sur une seconde ligne : à 160 colonnes, la ligne
+        # unique les poussait hors de l'écran, champs éditables compris (CR-136).
+        dec_txt.append("\n")
         if info.dv_profile is None:
             dec_txt.append_text(_f("dv", "DV - N/A", "dim"))
         else:
@@ -481,6 +510,7 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             cellule("—", style="dim"),      # la vidéo n'a pas de titre de piste
             dec_txt,
             key="v:0",
+            height=2,
         )
         self._rows.append((_ROW_VIDEO, 0))
 
@@ -492,15 +522,6 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
 
     def _update_video_row(self) -> None:
         self._build_table(keep_cursor=True)
-
-    def _update_track_cell(self, row_type: str, idx: int) -> None:
-        key = f"{'a' if row_type == _ROW_AUDIO else 's'}:{idx}"
-        try:
-            self.query_one(DataTable).update_cell(
-                key, "check", self._check_text(row_type, idx), update_width=False,
-            )
-        except Exception:
-            pass
 
     def _update_status(self) -> None:
         fname   = self._decision.info.path.name
@@ -571,13 +592,16 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             if any(ad.locked and ad.track.index == idx for ad in self._decision.audio):
                 return
             self._sel_audio.symmetric_difference_update({idx})
-            self._update_track_cell(_ROW_AUDIO, idx)
         elif row_type == _ROW_SUBTITLE:
             if not self._decision.info.subtitle_tracks[idx].portable:
                 self.app.bell()
                 return
             self._sel_subs.symmetric_difference_update({idx})
-            self._update_track_cell(_ROW_SUBTITLE, idx)
+        else:
+            return
+        # Toute la table : la ligne (motif, cible) et la ligne vidéo
+        # (conteneur, remux) suivent la sélection, pas seulement la case (CR-136).
+        self._build_table(keep_cursor=True)
         self._update_status()
 
     # ── Actions édition vidéo (actives seulement sur la ligne vidéo) ──────────
@@ -767,10 +791,18 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
             if pid is None:
                 return
             new_profile = profiles[pid]
-            self._decision.profile = new_profile
-            self._decision.video = decide_video(self._decision.info, new_profile)
-            self._decision.audio = decide_audio(self._decision.info, new_profile)
-            ajuster_remux(self._decision)
+            d = self._decision
+            d.profile = new_profile
+            d.video = decide_video(d.info, new_profile)
+            d.audio = decide_audio(d.info, new_profile)
+            # Les sous-titres aussi suivent le profil (`subtitle_languages`),
+            # et les cases repartent de la nouvelle décision : elles gardaient
+            # l'ancienne, et `↵` la rendait (CR-132).
+            d.subtitle_indices = decide_subtitles(d.info, new_profile)
+            ajuster_remux(d)
+            self._sel_audio.clear()
+            self._sel_subs.clear()
+            self._init_selection()
             self._build_table()
             self._update_status()
 

@@ -453,6 +453,12 @@ class WizardScreen(TableNavMixin, Screen):
             t.append("  " + _("Recommended: remux. The picture is copied as it "
                               "is; only the tracks the playback chain cannot "
                               "read are converted.") + "\n")
+        elif self._dec.video.action == VideoAction.SKIP and self._dec.video.target_bitrate:
+            # Le débit choisi par F7 à l'étape 2 (CR-133).
+            t.append("  " + _("Nothing needs re-encoding by default. {key} forces "
+                              "the encode: {video}, at {bitrate} kbps.").format(
+                         key=touche("f2"), video=d.video.label(),
+                         bitrate=d.video.target_bitrate // 1000) + "\n")
         elif self._dec.video.action == VideoAction.SKIP:
             t.append("  " + _("Nothing needs re-encoding by default. {key} forces "
                               "the encode: {video}, at the source bitrate.").format(
@@ -521,6 +527,13 @@ class WizardScreen(TableNavMixin, Screen):
         genre, idx = courant
         d = self._dec
         if genre == _L_AUDIO:
+            # La piste d'origine reste, comme à l'écran des pistes : sans
+            # elle, on pouvait tout écarter et sortir un fichier muet (CR-138).
+            if any(a.locked and a.track.index == idx for a in d.audio):
+                self.app.bell()
+                self.notify(_("The original audio track is always kept."),
+                            severity="warning", timeout=3)
+                return
             gardes = [a.track.index for a in d.audio
                       if a.action != AudioAction.EXCLUDE]
             gardes = ([g for g in gardes if g != idx] if idx in gardes

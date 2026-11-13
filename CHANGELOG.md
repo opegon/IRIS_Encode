@@ -1,5 +1,33 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.14] — 2026-11-13
+
+### Écran des pistes et assistant (IE-192)
+
+- **Les lignes suivent la case.** `Espace` ne réécrivait que la case : une piste
+  décochée restait « sélectionné », « → copie MKV » en vert, et la ligne vidéo
+  gardait le MKV qu'imposait le PGS décoché. La table est reconstruite à chaque
+  bascule, sur la décision que l'accueil appliquera au retour (CR-136).
+- **La ligne vidéo tient sur deux lignes.** À 160 colonnes, les champs DV et
+  original sortaient de l'écran tout en restant atteignables par `←/→` (CR-136).
+- **Plus de « 0 kbps ».** Sans réencodage, le débit s'affiche `—` ; un codec
+  choisi sur un SKIP montre le débit qu'il recevra (CR-136).
+- **`F4` refait tout.** Un autre profil refaisait la décision vidéo et audio
+  mais gardait les cases : une piste « ← écartée » restait cochée et `↵` rendait
+  l'ancienne sélection ; `subtitle_languages` du nouveau profil ne s'appliquait
+  pas. Décision entière et cases repartent du nouveau profil (CR-132).
+- **Deux bandeaux enfin visibles.** L'aide de l'écran des pistes et la seconde
+  ligne de la barre de profil (« Audio HD », « ⚠ SUPPRESSION ») étaient mangées
+  par leur bordure (CR-135).
+- **Un débit choisi sur un SKIP n'est plus perdu.** Dans l'assistant, `F7` puis
+  `F2` encodait au débit de la source ; le débit choisi est gardé, et l'étape 4
+  le nomme (CR-133).
+- **L'assistant garde la piste audio d'origine**, comme l'écran des pistes : on
+  pouvait tout écarter et sortir un fichier muet (CR-138).
+
+Spec § 14.0, § 14.1, § 14.2. Revue de code du 2026-11-13. Test :
+`tests/test_ecran_pistes_suivi.py`.
+
 ## [v0.9.2.13] — 2026-11-13
 
 ### Fil d'interface et workers (IE-191)

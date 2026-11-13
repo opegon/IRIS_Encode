@@ -1800,7 +1800,9 @@ def force_skip_to_encode(dec: FileDecision) -> FileDecision:
     forçage n'a pas à décider.
 
     Conserve le débit source (pas de gonflement) ; dv_action suit
-    `choisir_codec`.
+    `choisir_codec`. Un débit posé à la main sur le SKIP est gardé : sans
+    réencodage, une décision n'en porte aucun, et celui-là vient de
+    l'utilisateur (`F7` de l'assistant, CR-133).
     """
     from dataclasses import replace as dc_replace
     # Un remux n'est pas forcé : cochée, sa ligne part en remux (IE-175).
@@ -1811,7 +1813,8 @@ def force_skip_to_encode(dec: FileDecision) -> FileDecision:
                   else VideoAction.ENCODE_HEVC)
     return dc_replace(dec, video=dc_replace(
         choisir_codec(dec, forced_act),
-        target_bitrate= debit_source_ou_cible(dec.info, dec.profile),
+        target_bitrate= (dec.video.target_bitrate
+                         or debit_source_ou_cible(dec.info, dec.profile)),
         reason        = (_("Forced manually (was SKIP)")
                          if dec.video.action == VideoAction.SKIP
                          else _("Forced manually (was DV removal)")),

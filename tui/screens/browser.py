@@ -459,7 +459,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         height: 1;
     }
     #profile-bar {
-        height: 2;
+        height: 3;   /* deux lignes et la bordure (CR-135) */
         background: $primary-darken-1;
         color: $text;
         padding: 0 1;

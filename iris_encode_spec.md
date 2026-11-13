@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.13 — document de référence courant
+**Version** : 0.9.2.14 — document de référence courant
 **Date** : 2026-11-13
 **Statut** : stable
 
@@ -3082,7 +3082,12 @@ demande aucune attention.
 **`F2` sur un SKIP force l'encodage** (v0.8.9.61), comme une ligne cochée au
 navigateur : la file l'aurait marqué « ignoré » (`WizardScreen._a_encoder`).
 L'étape 4 annonce la décision forcée et le nom qui en sort. Un retrait du DV
-part tel quel.
+part tel quel. Un débit choisi par `F7` sur ce SKIP est gardé au forçage, et
+l'étape 4 le nomme (v0.9.2.14, CR-133) — il était remplacé par celui de la source.
+
+**La piste audio d'origine ne s'écarte pas** (v0.9.2.14, CR-138) : `Espace` sur
+la piste verrouillée (`AudioDecision.locked`) sonne et le dit, comme à l'écran des
+pistes. On pouvait tout écarter et sortir un fichier sans son.
 
 **Un codec choisi à la main** (`F6` ici, dans l'aperçu et l'écran des pistes,
 et la coche forcée) passe par `decision.choisir_codec` : HEVC avec le DV
@@ -3246,7 +3251,9 @@ forcée, en `bold dark_orange`, avec l'estimation et l'ETA qui vont avec ;
 coche (`Espace`, `A`) le notifie. Une source Dolby Vision forcée sous un profil
 `dolby_vision = "dv"` part en `ENCODE_DV` (§ 7.4) quand `peut_reencoder_en_dv`
 l'accepte, au débit de la source ; sinon en copie du flux, suffixe `.dv-iris`
-(v0.8.9.59).
+(v0.8.9.59). Un débit posé à la main sur le SKIP (`F7` de l'assistant ou de
+l'écran des pistes) est gardé : sans réencodage, une décision n'en porte aucun,
+et celui-là vient de l'utilisateur (v0.9.2.14, CR-133).
 
 **Retour d'un encodage** (v0.8.9.8) — `RunScreen` inscrit ses statuts dans
 `app.lots_encodes` au montage. `BrowserScreen.on_screen_resume()` les consomme :
@@ -3452,6 +3459,9 @@ pour afficher le placeholder.
 `DV hdr10/dv/sdr` (coloré) · `preset`
 **Ligne 2 :** `HD audio oui/non` · `⚠ SUPPRESSION` si `delete_source`
 
+`#profile-bar` fait 3 lignes de haut : sa bordure basse en prend une. À 2, la
+seconde ligne n'était jamais dessinée (v0.9.2.14, CR-135).
+
 Couleurs DV : `hdr10` → jaune · `dv` → vert · `sdr` → `bold dark_orange`.
 
 #### Scan progressif
@@ -3548,6 +3558,16 @@ Champs éditables : **action** (codec), **bitrate**, **DV**, **original**
 Un `✎` dans la colonne check signale un override actif. La colonne **Source** affiche le
 sous-profil DV connu. ⚠ si HDR10 quality demandé sans `dovi_tool`.
 
+La ligne tient sur deux lignes (v0.9.2.14, CR-136) : codec, proportion, débit,
+définition et conteneur sur la première ; DV et original sur la seconde — sur une
+seule, ces deux champs sortaient de l'écran à 160 colonnes. Sans réencodage (SKIP,
+retrait du DV, remux), le débit s'affiche `—` ; un codec choisi sur un SKIP montre
+le débit que l'accueil lui donnera (`choisir_codec` : celui de la source).
+
+Sous la table, le bandeau d'aide (`#hint-bar`, `height: 2` : sa bordure prend une
+ligne) donne les touches de la ligne courante — champs sur la ligne vidéo,
+sélection sur une piste.
+
 #### Pistes AUDIO / SOUS-TITRES
 
 `Espace` bascule la sélection (piste audio 0 verrouillée — ⚑). Décision affichée par
@@ -3556,6 +3576,14 @@ conteneur réel de la sortie (`output_container`) — « copie MP4 » s'affichai
 pour un MKV (CR-83). Toutes sélectionnées par défaut. La raison « défaut » suit le
 drapeau de la source (`SubtitleTrack.default`), que la sortie garde, et non la
 position de la piste.
+
+Chaque bascule reconstruit la table sur la sélection en cours (`_apercu`, v0.9.2.14,
+CR-136) : la décision recalculée comme l'accueil le fera au retour (`decide_audio`
+sur les pistes cochées, `subtitle_indices`, `ajuster_remux`). Le motif, la cible, le
+conteneur des sous-titres et celui de la ligne vidéo suivent la case.
+
+`F4` (autre profil) refait la décision entière — vidéo, audio, sous-titres selon
+`subtitle_languages` — et les cases repartent de cette décision (v0.9.2.14, CR-132).
 
 #### `F9` — ajouter une piste externe
 
@@ -4476,6 +4504,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.2.4 | 2026-11-09 | **Chargements croisés de l'accueil** (§ 14.1, IE-182) : un `_Releve` ne remplace que celui d'une époque plus ancienne (`_verrou_releve`) ; la liste ne reste plus « en attente » ; `test_accueil_progressif` n'échoue plus par intermittence · `tests/test_accueil_chargements_croises.py` |
 | 0.9.2.5 | 2026-11-10 | **Vidéos d'une chaîne YouTube publique** (§ 9.9.1, IE-181) : `url_chaine`, `lister_chaine` (liste à plat par pages de 100, date approchée), `ChaineYouTubeScreen` (définition lue en arrière-plan, cochées d'abord ; réglage commun : définition maximale `Video.hauteur_sous`, sous-titres `sous_titres_communs` ; téléchargement l'un après l'autre) · `YouTubeScreen` rend une liste de fichiers · `tests/test_youtube_chaine.py`, `tests/test_youtube_chaine_ecran.py` |
 | 0.9.2.13 | 2026-11-13 | **Fil d'interface et workers** (§ 12.1, § 12.4, § 14.1, § 14.5, IE-191) : relecture du fichier muxé et analyse d'entrelacement dans le worker du mux, chaîne prévue calculée hors du fil d'interface (CR-124) ; filet par fichier dans la boucle d'encodage et dans les workers OpenSubtitles (CR-125) ; un seul scan récursif, aperçu ouvert seulement sur l'accueil, gardé sinon pour `R` (CR-128) · `tests/test_fil_workers.py` |
+| 0.9.2.14 | 2026-11-13 | **Écran des pistes et assistant** (§ 14.0, § 14.1, § 14.2, IE-192) : `F4` refait la décision entière, sous-titres compris, et les cases (CR-132) ; un débit choisi sur un SKIP survit au forçage (CR-133) ; bandeau d'aide et seconde ligne de la barre de profil dessinés (CR-135) ; lignes reconstruites à chaque bascule, ligne vidéo sur deux lignes, `—` sans réencodage (CR-136) ; l'assistant garde la piste audio d'origine (CR-138) · `tests/test_ecran_pistes_suivi.py` |
 | 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |
 | 0.9.2.11 | 2026-11-13 | **HDR sous la tranche 1080p** (§ 8.1, § 14.0, IE-189) : la décision automatique garde en HEVC toute source dont la sortie reste HDR, comme le forçage ; H264 seulement pour une sortie SDR (CR-118) · `tests/test_hdr_tranche.py` |
 | 0.9.2.10 | 2026-11-13 | **Sous-titres et conteneur** (§ 8.6, IE-188) : `mov_text` converti en SubRip vers Matroska (`-c:s:N srt`, CR-117) ; en `container = "mp4"`, seuls les sous-titres doublés par un texte de même langue et de même nature sont écartés, sinon le conteneur cède ; pistes écartées nommées dans l'Aperçu (CR-119) · `tests/test_mov_text_mkv.py`, `tests/test_conteneur.py` |

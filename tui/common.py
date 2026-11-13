@@ -27,30 +27,33 @@ from core.decision import (
 # Le journal de l'application (`tui.app`) : avertissements, causes d'échec.
 JOURNAL = Path.home() / ".iris_encode" / "iris_encode.log"
 
-# Codec → clé de stockage des vitesses mesurées (config.toml [stats.encode_speed])
-_CODEC_SPEED_KEYS: dict[VideoAction, str] = {
-    VideoAction.ENCODE_HEVC: "hevc",
-    VideoAction.ENCODE_H264: "h264",
-    VideoAction.ENCODE_AV1:  "av1",
-}
+# Les vitesses mesurées (config.toml [stats.encode_speed]) se rangent sous le
+# nom de l'encodeur effectif — `hevc_nvenc`, `libx265`… —, plus sous le codec :
+# une copie Dolby Vision (> 100×) et un libx265 en mode quality (0,3×) entraient
+# dans la même moyenne « hevc », et l'ETA suivante se trompait d'un ordre de
+# grandeur (CR-126). Les anciennes clés `hevc`, `h264`, `av1` ne sont plus lues.
 
-
-def get_measured_speed(cfg: dict, action: VideoAction) -> float | None:
-    """Vitesse d'encodage réelle moyenne (x temps réel) mesurée sur les runs précédents."""
-    key = _CODEC_SPEED_KEYS.get(action)
+def get_measured_speed(cfg: dict, dec, platform) -> float | None:
+    """Vitesse d'encodage réelle moyenne (× temps réel) de l'encodeur que
+    prendra cette décision, mesurée sur les encodages précédents."""
+    from core.encoder import encodeur_prevu
+    key = encodeur_prevu(dec, platform) if platform is not None else None
     return cfg_mod.get_encode_speed(cfg, key) if key else None
 
 
-def record_measured_speed(cfg: dict, action: VideoAction, speed: float) -> None:
-    """Enregistre la vitesse réelle mesurée pour ce codec (moyenne mobile) et persiste.
+def record_measured_speed(cfg: dict, cmd: list[str], speed: float) -> None:
+    """Enregistre la vitesse réelle mesurée pour l'encodeur de cette commande
+    (moyenne mobile) et persiste. Rien quand la vidéo est recopiée : la
+    vitesse d'une copie ne dit rien d'un encodage.
 
     À appeler sur le fil de l'interface (`call_from_thread`) : c'est là que
     vivent toutes les autres modifications de la configuration, et l'écriture
     ne croise plus une modification d'un autre fil (CR-44). Un échec
     d'écriture perd une statistique, pas le lot (CR-64).
     """
-    key = _CODEC_SPEED_KEYS.get(action)
-    if key is None or speed <= 0:
+    from core.encoder import encodeur_de
+    key = encodeur_de(cmd)
+    if key in (None, "copy") or speed <= 0:
         return
     cfg_mod.update_encode_speed(cfg, key, speed)
     cfg_mod.enregistrer(cfg)

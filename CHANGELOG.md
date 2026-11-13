@@ -1,5 +1,30 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.15] — 2026-11-13
+
+### Aperçu et estimation (IE-193)
+
+- **L'ETA ne mélange plus les encodeurs.** La vitesse mesurée se rangeait sous
+  le codec : une copie Dolby Vision (plus de 100×) et un libx265 en mode
+  quality (0,3×) entraient dans la même moyenne « hevc », et l'ETA suivante se
+  trompait d'un ordre de grandeur. Elle se range sous l'encodeur réel
+  (`hevc_nvenc`, `libx265`…), et une copie n'enregistre rien. Les anciennes
+  moyennes ne sont plus lues : l'ETA repart de l'heuristique jusqu'au premier
+  encodage de chaque encodeur (CR-126).
+- **L'aperçu compte ce qui est coché.** Décocher une ligne laissait « 4 fichiers
+  sélectionnés », la répartition par codec et les totaux inchangés (CR-137).
+- **Une seule estimation.** L'aperçu avait sa copie de celle de l'accueil, avec
+  une autre teinte (alerte au lieu du dégradé) et « (+0%) » pour une sortie
+  recopiée ; il prend celle de l'accueil. Estim. passe à 14 colonnes avec une
+  ellipse (« 435 Ko (+28% » était coupé net), Résolution à 18 avec une marque
+  courte (`désentr.`, `IVTC`) au lieu de « 1280x720 · … » (CR-137).
+- **L'ETA de l'aperçu lit le préréglage du profil de la décision**, pas celui du
+  profil actif ; `F2` confie les lignes dans leur ordre d'affichage ; la taille
+  des sources n'est plus relue sur le disque à chaque touche (CR-137).
+
+Spec § 6.2, § 12.3, § 14.6. Revue de code du 2026-11-13. Test :
+`tests/test_apercu_estimation.py`.
+
 ## [v0.9.2.14] — 2026-11-13
 
 ### Écran des pistes et assistant (IE-192)

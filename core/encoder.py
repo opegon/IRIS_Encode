@@ -836,6 +836,35 @@ def _encodeur_et_format(info, vid, platform: PlatformProfile) -> tuple[str, str,
     return encoder, pix_fmt, prof_str
 
 
+def _hdr10_quality(vid, profile) -> bool:
+    """Le mode HDR10 « quality » : libx265 au processeur, sans hwaccel.
+    `build_command` et `encodeur_prevu` lisent ce seul prédicat."""
+    return (vid.dv_action == DVAction.HDR10
+            and vid.action == VideoAction.ENCODE_HEVC
+            and profile.get("hdr10_quality") == "quality")
+
+
+def encodeur_prevu(decision: FileDecision,
+                   platform: PlatformProfile) -> Optional[str]:
+    """L'encodeur vidéo qu'emploiera un encodage standard, sans construire la
+    commande — la clé des vitesses mesurées (CR-126) : NVENC et libx265 n'ont
+    pas la même vitesse, et un même codec les recouvrait tous deux.
+
+    None quand la vidéo n'est pas réencodée par la commande principale :
+    copie (SKIP, retrait du DV, remux, Dolby Vision conservé) ou réencodage
+    Dolby Vision, dont la vidéo passe par sa propre commande.
+    """
+    from .decision import video_recopiee
+    vid = decision.video
+    if (vid.action not in (VideoAction.ENCODE_HEVC, VideoAction.ENCODE_H264,
+                           VideoAction.ENCODE_AV1)
+            or video_recopiee(vid.action, vid.dv_action)):
+        return None
+    if _hdr10_quality(vid, decision.profile):
+        return ENCODEUR_HDR10_QUALITY
+    return _encodeur_et_format(decision.info, vid, platform)[0]
+
+
 def filtre_tout_puce(decision: FileDecision,
                      platform: PlatformProfile) -> Optional[str]:
     """Le filtre d'un encodage tenu entièrement sur la carte — `vpp_qsv` chez
@@ -1084,11 +1113,7 @@ def build_command(
     # prédicat — l'expression était écrite deux fois, mot pour mot, et en
     # modifier une seule aurait passé `-hwaccel` à un encodage processeur, ou
     # l'aurait retiré à un NVENC.
-    hdr10_quality = (
-        vid.dv_action == DVAction.HDR10
-        and vid.action == VideoAction.ENCODE_HEVC
-        and profile.get("hdr10_quality") == "quality"
-    )
+    hdr10_quality = _hdr10_quality(vid, profile)
     use_hwaccel = (
         platform.hwaccel
         and vid.dv_action != DVAction.SDR

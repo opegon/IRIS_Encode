@@ -197,7 +197,29 @@ def _estimate_output_bytes(dec: FileDecision,
     total_bits = (video_bps + audio_bps) * duration
     return int(total_bits / 8)
 
-# ─── Filtre de l'accueil (L, Z) ───────────────────────────────────────────────
+
+def texte_estimation(dec: FileDecision, src_bytes: int) -> tuple[int, str, str]:
+    """(octets estimés, texte, style) de la colonne « Estim. (Δ%) ».
+
+    Une seule règle pour l'accueil et l'aperçu : l'aperçu en avait une copie,
+    teinte d'alerte au lieu du dégradé et « (+0%) » pour une sortie recopiée
+    (CR-137). 0 octet : rien à estimer, un tiret.
+    """
+    est = _estimate_output_bytes(dec, src_bytes)
+    if est == 0:
+        return 0, "—", "dim"
+    if _sortie_recopiee(dec):
+        # La sortie pèsera la taille de la source : l'écart vaut zéro, et
+        # le poser sur le dégradé placerait la ligne en plein jaune — la
+        # teinte la plus voyante — pour un cas où rien n'est recalculé.
+        return est, fmt_bytes(est), "dim"
+    if src_bytes > 0:
+        delta = (est - src_bytes) * 100 / src_bytes
+        signe = "+" if delta > 0 else ""
+        return est, f"{fmt_bytes(est)} ({signe}{delta:.0f}%)", _teinte_estimation(delta)
+    return est, fmt_bytes(est), ""
+
+# ─── Filtre de l'accueil (L, Z)───────────────────────────────────────────────
 
 FILTRE_TOUS = "tous"
 FILTRE_DV   = "dv"      # Dolby Vision, tous profils
@@ -1133,28 +1155,14 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
                             style="bold dark_orange" if forcee else vid.style())
 
         # Estimation taille de sortie
-        src_bytes = taille or 0
-        est_bytes = _estimate_output_bytes(dec, src_bytes)
-
-        if est_bytes == 0:
-            estim_txt = cellule("—", style="dim")
-        elif _sortie_recopiee(dec):
-            # La sortie pèsera la taille de la source : l'écart vaut zéro, et
-            # le poser sur le dégradé placerait la ligne en plein jaune — la
-            # teinte la plus voyante — pour un cas où rien n'est recalculé.
-            estim_txt = cellule(fmt_bytes(est_bytes), style="dim")
-        elif src_bytes > 0:
-            delta_pct = (est_bytes - src_bytes) * 100 / src_bytes
-            sign      = "+" if delta_pct > 0 else ""
-            estim_txt = cellule(f"{fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)",
-                                style=_teinte_estimation(delta_pct))
-        else:
-            estim_txt = cellule(fmt_bytes(est_bytes))
+        _est, texte, style = texte_estimation(dec, taille or 0)
+        estim_txt = cellule(texte, style=style)
 
         # Estimation temps d'encodage
         prof = self._active_profile()
         preset = prof.data.get("preset_encoder", "medium")
-        measured_speed = get_measured_speed(self._app.cfg, vid.action)
+        measured_speed = get_measured_speed(self._app.cfg, dec,
+                                            getattr(self._app, "platform", None))
         est_duration = estimate_encoding_duration(
             info.duration, info.kbps * 1000, vid.target_bitrate,
             vid.action, preset, measured_speed

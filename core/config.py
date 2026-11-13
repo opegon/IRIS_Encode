@@ -436,17 +436,21 @@ def update_encode_speed(cfg: dict[str, Any], codec: str, measured: float, alpha:
     speeds[codec] = measured if not prev else prev + (measured - prev) * alpha
 
 
+# Estim. et Résolution comme leur contenu (CR-137) : « 435 Ko (+28% » coupé
+# sans ellipse à 12, comme l'accueil qui en donne 14 ; « 720x480→1920x1080 » et
+# « 1920x1080 désentr. » en 18. La place vient de colonnes plus larges que tout
+# ce qu'elles affichent : Durée (7, « 3:17:24 »), Action (14), DV (« → HDR10 »).
 _DRYRUN_COL_DEFAULTS: dict[str, int] = {
     "fichier":     30,
     "taille":       8,
-    "duree":       10,
-    "estim":       12,
+    "duree":        7,
+    "estim":       14,
     "temps_estim": 9,
-    "action":      16,
+    "action":      14,
     "conteneur":    7,
-    "dv":          10,
+    "dv":           8,
     "bitrate":     12,
-    "res":         12,
+    "res":         18,
     "audio":       16,
 }
 

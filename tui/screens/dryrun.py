@@ -30,7 +30,6 @@ from core.decision import (
     ajuster_remux,
     SANS_REENCODAGE,
     AudioAction, DVAction, DV_SORTIE, FileDecision, VideoAction,
-    video_recopiee,
 )
 from ..common import sauver_config
 from ..common import avertir_h264_sdr
@@ -50,42 +49,11 @@ from ..common import (confier_a_la_file, langue_affichee, barre_etat,
 from ..mixins import ColumnResizeMixin, TableNavMixin
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
+from .browser import texte_estimation
 from .value_picker import ValuePickerScreen
 
 if TYPE_CHECKING:
     from ..app import IrisEncodeApp
-
-
-def _estimate_output_bytes(dec: FileDecision) -> int:
-    """Taille estimée de sortie (vidéo + audio conservé).
-    Retourne 0 si action=SKIP ou durée inconnue."""
-    if dec.video.action == VideoAction.SKIP:
-        return 0
-    # Un remux ne recalcule aucune image : la sortie pèse ce que pèse la
-    # source, au RPU près — quelques mégaoctets sur un film. Une source Dolby
-    # Vision dont le RPU ne peut pas être réinjecté est dans le même cas : sa
-    # vidéo est recopiée, et l'estimer au débit cible annonçait une réduction
-    # qui n'aura pas lieu.
-    if (dec.video.action in (VideoAction.STRIP_DV, VideoAction.REMUX)
-            or video_recopiee(dec.video.action, dec.video.dv_action)):
-        try:
-            return dec.info.taille
-        except OSError:
-            return 0
-    duration = dec.info.duration
-    if duration <= 0:
-        return 0
-    video_bps = dec.video.target_bitrate
-    audio_bps = 0
-    for ad in dec.audio:
-        if ad.action == AudioAction.EXCLUDE:
-            continue
-        if ad.action == AudioAction.COPY:
-            audio_bps += ad.track.bitrate or 192_000
-        else:
-            audio_bps += ad.output_bitrate
-    total_bits = (video_bps + audio_bps) * duration
-    return int(total_bits / 8)
 
 
 class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
@@ -153,6 +121,9 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._decisions = [deepcopy(d) for d in decisions]
         self._selected  = set(range(len(decisions)))  # indices des décisions sélectionnées
         self._totals    = (0, 0)   # (source, estimé) en octets — posés par _build_table
+        # Taille de chaque source, lue une fois : chaque touche reconstruit la
+        # table, et relisait le disque — un partage réseau par fichier (CR-137).
+        self._tailles: dict[int, int] = {}
         # L'extrait de comparaison en cours (K) : son ffmpeg et son avancement.
         self._comparaison = None
         self._comparaison_pct = 0.0
@@ -208,10 +179,16 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 if vid.upscale is not None:
                     # D25 : la source et la sortie, l'agrandissement se lit.
                     res_str = f"{info.width}x{info.height}→{res_str}"
+                # Une marque courte : « · désentrelacé » ne laissait voir que
+                # « 1280x720 · … » (CR-137).
                 if dec.telecine_inverse:
-                    res_str += " · " + _("inverse telecine")
+                    # TRANSLATORS: inverse telecine, after the output size in
+                    # the Resolution column; 8 characters at most.
+                    res_str += " " + _("IVTC")
                 elif dec.desentrelace:
-                    res_str += " · " + _("deinterlaced")
+                    # TRANSLATORS: deinterlaced, after the output size in the
+                    # Resolution column; 8 characters at most.
+                    res_str += " " + _("deint.")
 
             audio_parts = [
                 f"{ad.track.channel_layout} {langue_affichee(ad.track.language)} ({ad.display()})"
@@ -233,42 +210,25 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 container += "  " + _("OCR {count}").format(
                     count=len(dec.sous_titres_ocr))
 
-            # Estimation taille de sortie — un seul stat() par fichier,
-            # réutilisé pour la ligne ET les totaux du summary
-            try:
-                src_bytes = info.taille
-            except OSError:
-                src_bytes = 0
-            est_bytes = _estimate_output_bytes(dec)
+            # Estimation taille de sortie : la règle et la teinte de l'accueil.
+            src_bytes = self._taille(idx, dec)
+            est_bytes, estim_str, estim_style = texte_estimation(dec, src_bytes)
+            estim_txt = cellule(estim_str, style=estim_style)
 
-            total_src += src_bytes
-            if est_bytes:
-                total_est += est_bytes
-            elif vid.action == VideoAction.SKIP:
-                # SKIP : le fichier reste tel quel, on compte sa taille source
-                total_est += src_bytes
+            # Les totaux ne comptent que les lignes retenues (CR-137).
+            if idx in self._selected:
+                total_src += src_bytes
+                if est_bytes:
+                    total_est += est_bytes
+                elif vid.action == VideoAction.SKIP:
+                    # SKIP : le fichier reste tel quel, on compte sa taille source
+                    total_est += src_bytes
 
-            if est_bytes == 0:
-                estim_txt = cellule("—", style="dim")
-            elif src_bytes > 0:
-                delta_pct = (est_bytes - src_bytes) * 100 / src_bytes
-                sign      = "+" if delta_pct > 0 else ""
-                # Une sortie plus grosse que la source est une anomalie ;
-                # une sortie plus petite est le résultat attendu, elle n'a
-                # rien à signaler. Le vert reste réservé au sans réencodage.
-                color     = STYLE_PAR_EMPHASE[
-                    Emphase.ALERTE if delta_pct > 0 else Emphase.ORDINAIRE]
-                estim_txt = Text(
-                    f"{fmt_bytes(est_bytes)} ({sign}{delta_pct:.0f}%)",
-                    style=color, no_wrap=True,
-                )
-            else:
-                estim_txt = cellule(fmt_bytes(est_bytes))
-
-            # Estimation temps d'encodage
-            prof = self._app.profiles.get(self._app.active_profile_id)
-            preset = prof.data.get("preset_encoder", "medium") if prof else "medium"
-            measured_speed = get_measured_speed(self._app.cfg, vid.action)
+            # Estimation temps d'encodage : le préréglage du profil de la
+            # décision, pas celui du profil actif (CR-137).
+            preset = dec.profile.data.get("preset_encoder", "medium")
+            measured_speed = get_measured_speed(self._app.cfg, dec,
+                                                getattr(self._app, "platform", None))
             est_enc_duration = estimate_encoding_duration(
                 info.duration, info.kbps * 1000, vid.target_bitrate,
                 vid.action, preset, measured_speed
@@ -293,8 +253,8 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 estim_txt,
                 temps_txt,
                 cellule(vid.label(), style=vid.style()),
-                Text(container, no_wrap=True,
-                     style=STYLE_PAR_EMPHASE[Emphase.MODIFIEE] if ecartes else ""),
+                cellule(container,
+                        style=STYLE_PAR_EMPHASE[Emphase.MODIFIEE] if ecartes else ""),
                 cellule(dv_str),
                 cellule(bitrate_str),
                 cellule(res_str),
@@ -303,9 +263,21 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
         self._totals = (total_src, total_est)
 
+    def _taille(self, idx: int, dec: FileDecision) -> int:
+        """Octets de la source, lus une seule fois ; 0 si illisible."""
+        if idx not in self._tailles:
+            try:
+                self._tailles[idx] = dec.info.taille
+            except OSError:
+                self._tailles[idx] = 0
+        return self._tailles[idx]
+
     def _build_summary(self) -> None:
-        counts = Counter(dec.video.action for dec in self._decisions)
-        total  = len(self._decisions)
+        # Les lignes retenues seulement : décocher ne changeait ni le compte
+        # ni la répartition (CR-137).
+        retenues = [self._decisions[i] for i in sorted(self._selected)]
+        counts = Counter(dec.video.action for dec in retenues)
+        total  = len(retenues)
         hevc   = counts[VideoAction.ENCODE_HEVC]
         h264   = counts[VideoAction.ENCODE_H264]
         av1    = counts[VideoAction.ENCODE_AV1]
@@ -603,7 +575,9 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self.app.pop_screen()
 
     def action_run(self) -> None:
-        to_encode = [self._decisions[idx] for idx in self._selected
+        # Dans l'ordre des lignes : un ensemble se parcourt dans l'ordre des
+        # hachages, et l'accueil trie exprès (`_cochees`, CR-137).
+        to_encode = [self._decisions[idx] for idx in sorted(self._selected)
                      if idx < len(self._decisions) and self._decisions[idx].video.action != VideoAction.SKIP]
         if not to_encode:
             # Rien à lancer : le dire (UX-17). Une ligne SKIP s'encode après

@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.2.14
+**Version**: 0.9.2.15
 **Date**: 2026-11-09
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -746,7 +746,8 @@ kept). A TrueHD track and its AC-3 core give a single track in the output.
 
 A DVD, like a 1080i TV recording, is often **interlaced**: when the source says
 so, the encode deinterlaces it (bwdif), at the same frame rate. The decision
-(guided mode, `F1` preview) shows it: "deinterlaced". An HD source that calls
+shows it: in full in guided mode, as "deint." (or "IVTC" for telecine) in the
+Resolution column of the `F1` preview. An HD source that calls
 itself progressive is left alone — some TV recordings are wrong about it on
 part of their frames (ads, trailers), and those parts keep their comb lines.
 

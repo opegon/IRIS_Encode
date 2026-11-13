@@ -106,11 +106,12 @@ def test_enregistrer_rend_la_cause_au_lieu_de_lever(config, monkeypatch):
 
 def test_la_vitesse_mesurée_perdue_ne_coûte_pas_le_lot(config, monkeypatch):
     """CR-64."""
-    from core.decision import VideoAction
     from tui.common import record_measured_speed
     monkeypatch.setattr(cfg_mod, "save", _refus)
     cfg = cfg_mod._deep_merge({}, cfg_mod._DEFAULTS)
-    record_measured_speed(cfg, VideoAction.ENCODE_HEVC, 2.5)   # ne lève pas
+    record_measured_speed(cfg, ["ffmpeg", "-i", "a.mkv", "-c:v", "hevc_nvenc"],
+                          2.5)                                  # ne lève pas
+    assert cfg["stats"]["encode_speed"]["hevc_nvenc"] == 2.5
 
 
 class _FausseApp:

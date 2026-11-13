@@ -792,8 +792,9 @@ class RunScreen(TableNavMixin, Screen):
                 pass
 
         if success and s._last_progress:
+            # Sous l'encodeur de la commande, et rien pour une copie (CR-126).
             self.app.call_from_thread(record_measured_speed, self.app.cfg,  # type: ignore[attr-defined]
-                                      dec.video.action, s._last_progress.speed)
+                                      cmd, s._last_progress.speed)
 
         if success:
             self._supprimer_source(dec, s)

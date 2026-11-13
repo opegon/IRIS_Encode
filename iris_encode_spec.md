@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.14 — document de référence courant
+**Version** : 0.9.2.15 — document de référence courant
 **Date** : 2026-11-13
 **Statut** : stable
 
@@ -584,9 +584,10 @@ near_1080p_min_width  = 1600    # seuils de rattachement au bucket 1080p
 near_1080p_min_height = 850
 
 [stats.encode_speed]
-# Moyenne mobile de vitesse relevée à chaque passe — alimente la colonne « ETA »
-hevc = 7.49
-h264 = 21.43
+# Moyenne mobile de vitesse relevée à chaque passe, par encodeur (§ 12.3) —
+# alimente la colonne « ETA »
+hevc_nvenc = 7.49
+h264_nvenc = 21.43
 
 # L'écran d'accueil ignore cette section au lancement : il repart toujours des
 # largeurs par défaut du code, pour retrouver la même disposition d'une session
@@ -2673,6 +2674,16 @@ Retourne un `ProgressInfo` (frame, fps, elapsed, bitrate, speed, percent).
 `percent = -1.0` si la durée est inconnue. La vitesse relevée alimente la moyenne
 mobile de `[stats.encode_speed]`, qui nourrit la colonne « ETA ».
 
+La moyenne se range sous l'**encodeur effectif** de la commande (`encodeur_de` :
+`hevc_nvenc`, `libx265`…), et rien ne s'enregistre quand la vidéo est recopiée
+(`-c:v copy`) — v0.9.2.15, CR-126. Elle se rangeait sous le codec : une copie
+Dolby Vision (> 100×) et un libx265 en mode quality (0,3×) entraient dans la même
+moyenne « hevc ». L'ETA lit la clé de l'encodeur que prendra la décision
+(`encoder.encodeur_prevu`, même prédicat du mode quality que `build_command`) ;
+sans mesure, ni pour une vidéo recopiée ou un réencodage Dolby Vision (sa vidéo
+passe par sa propre commande), l'heuristique codec × préréglage. Les anciennes
+clés `hevc`, `h264`, `av1` ne sont plus lues.
+
 ### 12.4 Garde-fous
 
 - Chemin de sortie identique à la source : `ValueError` levée avant lancement
@@ -3729,6 +3740,14 @@ Débit cible · Résolution · Audio
 ·  Source : 12,4 Go  →  Estimé : 3,2 Go (−74%)
 ```
 
+Le compte de la barre d'état, la répartition et les totaux ne portent que sur les
+lignes retenues ; `F2` confie les lignes dans leur ordre d'affichage. Estim. suit
+la règle et le dégradé de l'accueil (`browser.texte_estimation`), en 14 colonnes ;
+Résolution en 18, avec une marque courte pour l'image recalculée (`désentr.`,
+`IVTC`) ; toute cellule passe par `cellule()`. L'ETA lit le préréglage du profil
+de la décision. La taille de chaque source n'est lue qu'une fois par écran
+(v0.9.2.15, CR-137).
+
 `Espace` désélectionne un fichier, `F6`/`F7` éditent codec et débit avant lancement,
 `U` agrandit ou non la ligne (une lettre : F8 est réservée à la suppression de la source, UX-07) (non / une passe / deux passes), dans les deux
 sens, en recalculant sa décision vidéo (`decide_video(…, agrandir, passes)`,
@@ -4505,6 +4524,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.2.5 | 2026-11-10 | **Vidéos d'une chaîne YouTube publique** (§ 9.9.1, IE-181) : `url_chaine`, `lister_chaine` (liste à plat par pages de 100, date approchée), `ChaineYouTubeScreen` (définition lue en arrière-plan, cochées d'abord ; réglage commun : définition maximale `Video.hauteur_sous`, sous-titres `sous_titres_communs` ; téléchargement l'un après l'autre) · `YouTubeScreen` rend une liste de fichiers · `tests/test_youtube_chaine.py`, `tests/test_youtube_chaine_ecran.py` |
 | 0.9.2.13 | 2026-11-13 | **Fil d'interface et workers** (§ 12.1, § 12.4, § 14.1, § 14.5, IE-191) : relecture du fichier muxé et analyse d'entrelacement dans le worker du mux, chaîne prévue calculée hors du fil d'interface (CR-124) ; filet par fichier dans la boucle d'encodage et dans les workers OpenSubtitles (CR-125) ; un seul scan récursif, aperçu ouvert seulement sur l'accueil, gardé sinon pour `R` (CR-128) · `tests/test_fil_workers.py` |
 | 0.9.2.14 | 2026-11-13 | **Écran des pistes et assistant** (§ 14.0, § 14.1, § 14.2, IE-192) : `F4` refait la décision entière, sous-titres compris, et les cases (CR-132) ; un débit choisi sur un SKIP survit au forçage (CR-133) ; bandeau d'aide et seconde ligne de la barre de profil dessinés (CR-135) ; lignes reconstruites à chaque bascule, ligne vidéo sur deux lignes, `—` sans réencodage (CR-136) ; l'assistant garde la piste audio d'origine (CR-138) · `tests/test_ecran_pistes_suivi.py` |
+| 0.9.2.15 | 2026-11-13 | **Aperçu et estimation** (§ 12.3, § 14.6, IE-193) : vitesse mesurée rangée par encodeur effectif, rien pour une copie (`encodeur_prevu`, CR-126) ; l'aperçu compte les lignes retenues, estime et teinte comme l'accueil (`texte_estimation`), Estim. 14 et Résolution 18 avec ellipse, lots dans l'ordre des lignes, préréglage de la décision, tailles lues une fois (CR-137) · `tests/test_apercu_estimation.py` |
 | 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |
 | 0.9.2.11 | 2026-11-13 | **HDR sous la tranche 1080p** (§ 8.1, § 14.0, IE-189) : la décision automatique garde en HEVC toute source dont la sortie reste HDR, comme le forçage ; H264 seulement pour une sortie SDR (CR-118) · `tests/test_hdr_tranche.py` |
 | 0.9.2.10 | 2026-11-13 | **Sous-titres et conteneur** (§ 8.6, IE-188) : `mov_text` converti en SubRip vers Matroska (`-c:s:N srt`, CR-117) ; en `container = "mp4"`, seuls les sous-titres doublés par un texte de même langue et de même nature sont écartés, sinon le conteneur cède ; pistes écartées nommées dans l'Aperçu (CR-119) · `tests/test_mov_text_mkv.py`, `tests/test_conteneur.py` |

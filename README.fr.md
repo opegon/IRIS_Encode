@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.2.16 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.2.17 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -752,6 +752,11 @@ IRIS ENCODE utilise Textual pour son interface graphique TUI. Le rendu dépend d
 > **Windows Terminal** est disponible gratuitement sur le Microsoft Store
 > et est installé par défaut sur Windows 11.
 > Pour Windows 10 : https://aka.ms/terminal
+
+**Taille de la fenêtre** : la table de l'accueil demande environ 145 colonnes ;
+en dessous, elle défile en largeur et ses dernières colonnes (Décision, Estim.,
+ETA, Audio) sortent de l'écran. 160 colonnes × 45 lignes ou plus sont
+confortables — `F11` (plein écran) y mène sur tout écran courant.
 
 Un double-clic sur `launch.bat`, ou un raccourci qui le vise directement,
 ouvre la **console héritée** — la ligne dégradée du tableau. C'est la raison

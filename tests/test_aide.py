@@ -60,6 +60,36 @@ def test_le_guide_couvre_tous_les_ecrans_documentes():
     assert dans_ordre == set(aide.classes_documentees())
 
 
+def _ecrans_a_touches() -> set[str]:
+    """Tout écran de `tui/screens` qui déclare ses propres touches."""
+    import importlib
+    import inspect
+    import pkgutil
+
+    from textual.screen import Screen
+
+    import tui.screens as paquet
+    noms: set[str] = set()
+    for m in pkgutil.iter_modules(paquet.__path__):
+        module = importlib.import_module(f"tui.screens.{m.name}")
+        for nom, c in inspect.getmembers(module, inspect.isclass):
+            if (c.__module__ == module.__name__ and issubclass(c, Screen)
+                    and any(k.__dict__.get("BINDINGS") for k in c.__mro__
+                            if k.__module__.startswith("tui."))):
+                noms.add(nom)
+    return noms
+
+
+def test_tout_ecran_a_touches_est_dans_le_guide_ou_exclu_pour_une_raison():
+    """CR-142 : « chaque touche de chaque écran » en couvrait neuf ; YouTube,
+    les emplacements, les options, le donneur, OpenSubtitles, la fiche, la
+    proportion, les plages, le point d'ancrage et les clés manquaient."""
+    exclus = getattr(aide, "NON_DOCUMENTES", {})
+    oublies = (_ecrans_a_touches() - set(aide.classes_documentees()) - set(exclus))
+    assert not oublies, f"écrans absents du guide, sans raison : {sorted(oublies)}"
+    assert all(exclus.values())
+
+
 def test_les_touches_du_cadre_textual_sont_ecartees():
     """`app.focus_next` et consorts ne font pas partie du vocabulaire de l'outil."""
     for classe in aide.classes_documentees().values():
@@ -109,7 +139,9 @@ def _textes_du_guide() -> list[str]:
 def test_le_guide_est_traduit():
     """IE-89 : le guide suit la langue de l'application. Une explication que
     le catalogue ne traduit pas resterait en anglais au milieu du français."""
-    muets = [t for t in _textes_du_guide() if i18n._(t) == t]
+    # Des noms qui s'écrivent pareil en français : ce ne sont pas des oublis.
+    identiques = {"OpenSubtitles", "YouTube", "Options"}
+    muets = [t for t in _textes_du_guide() if i18n._(t) == t and t not in identiques]
     assert not muets, muets[:3]
 
 

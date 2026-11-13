@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.2.16
+**Version**: 0.9.2.17
 **Date**: 2026-11-09
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -26,7 +26,8 @@ rather than by double-click.
 
 **Full screen**: `F11` switches Windows Terminal to full screen and back. The
 header recalls it at the top right ("F11 Full screen"), only when IRIS runs in
-Windows Terminal — elsewhere the key does nothing.
+Windows Terminal — elsewhere the key does nothing. The Home table needs about
+145 columns: in a narrower window it scrolls sideways (README, chapter 10).
 
 **Letter keys** work in upper case as in lower case: `w` and `W` (Shift or
 Caps Lock) do the same thing. In a text field, the letter is typed as is.

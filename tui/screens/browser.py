@@ -519,7 +519,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._selected:   set[Path] = set()
         self._rows:       list[tuple[str, Path | None]] = []
         # Les lignes qui sont des sorties de l'application : grisées, hors de
-        # `Ctrl+A`, mais sélectionnables et encodables comme les autres.
+        # `A` (tout cocher), mais sélectionnables et encodables comme les autres.
         self._produits:   set[Path] = set()
         # Override audio par fichier (TUI tracks)
         self._audio_overrides:    dict[Path, list[int]] = {}
@@ -543,7 +543,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         # `_dossier` garde tous les fichiers du dossier, masqués compris.
         self._filtre       = FILTRE_TOUS
         self._masquer_skip = False
-        # Tri de la vue (S) : tient pour la session, comme le filtre.
+        # Tri de la vue (O) : tient pour la session, comme le filtre.
         self._tri          = TRI_NOM
         self._tri_decroissant = TRIS[TRI_NOM]
         self._dossier:    list[Path] = []
@@ -1187,7 +1187,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         if produit:
             # Une sortie de l'application : la ligne s'efface d'un bloc, ce qui
             # dit « ceci vient d'ici » sans rien retirer de ce qu'elle porte.
-            # Elle reste sélectionnable et encodable — seul `Ctrl+A` l'ignore.
+            # Elle reste sélectionnable et encodable — seul `A` l'ignore.
             # La case à cocher garde sa teinte : grisée, on ne verrait plus si
             # la ligne est prise dans le lot.
             cells = tuple(Text(c.plain, style="dim", no_wrap=True,

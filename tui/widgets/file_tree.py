@@ -137,8 +137,8 @@ class FileNavigator:
         encodé la veille disparaissait de l'écran, et rien ne distinguait
         « déjà produit » de « jamais existé ». La vue le montre désormais,
         grisé. Le filtre reste en place là où il protège vraiment —
-        `scanner.scan_directory` et `scan_directory_recursive`, qui alimentent
-        le scan récursif et les lots automatiques.
+        `scanner.scan_directory_recursive`, qui alimente le scan récursif et
+        les lots automatiques.
         """
         self.disque_chiffre = self.dvd_sans_outil = False
         if self._virtual:

@@ -84,7 +84,8 @@ def deja_produit(stem: str) -> bool:
     pas une sortie que nous venons d'écrire. Les noms de l'ancien schéma
     (`_[hevc]`, `_[av1]`…) ne sont plus reconnus — ils redeviennent des sources.
     Un intermédiaire laissé par une coupure en est une aussi : grisé, hors de
-    `Ctrl+A` et du mode récursif, il reste visible pour être supprimé (CR-11).
+    `A` (tout cocher) et du mode récursif, il reste visible pour être supprimé
+    (CR-11).
     """
     if est_intermediaire(stem):
         return True
@@ -424,7 +425,7 @@ _ffprobe_path: str = "ffprobe"
 
 
 def set_ffprobe_path(path: str) -> None:
-    """Précise l'exécutable ffmpeg à utiliser pour le probing (défaut: 'ffmpeg' du PATH)."""
+    """Précise l'exécutable ffprobe à utiliser (défaut : `ffprobe` du PATH)."""
     global _ffprobe_path
     _ffprobe_path = path
 

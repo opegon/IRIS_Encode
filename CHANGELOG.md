@@ -1,5 +1,30 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.17] — 2026-11-13
+
+### Documentation (IE-195)
+
+- **Le guide `H` couvre toutes les fenêtres.** « Chaque touche de chaque
+  écran » n'en couvrait que neuf. S'y ajoutent la proportion, le fichier donneur
+  et ses pistes, OpenSubtitles, les plages, le point de repère, la fiche, YouTube
+  et sa liste de chaîne, les emplacements et leur formulaire, les options et les
+  clés d'API. Les confirmations et les listes de choix, qui se conduisent toutes
+  pareil, sont décrites une fois dans la section commune. Un test refuse
+  désormais un écran à touches oublié (CR-142).
+- **Trois explications corrigées.** Le filtre `L` cite le remux, l'audio DTS et
+  les sous-titres image ; sur l'écran des pistes, `↵` valide la sélection sur une
+  piste et ouvre le recalage sur une piste ajoutée (le guide disait qu'il ouvrait
+  la liste des valeurs) ; l'écran de recalage ne s'appelle plus de deux noms
+  dans le texte anglais (CR-142).
+- **Taille de fenêtre.** Les README et les guides disent que la table de
+  l'accueil demande environ 145 colonnes, et ce qui se passe en dessous (CR-141,
+  CR-143).
+- **Commentaires à jour** : `A` (et non `Ctrl+A`) pour tout cocher, `O` pour
+  trier, `scan_directory` disparue, ffprobe et non ffmpeg ; un docstring de
+  `core/emplacements.py` contenait un caractère de saut de page (CR-143).
+
+Spec § 14. Revue de code du 2026-11-13. Test : `tests/test_aide.py`.
+
 ## [v0.9.2.16] — 2026-11-13
 
 ### Interface : touches et libellés (IE-194)

@@ -143,7 +143,7 @@ def valider(liste: list[Emplacement], libelle: str, chemin: str,
 # ─── Connexion SMB ────────────────────────────────────────────────────────────
 
 def cle(chemin: Path) -> str:
-    r"""Le nom d'un partage tel que Windows le liste : `\nasilms`, sans la
+    r"""Le nom d'un partage tel que Windows le liste : `\\nas\films`, sans la
     barre finale que pathlib ajoute à la racine d'un partage."""
     return str(chemin).rstrip("\\").lower()
 

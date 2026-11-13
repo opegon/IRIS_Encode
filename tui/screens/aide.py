@@ -63,7 +63,7 @@ _COMMUNES: dict[str, str] = {
                           "leave the screen without anything saying so."),
     "accueil":         N_("Goes straight back to the list of volumes, without "
                           "going back up the screens one by one. The Tracks "
-                          "and Resync screens ask for confirmation before "
+                          "and Sync screens ask for confirmation before "
                           "dropping their changes; a mux or a join in "
                           "progress stops, as with Backspace; the encoding "
                           "queue goes on."),
@@ -129,9 +129,11 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         # TRANSLATORS: {key_tab} is the key that switches to IMDB.
         "open_fiche":          N_("Opens the movie's Info card: AlloCiné, then "
                                   "IMDB with {key_tab}."),
-        "filtre_type":         N_("Shows only one image type (Dolby Vision, one "
-                                  "DV profile, HDR without DV, SDR) or one video "
-                                  "codec. A checked row stays visible."),
+        "filtre_type":         N_("Shows only one kind of file: an image type "
+                                  "(Dolby Vision, one DV profile, HDR without DV, "
+                                  "SDR), a video codec, the files to remux, those "
+                                  "with DTS audio or with image subtitles. A "
+                                  "checked row stays visible."),
         "trier":               N_("Sorts the files by name, size, resolution, "
                                   "duration, bitrate, codec or estimated size "
                                   "change. Choosing the current sort again "
@@ -150,8 +152,10 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "field_next":     N_("Next field. The active field is framed ◄ ►."),
         "val_up":         N_("Next value of the active field."),
         "val_down":       N_("Previous value."),
-        "enter_action":   N_("Opens the list of possible values for the "
-                             "active field."),
+        "enter_action":   N_("On the video row: opens the list of values of the "
+                             "active field. On a track: confirms the selection "
+                             "and returns to the Home screen. On an added "
+                             "track: opens the Sync screen."),
         "dryrun":         N_("Dry run of this file only."),
         "run":            N_("Adds this file to the encoding queue."),
         "change_profile": N_("Changes the profile, which recomputes the "
@@ -320,6 +324,102 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "retour":   N_("Returns to the previous step; at the first, leaves "
                        "guided mode."),
     },
+    # ── Fenêtres ouvertes depuis les écrans ci-dessus (CR-142) ───────────────
+    "SarScreen": {
+        "select":   N_("Applies the aspect ratio under the cursor; the output "
+                       "frame is recomputed."),
+        "comparer": N_("Shows the same picture in 4:3 and in 16:9 side by "
+                       "side, to choose by eye."),
+        "cancel":   N_("Closes without changing anything."),
+    },
+    "DonorFileScreen": {
+        "select":        N_("Opens the folder under the cursor, or takes the "
+                            "file as donor: its tracks are listed next."),
+        "go_up":         N_("Goes up to the parent folder."),
+        "opensubtitles": N_("Searches OpenSubtitles for subtitles of the target "
+                            "file. The downloaded file comes back here as the "
+                            "donor."),
+        "cancel":        N_("Closes without choosing."),
+    },
+    "DonorTrackScreen": {
+        "toggle": N_("Checks or unchecks the track under the cursor. Several "
+                     "tracks of the same file can be taken."),
+        "accept": N_("Adds the checked tracks; their offset is set next, on "
+                     "the Sync screen."),
+        "cancel": N_("Goes back without adding anything."),
+    },
+    "OpenSubtitlesScreen": {
+        "download": N_("Downloads the subtitles of the row under the cursor "
+                       "and takes them as the donor file."),
+        "cancel":   N_("Closes without downloading."),
+    },
+    "SegmentsScreen": {
+        # TRANSLATORS: {key_apply} is the Sync screen key that applies them.
+        "close": N_("Closes the list. Nothing is applied from here: "
+                    "{key_apply} on the Sync screen does it."),
+    },
+    "AncrageModal": {
+        "suivante":   N_("Next suggested line."),
+        "precedente": N_("Previous suggested line."),
+        "valider":    N_("Searches for the offset around the moment you typed."),
+        "annuler":    N_("Closes without searching."),
+    },
+    "MetaPopup": {
+        "dismiss":        N_("Closes the card."),
+        "changer_source": N_("Switches between AlloCiné and IMDB."),
+    },
+    "YouTubeScreen": {
+        "cancel": N_("Closes. A download in progress is stopped and its "
+                     "partial file removed."),
+    },
+    "ChaineYouTubeScreen": {
+        "toggle": N_("Checks or unchecks the video under the cursor."),
+        "more":   N_("Lists the next videos of the channel, a hundred at a "
+                     "time."),
+        "cancel": N_("Closes. The videos already downloaded are kept and open "
+                     "in their folder."),
+    },
+    "EmplacementsScreen": {
+        "ajouter":   N_("Adds a location: a name, a network path, and the "
+                        "account of its server."),
+        "modifier":  N_("Edits the location under the cursor."),
+        "supprimer": N_("Deletes the location, after confirmation."),
+        "fermer":    N_("Closes the list."),
+    },
+    "EmplacementForm": {
+        "enregistrer": N_("Saves the location; the password goes to the "
+                          "Windows Credential Manager."),
+        "tester":      N_("Tries the path with the account typed, without "
+                          "saving anything."),
+        "annuler":     N_("Closes without saving."),
+    },
+    "OptionsScreen": {
+        "enregistrer": N_("Saves the options."),
+        "annuler":     N_("Closes without saving."),
+    },
+    "ClesScreen": {
+        "enregistrer": N_("Checks each changed key with its service, then "
+                          "saves it."),
+        "plus_tard":   N_("Closes without saving the keys. At startup, “Do not "
+                          "ask again” is remembered all the same."),
+    },
+}
+
+# Écrans à touches **absents** du guide, chacun avec sa raison (CR-142) :
+# `tests/test_aide.py` refuse un écran à `BINDINGS` qui ne serait ni documenté
+# ni ici. Les confirmations et les listes de choix ont la même conduite partout
+# — elle est dite une fois, dans la section commune.
+NON_DOCUMENTES: dict[str, str] = {
+    # Raisons en anglais : texte interne, jamais affiché (tests/test_i18n.py).
+    "AideScreen":            "the guide itself",
+    "ConfirmModal":          "confirmation, common section",
+    "DeleteConfirmModal":    "confirmation, common section",
+    "FinDeLotModal":         "confirmation, common section",
+    "QuitConfirmScreen":     "confirmation, common section",
+    "RecursiveConfirmModal": "confirmation, common section",
+    "ValuePickerScreen":     "list of choices, common section",
+    "ProfilePickerScreen":   "list of choices, common section",
+    "OutputDirScreen":       "list of choices, common section",
 }
 
 # Ordre de présentation : celui du parcours, pas celui des imports.
@@ -334,8 +434,20 @@ _ORDRE: list[tuple[str, str, str]] = [
         "screen.")),
     ("TracksScreen", N_("Tracks"),
      N_("What each track of the file will become.")),
+    ("SarScreen", N_("Aspect ratio"),
+     N_("The shape of a DVD-size picture that does not declare it.")),
     ("SyncScreen", N_("Sync"),
      N_("Add a track from another file, and put it back in time.")),
+    ("DonorFileScreen", N_("Donor file"),
+     N_("The file the added track is taken from.")),
+    ("DonorTrackScreen", N_("Donor tracks"),
+     N_("The tracks taken from the donor file.")),
+    ("OpenSubtitlesScreen", "OpenSubtitles",
+     N_("Subtitles found online for the target file.")),
+    ("SegmentsScreen", N_("Segments"),
+     N_("The offset segments a refused measurement found.")),
+    ("AncrageModal", N_("Anchor point"),
+     N_("A moment you hear, to guide a refused measurement.")),
     ("DryrunScreen", N_("Dry run"),
      N_("What would be done, without doing anything.")),
     ("RunScreen", N_("Encoding"),
@@ -344,25 +456,53 @@ _ORDRE: list[tuple[str, str, str]] = [
      N_("The mux in progress, and what can be done with it next.")),
     ("JoinScreen", N_("Join"),
      N_("Put the parts of one movie back together into a single file.")),
+    ("MetaPopup", N_("Info card"),
+     N_("The movie on AlloCiné and IMDB.")),
+    ("YouTubeScreen", "YouTube",
+     N_("Download a video: address, resolution, subtitles.")),
+    ("ChaineYouTubeScreen", N_("YouTube channel"),
+     N_("The videos of a channel, to download several at once.")),
+    ("EmplacementsScreen", N_("Locations"),
+     N_("Named network shares, from the list of volumes.")),
+    ("EmplacementForm", N_("Location"),
+     N_("One location and the account of its server.")),
     ("ConfigScreen", N_("Profiles"),
      N_("Create and set up the encoding profiles.")),
+    ("OptionsScreen", N_("Options"),
+     N_("Language, folders, sleep, after the batch.")),
+    ("ClesScreen", N_("API keys"),
+     N_("The keys of the online services.")),
 ]
 
 
 def classes_documentees() -> dict[str, type]:
     """Les écrans du guide. Import tardif : plusieurs d'entre eux importent ce module."""
+    from .ancrage import AncrageModal
     from .browser import BrowserScreen
+    from .cles import ClesScreen
     from .config import ConfigScreen
+    from .donor_picker import DonorFileScreen, DonorTrackScreen
     from .dryrun import DryrunScreen
+    from .emplacements import EmplacementForm, EmplacementsScreen
     from .join import JoinScreen
+    from .meta_popup import MetaPopup
     from .mux_run import MuxScreen
+    from .opensubtitles import OpenSubtitlesScreen
+    from .options import OptionsScreen
     from .run import RunScreen
+    from .sar import SarScreen
+    from .segments import SegmentsScreen
     from .sync import SyncScreen
     from .tracks import TracksScreen
     from .wizard import WizardScreen
-    return {c.__name__: c for c in (BrowserScreen, ConfigScreen, DryrunScreen,
-                                    JoinScreen, MuxScreen, RunScreen,
-                                    SyncScreen, TracksScreen, WizardScreen)}
+    from .youtube import YouTubeScreen
+    from .youtube_chaine import ChaineYouTubeScreen
+    return {c.__name__: c for c in (
+        AncrageModal, BrowserScreen, ChaineYouTubeScreen, ClesScreen,
+        ConfigScreen, DonorFileScreen, DonorTrackScreen, DryrunScreen,
+        EmplacementForm, EmplacementsScreen, JoinScreen, MetaPopup, MuxScreen,
+        OpenSubtitlesScreen, OptionsScreen, RunScreen, SarScreen,
+        SegmentsScreen, SyncScreen, TracksScreen, WizardScreen, YouTubeScreen)}
 
 
 def _lisible(touches: str) -> str:
@@ -423,6 +563,7 @@ def _parametres() -> dict[str, str]:
         "key_options":        _cle("ConfigScreen", "options"),
         "key_after_batch":    _cle("RunScreen", "apres_lot"),
         "key_stop_all":       _cle("RunScreen", "arreter_tout"),
+        "key_apply":          _cle("SyncScreen", "apply_segments"),
     }
 
 
@@ -515,6 +656,16 @@ class AideScreen(Screen):
         for cle, action in (("tab", "col_next"), ("shift+tab", "col_prev"),
                             (">", "col_grow"), ("<", "col_shrink")):
             self._ligne(t, touche(cle), _(_COMMUNES[action]))
+        t.append("\n")
+        # Les confirmations et les listes de choix ont toutes la même conduite :
+        # dite ici une fois, elles n'ont pas de section (`NON_DOCUMENTES`).
+        t.append(_("In a confirmation or a list of choices") + "\n", style="bold")
+        self._ligne(t, f"{touche('left')}/{touche('right')}",
+                    _("Moves between the buttons of a confirmation."))
+        self._ligne(t, touche("enter"),
+                    _("Activates the focused button, or takes the highlighted "
+                      "choice."))
+        self._ligne(t, touche("escape"), _("Cancels and closes."))
         t.append("\n")
 
         deja = set(_COMMUNES)

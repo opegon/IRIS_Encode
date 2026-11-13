@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.2.16 — Windows (macOS/Linux support planned)
+**Version**: 0.9.2.17 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -758,6 +758,11 @@ IRIS ENCODE uses Textual for its text interface. Rendering depends on the
 
 > **Windows Terminal** is free on the Microsoft Store and installed by default
 > on Windows 11. For Windows 10: https://aka.ms/terminal
+
+**Window size**: the Home table needs about 145 columns; below that, it
+scrolls sideways and its last columns (Decision, Est., ETA, Audio) leave the
+screen. 160 columns × 45 rows or more is comfortable — `F11` (full screen) gets
+there on any usual display.
 
 A double-click on `launch.bat`, or a shortcut aimed straight at it, opens the
 **legacy console** — the degraded row of the table. That is the reason for the

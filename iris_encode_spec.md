@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.2.18 — document de référence courant
+**Version** : 0.9.2.19 — document de référence courant
 **Date** : 2026-11-13
 **Statut** : stable
 
@@ -102,8 +102,6 @@ iris_encode/
 │       ├── file_tree.py          ← FileNavigator (navigation virtuelle + répertoires)
 │       ├── footer.py             ← KeyFooter (raccourcis, hauteur variable)
 │       └── profile_form.py       ← formulaire création/édition profil
-├── logger/
-│   └── logger.py                 ← module inerte (API prête, non implémenté)
 ├── tests/
 │   ├── smoke_tui.py              ← parcours TUI headless de bout en bout
 │   ├── shots_tui.py              ← inventaire visuel des écrans (export SVG)
@@ -1193,7 +1191,11 @@ incomplète, ses lignes en attente non cochables. Désormais :
   chemin** : un fichier renommé ou déplacé garde son analyse, un fichier
   modifié se réanalyse. Chaque entrée porte `vu` (dernier jour d'usage) ;
   au chargement, celles de plus de `EXPIRATION_JOURS` (180) sont retirées
-  (fichiers effacés). Écriture par remplacement (`.tmp` puis `os.replace`) ;
+  (fichiers effacés). Une lecture marque `vu` en mémoire ; le fichier ne se
+  réécrit pour ces marques qu'une fois par jour, les suivantes partant avec la
+  prochaine écriture ou à la sortie (`atexit`) — il se réécrivait une fois par
+  entrée lue (v0.9.2.19, CR-145). Le verrou par fichier (`verrou_de`) est
+  rendu quand le dernier fil qui l'attendait le libère. Écriture par remplacement (`.tmp` puis `os.replace`) ;
   fichier illisible → départ à vide ; installation en lecture seule → mémoire
   seule. Un échec de mesure (`None`) ne s'écrit pas : retenu pour la session
   (`_ECHECS_ENTRELACEMENT`). Un verrou par clé : deux fils qui veulent la
@@ -4199,7 +4201,10 @@ class VideoInfo:
 
 `scan_directory_recursive(root, progres=None)` — tous les fichiers vidéo sous `root`,
 tous niveaux, triés par chemin. Filtres : extensions supportées, exclusion de ce
-que l'application a elle-même encodé. Depuis la v0.8.9.90
+que l'application a elle-même encodé. Il n'entre pas dans les dossiers système
+(`_dossier_systeme` : nom en `$` ou en `.`, `System Volume Information`,
+attribut caché ou système de Windows) : `R` sur la racine d'un lecteur
+analysait les vidéos de la corbeille (v0.9.2.19, CR-130). Depuis la v0.8.9.90
 (IE-117), les ffprobe tournent à `scanner.SCAN_WORKERS` (4) à la fois, comme sur
 l'accueil ; l'ordre des résultats reste celui du tri, un échec n'arrête pas le reste.
 `progres(fait, total)` est appelé après chaque fichier (sur 38 fichiers locaux :
@@ -4406,17 +4411,10 @@ stable du diagnostic (CR-53, `tests/test_file_encodage.py` le vérifie).
 Les modules `core/` logguent via `logging.getLogger("iris_encode.*")`. Warnings et
 erreurs persistés silencieusement.
 
-### 16.2 Logger applicatif (inerte)
+### 16.2 Logger applicatif — retiré
 
-`logger/logger.py` — API définie, aucun backend branché.
-
-```python
-logger.info("scan terminé", files=12)
-logger.error("encodage échoué", file="video.mkv")
-logger.session_start(profile="default", path="D:/Videos")
-```
-
-Backend prévu (JSON ou SQLite) dans une release ultérieure.
+`logger/logger.py`, une API sans backend importée nulle part, est retiré en
+v0.9.2.19 (CR-144) : le journal du § 16.1 est le seul.
 
 ---
 
@@ -4515,8 +4513,7 @@ hors scope, et pourquoi :
 | `Ctrl+D` vers la corbeille | Windows ne met pas en corbeille un fichier d'un partage réseau, là où vit l'essentiel d'une bibliothèque : la promesse serait fausse. La suppression reste définitive et le dit |
 
 Retirées le même jour, parce que faites : journal persistant
-(`~/.iris_encode/iris_encode.log`, avertissements et erreurs ; `logger/logger.py`
-reste un module inerte), Python embarqué (`bootstrap.ps1`, § 3.1.1), mise à
+(`~/.iris_encode/iris_encode.log`, avertissements et erreurs), Python embarqué (`bootstrap.ps1`, § 3.1.1), mise à
 jour des outils au lancement (`core/updates.py`, § 4.4), file multi-dossiers (la
 file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 2026-09-24). Entrée en v0.9.0 : l'analyse en parallèle du mode récursif (IE-117, livrée en v0.8.9.90).
@@ -4560,6 +4557,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.2.16 | 2026-11-13 | **Interface : touches et libellés** (§ 14, § 14.1, § 14.8, IE-194) : `+/-` du formulaire de profil (`event.character`, CR-134) ; palette de commandes Textual désactivée (CR-139) ; touches sans effet annoncées — piste d'origine, champ DV, `P` pendant mkvmerge —, écart arrondi avant son signe (`ecart_pct`), `und` affiché « ? », `Ctrl+` gardé dans les notations composées, chemin de la barre d'état coupé au milieu (CR-141) · `tests/test_touches_et_libelles.py`, `tests/test_profile_form.py` |
 | 0.9.2.17 | 2026-11-13 | **Documentation** (§ 14, IE-195) : le guide `H` couvre treize fenêtres de plus, `NON_DOCUMENTES` motive les autres ; filtre, `↵` de l'écran des pistes et nom du recalage corrigés (CR-142) ; taille de fenêtre minimale dans les README et guides ; commentaires périmés et saut de page d'un docstring (CR-143) · `tests/test_aide.py` |
 | 0.9.2.18 | 2026-11-13 | **Tests** (IE-196, sans changement de l'application) : `conftest.globales_isolees` restaure huit variables de module de plus, copie les dictionnaires et ensembles (CR-146) ; outils réels cherchés dans `bin/` puis le `PATH` (`tests/outils_reels.py`, CR-147) ; smoke et captures dans un bac à sable (profils, `config.toml`, analyses), OpenSubtitles dans le dossier du test, chaînes brutes (CR-148) |
+| 0.9.2.19 | 2026-11-13 | **Hygiène** (§ 8.1, § 15.2, § 16.2, IE-197) : le scan récursif saute corbeille et dossiers système (CR-130) ; `logger/` retiré, imports inutiles, codecs que ffprobe ne rend pas, largeurs de l'accueil gardées en mémoire, ligne de `sync.py` (CR-144) ; `analyses.json` réécrit une fois par jour, verrous rendus, octets écrits lus pour un MP4 seulement, pistes du donneur lues dans un worker, liste des fichiers du donneur par `scandir` (CR-145) · `tests/test_hygiene.py` |
 | 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |
 | 0.9.2.11 | 2026-11-13 | **HDR sous la tranche 1080p** (§ 8.1, § 14.0, IE-189) : la décision automatique garde en HEVC toute source dont la sortie reste HDR, comme le forçage ; H264 seulement pour une sortie SDR (CR-118) · `tests/test_hdr_tranche.py` |
 | 0.9.2.10 | 2026-11-13 | **Sous-titres et conteneur** (§ 8.6, IE-188) : `mov_text` converti en SubRip vers Matroska (`-c:s:N srt`, CR-117) ; en `container = "mp4"`, seuls les sous-titres doublés par un texte de même langue et de même nature sont écartés, sinon le conteneur cède ; pistes écartées nommées dans l'Aperçu (CR-119) · `tests/test_mov_text_mkv.py`, `tests/test_conteneur.py` |

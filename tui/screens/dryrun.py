@@ -29,7 +29,7 @@ from core.decision import (
     decide_video,
     ajuster_remux,
     SANS_REENCODAGE,
-    AudioAction, DVAction, DV_SORTIE, FileDecision, VideoAction,
+    AudioAction, DV_SORTIE, FileDecision, VideoAction,
 )
 from ..common import sauver_config
 from ..common import avertir_h264_sdr

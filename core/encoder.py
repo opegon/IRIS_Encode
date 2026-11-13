@@ -6,13 +6,14 @@ EncoderProcess  → wrapper autour du sous-processus ffmpeg.
 """
 from __future__ import annotations
 
+import functools
 import re
 import subprocess
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterator, Optional
+from typing import Iterator, Optional
 
 from .decision import (AudioAction, DVAction, FileDecision, VideoAction,
                        conversion_p5)
@@ -76,6 +77,24 @@ def _resume_process(pid: int) -> bool:
             return False
 
 
+@functools.lru_cache(maxsize=1)
+def _compteurs_windows():
+    """(kernel32, structure IO_COUNTERS), préparés une fois : recréés à chaque
+    ligne de ffmpeg, ils coûtaient une classe et un `WinDLL` par ligne (CR-145)."""
+    import ctypes
+    from ctypes import wintypes
+
+    class _Compteurs(ctypes.Structure):
+        _fields_ = [(n, ctypes.c_ulonglong) for n in (
+            "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
+            "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
+
+    k32 = ctypes.WinDLL("kernel32")
+    k32.OpenProcess.restype = wintypes.HANDLE
+    k32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    return k32, _Compteurs
+
+
 def octets_ecrits(pid: int) -> Optional[int]:
     """Les octets que le processus a écrits depuis son lancement, comptés par
     le système. None quand on ne sait pas les lire."""
@@ -83,14 +102,7 @@ def octets_ecrits(pid: int) -> Optional[int]:
         import ctypes
         from ctypes import wintypes
 
-        class _Compteurs(ctypes.Structure):
-            _fields_ = [(n, ctypes.c_ulonglong) for n in (
-                "ReadOperationCount", "WriteOperationCount", "OtherOperationCount",
-                "ReadTransferCount", "WriteTransferCount", "OtherTransferCount")]
-
-        k32 = ctypes.WinDLL("kernel32")
-        k32.OpenProcess.restype = wintypes.HANDLE
-        k32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        k32, _Compteurs = _compteurs_windows()
         h = k32.OpenProcess(0x1000, False, pid)     # QUERY_LIMITED_INFORMATION
         if not h:
             return None
@@ -1549,7 +1561,10 @@ class EncoderProcess:
                 del self.journal[:-40]
             progress = parse_progress(line, self.duration)
             self._t_ligne = time.monotonic()
-            self._base = self.octets_ecrits()
+            # Seule la finalisation d'un MP4 s'en sert : ailleurs, un appel
+            # système par ligne pour rien (CR-145).
+            if "+faststart" in self.cmd:
+                self._base = self.octets_ecrits()
             self._echantillons = []
             yield line, progress
 

@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.2.19] — 2026-11-13
+
+### Hygiène (IE-197)
+
+- **`R` n'entre plus dans la corbeille.** Lancé sur la racine d'un lecteur, le
+  scan récursif descendait dans `$RECYCLE.BIN` et `System Volume Information`,
+  et analysait les vidéos supprimées. Il saute les dossiers en `$` ou en `.` et
+  ceux que Windows marque cachés ou système (CR-130).
+- **Moins d'écritures et d'appels répétés.** `data/analyses.json` se réécrivait
+  à chaque fichier relu le premier jour : une fois par jour suffit. Le compteur
+  d'octets écrits de ffmpeg n'est plus lu à chaque ligne, seulement pour un MP4
+  à finaliser. Les pistes d'un donneur se lisent sans figer l'écran, et sa liste
+  de fichiers coûte un appel système par entrée au lieu de trois (CR-145).
+- **Code mort retiré** : le module `logger/`, jamais branché ; des imports
+  inutiles ; deux noms de codec que ffprobe ne rend jamais. Redimensionner une
+  colonne de l'accueil ne réécrit plus `config.toml`, puisqu'elle repart de sa
+  largeur par défaut à chaque lancement (CR-144).
+
+Spec § 8.1, § 15.2, § 16.2. Revue de code du 2026-11-13. Test :
+`tests/test_hygiene.py`.
+
 ## [v0.9.2.18] — 2026-11-13
 
 ### Tests : isolation, outils, bac à sable (IE-196)

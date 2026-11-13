@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.2.18 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.2.19 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -654,8 +654,7 @@ iris_encode/
 ├── tui/                ← Interface utilisateur
 ├── locales/            ← Traductions de l'interface (.po, .mo compilés)
 ├── outils/             ← Outils de développement (traductions)
-├── tests/              ← Tests et smoke test TUI
-└── logger/             ← Module de journalisation
+└── tests/              ← Tests et smoke test TUI
 ```
 
 ---

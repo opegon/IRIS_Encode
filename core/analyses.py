@@ -17,10 +17,12 @@ chargement : c'est ainsi que partent celles des fichiers effacés.
 """
 from __future__ import annotations
 
+import atexit
 import json
 import logging
 import os
 import threading
+from contextlib import contextmanager
 from datetime import date, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
@@ -39,7 +41,11 @@ EXPIRATION_JOURS = 180
 _verrou  = threading.Lock()
 _entrees: Optional[dict] = None             # chargées au premier accès
 _charge_depuis: Optional[Path] = None       # le chemin d'où elles viennent
-_en_cours: dict[str, threading.Lock] = {}
+# Clé → (verrou, nombre de fils qui le tiennent ou l'attendent).
+_en_cours: dict[str, tuple[threading.Lock, int]] = {}
+# Le jour du dernier `_sauver`, et des dates de lecture pas encore écrites.
+_ecrit_le: Optional[str] = None
+_a_ecrire = False
 
 
 def cle(info: "VideoInfo", st: os.stat_result) -> str:
@@ -48,11 +54,29 @@ def cle(info: "VideoInfo", st: os.stat_result) -> str:
             f"|{info.width}x{info.height}")
 
 
-def verrou_de(c: str) -> threading.Lock:
+@contextmanager
+def verrou_de(c: str):
     """Un verrou par fichier : deux fils qui veulent la même analyse
-    l'attendent une fois, au lieu de la mesurer deux fois."""
+    l'attendent une fois, au lieu de la mesurer deux fois.
+
+    Retiré quand le dernier fil le rend : un verrou par fichier jamais vu
+    s'accumulait, une saison après l'autre, pendant toute la session (CR-145).
+    """
     with _verrou:
-        return _en_cours.setdefault(c, threading.Lock())
+        v, n = _en_cours.get(c, (None, 0))
+        if v is None:
+            v = threading.Lock()
+        _en_cours[c] = (v, n + 1)
+    try:
+        with v:
+            yield
+    finally:
+        with _verrou:
+            v, n = _en_cours[c]
+            if n <= 1:
+                del _en_cours[c]
+            else:
+                _en_cours[c] = (v, n - 1)
 
 
 def _vers_dict(a: Analyse) -> dict:
@@ -89,6 +113,7 @@ def _charger() -> dict:
 def _sauver(entrees: dict) -> None:
     """Écrit le fichier entier, par remplacement : jamais à moitié écrit.
     Une installation en lecture seule garde les analyses en mémoire."""
+    global _ecrit_le, _a_ecrire
     tmp = CHEMIN.with_suffix(".tmp")
     try:
         CHEMIN.parent.mkdir(parents=True, exist_ok=True)
@@ -96,11 +121,17 @@ def _sauver(entrees: dict) -> None:
         os.replace(tmp, CHEMIN)
     except OSError as e:
         _log.warning("analyses cache not written (%s): %s", CHEMIN, e)
+    _ecrit_le, _a_ecrire = date.today().isoformat(), False
 
 
 def lire(c: str) -> Optional[Analyse]:
     """L'analyse gardée pour la clé `c`, ou None. Une entrée lue est
-    marquée vue aujourd'hui, ce qui repousse son expiration."""
+    marquée vue aujourd'hui, ce qui repousse son expiration.
+
+    Le fichier se réécrit une fois par jour pour ces marques, pas une fois par
+    entrée : un dossier de cent films le réécrivait cent fois (CR-145). Les
+    marques suivantes partent avec la prochaine écriture, ou à la sortie."""
+    global _a_ecrire
     with _verrou:
         entrees = _charger()
         e = entrees.get(c)
@@ -109,8 +140,19 @@ def lire(c: str) -> Optional[Analyse]:
         aujourd_hui = date.today().isoformat()
         if e.get("vu") != aujourd_hui:
             e["vu"] = aujourd_hui
-            _sauver(entrees)
+            if _ecrit_le != aujourd_hui:
+                _sauver(entrees)
+            else:
+                _a_ecrire = True
         return _depuis_dict(e["analyse"])
+
+
+@atexit.register
+def _ecrire_les_marques() -> None:
+    """À la sortie : les dates de lecture que `lire` a gardées en mémoire."""
+    with _verrou:
+        if _a_ecrire and _entrees is not None and _charge_depuis == CHEMIN:
+            _sauver(_entrees)
 
 
 def ecrire(c: str, analyse: Analyse) -> None:

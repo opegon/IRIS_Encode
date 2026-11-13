@@ -110,4 +110,6 @@ def analyses_isolees(tmp_path, monkeypatch):
     from core import analyses, scanner
     monkeypatch.setattr(analyses, "CHEMIN", tmp_path / "analyses.json")
     monkeypatch.setattr(analyses, "_en_cours", {})
+    monkeypatch.setattr(analyses, "_ecrit_le", None)
+    monkeypatch.setattr(analyses, "_a_ecrire", False)
     monkeypatch.setattr(scanner, "_ECHECS_ENTRELACEMENT", set())

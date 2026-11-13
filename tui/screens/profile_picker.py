@@ -17,7 +17,7 @@ from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
 from core.i18n import _, N_
-from ..common import (PROFIL_COLONNES, cellules_profil, largeurs_colonnes, profil_colonnes,
+from ..common import (cellules_profil, largeurs_colonnes, profil_colonnes,
                       raccourcis)
 
 if TYPE_CHECKING:

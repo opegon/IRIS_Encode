@@ -1004,7 +1004,8 @@ def _lag_borne(x: np.ndarray, y: np.ndarray, max_lag_s: float,
     centre = int(round(centre_ms / BIN_MS))
     scores: list[tuple[float, int]] = []
     for d in range(centre - m, centre + m + 1, pas):
-        u, v = (a[d:], b[:len(b) - d]) if d > 0 else                ((a, b) if d == 0 else (a[:len(a) + d], b[-d:]))
+        u, v = ((a[d:], b[:len(b) - d]) if d > 0 else
+                (a, b) if d == 0 else (a[:len(a) + d], b[-d:]))
         k = min(len(u), len(v))
         if k < 400:
             continue

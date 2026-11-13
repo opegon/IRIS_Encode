@@ -11,6 +11,7 @@ import json
 import os
 import logging
 import re
+import stat
 import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -350,7 +351,9 @@ def stem_sans_groupe(stem: str) -> str:
     return reste
 
 
-_LOSSLESS_CODECS = frozenset({"truehd", "dts-hd ma", "dtshd", "mlp", "flac"})
+# Des noms de codec ffprobe (`codec_name`) : « dts-hd ma » et « dtshd », qu'il
+# ne rend jamais, n'y sont plus (CR-144) — le DTS sans perte se lit au profil.
+_LOSSLESS_CODECS = frozenset({"truehd", "mlp", "flac"})
 # Le PCM porte une douzaine de noms ffprobe (`pcm_s16le`, `pcm_bluray`…) :
 # un préfixe. Sans lui, un concert en FLAC ou en PCM était transcodé même
 # avec `preserve_hd_audio`.
@@ -365,7 +368,7 @@ _PREFIXE_PCM = "pcm"
 _PREFIXE_DTS_SANS_PERTE = "dts-hd ma"
 # Familles qu'aucun lecteur de fichier grand public ne prend en charge : c'est
 # sur elles que porte le transcodage au débit de la source.
-_HD_AUDIO_CODECS = frozenset({"truehd", "mlp", "dts", "dts-hd ma", "dtshd"})
+_HD_AUDIO_CODECS = frozenset({"truehd", "mlp", "dts"})
 
 
 def channel_layout_label(channels: int) -> str:
@@ -1251,6 +1254,20 @@ def module_disque(dossier: Path):
     return None
 
 
+def _dossier_systeme(chemin: Path) -> bool:
+    """Un dossier que le scan récursif n'ouvre pas : nom en `$` (`$RECYCLE.BIN`)
+    ou en `.`, `System Volume Information`, ou marqué caché ou système par
+    Windows."""
+    nom = chemin.name
+    if nom.startswith(("$", ".")) or nom.lower() == "system volume information":
+        return True
+    try:
+        attributs = getattr(os.stat(chemin), "st_file_attributes", 0)
+    except OSError:
+        return False
+    return bool(attributs & (stat.FILE_ATTRIBUTE_HIDDEN | stat.FILE_ATTRIBUTE_SYSTEM))
+
+
 def scan_directory_recursive(
     root: Path,
     progres: Callable[[int, int], None] | None = None,
@@ -1280,6 +1297,9 @@ def scan_directory_recursive(
         disques.append((root.parent, module))
     for dossier, sous, fichiers in (os.walk(root) if module is None else ()):
         ici = Path(dossier)
+        # La corbeille et les dossiers système ne sont pas des films : `R` sur
+        # la racine d'un lecteur analysait les vidéos supprimées (CR-130).
+        sous[:] = [s for s in sous if not _dossier_systeme(ici / s)]
         noms = {s.upper(): s for s in sous}
         if {"BDMV", "VIDEO_TS"} & noms.keys():
             module = module_disque(ici)

@@ -57,7 +57,7 @@ msgstr ""
 #. {error} is OMDb's own message, in English (L-08).
 #. {error} is OMDb's own message, in English.
 #: core/cles.py:135
-#: core/meta.py:155
+#: core/meta.py:153
 #, python-brace-format
 msgid "OMDb: “{error}”"
 msgstr ""
@@ -391,62 +391,62 @@ msgstr ""
 msgid "Windows refused to remove the identity (error {code})."
 msgstr ""
 
-#: core/encoder.py:370
+#: core/encoder.py:382
 msgid "This graphics card cannot encode this format. AV1 with NVENC needs an RTX 40 or newer; HEVC and H264 remain available."
 msgstr ""
 
-#: core/encoder.py:373
+#: core/encoder.py:385
 msgid "NVENC refused: this ffmpeg needs a newer NVIDIA driver than the one installed. Update the driver, or use an ffmpeg built for an older NVENC API."
 msgstr ""
 
-#: core/encoder.py:377
+#: core/encoder.py:389
 msgid "The encoder could not be opened on this computer. If it is AV1: NVENC only encodes it from the RTX 40 series."
 msgstr ""
 
-#: core/encoder.py:380
+#: core/encoder.py:392
 msgid "The NVIDIA driver cannot be found. Without it, no accelerated encoding is possible."
 msgstr ""
 
-#: core/encoder.py:383
+#: core/encoder.py:395
 msgid "The requested bitrate is outside what the encoder accepts. Choose a value within the range it announces."
 msgstr ""
 
-#: core/encoder.py:386
+#: core/encoder.py:398
 msgid "The chosen encoder does not support this channel layout or this pixel format."
 msgstr ""
 
-#: core/encoder.py:389
+#: core/encoder.py:401
 msgid "The destination disk is full."
 msgstr ""
 
-#: core/encoder.py:391
+#: core/encoder.py:403
 msgid "Writing to this location is not allowed."
 msgstr ""
 
-#: core/encoder.py:607
+#: core/encoder.py:619
 msgid "the output file was not written"
 msgstr ""
 
-#: core/encoder.py:609
+#: core/encoder.py:621
 msgid "the output file is empty"
 msgstr ""
 
-#: core/encoder.py:619
+#: core/encoder.py:631
 msgid "the output lasts {got:.0f} s, {expected:.0f} s expected: it is incomplete"
 msgstr ""
 
-#: core/encoder.py:1076
+#: core/encoder.py:1088
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Empty suffix and same container — encoding refused to avoid corrupting the source file."
 msgstr ""
 
-#: core/encoder.py:1096
+#: core/encoder.py:1108
 #, python-brace-format
 msgid "{dv} → HDR10/SDR needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/): without it, the colors come out wrong."
 msgstr ""
 
 #. -itsoffset is an ffmpeg option, keep it as is.
-#: core/encoder.py:1163
+#: core/encoder.py:1175
 #, python-brace-format
 msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
 msgstr ""
@@ -537,29 +537,29 @@ msgstr ""
 msgid "Output path identical to one of the parts ({file}). Join refused to avoid corrupting the source file."
 msgstr ""
 
-#: core/meta.py:156
+#: core/meta.py:154
 msgid "result not found"
 msgstr ""
 
-#: core/meta.py:203
+#: core/meta.py:201
 msgid "Unexpected IMDB answer"
 msgstr ""
 
-#: core/meta.py:216
+#: core/meta.py:214
 #, python-brace-format
 msgid "No IMDB result for “{title}”"
 msgstr ""
 
-#: core/meta.py:232
+#: core/meta.py:230
 msgid "Rating and synopsis available with an OMDb key (omdbapi.com — free)."
 msgstr ""
 
-#: core/meta.py:313
+#: core/meta.py:311
 #, python-brace-format
 msgid "No AlloCiné result for “{title}”"
 msgstr ""
 
-#: core/meta.py:329
+#: core/meta.py:327
 msgid "Cannot read the AlloCiné data (no JSON-LD)"
 msgstr ""
 
@@ -993,7 +993,7 @@ msgstr[1] ""
 msgid "profiles.toml unreadable ({error}). Loading the built-in profile [{profile}]."
 msgstr ""
 
-#: core/scanner.py:1037
+#: core/scanner.py:1040
 msgid "no video stream"
 msgstr ""
 
@@ -1144,82 +1144,82 @@ msgstr ""
 msgid "Insertion points not increasing: {position} s after {previous} s."
 msgstr ""
 
-#: core/sync.py:1319
+#: core/sync.py:1320
 #, python-brace-format
 msgid "medium correlation ({value}) — check the result before muxing"
 msgstr ""
 
-#: core/sync.py:1337
+#: core/sync.py:1338
 msgid "no usable audio"
 msgstr ""
 
-#: core/sync.py:1353
+#: core/sync.py:1354
 #, python-brace-format
 msgid "durations {gap} apart — check that it is the same cut"
 msgstr ""
 
-#: core/sync.py:1376
+#: core/sync.py:1377
 msgid "no usable audio in the donor"
 msgstr ""
 
-#: core/sync.py:1380
+#: core/sync.py:1381
 msgid "no usable insertion"
 msgstr ""
 
-#: core/sync.py:1402
-#: core/sync.py:1426
+#: core/sync.py:1403
+#: core/sync.py:1427
 #, python-brace-format
 msgid "ffmpeg failed: {error}"
 msgstr ""
 
-#: core/sync.py:1425
+#: core/sync.py:1426
 #: tui/screens/join.py:320
 #: tui/screens/mux_run.py:197
 #, python-brace-format
 msgid "code {code}"
 msgstr ""
 
-#: core/sync.py:1480
+#: core/sync.py:1481
 msgid "embedded track without a track index"
 msgstr ""
 
-#: core/sync.py:1488
+#: core/sync.py:1489
 msgid "no readable subtitle line"
 msgstr ""
 
-#: core/sync.py:1493
+#: core/sync.py:1494
 msgid "no audio in the video"
 msgstr ""
 
-#: core/sync.py:1505
+#: core/sync.py:1506
 msgid "offset taken from the anchor point — no step detected beyond"
 msgstr ""
 
-#: core/sync.py:1511
+#: core/sync.py:1512
 #, python-brace-format
 msgid "the given point says {given} ms, the analysis finds {found} — check both moments"
 msgstr ""
 
-#: core/sync.py:1518
+#: core/sync.py:1519
 msgid "constant offset confirmed around the anchor point"
 msgstr ""
 
-#: core/sync.py:1523
+#: core/sync.py:1524
 #, python-brace-format
 msgid "{count} segment detected around the anchor point — different cut"
 msgid_plural "{count} segments detected around the anchor point — different cut"
 msgstr[0] ""
 msgstr[1] ""
 
-#: core/sync.py:1567
+#: core/sync.py:1568
 msgid "embedded track without a track index — cannot extract it"
 msgstr ""
 
-#: core/sync.py:1577
+#: core/sync.py:1578
 msgid "no readable subtitle line — unknown format or empty file"
 msgstr ""
 
-#: core/sync.py:1584
+#: core/sync.py:1585
 msgid "no audio in the video to serve as reference"
 msgstr ""
 
@@ -1514,7 +1514,7 @@ msgstr ""
 #: tui/screens/config.py:60
 #: tui/screens/config.py:61
 #: tui/screens/config.py:100
-#: tui/screens/donor_picker.py:244
+#: tui/screens/donor_picker.py:271
 #: tui/screens/dryrun.py:75
 #: tui/screens/dryrun.py:76
 #: tui/screens/emplacements.py:63
@@ -1562,14 +1562,14 @@ msgid "Dolby V."
 msgstr ""
 
 #: tui/common.py:585
-#: tui/widgets/profile_form.py:287
+#: tui/widgets/profile_form.py:285
 msgid "Preset"
 msgstr ""
 
 #: tui/common.py:585
 #: tui/screens/dryrun.py:72
 #: tui/screens/dryrun.py:445
-#: tui/widgets/profile_form.py:300
+#: tui/widgets/profile_form.py:298
 msgid "Upscale"
 msgstr ""
 
@@ -2291,7 +2291,7 @@ msgid "Add a track from another file, and put it back in time."
 msgstr ""
 
 #: tui/screens/aide.py:441
-#: tui/screens/donor_picker.py:141
+#: tui/screens/donor_picker.py:160
 msgid "Donor file"
 msgstr ""
 
@@ -2300,7 +2300,7 @@ msgid "The file the added track is taken from."
 msgstr ""
 
 #: tui/screens/aide.py:443
-#: tui/screens/donor_picker.py:255
+#: tui/screens/donor_picker.py:285
 msgid "Donor tracks"
 msgstr ""
 
@@ -2334,7 +2334,7 @@ msgstr ""
 #: tui/screens/browser.py:444
 #: tui/screens/browser.py:606
 #: tui/screens/browser.py:761
-#: tui/screens/browser.py:1987
+#: tui/screens/browser.py:1989
 #: tui/screens/dryrun.py:305
 #: tui/screens/mux_run.py:43
 #: tui/screens/sync.py:194
@@ -2524,10 +2524,10 @@ msgstr ""
 #: tui/screens/confirm.py:87
 #: tui/screens/confirm.py:106
 #: tui/screens/confirm.py:125
-#: tui/screens/donor_picker.py:126
-#: tui/screens/donor_picker.py:148
-#: tui/screens/donor_picker.py:243
-#: tui/screens/donor_picker.py:260
+#: tui/screens/donor_picker.py:145
+#: tui/screens/donor_picker.py:167
+#: tui/screens/donor_picker.py:270
+#: tui/screens/donor_picker.py:290
 #: tui/screens/emplacements.py:188
 #: tui/screens/emplacements.py:224
 #: tui/screens/emplacements.py:227
@@ -2547,7 +2547,7 @@ msgstr ""
 #: tui/screens/youtube.py:97
 #: tui/screens/youtube_chaine.py:81
 #: tui/screens/youtube_chaine.py:126
-#: tui/widgets/profile_form.py:238
+#: tui/widgets/profile_form.py:236
 msgid "Cancel"
 msgstr ""
 
@@ -2555,8 +2555,8 @@ msgstr ""
 #: tui/screens/ancrage.py:88
 #: tui/screens/confirm.py:90
 #: tui/screens/confirm.py:124
-#: tui/screens/donor_picker.py:242
-#: tui/screens/donor_picker.py:259
+#: tui/screens/donor_picker.py:269
+#: tui/screens/donor_picker.py:289
 #: tui/screens/tracks.py:137
 msgid "OK"
 msgstr ""
@@ -2651,7 +2651,7 @@ msgstr ""
 #: tui/screens/browser.py:424
 #: tui/screens/browser.py:695
 #: tui/screens/browser.py:718
-#: tui/screens/donor_picker.py:241
+#: tui/screens/donor_picker.py:268
 #: tui/screens/dryrun.py:64
 #: tui/screens/tracks.py:132
 #: tui/screens/youtube.py:96
@@ -2672,8 +2672,8 @@ msgstr ""
 
 #: tui/screens/browser.py:427
 #: tui/screens/browser.py:698
-#: tui/screens/donor_picker.py:123
-#: tui/screens/donor_picker.py:145
+#: tui/screens/donor_picker.py:142
+#: tui/screens/donor_picker.py:164
 #: tui/screens/output_dir.py:53
 #: tui/screens/output_dir.py:75
 msgid "Open"
@@ -2682,8 +2682,8 @@ msgstr ""
 #: tui/screens/browser.py:428
 #: tui/screens/browser.py:710
 #: tui/screens/browser.py:719
-#: tui/screens/donor_picker.py:124
-#: tui/screens/donor_picker.py:146
+#: tui/screens/donor_picker.py:143
+#: tui/screens/donor_picker.py:165
 #: tui/screens/output_dir.py:54
 #: tui/screens/output_dir.py:76
 msgid "Up"
@@ -2732,7 +2732,7 @@ msgstr ""
 #: tui/screens/browser.py:441
 #: tui/screens/browser.py:706
 #: tui/screens/browser.py:720
-#: tui/screens/browser.py:1786
+#: tui/screens/browser.py:1788
 msgid "Filter"
 msgstr ""
 
@@ -2750,7 +2750,7 @@ msgstr ""
 #: tui/screens/browser.py:445
 #: tui/screens/browser.py:607
 #: tui/screens/browser.py:761
-#: tui/screens/browser.py:1998
+#: tui/screens/browser.py:2000
 #: tui/screens/dryrun.py:67
 #: tui/screens/mux_run.py:44
 #: tui/screens/sync.py:195
@@ -2773,7 +2773,7 @@ msgid "YouTube"
 msgstr ""
 
 #: tui/screens/browser.py:460
-#: tui/screens/donor_picker.py:152
+#: tui/screens/donor_picker.py:171
 #: tui/screens/dryrun.py:87
 #: tui/screens/join.py:39
 #: tui/screens/run.py:301
@@ -2782,7 +2782,7 @@ msgid "File"
 msgstr ""
 
 #: tui/screens/browser.py:460
-#: tui/screens/donor_picker.py:153
+#: tui/screens/donor_picker.py:172
 #: tui/screens/dryrun.py:88
 msgid "Size"
 msgstr ""
@@ -2809,7 +2809,7 @@ msgid "Bitrate"
 msgstr ""
 
 #: tui/screens/browser.py:463
-#: tui/screens/donor_picker.py:270
+#: tui/screens/donor_picker.py:300
 #: tui/screens/dryrun.py:68
 #: tui/screens/dryrun.py:408
 #: tui/screens/tracks.py:141
@@ -2988,13 +2988,13 @@ msgid "unreadable: {cause}"
 msgstr ""
 
 #: tui/screens/browser.py:1063
-#: tui/screens/browser.py:2201
+#: tui/screens/browser.py:2203
 #, python-brace-format
 msgid "Interlacing analysis… {done} / {total}"
 msgstr ""
 
 #: tui/screens/browser.py:1064
-#: tui/screens/browser.py:2179
+#: tui/screens/browser.py:2181
 #, python-brace-format
 msgid "Analyzing… {done} / {total}"
 msgstr ""
@@ -3017,127 +3017,127 @@ msgstr ""
 msgid "Reading a DVD's titles needs the DVD tool (an ffmpeg with libdvdnav). Restart IRIS ENCODE and accept its installation. VIDEO_TS still shows the VOB files."
 msgstr ""
 
-#: tui/screens/browser.py:1537
+#: tui/screens/browser.py:1539
 #: tui/screens/sync.py:1020
 msgid "mpv missing — run the preflight again to install it."
 msgstr ""
 
-#: tui/screens/browser.py:1544
+#: tui/screens/browser.py:1546
 #, python-brace-format
 msgid "Cannot play: {error}"
 msgstr ""
 
-#: tui/screens/browser.py:1562
+#: tui/screens/browser.py:1564
 msgid "A disc title cannot be deleted from here: its files belong to the disc."
 msgstr ""
 
-#: tui/screens/browser.py:1567
+#: tui/screens/browser.py:1569
 #, python-brace-format
 msgid "{file} is in the encoding queue: it cannot be deleted now."
 msgstr ""
 
-#: tui/screens/browser.py:1586
+#: tui/screens/browser.py:1588
 #, python-brace-format
 msgid "Cannot delete: {error}"
 msgstr ""
 
-#: tui/screens/browser.py:1668
+#: tui/screens/browser.py:1670
 msgid "Downloading from YouTube needs yt-dlp and Deno. Restart IRIS ENCODE and accept their installation."
 msgstr ""
 
-#: tui/screens/browser.py:1687
+#: tui/screens/browser.py:1689
 msgid "Where should downloaded videos go? Options can change it later."
 msgstr ""
 
-#: tui/screens/browser.py:1689
+#: tui/screens/browser.py:1691
 #: tui/screens/options.py:111
 #: tui/screens/options.py:151
 msgid "YouTube downloads"
 msgstr ""
 
-#: tui/screens/browser.py:1706
+#: tui/screens/browser.py:1708
 #, python-brace-format
 msgid "Downloaded: {file}. It is checked, ready to encode."
 msgstr ""
 
-#: tui/screens/browser.py:1709
+#: tui/screens/browser.py:1711
 #, python-brace-format
 msgid "{count} video downloaded. It is checked, ready to encode."
 msgid_plural "{count} videos downloaded. They are checked, ready to encode."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:1794
+#: tui/screens/browser.py:1796
 #, python-brace-format
 msgid "Sort: {column}"
 msgstr ""
 
-#: tui/screens/browser.py:1818
+#: tui/screens/browser.py:1820
 msgid "Sort by"
 msgstr ""
 
-#: tui/screens/browser.py:1837
+#: tui/screens/browser.py:1839
 #, python-brace-format
 msgid "Guided mode — {key} opens the guided path, one file at a time."
 msgstr ""
 
-#: tui/screens/browser.py:1840
+#: tui/screens/browser.py:1842
 #, python-brace-format
 msgid "Manual mode — {key} opens the Tracks screen."
 msgstr ""
 
-#: tui/screens/browser.py:1932
+#: tui/screens/browser.py:1934
 #, python-brace-format
 msgid "{action}: first enter a volume, then check files ({key})."
 msgstr ""
 
-#: tui/screens/browser.py:1935
+#: tui/screens/browser.py:1937
 #, python-brace-format
 msgid "{action}: no file checked — {key} checks the line, {all_key} checks everything."
 msgstr ""
 
-#: tui/screens/browser.py:1963
+#: tui/screens/browser.py:1965
 msgid "Interlacing analysis still running — the screen will open by itself."
 msgstr ""
 
-#: tui/screens/browser.py:1967
+#: tui/screens/browser.py:1969
 #, python-brace-format
 msgid "Interlacing analysis of {count} file first: the screen opens when it is done."
 msgid_plural "Interlacing analysis of {count} files first: the screen opens when it is done."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:2065
+#: tui/screens/browser.py:2067
 #, python-brace-format
 msgid "Join: check at least {count} parts ({key})."
 msgstr ""
 
-#: tui/screens/browser.py:2110
+#: tui/screens/browser.py:2112
 #, python-brace-format
 msgid "{key}: place the cursor on a folder — its whole tree is analyzed."
 msgstr ""
 
-#: tui/screens/browser.py:2115
+#: tui/screens/browser.py:2117
 msgid "A recursive scan is already running."
 msgstr ""
 
-#: tui/screens/browser.py:2153
+#: tui/screens/browser.py:2155
 #, python-brace-format
 msgid "Recursive scan failed: {error}"
 msgstr ""
 
-#: tui/screens/browser.py:2157
+#: tui/screens/browser.py:2159
 msgid "No file to encode in this folder."
 msgstr ""
 
-#: tui/screens/browser.py:2163
+#: tui/screens/browser.py:2165
 #, python-brace-format
 msgid "Recursive scan of {folder} done: {count} file to encode. {key} on the folder opens its dry run."
 msgid_plural "Recursive scan of {folder} done: {count} files to encode. {key} on the folder opens their dry run."
 msgstr[0] ""
 msgstr[1] ""
 
-#: tui/screens/browser.py:2174
+#: tui/screens/browser.py:2176
 #, python-brace-format
 msgid "Recursive scan of {folder}…"
 msgstr ""
@@ -3149,7 +3149,7 @@ msgstr ""
 #: tui/screens/emplacements.py:225
 #: tui/screens/options.py:65
 #: tui/screens/options.py:132
-#: tui/widgets/profile_form.py:237
+#: tui/widgets/profile_form.py:235
 msgid "Save"
 msgstr ""
 
@@ -3192,7 +3192,7 @@ msgstr ""
 #: tui/screens/tracks.py:134
 #: tui/screens/youtube.py:95
 #: tui/screens/youtube_chaine.py:125
-#: tui/widgets/profile_form.py:233
+#: tui/widgets/profile_form.py:231
 msgid "Next field"
 msgstr ""
 
@@ -3352,27 +3352,27 @@ msgstr ""
 msgid "Delete the file"
 msgstr ""
 
-#: tui/screens/donor_picker.py:60
+#: tui/screens/donor_picker.py:65
 msgid "Tracks cannot be added to this disc title before it is assembled: encode it, then add them to the output."
 msgstr ""
 
-#: tui/screens/donor_picker.py:258
+#: tui/screens/donor_picker.py:288
 msgid "Select"
 msgstr ""
 
-#: tui/screens/donor_picker.py:268
+#: tui/screens/donor_picker.py:298
 #: tui/screens/sync.py:320
 #: tui/screens/tracks.py:310
 #: tui/screens/wizard.py:344
 msgid "Track"
 msgstr ""
 
-#: tui/screens/donor_picker.py:269
+#: tui/screens/donor_picker.py:299
 #: tui/screens/meta_popup.py:191
 msgid "Type"
 msgstr ""
 
-#: tui/screens/donor_picker.py:271
+#: tui/screens/donor_picker.py:301
 #: tui/screens/opensubtitles.py:96
 #: tui/screens/sync.py:59
 #: tui/screens/tracks.py:313
@@ -3380,13 +3380,17 @@ msgstr ""
 msgid "Language"
 msgstr ""
 
-#: tui/screens/donor_picker.py:272
+#: tui/screens/donor_picker.py:302
 #: tui/screens/sync.py:60
 #: tui/screens/wizard.py:347
 msgid "Name"
 msgstr ""
 
-#: tui/screens/donor_picker.py:275
+#: tui/screens/donor_picker.py:303
+msgid "reading the tracks…"
+msgstr ""
+
+#: tui/screens/donor_picker.py:322
 msgid "no readable track"
 msgstr ""
 
@@ -3401,7 +3405,7 @@ msgid "Action"
 msgstr ""
 
 #: tui/screens/dryrun.py:96
-#: tui/widgets/profile_form.py:339
+#: tui/widgets/profile_form.py:337
 msgid "Container"
 msgstr ""
 
@@ -4793,7 +4797,7 @@ msgid "Forced"
 msgstr ""
 
 #: tui/screens/sync.py:89
-#: tui/widgets/profile_form.py:71
+#: tui/widgets/profile_form.py:69
 msgid "no"
 msgstr ""
 
@@ -5645,277 +5649,277 @@ msgstr[1] ""
 msgid "Full screen"
 msgstr ""
 
-#: tui/widgets/profile_form.py:42
+#: tui/widgets/profile_form.py:40
 msgid "8000k ⚠ recommended"
 msgstr ""
 
-#: tui/widgets/profile_form.py:44
+#: tui/widgets/profile_form.py:42
 msgid "compat (NVENC, fast)"
 msgstr ""
 
-#: tui/widgets/profile_form.py:45
+#: tui/widgets/profile_form.py:43
 msgid "quality (CPU x265, TV-grade)"
 msgstr ""
 
-#: tui/widgets/profile_form.py:55
+#: tui/widgets/profile_form.py:53
 msgid "auto — the content decides"
 msgstr ""
 
-#: tui/widgets/profile_form.py:56
+#: tui/widgets/profile_form.py:54
 msgid "mp4 — compatibility"
 msgstr ""
 
-#: tui/widgets/profile_form.py:57
+#: tui/widgets/profile_form.py:55
 msgid "mkv — keep everything"
 msgstr ""
 
-#: tui/widgets/profile_form.py:61
+#: tui/widgets/profile_form.py:59
 msgid "copy as they are"
 msgstr ""
 
-#: tui/widgets/profile_form.py:62
+#: tui/widgets/profile_form.py:60
 msgid "→ E-AC3 at the source bitrate"
 msgstr ""
 
-#: tui/widgets/profile_form.py:63
+#: tui/widgets/profile_form.py:61
 msgid "→ AC3 at the source bitrate"
 msgstr ""
 
-#: tui/widgets/profile_form.py:64
+#: tui/widgets/profile_form.py:62
 msgid "→ fixed 5.1 / 7.1 bitrate below"
 msgstr ""
 
-#: tui/widgets/profile_form.py:72
+#: tui/widgets/profile_form.py:70
 msgid "yes, one pass"
 msgstr ""
 
-#: tui/widgets/profile_form.py:73
+#: tui/widgets/profile_form.py:71
 msgid "yes, two passes (slow)"
 msgstr ""
 
-#: tui/widgets/profile_form.py:234
+#: tui/widgets/profile_form.py:232
 msgid "Previous field"
 msgstr ""
 
-#: tui/widgets/profile_form.py:235
+#: tui/widgets/profile_form.py:233
 msgid "Open a list"
 msgstr ""
 
-#: tui/widgets/profile_form.py:236
+#: tui/widgets/profile_form.py:234
 msgid "Next/prev value"
 msgstr ""
 
-#: tui/widgets/profile_form.py:253
-#: tui/widgets/profile_form.py:256
+#: tui/widgets/profile_form.py:251
+#: tui/widgets/profile_form.py:254
 msgid "Identifier"
 msgstr ""
 
-#: tui/widgets/profile_form.py:257
+#: tui/widgets/profile_form.py:255
 msgid "my_profile"
 msgstr ""
 
-#: tui/widgets/profile_form.py:263
+#: tui/widgets/profile_form.py:261
 msgid "When to re-encode"
 msgstr ""
 
-#: tui/widgets/profile_form.py:267
+#: tui/widgets/profile_form.py:265
 msgid "Bitrate 720p (kbps)"
 msgstr ""
 
-#: tui/widgets/profile_form.py:270
+#: tui/widgets/profile_form.py:268
 msgid "Bitrate 1080p (kbps)"
 msgstr ""
 
-#: tui/widgets/profile_form.py:275
+#: tui/widgets/profile_form.py:273
 msgid "Bitrate 4K (kbps)"
 msgstr ""
 
-#: tui/widgets/profile_form.py:278
+#: tui/widgets/profile_form.py:276
 msgid "keep 4K (otherwise → 1080p)"
 msgstr ""
 
-#: tui/widgets/profile_form.py:283
+#: tui/widgets/profile_form.py:281
 msgid "How to encode"
 msgstr ""
 
-#: tui/widgets/profile_form.py:295
+#: tui/widgets/profile_form.py:293
 msgid "Upscaling"
 msgstr ""
 
-#: tui/widgets/profile_form.py:295
+#: tui/widgets/profile_form.py:293
 msgid "(super-resolution)"
 msgstr ""
 
-#: tui/widgets/profile_form.py:303
+#: tui/widgets/profile_form.py:301
 msgid "Bitrate 480p (kbps)"
 msgstr ""
 
-#: tui/widgets/profile_form.py:313
-#: tui/widgets/profile_form.py:327
+#: tui/widgets/profile_form.py:311
+#: tui/widgets/profile_form.py:325
 msgid "Handling"
 msgstr ""
 
-#: tui/widgets/profile_form.py:316
+#: tui/widgets/profile_form.py:314
 msgid "HDR10 mode"
 msgstr ""
 
-#: tui/widgets/profile_form.py:322
+#: tui/widgets/profile_form.py:320
 msgid "Lossless audio"
 msgstr ""
 
-#: tui/widgets/profile_form.py:335
+#: tui/widgets/profile_form.py:333
 msgid "Output container"
 msgstr ""
 
-#: tui/widgets/profile_form.py:350
+#: tui/widgets/profile_form.py:348
 msgid "Other audio tracks"
 msgstr ""
 
-#: tui/widgets/profile_form.py:354
+#: tui/widgets/profile_form.py:352
 msgid "Languages"
 msgstr ""
 
-#: tui/widgets/profile_form.py:357
+#: tui/widgets/profile_form.py:355
 msgid "copy AAC / AC3 / E-AC3 without transcoding"
 msgstr ""
 
-#: tui/widgets/profile_form.py:365
+#: tui/widgets/profile_form.py:363
 msgid "Subtitle languages"
 msgstr ""
 
 #. fre, eng are language codes, keep them.
-#: tui/widgets/profile_form.py:367
+#: tui/widgets/profile_form.py:365
 msgid "fre, eng — empty: all"
 msgstr ""
 
-#: tui/widgets/profile_form.py:372
+#: tui/widgets/profile_form.py:370
 msgid "Stereo (kbps)"
 msgstr ""
 
-#: tui/widgets/profile_form.py:388
+#: tui/widgets/profile_form.py:386
 msgid "Source file"
 msgstr ""
 
-#: tui/widgets/profile_form.py:391
+#: tui/widgets/profile_form.py:389
 msgid "delete the source after a successful encode"
 msgstr ""
 
-#: tui/widgets/profile_form.py:405
+#: tui/widgets/profile_form.py:403
 msgid "the fastest, lower quality at equal bitrate."
 msgstr ""
 
-#: tui/widgets/profile_form.py:406
+#: tui/widgets/profile_form.py:404
 msgid "default compromise."
 msgstr ""
 
-#: tui/widgets/profile_form.py:407
+#: tui/widgets/profile_form.py:405
 msgid "better quality at equal bitrate, about 30% slower."
 msgstr ""
 
-#: tui/widgets/profile_form.py:411
+#: tui/widgets/profile_form.py:409
 msgid "The content decides: MP4 when everything fits, MKV as soon as there is an image subtitle, a styled subtitle or a lossless track."
 msgstr ""
 
-#: tui/widgets/profile_form.py:414
+#: tui/widgets/profile_form.py:412
 msgid "A subtitle MP4 cannot carry (image, or styled ASS) is discarded when a text subtitle of the same language says the same thing, and the dry run names it. If one is not doubled, the container gives way: better an MKV than a lost subtitle."
 msgstr ""
 
-#: tui/widgets/profile_form.py:419
+#: tui/widgets/profile_form.py:417
 msgid "Everything is kept, including image subtitles and lossless tracks. Some players handle MKV poorly."
 msgstr ""
 
-#: tui/widgets/profile_form.py:424
+#: tui/widgets/profile_form.py:422
 msgid "The track is copied untouched. It forces the MKV container, and most players cannot decode it: the server will transcode it at every playback."
 msgstr ""
 
-#: tui/widgets/profile_form.py:427
+#: tui/widgets/profile_form.py:425
 msgid "A DTS at 768 kbps keeps its 768 kbps; a TrueHD at 3,500 kbps comes out at 1,024 kbps — the track's bitrate, capped at 1,024 kbps. Decoded natively by recent TVs, and MP4 accepts it."
 msgstr ""
 
-#: tui/widgets/profile_form.py:431
+#: tui/widgets/profile_form.py:429
 msgid "Universal fallback, but AC3 is capped at 640 kbps: the encoder silently brings down any higher request."
 msgstr ""
 
-#: tui/widgets/profile_form.py:433
+#: tui/widgets/profile_form.py:431
 msgid "The 5.1 and 7.1 bitrates below apply. Fine for an already compressed track, throws a lot away from a lossless source."
 msgstr ""
 
-#: tui/widgets/profile_form.py:467
+#: tui/widgets/profile_form.py:465
 #, python-brace-format
 msgid "A file whose video bitrate is below the threshold of its resolution is not re-encoded. Above it, it is brought down to {k4}k in 4K, {k1080}k in 1080p, {k720}k in 720p."
 msgstr ""
 
-#: tui/widgets/profile_form.py:471
+#: tui/widgets/profile_form.py:469
 msgid "A 4K source stays in 4K."
 msgstr ""
 
-#: tui/widgets/profile_form.py:472
+#: tui/widgets/profile_form.py:470
 msgid "A 4K source is brought down to 1080p."
 msgstr ""
 
-#: tui/widgets/profile_form.py:476
+#: tui/widgets/profile_form.py:474
 #, python-brace-format
 msgid "Only applies to files that are actually re-encoded — {effect}"
 msgstr ""
 
-#: tui/widgets/profile_form.py:482
+#: tui/widgets/profile_form.py:480
 msgid "Sources smaller than 1080p keep their resolution."
 msgstr ""
 
-#: tui/widgets/profile_form.py:484
+#: tui/widgets/profile_form.py:482
 msgid "A source smaller than 1080p goes up to the highest frame (480p, 720p or 1080p) it reaches at ×2.7 at most — a DVD goes to 1080p — by super-resolution on the graphics card, at that frame's bitrate. The file name says “upscaled”."
 msgstr ""
 
-#: tui/widgets/profile_form.py:489
+#: tui/widgets/profile_form.py:487
 msgid "Two passes: sharper on a DVD, but 4 to 5 times slower than one pass — about 5 h 30 for a 2-hour movie on an Intel integrated GPU."
 msgstr ""
 
-#: tui/widgets/profile_form.py:497
+#: tui/widgets/profile_form.py:495
 msgid "Dolby Vision is removed. On a profile 8.1 or 7 that nothing else requires re-encoding, the removal is a remux: a few minutes, picture untouched, HDR10+ kept."
 msgstr ""
 
 #. "quality" is the value of the HDR10 mode setting.
-#: tui/widgets/profile_form.py:502
+#: tui/widgets/profile_form.py:500
 msgid "Quality mode: libx265 on the processor — around 70 hours for a 4K movie. Keep it for 1080p."
 msgstr ""
 
-#: tui/widgets/profile_form.py:505
+#: tui/widgets/profile_form.py:503
 msgid "Dolby Vision is kept as it is. No removal, so no remux: a file that nothing requires re-encoding is left untouched."
 msgstr ""
 
-#: tui/widgets/profile_form.py:508
+#: tui/widgets/profile_form.py:506
 msgid "Conversion to SDR by tone mapping. Processor-bound, slow, and the picture loses its high dynamic range."
 msgstr ""
 
-#: tui/widgets/profile_form.py:520
+#: tui/widgets/profile_form.py:518
 msgid "AAC, AC3 and E-AC3 tracks are copied untouched; the fixed bitrates only apply to the others."
 msgstr ""
 
-#: tui/widgets/profile_form.py:523
+#: tui/widgets/profile_form.py:521
 msgid "All tracks are transcoded at the fixed bitrates above, including those already in the right format."
 msgstr ""
 
-#: tui/widgets/profile_form.py:528
+#: tui/widgets/profile_form.py:526
 msgid "The source is deleted as soon as the encoding succeeds, with its .nfo and images created by Jellyfin. Irreversible — no recycle bin."
 msgstr ""
 
-#: tui/widgets/profile_form.py:532
+#: tui/widgets/profile_form.py:530
 msgid "The source is kept next to the produced file."
 msgstr ""
 
-#: tui/widgets/profile_form.py:662
+#: tui/widgets/profile_form.py:660
 msgid "The identifier cannot be empty."
 msgstr ""
 
-#: tui/widgets/profile_form.py:664
+#: tui/widgets/profile_form.py:662
 msgid "Identifier: 32 characters at most."
 msgstr ""
 
-#: tui/widgets/profile_form.py:669
+#: tui/widgets/profile_form.py:667
 msgid "Identifier: allowed characters a-z, A-Z, 0-9, - _"
 msgstr ""
 
-#: tui/widgets/profile_form.py:672
+#: tui/widgets/profile_form.py:670
 #, python-brace-format
 msgid "The profile “{profile}” already exists."
 msgstr ""

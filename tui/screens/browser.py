@@ -1489,8 +1489,10 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
     def _resize_persist(self, key: str, width: int) -> None:
         if self._nav.is_virtual:
             return
+        # En mémoire seulement : l'accueil repart des largeurs par défaut à
+        # chaque lancement (`reset_browser_columns`), et chaque `<` / `>`
+        # réécrivait config.toml, `fsync` compris (CR-144).
         cfg_mod.set_column_width(self._app.cfg, key, width)
-        sauver_config(self.app)
 
     def _resize_rebuild(self) -> None:
         """Reconstruit colonnes + données après resize. Conserve curseur + sélection."""

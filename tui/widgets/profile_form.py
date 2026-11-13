@@ -6,7 +6,6 @@ Contrôles : Ctrl+S → enregistrer  |  Esc → annuler
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Iterable
 
 from textual import on
@@ -17,7 +16,6 @@ from textual.widgets import Checkbox, Input, Label, Select, Static
 
 from core.i18n import _, N_
 from core.profiles import validate_id
-from ..common import raccourcis
 
 
 # ─── Messages ─────────────────────────────────────────────────────────────────

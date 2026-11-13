@@ -161,7 +161,9 @@ def test_choix_et_gestion_des_profils_ont_une_seule_presentation():
     from tui.screens import config, profile_picker
     for mod in (config, profile_picker):
         src = inspect.getsource(mod)
-        assert "PROFIL_COLONNES" in src and "cellules_profil" in src, mod.__name__
+        # `profil_colonnes()`, la forme traduite de `PROFIL_COLONNES` : la
+        # constante y était importée sans servir (CR-144).
+        assert "profil_colonnes(" in src and "cellules_profil" in src, mod.__name__
     p = Profile.__new__(Profile)
     p.data = {"keep_4k": False, "bitrate_4k_kbps": 3500, "delete_source": True}
     cellules = cellules_profil("series_basic", p, True)

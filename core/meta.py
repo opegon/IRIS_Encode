@@ -125,8 +125,6 @@ class MovieMeta:
 
 def fetch_imdb(title: str, year: Optional[int] = None,
                omdb_key: str = "") -> MovieMeta:
-    import json, requests
-    from urllib.parse import quote
 
     if omdb_key:
         return _fetch_imdb_omdb(title, year, omdb_key)

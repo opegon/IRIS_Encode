@@ -11,16 +11,21 @@ index ffprobe de core/scanner.py.
 """
 from __future__ import annotations
 
+import logging
+import os
 from pathlib import Path
 
 from rich.text import Text
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Label, Static
 
-from ..common import (cellule, colonne_fixe, fmt_size, langue_affichee,
+from ..common import (cellule, colonne_fixe, fmt_bytes, langue_affichee,
                       libelle_type_piste, nom_codec, raccourcis)
+
+_LOG = logging.getLogger("iris_encode.donneur")
 
 from core.i18n import _, N_
 from core.scanner import SUPPORTED_EXTENSIONS
@@ -100,6 +105,20 @@ def pick_external_tracks(screen, decision, on_added) -> None:
         _on_donor)
 
 
+def _est_dossier(e: os.DirEntry) -> bool:
+    try:
+        return e.is_dir()
+    except OSError:
+        return False
+
+
+def _taille(e: os.DirEntry) -> str:
+    try:
+        return fmt_bytes(e.stat().st_size)
+    except OSError:
+        return "—"
+
+
 class DonorFileScreen(ModalScreen["Path | None"]):
     """Navigation minimale pour désigner le fichier donneur."""
 
@@ -160,25 +179,33 @@ class DonorFileScreen(ModalScreen["Path | None"]):
         self._entries = []
         self.query_one("#donor-path", Static).update(str(self._dir))
 
+        # `scandir` : type et taille viennent avec la liste (sous Windows sans
+        # appel de plus), et l'exclusion se compare sans `resolve` — trois
+        # appels système par entrée sur un partage réseau (CR-145).
+        # Les deux formes : `resolve()` rend un lecteur réseau en chemin UNC,
+        # `scandir` garde sa lettre.
+        exclu = ({os.path.normcase(str(self._exclude)),
+                  os.path.normcase(os.path.abspath(self._video))}
+                 if self._exclude else set())
         try:
-            children = sorted(
-                self._dir.iterdir(),
-                key=lambda p: (not p.is_dir(), p.name.lower()),
-            )
+            with os.scandir(self._dir) as it:
+                entrees = [(e, _est_dossier(e)) for e in it]
         except OSError:
-            children = []
+            entrees = []
+        entrees.sort(key=lambda x: (not x[1], x[0].name.lower()))
 
-        for p in children:
-            if p.is_dir():
+        for e, dossier in entrees:
+            p = Path(e.path)
+            if dossier:
                 table.add_row(cellule(f"{_ICONE_DOSSIER} {p.name}", style="bold cyan"),
                               Text(""), key=str(p))
                 self._entries.append(p)
             elif p.suffix.lower() in DONOR_EXTS:
-                if self._exclude and p.resolve() == self._exclude:
+                if os.path.normcase(os.path.abspath(e.path)) in exclu:
                     continue   # jamais le fichier sur lequel on travaille
                 icone = _ICONE_VIDEO if p.suffix.lower() in _VIDEO_EXTS else _ICONE_PISTE
                 table.add_row(cellule(f"{icone} {p.name}"),
-                              Text(fmt_size(p), justify="right"), key=str(p))
+                              Text(_taille(e), justify="right"), key=str(p))
                 self._entries.append(p)
 
         if table.row_count:
@@ -247,7 +274,10 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
     def __init__(self, donor: Path) -> None:
         super().__init__()
         self._donor    = donor
-        self._tracks   = identify(donor)
+        # Lues par un worker : `mkvmerge -J` sur un partage réseau figeait
+        # l'écran à l'ouverture (CR-145).
+        self._tracks:  list[IdentifiedTrack] = []
+        self._lu       = False
         self._selected: set[int] = set()
 
     def compose(self) -> ComposeResult:
@@ -270,7 +300,24 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
         colonne_fixe(table, _("Codec"), 14, key="codec")
         colonne_fixe(table, _("Language"), 8,  key="lang")
         table.add_column(_("Name"), width=None, key="name")
+        table.add_row(Text(""), Text(f"({_('reading the tracks…')})", style="dim italic"),
+                      Text(""), Text(""), Text(""), Text(""))
+        table.focus()
+        self._lire()
 
+    @work(thread=True, name="donor-tracks")
+    def _lire(self) -> None:
+        try:
+            pistes = identify(self._donor)
+        except Exception as e:          # filet : l'écran reste, vide (CR-125)
+            _LOG.error("Reading the tracks of %s failed (%s)", self._donor, e, exc_info=e)
+            pistes = []
+        self.app.call_from_thread(self._afficher, pistes)
+
+    def _afficher(self, pistes: list[IdentifiedTrack]) -> None:
+        self._tracks, self._lu = pistes, True
+        table = self.query_one(DataTable)
+        table.clear()
         if not self._tracks:
             table.add_row(Text(""), Text(f"({_('no readable track')})", style="dim italic"),
                           Text(""), Text(""), Text(""), Text(""))
@@ -280,7 +327,6 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
         if len(self._tracks) == 1:
             self._selected.add(self._tracks[0].tid)
             self._refresh_row(0)
-        table.focus()
 
     def _row(self, t: IdentifiedTrack) -> tuple:
         sel   = t.tid in self._selected
@@ -308,6 +354,8 @@ class DonorTrackScreen(ModalScreen["list[IdentifiedTrack] | None"]):
         self._refresh_row(row)
 
     def action_accept(self) -> None:
+        if not self._lu:
+            return                      # les pistes se lisent encore
         chosen = [t for t in self._tracks if t.tid in self._selected]
         self.dismiss(chosen or None)
 

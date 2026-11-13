@@ -18,7 +18,7 @@ from textual.widgets import Button, DataTable, Static
 from core.i18n import N_, _, pgettext
 from core import profiles as prof_mod
 from core.profiles import Profile
-from ..common import (barre_etat, PROFIL_COLONNES, cellules_profil, profil_colonnes,
+from ..common import (barre_etat, cellules_profil, profil_colonnes,
                       largeurs_colonnes, actions_ecran, footer_line2, raccourcis,
                       retour_accueil)
 from ..mixins import TableNavMixin

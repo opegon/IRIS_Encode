@@ -27,7 +27,6 @@ Pipeline DV→HDR10 par réencodage (orchestré par encoder.py) :
 from __future__ import annotations
 
 import io
-import json
 import logging
 import re
 import shutil

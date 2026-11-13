@@ -610,3 +610,11 @@ entrées à plat. Pages touchées : [[yt-dlp]], [[questions-ouvertes]].
 Note `conception_portabilite_2026-11-10.md` : état des lieux du code propre à
 Windows, sources des outils par système, ordre de livraison. Huit décisions
 attendues de l'utilisateur. Pages touchées : [[questions-ouvertes]].
+
+## [2026-11-13] ingest | Revue de code et d'interface (v0.9.2.6)
+
+Rapport `revue_code_2026-11-13.md` (CR-113 à CR-148). Trois comportements de
+ffmpeg 6.1.1 relevés en reproduisant les constats : `mov_text` refusé en
+copie vers Matroska, `.srt` UTF-16 converti de travers sous `-sub_charenc
+CP1252`, mire progressive classée entrelacée. Pages touchées : [[ffmpeg]],
+[[questions-ouvertes]].

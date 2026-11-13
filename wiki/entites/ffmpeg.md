@@ -1,8 +1,9 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-11-08
+maj: 2026-11-13
 sources:
+  - "[[source-2026-11-13-revue]]"
   - "[[source-2026-11-07-sar-manquant-the-kid]]"
   - "[[source-2026-11-04-libplacebo-shader-chemin]]"
   - "[[source-2026-11-01-dv-p5-libplacebo]]"
@@ -132,6 +133,14 @@ sans libx265 : `ffmpeg -encoders | findstr x265`.
 - Sous `-loglevel error`, **pas de ligne de progression sans `-stats`**
   (CR-21). Au-delà de 1000x, la vitesse s'écrit en notation scientifique :
   `speed=1.06e+03x` *(mesuré, remux d'une mire en local)*.
+- **Matroska refuse un `mov_text` recopié** : `-c:s copy` d'un sous-titre
+  `mov_text` vers `.mkv` échoue à l'écriture de l'en-tête (« Subtitle codec
+  94213 is not supported », code 218). Une conversion (`-c:s srt`) est la parade attendue, non
+  essayée. *(mesuré, ffmpeg 6.1.1, 2026-11-13, [[source-2026-11-13-revue]] ; à confirmer en 8.1)*
+- **`-sub_charenc` ne proteste pas d'un mauvais jeu** : un `.srt` en UTF-16
+  avec BOM annoncé `CP1252` est converti sans erreur (code 0) en texte
+  illisible. Le BOM se reconnaît avant de choisir le jeu. *(mesuré, ffmpeg
+  6.1.1, 2026-11-13)*
 
 ## Encodeurs
 

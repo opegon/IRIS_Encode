@@ -1,6 +1,6 @@
 ---
 type: synthese
-maj: 2026-11-10
+maj: 2026-11-13
 sources:
   - "[[source-spec]]"
   - "[[source-2026-09-24-diagnostic]]"
@@ -11,6 +11,7 @@ sources:
   - "[[source-2026-09-30-lecture]]"
   - "[[source-conception-upscaling]]"
   - "[[source-2026-11-08-yt-dlp-ejs]]"
+  - "[[source-2026-11-13-revue]]"
 ---
 
 # Questions ouvertes
@@ -57,6 +58,8 @@ release est sortie quand la revue de code a été entièrement traitée.
 | Le pilote 610 est-il sûr sur un Shadow Power (flux, encodage côté Shadow) ? | Shadow autorise la mise à jour manuelle, ne dit rien de la 610 ; demander au support |
 | Le téléchargement YouTube (v0.9.1.31) fonctionne-t-il sur de vraies pages ? | écrit et testé sur des pages fabriquées seulement. À vérifier : paliers lus dans `format_note` (film en 2,39:1), clés `-orig` des sous-titres automatiques, SRT intégrés au MKV, nettoyage après `Échap` ([[yt-dlp]]) |
 | La liste d'une chaîne (v0.9.2.5, IE-181) fonctionne-t-elle sur une vraie chaîne ? | testée sur des listes fabriquées seulement. À vérifier : `/@nom/videos` donne bien les vidéos (et non les onglets), dates approchées présentes, `--playlist-items` n'arrête pas trop tôt ni ne lit toute la chaîne, vidéos réservées aux membres bien écartées ([[yt-dlp]]) |
+| ffmpeg 8.1 refuse-t-il aussi un `mov_text` recopié vers Matroska, et convertit-il aussi sans erreur un `.srt` UTF-16 annoncé cp1252 ? | mesuré en 6.1.1 seulement, lors de la revue du 2026-11-13 (CR-117, CR-123) ; à rejouer avec le ffmpeg de `bin/` ([[ffmpeg#Comportements à connaître]]) |
+| L'analyse d'entrelacement prend-elle du contenu progressif réel pour de l'entrelacé ? | une mire `testsrc2` 720×480 progressive est classée entrelacée (peigne 0,70). Une seule mire : à essayer sur une animation ou une image de synthèse progressive avant de conclure |
 
 ## Linux et macOS (IE-183, IE-184)
 

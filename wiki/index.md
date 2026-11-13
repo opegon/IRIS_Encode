@@ -1,6 +1,6 @@
 ---
 type: index
-maj: 2026-11-08
+maj: 2026-11-13
 ---
 
 # Index du wiki IRIS ENCODE
@@ -80,6 +80,7 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[source-2026-11-04-libplacebo-shader-chemin]] | Chemin du shader dans `-vf` échappé à deux niveaux ; sonde Vulkan ; chaîne SR de bout en bout |
 | [[source-2026-11-07-sar-manquant-the-kid]] | AVI issu de DVD sans SAR : pas de métadonnée, bandes indécidables, format Wikidata décisif ; `-aspect` en copie |
 | [[source-2026-11-08-yt-dlp-ejs]] | yt-dlp : moteur JavaScript requis pour YouTube (Deno par défaut), scripts inclus dans l'exe ; releases et empreintes de première installation |
+| [[source-2026-11-13-revue]] | Revue du 2026-11-13 : Matroska refuse un `mov_text` recopié, `.srt` UTF-16 pris pour du cp1252, `idet` sur une mire progressive (ffmpeg 6.1.1) |
 | [[source-2026-10-04-localisation]] | Audit de localisation et décisions de l'utilisateur : politique de traduction, glossaire |
 
 ## Brut (`raw/`, immuable)
@@ -123,3 +124,4 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-11-04-libplacebo-shader-chemin]] | Valeurs de `custom_shader_path` essayées, noms de `setparams`, durées |
 | [[2026-11-07-sar-manquant-the-kid]] | En-tête AVI de The Kid, mesures `cropdetect`, requêtes Wikidata, `-aspect` en copie, encodage 640×480 |
 | [[2026-11-08-yt-dlp-ejs]] | Page EJS de yt-dlp (Deno, scripts inclus), releases et empreintes de yt-dlp 2026.10.26 et Deno 2.9.8 |
+| [[2026-11-13-revue-code]] | Relevés de la revue : messages de ffmpeg 6.1.1 (`mov_text` vers MKV, `-sub_charenc`), mire classée entrelacée, suite de tests hors Windows |

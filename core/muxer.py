@@ -735,4 +735,9 @@ class MuxProcess:
         return self._proc.poll() if self._proc else None
 
     def wait(self) -> int:
-        return self._proc.wait() if self._proc else -1
+        if self._proc is None:
+            return -1
+        code = self._proc.wait()
+        if self._proc.stdout is not None:       # comme EncoderProcess (IE-196)
+            self._proc.stdout.close()
+        return code

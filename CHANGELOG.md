@@ -1,5 +1,26 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.4] — 2026-11-14
+
+### Tests : `pytest.ini`, captures sur un clone (IE-196, points 2 et 3)
+
+- **`pytest.ini`** : `testpaths = tests`, `--strict-markers --strict-config`,
+  et `filterwarnings = error`. Un avertissement fait désormais échouer le
+  test qui le provoque, au lieu de défiler dans le résumé (CR-147).
+- **Les tubes des sous-processus sont fermés.** La règle a fait sortir
+  seize `ResourceWarning` : lus jusqu'au bout, les tubes de ffmpeg, mkvmerge,
+  dovi_tool et yt-dlp restaient ouverts jusqu'au passage du ramasse-miettes,
+  un descripteur par fichier traité. `EncoderProcess.wait`,
+  `MuxProcess.wait`, `TuyauRpu.wait`, le décodage, l'extraction de
+  sous-titres et le recalage de `sync.py`, et le téléchargement de
+  `youtube.py` les ferment, y compris sur une exception.
+- **`shots_tui.py` sur un clone** : sans `resources_files/tests/`, qui n'est
+  pas versionné, un jeu synthétique fabriqué par ffmpeg remplace le matériel
+  réel (noms longs, deux pistes audio, sous-titres dont un forcé, un HEVC
+  HDR10, un `.srt` voisin pour le donneur). 28 prises sur 28 au lieu de 7
+  (CR-148).
+- Reste d'IE-196 : sauter hors de Windows les tests propres à Windows.
+
 ## [v0.9.3.3] — 2026-11-14
 
 ### La sortie ne reprend plus le titre de la source (IE-198)

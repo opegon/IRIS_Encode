@@ -360,6 +360,8 @@ def _decode_envelope(path: Path, track: int = 0,
         proc.kill()
         proc.wait()
         raise
+    finally:
+        proc.stdout.close()                     # IE-196
     code = proc.wait()
 
     # Un ffmpeg mort en route s'arrête sans un mot : l'enveloppe s'arrête là où
@@ -589,14 +591,18 @@ def extract_subtitle(video: Path, ffmpeg_index: int,
         raise ExtractionImpossible(N_("cannot extract the subtitle track: {detail}"),
                                    detail=e) from e
     assert proc.stdout is not None and proc.stderr is not None
-    for ligne in proc.stdout:
-        if progress and duration > 0 and ligne.startswith("out_time_us="):
-            try:
-                progress(min(1.0, int(ligne.split("=", 1)[1]) / 1e6 / duration))
-            except ValueError:
-                pass
-    erreurs = proc.stderr.read()
-    code = proc.wait()
+    try:
+        for ligne in proc.stdout:
+            if progress and duration > 0 and ligne.startswith("out_time_us="):
+                try:
+                    progress(min(1.0, int(ligne.split("=", 1)[1]) / 1e6 / duration))
+                except ValueError:
+                    pass
+        erreurs = proc.stderr.read()
+        code = proc.wait()
+    finally:
+        proc.stdout.close()                     # IE-196
+        proc.stderr.close()
     if code == 0 and out.exists() and out.stat().st_size > 0:
         return out
     out.unlink(missing_ok=True)
@@ -1420,6 +1426,7 @@ def retime_audio(donor: Path, audio_index: int, segments: list[Segment],
                     continue
                 part = min(1.0, max(0.0, fait / duree))
                 progress(DECODE_SHARE + (1 - DECODE_SHARE) * part)
+        proc.stdout.close()                     # IE-196
     code = proc.wait()
 
     if code != 0 or not out.exists() or out.stat().st_size == 0:

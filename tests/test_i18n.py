@@ -204,7 +204,8 @@ def test_chaque_po_couvre_le_pot_avec_les_memes_champs():
 
 
 def test_le_mo_francais_se_lit_comme_un_mo_de_reference():
-    mo = gettext.GNUTranslations(open(FR_PO.with_suffix(".mo"), "rb"))
+    with open(FR_PO.with_suffix(".mo"), "rb") as fichier_mo:
+        mo = gettext.GNUTranslations(fichier_mo)
     assert mo.info()["language"] == "fr"
     assert mo.plural(0) == 0 and mo.plural(2) == 1
 

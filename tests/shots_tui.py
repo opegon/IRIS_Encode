@@ -14,6 +14,8 @@ réel — et non d'une maquette. Deux contextes :
 
   A. `resources_files/tests/` — matériel réel (noms longs, pistes multiples, HDR).
      Aucune touche destructrice n'y est pressée : ni F2, ni F3, ni Ctrl+D.
+     Absent (un clone : il n'est pas versionné), un jeu synthétique du même
+     genre le remplace, fabriqué par ffmpeg dans un dossier temporaire.
   B. un dossier temporaire — pour les écrans qui écrivent (suppression, mux,
      encodage), qui ne doivent jamais toucher au matériel réel.
 
@@ -109,18 +111,83 @@ async def _goto(pilot, table: DataTable, row: int) -> None:
 # Contexte A — matériel réel, lecture seule
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def context_real() -> None:
-    if not REAL_DIR.is_dir() or not any(REAL_DIR.iterdir()):
-        skipped("A", "contexte matériel réel", f"{REAL_DIR} vide ou absent")
-        return
+def _ffmpeg() -> Path | None:
+    from core import config as cfg_mod
+    from core.preflight import get_tool_path
+    return get_tool_path("ffmpeg", cfg_mod.get_bin_dir(cfg_mod.load()))
 
-    app = IrisEncodeApp(start_path=REAL_DIR)
+
+# (nom, arguments ffmpeg) — de quoi remplir les colonnes et les écrans du
+# contexte A comme le ferait le vrai matériel : noms longs, plusieurs pistes
+# audio et sous-titres par langue, un HEVC HDR10. Le Dolby Vision ne se
+# fabrique pas avec ffmpeg seul : sa colonne reste vide.
+_SYNTHETIQUES: list[tuple[str, list[str]]] = [
+    ("The Synthetic Zookeeper's Very Long Feature Title 2017 1080p BluRay.mkv", [
+        "-f", "lavfi", "-i", "testsrc2=duration=2:size=1920x800:rate=24",
+        "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+        "-f", "lavfi", "-i", "sine=frequency=660:duration=2",
+        "-i", "{srt}",
+        "-map", "0:v", "-map", "1:a", "-map", "2:a", "-map", "3:s", "-map", "3:s",
+        "-c:v", "libx264", "-preset", "ultrafast", "-b:v", "12M",
+        "-c:a:0", "ac3", "-ac:a:0", "6", "-c:a:1", "eac3",
+        "-metadata:s:a:0", "language=eng", "-metadata:s:a:1", "language=fre",
+        "-metadata:s:a:1", "title=VFF", "-c:s", "srt",
+        "-metadata:s:s:0", "language=eng", "-metadata:s:s:1", "language=fre",
+        "-disposition:s:1", "forced"]),
+    ("Synthetic.Watch.2009.MULTi.2160p.UHD.BluRay.HDR10.x265.mkv", [
+        "-f", "lavfi", "-i", "testsrc2=duration=2:size=3840x1600:rate=24",
+        "-f", "lavfi", "-i", "sine=frequency=550:duration=2",
+        "-c:v", "libx265", "-preset", "ultrafast", "-pix_fmt", "yuv420p10le",
+        "-x265-params", "log-level=none:colorprim=bt2020:transfer=smpte2084:"
+                        "colormatrix=bt2020nc:master-display=G(13250,34500)"
+                        "B(7500,3000)R(34000,16000)WP(15635,16450)"
+                        "L(10000000,1):max-cll=1000,400",
+        "-c:a", "ac3", "-ac", "6", "-metadata:s:a:0", "language=fre"]),
+    ("synthetic.series.s03e09.720p.WEB.h264.mp4", [
+        "-f", "lavfi", "-i", "testsrc2=duration=2:size=1280x720:rate=25",
+        "-f", "lavfi", "-i", "sine=frequency=330:duration=2",
+        "-c:v", "libx264", "-preset", "ultrafast", "-b:v", "4M",
+        "-c:a", "aac", "-metadata:s:a:0", "language=eng"]),
+]
+
+
+def _make_real_like_set(td: Path) -> bool:
+    """Le jeu de repli du contexte A, dans `td`. False sans ffmpeg."""
+    ffmpeg = _ffmpeg()
+    if not ffmpeg:
+        return False
+    srt = td / "The Synthetic Zookeeper's Very Long Feature Title 2017.fr.srt"
+    srt.write_text("1\n00:00:00,500 --> 00:00:01,500\nBonjour.\n", encoding="utf-8")
+    for nom, args in _SYNTHETIQUES:
+        args = [str(srt) if a == "{srt}" else a for a in args]
+        subprocess.run([str(ffmpeg), "-y", "-loglevel", "error", *args,
+                        str(td / nom)], check=True, capture_output=True)
+    return True
+
+
+async def context_real() -> None:
+    if REAL_DIR.is_dir() and any(REAL_DIR.iterdir()):
+        await _context_lecture(REAL_DIR)
+        return
+    with tempfile.TemporaryDirectory() as td_str:
+        td = Path(td_str)
+        if not _make_real_like_set(td):
+            skipped("A", "contexte matériel réel",
+                    f"{REAL_DIR} vide ou absent, et ffmpeg introuvable")
+            return
+        MANIFEST.append(("A", "contexte matériel réel", "-", "REPLI",
+                         f"{REAL_DIR} vide ou absent : jeu synthétique"))
+        await _context_lecture(td)
+
+
+async def _context_lecture(dossier: Path) -> None:
+    app = IrisEncodeApp(start_path=dossier)
     async with app.run_test(size=SIZE) as pilot:
         await pilot.pause(1.0)
         await shot(app, "01-browser-volumes", "Browser - volumes", "BrowserScreen")
 
         from tui.screens.browser import BrowserScreen
-        app.push_screen(BrowserScreen(REAL_DIR, start_virtual=False))
+        app.push_screen(BrowserScreen(dossier, start_virtual=False))
         await pilot.pause(15.0)          # scan parallèle + sondage DV
         scr   = app.screen
         table = scr.query_one(DataTable)
@@ -287,9 +354,7 @@ async def context_real() -> None:
 
 def _make_set(td: Path) -> bool:
     """Cible vidéo+audio, donneur audio VF, sous-titre — clips de 2 s."""
-    from core import config as cfg_mod
-    from core.preflight import get_tool_path
-    ffmpeg = get_tool_path("ffmpeg", cfg_mod.get_bin_dir(cfg_mod.load()))
+    ffmpeg = _ffmpeg()
     if not ffmpeg:
         return False
     subprocess.run(

@@ -334,6 +334,8 @@ class TuyauRpu:
         code_dt = self._dt.wait() if self._dt is not None else -1
         if self._lecteur is not None:
             self._lecteur.join()
+        if self._dt is not None and self._dt.stderr is not None:
+            self._dt.stderr.close()             # lu par `lire` (IE-196)
         if code_dt != 0:
             _log.warning("extract-rpu (pipe) failed: %s", self._erreur_dt[:200])
             return code_dt

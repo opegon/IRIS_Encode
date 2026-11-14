@@ -414,6 +414,9 @@ class Telechargement:
             self._proc.kill()
             _nettoyer(dossier, video.ident, debut)
             raise
+        finally:
+            if self._proc.stdout is not None:   # IE-196
+                self._proc.stdout.close()
         if self._annule:
             _nettoyer(dossier, video.ident, debut)
             return None

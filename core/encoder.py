@@ -1643,4 +1643,11 @@ class EncoderProcess:
         return self._proc.poll() if self._proc else None
 
     def wait(self) -> int:
-        return self._proc.wait() if self._proc else -1
+        if self._proc is None:
+            return -1
+        code = self._proc.wait()
+        # Lu jusqu'au bout, le tube restait ouvert jusqu'au ramasse-miettes :
+        # un descripteur par fichier encodé (IE-196).
+        if self._proc.stderr is not None:
+            self._proc.stderr.close()
+        return code

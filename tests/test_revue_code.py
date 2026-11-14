@@ -240,6 +240,9 @@ def test_un_decodage_interrompu_ne_rend_pas_une_enveloppe_partielle(monkeypatch)
         def read(self, _n):
             return self._reste.pop(0) if self._reste else b""
 
+        def close(self):
+            pass
+
     class _Proc:
         def __init__(self, code):
             self.stdout = _Flux()
@@ -263,6 +266,9 @@ def test_une_exception_dans_la_boucle_ne_laisse_pas_ffmpeg_orphelin(monkeypatch)
     class _FluxCasse:
         def read(self, _n):
             raise KeyboardInterrupt("l'utilisateur coupe")
+
+        def close(self):
+            pass
 
     class _Proc:
         stdout = _FluxCasse()

@@ -70,6 +70,9 @@ les pages concernées. À enrichir dès qu'on apprend quelque chose, en suivant
 ## Tests
 
 - `python -m pytest tests` : la suite complète (plusieurs minutes).
+  `pytest.ini` fait de tout avertissement une erreur (`filterwarnings =
+  error`) et exige des marqueurs déclarés : un tube de sous-processus se
+  ferme, un fichier s'ouvre avec `with`.
 - `python tests/smoke_tui.py` : smoke test headless de l'interface, en anglais
   puis en français (`en` ou `fr` en argument pour une seule langue). À lancer
   après toute modification d'écran.

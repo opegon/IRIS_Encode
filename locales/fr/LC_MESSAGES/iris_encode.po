@@ -1110,116 +1110,116 @@ msgstr "presque aucune parole détectée — mauvaise piste audio ?"
 msgid "no common alignment: different cut, or subtitle from another version"
 msgstr "aucun alignement commun : montage différent, ou sous-titre d'une autre version"
 
-#: core/sync.py:589
-#: core/sync.py:607
+#: core/sync.py:591
+#: core/sync.py:613
 #, python-brace-format
 msgid "cannot extract the subtitle track: {detail}"
 msgstr "extraction du sous-titre impossible : {detail}"
 
-#: core/sync.py:604
+#: core/sync.py:610
 msgid "image subtitle (PGS, VobSub) — no text to correlate"
 msgstr "sous-titre image (PGS, VobSub) — aucun texte à corréler"
 
-#: core/sync.py:743
+#: core/sync.py:749
 #, python-brace-format
 msgid "{time}: negative jump ({jump} ms), ignored"
 msgstr "{time} : saut négatif ({jump} ms), ignoré"
 
-#: core/sync.py:754
+#: core/sync.py:760
 #, python-brace-format
 msgid "{time}: no silence found, insertion on the estimated boundary"
 msgstr "{time} : aucun silence trouvé, insertion sur la frontière estimée"
 
-#: core/sync.py:771
+#: core/sync.py:777
 #, python-brace-format
 msgid "{time}: insertion point before the previous one, moved by {shift} s"
 msgstr "{time} : point d'insertion en retrait sur le précédent, repoussé de {shift} s"
 
-#: core/sync.py:800
+#: core/sync.py:806
 msgid "No insertion to apply."
 msgstr "Aucune insertion à appliquer."
 
-#: core/sync.py:812
+#: core/sync.py:818
 #, python-brace-format
 msgid "Insertion points not increasing: {position} s after {previous} s."
 msgstr "Points d'insertion non croissants : {position} s après {previous} s."
 
-#: core/sync.py:1320
+#: core/sync.py:1326
 #, python-brace-format
 msgid "medium correlation ({value}) — check the result before muxing"
 msgstr "corrélation moyenne ({value}) — contrôlez le résultat avant de muxer"
 
-#: core/sync.py:1338
+#: core/sync.py:1344
 msgid "no usable audio"
 msgstr "aucun audio exploitable"
 
-#: core/sync.py:1354
+#: core/sync.py:1360
 #, python-brace-format
 msgid "durations {gap} apart — check that it is the same cut"
 msgstr "durées écartées de {gap} — vérifiez qu'il s'agit bien du même montage"
 
-#: core/sync.py:1377
+#: core/sync.py:1383
 msgid "no usable audio in the donor"
 msgstr "aucun audio exploitable dans le donneur"
 
-#: core/sync.py:1381
+#: core/sync.py:1387
 msgid "no usable insertion"
 msgstr "aucune insertion exploitable"
 
-#: core/sync.py:1403
-#: core/sync.py:1427
+#: core/sync.py:1409
+#: core/sync.py:1434
 #, python-brace-format
 msgid "ffmpeg failed: {error}"
 msgstr "ffmpeg a échoué : {error}"
 
-#: core/sync.py:1426
+#: core/sync.py:1433
 #: tui/screens/join.py:320
 #: tui/screens/mux_run.py:197
 #, python-brace-format
 msgid "code {code}"
 msgstr "code {code}"
 
-#: core/sync.py:1481
+#: core/sync.py:1488
 msgid "embedded track without a track index"
 msgstr "piste embarquée sans index de piste"
 
-#: core/sync.py:1489
+#: core/sync.py:1496
 msgid "no readable subtitle line"
 msgstr "aucune réplique lisible"
 
-#: core/sync.py:1494
+#: core/sync.py:1501
 msgid "no audio in the video"
 msgstr "aucun audio dans la vidéo"
 
-#: core/sync.py:1506
+#: core/sync.py:1513
 msgid "offset taken from the anchor point — no step detected beyond"
 msgstr "décalage repris du point d'ancrage — aucun palier détecté au-delà"
 
-#: core/sync.py:1512
+#: core/sync.py:1519
 #, python-brace-format
 msgid "the given point says {given} ms, the analysis finds {found} — check both moments"
 msgstr "le point donné annonce {given} ms, l'analyse trouve {found} — vérifiez les deux instants"
 
-#: core/sync.py:1519
+#: core/sync.py:1526
 msgid "constant offset confirmed around the anchor point"
 msgstr "décalage constant confirmé autour du point d'ancrage"
 
-#: core/sync.py:1524
+#: core/sync.py:1531
 #, python-brace-format
 msgid "{count} segment detected around the anchor point — different cut"
 msgid_plural "{count} segments detected around the anchor point — different cut"
 msgstr[0] "{count} plage détectée autour du point d'ancrage — montage différent"
 msgstr[1] "{count} plages détectées autour du point d'ancrage — montage différent"
 
-#: core/sync.py:1568
+#: core/sync.py:1575
 msgid "embedded track without a track index — cannot extract it"
 msgstr "piste embarquée sans index de piste — impossible de l'extraire"
 
-#: core/sync.py:1578
+#: core/sync.py:1585
 msgid "no readable subtitle line — unknown format or empty file"
 msgstr "aucune réplique lisible — format inconnu ou fichier vide"
 
-#: core/sync.py:1585
+#: core/sync.py:1592
 msgid "no audio in the video to serve as reference"
 msgstr "aucun audio dans la vidéo pour servir de référence"
 

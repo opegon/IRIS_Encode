@@ -33,6 +33,7 @@ def test_octets_ecrits_compte_ce_que_le_processus_ecrit(tmp_path):
     finally:
         p.kill()
         p.wait()
+        p.stdout.close()
 
 
 def test_rien_a_lire_d_un_processus_termine():

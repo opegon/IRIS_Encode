@@ -757,17 +757,23 @@ def _video_bitrate(vid: dict, streams: list, fmt: dict) -> int:
 
     Trois sources, dans l'ordre : le `bit_rate` du flux, le tag `BPS` que pose
     mkvmerge, puis le débit du conteneur **moins celui des autres pistes**.
+
+    Le tag `BPS` n'est exact que si mkvmerge a écrit le fichier en dernier :
+    ffmpeg le recopie tel quel quand il réencode. Un HEVC tiré d'une source
+    H264 à 4 691k portait encore ses 4 691k dans un fichier qui n'en faisait
+    que 2 554k en tout — et repartait en réencodage. Un tag qui dépasse le
+    débit du fichier entier est donc écarté.
     """
     direct = _safe_int(vid.get("bit_rate"))
     if direct > 0:
         return direct
 
-    tags = {k.lower(): v for k, v in vid.get("tags", {}).items()}
-    bps  = _safe_int(tags.get("bps"))
-    if bps > 0:
+    total = _safe_int(fmt.get("bit_rate"))
+    tags  = {k.lower(): v for k, v in vid.get("tags", {}).items()}
+    bps   = _safe_int(tags.get("bps"))
+    if bps > 0 and not 0 < total < bps:
         return bps
 
-    total = _safe_int(fmt.get("bit_rate"))
     if total <= 0:
         return 0
 

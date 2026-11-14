@@ -707,6 +707,23 @@ def audio_pass_needed(audio: list) -> bool:
     return any(ad.action == AudioAction.TRANSCODE for ad in audio)
 
 
+# Les tags de statistiques que mkvmerge pose sur chaque piste. ffmpeg les
+# recopie tels quels quand il réencode (mesuré en 8.1.2) : une sortie HEVC à
+# 2 042k annonçait encore les 4 691k de sa source H264, et repartait en
+# réencodage au scan suivant (IE-199). `DURATION` n'y est pas : ffmpeg le
+# réécrit lui-même. Une piste recopiée garde les siens, qui restent justes.
+TAGS_STATISTIQUES = ("BPS", "NUMBER_OF_BYTES", "NUMBER_OF_FRAMES",
+                     "_STATISTICS_TAGS", "_STATISTICS_WRITING_APP",
+                     "_STATISTICS_WRITING_DATE_UTC")
+
+
+def effacer_statistiques(flux: str) -> list[str]:
+    """Arguments ffmpeg qui vident les statistiques du flux de sortie `flux`
+    (« v:0 », « a:2 ») : une valeur vide retire le tag."""
+    return [x for tag in TAGS_STATISTIQUES
+            for x in (f"-metadata:s:{flux}", f"{tag}=")]
+
+
 def audio_args(included_audio: list, debut: int = 0) -> list[str]:
     """Arguments ffmpeg des pistes audio retenues, dans leur ordre de sortie.
 
@@ -743,6 +760,7 @@ def audio_args(included_audio: list, debut: int = 0) -> list[str]:
         titre = ad.output_title
         if titre:
             args += [f"-metadata:s:a:{out_i}", f"title={titre}"]
+        args += effacer_statistiques(f"a:{out_i}")
     return args
 
 
@@ -1344,6 +1362,8 @@ def build_command(
 
     # ── Mapping ───────────────────────────────────────────────────────────────
     cmd += ["-map", "0:v:0"]
+    if encodeur_de(cmd) != "copy":
+        cmd += effacer_statistiques("v:0")
 
     included_audio = [ad for ad in decision.audio if ad.action != AudioAction.EXCLUDE]
     audio_input = len(ext_tracks) + 1 if audio_source is not None else 0

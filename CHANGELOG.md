@@ -1,5 +1,27 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.1] — 2026-11-14
+
+### Un tag `BPS` périmé ne fait plus réencoder (IE-199)
+
+- **Un HEVC déjà sous la cible était réencodé en HEVC.** mkvmerge pose sur
+  chaque piste un tag `BPS`, exact au moment où il l'écrit ; ffmpeg le
+  recopie tel quel quand il réencode. Un épisode tiré d'une source H264 à
+  4 691k portait encore ces 4 691k, dans un fichier de 2 554k en tout : face à
+  `series_std` (2 500k), il partait en CAS 1 et perdait une génération pour
+  rien. `_video_bitrate` écarte désormais un tag qui dépasse le débit du
+  fichier entier, et revient à la soustraction — ici 2 042k, gardé.
+- **Les sorties d'IRIS ne mentent plus sur leur débit.** ffmpeg 8.1.2
+  recopiait ces tags dans les sorties : un `.hevc-iris` tiré d'une source
+  passée par mkvmerge annonçait le débit de sa source. La lecture ne le
+  rattrape que s'il dépasse le débit du fichier. Les statistiques
+  (`TAGS_STATISTIQUES`) sont désormais vidées sur chaque piste réencodée —
+  vidéo dans `build_command`, audio dans `audio_args`. Une piste recopiée
+  garde les siennes, qui restent justes.
+- `tests/test_bitrate.py` : le tag périmé, et la décision qui en découle.
+  `tests/test_statistiques_perimees.py` : les arguments, et une sortie réelle
+  (ffmpeg + mkvmerge) sans le `BPS` de sa source.
+
 ## [v0.9.3.0] — 2026-11-13
 
 ### Release — la revue de code du 2026-11-13, traitée

@@ -75,7 +75,8 @@ Un flux TrueHD ou DTS-HD MA **n'annonce jamais** de `bit_rate`. Ordre de
 lecture :
 
 1. `bit_rate` du flux ;
-2. tag Matroska `BPS`, posé par mkvmerge, exact ;
+2. tag Matroska `BPS`, posé par mkvmerge, exact sauf si ffmpeg a réécrit le
+   fichier ensuite : il recopie le tag sans le recalculer ([[ffprobe#Débit vidéo]]) ;
 3. `NUMBER_OF_BYTES ÷ DURATION` (tags de statistiques mkvmerge).
 
 Sans ces tags, la piste retombe sur le forfait plutôt que sur une valeur inventée.

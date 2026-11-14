@@ -643,3 +643,22 @@ Lue dans son code source : il tue une session **Transcode** (un remux à audio
 converti compte) quand l'**élément** dépasse 1920 × 1080 — dimensions de la
 version principale, pas de la version lue. Explique la coupure d'une version
 1080p regroupée avec une 2160p. Page touchée : [[jellyfin]].
+
+## [2026-11-14] ingest | Tag `BPS` périmé recopié par ffmpeg
+
+Un épisode HEVC à 2 554k au total (vidéo ≈ 2 042k) annonçait `BPS=4691353`
+et `NUMBER_OF_BYTES=1346444314` pour un fichier de 735 Mo : statistiques
+écrites par mkvmerge v79 sur la source H264, recopiées par ffmpeg
+(`hevc_nvenc`) lors du réencodage. Essai contrôlé avec ffmpeg 8.1.2 : une
+source mkvmerge transcodée en HEVC 500k garde `BPS=2883688`. Le tag `ENCODER`
+du conteneur ne désigne pas le dernier outil (un remux mkvmerge garde
+`Lavf…`). IRIS ne retire pas ces tags de ses sorties. Corrigé côté lecture en
+v0.9.3.1 (IE-199). Pages touchées : [[ffprobe]], [[audio]].
+
+## [2026-11-14] ingest | Statistiques vidées des sorties
+
+Avec ffmpeg 8.1.2, `-metadata:s:v:0 BPS=` (valeur vide) retire le tag de la
+sortie Matroska ; une piste recopiée garde ses statistiques mkvmerge, justes.
+IRIS vide désormais `BPS`, `NUMBER_OF_BYTES`, `NUMBER_OF_FRAMES` et
+`_STATISTICS_*` sur les pistes réencodées (v0.9.3.1, IE-199). Page touchée :
+[[ffprobe]].

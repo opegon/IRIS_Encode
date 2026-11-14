@@ -1,7 +1,7 @@
 ---
 type: entite
 categorie: outil
-maj: 2026-09-24
+maj: 2026-11-14
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -18,7 +18,14 @@ Analyse des fichiers. Livré avec [[ffmpeg]], même version. Outil **essentiel**
 fiable :
 
 1. `bit_rate` du flux ;
-2. tag `BPS` posé par [[mkvmerge]], exact ;
+2. tag `BPS` posé par [[mkvmerge]], exact **seulement si mkvmerge a écrit le
+   fichier en dernier** : [[ffmpeg]] (8.1.2 vérifié) recopie `BPS` et
+   `NUMBER_OF_BYTES` de la source sans les recalculer. Un tag qui dépasse le
+   débit du conteneur est périmé et écarté (v0.9.3.1, IE-199) ; un tag périmé
+   mais plausible ne se détecte pas. Depuis v0.9.3.1, IRIS vide ces tags sur
+   les pistes qu'il réencode (`-metadata:s:v:0 BPS=` : une valeur vide retire
+   le tag, vérifié en 8.1.2). Le tag `ENCODER` du conteneur ne dit pas
+   qui a écrit en dernier : un remux mkvmerge garde le `Lavf…` d'origine ;
 3. débit du conteneur **moins** chaque piste non vidéo, résolues de la même
    façon (`bit_rate`, `BPS`, `NUMBER_OF_BYTES ÷ DURATION`).
 

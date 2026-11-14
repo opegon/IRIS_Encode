@@ -47,6 +47,42 @@ def test_le_tag_bps_prend_le_relais():
     assert _video_bitrate(vid, [vid], {"bit_rate": "9611230"}) == 5_364_447
 
 
+def test_un_tag_bps_superieur_au_conteneur_est_perime():
+    """« American Horror Story S12E04 » : mkvmerge a posé BPS=4 691k sur la
+    source H264, puis ffmpeg l'a réencodée en HEVC en recopiant le tag. Le
+    fichier entier ne fait que 2 554k : la vidéo seule ne peut pas peser plus.
+    Le tag écarté, la soustraction rend le débit réel."""
+    vid = _vid(bps=4_691_353)
+    streams = [vid, _audio(bps=256_000), _audio(bps=256_000)]
+    assert _video_bitrate(vid, streams, {"bit_rate": "2553927"}) == 2_041_927
+
+
+def test_un_tag_bps_perime_ne_fait_plus_reencoder(tmp_path):
+    """Le même épisode face à `series_std` (2 500k en 1080p) : à 4 691k il
+    partait en CAS 1, HEVC réencodé en HEVC ; à son débit réel, il est gardé."""
+    from core.decision import VideoAction, decide
+    from core.profiles import Profile
+    from core.scanner import AudioTrack, VideoInfo
+
+    vid = _vid(bps=4_691_353)
+    streams = [vid, _audio(bps=256_000), _audio(bps=256_000)]
+    p = tmp_path / "episode.mkv"
+    p.write_bytes(b"")
+    info = VideoInfo(
+        path=p, width=1920, height=1080, codec="hevc",
+        bitrate=_video_bitrate(vid, streams, {"bit_rate": "2553927"}),
+        duration=2302.133, frame_count=0, dv_profile=None,
+        audio_tracks=[
+            AudioTrack(index=i, codec="aac", channels=2, language=lang,
+                       title="", bitrate=256_000)
+            for i, lang in enumerate(("fre", "eng"))
+        ],
+    )
+    prof = Profile(id="t", data={"bitrate_1080p_kbps": 2500,
+                                 "bitrate_720p_kbps": 2000})
+    assert decide(info, prof).video.action == VideoAction.SKIP
+
+
 def test_a_defaut_le_conteneur_moins_les_autres_pistes():
     """Le cas de « The Zookeeper's Wife » : aucun tag BPS, mais les pistes
     audio déclarent leur débit."""

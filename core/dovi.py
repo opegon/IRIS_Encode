@@ -199,6 +199,8 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
         cmd += ["-map_chapters", str(n_chap)]
     if sous_titres:
         cmd += ["-c:s", "mov_text"]
+    # Le titre de la source annonçait le Dolby Vision retiré ici (IE-198).
+    cmd += ["-metadata", "title="]
     # Du HEVC par construction : `hvc1`, que les lecteurs Apple exigent.
     cmd += ["-movflags", "+faststart", "-tag:v", "hvc1", str(output)]
     return cmd
@@ -237,6 +239,7 @@ def build_dv_mp4_remux(mkv: Path, output: Path,
             "-map", "1:s?" if porteur is not None else "0:s?",
             "-c", "copy", "-c:s", "mov_text",
            "-tag:v", "hvc1", "-strict", "unofficial",
+            "-metadata", "title=",      # titre de la source (IE-198)
             "-movflags", "+faststart", str(output)]
     return cmd
 

@@ -1530,6 +1530,10 @@ def build_command(
         if (preserve_video and info.dv_profile is not None
                 and encodeur_de(cmd) == "copy"):
             cmd += ["-strict", "unofficial"]
+    # Le titre global de la source décrit la source (« … 2160p DOLBY VISION
+    # … x265-QTZ ») : recopié, il mentait sur la sortie. Vide, le lecteur
+    # affiche le nom du fichier (IE-198). Les titres de piste restent.
+    cmd += ["-metadata", "title="]
     cmd += ["-y", str(decision.output_path)]
 
     return cmd

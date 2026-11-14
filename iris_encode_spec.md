@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.3.2 — document de référence courant
+**Version** : 0.9.3.3 — document de référence courant
 **Date** : 2026-11-14
 **Statut** : stable
 
@@ -1863,6 +1863,22 @@ même fonction pour ne pas annoncer autre chose que ce qui sera écrit.
 Le garde-fou « chemin de sortie identique à la source » (§ 12.4) reste en place :
 la numérotation le rend inatteignable sur ce chemin, il couvre toujours le cas
 d'un suffixe vide avec conteneur identique.
+
+### 8.8 Titre global de la sortie (v0.9.3.3, IE-198)
+
+ffmpeg et mkvmerge recopient par défaut le titre global de la source. Celui
+d'une release la décrit, elle — une sortie 1080p HDR10 annonçait « … 2160p
+10bit DOLBY VISION HDR10+ BluRay … x265-QTZ ». Les quatre commandes qui
+écrivent une sortie finale le vident donc : `-metadata title=` dans
+`encoder.build_command`, `dovi.build_strip_mp4` et `dovi.build_dv_mp4_remux`,
+`--title ""` dans `muxer.build_strip_command`. Sans titre, le lecteur affiche
+le nom du fichier, qui reste juste même renommé. Le mux sans réencodage
+(`build_mux_command`) ne touche pas au titre : il ne change rien à la vidéo.
+
+Les titres et langues des pistes restent. En MP4, ffmpeg écrit le titre
+d'une piste dans une boîte `name` de son `udta`, et ffmpeg 8.1.2 avertit en
+la relisant (« UDTA parsing failed retrying raw ») avant de la relire en
+entier : l'avertissement est sans effet (mesuré le 2026-11-14).
 
 ---
 
@@ -4506,6 +4522,7 @@ python tests/shots_tui.py --langue en   # inventaire visuel -> _shots/en/*.svg
 python -m pytest tests/
 ```
 
+
 ---
 
 ## 19. Hors scope
@@ -4571,6 +4588,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | **0.9.3.0** | 2026-11-13 | **Release.** Rassemble 0.9.2.10 à 0.9.2.19 : la revue de code du 2026-11-13 traitée de IE-188 à IE-197 — formats et seuils, réglages mal typés, fil d'interface et workers, écran des pistes et assistant, aperçu et estimation, touches et libellés, guide `H` complet, tests isolés, hygiène |
 | 0.9.3.1 | 2026-11-14 | Un tag `BPS` qui dépasse le débit du conteneur — recopié par ffmpeg depuis la source — est écarté du débit vidéo : un HEVC sous la cible n'est plus réencodé en HEVC · les statistiques des pistes réencodées sont vidées des sorties (IE-199) |
 | 0.9.3.2 | 2026-11-14 | **`F10 Quitter` dans l'en-tête**, à côté de `F11 Plein écran`, plus au pied de page de chaque écran · **`A` bascule tout / aucun** sur l'accueil, `N` retirée (IE-200) · `tests/test_entete_quitter.py`, `tests/test_bascule_selection.py` |
+| 0.9.3.3 | 2026-11-14 | **La sortie ne reprend plus le titre de la source** (§ 8.8, IE-198) : titre global vidé par les quatre commandes qui écrivent une sortie finale (`build_command`, `build_strip_mp4`, `build_dv_mp4_remux`, `build_strip_command`) ; titres de piste gardés · `tests/test_titre_sortie.py` |
 | 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |
 | 0.9.2.11 | 2026-11-13 | **HDR sous la tranche 1080p** (§ 8.1, § 14.0, IE-189) : la décision automatique garde en HEVC toute source dont la sortie reste HDR, comme le forçage ; H264 seulement pour une sortie SDR (CR-118) · `tests/test_hdr_tranche.py` |
 | 0.9.2.10 | 2026-11-13 | **Sous-titres et conteneur** (§ 8.6, IE-188) : `mov_text` converti en SubRip vers Matroska (`-c:s:N srt`, CR-117) ; en `container = "mp4"`, seuls les sous-titres doublés par un texte de même langue et de même nature sont écartés, sinon le conteneur cède ; pistes écartées nommées dans l'Aperçu (CR-119) · `tests/test_mov_text_mkv.py`, `tests/test_conteneur.py` |

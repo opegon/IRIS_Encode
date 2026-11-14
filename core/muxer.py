@@ -503,7 +503,9 @@ def build_strip_command(
             "avoid corrupting the source file."), path=source
         )
 
-    cmd = [_mkvmerge_path, "--gui-mode", "-o", str(output)]
+    # mkvmerge reprend le titre de la source, qui annonce encore le Dolby
+    # Vision retiré ou réencodé ici : titre vide (IE-198).
+    cmd = [_mkvmerge_path, "--gui-mode", "-o", str(output), "--title", ""]
     if chapitres is not None:
         cmd += ["--chapters", str(chapitres)]
     if fps:

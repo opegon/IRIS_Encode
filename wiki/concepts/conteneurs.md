@@ -108,6 +108,20 @@ brute), et ffmpeg n'en décode aucune image — « Conversion failed! » après
 refuse `-codec:v hevc` sur ce flux (« Codec type or id mismatches »). Mesuré
 sous ffmpeg 8.1.2 sur un concert en AVI (v0.9.1.11).
 
+## Titre global
+
+- **ffmpeg et mkvmerge recopient le titre de la source** (mkvmerge même
+  quand la source n'est que la deuxième entrée, derrière un flux brut). Celui
+  d'une release décrit la release : une sortie 1080p HDR10 s'annonçait
+  « … 2160p DOLBY VISION … x265-QTZ ». `-metadata title=` (ffmpeg) et
+  `--title ""` (mkvmerge) le retirent, en MP4 comme en Matroska ; sans titre,
+  les lecteurs affichent le nom du fichier. *(mesuré, ffmpeg 8.1.2, IE-198)*
+- **« UDTA parsing failed retrying raw »** (ffmpeg 8.1.2, à la lecture d'un
+  MP4) vient du **titre d'une piste**, que ffmpeg écrit dans une boîte `name`
+  du `udta` de la piste — pas du titre global : un MP4 fabriqué de zéro avec
+  une seule piste audio titrée suffit, le retirer le fait taire. Le titre est
+  relu (ffprobe le rend sous `name`) : sans effet. *(mesuré 2026-11-14)*
+
 ## Voir aussi
 
 [[ffmpeg]] · [[mkvmerge]] · [[lg-oled-g3]] · [[sous-titres]] · [[audio]] · [[hdr-dolby-vision]]

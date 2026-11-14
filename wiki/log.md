@@ -662,3 +662,13 @@ sortie Matroska ; une piste recopiée garde ses statistiques mkvmerge, justes.
 IRIS vide désormais `BPS`, `NUMBER_OF_BYTES`, `NUMBER_OF_FRAMES` et
 `_STATISTICS_*` sur les pistes réencodées (v0.9.3.1, IE-199). Page touchée :
 [[ffprobe]].
+
+## [2026-11-14] ingest | Titre global recopié, avertissement UDTA
+
+Avec ffmpeg 8.1.2 et le mkvmerge de `bin/`, le titre global de la source passe
+dans la sortie (mkvmerge le prend même sur une entrée seconde) ;
+`-metadata title=` et `--title ""` le retirent, en MP4 comme en Matroska.
+« UDTA parsing failed retrying raw », relevé sur la sortie d'*Alien*
+([[source-2026-11-13-transcodekiller]]), vient du titre d'une piste en MP4
+(boîte `name`), relu malgré l'avertissement. IRIS vide le titre global de ses
+sorties en v0.9.3.3 (IE-198). Page touchée : [[conteneurs]].

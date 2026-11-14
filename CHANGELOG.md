@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.3] — 2026-11-14
+
+### La sortie ne reprend plus le titre de la source (IE-198)
+
+- **Le titre embarqué de la source n'est plus recopié.** ffmpeg et mkvmerge
+  le reprenaient par défaut : une sortie 1080p HDR10 s'affichait « … 2160p
+  10bit 4KLight DOLBY VISION HDR10+ BluRay DDP 5.1 x265-QTZ » dans VLC, MPC-HC
+  ou les propriétés Windows. Le titre global est désormais vide, et le
+  lecteur affiche le nom du fichier. Cela vaut pour l'encodage
+  (`build_command`), le retrait du Dolby Vision (`build_strip_mp4`,
+  `build_strip_command`) et le passage en MP4 du réencodage DV
+  (`build_dv_mp4_remux`). Le mux sans réencodage n'y touche pas.
+- **Les titres et les langues des pistes restent.** L'avertissement
+  « UDTA parsing failed retrying raw » de ffmpeg 8.1.2 vient du titre d'une
+  piste audio en MP4 : il le relit quand même, l'avertissement est sans effet.
+- `tests/test_titre_sortie.py` : les quatre commandes, exécutées sur une
+  source titrée comme une release.
+
 ## [v0.9.3.2] — 2026-11-14
 
 ### Pied de page allégé (IE-200)

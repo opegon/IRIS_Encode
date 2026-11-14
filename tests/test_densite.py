@@ -84,16 +84,19 @@ async def _lignes_rendues(actions, nav, largeur):
 
 
 def test_une_bande_d_une_entree_n_occupe_plus_sa_ligne():
-    lignes = asyncio.run(_lignes_rendues(_ACTIONS_RUN, footer_line2(), 150))
+    # Une seule touche de fonction : F10 jusqu'en v0.9.3.1, F12 depuis.
+    nav = footer_line2(extra=(("f12", "Encodages"),))
+    lignes = asyncio.run(_lignes_rendues(_ACTIONS_RUN, nav, 150))
     assert len(lignes) == 1, lignes
-    assert "F10" in lignes[0] and "Retour" in lignes[0]
+    assert "F12" in lignes[0] and "Retour" in lignes[0]
 
 
 def test_l_ordre_par_role_est_conserve():
     """Propres à l'écran, puis globaux, puis touches de fonction."""
-    lignes = asyncio.run(_lignes_rendues(_ACTIONS_RUN, footer_line2(accueil=True), 150))
+    nav = footer_line2(accueil=True, extra=(("f12", "Encodages"),))
+    lignes = asyncio.run(_lignes_rendues(_ACTIONS_RUN, nav, 150))
     texte = " ".join(lignes)
-    assert texte.index("Pause") < texte.index("Volumes") < texte.index("Quitter")
+    assert texte.index("Pause") < texte.index("Volumes") < texte.index("Encodages")
 
 
 def test_on_passe_bien_a_la_ligne_au_debordement():

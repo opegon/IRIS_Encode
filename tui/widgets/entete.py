@@ -39,7 +39,8 @@ def plein_ecran_disponible() -> bool:
 
 
 class AideEtHeure(Widget):
-    """« F11 Plein écran · H Aide · 00:12:34 », docké à droite de l'en-tête."""
+    """« F10 Quitter · F11 Plein écran · H Aide · 00:12:34 », docké à droite
+    de l'en-tête."""
 
     DEFAULT_CSS = f"""
     AideEtHeure {{
@@ -60,6 +61,11 @@ class AideEtHeure(Widget):
 
     def render(self) -> Text:
         t = Text(no_wrap=True, overflow="ellipsis")
+        # F10 quitte depuis tous les écrans : annoncé ici une fois, plutôt
+        # qu'au pied de chacun, où il prenait souvent une ligne à lui seul.
+        t.append(touche("f10"), style="bold yellow")
+        t.append(" " + _("Quit"))
+        t.append("  ·  ", style="dim")
         if plein_ecran_disponible():
             t.append(touche("f11"), style="bold yellow")
             t.append(" " + _("Full screen"))

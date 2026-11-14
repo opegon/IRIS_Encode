@@ -1,5 +1,19 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.2] — 2026-11-14
+
+### Pied de page allégé (IE-200)
+
+- **`F10 Quitter` passe dans l'en-tête**, à côté de « F11 Plein écran » et de
+  « H Aide ». Il était répété au pied de chaque écran, souvent seul sur sa
+  ligne ; l'en-tête est visible de partout. La touche répond comme avant,
+  depuis tous les écrans.
+- **`A` bascule entre tout et aucun** sur l'accueil : tant qu'un fichier
+  affiché reste décoché, `A` complète la sélection ; quand tout l'est, `A` la
+  vide. Les sorties d'IRIS restent hors de « tout ». `N` n'est plus liée.
+- `tests/test_entete_quitter.py`, `tests/test_bascule_selection.py` ; les
+  tests du pied de page suivent la nouvelle convention.
+
 ## [v0.9.3.1] — 2026-11-14
 
 ### Un tag `BPS` périmé ne fait plus réencoder (IE-199)

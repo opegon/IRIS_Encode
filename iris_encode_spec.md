@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.3.1 — document de référence courant
+**Version** : 0.9.3.2 — document de référence courant
 **Date** : 2026-11-14
 **Statut** : stable
 
@@ -2913,7 +2913,8 @@ Conventions transverses :
   widget prenant le focus — `ConfigScreen` et son `ProfileForm` — bascule le
   contenu du footer par `KeyFooter.update_line()` tant que ce widget est monté.
   Le widget publie ses raccourcis (`ProfileForm.RACCOURCIS`), l'écran garde les
-  siens, et `F10` reste en dernier dans les deux états. Un footer faux est pire
+  siens ; `F10`, annoncé dans l'en-tête depuis v0.9.3.2, répond dans les deux
+  états. Un footer faux est pire
   qu'un footer vide : il invite à des gestes sans effet.
 - **Les noms de touches se rendent par `tui.common.touche()`.** Trois
   notations coexistaient — `Space Sélect` au footer, `Espace  Sélectionner`
@@ -3052,7 +3053,8 @@ Conventions transverses :
   volontaire et échappent les noms interpolés par `rich.markup.escape`.
   `tests/test_markup.py` verrouille la liste des afficheurs concernés.
 - **`TwoLineFooter`** — footer 2 lignes remplaçant le Footer natif. Ligne 1 : navigation.
-  Ligne 2 : actions. `F10 Quitter` toujours en dernier.
+  Ligne 2 : actions. `F10 Quitter` n'y figure plus depuis v0.9.3.2 : il est
+  annoncé dans l'en-tête (`AideEtHeure`), visible de tous les écrans.
 - **Touches retour normalisées** : `Backspace` / `Esc` sur tous les écrans.
 - **Pas de palette de commandes** (v0.9.2.16, CR-139) :
   `IrisEncodeApp.ENABLE_COMMAND_PALETTE = False`. Celle de Textual (`Ctrl+P`,
@@ -3210,8 +3212,8 @@ avant le système de bindings (voir l'avertissement en tête de `tui/mixins.py`)
 │[ ] │ 🎬 film2.mp4   │   1,1 Go │  720x480  │ 1:32:00 │   900k  │  h264   │  —         │  ← SKIP    │       —       │        —       │ AAC 2.0     │
 │[x] │ 🎬 film3.avi   │   2,3 Go │ 1280x720  │ 0:52:00 │  3200k  │  vp9    │  —         │  → H264    │ 1,2 Go (−48%) │     0:04:51    │ AC3 5.1     │
 ├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ Space Sélect  a Tout  n Aucun  Enter Ouvrir  w Mode  t Pistes  v Visualiser  r Encoder le dossier  j Joindre  i Fiche  Ctrl+D Supprimer            │
-│ Back Remonter  Home/End/PgUp/PgDn  F1 Aperçu  F2 Encoder  F4 Profil  F5 Gérer  Sh+Tab/Tab Col  < Rétrécir  > Élargir  F10 Quitter                  │
+│ Space Sélect  a Tout / Aucun  Enter Ouvrir  w Mode  t Pistes  v Visualiser  r Encoder le dossier  j Joindre  i Fiche  Ctrl+D Supprimer            │
+│ Back Remonter  Home/End/PgUp/PgDn  F1 Aperçu  F2 Encoder  F4 Profil  F5 Gérer  Sh+Tab/Tab Col  < Rétrécir  > Élargir                              │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -3225,7 +3227,7 @@ restait seul (v0.9.2.16, CR-141).
 |---|---|---|
 | `↑` `↓` `PgUp` `PgDn` `Home` `End` | — | Navigation |
 | `Espace` | fichier | Sélection unitaire |
-| `A` / `N` | — | Tout / aucun — `A` saute les sorties de l'application |
+| `A` | — | Bascule tout / aucun (v0.9.3.2, remplace `A` et `N`) : coche tous les fichiers affichés, sauf les sorties de l'application ; décoche tout si c'est déjà fait |
 | `↵` | dossier | Entrer |
 | `↵` | fichier | Ouvre `TracksScreen` |
 | `⌫` | — | Remonter au parent |
@@ -3569,7 +3571,7 @@ Un `DataTable` à quatre sections : **VIDÉO**, **AUDIO**, **SOUS-TITRES**, **EX
 │ [ ✓ ] Valider la sélection                                                        │
 ├──────────────────────────────────────────────────────────────────────────────────┤
 │ Space Sélect  Enter Valider  F1 Aperçu  F2 Encoder  F4 Profil  F6 Codec F7 Débit │
-│ F8 Suppr./garder source   F9 Piste externe   Back Retour   F10 Quitter           │
+│ F8 Suppr./garder source   F9 Piste externe   Back Retour                         │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -3881,7 +3883,9 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   seconde — « F12 Encodages en cours · 1/3 · 42 % », « F12 Lot terminé », et
   « F12 Fichiers » depuis la vue des encodages. Vide sans lot.
 - **Le rappel du plein écran** (v0.9.0.4) : à droite de l'en-tête,
-  `AideEtHeure` rend « F11 Plein écran · H Aide · 00:12:34 ». Le rappel F11
+  `AideEtHeure` rend « F10 Quitter · F11 Plein écran · H Aide · 00:12:34 ».
+  « F10 Quitter » y est toujours, et n'est plus répété au pied de page des
+  écrans (v0.9.3.2). Le rappel F11
   n'apparaît que si `WT_SESSION` est posée (`entete.plein_ecran_disponible`) :
   c'est Windows Terminal qui capte F11 et bascule le plein écran, l'application
   ne la reçoit jamais ; ailleurs la touche ne ferait rien.
@@ -4566,6 +4570,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.2.19 | 2026-11-13 | **Hygiène** (§ 8.1, § 15.2, § 16.2, IE-197) : le scan récursif saute corbeille et dossiers système (CR-130) ; `logger/` retiré, imports inutiles, codecs que ffprobe ne rend pas, largeurs de l'accueil gardées en mémoire, ligne de `sync.py` (CR-144) ; `analyses.json` réécrit une fois par jour, verrous rendus, octets écrits lus pour un MP4 seulement, pistes du donneur lues dans un worker, liste des fichiers du donneur par `scandir` (CR-145) · `tests/test_hygiene.py` |
 | **0.9.3.0** | 2026-11-13 | **Release.** Rassemble 0.9.2.10 à 0.9.2.19 : la revue de code du 2026-11-13 traitée de IE-188 à IE-197 — formats et seuils, réglages mal typés, fil d'interface et workers, écran des pistes et assistant, aperçu et estimation, touches et libellés, guide `H` complet, tests isolés, hygiène |
 | 0.9.3.1 | 2026-11-14 | Un tag `BPS` qui dépasse le débit du conteneur — recopié par ffmpeg depuis la source — est écarté du débit vidéo : un HEVC sous la cible n'est plus réencodé en HEVC · les statistiques des pistes réencodées sont vidées des sorties (IE-199) |
+| 0.9.3.2 | 2026-11-14 | **`F10 Quitter` dans l'en-tête**, à côté de `F11 Plein écran`, plus au pied de page de chaque écran · **`A` bascule tout / aucun** sur l'accueil, `N` retirée (IE-200) · `tests/test_entete_quitter.py`, `tests/test_bascule_selection.py` |
 | 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |
 | 0.9.2.11 | 2026-11-13 | **HDR sous la tranche 1080p** (§ 8.1, § 14.0, IE-189) : la décision automatique garde en HEVC toute source dont la sortie reste HDR, comme le forçage ; H264 seulement pour une sortie SDR (CR-118) · `tests/test_hdr_tranche.py` |
 | 0.9.2.10 | 2026-11-13 | **Sous-titres et conteneur** (§ 8.6, IE-188) : `mov_text` converti en SubRip vers Matroska (`-c:s:N srt`, CR-117) ; en `container = "mp4"`, seuls les sous-titres doublés par un texte de même langue et de même nature sont écartés, sinon le conteneur cède ; pistes écartées nommées dans l'Aperçu (CR-119) · `tests/test_mov_text_mkv.py`, `tests/test_conteneur.py` |

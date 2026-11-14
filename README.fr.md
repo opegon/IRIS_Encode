@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'installation
 
-**Version** : 0.9.3.1 — Windows (support macOS/Linux prévu)
+**Version** : 0.9.3.2 — Windows (support macOS/Linux prévu)
 
 *[English version: README.md](README.md)*
 
@@ -702,7 +702,7 @@ Les principaux ; la liste complète, écran par écran, est au
 | Touche | Action |
 |--------|--------|
 | `Espace` | Cocher / décocher un fichier |
-| `A` / `N` | Tout cocher / Aucun |
+| `A` | Tout cocher / Aucun (bascule) |
 | `Entrée` | Entrer dans un dossier ; sur un fichier, l'assistant (ou l'écran des pistes en mode manuel) |
 | `Retour` | Remonter d'un niveau |
 | `W` | Basculer entre assistant et mode manuel |

@@ -12,8 +12,8 @@ from tui.widgets.entete import AideEtHeure
 def test_f11_annonce_sous_windows_terminal(monkeypatch):
     monkeypatch.setenv("WT_SESSION", "0f1e2d3c")
     texte = AideEtHeure().render().plain
-    assert texte.startswith("F11 ")
-    assert texte.index("F11") < texte.index("H ")      # avant « H Aide »
+    # Après « F10 Quitter » (v0.9.3.2), avant « H Aide ».
+    assert texte.index("F11") < texte.index("H ")
 
 
 def test_f11_absent_hors_windows_terminal(monkeypatch):

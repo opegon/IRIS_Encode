@@ -79,10 +79,11 @@ _PAR_ECRAN: dict[str, dict[str, str]] = {
         "toggle_select":       N_("Checks or unchecks the file under the "
                                   "cursor. Only checked files go to dry run or "
                                   "encoding."),
-        "select_all":          N_("Checks every file in the folder, except "
+        "select_toggle_all":   N_("Checks every file in the folder, except "
                                   "the outputs IRIS ENCODE already produced "
-                                  "(check those with Space)."),
-        "select_none":         N_("Unchecks everything."),
+                                  "(check those with Space). Pressed again "
+                                  "once everything is checked: unchecks "
+                                  "everything."),
         "enter_dir":           N_("Opens the folder under the cursor. On a "
                                   "file: opens the Tracks screen in manual "
                                   "mode, the guided mode in guided mode."),

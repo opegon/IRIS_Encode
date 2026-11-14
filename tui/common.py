@@ -440,7 +440,8 @@ def bitrate_picker_config(
 # ─── Footer : groupes de raccourcis standard ──────────────────────────────────
 #
 # Convention : ligne 1 = actions propres à l'écran ;
-# ligne 2 = retour + accueil + F10 Quitter (dernier).
+# ligne 2 = retour + accueil. F10 Quitter est annoncé dans l'en-tête
+# (`AideEtHeure`), visible de tous les écrans (v0.9.3.2).
 #
 # La navigation de table (Début, Fin, PgUp, PgDn) et le redimensionnement des
 # colonnes (Tab, ⇧Tab, <, >) ne s'annoncent plus : huit entrées répétées sur
@@ -453,7 +454,6 @@ FOOTER_BACK: tuple[str, str] = ("backspace", N_("Back"))
 # retour à la liste des volumes prend donc Ctrl+Home.
 # TRANSLATORS: footer action of Ctrl+Home — back to the list of volumes.
 FOOTER_ACCUEIL: tuple[str, str] = ("ctrl+home", N_("Volumes"))
-FOOTER_QUIT: tuple[str, str] = ("f10",       N_("Quit"))
 
 
 # Touches que la bande propre à l'écran ne montre pas : celles que
@@ -509,14 +509,13 @@ def footer_line2(
     accueil: bool = False,
     extra:   tuple[tuple[str, str], ...] = (),
 ) -> list[tuple[str, str]]:
-    """Construit la ligne 2 standard du footer, F10 toujours en dernier."""
+    """Construit la ligne 2 standard du footer (F10 est dans l'en-tête)."""
     line: list[tuple[str, str]] = []
     if back:
         line.append(FOOTER_BACK)
     if accueil:
         line.append(FOOTER_ACCUEIL)
     line.extend(extra)
-    line.append(FOOTER_QUIT)
     return line
 
 

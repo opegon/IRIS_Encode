@@ -1,6 +1,6 @@
 # IRIS ENCODE — Installation guide
 
-**Version**: 0.9.3.1 — Windows (macOS/Linux support planned)
+**Version**: 0.9.3.2 — Windows (macOS/Linux support planned)
 
 *[Version française : README.fr.md](README.fr.md)*
 
@@ -707,7 +707,7 @@ The main ones; the full list, screen by screen, is in [`GUIDE.md`](GUIDE.md)
 | Key | Action |
 |-----|--------|
 | `Space` | Check / uncheck a file |
-| `A` / `N` | Check all / none |
+| `A` | Check all / none (toggles) |
 | `Enter` | Open a folder; on a file, the guided mode (or the Tracks screen in manual mode) |
 | `Backspace` | Go up one level |
 | `W` | Switch between guided and manual mode |

@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.3.1
+**Version**: 0.9.3.2
 **Date**: 2026-11-09
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -25,8 +25,8 @@ Otherwise `launch.bat` works — preferably started *from* Windows Terminal
 rather than by double-click.
 
 **Full screen**: `F11` switches Windows Terminal to full screen and back. The
-header recalls it at the top right ("F11 Full screen"), only when IRIS runs in
-Windows Terminal — elsewhere the key does nothing. The Home table needs about
+header recalls it at the top right ("F11 Full screen", next to "F10 Quit"),
+only when IRIS runs in Windows Terminal — elsewhere the key does nothing. The Home table needs about
 145 columns: in a narrower window it scrolls sideways (README, chapter 10).
 
 **Letter keys** work in upper case as in lower case: `w` and `W` (Shift or
@@ -190,7 +190,7 @@ chemin  = '\\10.0.0.10\Films'
 | `W` | Switch **guided / manual** — changes what `↵` does on a file |
 | `⌫` | Go up |
 | `Space` | Check / uncheck the file |
-| `A` / `N` | Check all / uncheck all |
+| `A` | Check all; once everything is checked, uncheck all |
 | `T` | Tracks screen of the file under the cursor, whatever the mode |
 | `V` | Open in mpv |
 | `Ctrl+D` | **Delete permanently** the file, with its `.nfo` and images created by Jellyfin (confirmation, no recycle bin) |
@@ -1161,17 +1161,17 @@ alike.
   From a running **encode** as well: confirming stops the whole batch and
   deletes the partial output. `Home` alone keeps its role, going to the first
   row of the table.
-- `F10` quits, always last in the footer. The confirmation says what is running
-  — encode, mux, join, measurement — and what quitting does to it, or "No task
-  in progress." An encode, a mux or a join is stopped and its partial output
+- `F10` quits, from every screen; the header shows it at the top right. The
+  confirmation says what is running — encode, mux, join, measurement — and
+  what quitting does to it, or "No task in progress." An encode, a mux or a join is stopped and its partial output
   deleted.
 - `Home` `End` `PgUp` `PgDn` move through tables, and `Tab` `⇧Tab` `<` `>`
   pick and resize columns where they can be resized (Home, Tracks, dry run;
   the status bar names the active column). These conventions are no longer
   repeated in the footer: the key guide (`H`) describes them.
 - The footer sorts the shortcuts by role, top to bottom: **the screen's own**,
-  then **global** ones (back, volumes), then the **function keys** `F1` to
-  `F10`, always on the last line. Each band wraps onto as many lines as the
+  then **global** ones (back, volumes), then the **function keys** (`F1`,
+  `F2`…), always last. Each band wraps onto as many lines as the
   width requires; no shortcut is hidden, even on a narrow screen.
 - Column widths are remembered in `config.toml`, **except on the Home screen**:
   it starts from the default values at each start, to give the same layout from

@@ -88,7 +88,7 @@ def test_le_scan_automatique_les_ecarte_toujours(tmp_path, monkeypatch):
 class _FauxEcran:
     """Juste ce qu'il faut pour appeler les deux actions sans monter l'écran."""
     from tui.screens.browser import BrowserScreen as _B
-    action_select_all    = _B.action_select_all
+    action_select_all    = _B.action_select_toggle_all
     action_toggle_select = _B.action_toggle_select
 
     def __init__(self, rows, produits, curseur=None):

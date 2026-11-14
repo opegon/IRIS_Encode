@@ -34,7 +34,8 @@ _NAVIGATION = {"home", "end", "pageup", "pagedown",
 
 def test_le_pied_standard_n_annonce_plus_la_navigation():
     cles = {cle for cle, _lib in footer_line2(back=True, accueil=True)}
-    assert cles == {"backspace", "ctrl+home", "f10"}
+    # F10 est dans l'en-tête depuis v0.9.3.2.
+    assert cles == {"backspace", "ctrl+home"}
 
 
 def test_l_accueil_n_annonce_plus_la_navigation():

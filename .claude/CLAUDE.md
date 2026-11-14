@@ -50,7 +50,8 @@ les pages concernées. À enrichir dès qu'on apprend quelque chose, en suivant
 - Pied de page : les touches visibles se déclarent dans `BINDINGS`
   (`show=True`) et s'affichent via `actions_ecran` ; la navigation de table et
   le redimensionnement des colonnes ne s'y annoncent pas (guide `H`). F10
-  Quitter toujours en dernier ; retour par Backspace / Esc partout.
+  Quitter est annoncé dans l'en-tête (`AideEtHeure`), pas au pied ; retour
+  par Backspace / Esc partout.
 
 ## Localisation
 

@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.3.1
+**Version** : 0.9.3.2
 **Date** : 2026-11-09
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -24,8 +24,9 @@ Détail et alternative sans exécutable au **README.fr.md § 5.1**.
 Terminal plutôt qu'au double-clic.
 
 **Plein écran** : `F11` passe Windows Terminal en plein écran, et l'en fait
-sortir. L'en-tête le rappelle en haut à droite (« F11 Plein écran »), seulement
-quand IRIS tourne dans Windows Terminal — ailleurs la touche ne fait rien.
+sortir. L'en-tête le rappelle en haut à droite (« F11 Plein écran », à côté
+de « F10 Quitter »), seulement quand IRIS tourne dans Windows Terminal —
+ailleurs la touche ne fait rien.
 La table de l'accueil demande environ 145 colonnes : plus étroite, la fenêtre
 la fait défiler en largeur (README, chapitre 10).
 
@@ -191,7 +192,7 @@ chemin  = '\\10.0.0.10\Films'
 | `W` | Basculer **assistant / manuel** — change ce que fait `↵` sur un fichier |
 | `⌫` | Remonter |
 | `Espace` | Cocher / décocher le fichier |
-| `A` / `N` | Tout cocher / tout décocher |
+| `A` | Tout cocher ; une fois tout coché, tout décocher |
 | `T` | Écran des pistes du fichier sous le curseur, quel que soit le mode |
 | `V` | Ouvrir dans mpv |
 | `Ctrl+D` | **Supprimer définitivement** le fichier, avec son `.nfo` et ses images Jellyfin (confirmation, pas de corbeille) |
@@ -1182,9 +1183,9 @@ répliques, en MP4 comme en MKV.
   sélection, une greffe, une mesure. Depuis l'**encodage** en cours aussi :
   confirmer arrête le lot entier et efface la sortie partielle. `Début` seule garde son rôle, aller à la
   première ligne de la table.
-- `F10` quitte, toujours en dernier dans le pied de page. La confirmation dit
-  ce qui tourne — encodage, mux, jonction, mesure — et ce que quitter lui fait,
-  ou « Aucun traitement en cours ». Un encodage, un mux ou une jonction est
+- `F10` quitte, depuis tous les écrans ; l'en-tête l'annonce en haut à
+  droite. La confirmation dit ce qui tourne — encodage, mux, jonction,
+  mesure — et ce que quitter lui fait, ou « Aucun traitement en cours ». Un encodage, un mux ou une jonction est
   arrêté et sa sortie partielle effacée.
 - `Début` `Fin` `Page ↑` `Page ↓` naviguent dans les tables, et `Tab` `⇧Tab`
   `<` `>` choisissent et redimensionnent les colonnes là où elles le sont
@@ -1193,7 +1194,7 @@ répliques, en MP4 comme en MKV.
   touches (`H`) les décrit.
 - Le pied de page range les raccourcis par rôle, du haut vers le bas :
   **propres à l'écran**, puis **globaux** (retour, volumes), puis les
-  **touches de fonction** `F1` à `F10`, toujours en dernière ligne. Chaque
+  **touches de fonction** (`F1`, `F2`…), toujours en dernier. Chaque
   bande s'enroule sur autant de lignes que la largeur l'impose ; aucun
   raccourci n'est masqué, même sur un écran étroit.
 - Les largeurs de colonnes sont mémorisées dans `config.toml`, **sauf sur

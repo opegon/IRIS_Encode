@@ -422,8 +422,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     BINDINGS = [
         Binding("space",     "toggle_select",      N_("Toggle"),   show=True),
-        Binding("a",         "select_all",         N_("All"),      show=True),
-        Binding("n",         "select_none",        N_("None"),     show=True),
+        Binding("a",         "select_toggle_all",  N_("All / None"), show=True),
         Binding("enter",     "enter_dir",          N_("Open"),     show=True, priority=True),
         Binding("backspace", "go_up",              N_("Up"),       show=True),
         Binding("ctrl+home", "accueil",            N_("Home"),     show=True,
@@ -693,8 +692,7 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
 
     _RACCOURCIS_FICHIERS: list[tuple[str, str]] = [
         ("space",     N_("Toggle")),
-        ("a",         N_("All")),
-        ("n",         N_("None")),
+        ("a",         N_("All / None")),
         ("enter",     N_("Open")),
         ("w",         N_("Mode")),
         ("t",         N_("Tracks")),
@@ -1736,26 +1734,29 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         self._update_row_check(path)
         self._update_status()
 
-    def action_select_all(self) -> None:
-        """Coche tout ce qu'il y a à faire ici — donc pas nos propres sorties.
+    def action_select_toggle_all(self) -> None:
+        """`A` : coche tout ce qu'il y a à faire ici, ou décoche tout si c'est
+        déjà fait — une touche au lieu de `A` et `N` (v0.9.3.2).
 
-        Elles restent atteignables à l'`espace` : réencoder une sortie est un
-        geste légitime, mais c'en est un qui se demande, pas un que « tout
-        sélectionner » emporte sans qu'on le voie.
+        « Tout » exclut nos propres sorties. Elles restent atteignables à
+        l'`espace` : réencoder une sortie est un geste légitime, mais c'en est
+        un qui se demande, pas un que « tout sélectionner » emporte sans qu'on
+        le voie.
         """
-        for row_type, path in self._rows:
-            if (row_type == _ROW_TYPE_FILE and path is not None
-                    and path not in self._produits):
-                self._selected.add(path)
+        cochables = [path for row_type, path in self._rows
+                     if row_type == _ROW_TYPE_FILE and path is not None
+                     and path not in self._produits]
+        if cochables and all(p in self._selected for p in cochables):
+            paths = list(self._selected)
+            self._selected.clear()
+            for path in paths:
                 self._update_row_check(path)
-        self._annoncer_forcees(list(self._selected))
-        self._update_status()
-
-    def action_select_none(self) -> None:
-        paths = list(self._selected)
-        self._selected.clear()
-        for path in paths:
+            self._update_status()
+            return
+        for path in cochables:
+            self._selected.add(path)
             self._update_row_check(path)
+        self._annoncer_forcees(list(self._selected))
         self._update_status()
 
     # ─── Filtre (L, Z) ────────────────────────────────────────────────────────

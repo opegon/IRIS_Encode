@@ -81,10 +81,10 @@ def test_les_touches_du_formulaire_apparaissent(footers):
         assert _(libelle) in footers["formulaire"], f"« {_(libelle)} » manquant"
 
 
-def test_f10_reste_partout(footers):
-    """Convention du projet : F10 en dernier sur tous les écrans."""
+def test_f10_n_encombre_aucun_etat(footers):
+    """F10 est annoncé dans l'en-tête depuis v0.9.3.2, plus dans le pied."""
     for etat, contenu in footers.items():
-        assert "F10" in contenu, f"F10 absent en état « {etat} »"
+        assert "F10" not in contenu, f"F10 encore au pied en état « {etat} »"
 
 
 def test_les_touches_de_l_ecran_reviennent(footers):

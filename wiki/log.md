@@ -636,3 +636,10 @@ Une sortie IRIS « plante au bout de quelques secondes » dans le client web
 tuant le remux HLS (audio E-AC3 converti pour Chrome) 1,3 s après son
 lancement, puis sa relance ; ffmpeg sort avec le code 0. Pages touchées :
 [[jellyfin]], [[chaine-de-diffusion]].
+
+## [2026-11-13] query | Règle du greffon TranscodeKiller
+
+Lue dans son code source : il tue une session **Transcode** (un remux à audio
+converti compte) quand l'**élément** dépasse 1920 × 1080 — dimensions de la
+version principale, pas de la version lue. Explique la coupure d'une version
+1080p regroupée avec une 2160p. Page touchée : [[jellyfin]].

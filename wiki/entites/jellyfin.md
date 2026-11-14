@@ -48,8 +48,18 @@ transcodent, y compris un remux HLS dont seul l'audio est converti. Le
 le ffmpeg 1,3 s après son lancement, puis sa relance, et la lecture s'est
 arrêtée à 0 ms ; l'utilisateur l'a vu comme un fichier qui « plante au bout
 de quelques secondes ». *(observé, [[source-2026-11-13-transcodekiller]])*
-Les règles exactes du greffon (ce qu'il tue, ce qu'il laisse) ne sont pas
-connues ici.
+
+Sa règle *(documenté : `KillerEntrypoint.cs` du dépôt
+`jellyfin/jellyfin-plugin-transcodekiller`)* : à chaque rapport de
+progression, il tue la session si la méthode de lecture est **Transcode** —
+un remux dont l'audio est converti en fait partie — **et** si la largeur ou
+la hauteur **de l'élément** dépasse le réglage (ici 1920 × 1080). Il lit les
+dimensions de l'élément de la bibliothèque (`Item.Width`, `Item.Height`), pas
+celles de la version lue : un film regroupé en plusieurs versions est jugé sur
+sa version principale. Le 2026-11-13, la version 1080p (1920 × 800) jouée
+avait un identifiant de source différent de celui de l'élément — elle n'en
+était pas la version principale, vraisemblablement la 2160p (3840 × 1600).
+*(supposé pour la version principale, à confirmer dans la page du film)*
 
 Un arrêt de lecture dans un navigateur se lit donc d'abord dans le journal du
 serveur : une ligne `TranscodeKiller … Killing transcode process` met le

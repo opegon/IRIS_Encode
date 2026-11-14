@@ -83,7 +83,7 @@ def test_extraction_vobsub_en_matroska(tmp_path):
 def test_reel_extraction_vobsub_garde_la_palette(tmp_path):
     """Sur le VobSub de L'Égyptien : le `.mks` porte la piste et sa palette
     (CodecPrivate), que seconv lit — c'est l'essai du 2026-11-07."""
-    source = RACINE / "resources_files" / "L'Égyptien.1954.1080p.upscaled.hevc-iris.mkv"
+    source = RACINE / "resources_files" / "tests" / "L'Égyptien.1954.1080p.upscaled.hevc-iris.mkv"
     if not source.exists():
         pytest.skip("L'Égyptien absent du dossier de travail")
     vob = SubtitleTrack(index=0, codec="dvd_subtitle", language="fre")

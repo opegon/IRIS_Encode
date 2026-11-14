@@ -22,7 +22,7 @@ from core.sar import Confiance, Raison, estimer
 from core.scanner import VideoInfo
 
 APP    = Path(__file__).resolve().parent.parent
-LE_KID = APP / "resources_files" / "The Kid (and A Dog's Life) - 1921.avi"
+LE_KID = APP / "resources_files" / "tests" / "The Kid (and A Dog's Life) - 1921.avi"
 
 
 def _info(tmp_path: Path, w=720, h=480, sar_flux="", codec="msmpeg4v3",

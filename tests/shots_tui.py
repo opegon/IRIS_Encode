@@ -12,7 +12,7 @@ Pilote l'application en headless (Textual run_test) et exporte chaque écran
 en SVG à taille fixe (160x45), pour disposer d'un inventaire fidèle du rendu
 réel — et non d'une maquette. Deux contextes :
 
-  A. `resources_files/` — matériel réel (noms longs, pistes multiples, HDR).
+  A. `resources_files/tests/` — matériel réel (noms longs, pistes multiples, HDR).
      Aucune touche destructrice n'y est pressée : ni F2, ni F3, ni Ctrl+D.
   B. un dossier temporaire — pour les écrans qui écrivent (suppression, mux,
      encodage), qui ne doivent jamais toucher au matériel réel.
@@ -57,7 +57,7 @@ force_utf8_output()
 SIZE     = (160, 45)
 ROOT     = Path(__file__).resolve().parent.parent
 OUT_DIR  = Path(_ARGS[0]) if _ARGS else ROOT / "_shots" / LANGUE
-REAL_DIR = ROOT / "resources_files"
+REAL_DIR = ROOT / "resources_files" / "tests"
 
 # (slug, libellé, classe d'écran, état, détail)
 MANIFEST: list[tuple[str, str, str, str, str]] = []
@@ -149,7 +149,7 @@ async def context_real() -> None:
                 failed(slug, label, exc)
 
         # Le parcours récursif (F3) exige un dossier sous le curseur :
-        # `resources_files/` n'en contient aucun, la prise se fait en contexte B.
+        # `resources_files/tests/` n'en contient aucun, la prise se fait en contexte B.
 
         # ── Fiche AlloCiné (F7) ──────────────────────────────────────────────
         # Seule prise qui sort de la machine : elle envoie le titre du film à

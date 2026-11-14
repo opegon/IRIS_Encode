@@ -27,8 +27,8 @@ from core.profiles import Profile
 from core.scanner import AudioTrack, VideoInfo
 
 APP    = Path(__file__).resolve().parent.parent
-LE_KID = APP / "resources_files" / "The Kid (and A Dog's Life) - 1921.avi"
-CURE   = APP / "resources_files" / "DVD5" / "DVD" / "CURE_IN_ORANGE.ISO"
+LE_KID = APP / "resources_files" / "tests" / "The Kid (and A Dog's Life) - 1921.avi"
+CURE   = APP / "resources_files" / "tests" / "CURE_IN_ORANGE.ISO"
 from tests.outils_reels import outil  # noqa: E402
 
 FFMPEG = outil("ffmpeg")

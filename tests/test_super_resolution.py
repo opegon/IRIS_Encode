@@ -99,7 +99,7 @@ def test_installation_verifie_la_copie(tmp_path, monkeypatch, capsys):
 def test_empreinte_epinglee_de_la_copie():
     """`sha256_copie` est bien celle de l'asset publié, privé de `//!WHEN`."""
     info = _sources()[sr.CLE_SHADER]
-    original = APP / "resources_files" / "mesure_igpu" / sr.SHADER
+    original = APP / "resources_files" / "tests" / sr.SHADER
     if not original.is_file():
         pytest.skip("asset d'origine absent (resources_files/ n'est pas versionné)")
     data = original.read_bytes()
@@ -247,7 +247,7 @@ def test_reel_le_shader_agit_sous_x1_3():
     seul = _empreinte(base)
     copie = _empreinte(f"{base}:custom_shader_path={sr.chemin_filtre(_SHADER_LOCAL)}")
     assert copie != seul
-    original = APP / "resources_files" / "mesure_igpu" / sr.SHADER
+    original = APP / "resources_files" / "tests" / sr.SHADER
     if original.is_file():
         assert _empreinte(f"{base}:custom_shader_path="
                           f"{sr.chemin_filtre(original)}") == seul

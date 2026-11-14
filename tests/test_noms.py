@@ -95,7 +95,7 @@ def test_un_fichier_reel_rend_le_nom_de_ses_sous_titres():
     from core.preflight import get_tool_path
 
     p = (Path(__file__).resolve().parent.parent / "resources_files"
-         / "silo.s03e09.1080p.mkv")
+         / "tests" / "silo.s03e09.1080p.mkv")
     if not p.exists():
         pytest.skip("silo.s03e09.1080p.mkv absent du dossier de travail")
 

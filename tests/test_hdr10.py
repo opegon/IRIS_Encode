@@ -51,7 +51,7 @@ def test_une_valeur_sans_denominateur_vaut_l_entier(valeur):
 
 def _fichier(nom: str):
     from pathlib import Path
-    p = Path(__file__).resolve().parent.parent / "resources_files" / nom
+    p = Path(__file__).resolve().parent.parent / "resources_files" / "tests" / nom
     if not p.exists():
         pytest.skip(f"{nom} absent du dossier de travail")
     return p
@@ -74,7 +74,7 @@ def test_maxcll_non_mesure_n_est_pas_invente():
     """Un flux qui déclare 0,0 dit « non mesuré ». Injecter `max-cll=0,0`
     affirmerait que le pic lumineux est nul."""
     _, cll = _hdr10_metadata(_fichier(
-        "Watchmen.2009.MULTi.2160p.BluRay.AC3.5.1.original.mkv"))
+        "Watchmen.2009.MULTi.2160p.BluRay.AC3.5.1_original.mkv"))
     assert cll is None
 
 

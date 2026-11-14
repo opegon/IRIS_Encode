@@ -4,7 +4,7 @@ tests/test_dvd.py — Les titres d'un dossier DVD (IE-121).
 Un DVD se présente par les titres de ses IFO, lus sans outil ; ffmpeg ne
 sert qu'à les analyser et à les extraire, par l'outil DVD — un BtbN dans
 `bin\\dvd\\`, à part du ffmpeg qui encode. Les IFO sont fabriqués ici octet par
-octet ; le DVD d'essai (`resources_files/DVD5/DVD/CURE_IN_ORANGE.ISO`) a
+octet ; le DVD d'essai (`resources_files/tests/CURE_IN_ORANGE.ISO`) a
 servi à valider le lecteur contre ffprobe : un titre, 26 chapitres, 6 573,0 s
 lus contre 6 572,5 s.
 """

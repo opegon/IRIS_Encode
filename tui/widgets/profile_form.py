@@ -72,6 +72,11 @@ _AGRANDIR = [
 ]
 _BITRATE_480P = [("1000k", 1000), ("1200k", 1200), ("1500k", 1500)]
 
+# Conversion H.264 → HEVC (IE-202) : part du débit source gardée, et débit
+# source sous lequel un H.264 reste tel quel.
+_RATIO_H264 = [("60%", 0.6), ("65%", 0.65), ("70%", 0.7), ("75%", 0.75), ("80%", 0.8)]
+_PLANCHER_H264 = [("2000k", 2000), ("2500k", 2500), ("3000k", 3000), ("4000k", 4000)]
+
 
 def _agrandir_depuis_cles(actif: bool, passes: int) -> str:
     return "off" if not actif else ("2" if passes == 2 else "1")
@@ -136,6 +141,8 @@ def _avec_valeur(pairs: list, val: Any) -> list:
     """
     if any(v == val for _l, v in pairs):
         return list(pairs)
+    if isinstance(val, float):
+        return sorted([*pairs, (f"{round(val * 100)}%", val)], key=lambda p: p[1])
     if isinstance(val, int) and not isinstance(val, bool):
         return sorted([*pairs, (f"{val}k", val)], key=lambda p: p[1])
     if isinstance(val, str) and val:
@@ -276,6 +283,24 @@ class ProfileForm(Widget):
                 yield Checkbox(_("keep 4K (otherwise → 1080p)"), id="field-keep4k")
 
         yield Static("", id="cons-seuils", classes="consequence")
+
+        with Widget(classes="form-row"):
+            with Widget(classes="form-cell"):
+                yield Checkbox(_("convert H.264 to HEVC"), id="field-h264")
+            with Widget(classes="form-cell"):
+                yield Label(_("HEVC / source"), classes="form-lbl")
+                yield Select(_opts(_RATIO_H264), id="field-h264-ratio",
+                             classes="form-ctrl")
+
+        with Widget(classes="form-row"):
+            with Widget(classes="form-cell"):
+                yield Label(_("H.264 floor (kbps)"), classes="form-lbl")
+                yield Select(_opts(_PLANCHER_H264), id="field-h264-min",
+                             classes="form-ctrl")
+            with Widget(classes="form-cell"):
+                pass
+
+        yield Static("", id="cons-h264", classes="consequence")
 
         # ── Comment encoder ───────────────────────────────────────────────────
         yield Static(_section(_("How to encode")), classes="section-hdr")
@@ -469,6 +494,17 @@ class ProfileForm(Widget):
                    + (_("A 4K source stays in 4K.") if garde
                       else _("A 4K source is brought down to 1080p.")))
 
+        if self._chk("#field-h264"):
+            self._pose("#cons-h264",
+                       _("In 1080p and above, an H.264 file under its threshold "
+                         "is converted to HEVC at {percent}% of its bitrate, "
+                         "from {floor}k upward. Below 1080p, H.264 stays.").format(
+                           percent=round(self._txt("#field-h264-ratio", 0.7) * 100),
+                           floor=self._txt("#field-h264-min", 2500)))
+        else:
+            self._pose("#cons-h264",
+                       _("An H.264 file under its threshold is left as it is."))
+
         preset = self._txt("#field-preset", "medium")
         self._pose("#cons-preset",
                    _("Only applies to files that are actually re-encoded — "
@@ -580,6 +616,9 @@ class ProfileForm(Widget):
         _set_sel("#field-480p",   data.get("bitrate_480p_kbps",       1500))
         _set_sel("#field-hdr10q", data.get("hdr10_quality",     "compat"))
         _set_chk("#field-keep4k", data.get("keep_4k",                False))
+        _set_chk("#field-h264",   data.get("convert_h264",           False))
+        _set_sel("#field-h264-ratio", data.get("h264_to_hevc_ratio",  0.7))
+        _set_sel("#field-h264-min",   data.get("h264_min_kbps",       2500))
         _set_chk("#field-delsrc", data.get("delete_source",          False))
         _set_inp("#field-langs",
                  ", ".join(data.get("audio_languages", ["fre", "eng"])))
@@ -641,6 +680,9 @@ class ProfileForm(Widget):
             "bitrate_480p_kbps":       _g_sel("#field-480p",   1500),
             "hdr10_quality":           _g_sel("#field-hdr10q","compat"),
             "keep_4k":                 _g_chk("#field-keep4k"),
+            "convert_h264":            _g_chk("#field-h264"),
+            "h264_to_hevc_ratio":      _g_sel("#field-h264-ratio", 0.7),
+            "h264_min_kbps":           _g_sel("#field-h264-min",   2500),
             "delete_source":           _g_chk("#field-delsrc"),
             "audio_languages":         langs,
             "subtitle_languages":      sub_langs,
@@ -682,6 +724,8 @@ class ProfileForm(Widget):
         "#field-preset": _PRESET,
         "#field-upscale": _AGRANDIR,
         "#field-480p":   _BITRATE_480P,
+        "#field-h264-ratio": _RATIO_H264,
+        "#field-h264-min":   _PLANCHER_H264,
         "#field-hdr10q": _HDR10_QUALITY,
         "#field-stereo": _BR_STEREO,
         "#field-51":     _BR_SURROUND,

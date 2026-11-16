@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.3.4 — document de référence courant
-**Date** : 2026-11-14
+**Version** : 0.9.3.5 — document de référence courant
+**Date** : 2026-11-16
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -761,11 +761,19 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 | `container` | str | `auto` / `mp4` / `mkv` — conteneur de sortie (§ 8.6) |
 | `upscale` | bool | agrandir par super-résolution les sources plus petites que le 1080p (§ 8.1) ; défaut `false` |
 | `upscale_passes` | int | `1` / `2` — deux passes ×2 puis réduction au cadre 1080p (§ 8.1) ; sans effet si `upscale` est faux |
+| `convert_h264` | bool | convertir en HEVC un H.264 sous la cible, en 1080p et au-dessus (§ 8.1, CAS 1 ter) ; défaut `false` |
+| `h264_to_hevc_ratio` | float | part du débit source visée par la conversion, strictement entre 0 et 1 ; défaut `0.7` |
+| `h264_min_kbps` | int | débit source sous lequel un H.264 n'est pas converti ; défaut `2500` |
 
 Le formulaire expose `upscale` et `upscale_passes` en un seul choix
 (`non` / `oui, une passe` / `oui, deux passes (lent)`), comme l'audio sans
 perte, avec le débit 480p à côté ; deux passes y affichent l'avertissement de
 coût (D16). La liste des profils a une colonne **Agrandir** : `—`, `↑`, `↑ ×2`.
+
+La conversion H.264 → HEVC (v0.9.3.5, IE-202) occupe la section « Quand
+réencoder » : une case, la part gardée (60 à 80 %) et le plancher (2 000 à
+4 000k), avec leur ligne de conséquence. Une valeur du profil hors liste
+s'ajoute à la liste (`_avec_valeur`, flottants compris).
 
 ### 6.2 Comportement quand le fichier ne fournit rien
 
@@ -1041,6 +1049,7 @@ params = [
 |---|---|---|
 | **CAS 1 bis** | débit vidéo **inconnu** (0 : fichier en cours d'écriture, flux sans durée) | Réencodage au débit cible, raison « Débit inconnu » (v0.8.9.113, CR-19 — l'analyse posait 9 999 999 b/s, qui restait sous une cible 4K et devenait la cible d'un codec à convertir) |
 | **CAS 1** | bitrate source > seuil cible + 10 % (`TOLERANCE_DEBIT_PCT`) | Réencodage HEVC (ou H264 si cible < 1080p et sortie non HDR) au bitrate cible |
+| **CAS 1 ter** | profil en `convert_h264`, source `h264` au débit connu ≥ `h264_min_kbps` (défaut 2 500), sortie HEVC (tranche ≥ 1080p), bitrate OK | Conversion HEVC à `min(débit source × h264_to_hevc_ratio, cible)` (ratio défaut 0,70, au kilo-bit près), résolution limitée comme au CAS 2 ; raison « H.264 5000k → HEVC 3500k (70% de la source) » (v0.9.3.5, IE-202 — `cible_conversion_h264`) |
 | **CAS 2** | bitrate OK mais résolution trop grande | Redimensionnement HEVC, bitrate original |
 | **CAS 3** | bitrate OK, résolution OK, **codec hors `CODECS_LISIBLES`** | Réencodage, bitrate conservé — H264 sous 1080p, HEVC au-dessus (et pour toute sortie HDR) |
 | **ENCODE_DV** | un des trois cas ci-dessus, profil en `dv`, et RPU réinjectable (§ 7.4) | Réencodage au débit cible, RPU sorti puis remis |
@@ -4596,6 +4605,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.3.2 | 2026-11-14 | **`F10 Quitter` dans l'en-tête**, à côté de `F11 Plein écran`, plus au pied de page de chaque écran · **`A` bascule tout / aucun** sur l'accueil, `N` retirée (IE-200) · `tests/test_entete_quitter.py`, `tests/test_bascule_selection.py` |
 | 0.9.3.3 | 2026-11-14 | **La sortie ne reprend plus le titre de la source** (§ 8.8, IE-198) : titre global vidé par les quatre commandes qui écrivent une sortie finale (`build_command`, `build_strip_mp4`, `build_dv_mp4_remux`, `build_strip_command`) ; titres de piste gardés · `tests/test_titre_sortie.py` |
 | 0.9.3.4 | 2026-11-14 | **`pytest.ini`** (§ 18, IE-196) : avertissements en erreurs, marqueurs stricts ; les tubes des sous-processus sont fermés à la fin de chacun (`EncoderProcess`, `MuxProcess`, `TuyauRpu`, `sync`, `youtube`) · **`shots_tui.py` sur un clone** : jeu synthétique quand `resources_files/tests/` manque, 28 prises sur 28 au lieu de 7 |
+| 0.9.3.5 | 2026-11-16 | **Conversion H.264 → HEVC à débit dérivé de la source** (§ 6.1, § 8.1 CAS 1 ter, IE-202) : opt-in `convert_h264`, 70 % du débit source (`h264_to_hevc_ratio`), rien sous 2 500k (`h264_min_kbps`), pas sous 1080p ; trois champs dans l'éditeur de profils · `tests/test_conversion_h264.py` |
 | 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |
 | 0.9.2.11 | 2026-11-13 | **HDR sous la tranche 1080p** (§ 8.1, § 14.0, IE-189) : la décision automatique garde en HEVC toute source dont la sortie reste HDR, comme le forçage ; H264 seulement pour une sortie SDR (CR-118) · `tests/test_hdr_tranche.py` |
 | 0.9.2.10 | 2026-11-13 | **Sous-titres et conteneur** (§ 8.6, IE-188) : `mov_text` converti en SubRip vers Matroska (`-c:s:N srt`, CR-117) ; en `container = "mp4"`, seuls les sous-titres doublés par un texte de même langue et de même nature sont écartés, sinon le conteneur cède ; pistes écartées nommées dans l'Aperçu (CR-119) · `tests/test_mov_text_mkv.py`, `tests/test_conteneur.py` |

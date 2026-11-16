@@ -672,3 +672,9 @@ dans la sortie (mkvmerge le prend même sur une entrée seconde) ;
 ([[source-2026-11-13-transcodekiller]]), vient du titre d'une piste en MP4
 (boîte `name`), relu malgré l'avertissement. IRIS vide le titre global de ses
 sorties en v0.9.3.3 (IE-198). Page touchée : [[conteneurs]].
+
+## [2026-11-16] ingest | Conversion H.264 → HEVC opt-in (IE-202)
+
+Décisions de l'utilisateur : ratio 0,70, plancher 2 500k, rien sous 1080p,
+clés exposées dans l'éditeur de profils. Livré en v0.9.3.5. Page touchée :
+[[codecs-video]].

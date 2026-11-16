@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-11-05
+maj: 2026-11-16
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -33,6 +33,12 @@ raisonnable.
 | VC-1, MPEG-2, DivX, codec inconnu | réencodé | |
 
 Cible : **H264 sous 1080p** (il y compresse mieux), **HEVC au-dessus**.
+
+Un H264 *sous* la cible du profil est gardé tel quel, sauf si le profil active
+`convert_h264` (v0.9.3.5) : en 1080p et au-dessus, il est converti en HEVC à
+70 % de son propre débit (`h264_to_hevc_ratio`), à partir de 2 500k
+(`h264_min_kbps`). Ratio et plancher sont des choix de l'utilisateur, pas une
+mesure d'équivalence de qualité. *(décidé, 2026-11-16)*
 
 Vérifié de bout en bout (mesuré, v0.8.1.21) :
 

@@ -851,6 +851,40 @@ def debit_au_dessus_de_la_cible(bitrate: int, target_bps: int) -> bool:
     return bitrate * 100 > target_bps * (100 + TOLERANCE_DEBIT_PCT)
 
 
+# Conversion H.264 → HEVC à débit dérivé de la source (IE-202), opt-in par
+# profil. Tranché avec l'utilisateur le 2026-11-16 : 70 % du débit source,
+# rien sous 2 500k (une génération de perte pour quelques centaines de
+# kilo-octets par minute), pas sous 1080p (H.264 y reste la sortie).
+RATIO_H264_HEVC_DEFAUT = 0.70
+PLANCHER_H264_KBPS_DEFAUT = 2500
+
+
+def cible_conversion_h264(info: VideoInfo, profile: Profile,
+                          action: VideoAction, target_bps: int) -> Optional[int]:
+    """Le débit visé d'un H.264 converti en HEVC, ou None s'il ne l'est pas.
+
+    La décision comparait le débit de la source à la cible du profil sans
+    regarder le codec : un H.264 à 5 000k avec une cible de 8 000k était
+    laissé tel quel, alors que le HEVC tient la même image en moins de place.
+    Le profil qui l'active (`convert_h264`) le convertit à `débit source ×
+    h264_to_hevc_ratio`, jamais au-dessus de sa propre cible.
+
+    Appelée après le CAS 1 : la source est déjà sous la cible + tolérance.
+    Une sortie de la conversion est du HEVC : elle ne repart pas au scan
+    suivant, rien ici ne regarde un HEVC.
+    """
+    if not profile.get("convert_h264", False):
+        return None
+    if action != VideoAction.ENCODE_HEVC or info.codec.lower() != "h264":
+        return None
+    plancher = profile.get("h264_min_kbps", PLANCHER_H264_KBPS_DEFAUT) * 1000
+    if not info.bitrate or info.bitrate < plancher:
+        return None
+    ratio = profile.get("h264_to_hevc_ratio", RATIO_H264_HEVC_DEFAUT)
+    # Au kilo-bit près : la cible s'affiche et se choisit en `k`.
+    return min(int(info.bitrate * ratio) // 1000 * 1000, target_bps)
+
+
 # Le retrait du RPU demande dovi_tool *et* mkvmerge. Sans eux, proposer
 # « → HDR10 » serait proposer une action qui échouera au lancement : la
 # décision retombe sur SKIP. L'application le renseigne au démarrage.
@@ -1166,6 +1200,23 @@ def _decide_video_classique(info: VideoInfo, profile: Profile,
                 bitrate=info.kbps, target=target_bps // 1000,
                 tolerance=TOLERANCE_DEBIT_PCT)),
             target_bitrate=target_bps,
+            target_width=limit_w,
+            target_height=limit_h,
+            dv_action=dv_action,
+            output_suffix=suffix,
+        )
+
+    # CAS 1 ter — H.264 sous la cible, converti en HEVC à un débit dérivé du
+    # sien (IE-202). Avant le CAS 2 : une source trop grande garde sa réduction
+    # (`limit_w`, `limit_h`), mais au débit converti plutôt qu'au sien.
+    converti = cible_conversion_h264(info, profile, action, target_bps)
+    if converti is not None:
+        return VideoDecision(
+            action=action,
+            reason=_raison(_("H.264 {bitrate}k → HEVC {target}k ({percent}% of the source)").format(
+                bitrate=info.kbps, target=converti // 1000,
+                percent=round(converti * 100 / info.bitrate))),
+            target_bitrate=converti,
             target_width=limit_w,
             target_height=limit_h,
             dv_action=dv_action,

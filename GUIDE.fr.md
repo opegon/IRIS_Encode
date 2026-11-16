@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.3.4
+**Version** : 0.9.3.5
 **Date** : 2026-11-09
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -561,6 +561,15 @@ La section **Agrandissement** du formulaire règle le choix par défaut pour les
 fichiers du profil (non / une passe / deux passes) et le débit 480p, celui des
 sources montées en 480p. La colonne **Agrandir** de la liste affiche `↑` (une
 passe) ou `↑ ×2`.
+
+**Convertir le H.264 en HEVC** (section « Quand réencoder », désactivé par
+défaut) : en 1080p et au-delà, un fichier H.264 sous le seuil du profil n'est
+plus laissé tel quel, mais converti en HEVC à une part de son propre débit —
+70 % par défaut : un H.264 à 5000k sort en HEVC à 3500k, jamais au-dessus de
+la cible du profil. Sous le **Plancher H.264** (2500k par défaut), le fichier
+reste tel quel : une génération de perte de plus ne vaut pas si peu de place.
+Sous 1080p, le H.264 reste la sortie et rien ne change. L'aperçu donne la
+raison : « H.264 5000k → HEVC 3500k (70% de la source) ».
 
 ---
 

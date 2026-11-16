@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.3.4
+**Version**: 0.9.3.5
 **Date**: 2026-11-09
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -551,6 +551,15 @@ before starting a batch.
 The form's **Upscaling** section sets the default for the profile's files
 (no / one pass / two passes) and the 480p bitrate, used by sources brought up
 to 480p. The **Upscale** column of the list shows `↑` (one pass) or `↑ ×2`.
+
+**Convert H.264 to HEVC** (section "When to re-encode", off by default): in
+1080p and above, an H.264 file under the profile's threshold is no longer left
+as it is, but converted to HEVC at a share of its own bitrate — 70% by
+default, so an H.264 at 5000k comes out in HEVC at 3500k, never above the
+profile's target. Below the **H.264 floor** (2500k by default), the file stays
+as it is: one more generation of loss is not worth so little space. Under
+1080p, H.264 remains the output and nothing changes. The dry run gives the
+reason: "H.264 5000k → HEVC 3500k (70% of the source)".
 
 ---
 

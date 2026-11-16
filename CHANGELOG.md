@@ -1,5 +1,31 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.5] — 2026-11-16
+
+### Conversion H.264 → HEVC à débit dérivé de la source (IE-202)
+
+- **Un H.264 sous la cible peut être converti en HEVC.** La décision
+  comparait le débit de la source à la cible du profil sans regarder le
+  codec : un H.264 1080p à 5 000k, avec une cible de 8 000k, était laissé tel
+  quel, alors que le HEVC tient la même image en moins de place. Un profil
+  qui active `convert_h264` le convertit à 70 % de son débit (« H.264 5000k
+  → HEVC 3500k (70% de la source) »), jamais au-dessus de sa propre cible.
+- **Opt-in, réglable** : `convert_h264` (défaut `false`),
+  `h264_to_hevc_ratio` (défaut `0.7`, strictement entre 0 et 1),
+  `h264_min_kbps` (défaut `2500` : en dessous, une génération de perte pour
+  trop peu de gain). Une valeur invalide est écartée et nommée au chargement.
+- **Pas sous 1080p** : H.264 y reste la sortie, l'option ne change rien.
+- **Pas de nouvelle conversion au scan suivant** : la sortie est du HEVC, sous
+  la cible, donc ignorée.
+- Une source trop grande pour le profil garde sa réduction, au débit converti
+  plutôt qu'au sien. L'estimation de taille et la durée prévue suivent la
+  nouvelle cible.
+- **Éditeur de profils** : une case « convertir le H.264 en HEVC », la part
+  gardée (60 à 80 %) et le plancher (2 000 à 4 000k), avec la ligne de
+  conséquence. Une valeur hors liste du profil s'ajoute à la liste.
+- `tests/test_conversion_h264.py` (20 tests ; 15 échouent sans la
+  modification).
+
 ## [v0.9.3.4] — 2026-11-14
 
 ### Tests : `pytest.ini`, captures sur un clone (IE-196, points 2 et 3)

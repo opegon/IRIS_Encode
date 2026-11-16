@@ -210,10 +210,13 @@ _CONTROLES: dict[str, Any] = {
     **{cle: _entier_positif for cle in (
         "bitrate_480p_kbps", "bitrate_720p_kbps", "bitrate_1080p_kbps",
         "bitrate_4k_kbps", "audio_stereo_kbps", "audio_surround_kbps",
-        "audio_surround_7_1_kbps")},
+        "audio_surround_7_1_kbps", "h264_min_kbps")},
     **{cle: lambda v: isinstance(v, bool) for cle in (
         "keep_4k", "delete_source", "preserve_hd_audio",
-        "audio_copy_compatible", "upscale")},
+        "audio_copy_compatible", "upscale", "convert_h264")},
+    # Une fraction stricte : à 1, la conversion réencoderait au même débit.
+    "h264_to_hevc_ratio": lambda v: (isinstance(v, (int, float))
+                                     and not isinstance(v, bool) and 0 < v < 1),
     "upscale_passes":     lambda v: v in (1, 2) and not isinstance(v, bool),
     # Libre : ffmpeg accepte `slower`, `p5`…, que le formulaire ne propose pas.
     "preset_encoder":     lambda v: isinstance(v, str) and bool(v.strip()),

@@ -672,9 +672,25 @@ dans la sortie (mkvmerge le prend même sur une entrée seconde) ;
 ([[source-2026-11-13-transcodekiller]]), vient du titre d'une piste en MP4
 (boîte `name`), relu malgré l'avertissement. IRIS vide le titre global de ses
 sorties en v0.9.3.3 (IE-198). Page touchée : [[conteneurs]].
+## [2026-11-16] ingest | Options de qualité NVENC mesurées en VMAF (IE-201)
+
+Relevé brut [[2026-11-16-nvenc-options-vmaf]] : 92 encodages `hevc_nvenc` à
+3500k sur quatre extraits libres (*Tears of Steel*, *Sintel*), VMAF et PSNR
+contre la source. `fast` = P1, `medium` = P4, `slow` = P7 + multipasse
+(vérifié bit à bit). Main10 en SDR seul gain net (+0,1 à +0,4 VMAF) ;
+`-b_ref_mode` et `-multipass` sans effet en `fast`/`medium`. Décision de
+l'utilisateur en attente : [[codecs-video]] sera complété une fois tranché.
 
 ## [2026-11-16] ingest | Conversion H.264 → HEVC opt-in (IE-202)
 
 Décisions de l'utilisateur : ratio 0,70, plancher 2 500k, rien sous 1080p,
 clés exposées dans l'éditeur de profils. Livré en v0.9.3.5. Page touchée :
 [[codecs-video]].
+
+## [2026-11-16] ingest | Main10 en SDR pour HEVC NVENC retenu (IE-201)
+
+Décision de l'utilisateur : proposition 1 seule (main10 pour toute sortie
+HEVC NVENC ouverte en 10 bits au sondage). Lookahead, preset de
+`movie_1080p_basic` : non retenus pour l'instant. Mesuré au passage :
+`scale_cuda=format=p010le` garde la plage pleine. Livré en v0.9.3.6. Page
+touchée : [[codecs-video]].

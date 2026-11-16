@@ -430,7 +430,7 @@ def encodeur_de(cmd: list[str]) -> Optional[str]:
 
 
 def sortie_10_bits(cmd: list[str]) -> bool:
-    """La commande encode-t-elle en 10 bits (sortie HDR) ?
+    """La commande encode-t-elle en 10 bits (sortie HDR, ou HEVC NVENC) ?
 
     La chaîne tout-puce (`filtre_tout_puce`) ne passe pas `-pix_fmt` : le
     format y est celui que rend `vpp_qsv` ou `scale_cuda`.
@@ -844,6 +844,14 @@ def _encodeur_et_format(info, vid, platform: PlatformProfile) -> tuple[str, str,
     n'arrive donc jamais ici en H264 avec une sortie HDR : la décision
     automatique la garde en HEVC (CR-118), le choix manuel de H264 la passe
     en SDR (`decision.h264_force_sdr`).
+
+    Le HEVC de NVENC passe aussi en main10 pour une sortie SDR (IE-201) :
+    mesuré en VMAF sur une RTX A4500, au même débit, +0,1 à +0,4 point sur
+    les quatre extraits et les trois presets, sans perte de vitesse
+    (`wiki/raw/2026-11-16-nvenc-options-vmaf.md`). Seulement si le sondage du
+    lancement a ouvert l'encodeur en 10 bits : une carte Maxwell reste en
+    8 bits. QSV, AMF et libx265 restent en 8 bits en SDR : rien n'a été
+    mesuré ici pour eux.
     """
     is_av1 = (vid.action == VideoAction.ENCODE_AV1)
     if vid.action == VideoAction.ENCODE_HEVC:
@@ -863,6 +871,9 @@ def _encodeur_et_format(info, vid, platform: PlatformProfile) -> tuple[str, str,
         pix_fmt = "p010le" if "amf" in encoder else "yuv420p10le"
         if not is_av1:
             prof_str = "main10"
+    elif (vid.action == VideoAction.ENCODE_HEVC and "nvenc" in encoder
+          and platform.peut_encoder_10_bits(encoder)):
+        pix_fmt, prof_str = "yuv420p10le", "main10"
     return encoder, pix_fmt, prof_str
 
 

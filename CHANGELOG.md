@@ -1,5 +1,27 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.6] — 2026-11-16
+
+### HEVC NVENC en 10 bits, SDR compris (IE-201)
+
+- **Une sortie HEVC par NVENC passe en main10 même en SDR.** Elle n'y passait
+  que pour le HDR. Mesuré en VMAF sur une RTX A4500, au même débit, sur quatre
+  extraits (prise de vue réelle de jour et sombre, animation claire et
+  sombre) : +0,1 à +0,4 point avec `fast`, `medium` et `slow`, sans perte de
+  vitesse ni écart de débit.
+- **Seulement si la carte l'encode** : le sondage du lancement doit avoir
+  ouvert `hevc_nvenc` en 10 bits. Une carte Maxwell (GTX 9xx), ou un
+  lancement sans sondage, reste en 8 bits.
+- Sur la chaîne tout-carte, `scale_cuda` convertit en `p010le` (la plage
+  pleine est conservée, mesuré).
+- QSV, AMF et libx265 restent en 8 bits en SDR : rien n'a été mesuré pour eux.
+  Les autres options essayées (`-spatial-aq`, `-temporal-aq`,
+  `-rc-lookahead`, `-b_ref_mode`, `-multipass`) ne sont pas retenues.
+- `tests/test_nvenc_main10.py` (4 tests, contre-vérifiés : chacun échoue sans
+  la branche ou sans la condition de sondage) ; deux tests de `test_nvdec.py`
+  attendent désormais `p010le`, celui de `test_reprise_hors_puce.py`
+  `yuv420p10le`.
+
 ## [v0.9.3.5] — 2026-11-16
 
 ### Conversion H.264 → HEVC à débit dérivé de la source (IE-202)

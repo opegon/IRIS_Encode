@@ -440,18 +440,18 @@ msgstr ""
 msgid "the output lasts {got:.0f} s, {expected:.0f} s expected: it is incomplete"
 msgstr ""
 
-#: core/encoder.py:1106
+#: core/encoder.py:1117
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Empty suffix and same container — encoding refused to avoid corrupting the source file."
 msgstr ""
 
-#: core/encoder.py:1126
+#: core/encoder.py:1137
 #, python-brace-format
 msgid "{dv} → HDR10/SDR needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/): without it, the colors come out wrong."
 msgstr ""
 
 #. -itsoffset is an ffmpeg option, keep it as is.
-#: core/encoder.py:1193
+#: core/encoder.py:1204
 #, python-brace-format
 msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
 msgstr ""

@@ -117,12 +117,41 @@ Sur une courbe PQ, du 8 bits étale 10 bits de dégradés sur 256 niveaux :
   QSV : HDR10 conservé à travers `hevc_qsv` (BT.2020, PQ, écran de mastering),
   source 4K ramenée en 1080p : écran de mastering identique à la source (la
   source n'a pas de MaxCLL). *(observé, i5-1135G7, v0.9.0.9)*
+- Sortie SDR en HEVC par NVENC : main10 aussi depuis v0.9.3.6 (voir
+  [[#Options de qualité NVENC]]).
 - **H264 n'a pas de profil 10 bits chez NVENC** : une source HDR ramenée en
   H264 reste en 8 bits. Ne concerne que les cibles sous 1080p.
 - Le 10 bits ne coûte pas de qualité quand il dépense moins : sur une
   animation, 10 bits à 2 911k donne SSIM **0,9991**, 8 bits à 4 727k donne
   **0,9970**. Le 8 bits consomme 62 % de bits en plus pour un résultat moins
   fidèle. *(mesuré, v0.8.1.24)*
+
+## Options de qualité NVENC
+
+Mesurées en VMAF le 2026-11-16 (IE-201, RTX A4500, 3500k) :
+[[2026-11-16-nvenc-options-vmaf]]. `fast` = P1, `medium` = P4, `slow` = P7
++ multipasse (*mesuré*, sorties identiques bit à bit). Quatre extraits libres
+(*Tears of Steel* de jour et sombre, *Sintel* clair et sombre), VMAF contre
+la source, au même débit :
+
+| Option | Effet | Retenue |
+|---|---|---|
+| main10 en SDR | +0,1 à +0,4 VMAF partout, vitesse inchangée | **oui, v0.9.3.6** |
+| `-rc-lookahead 32` | ≈ +0,1 VMAF, ≈ 10 % plus lent | non (optionnel, non demandé) |
+| `-temporal-aq 1` | nul | non |
+| `-spatial-aq 1` | −0,3 à −0,6 VMAF (VMAF la pénalise par construction ; pas jugé à l'œil) | non |
+| `-b_ref_mode middle`, `-multipass fullres` | sortie identique bit à bit en `fast`/`medium` (P1 n'émet pas d'image B) | non |
+
+Tous les écarts restent sous 1 point VMAF. Le main10 en SDR ne s'applique
+qu'à `hevc_nvenc` ouvert en 10 bits au sondage ; QSV, AMF et libx265 restent
+en 8 bits en SDR, faute de mesure. *(décidé par l'utilisateur, 2026-11-16)*
+`scale_cuda=format=p010le` convertit sur la carte une source 8 bits, plage
+pleine comprise (étiquette `pc`, niveaux 0-244 comme en `nv12`). *(mesuré,
+RTX A4500, ffmpeg de `bin/`)*
+
+Reste ouvert : passer `movie_1080p_basic` de `fast` à `medium` (+0,9 VMAF
+sur l'extrait sombre), après une mesure de vitesse propre — celles en `fast`
+étaient bruitées.
 
 ## Contrôle de débit
 

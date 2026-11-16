@@ -40,16 +40,18 @@ def test_4k_hdr10_vers_1080p_tout_sur_la_carte(tmp_path):
 def test_h264_sans_changement_de_taille_reste_sur_la_carte(tmp_path):
     cmd = _commande(tmp_path, plat=_nvidia(), w=1920, h=1080, codec="h264",
                     pix_fmt="yuv420p", transfert="bt709")
-    assert _apres(cmd, "-vf") == "scale_cuda=format=nv12"
+    # SDR en main10 aussi (IE-201) : `scale_cuda` convertit sur la carte.
+    assert _apres(cmd, "-vf") == "scale_cuda=format=p010le"
     assert _apres(cmd, "-hwaccel_output_format") == "cuda"
     assert "-aspect" not in cmd
 
 
 def test_h264_plage_pleine_sur_la_carte(tmp_path):
-    """`scale_cuda` garde 0-255 et l'étiquette `pc`, comme `scale` (IE-149)."""
+    """`scale_cuda` garde 0-255 et l'étiquette `pc`, comme `scale` (IE-149),
+    en `p010le` comme en `nv12` (mesuré le 2026-11-16, IE-201)."""
     cmd = _commande(tmp_path, plat=_nvidia(), w=1920, h=1080, codec="h264",
                     pix_fmt="yuvj420p", transfert="bt709")
-    assert _apres(cmd, "-vf") == "scale_cuda=format=nv12"
+    assert _apres(cmd, "-vf") == "scale_cuda=format=p010le"
 
 
 def test_carte_anterieure_a_pascal_garde_le_chemin_actuel(tmp_path):

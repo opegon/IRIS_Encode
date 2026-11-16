@@ -53,7 +53,8 @@ def test_la_reprise_ecarte_le_tout_puce(tmp_path):
     assert _apres(reprise, "-hwaccel") == "cuda"
     assert "-hwaccel_output_format" not in reprise
     assert "scale_cuda" not in " ".join(reprise)
-    assert _apres(reprise, "-pix_fmt") == "yuv420p"
+    # HEVC NVENC ouvert en 10 bits : main10 même en SDR (IE-201).
+    assert _apres(reprise, "-pix_fmt") == "yuv420p10le"
 
 
 def test_l_echec_au_raccord_demande_une_reprise(tmp_path):

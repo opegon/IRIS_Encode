@@ -129,3 +129,4 @@ ingestion. Conventions et opérations : [[SCHEMA]]. Historique : [[log]].
 | [[2026-11-13-revue-code]] | Relevés de la revue : messages de ffmpeg 6.1.1 (`mov_text` vers MKV, `-sub_charenc`), mire classée entrelacée, suite de tests hors Windows |
 | [[2026-11-13-jellyfin-transcodekiller]] | Journal Jellyfin 10.11.11 : remux HLS d'une sortie IRIS tué par TranscodeKiller dans Chrome, ffmpeg à code 0 |
 | [[2026-11-13-sous-titres-ffmpeg-81]] | `.srt` UTF-16 (LE, BE) et `mov_text` vers MKV sous ffmpeg 8.1.2 et mkvmerge v103.0 : commandes et résultats |
+| [[2026-11-16-nvenc-options-vmaf]] | IE-201 : VMAF de `hevc_nvenc` à 3500k, main10 SDR et options de qualité une à une, presets `fast`/`medium`/`slow` (RTX A4500, *Tears of Steel*, *Sintel*) |

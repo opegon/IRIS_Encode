@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-11-05
+maj: 2026-11-17
 sources:
   - "[[source-spec]]"
   - "[[source-changelog]]"
@@ -62,7 +62,7 @@ propriétés. Règles d'IRIS : spec § 8.7.
 | Agrandir par super-résolution | `480p`, `576p`, `720p` (→ `1080p.upscaled`) |
 | Réencoder | le codec de la source (`x264`, `x265`, `AV1`…) |
 | Retirer le RPU | `DV`, `DoVi` (→ `HDR10`) |
-| Convertir en SDR | toute marque HDR, `HDR10+`, la profondeur 10 bits |
+| Convertir en SDR | toute marque HDR, `HDR10+` ; la profondeur 10 bits, sauf sortie HEVC NVENC en main10 (v0.9.3.7) |
 | Transcoder l'audio | la famille (`TrueHD` → `E-AC3`), `7.1` → `5.1`, `Atmos` |
 
 Exemple complet : `Film.2160p.DV.HDR10.x265.TrueHD.7.1-GROUP` ressort

@@ -694,3 +694,11 @@ HEVC NVENC ouverte en 10 bits au sondage). Lookahead, preset de
 `movie_1080p_basic` : non retenus pour l'instant. Mesuré au passage :
 `scale_cuda=format=p010le` garde la plage pleine. Livré en v0.9.3.6. Page
 touchée : [[codecs-video]].
+
+## [2026-11-17] ingest | Une sortie SDR en main10 garde son `10bits` (v0.9.3.7)
+
+Conséquence d'IE-201, relevée en livrant celle-ci : le nom d'une sortie SDR
+retirait `10bit` alors que le HEVC de NVENC la réencode en main10. Le
+retrait ne joue plus que pour une sortie en 8 bits ; une seule règle
+(`encoder.hevc_sdr_en_10_bits`) décide du format et du nom. Pages touchées :
+[[hdr-dolby-vision]], [[noms-de-release]].

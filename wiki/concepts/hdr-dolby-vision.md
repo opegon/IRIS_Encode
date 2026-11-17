@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-11-01
+maj: 2026-11-17
 sources:
   - "[[source-2026-11-01-dv-p5-libplacebo]]"
   - "[[source-spec]]"
@@ -147,8 +147,11 @@ zscale=t=linear:npl=100, format=gbrpf32le, zscale=p=bt709,
 tonemap=tonemap=hable:desat=0, zscale=t=bt709:m=bt709:r=tv, format=yuv420p
 ```
 
-Ne vaut pas pour un profil 5 (voir plus haut). La sortie est en **8 bits** (`yuv420p`). `DV`, `HDR`, `HDR10+` et `10bit`
-disparaissent du nom. Un profil sans clé `dolby_vision` se rabat sur `sdr` :
+Ne vaut pas pour un profil 5 (voir plus haut). Le tone mapping rend du
+**8 bits** (`yuv420p`) ; le HEVC de NVENC, ouvert en 10 bits au sondage, le
+réencode en main10 (v0.9.3.6, IE-201), les autres encodeurs restent en
+8 bits. `DV`, `HDR` et `HDR10+` disparaissent du nom ; `10bit` aussi, sauf
+quand la sortie est en main10 (v0.9.3.7). Un profil sans clé `dolby_vision` se rabat sur `sdr` :
 un HDR10 délavé sur un téléviseur qui ne le gère pas est pire qu'un SDR propre.
 
 ### Profil 5 vers HDR10 ou SDR

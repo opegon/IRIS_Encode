@@ -113,164 +113,164 @@ msgstr "copie"
 msgid "SRT (OCR)"
 msgstr "SRT (OCR)"
 
-#: core/decision.py:1033
+#: core/decision.py:1051
 msgid "HDR source"
 msgstr "source HDR"
 
-#: core/decision.py:1036
+#: core/decision.py:1054
 msgid "needs ffmpeg with libplacebo"
 msgstr "demande ffmpeg avec libplacebo"
 
-#: core/decision.py:1084
+#: core/decision.py:1102
 #, python-brace-format
 msgid "{reason} · no upscaling: {why}"
 msgstr "{reason} · pas d'agrandissement : {why}"
 
-#: core/decision.py:1094
+#: core/decision.py:1112
 #, python-brace-format
 msgid "Upscale {width}x{height} → {target_width}x{target_height} (super-resolution ×{factor:.2f}, two passes)"
 msgstr "Agrandi {width}x{height} → {target_width}x{target_height} (super-résolution ×{factor:.2f}, deux passes)"
 
-#: core/decision.py:1097
+#: core/decision.py:1115
 #, python-brace-format
 msgid "Upscale {width}x{height} → {target_width}x{target_height} (super-resolution ×{factor:.2f})"
 msgstr "Agrandi {width}x{height} → {target_width}x{target_height} (super-résolution ×{factor:.2f})"
 
-#: core/decision.py:1130
+#: core/decision.py:1148
 #, python-brace-format
 msgid "{dv} → {target}: needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/)"
 msgstr "{dv} → {target} : demande l'outil Dolby Vision (ffmpeg avec libplacebo, dans ./bin/dv/)"
 
-#: core/decision.py:1175
+#: core/decision.py:1193
 #, python-brace-format
 msgid "{reason} · DV preserved, RPU reinjected"
 msgstr "{reason} · DV préservé, RPU réinjecté"
 
-#: core/decision.py:1177
+#: core/decision.py:1195
 #, python-brace-format
 msgid "{reason} · DV kept → video copied"
 msgstr "{reason} · DV conservé → vidéo copiée"
 
-#: core/decision.py:1186
+#: core/decision.py:1204
 #, python-brace-format
 msgid "Unknown bitrate → {target}k target"
 msgstr "Débit inconnu → cible {target}k"
 
-#: core/decision.py:1199
+#: core/decision.py:1217
 #, python-brace-format
 msgid "Bitrate {bitrate}k > {target}k target +{tolerance}%"
 msgstr "Débit {bitrate}k > {target}k cible +{tolerance}%"
 
-#: core/decision.py:1216
+#: core/decision.py:1234
 #, python-brace-format
 msgid "H.264 {bitrate}k → HEVC {target}k ({percent}% of the source)"
 msgstr "H.264 {bitrate}k → HEVC {target}k ({percent}% de la source)"
 
-#: core/decision.py:1230
+#: core/decision.py:1248
 #, python-brace-format
 msgid "Resolution {width}x{height} > {max_width}x{max_height}"
 msgstr "Résolution {width}x{height} > {max_width}x{max_height}"
 
-#: core/decision.py:1244
+#: core/decision.py:1262
 #, python-brace-format
 msgid "Codec {codec} not supported by the playback chain"
 msgstr "Codec {codec} non lu par la chaîne"
 
-#: core/decision.py:1260
+#: core/decision.py:1278
 #, python-brace-format
 msgid "{dv} → HDR10 without re-encoding"
 msgstr "{dv} → HDR10 sans réencodage"
 
-#: core/decision.py:1271
+#: core/decision.py:1289
 #, python-brace-format
 msgid "Bitrate within target ±{tolerance}%, resolution OK, codec {codec}"
 msgstr "Débit dans la cible ±{tolerance}%, résolution OK, codec {codec}"
 
-#: core/decision.py:1274
+#: core/decision.py:1292
 #, python-brace-format
 msgid "Bitrate OK, resolution OK, codec {codec}"
 msgstr "Débit OK, résolution OK, codec {codec}"
 
-#: core/decision.py:1454
+#: core/decision.py:1472
 msgid "unknown codec, no decoder (encrypted?) → excluded"
 msgstr "codec inconnu, sans décodeur (chiffré ?) → écartée"
 
-#: core/decision.py:1457
+#: core/decision.py:1475
 msgid "manual selection"
 msgstr "sélection manuelle"
 
-#: core/decision.py:1460
+#: core/decision.py:1478
 #, python-brace-format
 msgid "replaced by its {codec} core (track {index})"
 msgstr "remplacée par son cœur {codec} (piste {index})"
 
-#: core/decision.py:1464
+#: core/decision.py:1482
 #, python-brace-format
 msgid "core of track {index}, which already carries it"
 msgstr "cœur de la piste {index}, qui le porte déjà"
 
-#: core/decision.py:1468
+#: core/decision.py:1486
 #, python-brace-format
 msgid "original track (index {index})"
 msgstr "piste originale (index {index})"
 
-#: core/decision.py:1473
+#: core/decision.py:1491
 msgid "language unknown → kept"
 msgstr "langue inconnue → gardée"
 
-#: core/decision.py:1476
+#: core/decision.py:1494
 #, python-brace-format
 msgid "language {language}"
 msgstr "langue {language}"
 
-#: core/decision.py:1479
+#: core/decision.py:1497
 #, python-brace-format
 msgid "language {language} not kept"
 msgstr "langue {language} non retenue"
 
 #. "lossless", "copy" and the profile key preserve_hd_audio stay in English (glossary).
-#: core/decision.py:1514
+#: core/decision.py:1532
 #, python-brace-format
 msgid "{reason} · lossless + preserve_hd_audio → copy"
 msgstr "{reason} · lossless + preserve_hd_audio → copy"
 
-#: core/decision.py:1521
+#: core/decision.py:1539
 #, python-brace-format
 msgid "{reason} · lossless → {codec}"
 msgstr "{reason} · lossless → {codec}"
 
-#: core/decision.py:1530
+#: core/decision.py:1548
 #, python-brace-format
 msgid "{reason} · {codec} compatible → copy"
 msgstr "{reason} · {codec} compatible → copy"
 
-#: core/decision.py:1538
+#: core/decision.py:1556
 #, python-brace-format
 msgid "{reason} · → {codec}"
 msgstr "{reason} · → {codec}"
 
-#: core/decision.py:1560
+#: core/decision.py:1578
 #, python-brace-format
 msgid "Cannot read the audio track of “{file}” added to this file: the profile's audio rule cannot be applied to it."
 msgstr "Impossible de lire la piste audio de « {file} » greffée sur ce fichier : la règle audio du profil ne peut pas s'y appliquer."
 
-#: core/decision.py:1565
+#: core/decision.py:1583
 msgid "added track"
 msgstr "piste greffée"
 
-#: core/decision.py:1831
+#: core/decision.py:1849
 msgid "H264 does not carry HDR: this file will be converted to SDR (tone mapping, slower). Choose HEVC to keep HDR."
 msgstr "H264 ne porte pas le HDR : ce fichier sera converti en SDR (tone mapping, plus lent). Choisissez HEVC pour garder le HDR."
 
-#: core/decision.py:1869
+#: core/decision.py:1887
 msgid "Forced manually (was SKIP)"
 msgstr "Forcé manuellement (était SKIP)"
 
-#: core/decision.py:1871
+#: core/decision.py:1889
 msgid "Forced manually (was DV removal)"
 msgstr "Forcé manuellement (était retrait DV)"
 
-#: core/decision.py:2000
+#: core/decision.py:2018
 #, python-brace-format
 msgid "{reason} · {tracks} for the playback chain → remux"
 msgstr "{reason} · {tracks} pour la chaîne de lecture → remux"
@@ -440,18 +440,18 @@ msgstr "le fichier de sortie est vide"
 msgid "the output lasts {got:.0f} s, {expected:.0f} s expected: it is incomplete"
 msgstr "la sortie dure {got:.0f} s au lieu de {expected:.0f} s : elle est incomplète"
 
-#: core/encoder.py:1117
+#: core/encoder.py:1127
 #, python-brace-format
 msgid "Output path identical to the source ({path}). Empty suffix and same container — encoding refused to avoid corrupting the source file."
 msgstr "Chemin de sortie identique à la source ({path}). Suffixe vide et conteneur identique — encodage refusé pour éviter la corruption du fichier source."
 
-#: core/encoder.py:1137
+#: core/encoder.py:1147
 #, python-brace-format
 msgid "{dv} → HDR10/SDR needs the Dolby Vision tool (ffmpeg with libplacebo, in ./bin/dv/): without it, the colors come out wrong."
 msgstr "{dv} → HDR10/SDR demande l'outil Dolby Vision (ffmpeg avec libplacebo, dans ./bin/dv/) : sans lui, les couleurs sortent fausses."
 
 #. -itsoffset is an ffmpeg option, keep it as is.
-#: core/encoder.py:1204
+#: core/encoder.py:1214
 #, python-brace-format
 msgid "The track “{track}” needs a stretch factor, which ffmpeg cannot apply in one pass (-itsoffset only shifts by a constant offset). mkvmerge can: install it so that the track is added through it."
 msgstr "La piste « {track} » demande un facteur d'étirement, que ffmpeg ne sait pas appliquer en une passe (-itsoffset ne fait qu'un décalage constant). mkvmerge sait le faire : installez-le pour que la greffe passe par lui."
@@ -1304,126 +1304,126 @@ msgstr "Aide"
 msgid "Encodes"
 msgstr "Encodages"
 
-#: tui/app.py:261
-#: tui/app.py:267
+#: tui/app.py:265
+#: tui/app.py:271
 msgid "Graphics card"
 msgstr "Carte graphique"
 
-#: tui/app.py:264
+#: tui/app.py:268
 msgid "AMD graphics card (AMF): experimental support, not yet verified on AMD hardware. Check the first encodes, HDR ones especially."
 msgstr "Carte graphique AMD (AMF) : prise en charge expérimentale, pas encore vérifiée sur du matériel AMD. Contrôlez les premiers encodages, surtout en HDR."
 
-#: tui/app.py:283
+#: tui/app.py:287
 #, python-brace-format
 msgid "{file} unreadable ({error}): this session runs on the defaults and will not rewrite it. Fix it by hand, then restart."
 msgstr "{file} illisible ({error}) : cette session tourne sur les valeurs par défaut et ne le réécrira pas. Corrigez-le à la main, puis relancez."
 
-#: tui/app.py:291
+#: tui/app.py:295
 #, python-brace-format
 msgid "{file}: invalid value ignored, the default applies — {keys}. Fix it by hand: the next save will write the default."
 msgid_plural "{file}: invalid values ignored, the defaults apply — {keys}. Fix them by hand: the next save will write the defaults."
 msgstr[0] "{file} : valeur invalide ignorée, la valeur par défaut s'applique — {keys}. Corrigez-la à la main : le prochain enregistrement écrira la valeur par défaut."
 msgstr[1] "{file} : valeurs invalides ignorées, les valeurs par défaut s'appliquent — {keys}. Corrigez-les à la main : le prochain enregistrement écrira les valeurs par défaut."
 
-#: tui/app.py:300
+#: tui/app.py:304
 #, python-brace-format
 msgid "profiles.toml could not be created ({error}): this session runs on the built-in profiles, and changes to them will not be kept."
 msgstr "profiles.toml n'a pas pu être créé ({error}) : cette session tourne sur les profils livrés, et leurs modifications ne seront pas conservées."
 
-#: tui/app.py:306
+#: tui/app.py:310
 #, python-brace-format
 msgid "Log file unavailable ({error}): nothing will be logged this session."
 msgstr "Journal indisponible ({error}) : rien ne sera journalisé pendant cette session."
 
-#: tui/app.py:356
+#: tui/app.py:360
 #, python-brace-format
 msgid "The folder of {count} source is read-only (mounted disc image?): its output cannot be written next to it."
 msgid_plural "The folders of {count} sources are read-only (mounted disc image?): their outputs cannot be written next to them."
 msgstr[0] "Le dossier de {count} source est en lecture seule (image disque montée ?) : sa sortie ne peut pas s'écrire à côté d'elle."
 msgstr[1] "Les dossiers de {count} sources sont en lecture seule (image disque montée ?) : leurs sorties ne peuvent pas s'écrire à côté d'elles."
 
-#: tui/app.py:383
+#: tui/app.py:387
 #, python-brace-format
 msgid "Already in the queue: {files}"
 msgstr "Déjà dans la file : {files}"
 
-#: tui/app.py:389
+#: tui/app.py:393
 #, python-brace-format
 msgid "{count} file added to the queue — {key} to follow it."
 msgid_plural "{count} files added to the queue — {key} to follow it."
 msgstr[0] "{count} fichier ajouté à la file — {key} pour la suivre."
 msgstr[1] "{count} fichiers ajoutés à la file — {key} pour la suivre."
 
-#: tui/app.py:432
+#: tui/app.py:436
 #: tui/screens/run.py:113
 #: tui/screens/run.py:114
 #: tui/screens/run.py:241
 msgid "Files"
 msgstr "Fichiers"
 
-#: tui/app.py:434
+#: tui/app.py:438
 msgid "Batch done"
 msgstr "Lot terminé"
 
-#: tui/app.py:437
+#: tui/app.py:441
 #, python-brace-format
 msgid "Encoding paused · {done}/{total} · {percent}%"
 msgstr "Encodages en pause · {done}/{total} · {percent}%"
 
-#: tui/app.py:439
+#: tui/app.py:443
 #, python-brace-format
 msgid "Encoding in progress · {done}/{total} · {percent}%"
 msgstr "Encodages en cours · {done}/{total} · {percent}%"
 
-#: tui/app.py:487
+#: tui/app.py:491
 msgid "sleep blocked"
 msgstr "veille bloquée"
 
-#: tui/app.py:489
+#: tui/app.py:493
 #, python-brace-format
 msgid "then {action}"
 msgstr "puis {action}"
 
-#: tui/app.py:522
+#: tui/app.py:526
 msgid "After-batch action canceled."
 msgstr "Action d'après lot annulée."
 
-#: tui/app.py:526
+#: tui/app.py:530
 msgid "A task has resumed: after-batch action canceled."
 msgstr "Un traitement a repris : action d'après lot annulée."
 
-#: tui/app.py:532
+#: tui/app.py:536
 #, python-brace-format
 msgid "Cannot {action}: {error}"
 msgstr "{action} impossible : {error}"
 
-#: tui/app.py:545
+#: tui/app.py:549
 msgid "No encoding in progress."
 msgstr "Aucun encodage en cours."
 
-#: tui/app.py:573
+#: tui/app.py:577
 msgid "The running encode will be stopped, its partial output deleted."
 msgstr "L'encodage en cours sera arrêté, sa sortie partielle effacée."
 
-#: tui/app.py:574
+#: tui/app.py:578
 msgid "The running mux will be stopped, its partial output deleted."
 msgstr "Le mux en cours sera arrêté, sa sortie partielle effacée."
 
-#: tui/app.py:575
+#: tui/app.py:579
 msgid "The running join will be stopped, its partial output deleted."
 msgstr "La jonction en cours sera arrêtée, sa sortie partielle effacée."
 
-#: tui/app.py:576
-#: tui/app.py:577
-#: tui/app.py:578
+#: tui/app.py:580
+#: tui/app.py:581
+#: tui/app.py:582
 msgid "The running measurement will be lost."
 msgstr "La mesure en cours sera perdue."
 
-#: tui/app.py:579
+#: tui/app.py:583
 msgid "The running resync will be lost."
 msgstr "Le recalage en cours sera perdu."
 
-#: tui/app.py:598
+#: tui/app.py:602
 #, python-brace-format
 msgid "{count} waiting file will not be encoded."
 msgid_plural "{count} waiting files will not be encoded."

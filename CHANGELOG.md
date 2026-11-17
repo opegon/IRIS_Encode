@@ -1,5 +1,23 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.7] — 2026-11-17
+
+### Une sortie SDR en main10 garde son `10bits`
+
+- **Le nom d'une sortie SDR retirait la profondeur même quand elle était
+  vraie.** Depuis la v0.9.3.6 (IE-201), le HEVC de NVENC ressort en 10 bits
+  même en SDR ; un `Film.2160p.10bit.DV` converti en SDR sortait pourtant en
+  `Film.2160p.hevc-iris`. Il sort désormais en `Film.2160p.10bit.hevc-iris`.
+- La profondeur part toujours quand le fichier ressort en 8 bits : AV1, H264,
+  QSV, AMF, libx265, carte NVIDIA sans HEVC 10 bits (Maxwell), lancement sans
+  sondage des encodeurs.
+- Une seule règle pour le format et pour le nom : `encoder.hevc_sdr_en_10_bits`,
+  déclarée à la décision au démarrage (`decision.set_hevc_sdr_10_bits`).
+- `tests/test_hdr_audio_nom.py` : 8 tests (contre-vérifiés : chacun échoue
+  sans la condition qu'il vérifie). `tests/conftest.py` restaure la
+  déclaration après chaque test : posée par l'application d'après le vrai
+  sondage, elle passait d'un test à l'autre sur une machine NVIDIA.
+
 ## [v0.9.3.6] — 2026-11-16
 
 ### HEVC NVENC en 10 bits, SDR compris (IE-201)

@@ -835,6 +835,17 @@ def definition_sortie(info, vid) -> tuple[int, int]:
     return largeur // 2 * 2, info.height // 2 * 2
 
 
+def hevc_sdr_en_10_bits(platform: PlatformProfile) -> bool:
+    """Le HEVC d'une sortie SDR part-il en main10 sur cette machine (IE-201) ?
+
+    Oui pour `hevc_nvenc` ouvert en 10 bits au sondage du lancement ; tout
+    autre encodeur, ou un lancement sans sondage, reste en 8 bits.
+    `_encodeur_et_format` en tire le format, `decision` le nom de sortie.
+    """
+    encodeur = platform.encoder_hevc
+    return "nvenc" in encodeur and bool(platform.peut_encoder_10_bits(encodeur))
+
+
 def _encodeur_et_format(info, vid, platform: PlatformProfile) -> tuple[str, str, str]:
     """(encodeur, format de pixels, profil) d'un encodage standard.
 
@@ -871,8 +882,7 @@ def _encodeur_et_format(info, vid, platform: PlatformProfile) -> tuple[str, str,
         pix_fmt = "p010le" if "amf" in encoder else "yuv420p10le"
         if not is_av1:
             prof_str = "main10"
-    elif (vid.action == VideoAction.ENCODE_HEVC and "nvenc" in encoder
-          and platform.peut_encoder_10_bits(encoder)):
+    elif vid.action == VideoAction.ENCODE_HEVC and hevc_sdr_en_10_bits(platform):
         pix_fmt, prof_str = "yuv420p10le", "main10"
     return encoder, pix_fmt, prof_str
 

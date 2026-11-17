@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.3.6 — document de référence courant
-**Date** : 2026-11-16
+**Version** : 0.9.3.7 — document de référence courant
+**Date** : 2026-11-17
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -1807,10 +1807,15 @@ ne nomme pas. Un nom fait des seules marques est rendu tel quel.
 ramené en HDR10, `DV`, `DoVi`, `Dolby Vision`, `HDR` et `HDR10` deviennent
 `HDR10`, seule la première étant réécrite et les suivantes retirées
 (`Film.DV.HDR10` → `Film.HDR10`, `Film 4K DV 2160p` → `Film 1080p DV`) ; ramené en SDR, elles partent toutes,
-`HDR10+` et la profondeur (`10bit`, `10bits`, `10 bits`) comprises, et rien
-ne les remplace — une sortie SDR ne s'annonce pas, et le tone mapping finit
-sur `format=yuv420p` : le fichier ressort en 8 bits. En sortie HDR10 la
-profondeur reste vraie (`yuv420p10le`) et n'est pas touchée.
+`HDR10+` compris, et rien ne les remplace — une sortie SDR ne s'annonce pas.
+La profondeur (`10bit`, `10bits`, `10 bits`) part aussi quand le fichier
+ressort en 8 bits (le tone mapping finit sur `format=yuv420p`), mais reste
+quand une sortie HEVC est réencodée en main10, c'est-à-dire par `hevc_nvenc`
+ouvert en 10 bits au sondage (§ 12, IE-201). L'application le déclare à la
+décision après le sondage (`decision.set_hevc_sdr_10_bits`, valeur tirée de
+`encoder.hevc_sdr_en_10_bits`, la règle même qui choisit le format) ; sans
+sondage, la profondeur part (v0.9.3.7). En sortie HDR10 la profondeur reste
+vraie (`yuv420p10le`) et n'est pas touchée.
 `HDR10+` survit au passage en HDR10 : le retrait du RPU le laisse intact, et
 l'écraser effacerait une métadonnée présente. Ses graphies `HDR10Plus` et
 `HDR10P` valent `HDR10+` partout (`decision.JETONS_HDR_PLUS`). DV conservé (§ 6) : rien ne
@@ -4619,6 +4624,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.3.2 | 2026-11-14 | **`F10 Quitter` dans l'en-tête**, à côté de `F11 Plein écran`, plus au pied de page de chaque écran · **`A` bascule tout / aucun** sur l'accueil, `N` retirée (IE-200) · `tests/test_entete_quitter.py`, `tests/test_bascule_selection.py` |
 | 0.9.3.3 | 2026-11-14 | **La sortie ne reprend plus le titre de la source** (§ 8.8, IE-198) : titre global vidé par les quatre commandes qui écrivent une sortie finale (`build_command`, `build_strip_mp4`, `build_dv_mp4_remux`, `build_strip_command`) ; titres de piste gardés · `tests/test_titre_sortie.py` |
 | 0.9.3.4 | 2026-11-14 | **`pytest.ini`** (§ 18, IE-196) : avertissements en erreurs, marqueurs stricts ; les tubes des sous-processus sont fermés à la fin de chacun (`EncoderProcess`, `MuxProcess`, `TuyauRpu`, `sync`, `youtube`) · **`shots_tui.py` sur un clone** : jeu synthétique quand `resources_files/tests/` manque, 28 prises sur 28 au lieu de 7 |
+| 0.9.3.7 | 2026-11-17 | **Une sortie SDR en main10 garde son `10bits`** (§ 8.7) : depuis IE-201, le HEVC de NVENC ressort en 10 bits même en SDR, et le nom retirait encore la profondeur ; elle ne part plus que d'une sortie en 8 bits (`encoder.hevc_sdr_en_10_bits`, `decision.set_hevc_sdr_10_bits`) · `tests/test_hdr_audio_nom.py` |
 | 0.9.3.6 | 2026-11-16 | **HEVC NVENC en main10, SDR compris** (§ 12, IE-201) : `yuv420p10le` + `main10` (`scale_cuda=format=p010le` sur la carte) quand `hevc_nvenc` s'ouvre en 10 bits au sondage ; +0,1 à +0,4 VMAF au même débit, mesuré sur RTX A4500 ; QSV, AMF, libx265 inchangés · `tests/test_nvenc_main10.py` |
 | 0.9.3.5 | 2026-11-16 | **Conversion H.264 → HEVC à débit dérivé de la source** (§ 6.1, § 8.1 CAS 1 ter, IE-202) : opt-in `convert_h264`, 70 % du débit source (`h264_to_hevc_ratio`), rien sous 2 500k (`h264_min_kbps`), pas sous 1080p ; trois champs dans l'éditeur de profils · `tests/test_conversion_h264.py` |
 | 0.9.2.12 | 2026-11-13 | **Fichiers de réglages** (§ 5, § 6.2, § 14.8, IE-190) : `config.toml` mal typé ramené aux défauts clé par clé (CR-121) ; valeurs invalides de `profiles.toml` écartées et nommées, langue écrite seule lue comme une liste (CR-120) ; premier lancement et journal sans écriture possible (CR-122) ; le formulaire garde un `preset_encoder` hors liste (CR-131) · `tests/test_reglages_types.py` |

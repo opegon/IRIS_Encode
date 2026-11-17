@@ -384,8 +384,9 @@ JETONS_DV       = ("dolby vision", "dolby video", "dovi", "dv")
 JETONS_HDR      = ("hdr10", "hdr")
 JETONS_HDR_PLUS = ("hdr10+", "hdr10plus", "hdr10p")
 
-# La profondeur, fausse en sortie SDR seulement. Le tone mapping finit sur
-# `format=yuv420p` (`_SDR_TONEMAP_FILTER`) : le fichier ressort en 8 bits. En
+# La profondeur, fausse en sortie SDR quand celle-ci ressort en 8 bits : le
+# tone mapping finit sur `format=yuv420p` (`_SDR_TONEMAP_FILTER`), et seul le
+# HEVC de NVENC repasse en 10 bits derrière (IE-201, `_HEVC_SDR_10_BITS`). En
 # sortie HDR10 elle reste vraie — `yuv420p10le`, sans quoi la courbe PQ
 # étalerait ses dégradés sur 256 niveaux.
 JETONS_10_BITS = ("10 bits", "10 bit")
@@ -708,10 +709,14 @@ class FileDecision:
                                            "HDR10")
         elif self.video.dv_action == DVAction.SDR:
             # Une sortie SDR ne s'annonce pas : les marques partent, aucune ne
-            # la remplace. La profondeur va avec — le tone mapping ramène
-            # l'image en 8 bits, un `10bits` dans le nom serait faux.
-            stem = stem_marques_retirees(
-                stem, JETONS_DV + JETONS_HDR + JETONS_HDR_PLUS + JETONS_10_BITS)
+            # la remplace. La profondeur va avec quand le fichier ressort en
+            # 8 bits ; un HEVC de NVENC ressort en 10 bits (IE-201), et son
+            # `10bits` reste vrai.
+            jetons = JETONS_DV + JETONS_HDR + JETONS_HDR_PLUS
+            if not (self.video.action == VideoAction.ENCODE_HEVC
+                    and _HEVC_SDR_10_BITS):
+                jetons += JETONS_10_BITS
+            stem = stem_marques_retirees(stem, jetons)
         stem = self._stem_audio_a_jour(stem)
         if self.video.upscale is not None:
             # Agrandi : le palier atteint, et la mention `upscaled` (D21).
@@ -895,6 +900,19 @@ def set_strip_dv_available(ok: bool) -> None:
     """Déclare si dovi_tool et mkvmerge sont tous deux disponibles."""
     global _STRIP_DV_AVAILABLE
     _STRIP_DV_AVAILABLE = ok
+
+
+# Le HEVC d'une sortie SDR part-il en 10 bits sur cette machine ? Le nom de
+# sortie garde alors son `10bits`. L'application le renseigne après le sondage
+# des encodeurs (`encoder.hevc_sdr_en_10_bits`) ; faux sans sondage, comme le
+# format que choisit l'encodeur.
+_HEVC_SDR_10_BITS = False
+
+
+def set_hevc_sdr_10_bits(ok: bool) -> None:
+    """Déclare si une sortie SDR en HEVC sort en 10 bits (IE-201)."""
+    global _HEVC_SDR_10_BITS
+    _HEVC_SDR_10_BITS = ok
 
 
 _NEAR_1080P_CACHE: tuple[int, int] | None = None

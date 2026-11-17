@@ -39,6 +39,9 @@ _GLOBALES = [
     ("core.sync",     "_ffmpeg_path"),
     ("core.preview",  "_mpv_path"),
     ("core.decision", "_STRIP_DV_AVAILABLE"),
+    # L'app pose le main10 en SDR d'après le vrai sondage (IE-201) : sur une
+    # machine NVIDIA, un nom de sortie SDR d'un test suivant gardait `10bit`.
+    ("core.decision", "_HEVC_SDR_10_BITS"),
     ("core.decision", "_FACTEURS_CACHE"),
     ("core.dovi",     "_ffmpeg_dv"),
     # L'app pose le vrai seconv de `bin/` : sans restauration, un PGS d'un

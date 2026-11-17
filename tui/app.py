@@ -203,6 +203,10 @@ class IrisEncodeApp(App):
         self.ffmpeg_path = ffmpeg_p or "ffmpeg"
         decision_mod.set_strip_dv_available(
             dovi_path is not None and mkvmerge_p is not None)
+        # Une sortie SDR en HEVC garde son `10bits` quand NVENC l'encode en
+        # main10 (IE-201) : la décision le sait par le sondage fait plus haut.
+        from core.encoder import hevc_sdr_en_10_bits
+        decision_mod.set_hevc_sdr_10_bits(hevc_sdr_en_10_bits(self.platform))
         # L'assistant est le mode d'entrée : un fichier, une suite d'étapes.
         # Le parcours libre reste à une touche (W), et le choix tient pour
         # la session — on ne le repose pas à chaque fichier.

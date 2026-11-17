@@ -110,6 +110,53 @@ def test_une_sortie_sdr_perd_aussi_la_profondeur(tmp_path, nom, attendu):
     assert dec.output_path.stem == f"{attendu}.hevc-iris"
 
 
+@pytest.fixture
+def hevc_sdr_10_bits():
+    """La machine encode le HEVC SDR en main10 (NVENC sondé en 10 bits)."""
+    import core.decision as D
+    D.set_hevc_sdr_10_bits(True)
+    yield
+    D.set_hevc_sdr_10_bits(False)
+
+
+@pytest.mark.parametrize("nom, attendu", [
+    ("Film.2160p.10bit.DV",       "Film.2160p.10bit"),
+    ("Film.2160p.10bits.HDR10+",  "Film.2160p.10bits"),
+    ("Film 2160p 10 bits HDR",    "Film 2160p 10 bits"),
+])
+def test_une_sortie_sdr_en_main10_garde_sa_profondeur(tmp_path, hevc_sdr_10_bits,
+                                                      nom, attendu):
+    """IE-201 : NVENC encode le HEVC SDR en main10, le `10bits` reste vrai."""
+    dec = decide(_source(tmp_path, nom), _profile(dolby_vision="sdr"))
+    assert dec.video.dv_action == DVAction.SDR
+    assert dec.video.action == VideoAction.ENCODE_HEVC
+    assert dec.output_path.stem == f"{attendu}.hevc-iris"
+
+
+def test_une_sortie_sdr_hors_hevc_perd_sa_profondeur(tmp_path, hevc_sdr_10_bits):
+    """Le main10 en SDR ne vaut que pour le HEVC : un AV1 SDR reste en 8 bits."""
+    dec = decide(_source(tmp_path, "Film.2160p.10bit.DV"),
+                 _profile(dolby_vision="sdr"))
+    dec.video.action = VideoAction.ENCODE_AV1
+    assert "10bit" not in dec.output_path.stem
+
+
+@pytest.mark.parametrize("ok, encodeur_hevc, attendu", [
+    (frozenset({"hevc_nvenc", "hevc_nvenc@10"}), "hevc_nvenc", True),
+    (frozenset({"hevc_nvenc"}),                  "hevc_nvenc", False),  # Maxwell
+    (None,                                       "hevc_nvenc", False),  # sans sondage
+    (frozenset({"hevc_qsv", "hevc_qsv@10"}),     "hevc_qsv",   False),  # non mesuré
+])
+def test_la_regle_du_main10_en_sdr(ok, encodeur_hevc, attendu):
+    """Une seule règle pour le format (`_encodeur_et_format`) et pour le nom."""
+    from core.encoder import hevc_sdr_en_10_bits
+    from core.platform import GPU, OS, PlatformProfile
+    plat = PlatformProfile(os=OS.WINDOWS, gpu=GPU.NVIDIA, hwaccel=None,
+                           encoder_hevc=encodeur_hevc, encoder_h264="h264_nvenc",
+                           encoder_av1="av1_nvenc", encodeurs_ok=ok)
+    assert hevc_sdr_en_10_bits(plat) is attendu
+
+
 def test_une_sortie_hdr10_garde_sa_profondeur(tmp_path):
     """`yuv420p10le` : les 10 bits restent vrais, seule la marque DV change."""
     dec = decide(_source(tmp_path, "Film.2160p.10bit.DV"), _profile())

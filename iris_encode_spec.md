@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.3.7 — document de référence courant
-**Date** : 2026-11-17
+**Version** : 0.9.3.10 — document de référence courant
+**Date** : 2026-11-21
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -764,6 +764,7 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 | `convert_h264` | bool | convertir en HEVC un H.264 sous la cible, en 1080p et au-dessus (§ 8.1, CAS 1 ter) ; défaut `false` |
 | `h264_to_hevc_ratio` | float | part du débit source visée par la conversion, strictement entre 0 et 1 ; défaut `0.7` |
 | `h264_min_kbps` | int | débit source sous lequel un H.264 n'est pas converti ; défaut `2500` |
+| `ass_to_srt` | bool | convertir en SRT les sous-titres ASS/SSA de dialogue, styles et polices abandonnés (§ 8.6) ; défaut `false`, `true` dans les profils livrés `series_*` et `anime` |
 
 Le formulaire expose `upscale` et `upscale_passes` en un seul choix
 (`non` / `oui, une passe` / `oui, deux passes (lent)`), comme l'audio sans
@@ -1531,7 +1532,8 @@ canaux, et la passe audio préalable (§ encodeur) s'applique à leur transcodag
   cocher (« télétexte — non transportable »)
 - `subtitle_languages` garde aussi une piste **sans langue** (v0.8.9.93)
 - SRT (texte) → MP4 possible, `-c:s mov_text`
-- ASS / SSA → MKV : le style ne survit pas à `mov_text`
+- ASS / SSA → MKV : le style ne survit pas à `mov_text` ; avec `ass_to_srt`,
+  converti en SRT (v0.9.3.8, IE-204) : voir plus bas
 - Sélection par piste depuis `TracksScreen` (par défaut : toutes conservées)
 - **PGS doublé** : sans sélection manuelle, un sous-titre image est écarté
   quand un sous-titre texte de même langue **et de même nature** est retenu
@@ -1584,6 +1586,43 @@ correction anglaise est intégrée à seconv). VobSub, essayé le 2026-11-07 sur
 les deux pistes françaises de *L'Égyptien* (sans référence) : 51 et 1 479
 répliques, 2 et 6 s, une faute relevée (`L'ÉGYPTlEN`) ; avec ou sans
 `--track-number:1`, même sortie.
+
+**ASS/SSA convertis en SRT** (`core/ass.py`, v0.9.3.8, IE-204). Jellyfin
+incruste un ASS à la lecture quand le client ne le rend pas, donc transcode
+la vidéo (observé sur Firefox, raison donnée par Jellyfin : le sous-titre).
+Avec `ass_to_srt = true` dans le profil (case « convertir l'ASS en SRT » du
+formulaire), un ASS/SSA que la sortie garde est **remplacé** par un SRT
+(`FileDecision.sous_titres_ass`, `ass_converti` piste par piste), sauf une
+piste de **panneaux ou de chansons**, reconnue à son titre
+(`ass.piste_de_panneaux` : *signs*, *songs*, *karaoké*, *panneaux*,
+*chansons*, *typeset*, *S&S*), qui reste en ASS — convertie, elle
+empilerait en bas de l'image des textes faits pour les écriteaux. Mêmes
+exclusions que l'OCR : titre de disque, `STRIP_DV`, `ENCODE_DV`. Un ASS
+converti motive le remux d'une vidéo laissée telle quelle (« ASS » dans
+`motifs_remux`). Le conteneur ne change pas : la sortie reste en Matroska,
+ce qui permet le repli. Arbitrages de l'utilisateur, 2026-11-21.
+
+- **La conversion est faite par IRIS** (`ass.ass_vers_srt`), pas par un
+  outil. Mesuré le 2026-11-21 sur un ASS d'essai : ffmpeg 8.1.3 (`-c:s srt`)
+  écrit `<font size="48">` autour de chaque réplique, garde les couleurs et
+  sort un dessin (`{\p1}m 0 0 l …`) comme du texte ; seconv perd l'italique
+  d'un style et l'alignement haut, et laisse une réplique vide à la place du
+  dessin. Gardés : texte, retours à la ligne (`\N`, `\n`), espace insécable
+  (`\h`), italique et gras du style ou de la ligne (`<i>`, `<b>`), `{\an8}`
+  pour une réplique en haut. Retirés : couleurs, tailles, positions, effets,
+  karaoké (le texte reste), dessins (`\p1` à `\p0`), lignes `Comment`.
+  Répliques triées par début.
+- Au traitement (`RunScreen._ass_en_srt`, appelé par `_sous_titres_refaits`
+  après l'OCR) : une lecture ffmpeg recopie chaque ASS en `.ass`
+  (`ass.build_extraction`), converti en `.srt` à côté (`ass.ecrire_srt`),
+  qui entre dans `build_command` comme un sous-titre refait — langue, nom et
+  drapeaux de la piste d'origine.
+- **Repli** : extraction en échec ou SRT sans réplique → la piste garde son
+  ASS (et ses polices), avertissement au bilan. `S` ou `X` arrête le fichier.
+- Polices jointes : retirées quand plus aucun ASS ne sort (§ 12.0, « Polices
+  jointes »).
+- Affichage : « → SRT » dans l'écran Pistes et l'assistant (`libelle_srt`),
+  « ASS→SRT N » dans la colonne conteneur de l'aperçu.
 
 **La clé `container`** exprime une politique de profil, parce que le choix ne
 se déduit pas du seul contenu : certains lecteurs digèrent mal le Matroska.
@@ -2463,7 +2502,9 @@ mesure (`sync._read_text`) le lit aussi en UTF-16 : en cp1252, aucune réplique.
 
 **Polices jointes.** En sortie Matroska, `-map 0:t? -c:t copy` recopie les pièces
 jointes de la source : sans elles, les sous-titres ASS d'un animé s'affichaient dans
-une police de repli (CR-20).
+une police de repli (CR-20). Quand des ASS ont été convertis en SRT et qu'aucun ne
+reste (§ 8.6, `ass_to_srt`), les polices partent (`-map -0:t:m:mimetype:…` pour
+chaque type de `ass.MIME_POLICES`) ; les autres pièces jointes restent.
 
 ### 12.1 Modes d'encodage vidéo
 
@@ -3866,6 +3907,25 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
 ```
 
 - Une ligne par fichier : état (○ / ▶ / ✓ / ✗), nom, action, pourcentage
+- **Colonne Fichier ajustée à la fenêtre** (v0.9.3.9) : elle prend la place
+  que les autres colonnes laissent (`RunScreen._largeur_fichier` — marges de
+  cellule et barre de défilement comptées), sans dépasser le plus long nom ni
+  descendre sous 20 ; le nom est coupé comme à l'accueil (`tronquer_nom`,
+  ci-dessous). Elle suit un redimensionnement, reconstruite une fois la rafale
+  passée (0,15 s), seulement si sa largeur change. Elle prenait la largeur du
+  plus long nom : sur un nom de release, l'état de l'encodage sortait de
+  l'écran.
+- **Nom coupé, repère d'épisode gardé** (v0.9.3.10, `tui.common.tronquer_nom`,
+  accueil et écran Encodage) : début du nom, repère en entier, fin du nom —
+  « Une.Serie…S01E02…ROUPE.mkv ». Repère : `S01E02`, `s1e2`, `S01E01E02`,
+  `S01E01-E02`, `S2024E105`, jamais au milieu d'un mot. Sans repère, ou si la
+  colonne ne tient pas le repère et un caractère de chaque côté : coupe au
+  milieu (`tronquer_milieu`, que gardent les noms de pistes, l'en-tête de
+  l'assistant et la barre d'état). Coupé au milieu, `S01E01` et `S01E02`
+  s'affichaient pareil.
+- **Colonne État à 38** (`LARGEUR_ETAT`, v0.9.3.10 ; 50 avant) : « échec : »
+  et trente caractères de cause, ou « en pause · 45% (01:23:45 / 00:45:10) »
+  — en pause, la vitesse (celle d'avant la pause) ne s'affiche pas.
 - Barre individuelle sous le fichier actif, barre globale en pied de liste
 - Zone basse : commande ffmpeg complète + dernière ligne de retour (live)
 - `⏸ Pause` suspend le processus (multiplateforme)
@@ -4624,6 +4684,9 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.3.2 | 2026-11-14 | **`F10 Quitter` dans l'en-tête**, à côté de `F11 Plein écran`, plus au pied de page de chaque écran · **`A` bascule tout / aucun** sur l'accueil, `N` retirée (IE-200) · `tests/test_entete_quitter.py`, `tests/test_bascule_selection.py` |
 | 0.9.3.3 | 2026-11-14 | **La sortie ne reprend plus le titre de la source** (§ 8.8, IE-198) : titre global vidé par les quatre commandes qui écrivent une sortie finale (`build_command`, `build_strip_mp4`, `build_dv_mp4_remux`, `build_strip_command`) ; titres de piste gardés · `tests/test_titre_sortie.py` |
 | 0.9.3.4 | 2026-11-14 | **`pytest.ini`** (§ 18, IE-196) : avertissements en erreurs, marqueurs stricts ; les tubes des sous-processus sont fermés à la fin de chacun (`EncoderProcess`, `MuxProcess`, `TuyauRpu`, `sync`, `youtube`) · **`shots_tui.py` sur un clone** : jeu synthétique quand `resources_files/tests/` manque, 28 prises sur 28 au lieu de 7 |
+| 0.9.3.10 | 2026-11-21 | **Repère d'épisode gardé à la coupe d'un nom ; colonne État à 38** (§ 14.7) : `tronquer_nom` (accueil, écran Encodage), « Une.Serie…S01E02…ROUPE.mkv » ; `LARGEUR_ETAT = 38`, vitesse masquée en pause · `tests/test_run_colonne_fichier.py` |
+| 0.9.3.9 | 2026-11-21 | **Écran Encodage : colonne Fichier ajustée à la fenêtre** (§ 14.7) : la place que laissent les autres colonnes, nom coupé au milieu comme à l'accueil, suit le redimensionnement (`RunScreen._largeur_fichier`) · `tests/test_run_colonne_fichier.py` |
+| 0.9.3.8 | 2026-11-21 | **ASS/SSA convertis en SRT** (§ 6.1, § 8.6, IE-204) : `ass_to_srt`, activé dans les profils livrés `series_*` et `anime` ; conversion propre à IRIS (`core/ass.py`) — italique, gras, haut gardés, couleurs, positions et dessins retirés ; pistes de panneaux et de chansons laissées en ASS ; polices jointes retirées quand plus aucun ASS ne sort ; un ASS converti fait remuxer · `tests/test_ass_srt.py` |
 | 0.9.3.7 | 2026-11-17 | **Une sortie SDR en main10 garde son `10bits`** (§ 8.7) : depuis IE-201, le HEVC de NVENC ressort en 10 bits même en SDR, et le nom retirait encore la profondeur ; elle ne part plus que d'une sortie en 8 bits (`encoder.hevc_sdr_en_10_bits`, `decision.set_hevc_sdr_10_bits`) · `tests/test_hdr_audio_nom.py` |
 | 0.9.3.6 | 2026-11-16 | **HEVC NVENC en main10, SDR compris** (§ 12, IE-201) : `yuv420p10le` + `main10` (`scale_cuda=format=p010le` sur la carte) quand `hevc_nvenc` s'ouvre en 10 bits au sondage ; +0,1 à +0,4 VMAF au même débit, mesuré sur RTX A4500 ; QSV, AMF, libx265 inchangés · `tests/test_nvenc_main10.py` |
 | 0.9.3.5 | 2026-11-16 | **Conversion H.264 → HEVC à débit dérivé de la source** (§ 6.1, § 8.1 CAS 1 ter, IE-202) : opt-in `convert_h264`, 70 % du débit source (`h264_to_hevc_ratio`), rien sous 2 500k (`h264_min_kbps`), pas sous 1080p ; trois champs dans l'éditeur de profils · `tests/test_conversion_h264.py` |

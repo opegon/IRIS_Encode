@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.3.7
+**Version** : 0.9.3.10
 **Date** : 2026-11-09
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -701,6 +701,7 @@ sous-titres**. Le profil décide ce qui traverse.
 |---|---|
 | **Langues** | Pistes audio conservées, par code ISO — `fre, eng` |
 | **Langues sous-titres** | Idem pour les sous-titres. **Vide = toutes** |
+| **Convertir l'ASS en SRT** | Les sous-titres ASS/SSA deviennent des SRT : Jellyfin ne les incruste plus. Styles et polices jointes partent ; italique, gras et position haute restent. Une piste « Signs » ou « Songs » reste en ASS. Activé dans les profils livrés de séries et d'animé, désactivé ailleurs |
 
 Les deux jeux de codes ISO sont réconciliés : écrire `fre` retient aussi les
 pistes étiquetées `fra`, et de même pour `ger`/`deu`, `dut`/`nld`, `cze`/`ces`.

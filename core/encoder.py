@@ -1537,8 +1537,20 @@ def build_command(
 
     # Les polices jointes d'un ASS : sans elles, panneaux et karaokés
     # s'affichent dans une police de repli (CR-20). Le MP4 n'en porte pas.
+    # Quand plus aucun ASS ne sort — tous passés en SRT (IE-204) — elles
+    # partent ; les autres pièces jointes restent.
     if container == ".mkv":
-        cmd += ["-map", "0:t?", "-c:t", "copy"]
+        from .ass import MIME_POLICES, est_ass
+        cmd += ["-map", "0:t?"]
+        convertis = [est_ass(st.codec) for st in subs_sortie
+                     if st.index in refaits_input]
+        restants = ([est_ass(st.codec) for st in subs_sortie
+                     if st.index not in refaits_input]
+                    + [est_ass(ext.codec) for ext in ext_subs])
+        if any(convertis) and not any(restants):
+            for mime in MIME_POLICES:
+                cmd += ["-map", f"-0:t:m:mimetype:{mime}"]
+        cmd += ["-c:t", "copy"]
 
     # faststart est un réglage MP4 ; ffmpeg l'ignore en avertissant sur MKV
     if container == ".mp4":

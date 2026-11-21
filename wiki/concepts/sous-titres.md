@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-11-13
+maj: 2026-11-21
 sources:
   - "[[source-2026-11-13-sous-titres-81]]"
   - "[[source-spec]]"
@@ -18,7 +18,7 @@ sources:
 |---|---|---|---|---|
 | **SubRip (SRT)** | texte | ✓ en `mov_text` | ✓ | envoyé tel quel, lecture directe |
 | `mov_text` | texte | ✓ | ✗ (jamais proposé) | lecture directe |
-| **ASS / SSA** | texte stylé | ✗ : le style ne survit pas à `mov_text` | ✓ | |
+| **ASS / SSA** | texte stylé | ✗ : le style ne survit pas à `mov_text` | ✓ | **incrusté** si le client ne le rend pas (Firefox, observé) |
 | **PGS** (HDMV, Blu-ray) | image | ✗ | ✓ | **incrusté**, donc transcodage vidéo complet |
 | **VobSub** (DVD) | image | ✗ | ✓ | idem |
 
@@ -154,6 +154,25 @@ Les sous-titres ASS d'un animé s'appuient sur des polices **jointes** au MKV.
 ffmpeg ne les recopie pas sans `-map 0:t? -c:t copy` : la sortie s'affiche
 dans une police de repli, panneaux et karaokés faux. mkvmerge les garde.
 *(reproduit, revue IE-114, CR-20)*
+
+## ASS converti en SRT (v0.9.3.8, IE-204)
+
+Jellyfin a transcodé un film pour son ASS sur Firefox, raison affichée : le
+sous-titre *(observé par l'utilisateur, 2026-11-21)*. Clé de profil
+`ass_to_srt` : l'ASS de dialogue devient un SRT, styles et polices
+abandonnés ; une piste *Signs* / *Songs* reste en ASS.
+
+Ni ffmpeg ni seconv ne convertissent proprement *(mesuré, ASS d'essai,
+ffmpeg 8.1.3)* :
+
+| Outil | Défaut |
+|---|---|
+| ffmpeg `-c:s srt` | `<font size="48">` sur chaque réplique, couleurs gardées, dessin `\p1` sorti en texte (`m 0 0 l …`) |
+| seconv | italique du style et position haute perdus, réplique vide à la place du dessin |
+
+IRIS convertit lui-même (`core/ass.py`). En Matroska, une police jointe se
+retire par son type MIME : `-map 0:t? -map -0:t:m:mimetype:<type>` ; ffmpeg
+accepte un retrait qui ne vise rien *(mesuré)*.
 
 ## Long silence en MP4
 

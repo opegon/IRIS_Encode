@@ -389,6 +389,10 @@ class ProfileForm(Widget):
                 # TRANSLATORS: fre, eng are language codes, keep them.
                 yield Input(placeholder=_("fre, eng — empty: all"),
                             id="field-sublangs", classes="form-ctrl")
+            with Widget(classes="form-cell"):
+                # TRANSLATORS: ASS and SRT are subtitle formats, keep them.
+                yield Checkbox(_("convert ASS to SRT (styles and fonts dropped)"),
+                               id="field-ass-srt")
 
         with Widget(classes="form-row"):
             with Widget(classes="form-cell"):
@@ -620,6 +624,7 @@ class ProfileForm(Widget):
         _set_sel("#field-h264-ratio", data.get("h264_to_hevc_ratio",  0.7))
         _set_sel("#field-h264-min",   data.get("h264_min_kbps",       2500))
         _set_chk("#field-delsrc", data.get("delete_source",          False))
+        _set_chk("#field-ass-srt", data.get("ass_to_srt",            False))
         _set_inp("#field-langs",
                  ", ".join(data.get("audio_languages", ["fre", "eng"])))
         _set_inp("#field-sublangs",
@@ -686,6 +691,7 @@ class ProfileForm(Widget):
             "delete_source":           _g_chk("#field-delsrc"),
             "audio_languages":         langs,
             "subtitle_languages":      sub_langs,
+            "ass_to_srt":              _g_chk("#field-ass-srt"),
             "audio_stereo_kbps":       _g_sel("#field-stereo",  192),
             "audio_surround_kbps":     _g_sel("#field-51",      448),
             "audio_surround_7_1_kbps": _g_sel("#field-71",      640),

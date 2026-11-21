@@ -213,7 +213,7 @@ _CONTROLES: dict[str, Any] = {
         "audio_surround_7_1_kbps", "h264_min_kbps")},
     **{cle: lambda v: isinstance(v, bool) for cle in (
         "keep_4k", "delete_source", "preserve_hd_audio",
-        "audio_copy_compatible", "upscale", "convert_h264")},
+        "audio_copy_compatible", "upscale", "convert_h264", "ass_to_srt")},
     # Une fraction stricte : à 1, la conversion réencoderait au même débit.
     "h264_to_hevc_ratio": lambda v: (isinstance(v, (int, float))
                                      and not isinstance(v, bool) and 0 < v < 1),

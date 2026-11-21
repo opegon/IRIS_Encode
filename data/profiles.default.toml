@@ -172,6 +172,7 @@ audio_stereo_kbps = 192
 audio_surround_kbps = 448
 audio_surround_7_1_kbps = 640
 audio_hd_codec = "ac3"
+ass_to_srt = true
 
 [series_std]
 bitrate_720p_kbps = 1500
@@ -197,6 +198,7 @@ audio_stereo_kbps = 192
 audio_surround_kbps = 448
 audio_surround_7_1_kbps = 640
 audio_hd_codec = "ac3"
+ass_to_srt = true
 
 [series_basic]
 bitrate_720p_kbps = 1500
@@ -222,6 +224,7 @@ audio_stereo_kbps = 192
 audio_surround_kbps = 448
 audio_surround_7_1_kbps = 640
 audio_hd_codec = "ac3"
+ass_to_srt = true
 
 [anime]
 bitrate_720p_kbps = 1500
@@ -247,6 +250,7 @@ audio_stereo_kbps = 192
 audio_surround_kbps = 448
 audio_surround_7_1_kbps = 640
 audio_hd_codec = "ac3"
+ass_to_srt = true
 
 [upscale_1080p]
 bitrate_720p_kbps = 2000

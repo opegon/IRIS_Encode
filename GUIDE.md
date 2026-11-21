@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.3.7
+**Version**: 0.9.3.10
 **Date**: 2026-11-09
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -691,6 +691,7 @@ profile decides what goes through.
 |---|---|
 | **Languages** | Audio tracks kept, by ISO code — `fre, eng` |
 | **Subtitle languages** | Same for subtitles. **Empty = all** |
+| **Convert ASS to SRT** | ASS/SSA subtitles become SRT: Jellyfin no longer burns them in. Styles and attached fonts are dropped; italics, bold and top placement stay. A "Signs" or "Songs" track stays in ASS. On in the shipped series and anime profiles, off elsewhere |
 
 The two sets of ISO codes are reconciled: writing `fre` also keeps tracks
 labeled `fra`, and the same for `ger`/`deu`, `dut`/`nld`, `cze`/`ces`.

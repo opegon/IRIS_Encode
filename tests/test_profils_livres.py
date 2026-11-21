@@ -90,6 +90,7 @@ CHAMPS_CONNUS = {
     "audio_stereo_kbps", "audio_surround_kbps", "audio_surround_7_1_kbps",
     "audio_copy_compatible", "audio_hd_codec", "container",
     "upscale", "upscale_passes", "bitrate_480p_kbps",      # IE-169
+    "ass_to_srt",                                          # IE-204
 }
 
 TYPES = {
@@ -101,6 +102,7 @@ TYPES = {
     "audio_surround_7_1_kbps": int, "audio_copy_compatible": bool,
     "audio_hd_codec": str, "container": str,
     "upscale": bool, "upscale_passes": int, "bitrate_480p_kbps": int,
+    "ass_to_srt": bool,
 }
 
 DOMAINES = {

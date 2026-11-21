@@ -298,6 +298,7 @@ def test_l_etape_rejoint_les_srt_refaits(tmp_path, seconv):
     vtt = tmp_path / "vtt.srt"
     ecran._refaire_webvtt = lambda i, d: (True, {7: vtt})
     ecran._ocr_sous_titres = lambda i, d: RunScreen._ocr_sous_titres(ecran, i, d)
+    ecran._ass_en_srt = lambda i, d: RunScreen._ass_en_srt(ecran, i, d)
     ok, refaits = RunScreen._sous_titres_refaits(ecran, 0, dec)
     assert ok and sorted(refaits) == [0, 7] and refaits[7] == vtt
     ecran._refaire_webvtt = lambda i, d: (False, {})

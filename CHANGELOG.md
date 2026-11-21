@@ -1,5 +1,76 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.10] — 2026-11-21
+
+### Le repère d'épisode reste visible ; colonne État à 38
+
+- **Deux épisodes s'affichaient pareil.** Coupé au milieu, un nom de release
+  perdait son `S01E02`, qui est au milieu : « Une.Serie.Vr…64-GROUPE.mkv »
+  pour l'épisode 1 comme pour le 2. Le repère reste désormais en entier,
+  entre le début et la fin du nom : « Une.Serie…S01E02…ROUPE.mkv »
+  (`tui.common.tronquer_nom`), à l'accueil et sur l'écran Encodage. Formes
+  reconnues : `S01E02`, `s1e2`, `S01E01E02`, `S01E01-E02`, `S2024E105` ; pas
+  au milieu d'un mot. Sans repère, ou trop étroit pour lui, la coupe au
+  milieu reste. `tronquer_milieu` ne change pas : les noms de pistes, l'en-tête
+  de l'assistant et la barre d'état la gardent.
+- **Écran Encodage : la colonne État passe de 50 à 38** (`LARGEUR_ETAT`) ; la
+  place revient au nom de fichier. En pause, la vitesse d'avant la pause ne
+  s'affiche plus : « en pause · 45% (01:23:45 / 00:45:10) » tient dans la
+  colonne, avec elle il fallait 46.
+- `tests/test_run_colonne_fichier.py` : 15 tests de plus (contre-vérifiés :
+  ceux du repère échouent avec la seule coupe au milieu, celui de la pause
+  avec la vitesse affichée).
+
+## [v0.9.3.9] — 2026-11-21
+
+### Écran Encodage : la colonne Fichier laisse la place aux autres
+
+- **La colonne Fichier prenait la largeur du plus long nom.** Sur un nom de
+  release, les colonnes de droite, dont l'état de l'encodage, sortaient de
+  l'écran. Elle prend désormais la place que les autres colonnes laissent,
+  sans dépasser le plus long nom ni descendre sous 20 caractères.
+- **Le nom est coupé au milieu**, comme à l'accueil (`tronquer_milieu`).
+- La colonne suit le redimensionnement de la fenêtre : la table est
+  reconstruite une fois la rafale d'événements passée, et seulement si la
+  largeur change.
+- `tests/test_run_colonne_fichier.py` : 5 tests (contre-vérifiés : les deux
+  tests de largeur échouent avec l'ancien calcul).
+
+## [v0.9.3.8] — 2026-11-21
+
+### Sous-titres ASS/SSA convertis en SRT (IE-204)
+
+- **Jellyfin transcodait la vidéo pour un ASS.** Sur un client qui ne rend
+  pas l'ASS, il incruste le sous-titre (observé sur Firefox, raison du
+  transcodage : le sous-titre). Nouvelle clé de profil **`ass_to_srt`**
+  (case « convertir l'ASS en SRT » du formulaire, défaut `false`) : un ASS
+  ou SSA que la sortie garde est **remplacé** par un SRT. Activée dans les
+  profils livrés `series_high`, `series_std`, `series_basic` et `anime`.
+- **Styles et polices abandonnés.** Restent le texte, les retours à la
+  ligne, l'italique et le gras, et `{\an8}` pour une réplique en haut ;
+  couleurs, tailles, positions, effets et dessins partent. Les polices
+  jointes ne sont plus recopiées quand aucun ASS ne reste ; les autres
+  pièces jointes restent.
+- **Conversion faite par IRIS** (`core/ass.py`), pas par ffmpeg ni seconv.
+  Mesuré : ffmpeg 8.1.3 entoure chaque réplique de `<font size="48">`, garde
+  les couleurs et sort un dessin ASS comme du texte (`m 0 0 l 100 0…`) ;
+  seconv perd l'italique d'un style et la position haute, et laisse une
+  réplique vide à la place du dessin.
+- **Les pistes de panneaux et de chansons restent en ASS**, reconnues à leur
+  titre (*Signs*, *Songs*, *Karaoké*, *Panneaux*, *S&S*…) : converties,
+  elles empileraient en bas de l'image des textes faits pour les écriteaux.
+  Elles gardent alors leurs polices, et la sortie reste en MKV.
+- Un ASS à convertir fait remuxer une vidéo qui aurait été laissée telle
+  quelle (« ASS » dans la raison). Écran Pistes et assistant : « → SRT » ;
+  Aperçu : « ASS→SRT N ». Repli : une conversion en échec laisse l'ASS et
+  l'avertissement entre au bilan.
+- Non couverts, comme l'OCR : titre de disque, retrait et réencodage Dolby
+  Vision (`STRIP_DV`, `ENCODE_DV`). Un ASS **greffé** reste en ASS.
+- `tests/test_ass_srt.py` : 15 tests, dont un de bout en bout avec ffmpeg
+  (contre-vérifiés : chacun échoue sans la règle qu'il vérifie).
+  `test_dv_chemins` compte une étape `_executer` de plus,
+  `test_ocr_execution` simule la nouvelle étape.
+
 ## [v0.9.3.7] — 2026-11-17
 
 ### Une sortie SDR en main10 garde son `10bits`

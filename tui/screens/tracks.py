@@ -49,6 +49,7 @@ from core.decision import (
     VideoAction, VideoOverride, decide_audio, decide_video, choisir_sar,
     decide_subtitles, choisir_codec, SANS_REENCODAGE,
     DV_SORTIE, EXCLU_MANUELLEMENT, libelle_copie, libelle_ocr, ocr_prevu,
+    ass_converti, libelle_srt,
 )
 from dataclasses import replace as dc_replace
 from ..common import sauver_config
@@ -381,6 +382,8 @@ class TracksScreen(TableNavMixin, ColumnResizeMixin, Screen["TracksSelection | N
                             f"{self._vue.output_container.lstrip('.').upper()}")
                 if ocr_prevu(self._vue, st):
                     cont_str = libelle_ocr()
+                elif ass_converti(self._vue, st):
+                    cont_str = libelle_srt()
 
                 # Raison simplifiée pour l'affichage
                 if not st.portable:

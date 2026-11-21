@@ -216,6 +216,51 @@ def tronquer_milieu(texte: str, largeur: int) -> str:
     return texte[:tete] + "…" + texte[len(texte) - queue:]
 
 
+# Le repère d'épisode d'un nom de release : `S01E02`, `s1e2`, `S01E01E02`,
+# `S01E01-E02`, `S2024E105` (émission quotidienne). Pas au milieu d'un mot
+# (`Series01E02` n'en est pas un).
+_EPISODE = re.compile(r"(?<![A-Za-z0-9])[Ss]\d{1,4}[Ee]\d{1,4}(?:-?[Ee]\d{1,4})*(?!\d)")
+
+
+def tronquer_nom(nom: str, largeur: int) -> str:
+    """Un nom de fichier coupé pour tenir dans `largeur`, le repère
+    d'épisode gardé en entier.
+
+    Coupé au milieu seulement (`tronquer_milieu`), un nom de release perdait
+    son `S01E02`, qui est au milieu : deux épisodes s'affichaient pareil,
+    « Une.Serie.Vr…64-GROUPE.mkv ». Le repère reste, entre le début du nom
+    et sa fin : « Une.Serie…S01E02…UPE.mkv ». Trop étroit pour lui et un
+    caractère de chaque côté, retour à la coupe au milieu.
+    """
+    coupe = tronquer_milieu(nom, largeur)
+    m = _EPISODE.search(nom)
+    if m is None or m.group(0) in coupe:
+        return coupe
+    avant, repere, apres = nom[:m.start()], m.group(0), nom[m.end():]
+    place = largeur - len(repere)
+    if place < bool(avant) + bool(apres):
+        return coupe
+    # Moitié chacun, la fin l'emportant à l'impair ; ce qu'un côté n'use pas
+    # revient à l'autre. Un côté non vide garde au moins un caractère.
+    pour_avant = place // 2
+    pour_apres = place - pour_avant
+    if len(avant) < pour_avant:
+        pour_apres += pour_avant - len(avant)
+        pour_avant = len(avant)
+    if len(apres) < pour_apres:
+        pour_avant += pour_apres - len(apres)
+        pour_apres = len(apres)
+    if avant and not pour_avant:
+        pour_avant, pour_apres = 1, pour_apres - 1
+    if apres and not pour_apres:
+        pour_apres, pour_avant = 1, pour_avant - 1
+    debut = (avant if len(avant) <= pour_avant
+             else avant[:pour_avant - 1] + "…")
+    fin = (apres if len(apres) <= pour_apres
+           else "…" + apres[len(apres) - pour_apres + 1:])
+    return debut + repere + fin
+
+
 # Les colonnes d'un DataTable ont une largeur fixe, et Rich coupe net ce qui
 # dépasse. « → HEVC → HDR10 » devient « → HEVC → » : une décision valide, et
 # fausse — le sort du Dolby Vision a disparu sans laisser de trace. Une ellipse

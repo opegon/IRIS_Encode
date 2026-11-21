@@ -41,6 +41,7 @@ from ..common import (barre_etat, colonne_fixe, SEP_ETAT,
     touche,
     cellule,
     tronquer_milieu,
+    tronquer_nom,
     DV_VALUE_STYLES,
     estimate_encoding_duration,
     fmt_bytes,
@@ -1444,11 +1445,11 @@ class BrowserScreen(TableNavMixin, ColumnResizeMixin, Screen):
         return {**widths, "fichier": self._largeur_fichier(widths)}
 
     def _nom_coupe(self, nom: str) -> str:
-        """Le nom coupé au milieu pour tenir dans la colonne, icône comprise :
-        ce qui distingue deux releases est souvent à la fin (`-A`, `S01E02`)."""
+        """Le nom coupé pour tenir dans la colonne, icône comprise : début et
+        fin du nom (`-A`), repère d'épisode (`S01E02`) gardé en entier."""
         if not self._largeur_nom:
             return nom
-        return tronquer_milieu(nom, self._largeur_nom - cell_len(_FILE_ICON) - 1)
+        return tronquer_nom(nom, self._largeur_nom - cell_len(_FILE_ICON) - 1)
 
     def _ajuster_colonnes(self) -> None:
         """Reconstruit la table si Fichier ou Audio n'a plus la bonne largeur :

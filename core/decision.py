@@ -101,6 +101,12 @@ def libelle_ocr() -> str:
     return "→ " + _("SRT (OCR)")
 
 
+def libelle_srt() -> str:
+    """« → SRT » : un sous-titre ASS/SSA converti en SRT, styles et polices
+    abandonnés (IE-204)."""
+    return "→ SRT"
+
+
 def video_recopiee(action: "VideoAction", dv_action: "DVAction") -> bool:
     """Le flux vidéo sort-il tel quel, malgré une action d'encodage ?
 
@@ -555,6 +561,12 @@ class FileDecision:
         reste.
         """
         return [st for st in self.subtitles_finales if ocr_prevu(self, st)]
+
+    @property
+    def sous_titres_ass(self) -> list:
+        """Les ASS/SSA de la sortie convertis en SRT (`ass_to_srt`, IE-204).
+        Mêmes chemins que l'OCR ; une piste de panneaux ou de chansons reste."""
+        return [st for st in self.subtitles_finales if ass_converti(self, st)]
 
     def _mkv_impose_par_l_audio(self) -> bool:
         """Une piste sans perte recopiée telle quelle ne tient pas en MP4.
@@ -1931,6 +1943,18 @@ def ocr_prevu(dec: FileDecision, st) -> bool:
             and normalize_language(st.language) in OCR_LANGUES)
 
 
+def ass_converti(dec: FileDecision, st) -> bool:
+    """Cette piste, si la sortie la garde, passerait-elle d'ASS à SRT ?
+    La règle de `FileDecision.sous_titres_ass`, piste par piste. Pas sur les
+    chemins que l'OCR évite non plus : titre de disque, Dolby Vision gardé ou
+    retiré, qui écrivent la sortie sans `encoder.build_command`."""
+    from . import ass
+    return (bool(dec.profile.get("ass_to_srt", False)) and dec.info.titre is None
+            and dec.video.action not in (VideoAction.STRIP_DV,
+                                         VideoAction.ENCODE_DV)
+            and ass.est_ass(st.codec) and not ass.piste_de_panneaux(st.title))
+
+
 def _pgs_doubles(pistes: list) -> list:
     """Sous-titres image qu'un sous-titre texte de même langue et de même nature double.
 
@@ -1979,7 +2003,8 @@ def motifs_remux(dec: FileDecision) -> list[str]:
     """Ce qui ferait transcoder la chaîne de lecture dans un fichier dont la
     vidéo convient : les pistes audio retenues que le profil convertit, les
     sous-titres image qu'un sous-titre texte de même langue double, et ceux
-    que l'OCR convertit (`sous_titres_ocr`).
+    que l'OCR convertit (`sous_titres_ocr`), les ASS passés en SRT
+    (`sous_titres_ass`).
 
     Une piste écartée (langue non voulue) ne compte pas : le lecteur ne la
     choisit pas, elle part avec le remux s'il a lieu, sans le déclencher.
@@ -1991,6 +2016,8 @@ def motifs_remux(dec: FileDecision) -> list[str]:
               if st not in dec.subtitles_finales] + dec.sous_titres_ocr
     motifs += ["VobSub" if st.codec.lower() == "dvd_subtitle" else "PGS"
                for st in images]
+    if dec.sous_titres_ass:
+        motifs.append("ASS")
     # Une source sans SAR (IE-173) s'affiche déformée : le remux le déclare.
     if dec.info.sar_impose:
         motifs.append("SAR")

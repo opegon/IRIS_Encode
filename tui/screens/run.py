@@ -17,7 +17,7 @@ from pathlib import Path
 from enum import Enum, auto
 
 from rich.text import Text
-from textual import work
+from textual import events, work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
@@ -42,8 +42,8 @@ from core.platform import PlatformProfile
 from core.scanner import est_intermediaire
 from ..common import (barre_etat, actions_ecran, colonne_fixe, fmt_bytes,
                       ecart_pct, fmt_duration,
-                      footer_line2, record_measured_speed,
-                      retour_accueil, touche)
+                      footer_line2, largeur_entete, record_measured_speed,
+                      retour_accueil, touche, tronquer_nom)
 # La même estimation et le même dégradé que la colonne Estim de l'accueil :
 # un fichier ne doit pas annoncer deux tailles selon l'écran. L'accueil
 # n'importe `run` que dans ses fonctions, il n'y a pas de cycle.
@@ -52,6 +52,11 @@ from .. import common
 from ..mixins import TableNavMixin
 
 _LOG = logging.getLogger(__name__)
+
+# La colonne État : « échec : » et trente caractères de cause, ou
+# « en pause · 45% (01:23:45 / 00:45:10) ». À 50, elle prenait la place
+# du nom de fichier.
+LARGEUR_ETAT = 38
 from ..widgets.entete import Entete
 from ..widgets.footer import KeyFooter
 
@@ -191,6 +196,10 @@ class RunScreen(TableNavMixin, Screen):
         # L'action d'après lot (`E`). Jamais héritée d'un lot précédent : un
         # arrêt qu'on aurait oublié d'avoir demandé surprendrait des jours après.
         self.apres_lot     = False
+        # Colonne Fichier ajustée à la fenêtre (`_largeur_fichier`).
+        self._largeur_nom  = 0
+        self._colonnes: tuple[int, list[int]] | None = None
+        self._minuterie_largeur = None
 
     # ─── File (IE-100) ────────────────────────────────────────────────────────
 
@@ -297,28 +306,37 @@ class RunScreen(TableNavMixin, Screen):
         if a_prevoir:
             self._prevoir_chaines(a_prevoir)
 
-        table.add_column("",        width=3,                              key="icon")
         fichier, action = _("File"), _("Action")
         # TRANSLATORS: column header — source size, then the estimated output
         # size: "4.2 GB → 1.8 GB (-57%)".
         profil, taille = _("Profile"), _("Size → est.")
-        table.add_column(fichier, width=max(20, _cw(fichier, names)), key="file")
-        table.add_column(profil,  width=_cw(profil, profils),         key="profile")
         duree = _("Duration")
-        table.add_column(duree,   width=_cw(duree, durees),           key="duration")
-        table.add_column(taille,  width=_cw(taille, [t.plain for t in tailles]),
-                         key="size")
-        table.add_column(action,  width=_cw(action, actions),         key="action")
         # TRANSLATORS: column headers — where the video is decoded, where
         # its frames are filtered (scaling, format), then where it is
         # encoded: "GPU" or "CPU". Nouns, not verbs.
         lecture  = pgettext("processing stage", "Decode")
         filtres  = pgettext("processing stage", "Filter")
         encodage = pgettext("processing stage", "Encode")
+        etat     = _("State")
+        autres = [3, _cw(profil, profils), _cw(duree, durees),
+                  _cw(taille, [t.plain for t in tailles]), _cw(action, actions),
+                  _cw(lecture, lectures), _cw(filtres, filtrages),
+                  _cw(encodage, encodages), largeur_entete(etat, LARGEUR_ETAT)]
+        self._colonnes = (_cw(fichier, names), autres)
+        largeur_nom = self._largeur_fichier(*self._colonnes)
+        self._largeur_nom = largeur_nom
+
+        table.add_column("",        width=3,                              key="icon")
+        table.add_column(fichier, width=largeur_nom,                  key="file")
+        table.add_column(profil,  width=_cw(profil, profils),         key="profile")
+        table.add_column(duree,   width=_cw(duree, durees),           key="duration")
+        table.add_column(taille,  width=_cw(taille, [t.plain for t in tailles]),
+                         key="size")
+        table.add_column(action,  width=_cw(action, actions),         key="action")
         table.add_column(lecture,  width=_cw(lecture, lectures),      key="read")
         table.add_column(filtres,  width=_cw(filtres, filtrages),     key="filt")
         table.add_column(encodage, width=_cw(encodage, encodages),    key="enc")
-        colonne_fixe(table, _("State"),    50,     key="state")
+        colonne_fixe(table, etat,    LARGEUR_ETAT, key="state")
 
         for i, s in enumerate(self._statuses):
             dec   = s.decision
@@ -326,7 +344,10 @@ class RunScreen(TableNavMixin, Screen):
             action_label = dec.video.label()
             table.add_row(
                 self._icon(s),
-                Text(name, overflow="ellipsis", no_wrap=True),
+                # Coupé comme à l'accueil : début et fin du nom, repère
+                # d'épisode (`S01E02`) gardé en entier.
+                Text(tronquer_nom(name, largeur_nom), overflow="ellipsis",
+                     no_wrap=True),
                 Text(dec.profile.id, style="dim"),
                 Text(durees[i], style="dim"),
                 tailles[i],
@@ -337,6 +358,43 @@ class RunScreen(TableNavMixin, Screen):
                 _("pending"),
                 key=str(i),
             )
+
+    # Une cellule occupe sa largeur plus une marge de chaque côté
+    # (`cell_padding=1`), et la barre de défilement verticale deux colonnes.
+    _MARGE_CELLULE    = 2
+    _BARRE_DEFILEMENT = 2
+    _PLANCHER_NOM     = 20
+
+    def _largeur_fichier(self, besoin: int, autres: list[int]) -> int:
+        """La colonne Fichier prend la place que les autres laissent, sans
+        dépasser le plus long nom ni descendre sous son plancher. Le nom le
+        plus long la fixait : sur un nom de release, les colonnes de droite,
+        dont l'état de l'encodage, sortaient de l'écran."""
+        besoin = max(self._PLANCHER_NOM, besoin)
+        try:
+            place = int(self.size.width)
+        except Exception:
+            place = 0
+        if not place:
+            return besoin
+        occupe = (sum(autres) + self._MARGE_CELLULE * (len(autres) + 1)
+                  + self._BARRE_DEFILEMENT)
+        return max(self._PLANCHER_NOM, min(besoin, place - occupe))
+
+    def on_resize(self, event: events.Resize) -> None:
+        """La fenêtre change : la colonne Fichier suit. Un bord tiré à la
+        souris envoie une rafale d'événements ; on ne reconstruit qu'une fois,
+        quand elle cesse — comme l'accueil."""
+        if self._minuterie_largeur is not None:
+            self._minuterie_largeur.stop()
+        self._minuterie_largeur = self.set_timer(0.15, self._suivre_la_fenetre)
+
+    def _suivre_la_fenetre(self) -> None:
+        self._minuterie_largeur = None
+        if self._colonnes is None:
+            return
+        if self._largeur_fichier(*self._colonnes) != self._largeur_nom:
+            self._reconstruire_table()
 
     @staticmethod
     def _taille(dec: FileDecision) -> Text:
@@ -435,7 +493,12 @@ class RunScreen(TableNavMixin, Screen):
                         elapsed = s._last_progress.format_elapsed()
                         remaining = s._last_progress.format_remaining()
                         speed = f"{s._last_progress.speed:.2f}x"
-                        running_txt = f"{prog_pct} ({elapsed} / {remaining} · {speed})"
+                        # En pause, la vitesse est celle d'avant : sans elle,
+                        # « en pause · 45% (01:23:45 / 00:45:10) » tient dans
+                        # les 38 de la colonne.
+                        running_txt = (f"{prog_pct} ({elapsed} / {remaining})"
+                                       if en_pause else
+                                       f"{prog_pct} ({elapsed} / {remaining} · {speed})")
                     else:
                         running_txt = prog_pct
                 state_txt = (Text(_("paused") + f" · {running_txt}", style="bold cyan")
@@ -1142,13 +1205,59 @@ class RunScreen(TableNavMixin, Screen):
     def _sous_titres_refaits(self, index: int, dec: FileDecision,
                              ) -> tuple[bool, dict[int, Path]]:
         """Les pistes de la source qu'un `.srt` refait remplace, en sortie
-        MKV : WebVTT que ffmpeg ne lit pas, PGS et VobSub passés à l'OCR (IE-176).
+        MKV : WebVTT que ffmpeg ne lit pas, PGS et VobSub passés à l'OCR (IE-176),
+        ASS passés en SRT (IE-204).
         Rend (réussite, chemins) ; seul un WebVTT irréparable fait échouer."""
         ok, refaits = self._refaire_webvtt(index, dec)
         if not ok:
             return False, {}
         refaits.update(self._ocr_sous_titres(index, dec))
+        if self._statuses[index].state != FileState.SKIPPED:
+            refaits.update(self._ass_en_srt(index, dec))
         return True, refaits
+
+    def _ass_en_srt(self, index: int, dec: FileDecision) -> dict[int, Path]:
+        """Les `.srt` des ASS que `ass_to_srt` convertit (IE-204), par index de
+        piste de la source. Une piste qui échoue reste en ASS, polices
+        comprises, et l'échec est dit dans les avertissements du fichier."""
+        from core import ass
+
+        pistes = dec.sous_titres_ass
+        if not pistes:
+            return {}
+        s = self._statuses[index]
+        source = dec.encode_source or dec.info.lecture
+        ffmpeg = getattr(self.app, "ffmpeg_path", "ffmpeg")
+
+        def avertir(texte: str) -> None:
+            s.avertissements.append(texte)
+            _LOG.warning("%s — %s", dec.info.path, texte)
+
+        self.app.call_from_thread(
+            self._update_ffmpeg_line,
+            "▶ " + _("Converting the ASS subtitles into SRT…"))
+        cmd, chemins = ass.build_extraction(source, pistes, dec.dossier_sortie, ffmpeg)
+        faits: dict[int, Path] = {}
+        try:
+            self.app.call_from_thread(self._update_cmd_lines, " ".join(cmd))
+            code = self._executer(index, EncoderProcess(cmd, dec.info.duration))
+            if s.state == FileState.SKIPPED:
+                return {}
+            if code != 0:
+                avertir(_("ASS: the subtitles could not be extracted (code "
+                          "{code}) — kept as they are.").format(code=code))
+                return {}
+            for st, chemin in zip(pistes, chemins):
+                if ass.ecrire_srt(chemin):
+                    faits[st.index] = ass.sortie_srt(chemin)
+                else:
+                    avertir(_("ASS conversion failed on subtitle track {track} "
+                              "({lang}) — the ASS subtitle is kept.").format(
+                                  track=f"0:s:{st.index}", lang=st.language or "?"))
+            return faits
+        finally:
+            for chemin in chemins:
+                chemin.unlink(missing_ok=True)
 
     def _ocr_sous_titres(self, index: int, dec: FileDecision) -> dict[int, Path]:
         """Les `.srt` des PGS et VobSub que l'OCR remplace (IE-176), par index

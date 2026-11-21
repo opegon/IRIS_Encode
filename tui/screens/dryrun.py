@@ -210,6 +210,11 @@ class DryrunScreen(TableNavMixin, ColumnResizeMixin, Screen):
                 # character recognition; keep it short.
                 container += "  " + _("OCR {count}").format(
                     count=len(dec.sous_titres_ocr))
+            if dec.sous_titres_ass:
+                # TRANSLATORS: number of ASS subtitles converted to SRT; keep
+                # it short, "ASS" and "SRT" stay as they are.
+                container += "  " + _("ASS→SRT {count}").format(
+                    count=len(dec.sous_titres_ass))
 
             # Estimation taille de sortie : la règle et la teinte de l'accueil.
             src_bytes = self._taille(idx, dec)

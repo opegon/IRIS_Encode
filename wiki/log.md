@@ -702,3 +702,16 @@ retirait `10bit` alors que le HEVC de NVENC la réencode en main10. Le
 retrait ne joue plus que pour une sortie en 8 bits ; une seule règle
 (`encoder.hevc_sdr_en_10_bits`) décide du format et du nom. Pages touchées :
 [[hdr-dolby-vision]], [[noms-de-release]].
+
+## [2026-11-17] query | Sous-titres d'une piste mal entrelacée, muets dans mpv
+
+Cas *The Odyssey (2026)* 2160p (`resources_files/`, écrit par `mkvmerge
+v103.0`, pas par IRIS_Encode) : dans mpv, la piste « Français (complet) »
+n'affiche que sa 1re réplique ; le lecteur multimédia de Windows les affiche
+toutes. Contenu sain (2 137 répliques). Cause, mesurée avec `ffprobe
+-show_entries packet=pts_time,pos` : 1re réplique (0:33) à l'octet 48 Mo,
+les suivantes (0:40 → 2:52) entassées vers 17 419 Mo, soit vers 2:45 du film ;
+mpv lit dans l'ordre et ne les trouve qu'au générique. Réparé par remux
+(piste extraite puis regreffée par mkvmerge, qui range chaque réplique à son
+instant ; marquages « forcé » inversés corrigés au passage) : `….remux.mkv`,
+réplique de 1:24:52 affichée dans mpv. Détection dans l'outil : IE-203.

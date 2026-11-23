@@ -1,6 +1,6 @@
 # IRIS ENCODE — User guide
 
-**Version**: 0.9.3.10
+**Version**: 0.9.3.12
 **Date**: 2026-11-09
 
 *[Version française : GUIDE.fr.md](GUIDE.fr.md)*
@@ -1100,6 +1100,16 @@ The track title is fixed along the way: "ENG VO : TrueHD 5.1" becomes
 "ENG VO : E-AC3 5.1", and the Atmos mention disappears since it does not
 survive the conversion. A title that does not mention the format ("English")
 is left as it is.
+
+**A browser does not play E-AC3.** In Chrome, Jellyfin's web client
+transcodes it on every playback. The **add a stereo AAC track, played first**
+box of the profile form (`audio_aac_fallback`, on in the shipped profiles)
+doubles each kept track that is not AAC with a stereo AAC track, written just
+before it and marked as default: AAC fre, E-AC3 fre, AAC eng, E-AC3 eng. A TV
+that reads E-AC3 also starts on the AAC; pick the E-AC3 track in the player's
+audio menu to get 5.1 and Atmos back. A file whose video is fine but that has
+no AAC track goes to **remux**; a language that already has an AAC track gets
+no second one.
 
 ### 4.12 "libx265 unavailable here" on a 4K profile
 

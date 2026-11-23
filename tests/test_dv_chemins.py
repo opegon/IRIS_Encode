@@ -311,7 +311,7 @@ def test_un_donneur_qui_perd_son_audio_garde_sa_place(tmp_path, monkeypatch):
     import core.decision as decision
     import tui.screens.run as run
     monkeypatch.setattr(decision, "audio_greffee", lambda ext, profil: SimpleNamespace(
-        action=AudioAction.TRANSCODE, output_title="VF E-AC3 5.1",
+        action=AudioAction.TRANSCODE, output_title="VF E-AC3 5.1", secours=None,
         track=SimpleNamespace(index=0, language="fre", langue_completee=False),
         output_codec="eac3", output_bitrate=640_000, output_channels=0))
     monkeypatch.setattr(run, "EncoderProcess", _FauxFfmpeg)
@@ -367,7 +367,7 @@ def test_mkvmerge_recoit_les_chapitres_de_la_playlist(tmp_path):
 
 def _audio(langue_completee):
     return SimpleNamespace(
-        action=AudioAction.COPY, output_title=None,
+        action=AudioAction.COPY, output_title=None, secours=None,
         track=AudioTrack(index=0, codec="ac3", channels=6, language="fre",
                          title="", bitrate=640_000,
                          langue_completee=langue_completee))

@@ -715,3 +715,10 @@ mpv lit dans l'ordre et ne les trouve qu'au générique. Réparé par remux
 (piste extraite puis regreffée par mkvmerge, qui range chaque réplique à son
 instant ; marquages « forcé » inversés corrigés au passage) : `….remux.mkv`,
 réplique de 1:24:52 affichée dans mpv. Détection dans l'outil : IE-203.
+
+## [2026-11-23] ingest | Silo : E-AC3 transcodé par le client web, piste AAC de secours
+
+Sortie IRIS de Silo S01E01 (E-AC3 5.1 Atmos fre + eng) transcodée par
+Jellyfin dans un navigateur. Décision de l'utilisateur : AAC stéréo avant
+chaque piste, par défaut (v0.9.3.12, `audio_aac_fallback`). Pages
+modifiées : [[audio]], [[jellyfin]].

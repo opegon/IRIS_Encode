@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.3.10 — document de référence courant
-**Date** : 2026-11-21
+**Version** : 0.9.3.12 — document de référence courant
+**Date** : 2026-11-23
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -72,6 +72,7 @@ iris_encode/
 │   ├── glossaire.fr.csv          ← glossaire anglais → français (importable dans Weblate)
 │   └── fr/LC_MESSAGES/           ← iris_encode.po (traduction) et .mo (compilé, versionné)
 ├── outils/
+│   ├── arbre_decision.py         ← document PDF de l'arbre de décision (Edge ou Chrome)
 │   └── i18n.py                   ← extraction, mise à jour, compilation (développement)
 ├── tui/
 │   ├── app.py                    ← application Textual principale
@@ -757,6 +758,7 @@ premier lancement, ou profil disparu depuis — elle prend le premier du fichier
 | `audio_surround_kbps` | int | débit AC3 5.1 |
 | `audio_surround_7_1_kbps` | int | débit AC3 7.1 |
 | `audio_copy_compatible` | bool | copier AAC / AC3 / EAC3 sans transcoder |
+| `audio_aac_fallback` | bool | doubler chaque piste gardée qui n'est pas en AAC d'une piste AAC stéréo, écrite avant elle et seule par défaut (§ 8.5) ; clé absente = `false`, `true` dans les profils livrés |
 | `audio_hd_codec` | str | `none` / `ac3` / `eac3` — transcoder TrueHD et DTS au débit de la source (§ 8.5) |
 | `container` | str | `auto` / `mp4` / `mkv` — conteneur de sortie (§ 8.6) |
 | `upscale` | bool | agrandir par super-résolution les sources plus petites que le 1080p (§ 8.1) ; défaut `false` |
@@ -1445,6 +1447,30 @@ piste lisible · `tests/test_audio_illisible.py`.
      → copy
 3. Sinon → transcoder selon règle canal
 ```
+
+**Piste AAC de secours — `audio_aac_fallback`** (v0.9.3.12) — le client web
+de Jellyfin sous Chrome ne lit ni l'E-AC3 ni l'AC3, et Jellyfin ne bascule pas
+de lui-même vers une piste lisible : il prend la piste par défaut de la langue
+voulue, et la transcode. Avec la clé, chaque piste gardée dont le codec de
+sortie n'est pas l'AAC reçoit un secours (`AudioDecision.secours`) : AAC
+stéréo à `audio_stereo_kbps` (64k pour une source mono), `-ac 2` au-delà de la
+stéréo, titre réécrit par `retitle` (« FR E-AC3 5.1 Atmos » → « FR AAC 2.0 »).
+
+- **Ordre** : le secours précède sa piste — AAC fre, E-AC3 fre, AAC eng,
+  E-AC3 eng (`sorties_audio`, que parcourent `build_command`,
+  `build_audio_command` et `build_strip_mp4`). `decision.audio` garde une
+  ligne par piste de la source : l'écran des pistes affiche « → aac 2.0 192k
+  + → copy » sur la ligne de la piste.
+- **Drapeau par défaut** : la première piste écrite seule (`drapeaux_secours`) ;
+  recopiés de la source, il se dédoublait. Une piste externe marquée par
+  défaut garde la priorité, comme avant. Sans secours, rien n'est posé.
+- **Une langue qui a déjà une piste AAC gardée n'en reçoit pas** : une sortie
+  repassée reste en SKIP au lieu d'empiler les secours.
+- **Remux** : un secours est un motif de `motifs_remux` (« AAC ») ; une sortie
+  dont la vidéo convient passe en REMUX. Il impose aussi la passe audio des
+  chemins Dolby Vision (`audio_pass_needed`) : mkvmerge ne fabrique pas d'AAC.
+- Hors périmètre : les pistes audio greffées.
+- `tests/test_aac_secours.py`.
 
 **Codec et bitrate de sortie par configuration de canaux :**
 
@@ -4684,6 +4710,8 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.3.2 | 2026-11-14 | **`F10 Quitter` dans l'en-tête**, à côté de `F11 Plein écran`, plus au pied de page de chaque écran · **`A` bascule tout / aucun** sur l'accueil, `N` retirée (IE-200) · `tests/test_entete_quitter.py`, `tests/test_bascule_selection.py` |
 | 0.9.3.3 | 2026-11-14 | **La sortie ne reprend plus le titre de la source** (§ 8.8, IE-198) : titre global vidé par les quatre commandes qui écrivent une sortie finale (`build_command`, `build_strip_mp4`, `build_dv_mp4_remux`, `build_strip_command`) ; titres de piste gardés · `tests/test_titre_sortie.py` |
 | 0.9.3.4 | 2026-11-14 | **`pytest.ini`** (§ 18, IE-196) : avertissements en erreurs, marqueurs stricts ; les tubes des sous-processus sont fermés à la fin de chacun (`EncoderProcess`, `MuxProcess`, `TuyauRpu`, `sync`, `youtube`) · **`shots_tui.py` sur un clone** : jeu synthétique quand `resources_files/tests/` manque, 28 prises sur 28 au lieu de 7 |
+| 0.9.3.12 | 2026-11-23 | **Piste AAC stéréo de secours** (§ 8.5) : `audio_aac_fallback`, avant chaque piste gardée qui n'est pas en AAC, seule par défaut ; motif de remux ; case du formulaire de profil · `tests/test_aac_secours.py` |
+| 0.9.3.11 | 2026-11-22 | **Document de l'arbre de décision** : `outils/arbre_decision.py` produit `IRIS_Encode_arbre_de_decision_v<version>.pdf` (21 schémas, de l'entrée à la sortie, prêt à diffuser) ; contenu relevé à la main sur le code (`RELEVE`), avertit quand il diffère de `version.py` |
 | 0.9.3.10 | 2026-11-21 | **Repère d'épisode gardé à la coupe d'un nom ; colonne État à 38** (§ 14.7) : `tronquer_nom` (accueil, écran Encodage), « Une.Serie…S01E02…ROUPE.mkv » ; `LARGEUR_ETAT = 38`, vitesse masquée en pause · `tests/test_run_colonne_fichier.py` |
 | 0.9.3.9 | 2026-11-21 | **Écran Encodage : colonne Fichier ajustée à la fenêtre** (§ 14.7) : la place que laissent les autres colonnes, nom coupé au milieu comme à l'accueil, suit le redimensionnement (`RunScreen._largeur_fichier`) · `tests/test_run_colonne_fichier.py` |
 | 0.9.3.8 | 2026-11-21 | **ASS/SSA convertis en SRT** (§ 6.1, § 8.6, IE-204) : `ass_to_srt`, activé dans les profils livrés `series_*` et `anime` ; conversion propre à IRIS (`core/ass.py`) — italique, gras, haut gardés, couleurs, positions et dessins retirés ; pistes de panneaux et de chansons laissées en ASS ; polices jointes retirées quand plus aucun ASS ne sort ; un ASS converti fait remuxer · `tests/test_ass_srt.py` |

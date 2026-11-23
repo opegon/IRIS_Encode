@@ -32,7 +32,8 @@ from core.decision import (
     Emphase,
     STYLE_PAR_EMPHASE,
     AudioAction, FileDecision, Reglages, VideoAction, appliquer_reglages, decide,
-    ajuster_remux, force_skip_to_encode, reglages_explicites, video_recopiee,
+    ajuster_remux, force_skip_to_encode, reglages_explicites, sorties_audio,
+    video_recopiee,
 )
 from core.scanner import (SCAN_WORKERS, analyser_entrelacement, deja_produit,
                           entrelacement_en_attente, scan, scan_directory_recursive)
@@ -189,9 +190,7 @@ def _estimate_output_bytes(dec: FileDecision,
         return 0
     video_bps = dec.video.target_bitrate
     audio_bps = 0
-    for ad in dec.audio:
-        if ad.action == AudioAction.EXCLUDE:
-            continue
+    for ad in sorties_audio(dec.audio):
         if ad.action == AudioAction.COPY:
             audio_bps += ad.track.bitrate or 192_000
         else:

@@ -54,7 +54,7 @@ def test_l_audio_regroupe_les_pistes_de_meme_format():
     from core.decision import AudioAction, FileDecision
 
     def piste(codec, canaux, langue, action=AudioAction.COPY):
-        return SimpleNamespace(action=action, track=SimpleNamespace(
+        return SimpleNamespace(action=action, secours=None, track=SimpleNamespace(
             codec=codec, channel_layout=canaux, language=langue,
             display=lambda: f"{codec} {canaux} {langue or '?'}"))
 

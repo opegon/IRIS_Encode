@@ -40,6 +40,23 @@ rien. Code : `core/decision.py` (`motifs_remux`, `ajuster_remux`).
 Depuis la v0.9.1.23, un profil en `audio_hd_codec = "eac3"` sort aussi son
 **forfait** 5.1 / 7.1 en E-AC3 (FLAC, PCM, Opus, HD au débit illisible).
 
+### Piste AAC de secours pour les navigateurs
+
+Le client web de [[jellyfin]] sous Chrome ne lit ni l'E-AC3 ni l'AC3 : une
+sortie en E-AC3 Atmos, parfaite pour le [[lg-oled-g3|G3]], y est transcodée
+à chaque lecture *(observé le 2026-11-23, Silo S01E01 : « le codec audio ne
+passe pas », transcodage réussi)*. Jellyfin **ne choisit pas** une autre piste
+lisible : il prend la piste par défaut de la langue voulue *(supposé d'après
+le comportement observé, non vérifié dans son code)*.
+
+Choix de l'utilisateur (2026-11-23) : une piste AAC stéréo **avant** chaque
+piste qui n'est pas en AAC, et **par défaut** — AAC fre, E-AC3 fre, AAC eng,
+E-AC3 eng. Le prix est accepté : le G3 démarre lui aussi sur l'AAC stéréo.
+Clé `audio_aac_fallback` (v0.9.3.12) ; une langue qui a déjà une piste AAC
+n'en reçoit pas d'autre, et une sortie sans AAC passe en REMUX. Vérifié sur
+le fichier réel : quatre pistes, drapeau par défaut sur la seule première,
+décodage sans erreur *(mesuré, ffmpeg 8.1)*.
+
 ## Les familles sans perte
 
 TrueHD, MLP, DTS-HD MA, **FLAC et PCM** (ces deux depuis la v0.9.1.13 :

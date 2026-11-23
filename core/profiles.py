@@ -67,6 +67,10 @@ _BASE_AUDIO = {
     "audio_surround_kbps":     448,
     "audio_surround_7_1_kbps": 640,
     "audio_copy_compatible":   True,
+    # Double chaque piste gardée qui n'est pas en AAC d'une piste AAC stéréo,
+    # écrite avant elle et par défaut : le client web de Jellyfin sous Chrome
+    # ne lit pas l'E-AC3. Clé absente = comportement historique, pas de secours.
+    "audio_aac_fallback":      True,
     # "none" | "ac3" | "eac3" — transcode les pistes TrueHD et DTS au débit
     # présent dans la piste, plafonné à ce que l'encodeur sait produire.
     "audio_hd_codec":          "none",
@@ -213,7 +217,7 @@ _CONTROLES: dict[str, Any] = {
         "audio_surround_7_1_kbps", "h264_min_kbps")},
     **{cle: lambda v: isinstance(v, bool) for cle in (
         "keep_4k", "delete_source", "preserve_hd_audio",
-        "audio_copy_compatible", "upscale", "convert_h264", "ass_to_srt")},
+        "audio_copy_compatible", "audio_aac_fallback", "upscale", "convert_h264", "ass_to_srt")},
     # Une fraction stricte : à 1, la conversion réencoderait au même débit.
     "h264_to_hevc_ratio": lambda v: (isinstance(v, (int, float))
                                      and not isinstance(v, bool) and 0 < v < 1),

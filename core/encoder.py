@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from .decision import (AudioAction, DVAction, FileDecision, VideoAction,
-                       conversion_p5)
+                       conversion_p5, sorties_audio)
 from .entrelacement import FILTRE_BWDIF
 from .i18n import N_, ErreurAffichable, _
 from .platform import GPU, PlatformProfile
@@ -553,7 +553,7 @@ def build_audio_command(source: Path, output: Path, audio: list,
     d'un Blu-ray (IE-119), que ffmpeg ne voit pas, y est écrite — sans elle,
     les pistes sortaient en `und` (CR-63).
     """
-    gardees = [ad for ad in audio if ad.action != AudioAction.EXCLUDE]
+    gardees = sorties_audio(audio)
     # `-stats` : sous `-loglevel error`, ffmpeg n'écrit plus sa ligne de
     # progression, et la barre restait indéterminée (CR-21, mesuré).
     cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-stats",
@@ -562,6 +562,7 @@ def build_audio_command(source: Path, output: Path, audio: list,
     for ad in gardees:
         cmd += ["-map", f"0:a:{ad.track.index}"]
     cmd += audio_args(gardees)
+    cmd += drapeaux_secours(audio)
     for n, ad in enumerate(gardees):
         if ad.track.langue_completee:
             cmd += [f"-metadata:s:a:{n}", f"language={ad.track.language}"]
@@ -693,8 +694,9 @@ def audio_prepass_needed(decision) -> bool:
     """
     if not decision.subtitles_finales:
         return False
+    # Une piste AAC de secours décode elle aussi sa source sans perte.
     return any(ad.action == AudioAction.TRANSCODE and ad.track.is_lossless
-               for ad in decision.audio)
+               for ad in sorties_audio(decision.audio))
 
 
 def audio_pass_needed(audio: list) -> bool:
@@ -702,9 +704,26 @@ def audio_pass_needed(audio: list) -> bool:
 
     Une exclusion seule ne justifie pas cette passe : mkvmerge sait ne pas
     prendre une piste. Un transcodage, si — et il entraîne avec lui le
-    retitrage, qui n'a de sens que sur la piste transcodée.
+    retitrage, qui n'a de sens que sur la piste transcodée. Une piste AAC de
+    secours est un transcodage : mkvmerge ne la fabrique pas.
     """
-    return any(ad.action == AudioAction.TRANSCODE for ad in audio)
+    return any(ad.action == AudioAction.TRANSCODE for ad in sorties_audio(audio))
+
+
+def drapeaux_secours(audio: list) -> list[str]:
+    """Drapeaux « par défaut » des pistes audio quand l'une a un AAC de secours.
+
+    Recopiés de la source, ils se dédoublaient : une piste et son secours
+    lisent le même flux, donc deux pistes par défaut. La première piste écrite
+    — l'AAC de la première langue — porte seule le drapeau : Jellyfin la
+    choisit, et un client qui lit l'E-AC3 garde l'autre au menu. Sans
+    secours, rien ne change : les drapeaux de la source restent.
+    """
+    if not any(ad.secours is not None for ad in audio
+               if ad.action != AudioAction.EXCLUDE):
+        return []
+    return [x for n in range(len(sorties_audio(audio)))
+            for x in (f"-disposition:a:{n}", "default" if n == 0 else "0")]
 
 
 # Les tags de statistiques que mkvmerge pose sur chaque piste. ffmpeg les
@@ -1386,8 +1405,8 @@ def build_command(
     if encodeur_de(cmd) != "copy":
         cmd += effacer_statistiques("v:0")
 
-    included_audio = [ad for ad in decision.audio if ad.action != AudioAction.EXCLUDE]
-    audio_input = len(ext_tracks) + 1 if audio_source is not None else 0
+    included_audio = sorties_audio(decision.audio)
+    audio_input =len(ext_tracks) + 1 if audio_source is not None else 0
     for n, ad in enumerate(included_audio):
         # L'entrée dédiée ne contient QUE les pistes retenues, dans l'ordre :
         # on la parcourt par rang, pas par index de source.
@@ -1490,6 +1509,8 @@ def build_command(
     if TrackKind.AUDIO in defaut:
         for out_i in range(len(included_audio)):
             cmd += [f"-disposition:a:{out_i}", "0"]
+    else:
+        cmd += drapeaux_secours(decision.audio)
     if TrackKind.SUBTITLE in defaut:
         for out_i in range(n_src_subs):
             cmd += [f"-disposition:s:{out_i}", "0"]

@@ -1,5 +1,47 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.12] — 2026-11-23
+
+### Une piste AAC stéréo avant chaque piste E-AC3 ou AC3
+
+- **Le client web de Jellyfin transcodait l'audio** de
+  `Silo.S01E01.MULTi.1080p.WEB-FW.hevc-iris.mp4` (E-AC3 5.1 Atmos fre + eng) :
+  Chrome ne lit pas l'E-AC3, et Jellyfin ne bascule pas de lui-même vers une
+  piste lisible. Nouvelle clé de profil **`audio_aac_fallback`** : chaque
+  piste gardée qui ne sort pas en AAC est doublée d'une piste AAC stéréo
+  (`audio_stereo_kbps`), écrite juste avant elle. Sur Silo : AAC fre (par
+  défaut), E-AC3 fre, AAC eng, E-AC3 eng — vérifié sur le fichier réel
+  (ffprobe, décodage complet de l'extrait).
+- **Seule la première piste est marquée par défaut** : recopié de la source,
+  le drapeau se dédoublait sur l'AAC et l'E-AC3 de même langue.
+- **Une sortie sans AAC passe en REMUX** (motif « AAC ») : la vidéo est
+  recopiée, les secours ajoutés. Une langue qui a déjà une piste AAC n'en
+  reçoit pas d'autre : la sortie repassée reste en SKIP (vérifié).
+- Les chemins Dolby Vision fabriquent le secours dans leur passe audio
+  (mkvmerge ne sait pas le faire).
+- `true` dans les profils livrés ; clé absente d'un profil personnel =
+  comportement d'avant. Case « ajouter une piste AAC stéréo, lue en premier »
+  dans le formulaire de profil.
+- Le prix : un client qui lit l'E-AC3 (le G3) démarre lui aussi sur l'AAC
+  stéréo ; l'E-AC3 Atmos reste au menu des pistes.
+- `tests/test_aac_secours.py` : 10 tests (contre-vérifiés : 8 échouent sans la
+  pose du secours ; les 2 autres gardent le comportement sans la clé).
+
+## [v0.9.3.11] — 2026-11-22
+
+### Document de l'arbre de décision
+
+- **Nouveau document diffusable** : `IRIS_Encode_arbre_de_decision_v0.9.3.11.pdf`,
+  25 pages A4, tous les tests et décisions appliqués à un fichier vidéo, de
+  l'entrée à la sortie (analyse, profil, vidéo, Dolby Vision, audio,
+  sous-titres, encodage, contrôle de sortie), en 21 schémas lisibles
+  (corps de 7,9 à 11,3 pt), avec synthèse et légende.
+- **`outils/arbre_decision.py`** le régénère : `python outils/arbre_decision.py`
+  (`--html` garde aussi la page). Il faut Edge ou Chrome (`IRIS_NAVIGATEUR`
+  pour en imposer un) et le réseau (Mermaid depuis le CDN). Le contenu est
+  écrit d'après le code de la version `RELEVE` : l'outil avertit quand elle
+  diffère de `version.py`, et signale tout schéma sous 7,5 pt.
+
 ## [v0.9.3.10] — 2026-11-21
 
 ### Le repère d'épisode reste visible ; colonne État à 38

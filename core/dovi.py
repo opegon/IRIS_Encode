@@ -167,8 +167,8 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
     `sous_titres`, dont les langues lues dans le `.clpi` (IE-119) sont écrites
     comme le fait `build_command`. Sans elles, pistes `und` (CR-63).
     """
-    from .decision import AudioAction
-    from .encoder import audio_args
+    from .decision import sorties_audio
+    from .encoder import audio_args, drapeaux_secours
     # `-stats` : sous `-loglevel error`, ffmpeg ne dit plus où il en est, et la
     # barre restait vide pendant tout le remux (CR-21, ici aussi).
     cmd = [ffmpeg_path, "-y", "-loglevel", "error", "-stats", "-i", str(source)]
@@ -178,7 +178,7 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
         n_chap = cmd.count("-i")
         cmd += ["-f", "ffmetadata", "-i", str(chapitres)]
     cmd += ["-map", "0:v:0"]
-    gardees = [ad for ad in (audio or []) if ad.action != AudioAction.EXCLUDE]
+    gardees = sorties_audio(audio or [])
     if audio is None:
         cmd += ["-map", "0:a?"]
     else:
@@ -189,6 +189,7 @@ def build_strip_mp4(source: Path, output: Path, sous_titres: list[int],
     cmd += ["-c", "copy", "-bsf:v", "dovi_rpu=strip=1"]
     # `-c copy` vaut pour tout ; les options par piste, plus précises, gagnent.
     cmd += audio_args(gardees)
+    cmd += drapeaux_secours(audio or [])
     for n, ad in enumerate(gardees):
         if ad.track.langue_completee:
             cmd += [f"-metadata:s:a:{n}", f"language={ad.track.language}"]

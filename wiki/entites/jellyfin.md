@@ -31,6 +31,8 @@ Tout format que le client ne déclare pas lisible déclenche un transcodage,
 - sous-titre image sélectionné : **incrustation**, donc transcodage vidéo
   complet ([[sous-titres]]) ;
 - audio sans perte, ou DTS pour le [[lg-oled-g3]] ([[audio]]) ;
+- E-AC3 et AC3 dans le client web sous Chrome — d'où la piste AAC de
+  secours ([[audio#Piste AAC de secours pour les navigateurs]]) ;
 - Dolby Vision profil 8 vers le client webOS : remux HLS ;
 - débit au-dessus de la limite du client ;
 - vidéo **anamorphique** — tout SAR différent de 1:1, même 959:960 *(observé,

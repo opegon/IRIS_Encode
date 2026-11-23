@@ -246,10 +246,19 @@ class AudioDecision:
     # d'encodage affiche la commande, et un downmix silencieux n'y serait
     # visible nulle part.
     output_channels: int = 0
+    # Piste AAC stéréo écrite juste avant celle-ci (`audio_aac_fallback`) : un
+    # client qui ne lit pas l'E-AC3 ou l'AC3 — Chrome — la joue sans que
+    # Jellyfin transcode. Même piste source, deux sorties : voir `sorties_audio`.
+    secours: Optional["AudioDecision"] = None
 
     def display(self) -> str:
         if self.action == AudioAction.EXCLUDE:
             return ""
+        if self.secours is not None:
+            return f"{self.secours._display_seule()} + {self._display_seule()}"
+        return self._display_seule()
+
+    def _display_seule(self) -> str:
         if self.action == AudioAction.COPY:
             return libelle_copie()
         canaux = ""
@@ -830,11 +839,13 @@ class FileDecision:
         # (revue du 2026-11-08). L'ordre est celui de la première piste de
         # chaque format.
         formats: dict[tuple[str, str], list[str]] = {}
-        for ad in self.audio:
-            if ad.action == AudioAction.EXCLUDE:
-                continue
+        secours = {id(ad.secours) for ad in self.audio if ad.secours is not None}
+        for ad in sorties_audio(self.audio):
             t = ad.track
-            formats.setdefault((t.codec, t.channel_layout), []).append(t.language or "?")
+            cle = ((ad.output_codec,
+                    channel_layout_label(ad.output_channels or t.channels))
+                   if id(ad) in secours else (t.codec, t.channel_layout))
+            formats.setdefault(cle, []).append(t.language or "?")
         return ("  ".join(f"{codec} {canaux} {'+'.join(langues)}"
                           for (codec, canaux), langues in formats.items())
                 or "—")
@@ -1519,7 +1530,65 @@ def decide_audio(
         decisions.append(decide_codec_audio(track, profile, reason,
                                             locked=(i == originale)))
 
+    _poser_secours_aac(decisions, profile)
     return decisions
+
+
+def sorties_audio(audio: list) -> list[AudioDecision]:
+    """Les pistes audio écrites, dans leur ordre de sortie : chaque piste
+    gardée, précédée de sa piste AAC de secours quand elle en a une.
+
+    Une piste de secours lit la même piste source que celle qu'elle double :
+    tout ce qui mappe ou encode l'audio parcourt cette liste, pas
+    `decision.audio`, qui garde une ligne par piste de la source.
+    """
+    sorties: list[AudioDecision] = []
+    for ad in audio:
+        if ad.action == AudioAction.EXCLUDE:
+            continue
+        if ad.secours is not None:
+            sorties.append(ad.secours)
+        sorties.append(ad)
+    return sorties
+
+
+def _codec_sortie(ad: AudioDecision) -> str:
+    return ad.output_codec if ad.action == AudioAction.TRANSCODE else ad.track.codec.lower()
+
+
+def _poser_secours_aac(decisions: list[AudioDecision], profile: Profile) -> None:
+    """Double d'une piste AAC stéréo chaque piste gardée qui n'est pas en AAC
+    (`audio_aac_fallback`).
+
+    Le client web de Jellyfin sous Chrome ne lit ni l'E-AC3 ni l'AC3 :
+    Jellyfin transcodait l'audio à chaque lecture, ce que la sortie d'IRIS
+    doit éviter. Il ne bascule pas de lui-même vers une piste lisible — il
+    prend la piste par défaut de la langue voulue —, d'où l'ordre choisi par
+    l'utilisateur (2026-11-23) : l'AAC d'abord, par défaut, la piste d'origine
+    ensuite.
+
+    Une langue qui a déjà une piste AAC gardée n'en reçoit pas d'autre : une
+    sortie d'IRIS repassée garderait sinon ses secours et en recevrait de
+    nouveaux à chaque passage.
+    """
+    if not profile.get("audio_aac_fallback", False):
+        return
+    gardees = [ad for ad in decisions if ad.action != AudioAction.EXCLUDE]
+    deja_aac = {normalize_language(ad.track.language) for ad in gardees
+                if _codec_sortie(ad) == "aac"}
+    for ad in gardees:
+        if (_codec_sortie(ad) == "aac"
+                or normalize_language(ad.track.language) in deja_aac):
+            continue
+        mono = ad.track.channels == 1
+        ad.secours = AudioDecision(
+            track=ad.track, action=AudioAction.TRANSCODE,
+            reason=_("stereo AAC fallback"),
+            output_codec="aac",
+            output_bitrate=(64_000 if mono
+                            else profile.get("audio_stereo_kbps", 192) * 1000),
+            output_channels=2 if ad.track.channels > 2 else 0,
+        )
 
 
 def decide_codec_audio(track: AudioTrack, profile: Profile, reason: str,
@@ -2011,6 +2080,10 @@ def motifs_remux(dec: FileDecision) -> list[str]:
     """
     motifs = [ad.track.codec.upper() for ad in dec.audio
               if ad.action == AudioAction.TRANSCODE]
+    # Une piste à doubler d'un AAC de secours : la sortie existante ne se lit
+    # pas sans transcodage dans un client qui ignore l'E-AC3.
+    if any(ad.secours is not None for ad in dec.audio):
+        motifs.append("AAC")
     retenues = [st for st in dec.info.subtitle_tracks if st.portable]
     images = [st for st in _pgs_doubles(retenues)
               if st not in dec.subtitles_finales] + dec.sous_titres_ocr

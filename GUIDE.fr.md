@@ -1,6 +1,6 @@
 # IRIS ENCODE — Guide d'utilisation
 
-**Version** : 0.9.3.10
+**Version** : 0.9.3.12
 **Date** : 2026-11-09
 
 *[English version: GUIDE.md](GUIDE.md)*
@@ -1123,6 +1123,16 @@ Le titre de la piste est corrigé au passage : « ENG VO : TrueHD 5.1 » devient
 « ENG VO : E-AC3 5.1 », et la mention Atmos disparaît puisqu'elle ne survit pas
 à la conversion. Un titre qui ne parle pas du format (« English ») est laissé
 tel quel.
+
+**Un navigateur ne lit pas l'E-AC3.** Sous Chrome, le client web de Jellyfin
+le transcode à chaque lecture. La case **ajouter une piste AAC stéréo, lue en
+premier** du formulaire de profil (`audio_aac_fallback`, cochée dans les
+profils livrés) double chaque piste gardée qui n'est pas en AAC d'une piste
+AAC stéréo, écrite juste avant elle et marquée par défaut : AAC fre, E-AC3
+fre, AAC eng, E-AC3 eng. Un téléviseur qui lit l'E-AC3 démarre lui aussi sur
+l'AAC ; choisir la piste E-AC3 dans le menu audio du lecteur rend le 5.1 et
+l'Atmos. Un fichier dont la vidéo convient mais sans piste AAC passe en
+**remux** ; une langue qui a déjà une piste AAC n'en reçoit pas d'autre.
 
 
 ### 4.12 « libx265 indisponible ici » sur un profil 4K

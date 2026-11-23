@@ -380,6 +380,14 @@ class ProfileForm(Widget):
                 yield Checkbox(_("copy AAC / AC3 / E-AC3 without transcoding"),
                                id="field-copy-compat")
 
+        with Widget(classes="form-row"):
+            with Widget(classes="form-cell"):
+                pass
+            with Widget(classes="form-cell"):
+                # TRANSLATORS: AAC is an audio format, keep it.
+                yield Checkbox(_("add a stereo AAC track, played first"),
+                               id="field-aac-secours")
+
         # Les sous-titres ont leur propre liste : un rip streaming en embarque
         # quarante, et vouloir deux langues audio ne veut pas dire vouloir les
         # mêmes en sous-titres. Vide = toutes, comme avant l'existence de la clé.
@@ -554,12 +562,17 @@ class ProfileForm(Widget):
         self._pose("#cons-conteneur",
                    _(self._CONTENEUR_TXT.get(self._txt("#field-conteneur", "auto"), "")))
 
-        self._pose("#cons-pistes",
-                   _("AAC, AC3 and E-AC3 tracks are copied untouched; the "
-                     "fixed bitrates only apply to the others.")
-                   if self._chk("#field-copy-compat") else
-                   _("All tracks are transcoded at the fixed bitrates above, "
-                     "including those already in the right format."))
+        pistes = (_("AAC, AC3 and E-AC3 tracks are copied untouched; the "
+                    "fixed bitrates only apply to the others.")
+                  if self._chk("#field-copy-compat") else
+                  _("All tracks are transcoded at the fixed bitrates above, "
+                    "including those already in the right format."))
+        if self._chk("#field-aac-secours"):
+            pistes += "\n" + _(
+                "Each track that is not AAC gets a stereo AAC copy, placed "
+                "before it and played by default: a browser plays it without "
+                "Jellyfin transcoding.")
+        self._pose("#cons-pistes", pistes)
 
         supprime = self._chk("#field-delsrc")
         self._pose("#cons-source",
@@ -637,6 +650,7 @@ class ProfileForm(Widget):
             bool(data.get("preserve_hd_audio", False)),
             str(data.get("audio_hd_codec", "none"))))
         _set_chk("#field-copy-compat",data.get("audio_copy_compatible", True))
+        _set_chk("#field-aac-secours", data.get("audio_aac_fallback", False))
 
         # Le nom n'est saisissable qu'à la création : `_on_key` réenregistre un
         # profil existant sous `self._profile_id`, jamais sous le contenu du
@@ -698,6 +712,7 @@ class ProfileForm(Widget):
             **_hd_audio_cles(_g_sel("#field-hdaudio", "forfait")),
             "container":               _g_sel("#field-conteneur", "auto"),
             "audio_copy_compatible":   _g_chk("#field-copy-compat"),
+            "audio_aac_fallback":      _g_chk("#field-aac-secours"),
         }
 
     def validate(self) -> list[str]:

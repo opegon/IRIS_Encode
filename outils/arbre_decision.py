@@ -43,7 +43,7 @@ from pathlib import Path
 RACINE = Path(__file__).resolve().parent.parent
 
 # Version du code sur laquelle le contenu des pièces a été relevé et vérifié.
-RELEVE = "0.9.3.13"
+RELEVE = "0.9.3.15"
 
 # Corps minimal accepté pour le texte d'un diagramme, une fois mis à l'échelle.
 CORPS_MIN_PT = 7.5
@@ -166,7 +166,7 @@ flowchart TD
 
 piece("Entrée et analyse", "3.2", "port",
       "Le débit retenu est celui de la vidéo seule, jamais celui du conteneur",
-      "Enrichissements du VideoInfo : codec caché, débit, langues, sous-titres illisibles, HDR",
+      "Enrichissements du VideoInfo : codec caché, débit, langues, sous-titres illisibles, en-tête HEVC, HDR",
       """
 flowchart TD
   S(["Source lisible"]) --> RAW{"rawvideo à<br/>fourcc nul ?"}
@@ -178,15 +178,19 @@ flowchart TD
   LG -->|non| WV
   MKJ --> WV{"Sous-titre<br/>codec unknown ?"}
   WV -->|en-tête WEBVTT| WV2["WebVTT brut<br/>refait en SRT"]
-  WV -->|non| HDR
-  WV2 --> HDR(["HDR10 lu dans les SEI<br/>profil Dolby Vision relevé<br/>→ pièce 3.3"])
-  class RAW,LG,WV test
+  WV -->|non| HV
+  WV2 --> HV{"HEVC à en-tête<br/>sans VPS/SPS/PPS ?<br/>extradata ≤ 23 octets"}
+  HV -->|oui| HV2["parametres_hors_entete<br/>→ copie MP4, chapitre 9"]
+  HV -->|non| HDR
+  HV2 --> HDR(["HDR10 lu dans les SEI<br/>profil Dolby Vision relevé<br/>→ pièce 3.3"])
+  class RAW,LG,WV,HV test
   class HDR ok
 """,
       ["Le débit comparé à la cible exclut l'audio et les sous-titres : 9 611 kb/s de conteneur pour 5 364 kb/s de vidéo, mesuré sur un film avec TrueHD.",
        "Un tag BPS qui dépasse le débit du conteneur est périmé (recopié par ffmpeg sans recalcul) et écarté.",
-       "Une piste dont le débit reste introuvable ne retire rien : le résultat penche vers le réencodage."],
-      "core/scanner.py (_video_bitrate, _codec_annexe_b, _completer_langues, _reconnaitre_webvtt_brut, _hdr10_metadata)")
+       "Une piste dont le débit reste introuvable ne retire rien : le résultat penche vers le réencodage.",
+       "En-tête HEVC sans paramètres : fréquent sur les WEB-DL issus de hev1, les paramètres n'étant que dans le flux. Recopié tel quel en MP4 hvc1, il donnait un fichier illisible (IE-205)."],
+      "core/scanner.py (_video_bitrate, _codec_annexe_b, _completer_langues, _reconnaitre_webvtt_brut, _hdr10_metadata, :1066 parametres_hors_entete)")
 
 piece("Entrée et analyse", "3.3", "port",
       "Les sources SD sont mesurées : proportion d'image et entrelacement",
@@ -383,7 +387,7 @@ flowchart TD
        "Le secours lit la même piste source ; son titre est corrigé (« FR E-AC3 5.1 Atmos » → « FR AAC 2.0 »).",
        "Une piste audio externe marquée par défaut garde la priorité. Les pistes greffées ne reçoivent pas de secours.",
        "Clé absente d'un profil : pas de secours. Les profils livrés l'activent."],
-      "core/decision.py:1559 _poser_secours_aac · :1537 sorties_audio · core/encoder.py:713 drapeaux_secours")
+      "core/decision.py:1559 _poser_secours_aac · :1537 sorties_audio · core/encoder.py:719 drapeaux_secours")
 
 # ── 6. Sous-titres, remux, conteneur ──────────────────────────────────────────
 piece("Sous-titres, remux et conteneur", "6.1", "port",
@@ -632,7 +636,8 @@ flowchart TB
 """,
       ["Le retrait du RPU laisse l'image intacte bit à bit et conserve un éventuel HDR10+.",
        "Un profil 7 en STRIP_DV sort toujours en MKV : seul dovi_tool remove retire sa couche d'amélioration.",
-       "ENCODE_DV exige une base HDR10 et une définition inchangée : le RPU décrit un cadrage image par image."],
+       "ENCODE_DV exige une base HDR10 et une définition inchangée : le RPU décrit un cadrage image par image.",
+       "Le retrait vers MP4 étiquette hvc1 sans risque d'en-tête vide : le filtre dovi_rpu réécrit l'en-tête HEVC depuis les paramètres du flux (IE-205, mesuré)."],
       "tui/screens/run.py:1421 _strip_dv · :1702 _encode_dv · core/dovi.py")
 
 # ── 9. Commande ffmpeg ────────────────────────────────────────────────────────
@@ -655,7 +660,7 @@ flowchart TD
   HW -->|hwaccel admis| HA["-hwaccel"]
   HW -->|sinon| HC["Processeur"]
   TP & HA & HC --> VM{"Mode vidéo"}
-  VM -->|DV gardé ou REMUX| VC(["-c:v copy"])
+  VM -->|DV gardé ou REMUX| VC(["-c:v copy<br/>MP4 HEVC : hvc1, et<br/>hevc_mp4toannexb si<br/>paramètres hors en-tête"])
   VM -->|hdr10_quality| VQ(["libx265 + métadonnées<br/>maxrate = cible"])
   VM -->|standard| FL["Filtres dans l'ordre :<br/>1 · télécinéma ou bwdif<br/>2 · setsar SAR imposé<br/>3 · pixels carrés<br/>4 · scale au cadre<br/>5 · tone mapping si SDR"]
   FL --> VS(["Encodeur :<br/>NVENC vbr, maxrate 1,5 × cible<br/>libx265 maxrate = cible<br/>10 bits si HDR"])
@@ -667,8 +672,9 @@ flowchart TD
 """,
       ["Tout-carte exclu pour : SDR, Dolby Vision, hdr10_quality, désentrelacement, pixels non carrés, dimension impaire, source non décodable par la puce.",
        "-hwaccel exclu pour : SDR (zscale), profil 5, agrandissement, vidéo recopiée, hdr10_quality.",
-       "HEVC NVENC sort aussi en 10 bits en SDR si le sondage l'a ouvert ainsi (+0,1 à +0,4 point VMAF mesuré)."],
-      "core/encoder.py:1111 build_command · filtre_tout_puce · regle_debit · _hdr10_quality")
+       "HEVC NVENC sort aussi en 10 bits en SDR si le sondage l'a ouvert ainsi (+0,1 à +0,4 point VMAF mesuré).",
+       "hevc_mp4toannexb sur une copie : depuis le flux Annex B, le muxeur MP4 reconstruit un en-tête hvcC complet ; sans lui, ffmpeg en écrivait un vide, code de retour nul (IE-205)."],
+      "core/encoder.py:1117 build_command · :1592 hevc_mp4toannexb · filtre_tout_puce · regle_debit · _hdr10_quality")
 
 # ── 10. Contrôle ──────────────────────────────────────────────────────────────
 piece("Contrôle et fin", "10", "port",
@@ -678,7 +684,7 @@ piece("Contrôle et fin", "10", "port",
 flowchart TD
   R(["Fin du processus"]) --> C0{"Code 0 ?"}
   C0 -->|non| KO
-  C0 -->|oui| C1{"Sortie présente,<br/>non vide, de la<br/>durée attendue ?"}
+  C0 -->|oui| C1{"Sortie présente,<br/>non vide, lisible<br/>par ffprobe, de la<br/>durée attendue ?"}
   C1 -->|non| KO
   C1 -->|oui| C2{"Chaque piste audio<br/>≥ 1/10 de la durée ?"}
   C2 -->|non| KO["Échec · sortie partielle<br/>effacée · cause diagnostiquée"]
@@ -699,6 +705,7 @@ flowchart TD
   class KO err
 """,
       ["ffmpeg peut rendre un code nul avec une piste audio amputée : le contrôle relit la sortie.",
+       "Une sortie que ffprobe refuse d'ouvrir est un échec et la source reste (IE-205) ; un ffprobe absent ou une durée illisible ne font pas échouer.",
        "Les intermédiaires (audio à part, porteur, chapitres, SRT refaits, mux préalable) sont effacés dans tous les cas ; les pistes recalées seulement après un succès."],
       "tui/screens/run.py:833-893 · :915 _supprimer_source · :896 _audio_vide · core/encoder.py:605 defaut_sortie")
 
@@ -721,7 +728,7 @@ SYNTHESE = [
     ("Aucune piste perdue en silence",
      "Le MP4 est préféré quand tout y tient. Il cède au MKV dès qu'une piste retenue ne pourrait pas y figurer sans être écartée."),
     ("Un succès vérifié, pas supposé",
-     "La sortie est relue (présence, durée, pistes audio) avant d'être déclarée réussie et avant toute suppression de la source."),
+     "La sortie est relue (présence, lisibilité, durée, pistes audio) avant d'être déclarée réussie et avant toute suppression de la source."),
 ]
 
 LEGENDE = [

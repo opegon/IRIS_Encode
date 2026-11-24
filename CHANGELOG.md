@@ -1,5 +1,24 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.15] — 2026-11-24
+
+### Arbre de décision à jour d'IE-205 ; retrait DV vers MP4 vérifié
+
+- **Le retrait Dolby Vision vers MP4 n'a pas le défaut d'IE-205** :
+  `build_strip_mp4` impose aussi `hvc1` à une copie, mais son filtre
+  `dovi_rpu=strip=1` réécrit l'en-tête HEVC depuis les paramètres du flux.
+  Sur une source à `hvcC` vide, la sortie est complète et se décode (mesuré) ;
+  sans le filtre, la même copie sort illisible. Aucun changement de code ; un
+  test de garde dans `tests/test_hvcc_sans_parametres.py` (contre-vérifié en
+  retirant le filtre : `hvcC` de 0 octet).
+- **Arbre de décision** : pièce 3.2 (en-tête HEVC sans paramètres relevé par
+  le scanner), 8.4 (retrait DV vers MP4), 9 (`hevc_mp4toannexb` sur une copie
+  vers MP4), 10 (une sortie que ffprobe refuse est un échec) et synthèse ;
+  numéros de ligne de `core/encoder.py` recalés.
+  `IRIS_Encode_arbre_de_decision_v0.9.3.15.pdf`, 26 pages, 22 pièces (corps de
+  7,7 à 11,3 pt), remplace celui de la v0.9.3.13 ; planches 3.2, 9 et 10
+  contrôlées au rendu.
+
 ## [v0.9.3.14] — 2026-11-24
 
 ### Remux MP4 illisibles : en-tête HEVC vide (IE-205)

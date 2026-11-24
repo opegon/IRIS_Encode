@@ -1,6 +1,6 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.3.14 — document de référence courant
+**Version** : 0.9.3.15 — document de référence courant
 **Date** : 2026-11-24
 **Statut** : stable
 
@@ -4725,6 +4725,7 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.3.2 | 2026-11-14 | **`F10 Quitter` dans l'en-tête**, à côté de `F11 Plein écran`, plus au pied de page de chaque écran · **`A` bascule tout / aucun** sur l'accueil, `N` retirée (IE-200) · `tests/test_entete_quitter.py`, `tests/test_bascule_selection.py` |
 | 0.9.3.3 | 2026-11-14 | **La sortie ne reprend plus le titre de la source** (§ 8.8, IE-198) : titre global vidé par les quatre commandes qui écrivent une sortie finale (`build_command`, `build_strip_mp4`, `build_dv_mp4_remux`, `build_strip_command`) ; titres de piste gardés · `tests/test_titre_sortie.py` |
 | 0.9.3.4 | 2026-11-14 | **`pytest.ini`** (§ 18, IE-196) : avertissements en erreurs, marqueurs stricts ; les tubes des sous-processus sont fermés à la fin de chacun (`EncoderProcess`, `MuxProcess`, `TuyauRpu`, `sync`, `youtube`) · **`shots_tui.py` sur un clone** : jeu synthétique quand `resources_files/tests/` manque, 28 prises sur 28 au lieu de 7 |
+| 0.9.3.15 | 2026-11-24 | **Arbre de décision relevé sur 0.9.3.15** : pièces 3.2 (en-tête HEVC sans paramètres), 8.4 (retrait DV vers MP4 sans en-tête vide), 9 (`hevc_mp4toannexb` sur une copie), 10 (sortie refusée par ffprobe) et synthèse ; numéros de ligne de `core/encoder.py` recalés ; `IRIS_Encode_arbre_de_decision_v0.9.3.15.pdf` remplace celui de 0.9.3.13 · test de garde du retrait DV vers MP4 (`tests/test_hvcc_sans_parametres.py`) |
 | 0.9.3.14 | 2026-11-24 | **HEVC à paramètres hors en-tête recopié en MP4** (§ 8.6, § 14.7, IE-205) : la recopie en MP4 `hvc1` d'une source dont la `hvcC` n'a aucun VPS/SPS/PPS écrivait une `hvcC` vide, fichier illisible ; `scanner` le repère (`parametres_hors_entete`), `build_command` passe alors `-bsf:v hevc_mp4toannexb` · `defaut_sortie` met en ERREUR une sortie que ffprobe refuse, la source reste · `outils/reparer_hvcc.py` répare les sorties déjà écrites · `tests/test_hvcc_sans_parametres.py`, `tests/test_sorties_protegees.py` |
 | 0.9.3.13 | 2026-11-23 | **Arbre de décision relevé sur 0.9.3.13** : pièce 5.3 (secours AAC), motif de remux et passes audio DV complétés, numéros de ligne recalés ; `IRIS_Encode_arbre_de_decision_v0.9.3.13.pdf` (22 pièces) remplace celui de 0.9.3.11 |
 | 0.9.3.12 | 2026-11-23 | **Piste AAC stéréo de secours** (§ 8.5) : `audio_aac_fallback`, avant chaque piste gardée qui n'est pas en AAC, seule par défaut ; motif de remux ; case du formulaire de profil · `tests/test_aac_secours.py` |

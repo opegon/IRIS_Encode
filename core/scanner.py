@@ -567,6 +567,10 @@ class VideoInfo:
     # Décodeur à imposer à ffmpeg (`-c:v` avant `-i`) quand le conteneur ne
     # nomme pas le codec : « hevc » pour un AVI au fourcc nul. « » sinon.
     decodeur:        str                 = ""
+    # HEVC dont l'en-tête du conteneur (`hvcC`, CodecPrivate) ne porte aucun
+    # VPS/SPS/PPS : ils ne sont que dans le flux (IE-205). Recopié en MP4
+    # `hvc1`, un tel flux sortait avec une `hvcC` vide, illisible partout.
+    parametres_hors_entete: bool         = False
     # ── Métadonnées Dolby Vision enrichies (dovi_tool, optionnel) ────────────
     dv_subprofile:   Optional[str]              = None   # "5", "7.06", "8.1"…
     hdr10_master_display: Optional[str]         = None   # G(...)B(...)R(...)WP(...)L(...)
@@ -1056,6 +1060,11 @@ def scan(path: Path) -> VideoInfo:
         decodeur = _codec_annexe_b(path)
         if decodeur:
             codec, pix_fmt = decodeur, ""
+    # Une `hvcC` tient en 23 octets d'en-tête fixe, plus ses tableaux de
+    # paramètres : 23 octets, c'est qu'elle n'en a aucun. 0 (pas d'en-tête du
+    # tout) n'est pas ce cas : ffmpeg y lit alors un flux Annex B.
+    parametres_hors_entete = (
+        codec == "hevc" and 0 < _safe_int(vid.get("extradata_size")) <= 23)
 
     # Débit **vidéo**, jamais celui du conteneur : c'est à un débit vidéo
     # cible qu'il sera comparé, et c'est un débit vidéo que l'encodeur reçoit.
@@ -1141,6 +1150,7 @@ def scan(path: Path) -> VideoInfo:
         sar=vid.get("sample_aspect_ratio", "") or "",
         pix_fmt=pix_fmt,
         decodeur=decodeur,
+        parametres_hors_entete=parametres_hors_entete,
         titre=titre_dvd,
     )
     _estimer_sar(info)

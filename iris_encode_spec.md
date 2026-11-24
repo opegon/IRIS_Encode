@@ -1,7 +1,7 @@
 # IRIS ENCODE — Spécification Fonctionnelle
 
-**Version** : 0.9.3.12 — document de référence courant
-**Date** : 2026-11-23
+**Version** : 0.9.3.14 — document de référence courant
+**Date** : 2026-11-24
 **Statut** : stable
 
 > Ce document suit la version de l'application (`version.py`). Toute implémentation
@@ -1694,6 +1694,16 @@ sans horodatage, et le correctif de cadence (`-r`) et de DTS négatifs
 toute sortie MP4 dont la vidéo est du HEVC — encodeur `hevc_*` ou `libx265`,
 ou copie d'une source HEVC (`_sortie_hevc`) — et `build_strip_mp4` toujours.
 Le LG G3 lit les deux étiquettes en lecture directe *(observé, IE-74)*.
+
+**Une source HEVC sans paramètres dans son en-tête** (`hvcC` ou CodecPrivate
+réduit à ses 23 octets fixes, VPS/SPS/PPS dans le flux seulement — des WEB-DL
+issus de `hev1`) : `scanner` la marque `parametres_hors_entete`. Recopiée en MP4
+sous `-tag:v hvc1`, ffmpeg en écrivait une `hvcC` **vide**, code de retour nul,
+fichier illisible partout, ffprobe compris (IE-205, mesuré ffmpeg 8.1.2). Sur
+une telle copie, `build_command` ajoute `-bsf:v hevc_mp4toannexb` : depuis le
+flux Annex B, ffmpeg reconstruit une `hvcC` complète. Les sorties déjà écrites
+se réparent avec `outils/reparer_hvcc.py` (la `hvcC` refaite depuis les
+paramètres du premier échantillon, insérée, offsets recalés, sortie contrôlée).
 
 **Conteneur de sortie** — `output_container` suit les pistes réellement conservées :
 écarter les sous-titres image libère le MP4 ; `mov_text` n'est jamais proposé en
@@ -3965,7 +3975,9 @@ partout ailleurs elle ouvre ou valide, ici elle lançait l'encodage sans confirm
   CR-127), sur les trois chemins : présente, non vide, et d'une durée égale à
   celle de la source à la tolérance du collage près (`joiner.derive_duree` :
   2 s ou 1 %). Sinon le fichier est en **ERREUR** et la source reste ; une
-  durée illisible par ffprobe ne fait pas échouer. Un code de retour nul de
+  durée absente ne fait pas échouer, mais un fichier que ffprobe refuse
+  d'ouvrir, si (v0.9.3.14, IE-205 : ce refus passait pour une durée illisible,
+  et la source d'un profil `delete_source` partait). Un code de retour nul de
   ffmpeg ne suffisait pas : sans sortie, la source était supprimée.
   Ses **annexes Jellyfin** partent avec elle (`core/annexes.py`, v0.8.9.86) :
   `<nom>.nfo` et `<nom>-*.jpg|jpeg|png|webp`, le format observé sur la
@@ -4710,6 +4722,8 @@ file d'encodage, § 14.7), Dolby Vision au remux mkvmerge (vérifié le
 | 0.9.3.2 | 2026-11-14 | **`F10 Quitter` dans l'en-tête**, à côté de `F11 Plein écran`, plus au pied de page de chaque écran · **`A` bascule tout / aucun** sur l'accueil, `N` retirée (IE-200) · `tests/test_entete_quitter.py`, `tests/test_bascule_selection.py` |
 | 0.9.3.3 | 2026-11-14 | **La sortie ne reprend plus le titre de la source** (§ 8.8, IE-198) : titre global vidé par les quatre commandes qui écrivent une sortie finale (`build_command`, `build_strip_mp4`, `build_dv_mp4_remux`, `build_strip_command`) ; titres de piste gardés · `tests/test_titre_sortie.py` |
 | 0.9.3.4 | 2026-11-14 | **`pytest.ini`** (§ 18, IE-196) : avertissements en erreurs, marqueurs stricts ; les tubes des sous-processus sont fermés à la fin de chacun (`EncoderProcess`, `MuxProcess`, `TuyauRpu`, `sync`, `youtube`) · **`shots_tui.py` sur un clone** : jeu synthétique quand `resources_files/tests/` manque, 28 prises sur 28 au lieu de 7 |
+| 0.9.3.14 | 2026-11-24 | **HEVC à paramètres hors en-tête recopié en MP4** (§ 8.6, § 14.7, IE-205) : la recopie en MP4 `hvc1` d'une source dont la `hvcC` n'a aucun VPS/SPS/PPS écrivait une `hvcC` vide, fichier illisible ; `scanner` le repère (`parametres_hors_entete`), `build_command` passe alors `-bsf:v hevc_mp4toannexb` · `defaut_sortie` met en ERREUR une sortie que ffprobe refuse, la source reste · `outils/reparer_hvcc.py` répare les sorties déjà écrites · `tests/test_hvcc_sans_parametres.py`, `tests/test_sorties_protegees.py` |
+| 0.9.3.13 | 2026-11-23 | **Arbre de décision relevé sur 0.9.3.13** : pièce 5.3 (secours AAC), motif de remux et passes audio DV complétés, numéros de ligne recalés ; `IRIS_Encode_arbre_de_decision_v0.9.3.13.pdf` (22 pièces) remplace celui de 0.9.3.11 |
 | 0.9.3.12 | 2026-11-23 | **Piste AAC stéréo de secours** (§ 8.5) : `audio_aac_fallback`, avant chaque piste gardée qui n'est pas en AAC, seule par défaut ; motif de remux ; case du formulaire de profil · `tests/test_aac_secours.py` |
 | 0.9.3.11 | 2026-11-22 | **Document de l'arbre de décision** : `outils/arbre_decision.py` produit `IRIS_Encode_arbre_de_decision_v<version>.pdf` (21 schémas, de l'entrée à la sortie, prêt à diffuser) ; contenu relevé à la main sur le code (`RELEVE`), avertit quand il diffère de `version.py` |
 | 0.9.3.10 | 2026-11-21 | **Repère d'épisode gardé à la coupe d'un nom ; colonne État à 38** (§ 14.7) : `tronquer_nom` (accueil, écran Encodage), « Une.Serie…S01E02…ROUPE.mkv » ; `LARGEUR_ETAT = 38`, vitesse masquée en pause · `tests/test_run_colonne_fichier.py` |

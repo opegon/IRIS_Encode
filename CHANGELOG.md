@@ -1,5 +1,54 @@
 # CHANGELOG — IRIS ENCODE
 
+## [v0.9.3.14] — 2026-11-24
+
+### Remux MP4 illisibles : en-tête HEVC vide (IE-205)
+
+- **Signalement** : un répertoire de WEB-DL passé en v0.9.3.12 avec un profil
+  `*_delete` — tous les fichiers illisibles, sources supprimées. Sur
+  `3.Body.Problem.S01E01…H265.remux-iris.mp4`, la boîte `hvcC` fait 8 octets :
+  ni VPS/SPS/PPS, ni taille des préfixes de NAL. ffprobe lui-même refuse le
+  fichier (`Invalid data found when processing input`).
+- **Cause** : ces sources ont une `hvcC` (ou un CodecPrivate) réduite à ses
+  23 octets fixes, les paramètres n'étant que dans le flux. Recopiées en MP4
+  sous `-tag:v hvc1`, ffmpeg 8.1.2 écrit une `hvcC` vide, code de retour 0.
+  La piste AAC de secours de la v0.9.3.12 les avait fait passer de SKIP à
+  REMUX : c'était leur première recopie.
+- **Correction** : le scanner repère ces sources (`parametres_hors_entete`,
+  `extradata_size` ≤ 23) ; leur copie vers MP4 passe par
+  `-bsf:v hevc_mp4toannexb`, qui fait reconstruire au muxeur une `hvcC`
+  complète. Les autres copies ne changent pas.
+- **Le contrôle de sortie ne laisse plus passer un fichier illisible** :
+  `defaut_sortie` prenait le refus de ffprobe pour une « durée illisible » et
+  déclarait la sortie réussie — la source partait. Une sortie que ffprobe
+  refuse est désormais en ERREUR (« le fichier de sortie est illisible »), la
+  source reste. Un ffprobe absent ou bloqué ne fait toujours pas échouer.
+- **Réparer les fichiers déjà écrits** : `python outils/reparer_hvcc.py
+  FICHIER_OU_DOSSIER… [--remplacer]`. La `hvcC` est refaite depuis les
+  paramètres du premier échantillon, insérée, les offsets de toutes les pistes
+  recalés ; la sortie est contrôlée (ffprobe, décodage) avant d'être gardée.
+  Vérifié sur *3 Body Problem* S01E01 : 1 h 00 décodée en entier (vidéo et
+  six pistes audio) sans erreur.
+- `tests/test_hvcc_sans_parametres.py` (3 tests, sur source fabriquée) et
+  `tests/test_sorties_protegees.py` (2 de plus) — contre-vérifiés : sans la
+  correction, le remux réel rend une `hvcC` de 0 octet et le contrôle accepte
+  le fichier. Le faux ffmpeg des tests d'écran ne passe plus par ffprobe.
+
+## [v0.9.3.13] — 2026-11-23
+
+### Arbre de décision à jour de la piste AAC de secours
+
+- **Nouvelle pièce 5.3** : la piste AAC de secours (`audio_aac_fallback`),
+  ses conditions, sa place avant la piste et le drapeau par défaut.
+- Pièce 6.2 : « secours AAC à ajouter » parmi les motifs de remux ; pièce
+  8.4 : la passe audio des chemins Dolby Vision tourne aussi pour un
+  secours ; synthèse complétée.
+- Numéros de ligne des sources recalés sur le code (24 références de
+  `core/decision.py` et `core/encoder.py` décalées par la v0.9.3.12).
+- `IRIS_Encode_arbre_de_decision_v0.9.3.13.pdf`, 26 pages, 22 pièces (corps
+  de 7,9 à 11,3 pt), remplace celui de la v0.9.3.11 ; planches 5.3 et 6.2
+  contrôlées au rendu.
+
 ## [v0.9.3.12] — 2026-11-23
 
 ### Une piste AAC stéréo avant chaque piste E-AC3 ou AC3

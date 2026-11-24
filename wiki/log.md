@@ -722,3 +722,14 @@ Sortie IRIS de Silo S01E01 (E-AC3 5.1 Atmos fre + eng) transcodée par
 Jellyfin dans un navigateur. Décision de l'utilisateur : AAC stéréo avant
 chaque piste, par défaut (v0.9.3.12, `audio_aac_fallback`). Pages
 modifiées : [[audio]], [[jellyfin]].
+
+## [2026-11-24] ingest | Remux MP4 illisibles : `hvcC` vide sous `hvc1` (IE-205)
+
+Signalement : un répertoire passé en v0.9.3.12 avec un profil `*_delete`,
+tous les fichiers illisibles, sources supprimées. Cas mesuré : *3 Body
+Problem* S01E01 (`…H265.remux-iris.mp4`), remux « AAC » : `hvcC` de 8 octets.
+Reproduit sur une source fabriquée (`hvcC` à 0 tableau, MKV et MP4). Deux
+causes : la copie sous `-tag:v hvc1`, et `defaut_sortie` qui prenait le refus
+de ffprobe pour une durée illisible. Corrigé en v0.9.3.14 ; sorties réparées
+par `outils/reparer_hvcc.py` (décodage complet sans erreur). Pages
+modifiées : [[conteneurs]], [[ffmpeg]], [[pieges-et-lecons]].

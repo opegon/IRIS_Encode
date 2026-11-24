@@ -137,7 +137,17 @@ def faux(monkeypatch):
                         lambda d, p, **k: ["ffmpeg", str(d.output_path)])
     # L'accueil de test n'est pas un BrowserScreen : il est déjà la racine.
     monkeypatch.setattr(run_mod, "retour_accueil", lambda app: None)
+    # La sortie du faux n'est pas une vidéo : ffprobe la refuse, ce qui est
+    # un échec depuis IE-205. Reste du contrôle : présente et non vide.
+    monkeypatch.setattr(run_mod, "defaut_sortie", _controle_sans_ffprobe)
     return _FauxFfmpeg.lances
+
+
+def _controle_sans_ffprobe(sortie: Path, _duree: float) -> str:
+    try:
+        return "" if sortie.stat().st_size else "sortie vide"
+    except OSError:
+        return "sortie absente"
 
 
 def _sortie(app, i: int = 0) -> Path:

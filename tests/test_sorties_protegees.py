@@ -74,10 +74,34 @@ def test_une_sortie_écourtée_n_est_pas_un_succès(tmp_path, monkeypatch):
 def test_une_durée_illisible_ne_fait_pas_échouer(tmp_path, monkeypatch):
     sortie = tmp_path / "Film.hevc-iris.mkv"
     sortie.write_bytes(b"mkv")
+    monkeypatch.setattr(scanner, "_ffprobe_json",
+                        lambda args, outil=None: {"format": {}})
+    assert encoder.defaut_sortie(sortie, 3600.0) == ""
+
+
+def test_une_sortie_que_ffprobe_refuse_n_est_pas_un_succès(tmp_path, monkeypatch):
+    """IE-205 : un MP4 à `hvcC` vide, que rien ne lit, passait pour réussi —
+    ffprobe le refusait, et ce refus valait « durée illisible ». La source
+    d'un profil `delete_source` partait avec."""
+    sortie = tmp_path / "Film.remux-iris.mp4"
+    sortie.write_bytes(b"mp4")
 
     def _refus(args, outil=None):
-        raise RuntimeError("ffprobe: illisible")
+        raise RuntimeError("ffprobe: [extract_extradata] No start code is found.\n"
+                           "Film.remux-iris.mp4: Invalid data found when "
+                           "processing input")
     monkeypatch.setattr(scanner, "_ffprobe_json", _refus)
+    assert "Invalid data" in encoder.defaut_sortie(sortie, 3600.0)
+    assert encoder.defaut_sortie(sortie, 0.0), "durée inconnue : contrôlé aussi"
+
+
+def test_un_ffprobe_absent_ne_fait_pas_échouer(tmp_path, monkeypatch):
+    sortie = tmp_path / "Film.hevc-iris.mkv"
+    sortie.write_bytes(b"mkv")
+
+    def _absent(args, outil=None):
+        raise FileNotFoundError("ffprobe")
+    monkeypatch.setattr(scanner, "_ffprobe_json", _absent)
     assert encoder.defaut_sortie(sortie, 3600.0) == ""
 
 

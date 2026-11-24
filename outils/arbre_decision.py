@@ -43,7 +43,7 @@ from pathlib import Path
 RACINE = Path(__file__).resolve().parent.parent
 
 # Version du code sur laquelle le contenu des pièces a été relevé et vérifié.
-RELEVE = "0.9.3.11"
+RELEVE = "0.9.3.13"
 
 # Corps minimal accepté pour le texte d'un diagramme, une fois mis à l'échelle.
 CORPS_MIN_PT = 7.5
@@ -240,7 +240,7 @@ flowchart TD
 """,
       ["Aucun profil livré n'active l'agrandissement : il se demande par la clé de profil upscale ou par fichier dans l'Aperçu.",
        "Les facteurs 1,2 (zone morte) et 2,7 (plafond) se règlent dans la section [decision] de config.toml."],
-      "core/decision.py:1086 decide_video · :1056 _refus_agrandissement · core/super_resolution.py")
+      "core/decision.py:1097 decide_video · :1067 _refus_agrandissement · core/super_resolution.py")
 
 piece("Décision vidéo", "4.2", "port",
       "Le cadre de sortie et le sort du Dolby Vision sont fixés avant d'examiner les cas",
@@ -273,7 +273,7 @@ flowchart TD
       ["Une source est 4K dès que son grand côté atteint 3 200 px ou son petit côté 1 700 px (un scope 3832×1600 compris).",
        "Une source verticale est jugée sur son grand et son petit côté ; le cadre se pose dans son orientation.",
        "Aucune sortie HDR n'est confiée à H.264 : la décision automatique garde une source HDR en HEVC."],
-      "core/decision.py:1143 _decide_video_classique · :953 _resolve_limits · :1071 _decide_dv · :124 peut_reencoder_en_dv")
+      "core/decision.py:1154 _decide_video_classique · :964 _resolve_limits · :1082 _decide_dv · :124 peut_reencoder_en_dv")
 
 piece("Décision vidéo", "4.3", "port",
       "Le premier cas qui répond l'emporte ; le SKIP n'intervient qu'en dernier",
@@ -302,7 +302,7 @@ flowchart TD
        "Le cas 3 vaut quelle que soit la définition : VP9, AV1, VC-1, MPEG-2 ou DivX sont réencodés.",
        "Les cas 1 à 3 l'emportent sur le retrait du RPU : un réencodage le supprime déjà.",
        "Un SKIP peut encore devenir REMUX au chapitre 6."],
-      "core/decision.py:1210-1310 · TOLERANCE_DEBIT_PCT · cible_conversion_h264 · CODECS_LISIBLES")
+      "core/decision.py:1221-1321 · TOLERANCE_DEBIT_PCT · cible_conversion_h264 · CODECS_LISIBLES")
 
 # ── 5. Audio ──────────────────────────────────────────────────────────────────
 piece("Décision audio", "5.1", "port",
@@ -333,7 +333,7 @@ flowchart TD
       ["Une TrueHD et son cœur AC-3 de Blu-ray apparaissent en deux pistes de même PID ; la règle automatique n'en garde qu'une.",
        "Les codes « fre » et « fra » désignent la même langue (normalize_language).",
        "Si la piste 0 est illisible, le rôle de piste originale passe à la première piste lisible."],
-      "core/decision.py:1449 decide_audio · :1603 _paires_coeur")
+      "core/decision.py:1460 decide_audio · :1672 _paires_coeur")
 
 piece("Décision audio", "5.2", "port",
       "Les pistes compatibles sont recopiées ; les autres sont transcodées selon leurs canaux",
@@ -359,7 +359,31 @@ flowchart TD
 """,
       ["Le multicanal sort en E-AC3 quand le profil fixe audio_hd_codec = eac3, en AC3 sinon.",
        "Une piste transcodée voit son titre corrigé (codec, disposition, mention Atmos retirée) ; une piste recopiée n'est jamais retitrée."],
-      "core/decision.py:1525 decide_codec_audio · :1421 _transcode_spec · :1574 audio_greffee")
+      "core/decision.py:1594 decide_codec_audio · :1432 _transcode_spec · :1643 audio_greffee")
+
+piece("Décision audio", "5.3", "port",
+      "Une piste qui ne sort pas en AAC est précédée d'un AAC stéréo, lu par défaut",
+      "Piste AAC de secours (audio_aac_fallback), posée sur les pistes retenues après 5.2",
+      """
+flowchart TD
+  G(["Piste retenue<br/>et sa décision 5.2"]) --> K{"audio_aac_fallback ?"}
+  K -->|non| N1(["Pas de secours<br/>drapeaux de la source"])
+  K -->|oui| C{"Sort en AAC ?<br/>recopiée ou transcodée"}
+  C -->|oui| N2(["Pas de secours"])
+  C -->|non| L{"Une piste retenue<br/>de même langue<br/>sort en AAC ?"}
+  L -->|oui| N2
+  L -->|non| S(["AAC stéréo écrit<br/>avant la piste<br/>audio_stereo_kbps<br/>64k si mono"])
+  S --> D(["Drapeau par défaut<br/>sur la première<br/>piste écrite seule"])
+  class K,C,L test
+  class S enc
+  class D ok
+  class N1,N2 off
+""",
+      ["Ordre écrit, exemple : AAC fre (par défaut), E-AC3 fre, AAC eng, E-AC3 eng. Le client web de Jellyfin sous Chrome ne lit pas l'E-AC3 et ne choisit pas seul une autre piste.",
+       "Le secours lit la même piste source ; son titre est corrigé (« FR E-AC3 5.1 Atmos » → « FR AAC 2.0 »).",
+       "Une piste audio externe marquée par défaut garde la priorité. Les pistes greffées ne reçoivent pas de secours.",
+       "Clé absente d'un profil : pas de secours. Les profils livrés l'activent."],
+      "core/decision.py:1559 _poser_secours_aac · :1537 sorties_audio · core/encoder.py:713 drapeaux_secours")
 
 # ── 6. Sous-titres, remux, conteneur ──────────────────────────────────────────
 piece("Sous-titres, remux et conteneur", "6.1", "port",
@@ -389,7 +413,7 @@ flowchart TD
 """,
       ["Nature : un SRT forcé ne double qu'un PGS forcé, un SRT complet qu'un PGS complet. Sans langue déclarée, un PGS n'est jamais dit doublé.",
        "« Hors DV » : ni STRIP_DV ni ENCODE_DV, chemins qui écrivent la sortie sans build_command."],
-      "core/decision.py:1905 decide_subtitles · :1958 _pgs_doubles · :1934 ocr_prevu · :1946 ass_converti · core/ocr.py · core/ass.py")
+      "core/decision.py:1974 decide_subtitles · :2027 _pgs_doubles · :2003 ocr_prevu · :2015 ass_converti · core/ocr.py · core/ass.py")
 
 piece("Sous-titres, remux et conteneur", "6.2", "port",
       "Un SKIP devient REMUX dès qu'une piste ferait transcoder la chaîne de lecture",
@@ -400,7 +424,7 @@ flowchart TD
   SR -->|non| END(["Inchangée"])
   SR -->|oui| TD{"Titre de disque<br/>Dolby Vision ?"}
   TD -->|oui| NOM["Aucun motif"]
-  TD -->|non| MOT["Motifs de remux :<br/>audio retenu à transcoder<br/>PGS doublé laissé de côté<br/>PGS ou VobSub à l'OCR<br/>ASS converti · SAR imposé"]
+  TD -->|non| MOT["Motifs de remux :<br/>audio retenu à transcoder<br/>secours AAC à ajouter<br/>PGS doublé laissé de côté<br/>PGS ou VobSub à l'OCR<br/>ASS converti · SAR imposé"]
   MOT --> M1{"Au moins<br/>un motif ?"}
   NOM --> M1
   M1 -->|oui, SKIP| RX(["REMUX<br/>vidéo recopiée<br/>suffixe .remux-iris"])
@@ -412,7 +436,7 @@ flowchart TD
 """,
       ["Une piste écartée pour sa langue ne déclenche rien : le lecteur ne la choisit pas.",
        "Rappelé par chaque écran qui change les pistes (Pistes, Assistant, Aperçu)."],
-      "core/decision.py:2002 motifs_remux · :2027 ajuster_remux")
+      "core/decision.py:2071 motifs_remux · :2100 ajuster_remux")
 
 piece("Sous-titres, remux et conteneur", "6.3", "port",
       "Le MP4 est retenu quand tout y tient ; il cède au MKV plutôt que de perdre une piste",
@@ -438,7 +462,7 @@ flowchart TD
 """,
       ["Un mux sans réencodage (SKIP + pistes greffées) sort toujours en .mux-iris.mkv, seul format de mkvmerge.",
        "En sortie MKV, un mov_text de la source est converti en SRT : le muxeur Matroska de ffmpeg le refuse."],
-      "core/decision.py:619 needs_mkv · :589 sous_titres_ecartes · :571 _mkv_impose_par_l_audio")
+      "core/decision.py:628 needs_mkv · :598 sous_titres_ecartes · :580 _mkv_impose_par_l_audio")
 
 # ── 7. Nommage ────────────────────────────────────────────────────────────────
 piece("Nom de sortie", "7.1", "port",
@@ -491,7 +515,7 @@ flowchart TD
 """,
       ["Exemple : Film.2160p.DV.HDR10.x265.TrueHD.7.1-GROUP devient Film.1080p.HDR10.E-AC3.5.1.hevc-iris.",
        "Le nom n'est jamais relu sur le disque après coup : figé une fois, il sert aussi à effacer une sortie partielle sans risque."],
-      "core/decision.py:696 _stem_a_jour · :409 suffixe_sans_redite · :1626 resoudre_sorties · core/scanner.py (stem_*)")
+      "core/decision.py:705 _stem_a_jour · :418 suffixe_sans_redite · :1695 resoudre_sorties · core/scanner.py (stem_*)")
 
 # ── 8. Exécution ──────────────────────────────────────────────────────────────
 piece("Exécution", "8.1", "port",
@@ -588,7 +612,7 @@ flowchart TB
     direction LR
     S0{"Sortie ?"} -->|MKV| S1["ffmpeg<br/>flux HEVC brut"]
     S1 --> S2["dovi_tool<br/>remove"]
-    S2 --> S3["ffmpeg<br/>pistes audio"]
+    S2 --> S3["ffmpeg<br/>pistes audio<br/>si transcodé ou secours"]
     S3 --> S4(["mkvmerge<br/>.hdr10-iris.mkv"])
     S0 -->|MP4 sans greffe| S5(["ffmpeg -bsf dovi_rpu strip<br/>.hdr10-iris.mp4"])
     S0 -->|MP4 avec greffes| S6["Chemin MKV"] --> S7(["Remux MP4<br/>build_dv_mp4_remux"])
@@ -598,7 +622,7 @@ flowchart TB
     E1["1 · RPU<br/>extrait"] --> E2["2 · profil 7<br/>→ 8.1"]
     E2 --> E3["3 · vidéo<br/>encodée Annex B"]
     E3 --> E4["4 · RPU<br/>réinjecté"]
-    E4 --> E5["5 · audio à part<br/>si transcodé"]
+    E4 --> E5["5 · audio à part<br/>si transcodé ou secours"]
     E5 --> E6["6 · mkvmerge<br/>.dv-iris.mkv"]
     E6 --> E7(["7 · remux MP4<br/>si sortie MP4"])
   end
@@ -644,7 +668,7 @@ flowchart TD
       ["Tout-carte exclu pour : SDR, Dolby Vision, hdr10_quality, désentrelacement, pixels non carrés, dimension impaire, source non décodable par la puce.",
        "-hwaccel exclu pour : SDR (zscale), profil 5, agrandissement, vidéo recopiée, hdr10_quality.",
        "HEVC NVENC sort aussi en 10 bits en SDR si le sondage l'a ouvert ainsi (+0,1 à +0,4 point VMAF mesuré)."],
-      "core/encoder.py:1092 build_command · filtre_tout_puce · regle_debit · _hdr10_quality")
+      "core/encoder.py:1111 build_command · filtre_tout_puce · regle_debit · _hdr10_quality")
 
 # ── 10. Contrôle ──────────────────────────────────────────────────────────────
 piece("Contrôle et fin", "10", "port",
@@ -676,7 +700,7 @@ flowchart TD
 """,
       ["ffmpeg peut rendre un code nul avec une piste audio amputée : le contrôle relit la sortie.",
        "Les intermédiaires (audio à part, porteur, chapitres, SRT refaits, mux préalable) sont effacés dans tous les cas ; les pistes recalées seulement après un succès."],
-      "tui/screens/run.py:833-893 · :915 _supprimer_source · :896 _audio_vide · core/encoder.py:604 defaut_sortie")
+      "tui/screens/run.py:833-893 · :915 _supprimer_source · :896 _audio_vide · core/encoder.py:605 defaut_sortie")
 
 
 # ─── Rendu HTML ───────────────────────────────────────────────────────────────
@@ -693,7 +717,7 @@ SYNTHESE = [
     ("Un ordre strict des cas vidéo",
      "Débit inconnu, débit trop élevé, H.264 à convertir, définition trop grande, codec non lisible, puis retrait du RPU : le premier cas qui répond l'emporte. Le SKIP vient en dernier."),
     ("Un SKIP n'est pas définitif",
-     "Il devient REMUX dès qu'une piste ferait transcoder la chaîne de lecture : audio à convertir, sous-titre image doublé ou à l'OCR, ASS converti, SAR à déclarer."),
+     "Il devient REMUX dès qu'une piste ferait transcoder la chaîne de lecture : audio à convertir, secours AAC à ajouter, sous-titre image doublé ou à l'OCR, ASS converti, SAR à déclarer."),
     ("Aucune piste perdue en silence",
      "Le MP4 est préféré quand tout y tient. Il cède au MKV dès qu'une piste retenue ne pourrait pas y figurer sans être écartée."),
     ("Un succès vérifié, pas supposé",

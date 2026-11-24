@@ -1,6 +1,6 @@
 ---
 type: concept
-maj: 2026-09-30
+maj: 2026-11-24
 sources:
   - "[[source-spec]]"
   - "[[source-2026-09-30-hev1-hvc1]]"
@@ -76,6 +76,20 @@ en SDR comme en HDR10. *(observé, 2026-09-30)*
 IRIS écrit donc **`hvc1`** sur toutes ses sorties HEVC en MP4 depuis la
 v0.8.9.39 (`-tag:v hvc1`, sans effet sur le flux). *(mesuré : `ffprobe` →
 `hevc,hvc1`)*
+
+**Piège : `hvc1` sur une copie dont l'en-tête est vide (IE-205).** Certains
+WEB-DL (MKV ou MP4 venus de `hev1`) ont une `hvcC` réduite à ses 23 octets
+fixes, sans aucun tableau VPS/SPS/PPS : `ffprobe` → `extradata_size=23`.
+Recopiés en MP4 sous `-tag:v hvc1`, ffmpeg 8.1.2 écrit une `hvcC` **de
+8 octets** (vide : ni paramètres, ni taille des préfixes de NAL), **code de
+retour 0** ; plus rien ne lit le fichier, ffprobe compris (`extract_extradata:
+No start code is found` → `Invalid data found`), et mkvmerge n'y voit pas de
+vidéo. Sous `hev1`, ou en sortie MKV, l'en-tête vide reste lisible. Remède
+mesuré : `-bsf:v hevc_mp4toannexb` sur la copie — depuis l'Annex B, le muxeur
+MP4 reconstruit une `hvcC` complète. *(mesuré, 2026-11-24, source fabriquée
+et sortie réelle de *3 Body Problem* S01E01)* Les images restent intactes,
+paramètres compris dans le premier échantillon : `outils/reparer_hvcc.py`
+refait la boîte et recale les `stco`.
 
 ## Réécrire un MKV
 

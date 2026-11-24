@@ -73,7 +73,10 @@ sans libx265 : `ffmpeg -encoders | findstr x265`.
 ## Filtres de flux (`-bsf:v`)
 
 - `hevc_mp4toannexb` : de la forme conteneur (hvcC) au flux brut Annex-B,
-  celui qu'attend [[dovi-tool]].
+  celui qu'attend [[dovi-tool]]. Sur une copie vers MP4, il fait aussi
+  reconstruire au muxeur une `hvcC` complète depuis les paramètres du flux,
+  quand celle de la source n'en a aucun (IE-205, [[conteneurs]]). En sortie
+  Matroska, ffmpeg refuse alors d'écrire l'en-tête *(mesuré)*.
 - `dovi_rpu=strip=1` (**7.1+**, HEVC et AV1) : retire le RPU Dolby Vision et
   l'enregistrement de configuration DV, **horodatages de la source
   conservés**. Présence : `ffmpeg -h bsf=dovi_rpu`. *(mesuré, voir

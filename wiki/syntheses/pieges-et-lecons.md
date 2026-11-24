@@ -1,6 +1,6 @@
 ---
 type: synthese
-maj: 2026-10-29
+maj: 2026-11-24
 sources:
   - "[[source-2026-10-29-fichier-colle]]"
   - "[[source-2026-10-06-sar-scale]]"
@@ -57,6 +57,7 @@ une ligne de moins dans une liste.
 | Piste audio transcodée vide | décodage sans perte et sous-titre tardif dans le même appel *(plus reproduit en ffmpeg 8.1.x, passe gardée)* | [[audio|Audio]] |
 | Lecture arrêtée à 32 s sur TV, son perdu après un saut | audio d'une 2ᵉ entrée, sous-titres clairsemés lus avec la vidéo : audio écrite par blocs *(mesuré, v0.8.9.41)* | [[audio|Audio]] |
 | Jellyfin transcode une sortie redimensionnée, « anamorphique » | `scale` compense l'arrondi par un SAR ≠ 1:1 *(mesuré, v0.8.9.79)* | [[ffmpeg]] |
+| Tout un répertoire illisible après remux, sources supprimées (v0.9.3.12) | copie HEVC à `hvcC` sans paramètres, étiquetée `hvc1` : `hvcC` vide ; et le contrôle de sortie prenait le refus de ffprobe pour une durée illisible *(mesuré, IE-205)* | [[conteneurs#Tag HEVC en MP4 : `hev1` ou `hvc1`|Conteneurs]] |
 | Réglage 48 kHz sur la mauvaise piste | `-ar:1` au lieu de `-ar:a:1` | [[audio|Audio]] |
 | DTS-HD MA traité comme un DTS | famille dans `profile`, pas dans `codec_name` | [[audio|Audio]] |
 | Métadonnées HDR10 jamais injectées | `dovi_tool info` rend du JSON | [[dovi-tool]] |

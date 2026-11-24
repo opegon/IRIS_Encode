@@ -609,7 +609,8 @@ def defaut_sortie(sortie: Path, duree_attendue: float) -> str:
     écrit, ou s'arrêter en route. La source n'est supprimée qu'une fois ce
     contrôle passé (CR-127) — absente, vide ou écourtée, la sortie ne la
     remplace pas. La tolérance de durée est celle du collage. Une durée
-    illisible ne fait pas échouer : ce contrôle-là est un filet.
+    illisible ne fait pas échouer : ce contrôle-là est un filet. Un fichier
+    que ffprobe refuse, si : il ne se lira nulle part (IE-205).
     """
     from .joiner import derive_duree
     from .scanner import _ffprobe_json
@@ -620,11 +621,16 @@ def defaut_sortie(sortie: Path, duree_attendue: float) -> str:
         return _("the output file was not written")
     if taille == 0:
         return _("the output file is empty")
-    if duree_attendue <= 0:
-        return ""
     try:
         data = _ffprobe_json(["-show_format", str(sortie)])
+    except RuntimeError as e:
+        # ffprobe a répondu, et refuse le fichier : une sortie que rien ne
+        # lit passait pour réussie, et la source était supprimée (IE-205).
+        return _("the output file cannot be read: {detail}").format(
+            detail=str(e).splitlines()[-1][:120])
     except Exception:
+        return ""                     # ffprobe absent, bloqué : pas de verdict
+    if duree_attendue <= 0:
         return ""
     obtenue = _duree_secondes((data.get("format") or {}).get("duration"))
     if obtenue is None or derive_duree(duree_attendue, obtenue) is None:
@@ -1578,6 +1584,12 @@ def build_command(
         cmd += ["-movflags", "+faststart"]
         if _sortie_hevc(cmd, info.codec):
             cmd += ["-tag:v", "hvc1"]
+            # Un flux recopié dont les VPS/SPS/PPS ne sont que dans le flux :
+            # ffmpeg écrivait une `hvcC` vide sous `hvc1`, code de retour nul,
+            # fichier illisible partout (IE-205). Passé en Annex B, le flux
+            # lui fait reconstruire une `hvcC` complète depuis ces paramètres.
+            if encodeur_de(cmd) == "copy" and info.parametres_hors_entete:
+                cmd += ["-bsf:v", "hevc_mp4toannexb"]
         # Sans `-strict unofficial`, ffmpeg n'écrit pas la boîte `dvcC` en MP4 :
         # le RPU reste dans le flux, mais le G3 ne voit plus de Dolby Vision
         # (IE-109, mesuré sur ffmpeg 8.1.2).

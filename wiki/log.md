@@ -733,3 +733,10 @@ causes : la copie sous `-tag:v hvc1`, et `defaut_sortie` qui prenait le refus
 de ffprobe pour une durée illisible. Corrigé en v0.9.3.14 ; sorties réparées
 par `outils/reparer_hvcc.py` (décodage complet sans erreur). Pages
 modifiées : [[conteneurs]], [[ffmpeg]], [[pieges-et-lecons]].
+
+## [2026-11-24] query | Le retrait DV vers MP4 a-t-il le défaut d'IE-205 ?
+
+Non. `build_strip_mp4` impose `hvc1` à une copie, mais `dovi_rpu=strip=1`
+réécrit l'en-tête depuis les paramètres du flux : `hvcC` complète, sortie
+décodée sans erreur, sur la source fabriquée à `hvcC` vide. Sans le filtre,
+même copie illisible. Test de garde ajouté. Page modifiée : [[conteneurs]].

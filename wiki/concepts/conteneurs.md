@@ -86,7 +86,8 @@ retour 0** ; plus rien ne lit le fichier, ffprobe compris (`extract_extradata:
 No start code is found` → `Invalid data found`), et mkvmerge n'y voit pas de
 vidéo. Sous `hev1`, ou en sortie MKV, l'en-tête vide reste lisible. Remède
 mesuré : `-bsf:v hevc_mp4toannexb` sur la copie — depuis l'Annex B, le muxeur
-MP4 reconstruit une `hvcC` complète. *(mesuré, 2026-11-24, source fabriquée
+MP4 reconstruit une `hvcC` complète. Le filtre `dovi_rpu=strip=1` (retrait DV)
+en fait autant de lui-même : le retrait DV vers MP4 n'a pas le défaut. *(mesuré, 2026-11-24, source fabriquée
 et sortie réelle de *3 Body Problem* S01E01)* Les images restent intactes,
 paramètres compris dans le premier échantillon : `outils/reparer_hvcc.py`
 refait la boîte et recale les `stco`.

@@ -170,3 +170,21 @@ def test_le_controle_refuse_une_hvcc_vide_et_l_outil_la_repare(source, tmp_path)
     assert len(_hvcc(repare)) > 23
     assert encoder.defaut_sortie(repare, 3.0) == ""
     assert _lisible(repare)
+
+
+@outils
+def test_le_retrait_dv_vers_mp4_reste_lisible(source, tmp_path):
+    """`build_strip_mp4` impose aussi `hvc1` à une copie, mais n'a pas le
+    défaut : le filtre `dovi_rpu` réécrit l'en-tête depuis les paramètres du
+    flux (mesuré, ffmpeg 8.1.2). Sans lui, la même copie sort illisible —
+    ce test garde la propriété si le filtre change."""
+    from core import dovi
+    if not dovi.strip_bsf_disponible(str(_FFMPEG)):
+        pytest.skip("ffmpeg sans le filtre dovi_rpu")
+    sortie = tmp_path / "retrait.mp4"
+    r = _run(dovi.build_strip_mp4(source, sortie, sous_titres=[],
+                                  ffmpeg_path=str(_FFMPEG)))
+    assert r.returncode == 0, r.stderr
+    assert len(_hvcc(sortie)) > 23, "hvcC sans paramètres"
+    assert encoder.defaut_sortie(sortie, 3.0) == ""
+    assert _lisible(sortie)

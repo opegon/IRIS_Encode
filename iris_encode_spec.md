@@ -1701,7 +1701,10 @@ issus de `hev1`) : `scanner` la marque `parametres_hors_entete`. Recopiée en MP
 sous `-tag:v hvc1`, ffmpeg en écrivait une `hvcC` **vide**, code de retour nul,
 fichier illisible partout, ffprobe compris (IE-205, mesuré ffmpeg 8.1.2). Sur
 une telle copie, `build_command` ajoute `-bsf:v hevc_mp4toannexb` : depuis le
-flux Annex B, ffmpeg reconstruit une `hvcC` complète. Les sorties déjà écrites
+flux Annex B, ffmpeg reconstruit une `hvcC` complète. `build_strip_mp4` (retrait
+DV vers MP4) n'en a pas besoin : son filtre `dovi_rpu=strip=1` réécrit déjà
+l'en-tête depuis les paramètres du flux *(mesuré ; sans le filtre, la même copie
+sort illisible — `tests/test_hvcc_sans_parametres.py` le garde)*. Les sorties déjà écrites
 se réparent avec `outils/reparer_hvcc.py` (la `hvcC` refaite depuis les
 paramètres du premier échantillon, insérée, offsets recalés, sortie contrôlée).
 
